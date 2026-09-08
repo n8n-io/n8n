@@ -3,7 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 export const sharedProperties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Table Name',
+		displayName: 'Table name',
 		name: 'tableName',
 		type: 'options',
 		placeholder: 'Select a table',

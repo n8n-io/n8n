@@ -20,7 +20,7 @@ export const testResultOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get historical test execution results for a specific test signature',
 				routing: {
@@ -51,7 +51,7 @@ export const testResultFields: INodeProperties[] = [
 	//         testResult:getAll
 	// ----------------------------------
 	{
-		displayName: 'Test Signature',
+		displayName: 'Test signature',
 		name: 'signature',
 		type: 'string',
 		required: true,
@@ -66,7 +66,7 @@ export const testResultFields: INodeProperties[] = [
 			'The unique test signature. Use the Signature resource to generate this from project ID, spec file path, and test title.',
 	},
 	{
-		displayName: 'Date Start',
+		displayName: 'Date start',
 		name: 'dateStart',
 		type: 'dateTime',
 		required: true,
@@ -86,7 +86,7 @@ export const testResultFields: INodeProperties[] = [
 		description: 'Start date for results (ISO 8601 format)',
 	},
 	{
-		displayName: 'Date End',
+		displayName: 'Date end',
 		name: 'dateEnd',
 		type: 'dateTime',
 		required: true,
@@ -132,7 +132,7 @@ export const testResultFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -173,7 +173,7 @@ export const testResultFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -183,7 +183,7 @@ export const testResultFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Starting After',
+				displayName: 'Starting after',
 				name: 'startingAfter',
 				type: 'string',
 				default: '',
@@ -196,7 +196,7 @@ export const testResultFields: INodeProperties[] = [
 				description: 'Cursor for forward pagination',
 			},
 			{
-				displayName: 'Ending Before',
+				displayName: 'Ending before',
 				name: 'endingBefore',
 				type: 'string',
 				default: '',

@@ -162,7 +162,7 @@ export class Mocean implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['send'],
@@ -172,7 +172,7 @@ export class Mocean implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Delivery Report URL',
+						displayName: 'Delivery report URL',
 						name: 'dlrUrl',
 						type: 'string',
 						default: '',

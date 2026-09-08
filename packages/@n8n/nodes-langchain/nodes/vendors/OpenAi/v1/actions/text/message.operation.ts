@@ -31,7 +31,7 @@ const properties: INodeProperties[] = [
 			sortable: true,
 			multipleValues: true,
 		},
-		placeholder: 'Add Message',
+		placeholder: 'Add message',
 		default: { values: [{ content: '' }] },
 		options: [
 			{
@@ -80,14 +80,14 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Output Content as JSON',
+		displayName: 'Output content as JSON',
 		name: 'jsonOutput',
 		type: 'boolean',
 		description:
@@ -95,7 +95,7 @@ const properties: INodeProperties[] = [
 		default: false,
 	},
 	{
-		displayName: 'Hide Tools',
+		displayName: 'Hide tools',
 		name: 'hideTools',
 		type: 'hidden',
 		default: 'hide',
@@ -120,12 +120,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Frequency Penalty',
+				displayName: 'Frequency penalty',
 				name: 'frequency_penalty',
 				default: 0,
 				typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -134,7 +134,7 @@ const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Maximum Number of Tokens',
+				displayName: 'Maximum number of tokens',
 				name: 'maxTokens',
 				default: 16,
 				description:
@@ -145,7 +145,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Number of Completions',
+				displayName: 'Number of completions',
 				name: 'n',
 				default: 1,
 				description:
@@ -153,7 +153,7 @@ const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Presence Penalty',
+				displayName: 'Presence penalty',
 				name: 'presence_penalty',
 				default: 0,
 				typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -162,7 +162,7 @@ const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Output Randomness (Temperature)',
+				displayName: 'Output randomness (temperature)',
 				name: 'temperature',
 				default: 1,
 				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -171,7 +171,7 @@ const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Output Randomness (Top P)',
+				displayName: 'Output randomness (top P)',
 				name: 'topP',
 				default: 1,
 				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -180,7 +180,7 @@ const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Reasoning Effort',
+				displayName: 'Reasoning effort',
 				name: 'reasoning_effort',
 				default: 'medium',
 				description:
@@ -212,7 +212,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Tool Calls Iterations',
+				displayName: 'Max tool calls iterations',
 				name: 'maxToolsIterations',
 				type: 'number',
 				default: 15,

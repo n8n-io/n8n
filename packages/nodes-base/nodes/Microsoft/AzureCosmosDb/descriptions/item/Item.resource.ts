@@ -91,7 +91,7 @@ export const description: INodeProperties[] = [
 				action: 'Get item',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of items',
 				routing: {
@@ -115,7 +115,7 @@ export const description: INodeProperties[] = [
 				action: 'Get many items',
 			},
 			{
-				name: 'Execute Query',
+				name: 'Execute query',
 				value: 'query',
 				routing: {
 					request: {

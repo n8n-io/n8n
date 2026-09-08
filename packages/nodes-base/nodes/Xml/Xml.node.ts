@@ -59,7 +59,7 @@ export class Xml implements INodeType {
 			//         option:jsonToxml
 			// ----------------------------------
 			{
-				displayName: 'Property Name',
+				displayName: 'Property name',
 				name: 'dataPropertyName',
 				type: 'string',
 				displayOptions: {
@@ -84,14 +84,14 @@ export class Xml implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Allow Surrogate Chars',
+						displayName: 'Allow surrogate chars',
 						name: 'allowSurrogateChars',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to allow using characters from the Unicode surrogate blocks',
 					},
 					{
-						displayName: 'Attribute Key',
+						displayName: 'Attribute key',
 						name: 'attrkey',
 						type: 'string',
 						default: '$',
@@ -106,7 +106,7 @@ export class Xml implements INodeType {
 							'Whether to wrap text nodes in &lt;![CDATA[ ... ]]&gt; instead of escaping when necessary. Does not add &lt;![CDATA[ ... ]]&gt; if it is not required.',
 					},
 					{
-						displayName: 'Character Key',
+						displayName: 'Character key',
 						name: 'charkey',
 						type: 'string',
 						default: '_',
@@ -120,7 +120,7 @@ export class Xml implements INodeType {
 						description: 'Whether to omit the XML header',
 					},
 					{
-						displayName: 'Root Name',
+						displayName: 'Root name',
 						name: 'rootName',
 						type: 'string',
 						default: 'root',
@@ -133,7 +133,7 @@ export class Xml implements INodeType {
 			//         option:xmlToJson
 			// ----------------------------------
 			{
-				displayName: 'Property Name',
+				displayName: 'Property name',
 				name: 'dataPropertyName',
 				type: 'string',
 				displayOptions: {
@@ -158,21 +158,21 @@ export class Xml implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Attribute Key',
+						displayName: 'Attribute key',
 						name: 'attrkey',
 						type: 'string',
 						default: '$',
 						description: 'Prefix that is used to access the attributes',
 					},
 					{
-						displayName: 'Character Key',
+						displayName: 'Character key',
 						name: 'charkey',
 						type: 'string',
 						default: '_',
 						description: 'Prefix that is used to access the character content',
 					},
 					{
-						displayName: 'Explicit Array',
+						displayName: 'Explicit array',
 						name: 'explicitArray',
 						type: 'boolean',
 						default: false,
@@ -180,7 +180,7 @@ export class Xml implements INodeType {
 							'Whether to always put child nodes in an array if true; otherwise an array is created only if there is more than one',
 					},
 					{
-						displayName: 'Explicit Root',
+						displayName: 'Explicit root',
 						name: 'explicitRoot',
 						type: 'boolean',
 						default: true,
@@ -188,14 +188,14 @@ export class Xml implements INodeType {
 							'Whether to set this if you want to get the root node in the resulting object',
 					},
 					{
-						displayName: 'Ignore Attributes',
+						displayName: 'Ignore attributes',
 						name: 'ignoreAttrs',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to ignore all XML attributes and only create text nodes',
 					},
 					{
-						displayName: 'Merge Attributes',
+						displayName: 'Merge attributes',
 						name: 'mergeAttrs',
 						type: 'boolean',
 						default: true,
@@ -210,7 +210,7 @@ export class Xml implements INodeType {
 						description: 'Whether to trim whitespaces inside text nodes',
 					},
 					{
-						displayName: 'Normalize Tags',
+						displayName: 'Normalize tags',
 						name: 'normalizeTags',
 						type: 'boolean',
 						default: false,

@@ -29,7 +29,7 @@ export const analyzersOperations: INodeProperties[] = [
 
 export const analyzerFields: INodeProperties[] = [
 	{
-		displayName: 'Analyzer Type Name or ID',
+		displayName: 'Analyzer type name or ID',
 		name: 'analyzer',
 		type: 'options',
 		required: true,
@@ -47,7 +47,7 @@ export const analyzerFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Observable Type Name or ID',
+		displayName: 'Observable type name or ID',
 		name: 'observableType',
 		type: 'options',
 		required: true,
@@ -71,7 +71,7 @@ export const analyzerFields: INodeProperties[] = [
 
 	// Observable type != file
 	{
-		displayName: 'Observable Value',
+		displayName: 'Observable value',
 		name: 'observableValue',
 		type: 'string',
 		required: true,
@@ -89,7 +89,7 @@ export const analyzerFields: INodeProperties[] = [
 		description: 'Enter the observable value',
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -139,10 +139,10 @@ export const analyzerFields: INodeProperties[] = [
 		description: 'The TLP of the analyzed observable',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -159,7 +159,7 @@ export const analyzerFields: INodeProperties[] = [
 				description: 'Whether to force bypassing the cache',
 			},
 			{
-				displayName: 'Timeout (Seconds)',
+				displayName: 'Timeout (seconds)',
 				name: 'timeout',
 				type: 'number',
 				default: 3,

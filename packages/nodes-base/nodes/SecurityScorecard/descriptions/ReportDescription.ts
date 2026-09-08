@@ -26,7 +26,7 @@ export const reportOperations: INodeProperties[] = [
 				action: 'Generate a report',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get list of recently generated report',
 				action: 'Get many reports',
@@ -38,7 +38,7 @@ export const reportOperations: INodeProperties[] = [
 
 export const reportFields: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -81,27 +81,27 @@ export const reportFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Company Detailed',
+				name: 'Company detailed',
 				value: 'detailed',
 			},
 			{
-				name: 'Company Events',
+				name: 'Company events',
 				value: 'events-json',
 			},
 			{
-				name: 'Company Issues',
+				name: 'Company issues',
 				value: 'issues',
 			},
 			{
-				name: 'Company Partnership',
+				name: 'Company partnership',
 				value: 'partnership',
 			},
 			{
-				name: 'Company Summary',
+				name: 'Company summary',
 				value: 'summary',
 			},
 			{
-				name: 'Full Scorecard',
+				name: 'Full scorecard',
 				value: 'full-scorecard-json',
 			},
 			{
@@ -109,14 +109,14 @@ export const reportFields: INodeProperties[] = [
 				value: 'portfolio',
 			},
 			{
-				name: 'Scorecard Footprint',
+				name: 'Scorecard footprint',
 				value: 'scorecard-footprint',
 			},
 		],
 		default: 'detailed',
 	},
 	{
-		displayName: 'Scorecard Identifier',
+		displayName: 'Scorecard identifier',
 		name: 'scorecardIdentifier',
 		description: 'Primary identifier of a company or scorecard, i.e. domain.',
 		type: 'string',
@@ -198,7 +198,7 @@ export const reportFields: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['report'],
@@ -230,7 +230,7 @@ export const reportFields: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['report'],
@@ -300,7 +300,7 @@ export const reportFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,

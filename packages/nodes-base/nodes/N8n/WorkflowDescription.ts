@@ -53,7 +53,7 @@ export const workflowOperations: INodeProperties[] = [
 				action: 'Get a workflow',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many workflows',
 				routing: {
@@ -70,7 +70,7 @@ export const workflowOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get Version',
+				name: 'Get version',
 				value: 'getVersion',
 				action: 'Get a workflow version',
 			},
@@ -104,10 +104,10 @@ const activateOperation: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -164,7 +164,7 @@ const activateOperation: INodeProperties[] = [
 
 const createOperation: INodeProperties[] = [
 	{
-		displayName: 'Workflow Object',
+		displayName: 'Workflow object',
 		name: 'workflowObject',
 		type: 'json',
 		default: '{ "name": "My workflow", "nodes": [], "connections": {}, "settings": {} }',
@@ -230,7 +230,7 @@ const deleteOperation: INodeProperties[] = [
 
 const getAllOperation: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: true,
@@ -280,7 +280,7 @@ const getAllOperation: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Only Published Workflows',
+				displayName: 'Return only published workflows',
 				name: 'activeWorkflows',
 				type: 'boolean',
 				default: true,
@@ -335,7 +335,7 @@ const getAllOperation: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Exclude Pinned Data',
+				displayName: 'Exclude pinned data',
 				name: 'excludePinnedData',
 				description: 'Whether to exclude pinned data from the response',
 				type: 'boolean',
@@ -422,7 +422,7 @@ const updateOperation: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Workflow Object',
+		displayName: 'Workflow object',
 		name: 'workflowObject',
 		type: 'json',
 		default: '',

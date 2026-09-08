@@ -107,7 +107,7 @@ export class JiraTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Jira Version',
+				displayName: 'Jira version',
 				name: 'jiraVersion',
 				type: 'options',
 				options: [
@@ -120,18 +120,18 @@ export class JiraTrigger implements INodeType {
 						value: 'cloudOAuth2',
 					},
 					{
-						name: 'Server (Self Hosted)',
+						name: 'Server (self hosted)',
 						value: 'server',
 					},
 					{
-						name: 'Server (Pat) (Self Hosted)',
+						name: 'Server (PAT) (self hosted)',
 						value: 'serverPat',
 					},
 				],
 				default: 'cloud',
 			},
 			{
-				displayName: 'Authenticate Incoming Webhook',
+				displayName: 'Authenticate incoming webhook',
 				name: 'authenticateWebhook',
 				type: 'boolean',
 				default: false,
@@ -144,12 +144,12 @@ export class JiraTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Authenticate Webhook With',
+				displayName: 'Authenticate webhook with',
 				name: 'incomingAuthentication',
 				type: 'options',
 				options: [
 					{
-						name: 'Query Auth',
+						name: 'Query auth',
 						value: 'queryAuth',
 					},
 					{
@@ -180,159 +180,159 @@ export class JiraTrigger implements INodeType {
 						value: '*',
 					},
 					{
-						name: 'Board Configuration Changed',
+						name: 'Board configuration changed',
 						value: 'board_configuration_changed',
 					},
 					{
-						name: 'Board Created',
+						name: 'Board created',
 						value: 'board_created',
 					},
 					{
-						name: 'Board Deleted',
+						name: 'Board deleted',
 						value: 'board_deleted',
 					},
 					{
-						name: 'Board Updated',
+						name: 'Board updated',
 						value: 'board_updated',
 					},
 					{
-						name: 'Comment Created',
+						name: 'Comment created',
 						value: 'comment_created',
 					},
 					{
-						name: 'Comment Deleted',
+						name: 'Comment deleted',
 						value: 'comment_deleted',
 					},
 					{
-						name: 'Comment Updated',
+						name: 'Comment updated',
 						value: 'comment_updated',
 					},
 					{
-						name: 'Issue Created',
+						name: 'Issue created',
 						value: 'jira:issue_created',
 					},
 					{
-						name: 'Issue Deleted',
+						name: 'Issue deleted',
 						value: 'jira:issue_deleted',
 					},
 					{
-						name: 'Issue Link Created',
+						name: 'Issue link created',
 						value: 'issuelink_created',
 					},
 					{
-						name: 'Issue Link Deleted',
+						name: 'Issue link deleted',
 						value: 'issuelink_deleted',
 					},
 					{
-						name: 'Issue Updated',
+						name: 'Issue updated',
 						value: 'jira:issue_updated',
 					},
 					{
-						name: 'Option Attachments Changed',
+						name: 'Option attachments changed',
 						value: 'option_attachments_changed',
 					},
 					{
-						name: 'Option Issue Links Changed',
+						name: 'Option issue links changed',
 						value: 'option_issuelinks_changed',
 					},
 					{
-						name: 'Option Subtasks Changed',
+						name: 'Option subtasks changed',
 						value: 'option_subtasks_changed',
 					},
 					{
-						name: 'Option Timetracking Changed',
+						name: 'Option timetracking changed',
 						value: 'option_timetracking_changed',
 					},
 					{
-						name: 'Option Unassigned Issues Changed',
+						name: 'Option unassigned issues changed',
 						value: 'option_unassigned_issues_changed',
 					},
 					{
-						name: 'Option Voting Changed',
+						name: 'Option voting changed',
 						value: 'option_voting_changed',
 					},
 					{
-						name: 'Option Watching Changed',
+						name: 'Option watching changed',
 						value: 'option_watching_changed',
 					},
 					{
-						name: 'Project Created',
+						name: 'Project created',
 						value: 'project_created',
 					},
 					{
-						name: 'Project Deleted',
+						name: 'Project deleted',
 						value: 'project_deleted',
 					},
 					{
-						name: 'Project Updated',
+						name: 'Project updated',
 						value: 'project_updated',
 					},
 					{
-						name: 'Sprint Closed',
+						name: 'Sprint closed',
 						value: 'sprint_closed',
 					},
 					{
-						name: 'Sprint Created',
+						name: 'Sprint created',
 						value: 'sprint_created',
 					},
 					{
-						name: 'Sprint Deleted',
+						name: 'Sprint deleted',
 						value: 'sprint_deleted',
 					},
 					{
-						name: 'Sprint Started',
+						name: 'Sprint started',
 						value: 'sprint_started',
 					},
 					{
-						name: 'Sprint Updated',
+						name: 'Sprint updated',
 						value: 'sprint_updated',
 					},
 					{
-						name: 'User Created',
+						name: 'User created',
 						value: 'user_created',
 					},
 					{
-						name: 'User Deleted',
+						name: 'User deleted',
 						value: 'user_deleted',
 					},
 					{
-						name: 'User Updated',
+						name: 'User updated',
 						value: 'user_updated',
 					},
 					{
-						name: 'Version Created',
+						name: 'Version created',
 						value: 'jira:version_created',
 					},
 					{
-						name: 'Version Deleted',
+						name: 'Version deleted',
 						value: 'jira:version_deleted',
 					},
 					{
-						name: 'Version Moved',
+						name: 'Version moved',
 						value: 'jira:version_moved',
 					},
 					{
-						name: 'Version Released',
+						name: 'Version released',
 						value: 'jira:version_released',
 					},
 					{
-						name: 'Version Unreleased',
+						name: 'Version unreleased',
 						value: 'jira:version_unreleased',
 					},
 					{
-						name: 'Version Updated',
+						name: 'Version updated',
 						value: 'jira:version_updated',
 					},
 					{
-						name: 'Worklog Created',
+						name: 'Worklog created',
 						value: 'worklog_created',
 					},
 					{
-						name: 'Worklog Deleted',
+						name: 'Worklog deleted',
 						value: 'worklog_deleted',
 					},
 					{
-						name: 'Worklog Updated',
+						name: 'Worklog updated',
 						value: 'worklog_updated',
 					},
 				],
@@ -355,83 +355,83 @@ export class JiraTrigger implements INodeType {
 						value: '*',
 					},
 					{
-						name: 'Comment Created',
+						name: 'Comment created',
 						value: 'comment_created',
 					},
 					{
-						name: 'Comment Deleted',
+						name: 'Comment deleted',
 						value: 'comment_deleted',
 					},
 					{
-						name: 'Comment Updated',
+						name: 'Comment updated',
 						value: 'comment_updated',
 					},
 					{
-						name: 'Issue Created',
+						name: 'Issue created',
 						value: 'jira:issue_created',
 					},
 					{
-						name: 'Issue Deleted',
+						name: 'Issue deleted',
 						value: 'jira:issue_deleted',
 					},
 					{
-						name: 'Issue Property Deleted',
+						name: 'Issue property deleted',
 						value: 'issue_property_deleted',
 					},
 					{
-						name: 'Issue Property Set',
+						name: 'Issue property set',
 						value: 'issue_property_set',
 					},
 					{
-						name: 'Issue Updated',
+						name: 'Issue updated',
 						value: 'jira:issue_updated',
 					},
 					{
-						name: 'Sprint Closed',
+						name: 'Sprint closed',
 						value: 'sprint_closed',
 					},
 					{
-						name: 'Sprint Created',
+						name: 'Sprint created',
 						value: 'sprint_created',
 					},
 					{
-						name: 'Sprint Deleted',
+						name: 'Sprint deleted',
 						value: 'sprint_deleted',
 					},
 					{
-						name: 'Sprint Started',
+						name: 'Sprint started',
 						value: 'sprint_started',
 					},
 					{
-						name: 'Sprint Updated',
+						name: 'Sprint updated',
 						value: 'sprint_updated',
 					},
 					{
-						name: 'Version Created',
+						name: 'Version created',
 						value: 'jira:version_created',
 					},
 					{
-						name: 'Version Deleted',
+						name: 'Version deleted',
 						value: 'jira:version_deleted',
 					},
 					{
-						name: 'Version Merged',
+						name: 'Version merged',
 						value: 'jira:version_merged',
 					},
 					{
-						name: 'Version Moved',
+						name: 'Version moved',
 						value: 'jira:version_moved',
 					},
 					{
-						name: 'Version Released',
+						name: 'Version released',
 						value: 'jira:version_released',
 					},
 					{
-						name: 'Version Unreleased',
+						name: 'Version unreleased',
 						value: 'jira:version_unreleased',
 					},
 					{
-						name: 'Version Updated',
+						name: 'Version updated',
 						value: 'jira:version_updated',
 					},
 				],
@@ -440,14 +440,14 @@ export class JiraTrigger implements INodeType {
 				description: 'The events to listen to',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
-						displayName: 'Exclude Body',
+						displayName: 'Exclude body',
 						name: 'excludeBody',
 						type: 'boolean',
 						default: false,
@@ -469,7 +469,7 @@ export class JiraTrigger implements INodeType {
 							'A JQL query to limit which issues trigger events. For Cloud OAuth2, leave blank to automatically monitor all accessible projects.',
 					},
 					{
-						displayName: 'Include Fields',
+						displayName: 'Include fields',
 						name: 'includeFields',
 						type: 'multiOptions',
 						displayOptions: {
@@ -495,19 +495,19 @@ export class JiraTrigger implements INodeType {
 								value: 'issue.id',
 							},
 							{
-								name: 'Merge Version ID',
+								name: 'Merge version ID',
 								value: 'mergeVersion.id',
 							},
 							{
-								name: 'Modified User Account ID',
+								name: 'Modified user account ID',
 								value: 'modifiedUser.accountId',
 							},
 							{
-								name: 'Modified User Key',
+								name: 'Modified user key',
 								value: 'modifiedUser.key',
 							},
 							{
-								name: 'Modified User Name',
+								name: 'Modified user name',
 								value: 'modifiedUser.name',
 							},
 							{
@@ -515,11 +515,11 @@ export class JiraTrigger implements INodeType {
 								value: 'project.id',
 							},
 							{
-								name: 'Project Key',
+								name: 'Project key',
 								value: 'project.key',
 							},
 							{
-								name: 'Propery Key',
+								name: 'Propery key',
 								value: 'property.key',
 							},
 							{

@@ -31,7 +31,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many tasks',
 				action: 'Get many tasks',
@@ -43,10 +43,10 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get task members',
 			},
 			{
-				name: 'Set Custom Field',
+				name: 'Set custom field',
 				value: 'setCustomField',
 				description: 'Set a custom field',
-				action: 'Set a custom Field on a task',
+				action: 'Set a custom field on a task',
 			},
 			{
 				name: 'Update',
@@ -64,7 +64,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                task:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -82,7 +82,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -101,7 +101,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folderless List',
+		displayName: 'Folderless list',
 		name: 'folderless',
 		type: 'boolean',
 		default: false,
@@ -114,7 +114,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folder',
 		type: 'options',
 		description:
@@ -134,7 +134,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'list',
 		type: 'options',
 		description:
@@ -154,7 +154,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'list',
 		type: 'options',
 		description:
@@ -188,10 +188,10 @@ export const taskFields: INodeProperties[] = [
 		description: 'The first name on the task',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -201,7 +201,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Names or IDs',
+				displayName: 'Assignee names or IDs',
 				name: 'assignees',
 				type: 'multiOptions',
 				description:
@@ -213,7 +213,7 @@ export const taskFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Custom Fields JSON',
+				displayName: 'Custom fields JSON',
 				name: 'customFieldsJson',
 				type: 'json',
 				typeOptions: {
@@ -231,25 +231,25 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Due Date Time',
+				displayName: 'Due date time',
 				name: 'dueDateTime',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Is Markdown Content',
+				displayName: 'Is Markdown content',
 				name: 'markdownContent',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Notify All',
+				displayName: 'Notify all',
 				name: 'notifyAll',
 				type: 'boolean',
 				default: false,
@@ -272,19 +272,19 @@ export const taskFields: INodeProperties[] = [
 				default: 3,
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Start Date Time',
+				displayName: 'Start date time',
 				name: 'startDateTime',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				description:
@@ -296,7 +296,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -308,7 +308,7 @@ export const taskFields: INodeProperties[] = [
 					'The array of tags applied to this task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Time Estimate',
+				displayName: 'Time estimate',
 				name: 'timeEstimate',
 				type: 'number',
 				description: 'Time estimate in minutes',
@@ -334,10 +334,10 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -347,7 +347,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Add Assignees',
+				displayName: 'Add assignees',
 				name: 'addAssignees',
 				type: 'string',
 				default: '',
@@ -360,19 +360,19 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Due Date Time',
+				displayName: 'Due date time',
 				name: 'dueDateTime',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Is Markdown Content',
+				displayName: 'Is Markdown content',
 				name: 'markdownContent',
 				type: 'boolean',
 				default: false,
@@ -384,7 +384,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Notify All',
+				displayName: 'Notify all',
 				name: 'notifyAll',
 				type: 'boolean',
 				default: false,
@@ -407,7 +407,7 @@ export const taskFields: INodeProperties[] = [
 				default: 3,
 			},
 			{
-				displayName: 'Remove Assignees',
+				displayName: 'Remove assignees',
 				name: 'removeAssignees',
 				type: 'string',
 				default: '',
@@ -420,19 +420,19 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Start Date Time',
+				displayName: 'Start date time',
 				name: 'startDateTime',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Time Estimate',
+				displayName: 'Time estimate',
 				name: 'timeEstimate',
 				type: 'number',
 				description: 'Time estimate in minutes',
@@ -458,7 +458,7 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include Subtasks',
+		displayName: 'Include subtasks',
 		name: 'includeSubtasks',
 		type: 'boolean',
 		default: false,
@@ -471,7 +471,7 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include Markdown Description',
+		displayName: 'Include Markdown description',
 		name: 'includeMarkdownDescription',
 		type: 'boolean',
 		default: false,
@@ -489,7 +489,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -507,7 +507,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -526,7 +526,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folderless List',
+		displayName: 'Folderless list',
 		name: 'folderless',
 		type: 'boolean',
 		default: false,
@@ -539,7 +539,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folder',
 		type: 'options',
 		description:
@@ -559,7 +559,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'list',
 		type: 'options',
 		description:
@@ -579,7 +579,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'list',
 		type: 'options',
 		description:
@@ -599,7 +599,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -633,7 +633,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -649,7 +649,7 @@ export const taskFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Assignee Names or IDs',
+				displayName: 'Assignee names or IDs',
 				name: 'assignees',
 				type: 'multiOptions',
 				description:
@@ -662,9 +662,9 @@ export const taskFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -674,10 +674,10 @@ export const taskFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -717,11 +717,11 @@ export const taskFields: INodeProperties[] = [
 										value: 'equal',
 									},
 									{
-										name: 'Is Not Null',
+										name: 'Is not null',
 										value: 'IS NOT NULL',
 									},
 									{
-										name: 'Is Null',
+										name: 'Is null',
 										value: 'IS NULL',
 									},
 								],
@@ -745,49 +745,49 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Date Created Greater Than',
+				displayName: 'Date created greater than',
 				name: 'dateCreatedGt',
 				type: 'dateTime',
 				default: '',
 				description: 'Filter date created greater',
 			},
 			{
-				displayName: 'Date Created Less Than',
+				displayName: 'Date created less than',
 				name: 'dateCreatedLt',
 				type: 'dateTime',
 				default: '',
 				description: 'Filter date created less than posix time',
 			},
 			{
-				displayName: 'Date Updated Greater Than',
+				displayName: 'Date updated greater than',
 				name: 'dateUpdatedGt',
 				type: 'dateTime',
 				default: '',
 				description: 'Filter date updated greater than',
 			},
 			{
-				displayName: 'Date Update Less Than',
+				displayName: 'Date update less than',
 				name: 'dateUpdatedLt',
 				type: 'dateTime',
 				default: '',
 				description: 'Filter date updated less than',
 			},
 			{
-				displayName: 'Due Date Greater Than',
+				displayName: 'Due date greater than',
 				name: 'dueDateGt',
 				type: 'dateTime',
 				default: '',
 				description: 'Filter due date greater than',
 			},
 			{
-				displayName: 'Due Date Less Than',
+				displayName: 'Due date less than',
 				name: 'dueDateLt',
 				type: 'dateTime',
 				default: '',
 				description: 'Filter due date less than',
 			},
 			{
-				displayName: 'Include Closed',
+				displayName: 'Include closed',
 				name: 'includeClosed',
 				type: 'boolean',
 				default: false,
@@ -796,7 +796,7 @@ export const taskFields: INodeProperties[] = [
 					'The response does by default not include closed tasks. Set this to true and dont send a status filter to include closed tasks.',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'options',
 				default: '',
@@ -814,13 +814,13 @@ export const taskFields: INodeProperties[] = [
 						value: 'updated',
 					},
 					{
-						name: 'Due Date',
+						name: 'Due date',
 						value: 'dueDate',
 					},
 				],
 			},
 			{
-				displayName: 'Status Names or IDs',
+				displayName: 'Status names or IDs',
 				name: 'statuses',
 				type: 'multiOptions',
 				description:
@@ -839,7 +839,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Whether to include subtasks, default false',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -887,7 +887,7 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -950,7 +950,7 @@ export const taskFields: INodeProperties[] = [
 		description: 'The ID of the field to add custom field to',
 	},
 	{
-		displayName: 'Value Is JSON',
+		displayName: 'Value is JSON',
 		name: 'jsonParse',
 		type: 'boolean',
 		displayOptions: {

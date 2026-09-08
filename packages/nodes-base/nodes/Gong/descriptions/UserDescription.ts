@@ -41,7 +41,7 @@ export const userOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of users',
 				action: 'Get many users',
@@ -66,7 +66,7 @@ export const userOperations: INodeProperties[] = [
 
 const getOperation: INodeProperties[] = [
 	{
-		displayName: 'User to Get',
+		displayName: 'User to get',
 		name: 'user',
 		default: {
 			mode: 'list',
@@ -81,7 +81,7 @@ const getOperation: INodeProperties[] = [
 		required: true,
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -129,7 +129,7 @@ const getOperation: INodeProperties[] = [
 
 const getAllOperation: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
@@ -198,7 +198,7 @@ const getAllOperation: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Created After',
+				displayName: 'Created after',
 				name: 'createdFromDateTime',
 				default: '',
 				description:
@@ -216,7 +216,7 @@ const getAllOperation: INodeProperties[] = [
 				validateType: 'dateTime',
 			},
 			{
-				displayName: 'Created Before',
+				displayName: 'Created before',
 				name: 'createdToDateTime',
 				default: '',
 				description:
@@ -280,7 +280,7 @@ const getAllOperation: INodeProperties[] = [
 				type: 'string',
 			},
 		],
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		type: 'collection',
 	},
 ];

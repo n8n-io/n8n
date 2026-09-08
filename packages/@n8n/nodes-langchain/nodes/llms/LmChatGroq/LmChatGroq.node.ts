@@ -109,20 +109,20 @@ export class LmChatGroq implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Maximum Number of Tokens',
+						displayName: 'Maximum number of tokens',
 						name: 'maxTokensToSample',
 						default: 4096,
 						description: 'The maximum number of tokens to generate in the completion',
 						type: 'number',
 					},
 					{
-						displayName: 'Sampling Temperature',
+						displayName: 'Sampling temperature',
 						name: 'temperature',
 						default: 0.7,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },

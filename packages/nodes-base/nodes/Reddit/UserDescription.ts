@@ -74,7 +74,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

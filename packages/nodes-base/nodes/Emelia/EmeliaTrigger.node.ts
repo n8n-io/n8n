@@ -48,7 +48,7 @@ export class EmeliaTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign name or ID',
 				name: 'campaignId',
 				type: 'options',
 				description:
@@ -67,27 +67,27 @@ export class EmeliaTrigger implements INodeType {
 				default: [],
 				options: [
 					{
-						name: 'Email Bounced',
+						name: 'Email bounced',
 						value: 'bounced',
 					},
 					{
-						name: 'Email Opened',
+						name: 'Email opened',
 						value: 'opened',
 					},
 					{
-						name: 'Email Replied',
+						name: 'Email replied',
 						value: 'replied',
 					},
 					{
-						name: 'Email Sent',
+						name: 'Email sent',
 						value: 'sent',
 					},
 					{
-						name: 'Link Clicked',
+						name: 'Link clicked',
 						value: 'clicked',
 					},
 					{
-						name: 'Unsubscribed Contact',
+						name: 'Unsubscribed contact',
 						value: 'unsubscribed',
 					},
 				],

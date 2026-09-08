@@ -17,7 +17,7 @@ const properties: INodeProperties[] = [
 	workbookRLC,
 	worksheetRLC,
 	{
-		displayName: 'Select a Range',
+		displayName: 'Select a range',
 		name: 'useRange',
 		type: 'boolean',
 		default: false,
@@ -38,7 +38,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Header Row',
+		displayName: 'Header row',
 		name: 'keyRow',
 		type: 'number',
 		typeOptions: {
@@ -54,7 +54,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'First Data Row',
+		displayName: 'First data row',
 		name: 'dataStartRow',
 		type: 'number',
 		typeOptions: {
@@ -77,7 +77,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'RAW Data',
+				displayName: 'RAW data',
 				name: 'rawData',
 				type: 'boolean',
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-boolean
@@ -86,7 +86,7 @@ const properties: INodeProperties[] = [
 					'Whether the data should be returned RAW instead of parsed into keys according to their header',
 			},
 			{
-				displayName: 'Data Property',
+				displayName: 'Data property',
 				name: 'dataProperty',
 				type: 'string',
 				default: 'data',

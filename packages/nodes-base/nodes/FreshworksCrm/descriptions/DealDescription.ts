@@ -31,7 +31,7 @@ export const dealOperations: INodeProperties[] = [
 				action: 'Get a deal',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many deals',
 				action: 'Get many deals',
@@ -80,10 +80,10 @@ export const dealFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -93,14 +93,14 @@ export const dealFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Base Currency Amount',
+				displayName: 'Base currency amount',
 				name: 'base_currency_amount',
 				type: 'number',
 				default: 0,
 				description: 'Value of the deal in base currency',
 			},
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign name or ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
@@ -111,7 +111,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the campaign that landed this deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Currency Name or ID',
+				displayName: 'Currency name or ID',
 				name: 'currency_id',
 				type: 'options',
 				default: '',
@@ -122,7 +122,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the currency that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Payment Status Name or ID',
+				displayName: 'Deal payment status name or ID',
 				name: 'deal_payment_status_id',
 				type: 'options',
 				default: '',
@@ -133,7 +133,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the mode of payment for the deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Pipeline Name or ID',
+				displayName: 'Deal pipeline name or ID',
 				name: 'deal_pipeline_id',
 				type: 'options',
 				default: '',
@@ -144,7 +144,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the deal pipeline that it belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Product Name or ID',
+				displayName: 'Deal product name or ID',
 				name: 'deal_product_id',
 				type: 'options',
 				default: '',
@@ -155,7 +155,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the product that the deal belongs to (in a multi-product company). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Reason Name or ID',
+				displayName: 'Deal reason name or ID',
 				name: 'deal_reason_id',
 				type: 'options',
 				default: '',
@@ -166,7 +166,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the reason for losing the deal. Can only be set if the deal is in \'Lost\' stage. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Stage Name or ID',
+				displayName: 'Deal stage name or ID',
 				name: 'deal_stage_id',
 				type: 'options',
 				default: '',
@@ -177,7 +177,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the deal stage that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Type Name or ID',
+				displayName: 'Deal type name or ID',
 				name: 'deal_type_id',
 				type: 'options',
 				default: '',
@@ -188,14 +188,14 @@ export const dealFields: INodeProperties[] = [
 					'ID of the deal type that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Lead Source ID',
+				displayName: 'Lead source ID',
 				name: 'lead_source_id',
 				type: 'string', // not obtainable from API
 				default: '',
 				description: 'ID of the source where deal came from',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -217,7 +217,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Probability of winning the deal as a number between 0 and 100',
 			},
 			{
-				displayName: 'Sales Account Name or ID',
+				displayName: 'Sales account name or ID',
 				name: 'sales_account_id',
 				type: 'options',
 				default: '',
@@ -228,7 +228,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the account that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Territory Name or ID',
+				displayName: 'Territory name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',
@@ -281,7 +281,7 @@ export const dealFields: INodeProperties[] = [
 	//               deal: getAll
 	// ----------------------------------------
 	{
-		displayName: 'View Name or ID',
+		displayName: 'View name or ID',
 		name: 'view',
 		type: 'options',
 		description:
@@ -298,7 +298,7 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -346,10 +346,10 @@ export const dealFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -369,7 +369,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Value of the deal',
 			},
 			{
-				displayName: 'Base Currency Amount',
+				displayName: 'Base currency amount',
 				name: 'base_currency_amount',
 				type: 'number',
 				default: 0,
@@ -379,7 +379,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Value of the deal in base currency',
 			},
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign name or ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
@@ -390,7 +390,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the campaign that landed this deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Currency Name or ID',
+				displayName: 'Currency name or ID',
 				name: 'currency_id',
 				type: 'options',
 				default: '',
@@ -401,7 +401,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the currency that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Payment Status Name or ID',
+				displayName: 'Deal payment status name or ID',
 				name: 'deal_payment_status_id',
 				type: 'options',
 				default: '',
@@ -412,7 +412,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the mode of payment for the deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Pipeline Name or ID',
+				displayName: 'Deal pipeline name or ID',
 				name: 'deal_pipeline_id',
 				type: 'options',
 				default: '',
@@ -423,7 +423,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the deal pipeline that it belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Product Name or ID',
+				displayName: 'Deal product name or ID',
 				name: 'deal_product_id',
 				type: 'options',
 				default: '',
@@ -434,7 +434,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the product that the deal belongs to (in a multi-product company). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Reason Name or ID',
+				displayName: 'Deal reason name or ID',
 				name: 'deal_reason_id',
 				type: 'options',
 				default: '',
@@ -445,7 +445,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the reason for losing the deal. Can only be set if the deal is in \'Lost\' stage. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Stage Name or ID',
+				displayName: 'Deal stage name or ID',
 				name: 'deal_stage_id',
 				type: 'options',
 				default: '',
@@ -456,7 +456,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the deal stage that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Type Name or ID',
+				displayName: 'Deal type name or ID',
 				name: 'deal_type_id',
 				type: 'options',
 				default: '',
@@ -467,7 +467,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the deal type that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Lead Source ID',
+				displayName: 'Lead source ID',
 				name: 'lead_source_id',
 				type: 'string', // not obtainable from API
 				default: '',
@@ -481,7 +481,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Name of the deal',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -503,7 +503,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Probability of winning the deal as a number between 0 and 100',
 			},
 			{
-				displayName: 'Sales Account Name or ID',
+				displayName: 'Sales account name or ID',
 				name: 'sales_account_id',
 				type: 'options',
 				default: '',
@@ -514,7 +514,7 @@ export const dealFields: INodeProperties[] = [
 					'ID of the account that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Territory Name or ID',
+				displayName: 'Territory name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',

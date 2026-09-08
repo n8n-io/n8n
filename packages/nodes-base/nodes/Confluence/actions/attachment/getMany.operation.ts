@@ -30,7 +30,7 @@ const properties: INodeProperties[] = [
 			"Whether to also download each attachment's file and attach it to the item's binary output",
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		placeholder: 'e.g. data',

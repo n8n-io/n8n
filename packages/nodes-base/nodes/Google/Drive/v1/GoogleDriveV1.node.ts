@@ -60,7 +60,7 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Service Account',
+					name: 'Service account',
 					value: 'serviceAccount',
 				},
 				{
@@ -86,7 +86,7 @@ const versionDescription: INodeTypeDescription = {
 					value: 'oAuth2',
 				},
 				{
-					name: 'Service Account',
+					name: 'Service account',
 					value: 'serviceAccount',
 				},
 			],
@@ -353,7 +353,7 @@ const versionDescription: INodeTypeDescription = {
 		//         file:download
 		// ----------------------------------
 		{
-			displayName: 'Put Output File in Field',
+			displayName: 'Put output file in field',
 			name: 'binaryPropertyName',
 			type: 'string',
 			required: true,
@@ -380,14 +380,14 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'Google File Conversion',
+					displayName: 'Google file conversion',
 					name: 'googleFileConversion',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: false,
 					},
 					default: {},
-					placeholder: 'Add Conversion',
+					placeholder: 'Add conversion',
 					options: [
 						{
 							displayName: 'Conversion',
@@ -408,7 +408,7 @@ const versionDescription: INodeTypeDescription = {
 												'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 										},
 										{
-											name: 'To OpenOffice Doc',
+											name: 'To OpenOffice doc',
 											value: 'application/vnd.oasis.opendocument.text',
 										},
 										{
@@ -416,7 +416,7 @@ const versionDescription: INodeTypeDescription = {
 											value: 'application/pdf',
 										},
 										{
-											name: 'To Rich Text',
+											name: 'To rich text',
 											value: 'application/rtf',
 										},
 									],
@@ -468,7 +468,7 @@ const versionDescription: INodeTypeDescription = {
 											value: 'application/vnd.oasis.opendocument.presentation',
 										},
 										{
-											name: 'To Plain Text',
+											name: 'To plain text',
 											value: 'text/plain',
 										},
 									],
@@ -502,7 +502,7 @@ const versionDescription: INodeTypeDescription = {
 					],
 				},
 				{
-					displayName: 'File Name',
+					displayName: 'File name',
 					name: 'fileName',
 					type: 'string',
 					default: '',
@@ -515,7 +515,7 @@ const versionDescription: INodeTypeDescription = {
 		//         file:list
 		// ----------------------------------
 		{
-			displayName: 'Use Query String',
+			displayName: 'Use query string',
 			name: 'useQueryString',
 			type: 'boolean',
 			default: false,
@@ -528,7 +528,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Whether a query string should be used to filter results',
 		},
 		{
-			displayName: 'Query String',
+			displayName: 'Query string',
 			name: 'queryString',
 			type: 'string',
 			default: '',
@@ -562,7 +562,7 @@ const versionDescription: INodeTypeDescription = {
 		{
 			displayName: 'Filters',
 			name: 'queryFilters',
-			placeholder: 'Add Filter',
+			placeholder: 'Add filter',
 			description: 'Filters to use to return only specific files',
 			type: 'fixedCollection',
 			typeOptions: {
@@ -596,7 +596,7 @@ const versionDescription: INodeTypeDescription = {
 									value: 'is',
 								},
 								{
-									name: 'Is Not',
+									name: 'Is not',
 									value: 'isNot',
 								},
 							],
@@ -613,15 +613,15 @@ const versionDescription: INodeTypeDescription = {
 				},
 				{
 					name: 'mimeType',
-					displayName: 'Mime Type',
+					displayName: 'MIME type',
 					values: [
 						{
-							displayName: 'Mime Type',
+							displayName: 'MIME type',
 							name: 'mimeType',
 							type: 'options',
 							options: [
 								{
-									name: '3rd Party Shortcut',
+									name: '3rd party shortcut',
 									value: 'application/vnd.google-apps.drive-sdk',
 								},
 								{
@@ -629,7 +629,7 @@ const versionDescription: INodeTypeDescription = {
 									value: 'application/vnd.google-apps.audio',
 								},
 								{
-									name: 'Custom Mime Type',
+									name: 'Custom MIME type',
 									value: 'custom',
 								},
 								{
@@ -645,11 +645,11 @@ const versionDescription: INodeTypeDescription = {
 									value: 'application/vnd.google-apps.drawing',
 								},
 								{
-									name: 'Google Drive File',
+									name: 'Google Drive file',
 									value: 'application/vnd.google-apps.file',
 								},
 								{
-									name: 'Google Drive Folder',
+									name: 'Google Drive folder',
 									value: 'application/vnd.google-apps.folder',
 								},
 								{
@@ -693,7 +693,7 @@ const versionDescription: INodeTypeDescription = {
 							description: 'The Mime-Type of the files to return',
 						},
 						{
-							displayName: 'Custom Mime Type',
+							displayName: 'Custom MIME type',
 							name: 'customMimeType',
 							type: 'string',
 							default: '',
@@ -714,7 +714,7 @@ const versionDescription: INodeTypeDescription = {
 		{
 			displayName: 'Permissions',
 			name: 'permissionsUi',
-			placeholder: 'Add Permission',
+			placeholder: 'Add permission',
 			type: 'fixedCollection',
 			default: {},
 			typeOptions: {
@@ -741,7 +741,7 @@ const versionDescription: INodeTypeDescription = {
 									value: 'commenter',
 								},
 								{
-									name: 'File Organizer',
+									name: 'File organizer',
 									value: 'fileOrganizer',
 								},
 								{
@@ -790,7 +790,7 @@ const versionDescription: INodeTypeDescription = {
 								'Information about the different types can be found <a href="https://developers.google.com/drive/api/v3/ref-roles">here</a>',
 						},
 						{
-							displayName: 'Email Address',
+							displayName: 'Email address',
 							name: 'emailAddress',
 							type: 'string',
 							displayOptions: {
@@ -814,7 +814,7 @@ const versionDescription: INodeTypeDescription = {
 							description: 'The domain to which this permission refers',
 						},
 						{
-							displayName: 'Allow File Discovery',
+							displayName: 'Allow file discovery',
 							name: 'allowFileDiscovery',
 							type: 'boolean',
 							displayOptions: {
@@ -831,7 +831,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 
 		{
-			displayName: 'Binary File',
+			displayName: 'Binary file',
 			name: 'binaryData',
 			type: 'boolean',
 			default: false,
@@ -844,7 +844,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Whether the data to upload should be taken from binary field',
 		},
 		{
-			displayName: 'File Content',
+			displayName: 'File content',
 			name: 'fileContent',
 			type: 'string',
 			default: '',
@@ -859,7 +859,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The text content of the file to upload',
 		},
 		{
-			displayName: 'Input Binary Field',
+			displayName: 'Input binary field',
 			name: 'binaryPropertyName',
 			type: 'string',
 			default: 'data',
@@ -879,7 +879,7 @@ const versionDescription: INodeTypeDescription = {
 		//         file:update
 		// ----------------------------------
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'updateFields',
 			type: 'collection',
 			placeholder: 'Add option',
@@ -892,14 +892,14 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'File Name',
+					displayName: 'File name',
 					name: 'fileName',
 					type: 'string',
 					default: '',
 					description: 'The name of the file',
 				},
 				{
-					displayName: 'Keep Revision Forever',
+					displayName: 'Keep revision forever',
 					name: 'keepRevisionForever',
 					type: 'boolean',
 					default: false,
@@ -907,14 +907,14 @@ const versionDescription: INodeTypeDescription = {
 						"Whether to set the 'keepForever' field in the new head revision. This is only applicable to files with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.",
 				},
 				{
-					displayName: 'Move to Trash',
+					displayName: 'Move to trash',
 					name: 'trashed',
 					type: 'boolean',
 					default: false,
 					description: 'Whether to move a file to the trash. Only the owner may trash a file.',
 				},
 				{
-					displayName: 'OCR Language',
+					displayName: 'OCR language',
 					name: 'ocrLanguage',
 					type: 'string',
 					default: '',
@@ -928,7 +928,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'The ID of the parent to set',
 				},
 				{
-					displayName: 'Use Content As Indexable Text',
+					displayName: 'Use content as indexable text',
 					name: 'useContentAsIndexableText',
 					type: 'boolean',
 					default: false,
@@ -1033,7 +1033,7 @@ const versionDescription: INodeTypeDescription = {
 		//         file:upload
 		// ----------------------------------
 		{
-			displayName: 'File Name',
+			displayName: 'File name',
 			name: 'name',
 			type: 'string',
 			default: '',
@@ -1049,7 +1049,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 		// ----------------------------------
 		{
-			displayName: 'Resolve Data',
+			displayName: 'Resolve data',
 			name: 'resolveData',
 			type: 'boolean',
 			default: false,
@@ -1116,7 +1116,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'Email Message',
+					displayName: 'Email message',
 					name: 'emailMessage',
 					type: 'string',
 					displayOptions: {
@@ -1129,7 +1129,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'A plain text custom message to include in the notification email',
 				},
 				{
-					displayName: 'Enforce Single Parent',
+					displayName: 'Enforce single parent',
 					name: 'enforceSingleParent',
 					type: 'boolean',
 					displayOptions: {
@@ -1226,7 +1226,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'The fields to return',
 				},
 				{
-					displayName: 'Move To New Owners Root',
+					displayName: 'Move to new owners root',
 					name: 'moveToNewOwnersRoot',
 					type: 'boolean',
 					displayOptions: {
@@ -1241,7 +1241,7 @@ const versionDescription: INodeTypeDescription = {
 						"<p>This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.</p><p>When set to true, the item is moved to the new owner's My Drive root folder and all prior parents removed.</p>",
 				},
 				{
-					displayName: 'Send Notification Email',
+					displayName: 'Send notification email',
 					name: 'sendNotificationEmail',
 					type: 'boolean',
 					displayOptions: {
@@ -1254,7 +1254,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Whether to send a notification email when sharing to users or groups',
 				},
 				{
-					displayName: 'Supports All Drives',
+					displayName: 'Supports all drives',
 					name: 'supportsAllDrives',
 					type: 'boolean',
 					displayOptions: {
@@ -1268,7 +1268,7 @@ const versionDescription: INodeTypeDescription = {
 						'Whether the requesting application supports both My Drives and shared drives',
 				},
 				{
-					displayName: 'Transfer Ownership',
+					displayName: 'Transfer ownership',
 					name: 'transferOwnership',
 					type: 'boolean',
 					displayOptions: {
@@ -1282,7 +1282,7 @@ const versionDescription: INodeTypeDescription = {
 						'Whether to transfer ownership to the specified user and downgrade the current owner to a writer',
 				},
 				{
-					displayName: 'Use Domain Admin Access',
+					displayName: 'Use domain admin access',
 					name: 'useDomainAdminAccess',
 					type: 'boolean',
 					displayOptions: {
@@ -1297,7 +1297,7 @@ const versionDescription: INodeTypeDescription = {
 				},
 
 				{
-					displayName: 'File Name',
+					displayName: 'File name',
 					name: 'name',
 					type: 'string',
 					displayOptions: {
@@ -1554,11 +1554,11 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Capabilities',
 					name: 'capabilities',
 					type: 'collection',
-					placeholder: 'Add Field',
+					placeholder: 'Add field',
 					default: {},
 					options: [
 						{
-							displayName: 'Can Add Children',
+							displayName: 'Can add children',
 							name: 'canAddChildren',
 							type: 'boolean',
 							default: false,
@@ -1566,7 +1566,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the current user can add children to folders in this shared drive',
 						},
 						{
-							displayName: 'Can Change Copy Requires Writer Permission Restriction',
+							displayName: 'Can change copy requires writer permission restriction',
 							name: 'canChangeCopyRequiresWriterPermissionRestriction',
 							type: 'boolean',
 							default: false,
@@ -1574,7 +1574,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the current user can change the copyRequiresWriterPermission restriction of this shared drive',
 						},
 						{
-							displayName: 'Can Change Domain Users Only Restriction',
+							displayName: 'Can change domain users only restriction',
 							name: 'canChangeDomainUsersOnlyRestriction',
 							type: 'boolean',
 							default: false,
@@ -1582,7 +1582,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the current user can change the domainUsersOnly restriction of this shared drive',
 						},
 						{
-							displayName: 'Can Change Drive Background',
+							displayName: 'Can change drive background',
 							name: 'canChangeDriveBackground',
 							type: 'boolean',
 							default: false,
@@ -1590,7 +1590,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the current user can change the background of this shared drive',
 						},
 						{
-							displayName: 'Can Change Drive Members Only Restriction',
+							displayName: 'Can change drive members only restriction',
 							name: 'canChangeDriveMembersOnlyRestriction',
 							type: 'boolean',
 							default: false,
@@ -1598,21 +1598,21 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the current user can change the driveMembersOnly restriction of this shared drive',
 						},
 						{
-							displayName: 'Can Comment',
+							displayName: 'Can comment',
 							name: 'canComment',
 							type: 'boolean',
 							default: false,
 							description: 'Whether the current user can comment on files in this shared drive',
 						},
 						{
-							displayName: 'Can Copy',
+							displayName: 'Can copy',
 							name: 'canCopy',
 							type: 'boolean',
 							default: false,
 							description: 'Whether the current user can copy files in this shared drive',
 						},
 						{
-							displayName: 'Can Delete Children',
+							displayName: 'Can delete children',
 							name: 'canDeleteChildren',
 							type: 'boolean',
 							default: false,
@@ -1620,7 +1620,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the current user can delete children from folders in this shared drive',
 						},
 						{
-							displayName: 'Can Delete Drive',
+							displayName: 'Can delete drive',
 							name: 'canDeleteDrive',
 							type: 'boolean',
 							default: false,
@@ -1628,21 +1628,21 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the current user can delete this shared drive. Attempting to delete the shared drive may still fail if there are untrashed items inside the shared drive.',
 						},
 						{
-							displayName: 'Can Download',
+							displayName: 'Can download',
 							name: 'canDownload',
 							type: 'boolean',
 							default: false,
 							description: 'Whether the current user can download files in this shared drive',
 						},
 						{
-							displayName: 'Can Edit',
+							displayName: 'Can edit',
 							name: 'canEdit',
 							type: 'boolean',
 							default: false,
 							description: 'Whether the current user can edit files in this shared drive',
 						},
 						{
-							displayName: 'Can List Children',
+							displayName: 'Can list children',
 							name: 'canListChildren',
 							type: 'boolean',
 							default: false,
@@ -1650,7 +1650,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the current user can list the children of folders in this shared drive',
 						},
 						{
-							displayName: 'Can Manage Members',
+							displayName: 'Can manage members',
 							name: 'canManageMembers',
 							type: 'boolean',
 							default: false,
@@ -1658,7 +1658,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the current user can add members to this shared drive or remove them or change their role',
 						},
 						{
-							displayName: 'Can Read Revisions',
+							displayName: 'Can read revisions',
 							name: 'canReadRevisions',
 							type: 'boolean',
 							default: false,
@@ -1666,7 +1666,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the current user can read the revisions resource of files in this shared drive',
 						},
 						{
-							displayName: 'Can Rename',
+							displayName: 'Can rename',
 							name: 'canRename',
 							type: 'boolean',
 							default: false,
@@ -1674,21 +1674,21 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the current user can rename files or folders in this shared drive',
 						},
 						{
-							displayName: 'Can Rename Drive',
+							displayName: 'Can rename drive',
 							name: 'canRenameDrive',
 							type: 'boolean',
 							default: false,
 							description: 'Whether the current user can rename this shared drive',
 						},
 						{
-							displayName: 'Can Share',
+							displayName: 'Can share',
 							name: 'canShare',
 							type: 'boolean',
 							default: false,
 							description: 'Whether the current user can rename this shared drive',
 						},
 						{
-							displayName: 'Can Trash Children',
+							displayName: 'Can trash children',
 							name: 'canTrashChildren',
 							type: 'boolean',
 							default: false,
@@ -1705,7 +1705,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'The color of this shared drive as an RGB hex string',
 				},
 				{
-					displayName: 'Created Time',
+					displayName: 'Created time',
 					name: 'createdTime',
 					type: 'dateTime',
 					default: '',
@@ -1722,11 +1722,11 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Restrictions',
 					name: 'restrictions',
 					type: 'collection',
-					placeholder: 'Add Field',
+					placeholder: 'Add field',
 					default: {},
 					options: [
 						{
-							displayName: 'Admin Managed Restrictions',
+							displayName: 'Admin managed restrictions',
 							name: 'adminManagedRestrictions',
 							type: 'boolean',
 							default: false,
@@ -1734,7 +1734,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 						},
 						{
-							displayName: 'Copy Requires Writer Permission',
+							displayName: 'Copy requires writer permission',
 							name: 'copyRequiresWriterPermission',
 							type: 'boolean',
 							default: false,
@@ -1742,7 +1742,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 						},
 						{
-							displayName: 'Domain Users Only',
+							displayName: 'Domain users only',
 							name: 'domainUsersOnly',
 							type: 'boolean',
 							default: false,
@@ -1750,7 +1750,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs. This restriction may be overridden by other sharing policies controlled outside of this shared drive.',
 						},
 						{
-							displayName: 'Drive Members Only',
+							displayName: 'Drive members only',
 							name: 'driveMembersOnly',
 							type: 'boolean',
 							default: false,
@@ -1782,7 +1782,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'Use Domain Admin Access',
+					displayName: 'Use domain admin access',
 					name: 'useDomainAdminAccess',
 					type: 'boolean',
 					default: false,
@@ -1795,7 +1795,7 @@ const versionDescription: INodeTypeDescription = {
 		//         drive:list
 		// ----------------------------------
 		{
-			displayName: 'Return All',
+			displayName: 'Return all',
 			name: 'returnAll',
 			type: 'boolean',
 			displayOptions: {
@@ -1847,7 +1847,7 @@ const versionDescription: INodeTypeDescription = {
 						'Query string for searching shared drives. See the <a href="https://developers.google.com/drive/api/v3/search-shareddrives">"Search for shared drives"</a> guide for supported syntax.',
 				},
 				{
-					displayName: 'Use Domain Admin Access',
+					displayName: 'Use domain admin access',
 					name: 'useDomainAdminAccess',
 					type: 'boolean',
 					default: false,
@@ -1860,7 +1860,7 @@ const versionDescription: INodeTypeDescription = {
 		//         drive:update
 		// ----------------------------------
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'options',
 			type: 'collection',
 			placeholder: 'Add option',
@@ -1890,11 +1890,11 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Restrictions',
 					name: 'restrictions',
 					type: 'collection',
-					placeholder: 'Add Field',
+					placeholder: 'Add field',
 					default: {},
 					options: [
 						{
-							displayName: 'Admin Managed Restrictions',
+							displayName: 'Admin managed restrictions',
 							name: 'adminManagedRestrictions',
 							type: 'boolean',
 							default: false,
@@ -1902,7 +1902,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 						},
 						{
-							displayName: 'Copy Requires Writer Permission',
+							displayName: 'Copy requires writer permission',
 							name: 'copyRequiresWriterPermission',
 							type: 'boolean',
 							default: false,
@@ -1910,7 +1910,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 						},
 						{
-							displayName: 'Domain Users Only',
+							displayName: 'Domain users only',
 							name: 'domainUsersOnly',
 							type: 'boolean',
 							default: false,
@@ -1918,7 +1918,7 @@ const versionDescription: INodeTypeDescription = {
 								'Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs. This restriction may be overridden by other sharing policies controlled outside of this shared drive.',
 						},
 						{
-							displayName: 'Drive Members Only',
+							displayName: 'Drive members only',
 							name: 'driveMembersOnly',
 							type: 'boolean',
 							default: false,
@@ -1943,9 +1943,9 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'APP Properties',
+					displayName: 'APP properties',
 					name: 'appPropertiesUi',
-					placeholder: 'Add Property',
+					placeholder: 'Add property',
 					type: 'fixedCollection',
 					default: {},
 					typeOptions: {
@@ -1956,7 +1956,7 @@ const versionDescription: INodeTypeDescription = {
 					options: [
 						{
 							name: 'appPropertyValues',
-							displayName: 'APP Property',
+							displayName: 'APP property',
 							values: [
 								{
 									displayName: 'Key',
@@ -1979,7 +1979,7 @@ const versionDescription: INodeTypeDescription = {
 				{
 					displayName: 'Properties',
 					name: 'propertiesUi',
-					placeholder: 'Add Property',
+					placeholder: 'Add property',
 					type: 'fixedCollection',
 					default: {},
 					typeOptions: {

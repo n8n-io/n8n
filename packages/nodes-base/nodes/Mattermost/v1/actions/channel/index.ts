@@ -23,7 +23,7 @@ export const descriptions: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add User',
+				name: 'Add user',
 				value: 'addUser',
 				description: 'Add a user to a channel',
 				action: 'Add a user to a channel',

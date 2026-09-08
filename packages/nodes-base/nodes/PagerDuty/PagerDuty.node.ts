@@ -64,7 +64,7 @@ export class PagerDuty implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Token',
+						name: 'API token',
 						value: 'apiToken',
 					},
 					{
@@ -85,11 +85,11 @@ export class PagerDuty implements INodeType {
 						value: 'incident',
 					},
 					{
-						name: 'Incident Note',
+						name: 'Incident note',
 						value: 'incidentNote',
 					},
 					{
-						name: 'Log Entry',
+						name: 'Log entry',
 						value: 'logEntry',
 					},
 					{

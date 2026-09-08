@@ -8,7 +8,7 @@ import { theHiveApiRequest } from '../../transport';
 const properties: INodeProperties[] = [
 	caseRLC,
 	{
-		displayName: 'Attachment Name or ID',
+		displayName: 'Attachment name or ID',
 		name: 'attachmentId',
 		type: 'options',
 		default: '',

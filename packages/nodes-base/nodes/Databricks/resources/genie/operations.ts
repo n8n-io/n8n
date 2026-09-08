@@ -12,37 +12,37 @@ export const genieOperations: INodeProperties = {
 	},
 	options: [
 		{
-			name: 'Create Conversation Message',
+			name: 'Create conversation message',
 			value: 'createMessage',
 			description: 'Create a new conversation message',
 			action: 'Create a conversation message',
 		},
 		{
-			name: 'Execute Message SQL Query',
+			name: 'Execute message SQL query',
 			value: 'executeMessageQuery',
 			description: 'Execute a SQL query from a message attachment',
 			action: 'Execute a message SQL query',
 		},
 		{
-			name: 'Get Conversation Message',
+			name: 'Get conversation message',
 			value: 'getMessage',
 			description: 'Get a conversation message by ID',
 			action: 'Get a conversation message',
 		},
 		{
-			name: 'Get Genie Space',
+			name: 'Get Genie space',
 			value: 'getSpace',
 			description: 'Get details of a Genie space',
 			action: 'Get a Genie space',
 		},
 		{
-			name: 'Get Query Results',
+			name: 'Get query results',
 			value: 'getQueryResults',
 			description: 'Get results of a SQL query execution',
 			action: 'Get query results',
 		},
 		{
-			name: 'Start Conversation',
+			name: 'Start conversation',
 			value: 'startConversation',
 			description: 'Start a new conversation',
 			action: 'Start a conversation',

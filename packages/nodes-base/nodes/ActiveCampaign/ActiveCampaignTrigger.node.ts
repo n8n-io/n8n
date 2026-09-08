@@ -41,7 +41,7 @@ export class ActiveCampaignTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Event Names or IDs',
+				displayName: 'Event names or IDs',
 				name: 'events',
 				type: 'multiOptions',
 				description:
@@ -68,7 +68,7 @@ export class ActiveCampaignTrigger implements INodeType {
 						description: 'Run the hooks when an admin user triggers the action',
 					},
 					{
-						name: 'Api',
+						name: 'API',
 						value: 'api',
 						description: 'Run the hooks when an API call triggers the action',
 					},

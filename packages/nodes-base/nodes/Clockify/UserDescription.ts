@@ -13,7 +13,7 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many users',
 				action: 'Get many users',
@@ -28,7 +28,7 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -59,10 +59,10 @@ export const userFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -115,7 +115,7 @@ export const userFields: INodeProperties[] = [
 					"If provided, you'll get a filtered list of users with the corresponding status",
 			},
 			{
-				displayName: 'Sort Column',
+				displayName: 'Sort column',
 				name: 'sort-column',
 				type: 'options',
 				options: [
@@ -128,14 +128,14 @@ export const userFields: INodeProperties[] = [
 						value: 'NAME',
 					},
 					{
-						name: 'Hourly Rate',
+						name: 'Hourly rate',
 						value: 'HOURLYRATE',
 					},
 				],
 				default: '',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sort-order',
 				type: 'options',
 				options: [

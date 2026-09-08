@@ -19,7 +19,7 @@ export const channelMessageOperations: INodeProperties[] = [
 				action: 'Create a message in a channel',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many messages',
 				action: 'Get many messages in a channel',
@@ -34,7 +34,7 @@ export const channelMessageFields: INodeProperties[] = [
 	/*                                 channelMessage:create                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -52,7 +52,7 @@ export const channelMessageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		description:
@@ -70,7 +70,7 @@ export const channelMessageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Message Type',
+		displayName: 'Message type',
 		name: 'messageType',
 		required: true,
 		type: 'options',
@@ -111,7 +111,7 @@ export const channelMessageFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -121,7 +121,7 @@ export const channelMessageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Link to Workflow',
+				displayName: 'Include link to workflow',
 				name: 'includeLinkToWorkflow',
 				type: 'boolean',
 				default: true,
@@ -129,7 +129,7 @@ export const channelMessageFields: INodeProperties[] = [
 					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending messages.',
 			},
 			{
-				displayName: 'Make Reply',
+				displayName: 'Make reply',
 				name: 'makeReply',
 				type: 'string',
 				default: '',
@@ -141,7 +141,7 @@ export const channelMessageFields: INodeProperties[] = [
 	/*                                 channelMessage:getAll                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -159,7 +159,7 @@ export const channelMessageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		description:
@@ -177,7 +177,7 @@ export const channelMessageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

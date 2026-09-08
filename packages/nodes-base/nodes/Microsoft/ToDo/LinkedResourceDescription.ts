@@ -28,7 +28,7 @@ export const linkedResourceOperations: INodeProperties[] = [
 				action: 'Get a linked resource',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many linked resources',
 			},
@@ -47,7 +47,7 @@ export const linkedResourceFields: INodeProperties[] = [
 	/*                       linkedResource:ALL                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task List Name or ID',
+		displayName: 'Task list name or ID',
 		name: 'taskListId',
 		type: 'options',
 		description:
@@ -95,7 +95,7 @@ export const linkedResourceFields: INodeProperties[] = [
 		description: 'Field indicating title of the linked entity',
 	},
 	{
-		displayName: 'Application Name',
+		displayName: 'Application name',
 		name: 'applicationName',
 		type: 'string',
 		displayOptions: {
@@ -109,10 +109,10 @@ export const linkedResourceFields: INodeProperties[] = [
 		description: 'App name of the source that is sending the linked entity',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -143,7 +143,7 @@ export const linkedResourceFields: INodeProperties[] = [
 	/*                           linkedResource:get/delete/update                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Linked Resource ID',
+		displayName: 'Linked resource ID',
 		name: 'linkedResourceId',
 		type: 'string',
 		displayOptions: {
@@ -160,7 +160,7 @@ export const linkedResourceFields: INodeProperties[] = [
 	/*                           linkedResource:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -195,10 +195,10 @@ export const linkedResourceFields: INodeProperties[] = [
 	/*                           linkedResource:update                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -208,7 +208,7 @@ export const linkedResourceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Application Name',
+				displayName: 'Application name',
 				name: 'applicationName',
 				type: 'string',
 				default: '',

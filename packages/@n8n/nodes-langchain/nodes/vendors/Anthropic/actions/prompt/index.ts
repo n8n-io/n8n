@@ -14,19 +14,19 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Generate Prompt',
+				name: 'Generate prompt',
 				value: 'generate',
 				action: 'Generate a prompt',
 				description: 'Generate a prompt for a model',
 			},
 			{
-				name: 'Improve Prompt',
+				name: 'Improve prompt',
 				value: 'improve',
 				action: 'Improve a prompt',
 				description: 'Improve a prompt for a model',
 			},
 			{
-				name: 'Templatize Prompt',
+				name: 'Templatize prompt',
 				value: 'templatize',
 				action: 'Templatize a prompt',
 				description: 'Templatize a prompt for a model',

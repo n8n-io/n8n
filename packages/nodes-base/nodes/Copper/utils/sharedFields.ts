@@ -4,12 +4,12 @@ import type { INodeProperties } from 'n8n-workflow';
 export const addressFixedCollection: INodeProperties = {
 	displayName: 'Address',
 	name: 'address',
-	placeholder: 'Add Address Fields',
+	placeholder: 'Add address fields',
 	type: 'fixedCollection',
 	default: {},
 	options: [
 		{
-			displayName: 'Address Fields',
+			displayName: 'Address fields',
 			name: 'addressFields',
 			values: [
 				{
@@ -31,7 +31,7 @@ export const addressFixedCollection: INodeProperties = {
 					default: '',
 				},
 				{
-					displayName: 'Postal Code',
+					displayName: 'Postal code',
 					name: 'postal_code',
 					type: 'string',
 					default: '',
@@ -50,9 +50,9 @@ export const addressFixedCollection: INodeProperties = {
 
 // for companies, leads, persons
 export const phoneNumbersFixedCollection: INodeProperties = {
-	displayName: 'Phone Numbers',
+	displayName: 'Phone numbers',
 	name: 'phone_numbers',
-	placeholder: 'Add Phone Number',
+	placeholder: 'Add phone number',
 	type: 'fixedCollection',
 	typeOptions: {
 		multipleValues: true,
@@ -60,7 +60,7 @@ export const phoneNumbersFixedCollection: INodeProperties = {
 	default: {},
 	options: [
 		{
-			displayName: 'Phone Fields',
+			displayName: 'Phone fields',
 			name: 'phoneFields',
 			values: [
 				{
@@ -84,7 +84,7 @@ export const phoneNumbersFixedCollection: INodeProperties = {
 export const emailsFixedCollection: INodeProperties = {
 	displayName: 'Emails',
 	name: 'emails',
-	placeholder: 'Add Email',
+	placeholder: 'Add email',
 	type: 'fixedCollection',
 	typeOptions: {
 		multipleValues: true,
@@ -92,7 +92,7 @@ export const emailsFixedCollection: INodeProperties = {
 	default: {},
 	options: [
 		{
-			displayName: 'Email Fields',
+			displayName: 'Email fields',
 			name: 'emailFields',
 			values: [
 				{
@@ -117,12 +117,12 @@ export const emailsFixedCollection: INodeProperties = {
 export const emailFixedCollection: INodeProperties = {
 	displayName: 'Email',
 	name: 'email',
-	placeholder: 'Add Email',
+	placeholder: 'Add email',
 	type: 'fixedCollection',
 	default: {},
 	options: [
 		{
-			displayName: 'Email Fields',
+			displayName: 'Email fields',
 			name: 'emailFields',
 			values: [
 				{

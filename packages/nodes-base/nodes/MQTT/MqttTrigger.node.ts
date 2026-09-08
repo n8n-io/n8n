@@ -66,21 +66,21 @@ export class MqttTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'JSON Parse Body',
+						displayName: 'JSON parse body',
 						name: 'jsonParseBody',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to try parse the message to an object',
 					},
 					{
-						displayName: 'Only Message',
+						displayName: 'Only message',
 						name: 'onlyMessage',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to return only the message property',
 					},
 					{
-						displayName: 'Parallel Processing',
+						displayName: 'Parallel processing',
 						name: 'parallelProcessing',
 						type: 'boolean',
 						default: true,

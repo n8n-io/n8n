@@ -31,7 +31,7 @@ export const ticketOperations: INodeProperties[] = [
 				action: 'Get a ticket',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many tickets',
 				action: 'Get many tickets',
@@ -52,7 +52,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                ticket:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Pipeline Name or ID',
+		displayName: 'Pipeline name or ID',
 		name: 'pipelineId',
 		type: 'options',
 		required: true,
@@ -70,7 +70,7 @@ export const ticketFields: INodeProperties[] = [
 			'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Stage Name or ID',
+		displayName: 'Stage name or ID',
 		name: 'stageId',
 		type: 'options',
 		required: true,
@@ -89,7 +89,7 @@ export const ticketFields: INodeProperties[] = [
 			'The stage ID of the pipeline the ticket is in; depends on Pipeline ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Ticket Name',
+		displayName: 'Ticket name',
 		name: 'ticketName',
 		type: 'string',
 		required: true,
@@ -102,10 +102,10 @@ export const ticketFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Ticket Properties',
+		displayName: 'Ticket properties',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Property',
+		placeholder: 'Add property',
 		default: {},
 		displayOptions: {
 			show: {
@@ -115,7 +115,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company Names or IDs',
+				displayName: 'Company names or IDs',
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -126,7 +126,7 @@ export const ticketFields: INodeProperties[] = [
 					'Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Contact Names or IDs',
+				displayName: 'Contact names or IDs',
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -137,7 +137,7 @@ export const ticketFields: INodeProperties[] = [
 					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
@@ -148,7 +148,7 @@ export const ticketFields: INodeProperties[] = [
 					'Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Close Date',
+				displayName: 'Close date',
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
@@ -156,7 +156,7 @@ export const ticketFields: INodeProperties[] = [
 					'The date the ticket was closed. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
 			},
 			{
-				displayName: 'Create Date',
+				displayName: 'Create date',
 				name: 'createDate',
 				type: 'dateTime',
 				default: '',
@@ -174,7 +174,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Description of the ticket',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -185,7 +185,7 @@ export const ticketFields: INodeProperties[] = [
 					'The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Resolution Name or ID',
+				displayName: 'Resolution name or ID',
 				name: 'resolution',
 				type: 'options',
 				typeOptions: {
@@ -196,7 +196,7 @@ export const ticketFields: INodeProperties[] = [
 					'The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Source Name or ID',
+				displayName: 'Source name or ID',
 				name: 'source',
 				type: 'options',
 				typeOptions: {
@@ -207,7 +207,7 @@ export const ticketFields: INodeProperties[] = [
 					'Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Ticket Owner Name or ID',
+				displayName: 'Ticket owner name or ID',
 				name: 'ticketOwnerId',
 				type: 'options',
 				typeOptions: {
@@ -223,7 +223,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                 ticket:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ticket to Update',
+		displayName: 'Ticket to update',
 		name: 'ticketId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -236,7 +236,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select from the list',
@@ -245,7 +245,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Id',
+				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
 				placeholder: '58539222',
@@ -262,10 +262,10 @@ export const ticketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -275,7 +275,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company Names or IDs',
+				displayName: 'Company names or IDs',
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -286,7 +286,7 @@ export const ticketFields: INodeProperties[] = [
 					'Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Contact Names or IDs',
+				displayName: 'Contact names or IDs',
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -297,7 +297,7 @@ export const ticketFields: INodeProperties[] = [
 					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
@@ -308,7 +308,7 @@ export const ticketFields: INodeProperties[] = [
 					'Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Close Date',
+				displayName: 'Close date',
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
@@ -316,7 +316,7 @@ export const ticketFields: INodeProperties[] = [
 					'The date the ticket was closed. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
 			},
 			{
-				displayName: 'Create Date',
+				displayName: 'Create date',
 				name: 'createDate',
 				type: 'dateTime',
 				default: '',
@@ -334,7 +334,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Description of the ticket',
 			},
 			{
-				displayName: 'Pipeline Name or ID',
+				displayName: 'Pipeline name or ID',
 				name: 'pipelineId',
 				type: 'options',
 				typeOptions: {
@@ -345,7 +345,7 @@ export const ticketFields: INodeProperties[] = [
 					'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -356,7 +356,7 @@ export const ticketFields: INodeProperties[] = [
 					'The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Resolution Name or ID',
+				displayName: 'Resolution name or ID',
 				name: 'resolution',
 				type: 'options',
 				typeOptions: {
@@ -367,7 +367,7 @@ export const ticketFields: INodeProperties[] = [
 					'The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Source Name or ID',
+				displayName: 'Source name or ID',
 				name: 'source',
 				type: 'options',
 				typeOptions: {
@@ -378,7 +378,7 @@ export const ticketFields: INodeProperties[] = [
 					'Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage name or ID',
 				name: 'stageId',
 				type: 'options',
 				typeOptions: {
@@ -390,13 +390,13 @@ export const ticketFields: INodeProperties[] = [
 					'The stage ID of the pipeline the ticket is in; depends on Pipeline ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Ticket Name',
+				displayName: 'Ticket name',
 				name: 'ticketName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Ticket Owner Name or ID',
+				displayName: 'Ticket owner name or ID',
 				name: 'ticketOwnerId',
 				type: 'options',
 				typeOptions: {
@@ -413,7 +413,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                  ticket:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ticket to Get',
+		displayName: 'Ticket to get',
 		name: 'ticketId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -426,7 +426,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select from the list',
@@ -435,7 +435,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Id',
+				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
 				placeholder: '58539222',
@@ -465,13 +465,13 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Deleted',
+				displayName: 'Include deleted',
 				name: 'includeDeleted',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Ticket Properties to Include',
+				displayName: 'Ticket properties to include',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -482,7 +482,7 @@ export const ticketFields: INodeProperties[] = [
 					'Whether to include specific Ticket properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Properties With History',
+				displayName: 'Properties with history',
 				name: 'propertiesWithHistory',
 				type: 'string',
 				default: '',
@@ -496,7 +496,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                 ticket:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -540,7 +540,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Ticket Properties to Include',
+				displayName: 'Ticket properties to include',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -551,7 +551,7 @@ export const ticketFields: INodeProperties[] = [
 					'Whether to include specific Ticket properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Properties With History',
+				displayName: 'Properties with history',
 				name: 'propertiesWithHistory',
 				type: 'string',
 				default: '',
@@ -565,7 +565,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                 ticket:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ticket to Delete',
+		displayName: 'Ticket to delete',
 		name: 'ticketId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -578,7 +578,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select from the list',
@@ -587,7 +587,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Id',
+				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
 				placeholder: '58539222',

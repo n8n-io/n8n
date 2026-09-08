@@ -22,7 +22,7 @@ export const boardMemberOperations: INodeProperties[] = [
 				action: 'Add a board member',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many members of a board',
 				action: 'Get many board members',
@@ -63,7 +63,7 @@ export const boardMemberFields: INodeProperties[] = [
 		description: 'The ID of the board to get members from',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -156,10 +156,10 @@ export const boardMemberFields: INodeProperties[] = [
 		description: 'Determines the type of membership the user being added should have',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -169,7 +169,7 @@ export const boardMemberFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Allow Billable Guest',
+				displayName: 'Allow billable guest',
 				name: 'allowBillableGuest',
 				type: 'boolean',
 				default: false,
@@ -211,10 +211,10 @@ export const boardMemberFields: INodeProperties[] = [
 		description: 'The ID of the board to update',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['invite'],
@@ -248,7 +248,7 @@ export const boardMemberFields: INodeProperties[] = [
 				description: 'Determines the type of membership the user being added should have',
 			},
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'fullName',
 				type: 'string',
 				default: '',

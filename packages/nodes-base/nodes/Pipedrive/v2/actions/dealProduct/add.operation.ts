@@ -27,7 +27,7 @@ const properties: INodeProperties[] = [
 		description: 'ID of the product to add to the deal',
 	},
 	{
-		displayName: 'Item Price',
+		displayName: 'Item price',
 		name: 'item_price',
 		type: 'number',
 		typeOptions: {
@@ -49,10 +49,10 @@ const properties: INodeProperties[] = [
 		description: 'How many items of this product to add to the deal',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -74,7 +74,7 @@ const properties: INodeProperties[] = [
 					'The value of the discount. The discount type can be specified in discount_type.',
 			},
 			{
-				displayName: 'Discount Type',
+				displayName: 'Discount type',
 				name: 'discount_type',
 				type: 'options',
 				default: 'percentage',

@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const taskOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation Name or ID',
+		displayName: 'Operation name or ID',
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
@@ -51,7 +51,7 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -143,7 +143,7 @@ export const taskFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder Name or ID',
+		displayName: 'Responder name or ID',
 		name: 'responder',
 		type: 'options',
 		description:
@@ -186,7 +186,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Task details',
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
@@ -202,7 +202,7 @@ export const taskFields: INodeProperties[] = [
 					'User who owns the task. This is automatically set to current user when status is set to InProgress.',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
@@ -214,10 +214,10 @@ export const taskFields: INodeProperties[] = [
 	// optional attributes (Update operation)
 
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		type: 'collection',
 		name: 'updateFields',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -234,7 +234,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Task details',
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
@@ -257,7 +257,7 @@ export const taskFields: INodeProperties[] = [
 					'User who owns the task. This is automatically set to current user when status is set to InProgress.',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
@@ -279,7 +279,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'Completed',
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 'InProgress',
 					},
 					{
@@ -329,7 +329,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['task'],
@@ -345,7 +345,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Task details',
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
@@ -368,7 +368,7 @@ export const taskFields: INodeProperties[] = [
 					'User who owns the task. This is automatically set to current user when status is set to InProgress.',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
@@ -390,7 +390,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'Completed',
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 'InProgress',
 					},
 					{

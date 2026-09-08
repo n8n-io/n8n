@@ -26,7 +26,7 @@ export const description: INodeProperties[] = [
 				action: 'Delete an attachment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getMany',
 				description: 'List the attachments on a page, optionally downloading each file',
 				action: 'Get many attachments',

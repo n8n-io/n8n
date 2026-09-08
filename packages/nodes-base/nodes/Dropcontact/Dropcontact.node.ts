@@ -58,7 +58,7 @@ export class Dropcontact implements INodeType {
 						action: 'Find B2B emails',
 					},
 					{
-						name: 'Fetch Request',
+						name: 'Fetch request',
 						value: 'fetchRequest',
 					},
 				],
@@ -92,7 +92,7 @@ export class Dropcontact implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Simplify Output (Faster)',
+				displayName: 'Simplify output (faster)',
 				name: 'simplify',
 				type: 'boolean',
 				displayOptions: {
@@ -107,10 +107,10 @@ export class Dropcontact implements INodeType {
 					'When off, waits for the contact data before completing. Waiting time can be adjusted with Extend Wait Time option. When on, returns a request_id that can be used later in the Fetch Request operation.',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -120,19 +120,19 @@ export class Dropcontact implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Company SIREN Number',
+						displayName: 'Company SIREN number',
 						name: 'num_siren',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Company SIRET Code',
+						displayName: 'Company SIRET code',
 						name: 'siret',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Company Name',
+						displayName: 'Company name',
 						name: 'company',
 						type: 'string',
 						default: '',
@@ -144,31 +144,31 @@ export class Dropcontact implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'first_name',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Full Name',
+						displayName: 'Full name',
 						name: 'full_name',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'last_name',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'LinkedIn Profile',
+						displayName: 'LinkedIn profile',
 						name: 'linkedin',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Phone Number',
+						displayName: 'Phone number',
 						name: 'phone',
 						type: 'string',
 						default: '',
@@ -195,7 +195,7 @@ export class Dropcontact implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Data Fetch Wait Time',
+						displayName: 'Data fetch wait time',
 						name: 'waitTime',
 						type: 'number',
 						typeOptions: {
@@ -211,7 +211,7 @@ export class Dropcontact implements INodeType {
 							'When not simplifying the response, data will be fetched in two steps. This parameter controls how long to wait (in seconds) before trying the second step.',
 					},
 					{
-						displayName: 'French Company Enrich',
+						displayName: 'French company enrich',
 						name: 'siren',
 						type: 'boolean',
 						default: false,

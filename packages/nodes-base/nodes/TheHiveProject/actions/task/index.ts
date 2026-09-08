@@ -29,7 +29,7 @@ export const description: INodeProperties[] = [
 				action: 'Delete an task',
 			},
 			{
-				name: 'Execute Responder',
+				name: 'Execute responder',
 				value: 'executeResponder',
 				action: 'Execute responder on a task',
 			},

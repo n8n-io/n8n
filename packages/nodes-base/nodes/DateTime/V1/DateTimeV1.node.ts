@@ -72,13 +72,13 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Calculate a Date',
+					name: 'Calculate a date',
 					description: 'Add or subtract time from a date',
 					value: 'calculate',
 					action: 'Add or subtract time from a date',
 				},
 				{
-					name: 'Format a Date',
+					name: 'Format a date',
 					description: 'Convert a date to a different format',
 					value: 'format',
 					action: 'Convert a date to a different format',
@@ -100,7 +100,7 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		{
-			displayName: 'Property Name',
+			displayName: 'Property name',
 			name: 'dataPropertyName',
 			type: 'string',
 			default: 'data',
@@ -113,7 +113,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Name of the property to which to write the converted date',
 		},
 		{
-			displayName: 'Custom Format',
+			displayName: 'Custom format',
 			name: 'custom',
 			displayOptions: {
 				show: {
@@ -125,7 +125,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Whether a predefined format should be selected or custom format entered',
 		},
 		{
-			displayName: 'To Format',
+			displayName: 'To format',
 			name: 'toFormat',
 			displayOptions: {
 				show: {
@@ -139,7 +139,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The format to convert the date to',
 		},
 		{
-			displayName: 'To Format',
+			displayName: 'To format',
 			name: 'toFormat',
 			type: 'options',
 			displayOptions: {
@@ -176,12 +176,12 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Example: 1986-04-09',
 				},
 				{
-					name: 'Unix Timestamp',
+					name: 'Unix timestamp',
 					value: 'X',
 					description: 'Example: 513388800.879',
 				},
 				{
-					name: 'Unix Ms Timestamp',
+					name: 'Unix ms timestamp',
 					value: 'x',
 					description: 'Example: 513388800',
 				},
@@ -202,14 +202,14 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'From Format',
+					displayName: 'From format',
 					name: 'fromFormat',
 					type: 'string',
 					default: '',
 					description: 'In case the input format is not recognized you can provide the format',
 				},
 				{
-					displayName: 'From Timezone Name or ID',
+					displayName: 'From timezone name or ID',
 					name: 'fromTimezone',
 					type: 'options',
 					typeOptions: {
@@ -220,7 +220,7 @@ const versionDescription: INodeTypeDescription = {
 						'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'To Timezone Name or ID',
+					displayName: 'To timezone name or ID',
 					name: 'toTimezone',
 					type: 'options',
 					typeOptions: {
@@ -233,7 +233,7 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Date Value',
+			displayName: 'Date value',
 			name: 'value',
 			displayOptions: {
 				show: {
@@ -260,13 +260,13 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Add',
 					value: 'add',
 					description: 'Add time to Date Value',
-					action: 'Add time to Date Value',
+					action: 'Add time to date value',
 				},
 				{
 					name: 'Subtract',
 					value: 'subtract',
 					description: 'Subtract time from Date Value',
-					action: 'Subtract time from Date Value',
+					action: 'Subtract time from date value',
 				},
 			],
 			default: 'add',
@@ -289,7 +289,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'E.g. enter “10” then select “Days” if you want to add 10 days to Date Value.',
 		},
 		{
-			displayName: 'Time Unit',
+			displayName: 'Time unit',
 			name: 'timeUnit',
 			description: 'Time unit for Duration parameter above',
 			displayOptions: {
@@ -341,7 +341,7 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		{
-			displayName: 'Property Name',
+			displayName: 'Property name',
 			name: 'dataPropertyName',
 			type: 'string',
 			default: 'data',
@@ -366,7 +366,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'From Format',
+					displayName: 'From format',
 					name: 'fromFormat',
 					type: 'string',
 					default: '',

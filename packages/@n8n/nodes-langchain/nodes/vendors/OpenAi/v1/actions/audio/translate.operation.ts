@@ -7,7 +7,7 @@ import { apiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -19,12 +19,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Output Randomness (Temperature)',
+				displayName: 'Output randomness (temperature)',
 				name: 'temperature',
 				type: 'number',
 				default: 0,

@@ -7,10 +7,10 @@ import { apiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -20,7 +20,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Navigation Bar',
+				displayName: 'Include navigation bar',
 				name: 'includeNavigationBar',
 				type: 'boolean',
 				default: false,
@@ -28,7 +28,7 @@ export const description: INodeProperties[] = [
 					'Whether to include the navigation bar in the Live View. When enabled, the navigation bar will be visible allowing you to navigate between pages.',
 			},
 			{
-				displayName: 'Screen Resolution',
+				displayName: 'Screen resolution',
 				name: 'screenResolution',
 				type: 'string',
 				default: '',
@@ -37,7 +37,7 @@ export const description: INodeProperties[] = [
 				placeholder: 'e.g. 1280x720',
 			},
 			{
-				displayName: 'Disable Resize',
+				displayName: 'Disable resize',
 				name: 'disableResize',
 				type: 'boolean',
 				default: false,

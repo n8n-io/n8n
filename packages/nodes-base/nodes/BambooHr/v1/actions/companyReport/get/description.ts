@@ -53,7 +53,7 @@ export const companyReportGetDescription: INodeProperties[] = [
 		description: 'The output format for the report',
 	},
 	{
-		displayName: 'Put Output In Field',
+		displayName: 'Put output in field',
 		name: 'output',
 		type: 'string',
 		default: 'data',
@@ -73,7 +73,7 @@ export const companyReportGetDescription: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -83,14 +83,14 @@ export const companyReportGetDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Duplicate Field Filtering',
+				displayName: 'Duplicate field filtering',
 				name: 'fd',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to apply the standard duplicate field filtering or not',
 			},
 			{
-				displayName: 'Only Current',
+				displayName: 'Only current',
 				name: 'onlyCurrent',
 				type: 'boolean',
 				default: true,

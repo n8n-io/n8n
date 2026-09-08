@@ -96,13 +96,13 @@ export class LmChatMinimax implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Hide Thinking',
+						displayName: 'Hide thinking',
 						name: 'hideThinking',
 						default: true,
 						type: 'boolean',
@@ -110,7 +110,7 @@ export class LmChatMinimax implements INodeType {
 							'Whether to strip chain-of-thought reasoning from the response, returning only the final answer',
 					},
 					{
-						displayName: 'Maximum Number of Tokens',
+						displayName: 'Maximum number of tokens',
 						name: 'maxTokens',
 						default: -1,
 						description:
@@ -118,7 +118,7 @@ export class LmChatMinimax implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Sampling Temperature',
+						displayName: 'Sampling temperature',
 						name: 'temperature',
 						default: 0.7,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -134,7 +134,7 @@ export class LmChatMinimax implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Max Retries',
+						displayName: 'Max retries',
 						name: 'maxRetries',
 						default: 2,
 						description: 'Maximum number of retries to attempt',

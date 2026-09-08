@@ -26,7 +26,7 @@ import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { formWebhook } from '../utils/utils';
 
 const useWorkflowTimezone: INodeProperties = {
-	displayName: 'Use Workflow Timezone',
+	displayName: 'Use workflow timezone',
 	name: 'useWorkflowTimezone',
 	type: 'boolean',
 	default: false,
@@ -101,7 +101,7 @@ const descriptionV2: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Basic Auth',
+					name: 'Basic auth',
 					value: 'basicAuth',
 				},
 				{
@@ -122,12 +122,12 @@ const descriptionV2: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Basic Auth',
+					name: 'Basic auth',
 					value: 'basicAuth',
 				},
 				{
 					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					name: 'n8n User Auth',
+					name: 'n8n user auth',
 					value: 'n8nUserAuth',
 					description: 'Require user to be logged in with their n8n account',
 				},
@@ -144,7 +144,7 @@ const descriptionV2: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Require Workflow Execute Permission',
+			displayName: 'Require workflow execute permission',
 			name: 'requireExecuteAccess',
 			type: 'boolean',
 			default: false,
@@ -194,7 +194,7 @@ const descriptionV2: INodeTypeDescription = {
 				appendAttributionToForm,
 				ipAllowlist,
 				{
-					displayName: 'Button Label',
+					displayName: 'Button label',
 					description: 'The label of the submit button in the form',
 					name: 'buttonLabel',
 					type: 'string',
@@ -214,14 +214,14 @@ const descriptionV2: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'Ignore Bots',
+					displayName: 'Ignore bots',
 					name: 'ignoreBots',
 					type: 'boolean',
 					default: false,
 					description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 				},
 				{
-					displayName: 'Include User in Output',
+					displayName: 'Include user in output',
 					name: 'includeUserInOutput',
 					type: 'boolean',
 					default: true,
@@ -255,7 +255,7 @@ const descriptionV2: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'Custom Form Styling',
+					displayName: 'Custom form styling',
 					name: 'customCss',
 					type: 'string',
 					typeOptions: {
@@ -271,7 +271,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: 'Override default styling of the public form interface with CSS',
 				},
 				{
-					displayName: 'Show Headers',
+					displayName: 'Show headers',
 					name: 'showHeaders',
 					type: 'boolean',
 					default: false,

@@ -47,9 +47,9 @@ export class ScheduleTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Trigger Rules',
+				displayName: 'Trigger rules',
 				name: 'rule',
-				placeholder: 'Add Rule',
+				placeholder: 'Add rule',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -64,14 +64,14 @@ export class ScheduleTrigger implements INodeType {
 				options: [
 					{
 						name: 'interval',
-						displayName: 'Trigger Interval',
+						displayName: 'Trigger interval',
 						builderHint: {
 							propertyHint:
 								'You can add multiple intervals to trigger at different times. Use "Custom (Cron)" for more specific scheduling patterns.',
 						},
 						values: [
 							{
-								displayName: 'Trigger Interval',
+								displayName: 'Trigger interval',
 								name: 'field',
 								type: 'options',
 								default: 'days',
@@ -102,13 +102,13 @@ export class ScheduleTrigger implements INodeType {
 										value: 'months',
 									},
 									{
-										name: 'Custom (Cron)',
+										name: 'Custom (cron)',
 										value: 'cronExpression',
 									},
 								],
 							},
 							{
-								displayName: 'Seconds Between Triggers',
+								displayName: 'Seconds between triggers',
 								name: 'secondsInterval',
 								type: 'number',
 								default: 30,
@@ -125,7 +125,7 @@ export class ScheduleTrigger implements INodeType {
 								hint: 'Must be in range 1-59',
 							},
 							{
-								displayName: 'Minutes Between Triggers',
+								displayName: 'Minutes between triggers',
 								name: 'minutesInterval',
 								type: 'number',
 								default: 5,
@@ -142,7 +142,7 @@ export class ScheduleTrigger implements INodeType {
 								hint: 'Must be in range 1-59',
 							},
 							{
-								displayName: 'Hours Between Triggers',
+								displayName: 'Hours between triggers',
 								name: 'hoursInterval',
 								type: 'number',
 								displayOptions: {
@@ -159,7 +159,7 @@ export class ScheduleTrigger implements INodeType {
 								hint: 'Must be in range 1-23',
 							},
 							{
-								displayName: 'Days Between Triggers',
+								displayName: 'Days between triggers',
 								name: 'daysInterval',
 								type: 'number',
 								displayOptions: {
@@ -176,7 +176,7 @@ export class ScheduleTrigger implements INodeType {
 								hint: 'Must be in range 1-31',
 							},
 							{
-								displayName: 'Weeks Between Triggers',
+								displayName: 'Weeks between triggers',
 								name: 'weeksInterval',
 								type: 'number',
 								displayOptions: {
@@ -188,7 +188,7 @@ export class ScheduleTrigger implements INodeType {
 								description: 'Would run every week unless specified otherwise',
 							},
 							{
-								displayName: 'Months Between Triggers',
+								displayName: 'Months between triggers',
 								name: 'monthsInterval',
 								type: 'number',
 								typeOptions: {
@@ -203,7 +203,7 @@ export class ScheduleTrigger implements INodeType {
 								description: 'Would run every month unless specified otherwise',
 							},
 							{
-								displayName: 'Trigger at Day of Month',
+								displayName: 'Trigger at day of month',
 								name: 'triggerAtDayOfMonth',
 								type: 'number',
 								displayOptions: {
@@ -220,7 +220,7 @@ export class ScheduleTrigger implements INodeType {
 								hint: 'If a month doesn’t have this day, the node won’t trigger',
 							},
 							{
-								displayName: 'Trigger on Weekdays',
+								displayName: 'Trigger on weekdays',
 								name: 'triggerAtDay',
 								type: 'multiOptions',
 								displayOptions: {
@@ -265,7 +265,7 @@ export class ScheduleTrigger implements INodeType {
 								default: [0],
 							},
 							{
-								displayName: 'Trigger at Hour',
+								displayName: 'Trigger at hour',
 								name: 'triggerAtHour',
 								type: 'options',
 								default: 0,
@@ -399,7 +399,7 @@ export class ScheduleTrigger implements INodeType {
 								description: 'The hour of the day to trigger',
 							},
 							{
-								displayName: 'Trigger at Minute',
+								displayName: 'Trigger at minute',
 								name: 'triggerAtMinute',
 								type: 'number',
 								default: 0,
@@ -444,14 +444,14 @@ export class ScheduleTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'If Execution Is Missed',
+				displayName: 'If execution is missed',
 				name: 'misfirePolicy',
 				type: 'options',
 				default: 'skip',
 				options: [
-					{ name: 'Run the Most Recent Missed Execution Per Rule', value: 'coalesce' },
-					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce_owner' },
-					{ name: "Don't Run Missed Executions", value: 'skip' },
+					{ name: 'Run the most recent missed execution per rule', value: 'coalesce' },
+					{ name: 'Run the most recent missed execution', value: 'coalesce_owner' },
+					{ name: "Don't run missed executions", value: 'skip' },
 				],
 				hint: 'Applies once an execution is later than the grace period set below',
 				isNodeSetting: true,
@@ -463,7 +463,7 @@ export class ScheduleTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Missed Execution Grace Period (Seconds)',
+				displayName: 'Missed execution grace period (seconds)',
 				name: 'misfireGraceSeconds',
 				type: 'number',
 				default: 0, // `0` means "use the instance settings"
@@ -482,7 +482,7 @@ export class ScheduleTrigger implements INodeType {
 				// Temporary escape hatch for the durable-scheduler rollout (preview to
 				// GA): keeps this trigger on the legacy in-memory scheduler while testing.
 				// Hidden unless N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER is enabled. Remove at GA.
-				displayName: 'Skip Durable Scheduler',
+				displayName: 'Skip durable scheduler',
 				name: 'skipDurableScheduler',
 				type: 'boolean',
 				default: false,

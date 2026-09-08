@@ -161,7 +161,7 @@ export const pageFields: INodeProperties[] = [
 	/*                                page:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Parent Page',
+		displayName: 'Parent page',
 		name: 'pageId',
 		type: 'resourceLocator',
 		default: { mode: 'url', value: '' },
@@ -257,7 +257,7 @@ export const pageFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Icon Type',
+				displayName: 'Icon type',
 				name: 'iconType',
 				type: 'options',
 				options: [
@@ -288,7 +288,7 @@ export const pageFields: INodeProperties[] = [
 	/*                                page:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Page Link or ID',
+		displayName: 'Page link or ID',
 		name: 'pageId',
 		type: 'string',
 		default: '',
@@ -321,7 +321,7 @@ export const pageFields: INodeProperties[] = [
 	/*                                page:search                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Search Text',
+		displayName: 'Search text',
 		name: 'text',
 		type: 'string',
 		default: '',
@@ -334,7 +334,7 @@ export const pageFields: INodeProperties[] = [
 		description: 'The text to search for',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -388,12 +388,12 @@ export const pageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Filters',
 				name: 'filter',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -441,7 +441,7 @@ export const pageFields: INodeProperties[] = [
 			{
 				displayName: 'Sort',
 				name: 'sort',
-				placeholder: 'Add Sort',
+				placeholder: 'Add sort',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -475,7 +475,7 @@ export const pageFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Last Edited Time',
+										name: 'Last edited time',
 										value: 'last_edited_time',
 									},
 								],

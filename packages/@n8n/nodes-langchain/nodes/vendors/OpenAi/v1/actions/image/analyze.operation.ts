@@ -15,7 +15,7 @@ const properties: INodeProperties[] = [
 		displayOptions: { show: { '@version': [{ _cnd: { gte: 1.4 } }] } },
 	},
 	{
-		displayName: 'Text Input',
+		displayName: 'Text input',
 		name: 'text',
 		type: 'string',
 		placeholder: "e.g. What's in this image?",
@@ -25,7 +25,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Type',
+		displayName: 'Input type',
 		name: 'inputType',
 		type: 'options',
 		default: 'url',
@@ -35,7 +35,7 @@ const properties: INodeProperties[] = [
 				value: 'url',
 			},
 			{
-				name: 'Binary File(s)',
+				name: 'Binary file(s)',
 				value: 'base64',
 			},
 		],
@@ -54,7 +54,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -68,7 +68,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
@@ -77,7 +77,7 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
@@ -106,7 +106,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Length of Description (Max Tokens)',
+				displayName: 'Length of description (max tokens)',
 				description: 'Fewer tokens will result in shorter, less detailed image description',
 				name: 'maxTokens',
 				type: 'number',

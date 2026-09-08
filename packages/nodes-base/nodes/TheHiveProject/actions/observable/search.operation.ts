@@ -30,7 +30,7 @@ const properties: INodeProperties[] = [
 			'Whether to search for observables in all alerts and cases or in a specific case or alert',
 		options: [
 			{
-				name: 'Alerts and Cases',
+				name: 'Alerts and cases',
 				value: 'all',
 			},
 			{

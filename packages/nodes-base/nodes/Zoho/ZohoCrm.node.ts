@@ -117,7 +117,7 @@ export class ZohoCrm implements INodeType {
 						value: 'product',
 					},
 					{
-						name: 'Purchase Order',
+						name: 'Purchase order',
 						value: 'purchaseOrder',
 					},
 					{
@@ -125,7 +125,7 @@ export class ZohoCrm implements INodeType {
 						value: 'quote',
 					},
 					{
-						name: 'Sales Order',
+						name: 'Sales order',
 						value: 'salesOrder',
 					},
 					{

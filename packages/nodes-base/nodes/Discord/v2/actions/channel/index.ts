@@ -41,7 +41,7 @@ export const description: INodeProperties[] = [
 				action: 'Get a channel',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve the channels of a server',
 				action: 'Get many channels',

@@ -18,7 +18,7 @@ export const employeeGetDescription: EmployeeProperties = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -28,7 +28,7 @@ export const employeeGetDescription: EmployeeProperties = [
 		},
 		options: [
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {

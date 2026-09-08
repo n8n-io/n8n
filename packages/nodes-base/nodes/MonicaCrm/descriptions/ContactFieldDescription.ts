@@ -65,7 +65,7 @@ export const contactFieldFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Field Type Name or ID',
+		displayName: 'Contact field type name or ID',
 		name: 'contactFieldTypeId',
 		type: 'options',
 		description:
@@ -101,7 +101,7 @@ export const contactFieldFields: INodeProperties[] = [
 	//           contactField: delete
 	// ----------------------------------------
 	{
-		displayName: 'Contact Field ID',
+		displayName: 'Contact field ID',
 		name: 'contactFieldId',
 		description: 'ID of the contactField to delete',
 		type: 'string',
@@ -119,7 +119,7 @@ export const contactFieldFields: INodeProperties[] = [
 	//            contactField: get
 	// ----------------------------------------
 	{
-		displayName: 'Contact Field ID',
+		displayName: 'Contact field ID',
 		name: 'contactFieldId',
 		description: 'ID of the contact field to retrieve',
 		type: 'string',
@@ -151,7 +151,7 @@ export const contactFieldFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -199,7 +199,7 @@ export const contactFieldFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Field ID',
+		displayName: 'Contact field ID',
 		name: 'contactFieldId',
 		description: 'ID of the contact field to update',
 		type: 'string',
@@ -213,7 +213,7 @@ export const contactFieldFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Field Type Name or ID',
+		displayName: 'Contact field type name or ID',
 		name: 'contactFieldTypeId',
 		type: 'options',
 		description:

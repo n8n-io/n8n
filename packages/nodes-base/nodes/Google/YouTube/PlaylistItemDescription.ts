@@ -31,7 +31,7 @@ export const playlistItemOperations: INodeProperties[] = [
 				action: 'Get a playlist item',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many playlist items',
 				action: 'Get many playlist items',
@@ -46,7 +46,7 @@ export const playlistItemFields: INodeProperties[] = [
 	/*                                 playlistItem:add                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Playlist Name or ID',
+		displayName: 'Playlist name or ID',
 		name: 'playlistId',
 		type: 'options',
 		description:
@@ -90,7 +90,7 @@ export const playlistItemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'End At',
+				displayName: 'End at',
 				name: 'endAt',
 				type: 'dateTime',
 				default: '',
@@ -106,7 +106,7 @@ export const playlistItemFields: INodeProperties[] = [
 					'A user-generated note for this item. The property value has a maximum length of 280 characters.',
 			},
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -125,7 +125,7 @@ export const playlistItemFields: INodeProperties[] = [
 					'The order in which the item appears in the playlist. The value uses a zero-based index, so the first item has a position of 0, the second item has a position of 1, and so forth.',
 			},
 			{
-				displayName: 'Start At',
+				displayName: 'Start at',
 				name: 'startAt',
 				type: 'dateTime',
 				default: '',
@@ -138,7 +138,7 @@ export const playlistItemFields: INodeProperties[] = [
 	/*                                 playlistItem:get                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Playlist Item ID',
+		displayName: 'Playlist item ID',
 		name: 'playlistItemId',
 		type: 'string',
 		required: true,
@@ -160,7 +160,7 @@ export const playlistItemFields: INodeProperties[] = [
 				value: '*',
 			},
 			{
-				name: 'Content Details',
+				name: 'Content details',
 				value: 'contentDetails',
 			},
 			{
@@ -201,7 +201,7 @@ export const playlistItemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -214,7 +214,7 @@ export const playlistItemFields: INodeProperties[] = [
 	/*                                 playlistItem:delete                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Playlist Item ID',
+		displayName: 'Playlist item ID',
 		name: 'playlistItemId',
 		type: 'string',
 		required: true,
@@ -240,7 +240,7 @@ export const playlistItemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -253,7 +253,7 @@ export const playlistItemFields: INodeProperties[] = [
 	/*                                 playlistItem:getAll                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Playlist Name or ID',
+		displayName: 'Playlist name or ID',
 		name: 'playlistId',
 		type: 'options',
 		description:
@@ -280,7 +280,7 @@ export const playlistItemFields: INodeProperties[] = [
 				value: '*',
 			},
 			{
-				name: 'Content Details',
+				name: 'Content details',
 				value: 'contentDetails',
 			},
 			{
@@ -308,7 +308,7 @@ export const playlistItemFields: INodeProperties[] = [
 		default: ['*'],
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -352,7 +352,7 @@ export const playlistItemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',

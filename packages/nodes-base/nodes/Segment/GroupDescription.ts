@@ -57,7 +57,7 @@ export const groupFields: INodeProperties[] = [
 	{
 		displayName: 'Traits',
 		name: 'traits',
-		placeholder: 'Add Trait',
+		placeholder: 'Add trait',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -93,7 +93,7 @@ export const groupFields: INodeProperties[] = [
 	{
 		displayName: 'Context',
 		name: 'context',
-		placeholder: 'Add Context',
+		placeholder: 'Add context',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
@@ -150,7 +150,7 @@ export const groupFields: INodeProperties[] = [
 					{
 						displayName: 'App',
 						name: 'app',
-						placeholder: 'Add App',
+						placeholder: 'Add app',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: false,
@@ -234,7 +234,7 @@ export const groupFields: INodeProperties[] = [
 					{
 						displayName: 'Device',
 						name: 'device',
-						placeholder: 'Add Device',
+						placeholder: 'Add device',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: false,
@@ -292,7 +292,7 @@ export const groupFields: INodeProperties[] = [
 	{
 		displayName: 'Integration',
 		name: 'integrations',
-		placeholder: 'Add Integration',
+		placeholder: 'Add integration',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,

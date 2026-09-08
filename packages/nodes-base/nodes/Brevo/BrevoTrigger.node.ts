@@ -55,72 +55,72 @@ export class BrevoTrigger implements INodeType {
 				type: 'options',
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				displayOptions: {
 					show: {
 						type: ['transactional'],
 					},
 				},
 				name: 'events',
-				placeholder: 'Add Event',
+				placeholder: 'Add event',
 				options: [
 					{
-						name: 'Email Blocked',
+						name: 'Email blocked',
 						value: 'blocked',
 						description: 'Triggers when transactional email is blocked',
 					},
 					{
-						name: 'Email Clicked',
+						name: 'Email clicked',
 						value: 'click',
 						description: 'Triggers when transactional email is clicked',
 					},
 					{
-						name: 'Email Deferred',
+						name: 'Email deferred',
 						value: 'deferred',
 						description: 'Triggers when transactional email is deferred',
 					},
 					{
-						name: 'Email Delivered',
+						name: 'Email delivered',
 						value: 'delivered',
 						description: 'Triggers when transactional email is delivered',
 					},
 					{
-						name: 'Email Hard Bounce',
+						name: 'Email hard bounce',
 						value: 'hardBounce',
 						description: 'Triggers when transactional email is hard bounced',
 					},
 					{
-						name: 'Email Invalid',
+						name: 'Email invalid',
 						value: 'invalid',
 						description: 'Triggers when transactional email is invalid',
 					},
 					{
-						name: 'Email Marked Spam',
+						name: 'Email marked spam',
 						value: 'spam',
 						description: 'Triggers when transactional email is set to spam',
 					},
 					{
-						name: 'Email Opened',
+						name: 'Email opened',
 						value: 'opened',
 						description: 'Triggers when transactional email is opened',
 					},
 					{
-						name: 'Email Sent',
+						name: 'Email sent',
 						value: 'request',
 						description: 'Triggers when transactional email is sent',
 					},
 					{
-						name: 'Email Soft-Bounce',
+						name: 'Email soft-bounce',
 						value: 'softBounce',
 						description: 'Triggers when transactional email is soft bounced',
 					},
 					{
-						name: 'Email Unique Open',
+						name: 'Email unique open',
 						value: 'uniqueOpened',
 						description: 'Triggers when transactional email is unique opened',
 					},
 					{
-						name: 'Email Unsubscribed',
+						name: 'Email unsubscribed',
 						value: 'unsubscribed',
 						description: 'Triggers when transactional email is unsubscribed',
 					},
@@ -130,52 +130,52 @@ export class BrevoTrigger implements INodeType {
 				type: 'multiOptions',
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				displayOptions: {
 					show: {
 						type: ['marketing'],
 					},
 				},
 				name: 'events',
-				placeholder: 'Add Event',
+				placeholder: 'Add event',
 				options: [
 					{
-						name: 'Marketing Email Clicked',
+						name: 'Marketing email clicked',
 						value: 'click',
 						description: 'Triggers when marketing email is clicked',
 					},
 					{
-						name: 'Marketing Email Delivered',
+						name: 'Marketing email delivered',
 						value: 'delivered',
 						description: 'Triggers when marketing email is delivered',
 					},
 					{
-						name: 'Marketing Email Hard Bounce',
+						name: 'Marketing email hard bounce',
 						value: 'hardBounce',
 						description: 'Triggers when marketing email is hard bounced',
 					},
 					{
-						name: 'Marketing Email List Addition',
+						name: 'Marketing email list addition',
 						value: 'listAddition',
 						description: 'Triggers when marketing email is clicked',
 					},
 					{
-						name: 'Marketing Email Opened',
+						name: 'Marketing email opened',
 						value: 'opened',
 						description: 'Triggers when marketing email is opened',
 					},
 					{
-						name: 'Marketing Email Soft Bounce',
+						name: 'Marketing email soft bounce',
 						value: 'softBounce',
 						description: 'Triggers when marketing email is soft bounced',
 					},
 					{
-						name: 'Marketing Email Spam',
+						name: 'Marketing email spam',
 						value: 'spam',
 						description: 'Triggers when marketing email is spam',
 					},
 					{
-						name: 'Marketing Email Unsubscribed',
+						name: 'Marketing email unsubscribed',
 						value: 'unsubscribed',
 						description: 'Triggers when marketing email is unsubscribed',
 					},
@@ -185,17 +185,17 @@ export class BrevoTrigger implements INodeType {
 				type: 'multiOptions',
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				displayOptions: {
 					show: {
 						type: ['inbound'],
 					},
 				},
 				name: 'events',
-				placeholder: 'Add Event',
+				placeholder: 'Add event',
 				options: [
 					{
-						name: 'Inbound Email Processed',
+						name: 'Inbound email processed',
 						value: 'inboundEmailProcessed',
 						description: 'Triggers when inbound email is processed',
 					},

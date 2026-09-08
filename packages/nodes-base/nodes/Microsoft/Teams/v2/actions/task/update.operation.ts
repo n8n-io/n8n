@@ -23,11 +23,11 @@ const properties: INodeProperties[] = [
 		description: 'The ID of the task to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			// OAuth2 assignee picker (list, scoped by the group) — hidden under SP, which
 			// uses the By-ID copy below (the group picker it depends on is hidden under SP).
@@ -62,7 +62,7 @@ const properties: INodeProperties[] = [
 			// SP bucket picker: By-ID.
 			byIdUnderSp(bucketRLC, { required: false }),
 			{
-				displayName: 'Due Date Time',
+				displayName: 'Due date time',
 				name: 'dueDateTime',
 				type: 'string',
 				validateType: 'dateTime',
@@ -81,7 +81,7 @@ const properties: INodeProperties[] = [
 				displayOptions: { hide: { ...SP_HIDE } },
 			},
 			{
-				displayName: 'Percent Complete',
+				displayName: 'Percent complete',
 				name: 'percentComplete',
 				type: 'number',
 				typeOptions: {

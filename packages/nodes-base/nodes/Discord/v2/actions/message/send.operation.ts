@@ -48,18 +48,18 @@ const properties: INodeProperties[] = [
 					'Message flags. <a href="https://discord.com/developers/docs/resources/channel#message-object-message-flags" target="_blank">More info</a>.”.',
 				options: [
 					{
-						name: 'Suppress Embeds',
+						name: 'Suppress embeds',
 						value: 'SUPPRESS_EMBEDS',
 					},
 					{
-						name: 'Suppress Notifications',
+						name: 'Suppress notifications',
 						value: 'SUPPRESS_NOTIFICATIONS',
 					},
 				],
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Message to Reply to',
+				displayName: 'Message to reply to',
 				name: 'message_reference',
 				type: 'string',
 				default: '',
@@ -67,7 +67,7 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. 1059467601836773386',
 			},
 			{
-				displayName: 'Text-to-Speech (TTS)',
+				displayName: 'Text-to-speech (TTS)',
 				name: 'tts',
 				type: 'boolean',
 				default: false,

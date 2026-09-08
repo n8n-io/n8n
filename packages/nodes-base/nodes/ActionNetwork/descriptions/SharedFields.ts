@@ -78,7 +78,7 @@ const postalAddressesFields: INodeProperties[] = [
 		description: "Whether this is the person's primary address",
 	},
 	{
-		displayName: 'Address Line',
+		displayName: 'Address line',
 		name: 'address_lines',
 		type: 'string', // The Action Network API expects a string array but ignores any string beyond the first, so this input field is simplified to string.
 		default: '',
@@ -100,7 +100,7 @@ const postalAddressesFields: INodeProperties[] = [
 		description: 'State or subdivision code per ISO 3166-2',
 	},
 	{
-		displayName: 'Postal Code',
+		displayName: 'Postal code',
 		name: 'postal_code',
 		type: 'string',
 		default: '',
@@ -127,7 +127,7 @@ const postalAddressesFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Location Fields',
+				displayName: 'Location fields',
 				name: 'location_fields',
 				values: [
 					{
@@ -166,14 +166,14 @@ export const eventAdditionalFieldsOptions: INodeProperties['options'] = [
 		description: 'Description of the event. HTML supported.',
 	},
 	{
-		displayName: 'End Date',
+		displayName: 'End date',
 		name: 'end_date',
 		type: 'dateTime',
 		default: '',
 		description: 'End date and time of the event',
 	},
 	{
-		displayName: 'Featured Image URL',
+		displayName: 'Featured image URL',
 		name: 'featured_image_url',
 		type: 'string',
 		default: '',
@@ -191,16 +191,16 @@ export const eventAdditionalFieldsOptions: INodeProperties['options'] = [
 		name: 'location',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Location Field',
+		placeholder: 'Add location field',
 		typeOptions: {
 			multipleValues: false,
 		},
 		options: [
 			// different name, identical structure
 			{
-				displayName: 'Postal Addresses Fields',
+				displayName: 'Postal addresses fields',
 				name: 'postal_addresses_fields',
-				placeholder: 'Add Postal Address Field',
+				placeholder: 'Add postal address field',
 				values: postalAddressesFields,
 			},
 		],
@@ -213,7 +213,7 @@ export const eventAdditionalFieldsOptions: INodeProperties['options'] = [
 		description: 'Internal (not public) title of the event',
 	},
 	{
-		displayName: 'Start Date',
+		displayName: 'Start date',
 		name: 'start_date',
 		type: 'dateTime',
 		default: '',
@@ -223,21 +223,21 @@ export const eventAdditionalFieldsOptions: INodeProperties['options'] = [
 
 export const personAdditionalFieldsOptions: INodeProperties['options'] = [
 	{
-		displayName: 'Family Name',
+		displayName: 'Family name',
 		name: 'family_name',
 		type: 'string',
 		default: '',
 		description: 'Person’s last name',
 	},
 	{
-		displayName: 'Given Name',
+		displayName: 'Given name',
 		name: 'given_name',
 		type: 'string',
 		default: '',
 		description: 'Person’s first name',
 	},
 	{
-		displayName: 'Language Spoken',
+		displayName: 'Language spoken',
 		name: 'languages_spoken',
 		type: 'options', // Action Network accepts a `string[]` of language codes, but supports only one language per person - sending an array of 2+ languages will result in the first valid language being set as the preferred language for the person. Therefore, the user may select only one option in the n8n UI.
 		default: [],
@@ -245,16 +245,16 @@ export const personAdditionalFieldsOptions: INodeProperties['options'] = [
 		options: languageOptions,
 	},
 	{
-		displayName: 'Phone Number', // on create, only _one_ must be passed in
+		displayName: 'Phone number', // on create, only _one_ must be passed in
 		name: 'phone_numbers',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Phone Numbers Field',
+		placeholder: 'Add phone numbers field',
 		options: [
 			{
-				displayName: 'Phone Numbers Fields',
+				displayName: 'Phone numbers fields',
 				name: 'phone_numbers_fields',
-				placeholder: 'Add Phone Number Field',
+				placeholder: 'Add phone number field',
 				values: [
 					{
 						displayName: 'Number',
@@ -282,7 +282,7 @@ export const personAdditionalFieldsOptions: INodeProperties['options'] = [
 								value: 'bouncing',
 							},
 							{
-								name: 'Previous Bounce',
+								name: 'Previous bounce',
 								value: 'previous bounce',
 							},
 							{
@@ -300,19 +300,19 @@ export const personAdditionalFieldsOptions: INodeProperties['options'] = [
 		],
 	},
 	{
-		displayName: 'Postal Addresses',
+		displayName: 'Postal addresses',
 		name: 'postal_addresses',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Postal Addresses Field',
+		placeholder: 'Add postal addresses field',
 		typeOptions: {
 			multipleValues: true,
 		},
 		options: [
 			{
-				displayName: 'Postal Addresses Fields',
+				displayName: 'Postal addresses fields',
 				name: 'postal_addresses_fields',
-				placeholder: 'Add Postal Address Field',
+				placeholder: 'Add postal address field',
 				values: postalAddressesFields,
 			},
 		],
@@ -328,7 +328,7 @@ export const petitionAdditionalFieldsOptions: INodeProperties[] = [
 		description: 'URL to this petition’s page on the Action Network or a third party',
 	},
 	{
-		displayName: 'Featured Image URL',
+		displayName: 'Featured image URL',
 		name: 'featured_image_url',
 		type: 'string',
 		default: '',
@@ -342,7 +342,7 @@ export const petitionAdditionalFieldsOptions: INodeProperties[] = [
 		description: 'Internal (not public) title of the petition',
 	},
 	{
-		displayName: 'Petition Text',
+		displayName: 'Petition text',
 		name: 'petition_text',
 		type: 'string',
 		default: '',

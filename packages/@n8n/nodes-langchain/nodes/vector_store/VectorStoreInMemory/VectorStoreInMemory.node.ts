@@ -23,7 +23,7 @@ const warningBanner: INodeProperties = {
 
 const insertFields: INodeProperties[] = [
 	{
-		displayName: 'Clear Store',
+		displayName: 'Clear store',
 		name: 'clearStore',
 		type: 'boolean',
 		default: false,
@@ -78,7 +78,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 	},
 	sharedFields: [
 		{
-			displayName: 'Memory Key',
+			displayName: 'Memory key',
 			name: 'memoryKey',
 			type: 'string',
 			default: DEFAULT_MEMORY_KEY,
@@ -91,7 +91,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 			},
 		},
 		{
-			displayName: 'Memory Key',
+			displayName: 'Memory key',
 			name: 'memoryKey',
 			type: 'resourceLocator',
 			required: true,
@@ -105,7 +105,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 			},
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					typeOptions: {

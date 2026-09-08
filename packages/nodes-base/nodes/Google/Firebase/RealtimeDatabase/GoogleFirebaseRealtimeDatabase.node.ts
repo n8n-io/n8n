@@ -35,7 +35,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project name or ID',
 				name: 'projectId',
 				type: 'options',
 				default: '',
@@ -87,7 +87,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Object Path',
+				displayName: 'Object path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -102,7 +102,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				},
 			},
 			{
-				displayName: 'Object Path',
+				displayName: 'Object path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -117,7 +117,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				},
 			},
 			{
-				displayName: 'Columns / Attributes',
+				displayName: 'Columns / attributes',
 				name: 'attributes',
 				type: 'string',
 				default: '',

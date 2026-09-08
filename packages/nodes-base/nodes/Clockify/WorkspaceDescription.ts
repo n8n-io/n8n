@@ -13,7 +13,7 @@ export const workspaceOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many workspaces',
 				action: 'Get many workspaces',
@@ -25,7 +25,7 @@ export const workspaceOperations: INodeProperties[] = [
 
 export const workspaceFields: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

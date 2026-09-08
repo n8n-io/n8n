@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 const clashHandlingProperties: INodeProperties = {
-	displayName: 'Clash Handling',
+	displayName: 'Clash handling',
 	name: 'clashHandling',
 	type: 'fixedCollection',
 	default: {
@@ -13,38 +13,38 @@ const clashHandlingProperties: INodeProperties = {
 			name: 'values',
 			values: [
 				{
-					displayName: 'When Field Values Clash',
+					displayName: 'When field values clash',
 					name: 'resolveClash',
 					type: 'options',
 					default: '',
 					options: [
 						{
-							name: 'Always Add Input Number to Field Names',
+							name: 'Always add input number to field names',
 							value: 'addSuffix',
 						},
 						{
-							name: 'Prefer Input 1 Version',
+							name: 'Prefer input 1 version',
 							value: 'preferInput1',
 						},
 						{
-							name: 'Prefer Input 2 Version',
+							name: 'Prefer input 2 version',
 							value: 'preferInput2',
 						},
 					],
 				},
 				{
-					displayName: 'Merging Nested Fields',
+					displayName: 'Merging nested fields',
 					name: 'mergeMode',
 					type: 'options',
 					default: 'deepMerge',
 					options: [
 						{
-							name: 'Deep Merge',
+							name: 'Deep merge',
 							value: 'deepMerge',
 							description: 'Merge at every level of nesting',
 						},
 						{
-							name: 'Shallow Merge',
+							name: 'Shallow merge',
 							value: 'shallowMerge',
 							description:
 								'Merge at the top level only (all nested fields will come from the same input)',
@@ -58,7 +58,7 @@ const clashHandlingProperties: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Minimize Empty Fields',
+					displayName: 'Minimize empty fields',
 					name: 'overrideEmpty',
 					type: 'boolean',
 					default: false,
@@ -116,7 +116,7 @@ export const optionsDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Disable Dot Notation',
+				displayName: 'Disable dot notation',
 				name: 'disableDotNotation',
 				type: 'boolean',
 				default: false,
@@ -130,7 +130,7 @@ export const optionsDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Fuzzy Compare',
+				displayName: 'Fuzzy compare',
 				name: 'fuzzyCompare',
 				type: 'boolean',
 				default: false,
@@ -138,7 +138,7 @@ export const optionsDescription: INodeProperties[] = [
 					"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
 			},
 			{
-				displayName: 'Include Any Unpaired Items',
+				displayName: 'Include any unpaired items',
 				name: 'includeUnpaired',
 				type: 'boolean',
 				default: false,
@@ -153,18 +153,18 @@ export const optionsDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Multiple Matches',
+				displayName: 'Multiple matches',
 				name: 'multipleMatches',
 				type: 'options',
 				default: 'all',
 				options: [
 					{
-						name: 'Include All Matches',
+						name: 'Include all matches',
 						value: 'all',
 						description: 'Output multiple items if there are multiple matches',
 					},
 					{
-						name: 'Include First Match Only',
+						name: 'Include first match only',
 						value: 'first',
 						description: 'Only ever output a single item per match',
 					},
@@ -179,18 +179,18 @@ export const optionsDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Multiple Matches',
+				displayName: 'Multiple matches',
 				name: 'multipleMatches',
 				type: 'options',
 				default: 'all',
 				options: [
 					{
-						name: 'Include All Matches',
+						name: 'Include all matches',
 						value: 'all',
 						description: 'Output multiple items if there are multiple matches',
 					},
 					{
-						name: 'Include First Match Only',
+						name: 'Include first match only',
 						value: 'first',
 						description: 'Only ever output a single item per match',
 					},

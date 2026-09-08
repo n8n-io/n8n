@@ -31,7 +31,7 @@ export const assetOperations: INodeProperties[] = [
 				action: 'Get an asset',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many assets',
 				action: 'Get many assets',
@@ -52,7 +52,7 @@ export const assetFields: INodeProperties[] = [
 	//              asset: create
 	// ----------------------------------------
 	{
-		displayName: 'Asset Name',
+		displayName: 'Asset name',
 		name: 'name',
 		type: 'string',
 		required: true,
@@ -65,7 +65,7 @@ export const assetFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Asset Type Name or ID',
+		displayName: 'Asset type name or ID',
 		name: 'assetTypeId',
 		type: 'options',
 		description:
@@ -83,9 +83,9 @@ export const assetFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Asset Fields',
+		displayName: 'Asset fields',
 		name: 'assetFieldsUi',
-		placeholder: 'Add Asset Field',
+		placeholder: 'Add asset field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -100,7 +100,7 @@ export const assetFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'assetFieldValue',
-				displayName: 'Asset Field',
+				displayName: 'Asset field',
 				values: [
 					{
 						displayName: 'Name or ID',
@@ -129,7 +129,7 @@ export const assetFields: INodeProperties[] = [
 	//              asset: delete
 	// ----------------------------------------
 	{
-		displayName: 'Asset Display ID',
+		displayName: 'Asset display ID',
 		name: 'assetDisplayId',
 		description: 'Display ID of the asset to delete. Do not confuse with asset ID.',
 		type: 'string',
@@ -147,7 +147,7 @@ export const assetFields: INodeProperties[] = [
 	//                asset: get
 	// ----------------------------------------
 	{
-		displayName: 'Asset Display ID',
+		displayName: 'Asset display ID',
 		name: 'assetDisplayId',
 		description: 'Display ID of the asset to retrieve. Do not confuse with asset ID.',
 		type: 'string',
@@ -165,7 +165,7 @@ export const assetFields: INodeProperties[] = [
 	//              asset: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -198,7 +198,7 @@ export const assetFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -208,7 +208,7 @@ export const assetFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name or ID',
+				displayName: 'Agent name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -219,14 +219,14 @@ export const assetFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Asset State',
+				displayName: 'Asset state',
 				name: 'asset_state',
 				type: 'string',
 				default: '',
 				description: 'Status of the asset to filter by. For example, "In use".',
 			},
 			{
-				displayName: 'Asset Type Name or ID',
+				displayName: 'Asset type name or ID',
 				name: 'asset_type_id',
 				type: 'options',
 				default: '',
@@ -237,7 +237,7 @@ export const assetFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -248,7 +248,7 @@ export const assetFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location name or ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
@@ -272,7 +272,7 @@ export const assetFields: INodeProperties[] = [
 	//              asset: update
 	// ----------------------------------------
 	{
-		displayName: 'Asset Display ID',
+		displayName: 'Asset display ID',
 		name: 'assetDisplayId',
 		description: 'Display ID of the asset to update. Do not confuse with asset ID.',
 		type: 'string',
@@ -286,9 +286,9 @@ export const assetFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Asset Fields',
+		displayName: 'Asset fields',
 		name: 'assetFieldsUi',
-		placeholder: 'Add Asset Field',
+		placeholder: 'Add asset field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -303,7 +303,7 @@ export const assetFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'assetFieldValue',
-				displayName: 'Asset Field',
+				displayName: 'Asset field',
 				values: [
 					{
 						displayName: 'Name or ID',

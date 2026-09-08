@@ -7,7 +7,7 @@ import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { readSheet } from '../utils/readOperation';
 
 const combineFiltersOptions: INodeProperties = {
-	displayName: 'Combine Filters',
+	displayName: 'Combine filters',
 	name: 'combineFilters',
 	type: 'options',
 	description:
@@ -30,7 +30,7 @@ const combineFiltersOptions: INodeProperties = {
 export const readFilter: INodeProperties = {
 	displayName: 'Filters',
 	name: 'filtersUI',
-	placeholder: 'Add Filter',
+	placeholder: 'Add filter',
 	type: 'fixedCollection',
 	typeOptions: {
 		multipleValueButtonText: 'Add Filter',
@@ -126,7 +126,7 @@ export const description: SheetProperties = [
 			dataLocationOnSheet,
 			outputFormatting,
 			{
-				displayName: 'Return only First Matching Row',
+				displayName: 'Return only first matching row',
 				name: 'returnFirstMatch',
 				type: 'boolean',
 				default: false,
@@ -139,24 +139,24 @@ export const description: SheetProperties = [
 				},
 			},
 			{
-				displayName: 'When Filter Has Multiple Matches',
+				displayName: 'When filter has multiple matches',
 				name: 'returnAllMatches',
 				type: 'options',
 				default: 'returnFirstMatch',
 				options: [
 					{
-						name: 'Return First Match',
+						name: 'Return first match',
 						value: 'returnFirstMatch',
 						description: 'Return only the first match',
 					},
 					{
-						name: 'Return All Matches',
+						name: 'Return all matches',
 						value: 'returnAllMatches',
 						description: 'Return all values that match',
 					},
 				],
 				description:
-					'By default only the first result gets returned, Set to "Return All Matches" to get multiple matches',
+					'By default only the first result gets returned, Set to "Return all matches" to get multiple matches',
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { lt: 4.5 } }],

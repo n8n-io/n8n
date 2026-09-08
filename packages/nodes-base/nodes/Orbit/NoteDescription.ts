@@ -19,7 +19,7 @@ export const noteOperations: INodeProperties[] = [
 				action: 'Create a note',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many notes for a member',
 				action: 'Get many notes',
@@ -40,7 +40,7 @@ export const noteFields: INodeProperties[] = [
 	/*                                note:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -88,7 +88,7 @@ export const noteFields: INodeProperties[] = [
 	/*                                note:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -119,7 +119,7 @@ export const noteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -150,7 +150,7 @@ export const noteFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Resolve Member',
+		displayName: 'Resolve member',
 		name: 'resolveMember',
 		type: 'boolean',
 		displayOptions: {
@@ -166,7 +166,7 @@ export const noteFields: INodeProperties[] = [
 	/*                                note:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:

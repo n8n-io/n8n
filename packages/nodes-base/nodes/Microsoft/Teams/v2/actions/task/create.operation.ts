@@ -60,7 +60,7 @@ const properties: INodeProperties[] = [
 				description: 'Who the task should be assigned to',
 			}),
 			{
-				displayName: 'Due Date Time',
+				displayName: 'Due date time',
 				name: 'dueDateTime',
 				type: 'string',
 				validateType: 'dateTime',
@@ -69,7 +69,7 @@ const properties: INodeProperties[] = [
 					'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
-				displayName: 'Percent Complete',
+				displayName: 'Percent complete',
 				name: 'percentComplete',
 				type: 'number',
 				typeOptions: {

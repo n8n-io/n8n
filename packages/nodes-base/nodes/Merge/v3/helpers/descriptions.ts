@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 export const fuzzyCompareProperty: INodeProperties = {
-	displayName: 'Fuzzy Compare',
+	displayName: 'Fuzzy compare',
 	name: 'fuzzyCompare',
 	type: 'boolean',
 	default: false,
@@ -9,7 +9,7 @@ export const fuzzyCompareProperty: INodeProperties = {
 		"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
 };
 export const numberInputsProperty: INodeProperties = {
-	displayName: 'Number of Inputs',
+	displayName: 'Number of inputs',
 	name: 'numberInputs',
 	type: 'options',
 	noDataExpression: true,
@@ -58,7 +58,7 @@ export const numberInputsProperty: INodeProperties = {
 };
 
 export const clashHandlingProperties: INodeProperties = {
-	displayName: 'Clash Handling',
+	displayName: 'Clash handling',
 	name: 'clashHandling',
 	type: 'fixedCollection',
 	default: {
@@ -71,7 +71,7 @@ export const clashHandlingProperties: INodeProperties = {
 			values: [
 				{
 					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-					displayName: 'When Field Values Clash',
+					displayName: 'When field values clash',
 					name: 'resolveClash',
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
 					type: 'options',
@@ -82,18 +82,18 @@ export const clashHandlingProperties: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Merging Nested Fields',
+					displayName: 'Merging nested fields',
 					name: 'mergeMode',
 					type: 'options',
 					default: 'deepMerge',
 					options: [
 						{
-							name: 'Deep Merge',
+							name: 'Deep merge',
 							value: 'deepMerge',
 							description: 'Merge at every level of nesting',
 						},
 						{
-							name: 'Shallow Merge',
+							name: 'Shallow merge',
 							value: 'shallowMerge',
 							description:
 								'Merge at the top level only (all nested fields will come from the same input)',
@@ -107,7 +107,7 @@ export const clashHandlingProperties: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Minimize Empty Fields',
+					displayName: 'Minimize empty fields',
 					name: 'overrideEmpty',
 					type: 'boolean',
 					default: false,

@@ -37,7 +37,7 @@ export const documentFields: INodeProperties[] = [
 	/*                                 document: create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Drive Name or ID',
+		displayName: 'Drive name or ID',
 		name: 'driveId',
 		type: 'options',
 		description:
@@ -55,7 +55,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folderId',
 		type: 'options',
 		description:
@@ -153,7 +153,7 @@ export const documentFields: INodeProperties[] = [
 		name: 'actionsUi',
 		description: 'Actions applied to update the document',
 		type: 'fixedCollection',
-		placeholder: 'Add Action',
+		placeholder: 'Add action',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -177,7 +177,7 @@ export const documentFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'actionFields',
-				displayName: 'Action Fields',
+				displayName: 'Action fields',
 				values: [
 					// Object field
 					{
@@ -194,19 +194,19 @@ export const documentFields: INodeProperties[] = [
 								value: 'header',
 							},
 							{
-								name: 'Named Range',
+								name: 'Named range',
 								value: 'namedRange',
 							},
 							{
-								name: 'Page Break',
+								name: 'Page break',
 								value: 'pageBreak',
 							},
 							{
-								name: 'Paragraph Bullets',
+								name: 'Paragraph bullets',
 								value: 'paragraphBullets',
 							},
 							{
-								name: 'Positioned Object',
+								name: 'Positioned object',
 								value: 'positionedObject',
 							},
 							{
@@ -214,11 +214,11 @@ export const documentFields: INodeProperties[] = [
 								value: 'table',
 							},
 							{
-								name: 'Table Column',
+								name: 'Table column',
 								value: 'tableColumn',
 							},
 							{
-								name: 'Table Row',
+								name: 'Table row',
 								value: 'tableRow',
 							},
 							{
@@ -236,7 +236,7 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Find and Replace Text',
+								name: 'Find and replace text',
 								value: 'replaceAll',
 							},
 							{
@@ -334,7 +334,7 @@ export const documentFields: INodeProperties[] = [
 					},
 					// Shared Segment inputs for Create action (moved up for display purposes)
 					{
-						displayName: 'Insert Segment',
+						displayName: 'Insert segment',
 						name: 'insertSegment',
 						type: 'options',
 						options: [
@@ -408,7 +408,7 @@ export const documentFields: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Start Index',
+						displayName: 'Start index',
 						name: 'startIndex',
 						type: 'number',
 						description: 'The zero-based start index of this range',
@@ -421,7 +421,7 @@ export const documentFields: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'End Index',
+						displayName: 'End index',
 						name: 'endIndex',
 						type: 'number',
 						description: 'The zero-based end index of this range',
@@ -440,19 +440,19 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Bullet List',
+								name: 'Bullet list',
 								value: 'BULLET_DISC_CIRCLE_SQUARE',
 								description:
 									'A bulleted list with a <code>DISC</code>, <code>CIRCLE</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels',
 							},
 							{
-								name: 'Checkbox List',
+								name: 'Checkbox list',
 								value: 'BULLET_CHECKBOX',
 								description:
 									'A bulleted list with CHECKBOX bullet glyphs for all list nesting levels',
 							},
 							{
-								name: 'Numbered List',
+								name: 'Numbered list',
 								value: 'NUMBERED_DECIMAL_NESTED',
 								description:
 									"A numbered list with <code>DECIMAL</code> numeric glyphs separated by periods, where each nesting level uses the previous nesting level's glyph as a prefix. For example: 1., 1.1., 2., 2.2 .",
@@ -499,7 +499,7 @@ export const documentFields: INodeProperties[] = [
 					},
 					// delete named range
 					{
-						displayName: 'Specify Range By',
+						displayName: 'Specify range by',
 						name: 'namedRangeReference',
 						type: 'options',
 						options: [
@@ -569,7 +569,7 @@ export const documentFields: INodeProperties[] = [
 					// delete table column/row (shared inputs added below)
 					// Shared Segment inputs for Insert action (moved up for display purposes)
 					{
-						displayName: 'Insert Segment',
+						displayName: 'Insert segment',
 						name: 'insertSegment',
 						type: 'options',
 						options: [
@@ -614,18 +614,18 @@ export const documentFields: INodeProperties[] = [
 					},
 					// insert page break
 					{
-						displayName: 'Insert Location',
+						displayName: 'Insert location',
 						name: 'locationChoice',
 						type: 'options',
 						options: [
 							{
-								name: 'At End of Specific Position',
+								name: 'At end of specific position',
 								value: 'endOfSegmentLocation',
 								description:
 									'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At Index',
+								name: 'At index',
 								value: 'location',
 							},
 						],
@@ -657,18 +657,18 @@ export const documentFields: INodeProperties[] = [
 					},
 					// insert table
 					{
-						displayName: 'Insert Location',
+						displayName: 'Insert location',
 						name: 'locationChoice',
 						type: 'options',
 						options: [
 							{
-								name: 'At End of Specific Position',
+								name: 'At end of specific position',
 								value: 'endOfSegmentLocation',
 								description:
 									'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At Index',
+								name: 'At index',
 								value: 'location',
 							},
 						],
@@ -727,18 +727,18 @@ export const documentFields: INodeProperties[] = [
 					},
 					// insert text
 					{
-						displayName: 'Insert Location',
+						displayName: 'Insert location',
 						name: 'locationChoice',
 						type: 'options',
 						options: [
 							{
-								name: 'At End of Specific Position',
+								name: 'At end of specific position',
 								value: 'endOfSegmentLocation',
 								description:
 									'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At Index',
+								name: 'At index',
 								value: 'location',
 							},
 						],
@@ -783,7 +783,7 @@ export const documentFields: INodeProperties[] = [
 					},
 					// replace all text
 					{
-						displayName: 'Old Text',
+						displayName: 'Old text',
 						name: 'text',
 						type: 'string',
 						description: 'The text to search for in the document',
@@ -796,7 +796,7 @@ export const documentFields: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'New Text',
+						displayName: 'New text',
 						name: 'replaceText',
 						type: 'string',
 						description: 'The text that will replace the matched text',
@@ -809,7 +809,7 @@ export const documentFields: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Match Case',
+						displayName: 'Match case',
 						name: 'matchCase',
 						type: 'boolean',
 						description: 'Whether the search should respect case sensitivity',
@@ -823,7 +823,7 @@ export const documentFields: INodeProperties[] = [
 					},
 					// Shared Segment inputs for Delete action
 					{
-						displayName: 'Insert Segment',
+						displayName: 'Insert segment',
 						name: 'insertSegment',
 						type: 'options',
 						options: [
@@ -868,7 +868,7 @@ export const documentFields: INodeProperties[] = [
 					},
 					// Shared inputs for paragraph bullets
 					{
-						displayName: 'Start Index',
+						displayName: 'Start index',
 						name: 'startIndex',
 						type: 'number',
 						description: 'The zero-based start index of this range',
@@ -880,7 +880,7 @@ export const documentFields: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'End Index',
+						displayName: 'End index',
 						name: 'endIndex',
 						type: 'number',
 						description: 'The zero-based end index of this range',
@@ -893,16 +893,16 @@ export const documentFields: INodeProperties[] = [
 					},
 					// Shared inputs for table column/row
 					{
-						displayName: 'Insert Position',
+						displayName: 'Insert position',
 						name: 'insertPosition',
 						type: 'options',
 						options: [
 							{
-								name: 'Before Content at Index',
+								name: 'Before content at index',
 								value: false,
 							},
 							{
-								name: 'After Content at Index',
+								name: 'After content at index',
 								value: true,
 							},
 						],
@@ -931,7 +931,7 @@ export const documentFields: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Row Index',
+						displayName: 'Row index',
 						name: 'rowIndex',
 						type: 'number',
 						description: 'The zero-based row index',
@@ -943,7 +943,7 @@ export const documentFields: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Column Index',
+						displayName: 'Column index',
 						name: 'columnIndex',
 						type: 'number',
 						description: 'The zero-based column index',
@@ -959,10 +959,10 @@ export const documentFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'fixedCollection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -972,11 +972,11 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Write Control Object',
+				displayName: 'Write control object',
 				name: 'writeControlObject',
 				values: [
 					{
-						displayName: 'Revision Mode',
+						displayName: 'Revision mode',
 						name: 'control',
 						type: 'options',
 						options: [

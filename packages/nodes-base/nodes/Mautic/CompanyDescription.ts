@@ -31,7 +31,7 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Get a company',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many companies',
 				action: 'Get many companies',
@@ -52,7 +52,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                company:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Company Name',
+		displayName: 'Company name',
 		name: 'name',
 		type: 'string',
 		displayOptions: {
@@ -78,10 +78,10 @@ export const companyFields: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -105,13 +105,13 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Address',
 						values: [
 							{
-								displayName: 'Address Line 1',
+								displayName: 'Address line 1',
 								name: 'address1',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Address Line 2',
+								displayName: 'Address line 2',
 								name: 'address2',
 								type: 'string',
 								default: '',
@@ -135,7 +135,7 @@ export const companyFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zipCode',
 								type: 'string',
 								default: '',
@@ -145,21 +145,21 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'annualRevenue',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Company Email',
+				displayName: 'Company email',
 				name: 'companyEmail',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Fields',
+				placeholder: 'Add custom fields',
 				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -172,7 +172,7 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -183,7 +183,7 @@ export const companyFields: INodeProperties[] = [
 									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
@@ -206,7 +206,7 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Industry Name or ID',
+				displayName: 'Industry name or ID',
 				name: 'industry',
 				type: 'options',
 				description:
@@ -217,20 +217,20 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Published',
+				displayName: 'Is published',
 				name: 'isPublished',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Number of Employees',
+				displayName: 'Number of employees',
 				name: 'numberOfEmpoyees',
 				type: 'number',
 				default: 0,
 			},
 
 			{
-				displayName: 'Overwrite With Blank',
+				displayName: 'Overwrite with blank',
 				name: 'overwriteWithBlank',
 				type: 'boolean',
 				default: false,
@@ -281,10 +281,10 @@ export const companyFields: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -308,13 +308,13 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Address',
 						values: [
 							{
-								displayName: 'Address Line 1',
+								displayName: 'Address line 1',
 								name: 'address1',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Address Line 2',
+								displayName: 'Address line 2',
 								name: 'address2',
 								type: 'string',
 								default: '',
@@ -338,7 +338,7 @@ export const companyFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zipCode',
 								type: 'string',
 								default: '',
@@ -348,27 +348,27 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'annualRevenue',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Company Email',
+				displayName: 'Company email',
 				name: 'companyEmail',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Company Name',
+				displayName: 'Company name',
 				name: 'name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Fields',
+				placeholder: 'Add custom fields',
 				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -381,7 +381,7 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -392,7 +392,7 @@ export const companyFields: INodeProperties[] = [
 									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
@@ -415,7 +415,7 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Industry Name or ID',
+				displayName: 'Industry name or ID',
 				name: 'industry',
 				type: 'options',
 				description:
@@ -426,20 +426,20 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Published',
+				displayName: 'Is published',
 				name: 'isPublished',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Number of Employees',
+				displayName: 'Number of employees',
 				name: 'numberOfEmpoyees',
 				type: 'number',
 				default: 0,
 			},
 
 			{
-				displayName: 'Overwrite With Blank',
+				displayName: 'Overwrite with blank',
 				name: 'overwriteWithBlank',
 				type: 'boolean',
 				default: false,
@@ -494,7 +494,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                company:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -538,10 +538,10 @@ export const companyFields: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -551,7 +551,7 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Order Direction',
+				displayName: 'Order direction',
 				name: 'orderByDir',
 				type: 'options',
 				options: [
@@ -568,7 +568,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'Sort direction: asc or desc',
 			},
 			{
-				displayName: 'Order By Name or ID',
+				displayName: 'Order by name or ID',
 				name: 'orderBy',
 				type: 'options',
 				typeOptions: {

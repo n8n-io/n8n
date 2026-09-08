@@ -67,7 +67,7 @@ export class LingvaNex implements INodeType {
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Translate To',
+				displayName: 'Translate to',
 				name: 'translateTo',
 				type: 'options',
 				typeOptions: {
@@ -84,7 +84,7 @@ export class LingvaNex implements INodeType {
 				},
 			},
 			{
-				displayName: 'Additional Options',
+				displayName: 'Additional options',
 				name: 'options',
 				type: 'collection',
 				placeholder: 'Add option',
@@ -114,7 +114,7 @@ export class LingvaNex implements INodeType {
 						default: 'api',
 					},
 					{
-						displayName: 'Translate Mode',
+						displayName: 'Translate mode',
 						name: 'translateMode',
 						type: 'string',
 						default: '',

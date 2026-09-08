@@ -41,7 +41,7 @@ export const calendarFields: INodeProperties[] = [
 				displayName: 'Calendar',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a Calendar...',
+				placeholder: 'Select a calendar...',
 				typeOptions: {
 					searchListMethod: 'getCalendars',
 					searchable: true,
@@ -76,7 +76,7 @@ export const calendarFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Start Time',
+		displayName: 'Start time',
 		name: 'timeMin',
 		type: 'dateTime',
 		required: true,
@@ -91,7 +91,7 @@ export const calendarFields: INodeProperties[] = [
 		description: 'Start of the interval',
 	},
 	{
-		displayName: 'End Time',
+		displayName: 'End time',
 		name: 'timeMax',
 		type: 'dateTime',
 		required: true,
@@ -106,7 +106,7 @@ export const calendarFields: INodeProperties[] = [
 		description: 'End of the interval',
 	},
 	{
-		displayName: 'Start Time',
+		displayName: 'Start time',
 		name: 'timeMin',
 		type: 'dateTime',
 		required: true,
@@ -122,7 +122,7 @@ export const calendarFields: INodeProperties[] = [
 			'Start of the interval, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 	},
 	{
-		displayName: 'End Time',
+		displayName: 'End time',
 		name: 'timeMax',
 		type: 'dateTime',
 		required: true,
@@ -151,7 +151,7 @@ export const calendarFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Output Format',
+				displayName: 'Output format',
 				name: 'outputFormat',
 				type: 'options',
 				options: [
@@ -161,7 +161,7 @@ export const calendarFields: INodeProperties[] = [
 						description: 'Returns if there are any events in the given time or not',
 					},
 					{
-						name: 'Booked Slots',
+						name: 'Booked slots',
 						value: 'bookedSlots',
 						description: 'Returns the booked slots',
 					},
@@ -185,7 +185,7 @@ export const calendarFields: INodeProperties[] = [
 						displayName: 'Timezone',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Timezone...',
+						placeholder: 'Select a timezone...',
 						typeOptions: {
 							searchListMethod: 'getTimezones',
 							searchable: true,

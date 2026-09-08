@@ -14,7 +14,7 @@ import { apiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Output Binary Image',
+		displayName: 'Output binary image',
 		description: 'Whether to output the image as a binary file instead of a base64 encoded string',
 		name: 'outputImageAsBinary',
 		type: 'boolean',

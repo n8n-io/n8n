@@ -101,7 +101,7 @@ export class ActiveCampaign implements INodeType {
 						value: 'account',
 					},
 					{
-						name: 'Account Contact',
+						name: 'Account contact',
 						value: 'accountContact',
 					},
 					{
@@ -113,11 +113,11 @@ export class ActiveCampaign implements INodeType {
 						value: 'contact',
 					},
 					{
-						name: 'Contact List',
+						name: 'Contact list',
 						value: 'contactList',
 					},
 					{
-						name: 'Contact Tag',
+						name: 'Contact tag',
 						value: 'contactTag',
 					},
 					{
@@ -125,15 +125,15 @@ export class ActiveCampaign implements INodeType {
 						value: 'deal',
 					},
 					{
-						name: 'E-Commerce Customer',
+						name: 'E-commerce customer',
 						value: 'ecommerceCustomer',
 					},
 					{
-						name: 'E-Commerce Order',
+						name: 'E-commerce order',
 						value: 'ecommerceOrder',
 					},
 					{
-						name: 'E-Commerce Order Product',
+						name: 'E-commerce order product',
 						value: 'ecommerceOrderProducts',
 					},
 					{

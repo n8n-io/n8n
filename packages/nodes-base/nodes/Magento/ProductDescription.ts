@@ -33,7 +33,7 @@ export const productOperations: INodeProperties[] = [
 				action: 'Get a product',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many products',
 				action: 'Get many products',
@@ -81,7 +81,7 @@ export const productFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Attribute Set Name or ID',
+		displayName: 'Attribute set name or ID',
 		name: 'attributeSetId',
 		type: 'options',
 		description:
@@ -110,10 +110,10 @@ export const productFields: INodeProperties[] = [
 		default: 0,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -124,10 +124,10 @@ export const productFields: INodeProperties[] = [
 		options: [...getProductOptionalFields()],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -160,7 +160,7 @@ export const productFields: INodeProperties[] = [
 	/*                                   product:getAll			                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

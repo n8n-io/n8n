@@ -54,7 +54,7 @@ export class MicrosoftSql implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Execute Query',
+						name: 'Execute query',
 						value: 'executeQuery',
 						description: 'Execute an SQL query',
 						action: 'Execute a SQL query',
@@ -102,7 +102,7 @@ export class MicrosoftSql implements INodeType {
 				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
 				description:
-					"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
+					"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query parameters' set in options below.",
 				hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
 			},
 			{
@@ -118,7 +118,7 @@ export class MicrosoftSql implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Query Parameters',
+						displayName: 'Query parameters',
 						name: 'queryReplacement',
 						type: 'string',
 						default: '',
@@ -179,7 +179,7 @@ export class MicrosoftSql implements INodeType {
 				description: 'Name of the table in which to update data in',
 			},
 			{
-				displayName: 'Update Key',
+				displayName: 'Update key',
 				name: 'updateKey',
 				type: 'string',
 				requiresDataPath: 'single',
@@ -227,7 +227,7 @@ export class MicrosoftSql implements INodeType {
 				description: 'Name of the table in which to delete data',
 			},
 			{
-				displayName: 'Delete Key',
+				displayName: 'Delete key',
 				name: 'deleteKey',
 				type: 'string',
 				requiresDataPath: 'single',

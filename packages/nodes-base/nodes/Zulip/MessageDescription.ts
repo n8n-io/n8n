@@ -25,13 +25,13 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Send Private',
+				name: 'Send private',
 				value: 'sendPrivate',
 				description: 'Send a private message',
 				action: 'Send a private message',
 			},
 			{
-				name: 'Send to Stream',
+				name: 'Send to stream',
 				value: 'sendStream',
 				description: 'Send a message to stream',
 				action: 'Send a message to a stream',
@@ -43,7 +43,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Update a message',
 			},
 			{
-				name: 'Upload a File',
+				name: 'Upload a file',
 				value: 'updateFile',
 				action: 'Upload a file',
 			},
@@ -93,7 +93,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                message:sendStream                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Stream Name or ID',
+		displayName: 'Stream name or ID',
 		name: 'stream',
 		type: 'options',
 		typeOptions: {
@@ -111,7 +111,7 @@ export const messageFields: INodeProperties[] = [
 			'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Topic Name or ID',
+		displayName: 'Topic name or ID',
 		name: 'topic',
 		type: 'options',
 		typeOptions: {
@@ -161,10 +161,10 @@ export const messageFields: INodeProperties[] = [
 		description: 'Unique identifier for the message',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -181,20 +181,20 @@ export const messageFields: INodeProperties[] = [
 				description: 'The content of the message',
 			},
 			{
-				displayName: 'Propagate Mode',
+				displayName: 'Propagate mode',
 				name: 'propagateMode',
 				type: 'options',
 				options: [
 					{
-						name: 'Change One',
+						name: 'Change one',
 						value: 'changeOne',
 					},
 					{
-						name: 'Change Later',
+						name: 'Change later',
 						value: 'changeLater',
 					},
 					{
-						name: 'Change All',
+						name: 'Change all',
 						value: 'changeAll',
 					},
 				],
@@ -249,7 +249,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:updateFile                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'dataBinaryProperty',
 		type: 'string',
 		required: true,

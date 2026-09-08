@@ -119,7 +119,7 @@ export function activeCampaignDefaultGetAllProperties(
 ): INodeProperties[] {
 	return [
 		{
-			displayName: 'Return All',
+			displayName: 'Return all',
 			name: 'returnAll',
 			type: 'boolean',
 			displayOptions: {

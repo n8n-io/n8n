@@ -31,7 +31,7 @@ export const ecommerceProductOperations: INodeProperties[] = [
 				action: 'Get an e-commerce product',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many ecommerce products',
 				action: 'Get many e-commerce products',
@@ -46,7 +46,7 @@ export const ecommerceProductFields: INodeProperties[] = [
 	/*                                 ecommerceProduct:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Product Name',
+		displayName: 'Product name',
 		name: 'productName',
 		type: 'string',
 		required: true,
@@ -59,10 +59,10 @@ export const ecommerceProductFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -78,13 +78,13 @@ export const ecommerceProductFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Product Description',
+				displayName: 'Product description',
 				name: 'productDesc',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Product Price',
+				displayName: 'Product price',
 				name: 'productPrice',
 				type: 'number',
 				typeOptions: {
@@ -93,7 +93,7 @@ export const ecommerceProductFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Product Short Desc',
+				displayName: 'Product short desc',
 				name: 'productShortDesc',
 				type: 'string',
 				default: '',
@@ -105,7 +105,7 @@ export const ecommerceProductFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Subscription Only',
+				displayName: 'Subscription only',
 				name: 'subscriptionOnly',
 				type: 'boolean',
 				default: false,
@@ -148,7 +148,7 @@ export const ecommerceProductFields: INodeProperties[] = [
 	/*                                 ecommerceProduct:getAll                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -182,7 +182,7 @@ export const ecommerceProductFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

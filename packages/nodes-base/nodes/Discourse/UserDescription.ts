@@ -27,7 +27,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many users',
 				action: 'Get many users',
@@ -102,10 +102,10 @@ export const userFields: INodeProperties[] = [
 		description: 'The password of the user to create',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -142,7 +142,7 @@ export const userFields: INodeProperties[] = [
 				value: 'username',
 			},
 			{
-				name: 'SSO External ID',
+				name: 'SSO external ID',
 				value: 'externalId',
 			},
 		],
@@ -172,7 +172,7 @@ export const userFields: INodeProperties[] = [
 		description: 'The username of the user to return',
 	},
 	{
-		displayName: 'SSO External ID',
+		displayName: 'SSO external ID',
 		name: 'externalId',
 		type: 'string',
 		required: true,
@@ -230,7 +230,7 @@ export const userFields: INodeProperties[] = [
 		description: 'User flags to search for',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -290,7 +290,7 @@ export const userFields: INodeProperties[] = [
 						value: 'created',
 					},
 					{
-						name: 'Days Visited',
+						name: 'Days visited',
 						value: 'days_visited',
 					},
 					{
@@ -298,7 +298,7 @@ export const userFields: INodeProperties[] = [
 						value: 'email',
 					},
 					{
-						name: 'Last Emailed',
+						name: 'Last emailed',
 						value: 'last_emailed',
 					},
 					{
@@ -306,11 +306,11 @@ export const userFields: INodeProperties[] = [
 						value: 'posts',
 					},
 					{
-						name: 'Posts Read',
+						name: 'Posts read',
 						value: 'posts_read',
 					},
 					{
-						name: 'Read Time',
+						name: 'Read time',
 						value: 'read_time',
 					},
 					{
@@ -318,11 +318,11 @@ export const userFields: INodeProperties[] = [
 						value: 'seen',
 					},
 					{
-						name: 'Topics Viewed',
+						name: 'Topics viewed',
 						value: 'topics_viewed',
 					},
 					{
-						name: 'Trust Level',
+						name: 'Trust level',
 						value: 'trust_level',
 					},
 					{
@@ -334,7 +334,7 @@ export const userFields: INodeProperties[] = [
 				description: 'What to order by',
 			},
 			{
-				displayName: 'Show Emails',
+				displayName: 'Show emails',
 				name: 'showEmails',
 				type: 'boolean',
 				default: false,

@@ -4,7 +4,7 @@ import { SYSTEM_MESSAGE } from './prompt';
 
 export const commonOptions: INodeProperties[] = [
 	{
-		displayName: 'System Message',
+		displayName: 'System message',
 		name: 'systemMessage',
 		type: 'string',
 		default: SYSTEM_MESSAGE,
@@ -18,21 +18,21 @@ export const commonOptions: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Max Iterations',
+		displayName: 'Max iterations',
 		name: 'maxIterations',
 		type: 'number',
 		default: 10,
 		description: 'The maximum number of iterations the agent will run before stopping',
 	},
 	{
-		displayName: 'Return Intermediate Steps',
+		displayName: 'Return intermediate steps',
 		name: 'returnIntermediateSteps',
 		type: 'boolean',
 		default: false,
 		description: 'Whether or not the output should include intermediate steps the agent took',
 	},
 	{
-		displayName: 'Automatically Passthrough Binary Images',
+		displayName: 'Automatically passthrough binary images',
 		name: 'passthroughBinaryImages',
 		type: 'boolean',
 		default: true,
@@ -40,7 +40,7 @@ export const commonOptions: INodeProperties[] = [
 			'Whether or not binary images should be automatically passed through to the agent as image type messages',
 	},
 	{
-		displayName: 'Automatically Passthrough Binary PDFs',
+		displayName: 'Automatically passthrough binary PDFs',
 		name: 'passthroughBinaryPdfs',
 		type: 'boolean',
 		default: false,
@@ -48,14 +48,14 @@ export const commonOptions: INodeProperties[] = [
 			'Whether or not binary PDF documents should be automatically passed through to the agent. Useful for models that natively support PDF input (e.g. Google Gemini).',
 	},
 	{
-		displayName: 'Tracing Metadata',
+		displayName: 'Tracing metadata',
 		name: 'tracingMetadata',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
 		},
 		default: {},
-		placeholder: 'Add Metadata',
+		placeholder: 'Add metadata',
 		description: 'Custom metadata added to tracing events',
 		options: [
 			{

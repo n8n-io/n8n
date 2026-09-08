@@ -56,7 +56,7 @@ export class GetResponse implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Key',
+						name: 'API key',
 						value: 'apiKey',
 					},
 					{

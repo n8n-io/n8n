@@ -75,7 +75,7 @@ export class Redis implements INodeType {
 						action: 'Return all keys matching a pattern',
 					},
 					{
-						name: 'List Length',
+						name: 'List length',
 						value: 'llen',
 						description: 'Returns the length of a list',
 						action: 'Return the length of a list',
@@ -156,7 +156,7 @@ export class Redis implements INodeType {
 				description: 'Name of the key to get from Redis',
 			},
 			{
-				displayName: 'Key Type',
+				displayName: 'Key type',
 				name: 'keyType',
 				type: 'options',
 				displayOptions: {
@@ -208,7 +208,7 @@ export class Redis implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Dot Notation',
+						displayName: 'Dot notation',
 						name: 'dotNotation',
 						type: 'boolean',
 						default: true,
@@ -268,7 +268,7 @@ export class Redis implements INodeType {
 			//         keys
 			// ----------------------------------
 			{
-				displayName: 'Key Pattern',
+				displayName: 'Key pattern',
 				name: 'keyPattern',
 				type: 'string',
 				displayOptions: {
@@ -281,7 +281,7 @@ export class Redis implements INodeType {
 				description: 'The key pattern for the keys to return',
 			},
 			{
-				displayName: 'Get Values',
+				displayName: 'Get values',
 				name: 'getValues',
 				type: 'boolean',
 				displayOptions: {
@@ -350,7 +350,7 @@ export class Redis implements INodeType {
 				description: 'The value to write in Redis',
 			},
 			{
-				displayName: 'Key Type',
+				displayName: 'Key type',
 				name: 'keyType',
 				type: 'options',
 				displayOptions: {
@@ -389,7 +389,7 @@ export class Redis implements INodeType {
 				description: 'The type of the key to set',
 			},
 			{
-				displayName: 'Value Is JSON',
+				displayName: 'Value is JSON',
 				name: 'valueIsJSON',
 				type: 'boolean',
 				displayOptions: {
@@ -525,7 +525,7 @@ export class Redis implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Dot Notation',
+						displayName: 'Dot notation',
 						name: 'dotNotation',
 						type: 'boolean',
 						default: true,

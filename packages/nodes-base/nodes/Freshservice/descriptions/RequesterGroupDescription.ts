@@ -31,7 +31,7 @@ export const requesterGroupOperations: INodeProperties[] = [
 				action: 'Get a requester group',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many requester groups',
 				action: 'Get many requester groups',
@@ -65,10 +65,10 @@ export const requesterGroupFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -90,7 +90,7 @@ export const requesterGroupFields: INodeProperties[] = [
 	//          requesterGroup: delete
 	// ----------------------------------------
 	{
-		displayName: 'Requester Group ID',
+		displayName: 'Requester group ID',
 		name: 'requesterGroupId',
 		description: 'ID of the requester group to delete',
 		type: 'string',
@@ -108,7 +108,7 @@ export const requesterGroupFields: INodeProperties[] = [
 	//           requesterGroup: get
 	// ----------------------------------------
 	{
-		displayName: 'Requester Group ID',
+		displayName: 'Requester group ID',
 		name: 'requesterGroupId',
 		description: 'ID of the requester group to retrieve',
 		type: 'string',
@@ -126,7 +126,7 @@ export const requesterGroupFields: INodeProperties[] = [
 	//          requesterGroup: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -160,7 +160,7 @@ export const requesterGroupFields: INodeProperties[] = [
 	//          requesterGroup: update
 	// ----------------------------------------
 	{
-		displayName: 'Requester Group ID',
+		displayName: 'Requester group ID',
 		name: 'requesterGroupId',
 		description: 'ID of the requester group to update',
 		type: 'string',
@@ -174,10 +174,10 @@ export const requesterGroupFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

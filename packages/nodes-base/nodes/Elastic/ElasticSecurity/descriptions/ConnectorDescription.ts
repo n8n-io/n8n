@@ -28,7 +28,7 @@ export const connectorFields: INodeProperties[] = [
 	//           connector: create
 	// ----------------------------------------
 	{
-		displayName: 'Connector Name',
+		displayName: 'Connector name',
 		name: 'name',
 		description:
 			'Connectors allow you to send Elastic Security cases into other systems (only ServiceNow, Jira, or IBM Resilient)',
@@ -43,7 +43,7 @@ export const connectorFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Connector Type',
+		displayName: 'Connector type',
 		name: 'connectorType',
 		type: 'options',
 		required: true,
@@ -100,7 +100,7 @@ export const connectorFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'API Token',
+		displayName: 'API token',
 		name: 'apiToken',
 		description: 'Jira API token',
 		type: 'string',
@@ -116,7 +116,7 @@ export const connectorFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Project Key',
+		displayName: 'Project key',
 		name: 'projectKey',
 		description: 'Jira Project Key',
 		type: 'string',
@@ -162,7 +162,7 @@ export const connectorFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'API Key ID',
+		displayName: 'API key ID',
 		name: 'apiKeyId',
 		description: 'IBM Resilient API key ID',
 		type: 'string',
@@ -178,7 +178,7 @@ export const connectorFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'API Key Secret',
+		displayName: 'API key secret',
 		name: 'apiKeySecret',
 		description: 'IBM Resilient API key secret',
 		type: 'string',

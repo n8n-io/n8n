@@ -55,13 +55,13 @@ export class LmCohere implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Maximum Number of Tokens',
+						displayName: 'Maximum number of tokens',
 						name: 'maxTokens',
 						default: 250,
 						description:
@@ -79,7 +79,7 @@ export class LmCohere implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Sampling Temperature',
+						displayName: 'Sampling temperature',
 						name: 'temperature',
 						default: 0,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },

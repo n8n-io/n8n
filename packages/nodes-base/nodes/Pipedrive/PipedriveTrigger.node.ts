@@ -137,7 +137,7 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Token',
+						name: 'API token',
 						value: 'apiToken',
 					},
 					{
@@ -148,12 +148,12 @@ export class PipedriveTrigger implements INodeType {
 				default: 'apiToken',
 			},
 			{
-				displayName: 'Incoming Authentication',
+				displayName: 'Incoming authentication',
 				name: 'incomingAuthentication',
 				type: 'options',
 				options: [
 					{
-						name: 'Basic Auth',
+						name: 'Basic auth',
 						value: 'basicAuth',
 					},
 					{

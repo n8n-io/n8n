@@ -62,7 +62,7 @@ export class LinearTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Token',
+						name: 'API token',
 						value: 'apiToken',
 					},
 					{
@@ -79,7 +79,7 @@ export class LinearTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Team Name or ID',
+				displayName: 'Team name or ID',
 				name: 'teamId',
 				type: 'options',
 				description:
@@ -90,12 +90,12 @@ export class LinearTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Listen to Resources',
+				displayName: 'Listen to resources',
 				name: 'resources',
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Comment Reaction',
+						name: 'Comment reaction',
 						value: 'reaction',
 					},
 					{
@@ -112,11 +112,11 @@ export class LinearTrigger implements INodeType {
 						value: 'issue',
 					},
 					{
-						name: 'Issue Comment',
+						name: 'Issue comment',
 						value: 'comment',
 					},
 					{
-						name: 'Issue Label',
+						name: 'Issue label',
 						value: 'issueLabel',
 					},
 					{

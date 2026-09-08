@@ -19,7 +19,7 @@ export const panelistOperations: INodeProperties[] = [
 				action: 'Delete a panelist',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many panelists',
 			},
@@ -71,7 +71,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -93,7 +93,7 @@ export const panelistFields: INodeProperties[] = [
 	//        panelist: getAll
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -111,7 +111,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -146,7 +146,7 @@ export const panelistFields: INodeProperties[] = [
 	//        panelist: delete
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -164,7 +164,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Panelist Key',
+		displayName: 'Panelist key',
 		name: 'panelistKey',
 		type: 'string',
 		required: true,
@@ -182,7 +182,7 @@ export const panelistFields: INodeProperties[] = [
 	//        panelist: reinvite
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -200,7 +200,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Panelist Key',
+		displayName: 'Panelist key',
 		name: 'panelistKey',
 		type: 'string',
 		required: true,

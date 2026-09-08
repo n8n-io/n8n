@@ -48,7 +48,7 @@ const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Execute Query',
+					name: 'Execute query',
 					value: 'executeQuery',
 					description: 'Execute an SQL query',
 					action: 'Execute a SQL query',
@@ -90,7 +90,7 @@ const versionDescription: INodeTypeDescription = {
 			placeholder: 'SELECT id, name FROM product WHERE id < 40',
 			required: true,
 			description:
-				"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
+				"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query parameters' set in options below.",
 			hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
 		},
 
@@ -105,10 +105,10 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
-					placeholder: 'Select a Table...',
+					placeholder: 'Select a table...',
 					typeOptions: {
 						searchListMethod: 'searchTables',
 						searchFilterRequired: false,
@@ -157,7 +157,7 @@ const versionDescription: INodeTypeDescription = {
 			placeholder: 'Add option',
 			options: [
 				{
-					displayName: 'Query Parameters',
+					displayName: 'Query parameters',
 					name: 'queryReplacement',
 					type: 'string',
 					default: '',
@@ -190,13 +190,13 @@ const versionDescription: INodeTypeDescription = {
 					type: 'options',
 					options: [
 						{
-							name: 'Low Prioirity',
+							name: 'Low prioirity',
 							value: 'LOW_PRIORITY',
 							description:
 								'Delays execution of the INSERT until no other clients are reading from the table',
 						},
 						{
-							name: 'High Priority',
+							name: 'High priority',
 							value: 'HIGH_PRIORITY',
 							description:
 								'Overrides the effect of the --low-priority-updates option if the server was started with that option. It also causes concurrent inserts not to be used.',
@@ -225,10 +225,10 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
-					placeholder: 'Select a Table...',
+					placeholder: 'Select a table...',
 					typeOptions: {
 						searchListMethod: 'searchTables',
 						searchFilterRequired: false,
@@ -250,7 +250,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Name of the table in which to update data in',
 		},
 		{
-			displayName: 'Update Key',
+			displayName: 'Update key',
 			name: 'updateKey',
 			type: 'string',
 			displayOptions: {

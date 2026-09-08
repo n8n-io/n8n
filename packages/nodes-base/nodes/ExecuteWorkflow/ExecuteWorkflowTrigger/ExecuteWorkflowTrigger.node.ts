@@ -59,10 +59,10 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Workflow Call',
+						name: 'Workflow call',
 						value: 'worklfow_call',
 						description: 'When executed by another workflow using Execute Workflow Trigger',
-						action: 'When executed by Another Workflow',
+						action: 'When executed by another workflow',
 					},
 				],
 				default: 'worklfow_call',
@@ -126,7 +126,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'JSON Example',
+				displayName: 'JSON example',
 				name: JSON_EXAMPLE,
 				type: 'json',
 				default: JSON.stringify(
@@ -145,7 +145,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Workflow Input Schema',
+				displayName: 'Workflow input schema',
 				name: WORKFLOW_INPUTS,
 				placeholder: 'Add field',
 				type: 'fixedCollection',
@@ -192,7 +192,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Items to Return',
+				displayName: 'Items to return',
 				name: 'returnOutput',
 				type: 'options',
 				noDataExpression: true,
@@ -201,12 +201,12 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					'Choose what to send back when the last node ran multiple times (for example, after a Loop Over Items)',
 				options: [
 					{
-						name: 'All Items From Every Run',
+						name: 'All items from every run',
 						value: 'allRuns',
 						description: 'Send every item the last node produced, across all its runs',
 					},
 					{
-						name: 'Items From the Last Run Only',
+						name: 'Items from the last run only',
 						value: 'lastRunOnly',
 						description: "Send only the items from the last node's final run",
 					},

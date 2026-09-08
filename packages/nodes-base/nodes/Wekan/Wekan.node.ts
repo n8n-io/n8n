@@ -59,7 +59,7 @@ export class Wekan implements INodeType {
 						value: 'card',
 					},
 					{
-						name: 'Card Comment',
+						name: 'Card comment',
 						value: 'cardComment',
 					},
 					{
@@ -67,7 +67,7 @@ export class Wekan implements INodeType {
 						value: 'checklist',
 					},
 					{
-						name: 'Checklist Item',
+						name: 'Checklist item',
 						value: 'checklistItem',
 					},
 					{

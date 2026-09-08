@@ -231,13 +231,13 @@ const agentTypeProperty: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 	options: [
 		{
-			name: 'Tools Agent',
+			name: 'Tools agent',
 			value: 'toolsAgent',
 			description:
 				'Utilizes structured tool schemas for precise and reliable tool selection and execution. Recommended for complex tasks requiring accurate and consistent tool usage, but only usable with models that support tool calling.',
 		},
 		{
-			name: 'Conversational Agent',
+			name: 'Conversational agent',
 			value: 'conversationalAgent',
 			description:
 				'Describes tools in the system prompt and parses JSON responses for tool calls. More flexible but potentially less reliable than the Tools Agent. Suitable for simpler interactions or with models not supporting structured schemas.',
@@ -249,13 +249,13 @@ const agentTypeProperty: INodeProperties = {
 				"Leverages OpenAI's function calling capabilities to precisely select and execute tools. Excellent for tasks requiring structured outputs when working with OpenAI models.",
 		},
 		{
-			name: 'Plan and Execute Agent',
+			name: 'Plan and execute agent',
 			value: 'planAndExecuteAgent',
 			description:
 				'Creates a high-level plan for complex tasks and then executes each step. Suitable for multi-stage problems or when a strategic approach is needed.',
 		},
 		{
-			name: 'ReAct Agent',
+			name: 'ReAct agent',
 			value: 'reActAgent',
 			description:
 				'Combines reasoning and action in an iterative process. Effective for tasks that require careful analysis and step-by-step problem-solving.',
@@ -338,7 +338,7 @@ export class AgentV1 implements INodeType {
 				},
 				{
 					displayName:
-						"This node is using Agent that has been deprecated. Please switch to using 'Tools Agent' instead.",
+						"This node is using Agent that has been deprecated. Please switch to using 'Tools agent' instead.",
 					name: 'deprecated',
 					type: 'notice',
 					default: '',
@@ -432,7 +432,7 @@ export class AgentV1 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Require Specific Output Format',
+					displayName: 'Require specific output format',
 					name: 'hasOutputParser',
 					type: 'boolean',
 					default: false,

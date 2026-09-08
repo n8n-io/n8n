@@ -21,7 +21,7 @@ export const productOperations: INodeProperties[] = [
 				action: 'Create a product',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 				action: 'Create or update a product',
@@ -39,7 +39,7 @@ export const productOperations: INodeProperties[] = [
 				action: 'Get a product',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many products',
 				action: 'Get many products',
@@ -60,7 +60,7 @@ export const productFields: INodeProperties[] = [
 	//           product: create
 	// ----------------------------------------
 	{
-		displayName: 'Product Name',
+		displayName: 'Product name',
 		name: 'productName',
 		type: 'string',
 		required: true,
@@ -77,7 +77,7 @@ export const productFields: INodeProperties[] = [
 	//            product: upsert
 	// ----------------------------------------
 	{
-		displayName: 'Product Name',
+		displayName: 'Product name',
 		name: 'productName',
 		description:
 			'Name of the product. If a record with this product name exists it will be updated, otherwise a new one will be created.',
@@ -96,10 +96,10 @@ export const productFields: INodeProperties[] = [
 	//         product: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -109,7 +109,7 @@ export const productFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Commission Rate',
+				displayName: 'Commission rate',
 				name: 'Commission_Rate',
 				type: 'number',
 				description: 'Commission rate for the product. For example, enter 12 for 12%.',
@@ -132,19 +132,19 @@ export const productFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Product Active',
+				displayName: 'Product active',
 				name: 'Product_Active',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Product Category',
+				displayName: 'Product category',
 				name: 'Product_Category',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Quantity in Demand',
+				displayName: 'Quantity in demand',
 				name: 'Qty_in_Demand',
 				type: 'number',
 				typeOptions: {
@@ -153,7 +153,7 @@ export const productFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Quantity in Stock',
+				displayName: 'Quantity in stock',
 				name: 'Qty_in_Stock',
 				type: 'number',
 				typeOptions: {
@@ -168,7 +168,7 @@ export const productFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Unit Price',
+				displayName: 'Unit price',
 				name: 'Unit_Price',
 				type: 'number',
 				typeOptions: {
@@ -238,10 +238,10 @@ export const productFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -251,7 +251,7 @@ export const productFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Commission Rate',
+				displayName: 'Commission rate',
 				name: 'Commission_Rate',
 				type: 'number',
 				description: 'Commission rate for the product. For example, enter 12 for 12%.',
@@ -274,19 +274,19 @@ export const productFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Product Active',
+				displayName: 'Product active',
 				name: 'Product_Active',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Product Category',
+				displayName: 'Product category',
 				name: 'Product_Category',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Quantity in Demand',
+				displayName: 'Quantity in demand',
 				name: 'Qty_in_Demand',
 				type: 'number',
 				typeOptions: {
@@ -295,7 +295,7 @@ export const productFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Quantity in Stock',
+				displayName: 'Quantity in stock',
 				name: 'Qty_in_Stock',
 				type: 'number',
 				typeOptions: {
@@ -310,7 +310,7 @@ export const productFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Unit Price',
+				displayName: 'Unit price',
 				name: 'Unit_Price',
 				type: 'number',
 				typeOptions: {

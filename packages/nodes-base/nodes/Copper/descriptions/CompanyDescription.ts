@@ -32,7 +32,7 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Get a company',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many companies',
 			},
@@ -65,10 +65,10 @@ export const companyFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -86,7 +86,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'Description of the company to create',
 			},
 			{
-				displayName: 'Email Domain',
+				displayName: 'Email domain',
 				name: 'email_domain',
 				type: 'string',
 				default: '',
@@ -135,7 +135,7 @@ export const companyFields: INodeProperties[] = [
 	//             company: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -169,7 +169,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filterFields',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -214,10 +214,10 @@ export const companyFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

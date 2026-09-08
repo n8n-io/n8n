@@ -78,14 +78,14 @@ export class AwsSns implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Display Name',
+						displayName: 'Display name',
 						name: 'displayName',
 						type: 'string',
 						default: '',
 						description: 'The display name to use for a topic with SMS subscriptions',
 					},
 					{
-						displayName: 'Fifo Topic',
+						displayName: 'Fifo topic',
 						name: 'fifoTopic',
 						type: 'boolean',
 						default: false,
@@ -107,7 +107,7 @@ export class AwsSns implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a topic...',

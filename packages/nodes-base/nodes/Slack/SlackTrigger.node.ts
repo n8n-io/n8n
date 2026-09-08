@@ -59,52 +59,52 @@ export class SlackTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'trigger',
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Any Event',
+						name: 'Any event',
 						value: 'any_event',
 						description: 'Triggers on any event',
 					},
 					{
-						name: 'App Home Opened',
+						name: 'App home opened',
 						value: 'app_home_opened',
 						description: "When a user opens your app's Home tab",
 					},
 					{
-						name: 'Bot / App Mention',
+						name: 'Bot / app mention',
 						value: 'app_mention',
 						description: 'When your bot or app is mentioned in a channel the app is added to',
 					},
 					{
-						name: 'File Made Public',
+						name: 'File made public',
 						value: 'file_public',
 						description: 'When a file is made public',
 					},
 					{
-						name: 'File Shared',
+						name: 'File shared',
 						value: 'file_share',
 						description: 'When a file is shared in a channel the app is added to',
 					},
 					{
-						name: 'New Message Posted to Channel',
+						name: 'New message posted to channel',
 						value: 'message',
 						description: 'When a message is posted to a channel the app is added to',
 					},
 					{
-						name: 'New Public Channel Created',
+						name: 'New public channel created',
 						value: 'channel_created',
 						description: 'When a new public channel is created',
 					},
 					{
-						name: 'New User',
+						name: 'New user',
 						value: 'team_join',
 						description: 'When a new user is added to Slack',
 					},
 					{
-						name: 'Reaction Added',
+						name: 'Reaction added',
 						value: 'reaction_added',
 						description: 'When a reaction is added to a message the app is added to',
 					},
@@ -112,7 +112,7 @@ export class SlackTrigger implements INodeType {
 				default: [],
 			},
 			{
-				displayName: 'Watch Whole Workspace',
+				displayName: 'Watch whole workspace',
 				name: 'watchWorkspace',
 				type: 'boolean',
 				default: false,
@@ -138,7 +138,7 @@ export class SlackTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Channel to Watch',
+				displayName: 'Channel to watch',
 				name: 'channelId',
 				type: 'resourceLocator',
 				required: true,
@@ -153,7 +153,7 @@ export class SlackTrigger implements INodeType {
 				},
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a channel...',
@@ -199,7 +199,7 @@ export class SlackTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Download Files',
+				displayName: 'Download files',
 				name: 'downloadFiles',
 				type: 'boolean',
 				default: false,
@@ -214,7 +214,7 @@ export class SlackTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
@@ -225,7 +225,7 @@ export class SlackTrigger implements INodeType {
 						description: 'Whether to resolve the IDs to their respective names and return them',
 					},
 					{
-						displayName: 'Usernames or IDs to Ignore',
+						displayName: 'Usernames or IDs to ignore',
 						name: 'userIds',
 						type: 'multiOptions',
 						typeOptions: {
@@ -236,7 +236,7 @@ export class SlackTrigger implements INodeType {
 							'A comma-separated string of encoded user IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Emoji Names to Filter',
+						displayName: 'Emoji names to filter',
 						name: 'reactionEmojis',
 						type: 'string',
 						default: '',

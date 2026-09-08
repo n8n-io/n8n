@@ -18,7 +18,7 @@ const displayOptions: IDisplayOptions = {
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'New Name',
+		displayName: 'New name',
 		name: 'newName',
 		type: 'string',
 		required: true,

@@ -53,23 +53,23 @@ export class Aggregate implements INodeType {
 				default: 'aggregateIndividualFields',
 				options: [
 					{
-						name: 'Individual Fields',
+						name: 'Individual fields',
 						value: 'aggregateIndividualFields',
 					},
 					{
-						name: 'All Item Data (Into a Single List)',
+						name: 'All item data (into a single list)',
 						value: 'aggregateAllItemData',
 					},
 				],
 			},
 			{
-				displayName: 'Fields To Aggregate',
+				displayName: 'Fields to aggregate',
 				name: 'fieldsToAggregate',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Field To Aggregate',
+				placeholder: 'Add field to aggregate',
 				default: { fieldToAggregate: [{ fieldToAggregate: '', renameField: false }] },
 				displayOptions: {
 					show: {
@@ -82,7 +82,7 @@ export class Aggregate implements INodeType {
 						name: 'fieldToAggregate',
 						values: [
 							{
-								displayName: 'Input Field Name',
+								displayName: 'Input field name',
 								name: 'fieldToAggregate',
 								type: 'string',
 								default: '',
@@ -93,14 +93,14 @@ export class Aggregate implements INodeType {
 								requiresDataPath: 'single',
 							},
 							{
-								displayName: 'Rename Field',
+								displayName: 'Rename field',
 								name: 'renameField',
 								type: 'boolean',
 								default: false,
 								description: 'Whether to give the field a different name in the output',
 							},
 							{
-								displayName: 'Output Field Name',
+								displayName: 'Output field name',
 								name: 'outputFieldName',
 								displayOptions: {
 									show: {
@@ -118,7 +118,7 @@ export class Aggregate implements INodeType {
 				],
 			},
 			{
-				displayName: 'Put Output in Field',
+				displayName: 'Put output in field',
 				name: 'destinationFieldName',
 				type: 'string',
 				displayOptions: {
@@ -136,15 +136,15 @@ export class Aggregate implements INodeType {
 				default: 'allFields',
 				options: [
 					{
-						name: 'All Fields',
+						name: 'All fields',
 						value: 'allFields',
 					},
 					{
-						name: 'Specified Fields',
+						name: 'Specified fields',
 						value: 'specifiedFields',
 					},
 					{
-						name: 'All Fields Except',
+						name: 'All fields except',
 						value: 'allFieldsExcept',
 					},
 				],
@@ -155,7 +155,7 @@ export class Aggregate implements INodeType {
 				},
 			},
 			{
-				displayName: 'Fields To Exclude',
+				displayName: 'Fields to exclude',
 				name: 'fieldsToExclude',
 				type: 'string',
 				placeholder: 'e.g. email, name',
@@ -169,7 +169,7 @@ export class Aggregate implements INodeType {
 				},
 			},
 			{
-				displayName: 'Fields To Include',
+				displayName: 'Fields to include',
 				name: 'fieldsToInclude',
 				type: 'string',
 				placeholder: 'e.g. email, name',
@@ -186,11 +186,11 @@ export class Aggregate implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
-						displayName: 'Disable Dot Notation',
+						displayName: 'Disable dot notation',
 						name: 'disableDotNotation',
 						type: 'boolean',
 						default: false,
@@ -203,7 +203,7 @@ export class Aggregate implements INodeType {
 						},
 					},
 					{
-						displayName: 'Merge Lists',
+						displayName: 'Merge lists',
 						name: 'mergeLists',
 						type: 'boolean',
 						default: false,
@@ -216,14 +216,14 @@ export class Aggregate implements INodeType {
 						},
 					},
 					{
-						displayName: 'Include Binaries',
+						displayName: 'Include binaries',
 						name: 'includeBinaries',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to include the binary data in the new item',
 					},
 					{
-						displayName: 'Keep Only Unique Binaries',
+						displayName: 'Keep only unique binaries',
 						name: 'keepOnlyUnique',
 						type: 'boolean',
 						default: false,
@@ -236,7 +236,7 @@ export class Aggregate implements INodeType {
 						},
 					},
 					{
-						displayName: 'Keep Missing And Null Values',
+						displayName: 'Keep missing and null values',
 						name: 'keepMissing',
 						type: 'boolean',
 						default: false,

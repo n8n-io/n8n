@@ -68,7 +68,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				routing: {
 					request: {
@@ -146,7 +146,7 @@ const createProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Due Date',
+		displayName: 'Due date',
 		name: 'dueDate',
 		type: 'dateTime',
 		required: true,
@@ -166,10 +166,10 @@ const createProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -180,7 +180,7 @@ const createProperties: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Assigned To',
+				displayName: 'Assigned to',
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
@@ -310,7 +310,7 @@ const getAllProperties: INodeProperties[] = [
 		description: 'Contact the task belongs to',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -377,10 +377,10 @@ const updateProperties: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -391,7 +391,7 @@ const updateProperties: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Assigned To',
+				displayName: 'Assigned to',
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
@@ -420,7 +420,7 @@ const updateProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',

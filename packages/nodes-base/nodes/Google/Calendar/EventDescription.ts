@@ -33,7 +33,7 @@ export const eventOperations: INodeProperties[] = [
 				action: 'Get an event',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many events from a calendar',
 				action: 'Get many events',
@@ -65,7 +65,7 @@ export const eventFields: INodeProperties[] = [
 				displayName: 'Calendar',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a Calendar...',
+				placeholder: 'Select a calendar...',
 				typeOptions: {
 					searchListMethod: 'getCalendars',
 					searchable: true,
@@ -166,7 +166,7 @@ export const eventFields: INodeProperties[] = [
 			'End time of the event, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 	},
 	{
-		displayName: 'Use Default Reminders',
+		displayName: 'Use default reminders',
 		name: 'useDefaultReminders',
 		type: 'boolean',
 		displayOptions: {
@@ -178,10 +178,10 @@ export const eventFields: INodeProperties[] = [
 		default: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -191,7 +191,7 @@ export const eventFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'All Day',
+				displayName: 'All day',
 				name: 'allday',
 				type: 'options',
 				options: [
@@ -219,7 +219,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'The attendees of the event. Multiple ones can be separated by comma.',
 			},
 			{
-				displayName: 'Color Name or ID',
+				displayName: 'Color name or ID',
 				name: 'color',
 				type: 'options',
 				typeOptions: {
@@ -230,9 +230,9 @@ export const eventFields: INodeProperties[] = [
 					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Conference Data',
+				displayName: 'Conference data',
 				name: 'conferenceDataUi',
-				placeholder: 'Add Conference',
+				placeholder: 'Add conference',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -240,11 +240,11 @@ export const eventFields: INodeProperties[] = [
 				default: {},
 				options: [
 					{
-						displayName: 'Conference Link',
+						displayName: 'Conference link',
 						name: 'conferenceDataValues',
 						values: [
 							{
-								displayName: 'Type Name or ID',
+								displayName: 'Type name or ID',
 								name: 'conferenceSolution',
 								type: 'options',
 								description:
@@ -267,21 +267,21 @@ export const eventFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Guests Can Invite Others',
+				displayName: 'Guests can invite others',
 				name: 'guestsCanInviteOthers',
 				type: 'boolean',
 				default: true,
 				description: 'Whether attendees other than the organizer can invite others to the event',
 			},
 			{
-				displayName: 'Guests Can Modify',
+				displayName: 'Guests can modify',
 				name: 'guestsCanModify',
 				type: 'boolean',
 				default: false,
 				description: 'Whether attendees other than the organizer can modify the event',
 			},
 			{
-				displayName: 'Guests Can See Other Guests',
+				displayName: 'Guests can see other guests',
 				name: 'guestsCanSeeOtherGuests',
 				type: 'boolean',
 				default: true,
@@ -303,7 +303,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'Geographic location of the event as free-form text',
 			},
 			{
-				displayName: 'Max Attendees',
+				displayName: 'Max attendees',
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
@@ -311,7 +311,7 @@ export const eventFields: INodeProperties[] = [
 					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
-				displayName: 'Repeat Frequency',
+				displayName: 'Repeat frequency',
 				name: 'repeatFrecuency',
 				type: 'options',
 				options: [
@@ -335,7 +335,7 @@ export const eventFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Repeat How Many Times?',
+				displayName: 'Repeat how many times?',
 				name: 'repeatHowManyTimes',
 				type: 'number',
 				typeOptions: {
@@ -344,7 +344,7 @@ export const eventFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Repeat Until',
+				displayName: 'Repeat until',
 				name: 'repeatUntil',
 				type: 'dateTime',
 				default: '',
@@ -358,7 +358,7 @@ export const eventFields: INodeProperties[] = [
 					'Recurrence rule. When set, the parameters Repeat Frequency, Repeat How Many Times and Repeat Until are ignored.',
 			},
 			{
-				displayName: 'Send Updates',
+				displayName: 'Send updates',
 				name: 'sendUpdates',
 				type: 'options',
 				options: [
@@ -368,7 +368,7 @@ export const eventFields: INodeProperties[] = [
 						description: 'Notifications are sent to all guests',
 					},
 					{
-						name: 'External Only',
+						name: 'External only',
 						value: 'externalOnly',
 						description: 'Notifications are sent to non-Google Calendar guests only',
 					},
@@ -383,7 +383,7 @@ export const eventFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Show Me As',
+				displayName: 'Show me as',
 				name: 'showMeAs',
 				type: 'options',
 				options: [
@@ -445,7 +445,7 @@ export const eventFields: INodeProperties[] = [
 		name: 'remindersUi',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Reminder',
+		placeholder: 'Add reminder',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -478,7 +478,7 @@ export const eventFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Minutes Before',
+						displayName: 'Minutes before',
 						name: 'minutes',
 						type: 'number',
 						typeOptions: {
@@ -524,7 +524,7 @@ export const eventFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Send Updates',
+				displayName: 'Send updates',
 				name: 'sendUpdates',
 				type: 'options',
 				options: [
@@ -534,7 +534,7 @@ export const eventFields: INodeProperties[] = [
 						description: 'Notifications are sent to all guests',
 					},
 					{
-						name: 'External Only',
+						name: 'External only',
 						value: 'externalOnly',
 						description: 'Notifications are sent to non-Google Calendar guests only',
 					},
@@ -580,7 +580,7 @@ export const eventFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Max Attendees',
+				displayName: 'Max attendees',
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
@@ -588,7 +588,7 @@ export const eventFields: INodeProperties[] = [
 					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
-				displayName: 'Return Next Instance of Recurring Event',
+				displayName: 'Return next instance of recurring event',
 				name: 'returnNextInstance',
 				type: 'boolean',
 				default: false,
@@ -612,7 +612,7 @@ export const eventFields: INodeProperties[] = [
 						displayName: 'Timezone',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Timezone...',
+						placeholder: 'Select a timezone...',
 						typeOptions: {
 							searchListMethod: 'getTimezones',
 							searchable: true,
@@ -646,7 +646,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                 event:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -746,7 +746,7 @@ export const eventFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Expand Events',
+				displayName: 'Expand events',
 				name: 'singleEvents',
 				type: 'boolean',
 				default: false,
@@ -775,7 +775,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'Specifies event ID in the iCalendar format to be included in the response',
 			},
 			{
-				displayName: 'Max Attendees',
+				displayName: 'Max attendees',
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
@@ -783,12 +783,12 @@ export const eventFields: INodeProperties[] = [
 					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'options',
 				options: [
 					{
-						name: 'Start Time',
+						name: 'Start time',
 						value: 'startTime',
 						description:
 							'Order by the start date/time (ascending). This is only available when querying single events (i.e. the parameter singleEvents is True).',
@@ -811,23 +811,23 @@ export const eventFields: INodeProperties[] = [
 					'Free text search terms to find events that match these terms in any field, except for extended properties',
 			},
 			{
-				displayName: 'Recurring Event Handling',
+				displayName: 'Recurring event handling',
 				name: 'recurringEventHandling',
 				type: 'options',
 				default: 'expand',
 				options: [
 					{
-						name: 'All Occurrences',
+						name: 'All occurrences',
 						value: 'expand',
 						description: 'Return all instances of recurring event for specified time range',
 					},
 					{
-						name: 'First Occurrence',
+						name: 'First occurrence',
 						value: 'first',
 						description: 'Return event with specified recurrence rule',
 					},
 					{
-						name: 'Next Occurrence',
+						name: 'Next occurrence',
 						value: 'next',
 						description: 'Return next instance of recurring event',
 					},
@@ -839,7 +839,7 @@ export const eventFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Show Deleted',
+				displayName: 'Show deleted',
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
@@ -847,7 +847,7 @@ export const eventFields: INodeProperties[] = [
 					'Whether to include deleted events (with status equals "cancelled") in the result',
 			},
 			{
-				displayName: 'Show Hidden Invitations',
+				displayName: 'Show hidden invitations',
 				name: 'showHiddenInvitations',
 				type: 'boolean',
 				default: false,
@@ -866,7 +866,7 @@ export const eventFields: INodeProperties[] = [
 						displayName: 'Timezone',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Timezone...',
+						placeholder: 'Select a timezone...',
 						typeOptions: {
 							searchListMethod: 'getTimezones',
 							searchable: true,
@@ -894,7 +894,7 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Updated Min',
+				displayName: 'Updated min',
 				name: 'updatedMin',
 				type: 'dateTime',
 				default: '',
@@ -926,11 +926,11 @@ export const eventFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Recurring Event Instance',
+				name: 'Recurring event instance',
 				value: 'instance',
 			},
 			{
-				name: 'Recurring Event',
+				name: 'Recurring event',
 				value: 'event',
 			},
 		],
@@ -946,7 +946,7 @@ export const eventFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Use Default Reminders',
+		displayName: 'Use default reminders',
 		name: 'useDefaultReminders',
 		type: 'boolean',
 		displayOptions: {
@@ -958,10 +958,10 @@ export const eventFields: INodeProperties[] = [
 		default: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -971,7 +971,7 @@ export const eventFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'All Day',
+				displayName: 'All day',
 				name: 'allday',
 				type: 'options',
 				options: [
@@ -991,7 +991,7 @@ export const eventFields: INodeProperties[] = [
 				displayName: 'Attendees',
 				name: 'attendeesUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Attendees',
+				placeholder: 'Add attendees',
 				default: {
 					values: {
 						mode: 'add',
@@ -1010,11 +1010,11 @@ export const eventFields: INodeProperties[] = [
 								default: 'add',
 								options: [
 									{
-										name: 'Add Attendees Below [Default]',
+										name: 'Add attendees below [default]',
 										value: 'add',
 									},
 									{
-										name: 'Replace Attendees with Those Below',
+										name: 'Replace attendees with those below',
 										value: 'replace',
 									},
 								],
@@ -1056,7 +1056,7 @@ export const eventFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Color Name or ID',
+				displayName: 'Color name or ID',
 				name: 'color',
 				type: 'options',
 				typeOptions: {
@@ -1080,21 +1080,21 @@ export const eventFields: INodeProperties[] = [
 				description: 'End time of the event',
 			},
 			{
-				displayName: 'Guests Can Invite Others',
+				displayName: 'Guests can invite others',
 				name: 'guestsCanInviteOthers',
 				type: 'boolean',
 				default: true,
 				description: 'Whether attendees other than the organizer can invite others to the event',
 			},
 			{
-				displayName: 'Guests Can Modify',
+				displayName: 'Guests can modify',
 				name: 'guestsCanModify',
 				type: 'boolean',
 				default: false,
 				description: 'Whether attendees other than the organizer can modify the event',
 			},
 			{
-				displayName: 'Guests Can See Other Guests',
+				displayName: 'Guests can see other guests',
 				name: 'guestsCanSeeOtherGuests',
 				type: 'boolean',
 				default: true,
@@ -1116,7 +1116,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'Geographic location of the event as free-form text',
 			},
 			{
-				displayName: 'Max Attendees',
+				displayName: 'Max attendees',
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
@@ -1124,7 +1124,7 @@ export const eventFields: INodeProperties[] = [
 					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
-				displayName: 'Repeat Frequency',
+				displayName: 'Repeat frequency',
 				name: 'repeatFrecuency',
 				type: 'options',
 				options: [
@@ -1148,7 +1148,7 @@ export const eventFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Repeat How Many Times?',
+				displayName: 'Repeat how many times?',
 				name: 'repeatHowManyTimes',
 				type: 'number',
 				typeOptions: {
@@ -1157,7 +1157,7 @@ export const eventFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Repeat Until',
+				displayName: 'Repeat until',
 				name: 'repeatUntil',
 				type: 'dateTime',
 				default: '',
@@ -1171,7 +1171,7 @@ export const eventFields: INodeProperties[] = [
 					'Recurrence rule. When set, the parameters Repeat Frequency, Repeat How Many Times and Repeat Until are ignored.',
 			},
 			{
-				displayName: 'Send Updates',
+				displayName: 'Send updates',
 				name: 'sendUpdates',
 				type: 'options',
 				options: [
@@ -1181,7 +1181,7 @@ export const eventFields: INodeProperties[] = [
 						description: 'Notifications are sent to all guests',
 					},
 					{
-						name: 'External Only',
+						name: 'External only',
 						value: 'externalOnly',
 						description: 'Notifications are sent to non-Google Calendar guests only',
 					},
@@ -1196,7 +1196,7 @@ export const eventFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Show Me As',
+				displayName: 'Show me as',
 				name: 'showMeAs',
 				type: 'options',
 				options: [
@@ -1265,7 +1265,7 @@ export const eventFields: INodeProperties[] = [
 		name: 'remindersUi',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Reminder',
+		placeholder: 'Add reminder',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1298,7 +1298,7 @@ export const eventFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Minutes Before',
+						displayName: 'Minutes before',
 						name: 'minutes',
 						type: 'number',
 						typeOptions: {

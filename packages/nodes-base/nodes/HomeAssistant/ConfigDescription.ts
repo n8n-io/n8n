@@ -19,7 +19,7 @@ export const configOperations: INodeProperties[] = [
 				action: 'Get the config',
 			},
 			{
-				name: 'Check Configuration',
+				name: 'Check configuration',
 				value: 'check',
 				description: 'Check the configuration',
 				action: 'Check the config',

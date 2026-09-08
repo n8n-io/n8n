@@ -52,17 +52,17 @@ const properties: INodeProperties[] = [
 					'Message flags. <a href="https://discord.com/developers/docs/resources/channel#message-object-message-flags" target="_blank">More info</a>.”.',
 				options: [
 					{
-						name: 'Suppress Embeds',
+						name: 'Suppress embeds',
 						value: 'SUPPRESS_EMBEDS',
 					},
 					{
-						name: 'Suppress Notifications',
+						name: 'Suppress notifications',
 						value: 'SUPPRESS_NOTIFICATIONS',
 					},
 				],
 			},
 			{
-				displayName: 'Text-to-Speech (TTS)',
+				displayName: 'Text-to-speech (TTS)',
 				name: 'tts',
 				type: 'boolean',
 				default: false,

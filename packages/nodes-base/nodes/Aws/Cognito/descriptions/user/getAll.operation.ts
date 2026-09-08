@@ -15,7 +15,7 @@ const properties: INodeProperties[] = [
 		description: 'Select the user pool to use',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
@@ -71,7 +71,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'fixedCollection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		routing: {
 			send: {
@@ -110,7 +110,7 @@ const properties: INodeProperties[] = [
 						description: 'The attribute to search for',
 						options: [
 							{
-								name: 'Cognito User Status',
+								name: 'Cognito user status',
 								value: 'cognito:user_status',
 							},
 							{
@@ -118,11 +118,11 @@ const properties: INodeProperties[] = [
 								value: 'email',
 							},
 							{
-								name: 'Family Name',
+								name: 'Family name',
 								value: 'family_name',
 							},
 							{
-								name: 'Given Name',
+								name: 'Given name',
 								value: 'given_name',
 							},
 							{
@@ -130,15 +130,15 @@ const properties: INodeProperties[] = [
 								value: 'name',
 							},
 							{
-								name: 'Phone Number',
+								name: 'Phone number',
 								value: 'phone_number',
 							},
 							{
-								name: 'Preferred Username',
+								name: 'Preferred username',
 								value: 'preferred_username',
 							},
 							{
-								name: 'Status (Enabled)',
+								name: 'Status (enabled)',
 								value: 'status',
 							},
 							{

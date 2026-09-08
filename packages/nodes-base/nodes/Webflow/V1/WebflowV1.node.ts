@@ -58,7 +58,7 @@ export class WebflowV1 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'Access Token',
+							name: 'Access token',
 							value: 'accessToken',
 						},
 						{

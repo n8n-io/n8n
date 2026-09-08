@@ -41,7 +41,7 @@ const properties: INodeProperties[] = [
 			sortable: true,
 			multipleValues: true,
 		},
-		placeholder: 'Add Message',
+		placeholder: 'Add message',
 		default: { values: [{ content: '' }] },
 		options: [
 			{
@@ -84,23 +84,23 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Output Content as JSON',
+		displayName: 'Output content as JSON',
 		name: 'jsonOutput',
 		type: 'boolean',
 		description: 'Whether to attempt to return the response in JSON format',
 		default: false,
 	},
 	{
-		displayName: 'Built-in Tools',
+		displayName: 'Built-in tools',
 		name: 'builtInTools',
-		placeholder: 'Add Built-in Tool',
+		placeholder: 'Add built-in tool',
 		type: 'collection',
 		default: {},
 		displayOptions: {
@@ -146,20 +146,20 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'URL Context',
+				displayName: 'URL context',
 				name: 'urlContext',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to allow the model to read and analyze content from specific URLs',
 			},
 			{
-				displayName: 'File Search',
+				displayName: 'File search',
 				name: 'fileSearch',
 				type: 'collection',
 				default: { fileSearchStoreNames: '[]' },
 				options: [
 					{
-						displayName: 'File Search Store Names',
+						displayName: 'File search store names',
 						name: 'fileSearchStoreNames',
 						description:
 							'The file search store names to use for the file search. File search stores are managed via Google AI Studio.',
@@ -168,7 +168,7 @@ const properties: INodeProperties[] = [
 						required: true,
 					},
 					{
-						displayName: 'Metadata Filter',
+						displayName: 'Metadata filter',
 						name: 'metadataFilter',
 						type: 'string',
 						default: '',
@@ -179,7 +179,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Code Execution',
+				displayName: 'Code execution',
 				name: 'codeExecution',
 				type: 'boolean',
 				default: true,
@@ -191,12 +191,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Include Merged Response',
+				displayName: 'Include merged response',
 				name: 'includeMergedResponse',
 				type: 'boolean',
 				default: false,
@@ -209,14 +209,14 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'System Message',
+				displayName: 'System message',
 				name: 'systemMessage',
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. You are a helpful assistant',
 			},
 			{
-				displayName: 'Code Execution',
+				displayName: 'Code execution',
 				name: 'codeExecution',
 				type: 'boolean',
 				default: false,
@@ -229,7 +229,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Frequency Penalty',
+				displayName: 'Frequency penalty',
 				name: 'frequencyPenalty',
 				default: 0,
 				description:
@@ -242,7 +242,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Maximum Number of Tokens',
+				displayName: 'Maximum number of tokens',
 				name: 'maxOutputTokens',
 				default: 16,
 				description: 'The maximum number of tokens to generate in the completion',
@@ -253,7 +253,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Number of Completions',
+				displayName: 'Number of completions',
 				name: 'candidateCount',
 				default: 1,
 				description: 'How many completions to generate for each prompt',
@@ -265,7 +265,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Presence Penalty',
+				displayName: 'Presence penalty',
 				name: 'presencePenalty',
 				default: 0,
 				description:
@@ -278,7 +278,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Temperature)',
+				displayName: 'Output randomness (temperature)',
 				name: 'temperature',
 				default: 1,
 				description:
@@ -291,7 +291,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Top P)',
+				displayName: 'Output randomness (top P)',
 				name: 'topP',
 				default: 1,
 				description: 'The maximum cumulative probability of tokens to consider when sampling',
@@ -303,7 +303,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Top K)',
+				displayName: 'Output randomness (top K)',
 				name: 'topK',
 				default: 1,
 				description: 'The maximum number of tokens to consider when sampling',
@@ -314,7 +314,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Thinking Budget',
+				displayName: 'Thinking budget',
 				name: 'thinkingBudget',
 				type: 'number',
 				default: -1,
@@ -326,7 +326,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Tool Calls Iterations',
+				displayName: 'Max tool calls iterations',
 				name: 'maxToolsIterations',
 				type: 'number',
 				default: 15,

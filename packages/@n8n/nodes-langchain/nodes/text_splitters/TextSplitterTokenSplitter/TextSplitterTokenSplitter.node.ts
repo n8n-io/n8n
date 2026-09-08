@@ -43,14 +43,14 @@ export class TextSplitterTokenSplitter implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiDocument]),
 			{
-				displayName: 'Chunk Size',
+				displayName: 'Chunk size',
 				name: 'chunkSize',
 				type: 'number',
 				default: 1000,
 				description: 'Maximum number of tokens per chunk',
 			},
 			{
-				displayName: 'Chunk Overlap',
+				displayName: 'Chunk overlap',
 				name: 'chunkOverlap',
 				type: 'number',
 				default: 0,

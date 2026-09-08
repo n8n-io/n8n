@@ -20,7 +20,7 @@ export const description: INodeProperties[] = [
 		default: 'create',
 		options: [
 			{
-				name: 'Add Attachment',
+				name: 'Add attachment',
 				value: 'addAttachment',
 				action: 'Add attachment to a task log',
 			},
@@ -35,12 +35,12 @@ export const description: INodeProperties[] = [
 				action: 'Delete task log',
 			},
 			{
-				name: 'Delete Attachment',
+				name: 'Delete attachment',
 				value: 'deleteAttachment',
 				action: 'Delete attachment from a task log',
 			},
 			{
-				name: 'Execute Responder',
+				name: 'Execute responder',
 				value: 'executeResponder',
 				action: 'Execute responder on a task log',
 			},

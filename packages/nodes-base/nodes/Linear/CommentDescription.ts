@@ -13,7 +13,7 @@ export const commentOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Comment',
+				name: 'Add comment',
 				value: 'addComment',
 				description: 'Add a comment to an issue',
 				action: 'Add a comment to an issue',
@@ -54,10 +54,10 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -67,7 +67,7 @@ export const commentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Parent Comment ID',
+				displayName: 'Parent comment ID',
 				name: 'parentId',
 				type: 'string',
 				description: 'ID of the parent comment if this is a reply',

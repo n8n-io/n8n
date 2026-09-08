@@ -24,7 +24,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add to Group',
+				name: 'Add to group',
 				value: 'addToGroup',
 				description: 'Add an existing user to a group',
 				action: 'Add user to group',
@@ -132,7 +132,7 @@ export const description: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of users',
 				routing: {
@@ -159,7 +159,7 @@ export const description: INodeProperties[] = [
 				action: 'Get many users',
 			},
 			{
-				name: 'Remove From Group',
+				name: 'Remove from group',
 				value: 'removeFromGroup',
 				description: 'Remove a user from a group',
 				action: 'Remove user from group',

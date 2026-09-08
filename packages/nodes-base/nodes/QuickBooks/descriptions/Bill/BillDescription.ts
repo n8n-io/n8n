@@ -26,7 +26,7 @@ export const billOperations: INodeProperties[] = [
 				action: 'Get a bill',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many bills',
 			},
@@ -49,7 +49,7 @@ export const billFields: INodeProperties[] = [
 	//         bill: create
 	// ----------------------------------
 	{
-		displayName: 'For Vendor Name or ID',
+		displayName: 'For vendor name or ID',
 		name: 'VendorRef',
 		type: 'options',
 		required: true,
@@ -70,7 +70,7 @@ export const billFields: INodeProperties[] = [
 		displayName: 'Line',
 		name: 'Line',
 		type: 'collection',
-		placeholder: 'Add Line Item Property',
+		placeholder: 'Add line item property',
 		description: 'Individual line item of a transaction',
 		typeOptions: {
 			multipleValues: true,
@@ -104,23 +104,23 @@ export const billFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Detail Type',
+				displayName: 'Detail type',
 				name: 'DetailType',
 				type: 'options',
 				default: 'ItemBasedExpenseLineDetail',
 				options: [
 					{
-						name: 'Account-Based Expense Line Detail',
+						name: 'Account-based expense line detail',
 						value: 'AccountBasedExpenseLineDetail',
 					},
 					{
-						name: 'Item-Based Expense Line Detail',
+						name: 'Item-based expense line detail',
 						value: 'ItemBasedExpenseLineDetail',
 					},
 				],
 			},
 			{
-				displayName: 'Item Name or ID',
+				displayName: 'Item name or ID',
 				name: 'itemId',
 				type: 'options',
 				description:
@@ -140,10 +140,10 @@ export const billFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -194,7 +194,7 @@ export const billFields: INodeProperties[] = [
 	//         bill: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -228,7 +228,7 @@ export const billFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -267,10 +267,10 @@ export const billFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		required: true,
 		displayOptions: {

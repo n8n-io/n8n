@@ -14,17 +14,17 @@ export const industryOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Factor Scores',
+				name: 'Get factor scores',
 				value: 'getFactor',
 				action: 'Get factor scores for an industry',
 			},
 			{
-				name: 'Get Historical Factor Scores',
+				name: 'Get historical factor scores',
 				value: 'getFactorHistorical',
 				action: 'Get historical factor scores for an industry',
 			},
 			{
-				name: 'Get Score',
+				name: 'Get score',
 				value: 'getScore',
 				action: 'Get the score for an industry',
 			},
@@ -70,7 +70,7 @@ export const industryFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -127,14 +127,14 @@ export const industryFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Date From',
+				displayName: 'Date from',
 				description: 'History start date',
 				name: 'from',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Date To',
+				displayName: 'Date to',
 				description: 'History end date',
 				name: 'to',
 				type: 'dateTime',

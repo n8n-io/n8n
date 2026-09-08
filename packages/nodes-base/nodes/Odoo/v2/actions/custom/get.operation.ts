@@ -18,10 +18,10 @@ const properties: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Fields to Include',
+				displayName: 'Fields to include',
 				name: 'fieldsList',
 				type: 'string',
 				requiresDataPath: 'multiple',

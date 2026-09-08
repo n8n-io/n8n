@@ -19,7 +19,7 @@ export const fileOperations: INodeProperties[] = [
 				action: 'Delete a file',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many files',
 				action: 'Get many files',
@@ -40,7 +40,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                 file:upload                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Binary File',
+		displayName: 'Binary file',
 		name: 'binaryData',
 		type: 'boolean',
 		default: false,
@@ -53,7 +53,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -68,7 +68,7 @@ export const fileFields: INodeProperties[] = [
 		hint: 'The name of the input binary field containing the file to be uploaded',
 	},
 	{
-		displayName: 'File Association',
+		displayName: 'File association',
 		name: 'fileAssociation',
 		type: 'options',
 		options: [
@@ -109,7 +109,7 @@ export const fileFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		required: true,
@@ -124,7 +124,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The filename of the attached file, including extension',
 	},
 	{
-		displayName: 'File Data',
+		displayName: 'File data',
 		name: 'fileData',
 		type: 'string',
 		required: true,
@@ -139,7 +139,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The content of the attachment, encoded in Base64',
 	},
 	{
-		displayName: 'Is Public',
+		displayName: 'Is public',
 		name: 'isPublic',
 		type: 'boolean',
 		default: false,
@@ -170,7 +170,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                 file:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -204,7 +204,7 @@ export const fileFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -270,7 +270,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'contact',
 					},
 					{
-						name: 'Digital Product',
+						name: 'Digital product',
 						value: 'digitalProduct',
 					},
 					{
@@ -294,19 +294,19 @@ export const fileFields: INodeProperties[] = [
 						value: 'import',
 					},
 					{
-						name: 'Logo Thumnail',
+						name: 'Logo thumnail',
 						value: 'logoThumnail',
 					},
 					{
-						name: 'Re Sampled Image',
+						name: 'Re sampled image',
 						value: 'reSampledImage',
 					},
 					{
-						name: 'Style Cart',
+						name: 'Style cart',
 						value: 'styleCart',
 					},
 					{
-						name: 'Template Thumnail',
+						name: 'Template thumnail',
 						value: 'templateThumnail',
 					},
 					{

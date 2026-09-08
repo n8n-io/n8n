@@ -44,7 +44,7 @@ export class TaigaTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -71,7 +71,7 @@ export class TaigaTrigger implements INodeType {
 						value: 'issue',
 					},
 					{
-						name: 'Milestone (Sprint)',
+						name: 'Milestone (sprint)',
 						value: 'milestone',
 					},
 					{
@@ -79,7 +79,7 @@ export class TaigaTrigger implements INodeType {
 						value: 'task',
 					},
 					{
-						name: 'User Story',
+						name: 'User story',
 						value: 'userstory',
 					},
 					{

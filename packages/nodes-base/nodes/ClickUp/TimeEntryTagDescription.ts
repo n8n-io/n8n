@@ -19,7 +19,7 @@ export const timeEntryTagOperations: INodeProperties[] = [
 				action: 'Add a time entry tag',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many time entry tags',
 				action: 'Get many time entry tags',
@@ -40,7 +40,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -58,7 +58,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -93,7 +93,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:add                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -111,7 +111,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Time Entry IDs',
+		displayName: 'Time entry IDs',
 		name: 'timeEntryIds',
 		type: 'string',
 		default: '',
@@ -127,7 +127,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 		displayName: 'Tags',
 		name: 'tagsUi',
 		type: 'fixedCollection',
-		placeholder: 'Add Tag',
+		placeholder: 'Add tag',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -150,13 +150,13 @@ export const timeEntryTagFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Background Color',
+						displayName: 'Background color',
 						name: 'tag_bg',
 						type: 'color',
 						default: '#ff0000',
 					},
 					{
-						displayName: 'Foreground Color',
+						displayName: 'Foreground color',
 						name: 'tag_fg',
 						type: 'color',
 						default: '#ff0000',
@@ -170,7 +170,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:remove                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -188,7 +188,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Time Entry IDs',
+		displayName: 'Time entry IDs',
 		name: 'timeEntryIds',
 		type: 'string',
 		default: '',
@@ -201,7 +201,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Tag Names or IDs',
+		displayName: 'Tag names or IDs',
 		name: 'tagNames',
 		type: 'multiOptions',
 		description:

@@ -95,13 +95,13 @@ export class McpRegistryClientTool implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Server Transport',
+				displayName: 'Server transport',
 				name: 'serverTransport',
 				type: 'hidden',
 				default: 'httpStreamable',
 			},
 			{
-				displayName: 'Tools to Include',
+				displayName: 'Tools to include',
 				name: 'include',
 				type: 'options',
 				description: 'How to select the tools you want to be exposed to the AI Agent',
@@ -115,17 +115,17 @@ export class McpRegistryClientTool implements INodeType {
 					{
 						name: 'Selected',
 						value: 'selected',
-						description: 'Only expose the tools listed in "Tools to Include"',
+						description: 'Only expose the tools listed in "Tools to include"',
 					},
 					{
-						name: 'All Except',
+						name: 'All except',
 						value: 'except',
-						description: 'Expose all tools except those listed in "Tools to Exclude"',
+						description: 'Expose all tools except those listed in "Tools to exclude"',
 					},
 				],
 			},
 			{
-				displayName: 'Tools to Include',
+				displayName: 'Tools to include',
 				name: 'includeTools',
 				type: 'multiOptions',
 				default: [],
@@ -141,7 +141,7 @@ export class McpRegistryClientTool implements INodeType {
 				},
 			},
 			{
-				displayName: 'Tools to Exclude',
+				displayName: 'Tools to exclude',
 				name: 'excludeTools',
 				type: 'multiOptions',
 				default: [],
@@ -159,7 +159,7 @@ export class McpRegistryClientTool implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},

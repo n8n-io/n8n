@@ -16,7 +16,7 @@ export const userOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'searchUser',
 				description: 'Retrieve a user by username',
-				action: 'Get User',
+				action: 'Get user',
 			},
 		],
 		default: 'searchUser',
@@ -45,7 +45,7 @@ export const userFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'By Username',
+				displayName: 'By username',
 				name: 'username',
 				type: 'string',
 				validation: [],

@@ -40,7 +40,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					action: 'Create a row',
 				},
 				{
-					name: 'Create or Update',
+					name: 'Create or update',
 					value: 'upsert',
 					description:
 						'Create a new record, or update the current one if it already exists (upsert)',
@@ -77,7 +77,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					action: 'Count rows',
 				},
 				{
-					name: 'Upload Attachment to Cell',
+					name: 'Upload attachment to cell',
 					value: 'upload',
 					description: 'Upload attachment(s) to an existing cell in a row',
 					action: 'Upload attachment to a row cell',
@@ -90,7 +90,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 		//         Shared
 		// ----------------------------------
 		{
-			displayName: 'Workspace Name or ID',
+			displayName: 'Workspace name or ID',
 			name: 'workspaceId',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -98,7 +98,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					typeOptions: {
@@ -115,7 +115,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			],
 		},
 		{
-			displayName: 'Base Name or ID',
+			displayName: 'Base name or ID',
 			name: 'projectId',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -127,7 +127,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			},
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					typeOptions: {
@@ -144,7 +144,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			],
 		},
 		{
-			displayName: 'Table Name or ID',
+			displayName: 'Table name or ID',
 			name: 'table',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -156,7 +156,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			},
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					typeOptions: {

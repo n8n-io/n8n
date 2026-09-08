@@ -14,7 +14,7 @@ export const description: INodeProperties[] = [
 		options: [
 			{ name: 'Get', value: 'get', description: 'Get a user', action: 'Get a user' },
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many users',
 				action: 'Get many users',

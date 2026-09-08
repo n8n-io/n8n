@@ -14,31 +14,31 @@ export const companyOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Factor Scores',
+				name: 'Get factor scores',
 				value: 'getFactor',
 				description: 'Get company factor scores and issue counts',
 				action: 'Get a company factor scores and issue counts',
 			},
 			{
-				name: 'Get Historical Factor Scores',
+				name: 'Get historical factor scores',
 				value: 'getFactorHistorical',
 				description: "Get company's historical factor scores",
 				action: "Get a company's historical factor scores",
 			},
 			{
-				name: 'Get Historical Scores',
+				name: 'Get historical scores',
 				value: 'getHistoricalScore',
 				description: "Get company's historical scores",
 				action: "Get a company's historical scores",
 			},
 			{
-				name: 'Get Information and Scorecard',
+				name: 'Get information and scorecard',
 				value: 'getScorecard',
 				description: 'Get company information and summary of their scorecard',
 				action: 'Get company information and a summary of their scorecard',
 			},
 			{
-				name: 'Get Score Plan',
+				name: 'Get score plan',
 				value: 'getScorePlan',
 				description: "Get company's score improvement plan",
 				action: "Get a company's score improvement plan",
@@ -50,7 +50,7 @@ export const companyOperations: INodeProperties[] = [
 
 export const companyFields: INodeProperties[] = [
 	{
-		displayName: 'Scorecard Identifier',
+		displayName: 'Scorecard identifier',
 		name: 'scorecardIdentifier',
 		description: 'Primary identifier of a company or scorecard, i.e. domain.',
 		type: 'string',
@@ -84,7 +84,7 @@ export const companyFields: INodeProperties[] = [
 		default: 0,
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -139,7 +139,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
@@ -150,7 +150,7 @@ export const companyFields: INodeProperties[] = [
 				placeholder: '',
 			},
 			{
-				displayName: 'Severity In',
+				displayName: 'Severity in',
 				description: 'Filter issues by comma-separated severity list',
 				name: 'severity_in',
 				type: 'string',
@@ -176,14 +176,14 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Date From',
+				displayName: 'Date from',
 				description: 'History start date',
 				name: 'date_from',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Date To',
+				displayName: 'Date to',
 				description: 'History end date',
 				name: 'date_to',
 				type: 'dateTime',

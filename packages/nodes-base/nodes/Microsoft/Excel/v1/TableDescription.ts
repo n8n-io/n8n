@@ -13,19 +13,19 @@ export const tableOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Row',
+				name: 'Add row',
 				value: 'addRow',
 				description: 'Adds rows to the end of the table',
 				action: 'Add a row',
 			},
 			{
-				name: 'Get Columns',
+				name: 'Get columns',
 				value: 'getColumns',
 				description: 'Retrieve a list of tablecolumns',
 				action: 'Get columns',
 			},
 			{
-				name: 'Get Rows',
+				name: 'Get rows',
 				value: 'getRows',
 				description: 'Retrieve a list of tablerows',
 				action: 'Get rows',
@@ -46,7 +46,7 @@ export const tableFields: INodeProperties[] = [
 	/*                                 table:addRow                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
+		displayName: 'Workbook name or ID',
 		name: 'workbook',
 		type: 'options',
 		description:
@@ -63,7 +63,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet Name or ID',
+		displayName: 'Worksheet name or ID',
 		name: 'worksheet',
 		type: 'options',
 		description:
@@ -82,7 +82,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'table',
 		type: 'options',
 		description:
@@ -101,10 +101,10 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -130,7 +130,7 @@ export const tableFields: INodeProperties[] = [
 	/*                                 table:getRows                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
+		displayName: 'Workbook name or ID',
 		name: 'workbook',
 		type: 'options',
 		description:
@@ -147,7 +147,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet Name or ID',
+		displayName: 'Worksheet name or ID',
 		name: 'worksheet',
 		type: 'options',
 		description:
@@ -166,7 +166,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'table',
 		type: 'options',
 		description:
@@ -185,7 +185,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -216,7 +216,7 @@ export const tableFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -230,7 +230,7 @@ export const tableFields: INodeProperties[] = [
 			'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
-		displayName: 'Data Property',
+		displayName: 'Data property',
 		name: 'dataProperty',
 		type: 'string',
 		default: 'data',
@@ -247,7 +247,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -270,7 +270,7 @@ export const tableFields: INodeProperties[] = [
 	/*                                 table:getColumns                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
+		displayName: 'Workbook name or ID',
 		name: 'workbook',
 		type: 'options',
 		description:
@@ -287,7 +287,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet Name or ID',
+		displayName: 'Worksheet name or ID',
 		name: 'worksheet',
 		type: 'options',
 		description:
@@ -306,7 +306,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'table',
 		type: 'options',
 		description:
@@ -325,7 +325,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -356,7 +356,7 @@ export const tableFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -370,7 +370,7 @@ export const tableFields: INodeProperties[] = [
 			'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
-		displayName: 'Data Property',
+		displayName: 'Data property',
 		name: 'dataProperty',
 		type: 'string',
 		default: 'data',
@@ -387,7 +387,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -410,7 +410,7 @@ export const tableFields: INodeProperties[] = [
 	/*                                 table:lookup                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
+		displayName: 'Workbook name or ID',
 		name: 'workbook',
 		type: 'options',
 		description:
@@ -428,7 +428,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet Name or ID',
+		displayName: 'Worksheet name or ID',
 		name: 'worksheet',
 		type: 'options',
 		description:
@@ -447,7 +447,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'table',
 		type: 'options',
 		description:
@@ -466,7 +466,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Lookup Column',
+		displayName: 'Lookup column',
 		name: 'lookupColumn',
 		type: 'string',
 		default: '',
@@ -481,7 +481,7 @@ export const tableFields: INodeProperties[] = [
 		description: 'The name of the column in which to look for value',
 	},
 	{
-		displayName: 'Lookup Value',
+		displayName: 'Lookup value',
 		name: 'lookupValue',
 		type: 'string',
 		default: '',
@@ -509,7 +509,7 @@ export const tableFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return All Matches',
+				displayName: 'Return all matches',
 				name: 'returnAllMatches',
 				type: 'boolean',
 				default: false,

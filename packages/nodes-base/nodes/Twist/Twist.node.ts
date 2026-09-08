@@ -60,7 +60,7 @@ export class Twist implements INodeType {
 						value: 'comment',
 					},
 					{
-						name: 'Message Conversation',
+						name: 'Message conversation',
 						value: 'messageConversation',
 					},
 					{

@@ -5,7 +5,7 @@ import { transferFile } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Input Type',
+		displayName: 'Input type',
 		name: 'inputType',
 		type: 'options',
 		default: 'url',
@@ -15,7 +15,7 @@ export const properties: INodeProperties[] = [
 				value: 'url',
 			},
 			{
-				name: 'Binary File',
+				name: 'Binary file',
 				value: 'binary',
 			},
 		],
@@ -34,7 +34,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

@@ -68,7 +68,7 @@ export class VectorStorePineconeInsert implements INodeType {
 		properties: [
 			pineconeIndexRLC,
 			{
-				displayName: 'Pinecone Namespace',
+				displayName: 'Pinecone namespace',
 				name: 'pineconeNamespace',
 				type: 'string',
 				default: '',
@@ -80,7 +80,7 @@ export class VectorStorePineconeInsert implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Clear Namespace',
+				displayName: 'Clear namespace',
 				name: 'clearNamespace',
 				type: 'boolean',
 				default: false,

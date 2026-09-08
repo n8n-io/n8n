@@ -18,7 +18,7 @@ export const operations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 			},
 		],
@@ -42,7 +42,7 @@ export const fields: INodeProperties[] = [
 			'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

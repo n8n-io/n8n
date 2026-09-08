@@ -61,7 +61,7 @@ export class VectorStorePineconeLoad implements INodeType {
 		properties: [
 			pineconeIndexRLC,
 			{
-				displayName: 'Pinecone Namespace',
+				displayName: 'Pinecone namespace',
 				name: 'pineconeNamespace',
 				type: 'string',
 				default: '',
@@ -70,7 +70,7 @@ export class VectorStorePineconeLoad implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [metadataFilterField],
 			},

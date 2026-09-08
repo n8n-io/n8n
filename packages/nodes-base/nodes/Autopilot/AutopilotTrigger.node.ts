@@ -48,31 +48,31 @@ export class AutopilotTrigger implements INodeType {
 				default: '',
 				options: [
 					{
-						name: 'Contact Added',
+						name: 'Contact added',
 						value: 'contactAdded',
 					},
 					{
-						name: 'Contact Added To List',
+						name: 'Contact added to list',
 						value: 'contactAddedToList',
 					},
 					{
-						name: 'Contact Entered Segment',
+						name: 'Contact entered segment',
 						value: 'contactEnteredSegment',
 					},
 					{
-						name: 'Contact Left Segment',
+						name: 'Contact left segment',
 						value: 'contactLeftSegment',
 					},
 					{
-						name: 'Contact Removed From List',
+						name: 'Contact removed from list',
 						value: 'contactRemovedFromList',
 					},
 					{
-						name: 'Contact Unsubscribed',
+						name: 'Contact unsubscribed',
 						value: 'contactUnsubscribed',
 					},
 					{
-						name: 'Contact Updated',
+						name: 'Contact updated',
 						value: 'contactUpdated',
 					},
 				],

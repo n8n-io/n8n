@@ -14,7 +14,7 @@ export const contactListOperations: INodeProperties[] = [
 				action: 'Add a contact list',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many contact lists',
 			},
@@ -32,7 +32,7 @@ export const contactListFields: INodeProperties[] = [
 	//      contactList: add
 	// ----------------------------------
 	{
-		displayName: 'Contact List Name or ID',
+		displayName: 'Contact list name or ID',
 		name: 'contactListId',
 		type: 'options',
 		typeOptions: {
@@ -50,7 +50,7 @@ export const contactListFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Email',
+		displayName: 'Contact email',
 		name: 'contactEmail',
 		type: 'string',
 		required: true,
@@ -64,10 +64,10 @@ export const contactListFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -77,9 +77,9 @@ export const contactListFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -89,10 +89,10 @@ export const contactListFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field name',
 								name: 'fieldName',
 								type: 'string',
 								default: '',
@@ -110,49 +110,49 @@ export const contactListFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'First name of the contact to add',
 			},
 			{
-				displayName: 'Last Contacted',
+				displayName: 'Last contacted',
 				name: 'lastContacted',
 				type: 'dateTime',
 				default: '',
 				description: 'Last contacted date of the contact to add',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
 				description: 'Last name of the contact to add',
 			},
 			{
-				displayName: 'Last Open',
+				displayName: 'Last open',
 				name: 'lastOpen',
 				type: 'dateTime',
 				default: '',
 				description: 'Last opened date of the contact to add',
 			},
 			{
-				displayName: 'Last Replied',
+				displayName: 'Last replied',
 				name: 'lastReplied',
 				type: 'dateTime',
 				default: '',
 				description: 'Last replied date of the contact to add',
 			},
 			{
-				displayName: 'Mails Sent',
+				displayName: 'Mails sent',
 				name: 'mailsSent',
 				type: 'number',
 				default: 0,
 				description: 'Number of emails sent to the contact to add',
 			},
 			{
-				displayName: 'Phone Number',
+				displayName: 'Phone number',
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
@@ -165,7 +165,7 @@ export const contactListFields: INodeProperties[] = [
 	//       contactList: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

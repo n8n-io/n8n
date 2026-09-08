@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const cloneFields: INodeProperties[] = [
 	{
-		displayName: 'Source Repository',
+		displayName: 'Source repository',
 		name: 'sourceRepository',
 		type: 'string',
 		displayOptions: {

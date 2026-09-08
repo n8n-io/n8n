@@ -19,7 +19,7 @@ export const mailboxOperations: INodeProperties[] = [
 				action: 'Get a mailbox',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many mailboxes',
 				action: 'Get many mailboxes',
@@ -50,7 +50,7 @@ export const mailboxFields: INodeProperties[] = [
 	/*                                mailbox:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

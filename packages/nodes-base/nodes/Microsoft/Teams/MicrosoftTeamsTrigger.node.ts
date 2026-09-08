@@ -97,7 +97,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 							'Generic Microsoft Graph credential. Add the Teams change-notification scopes (e.g. ChannelMessage.Read.All, Chat.Read, Subscription.Read.All) and grant admin consent on the credential. See the docs for the full scope string.',
 					},
 					{
-						name: 'Service Principal (App-Only)',
+						name: 'Service principal (app-only)',
 						value: SERVICE_PRINCIPAL_AUTH,
 						description:
 							'App-only access via a Microsoft Entra app registration. App-only Graph cannot subscribe to the chats of a signed-in user, so chat triggers are unavailable. Grant the relevant application permissions (e.g. ChannelMessage.Read.All) and admin consent on the credential.',
@@ -106,33 +106,33 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				default: 'microsoftTeamsOAuth2Api',
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'event',
 				type: 'options',
 				default: 'newChannelMessage',
 				options: [
 					{
-						name: 'New Channel',
+						name: 'New channel',
 						value: 'newChannel',
 						description: 'A new channel is created',
 					},
 					{
-						name: 'New Channel Message',
+						name: 'New channel message',
 						value: 'newChannelMessage',
 						description: 'A message is posted to a channel',
 					},
 					{
-						name: 'New Chat',
+						name: 'New chat',
 						value: 'newChat',
 						description: 'A new chat is created',
 					},
 					{
-						name: 'New Chat Message',
+						name: 'New chat message',
 						value: 'newChatMessage',
 						description: 'A message is posted to a chat',
 					},
 					{
-						name: 'New Team Member',
+						name: 'New team member',
 						value: 'newTeamMember',
 						description: 'A new member is added to a team',
 					},
@@ -153,7 +153,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Watch All Teams',
+				displayName: 'Watch all teams',
 				name: 'watchAllTeams',
 				type: 'boolean',
 				default: false,
@@ -179,7 +179,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				description: 'Select a team from the list, enter an ID or a URL',
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a team...',
@@ -217,7 +217,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Watch All Channels',
+				displayName: 'Watch all channels',
 				name: 'watchAllChannels',
 				type: 'boolean',
 				default: false,
@@ -244,7 +244,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				description: 'Select a channel from the list, enter an ID or a URL',
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a channel...',
@@ -281,7 +281,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Watch All Chats',
+				displayName: 'Watch all chats',
 				name: 'watchAllChats',
 				type: 'boolean',
 				default: false,
@@ -307,7 +307,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				description: 'Select a chat from the list, enter an ID or a URL',
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a chat...',

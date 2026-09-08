@@ -9,7 +9,7 @@ export const eventOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many events',
 			},
@@ -27,7 +27,7 @@ export const eventFields: INodeProperties[] = [
 	//       event: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -60,11 +60,11 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
-				displayName: 'Acting User ID',
+				displayName: 'Acting user ID',
 				name: 'actingUserId',
 				type: 'string',
 				default: '',
@@ -72,7 +72,7 @@ export const eventFields: INodeProperties[] = [
 				placeholder: '4a59c8c7-e05a-4d17-8e85-acc301343926',
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'end',
 				type: 'dateTime',
 				default: '',
@@ -87,7 +87,7 @@ export const eventFields: INodeProperties[] = [
 				placeholder: '5e59c8c7-e05a-4d17-8e85-acc301343926',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'start',
 				type: 'dateTime',
 				default: '',

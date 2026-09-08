@@ -64,7 +64,7 @@ const versionDescription: INodeTypeDescription = {
 	],
 	properties: [
 		{
-			displayName: 'Mailbox Name',
+			displayName: 'Mailbox name',
 			name: 'mailbox',
 			type: 'string',
 			default: 'INBOX',
@@ -75,7 +75,7 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Mark as Read',
+					name: 'Mark as read',
 					value: 'read',
 				},
 				{
@@ -88,7 +88,7 @@ const versionDescription: INodeTypeDescription = {
 				'What to do after the email has been received. If "nothing" gets selected it will be processed multiple times.',
 		},
 		{
-			displayName: 'Download Attachments',
+			displayName: 'Download attachments',
 			name: 'downloadAttachments',
 			type: 'boolean',
 			default: false,
@@ -128,7 +128,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The format to return the message in',
 		},
 		{
-			displayName: 'Property Prefix Name',
+			displayName: 'Property prefix name',
 			name: 'dataPropertyAttachmentsPrefixName',
 			type: 'string',
 			default: 'attachment_',
@@ -141,7 +141,7 @@ const versionDescription: INodeTypeDescription = {
 				'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 		},
 		{
-			displayName: 'Property Prefix Name',
+			displayName: 'Property prefix name',
 			name: 'dataPropertyAttachmentsPrefixName',
 			type: 'string',
 			default: 'attachment_',
@@ -162,7 +162,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Custom Email Rules',
+					displayName: 'Custom email rules',
 					name: 'customEmailConfig',
 					type: 'string',
 					default: '["UNSEEN"]',
@@ -170,19 +170,19 @@ const versionDescription: INodeTypeDescription = {
 						'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details.',
 				},
 				{
-					displayName: 'Force Reconnect Every Minutes',
+					displayName: 'Force reconnect every minutes',
 					name: 'forceReconnect',
 					type: 'number',
 					default: 60,
 					description: 'Sets an interval (in minutes) to force a reconnection',
 				},
 				{
-					displayName: 'Fetch Only New Emails',
+					displayName: 'Fetch only new emails',
 					name: 'trackLastMessageId',
 					type: 'boolean',
 					default: true,
 					description:
-						'Whether to fetch only new emails since the last run, or all emails that match the "Custom Email Rules" (["UNSEEN"] by default)',
+						'Whether to fetch only new emails since the last run, or all emails that match the "Custom email rules" (["UNSEEN"] by default)',
 					displayOptions: {
 						show: {
 							'@version': [{ _cnd: { gte: 2.1 } }],

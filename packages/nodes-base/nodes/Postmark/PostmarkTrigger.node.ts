@@ -69,12 +69,12 @@ export class PostmarkTrigger implements INodeType {
 						description: 'Trigger webhook on open',
 					},
 					{
-						name: 'Spam Complaint',
+						name: 'Spam complaint',
 						value: 'spamComplaint',
 						description: 'Trigger on spam complaint',
 					},
 					{
-						name: 'Subscription Change',
+						name: 'Subscription change',
 						value: 'subscriptionChange',
 						description: 'Trigger on subscription change',
 					},
@@ -84,7 +84,7 @@ export class PostmarkTrigger implements INodeType {
 				description: 'Webhook events that will be enabled for that endpoint',
 			},
 			{
-				displayName: 'First Open',
+				displayName: 'First open',
 				name: 'firstOpen',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Only fires on first open for event "Open"',
@@ -97,9 +97,9 @@ export class PostmarkTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Include Content',
+				displayName: 'Include content',
 				name: 'includeContent',
-				description: 'Whether to include message content for events "Bounce" and "Spam Complaint"',
+				description: 'Whether to include message content for events "Bounce" and "Spam complaint"',
 				type: 'boolean',
 				default: false,
 				displayOptions: {

@@ -13,13 +13,13 @@ export const leadOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Lead To Campaign',
+				name: 'Add lead to campaign',
 				value: 'addToCampaign',
 				description: 'Add lead to a campaign',
 				action: 'Add a lead to a campaign',
 			},
 			{
-				name: 'Add Note',
+				name: 'Add note',
 				value: 'addNote',
 				description: 'Add note to a lead',
 				action: 'Add a note to a lead',
@@ -31,7 +31,7 @@ export const leadOperations: INodeProperties[] = [
 				action: 'Create a lead',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new lead, or update the current one if it already exists (upsert)',
 				action: 'Create or update a lead',
@@ -49,13 +49,13 @@ export const leadOperations: INodeProperties[] = [
 				action: 'Get a lead',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many leads',
 				action: 'Get many leads',
 			},
 			{
-				name: 'Get Summary',
+				name: 'Get summary',
 				value: 'getSummary',
 				description: "Returns an overview of Lead's metadata",
 				action: 'Get a lead summary',
@@ -77,7 +77,7 @@ export const leadFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Match Against',
+		displayName: 'Match against',
 		name: 'externalId',
 		type: 'options',
 		typeOptions: {
@@ -96,7 +96,7 @@ export const leadFields: INodeProperties[] = [
 			'The field to check to see if the lead already exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Value to Match',
+		displayName: 'Value to match',
 		name: 'externalIdValue',
 		type: 'string',
 		required: true,
@@ -126,7 +126,7 @@ export const leadFields: INodeProperties[] = [
 			'Company of the lead. If person account record types have been enabled, and if the value of Company is null, the lead converts to a person account.',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastname',
 		type: 'string',
 		required: true,
@@ -140,10 +140,10 @@ export const leadFields: INodeProperties[] = [
 		description: 'Required. Last name of the lead. Limited to 80 characters.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -153,7 +153,7 @@ export const leadFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'annualRevenue',
 				type: 'number',
 				typeOptions: {
@@ -177,9 +177,9 @@ export const leadFields: INodeProperties[] = [
 				description: 'Country of the lead',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -189,10 +189,10 @@ export const leadFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -236,14 +236,14 @@ export const leadFields: INodeProperties[] = [
 				description: 'Fax number of the lead',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstname',
 				type: 'string',
 				default: '',
 				description: 'First name of the lead. Limited to 40 characters.',
 			},
 			{
-				displayName: 'Has Opted Out of Email',
+				displayName: 'Has opted out of email',
 				name: 'hasOptedOutOfEmail',
 				type: 'boolean',
 				default: false,
@@ -251,7 +251,7 @@ export const leadFields: INodeProperties[] = [
 					'Whether the lead doesn’t want to receive email from Salesforce (true) or does (false). Label is Email Opt Out.',
 			},
 			{
-				displayName: 'Has Opted Out of Fax',
+				displayName: 'Has opted out of fax',
 				name: 'hasOptedOutOfFax',
 				type: 'boolean',
 				default: false,
@@ -266,7 +266,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Website for the lead',
 			},
 			{
-				displayName: 'Is Unread By Owner',
+				displayName: 'Is unread by owner',
 				name: 'IsUnreadByOwner',
 				type: 'boolean',
 				default: false,
@@ -282,7 +282,7 @@ export const leadFields: INodeProperties[] = [
 					'References the ID of a contact in Data.com. If a lead has a value in this field, it means that a contact was imported as a lead from Data.com.',
 			},
 			{
-				displayName: 'Lead Source Name or ID',
+				displayName: 'Lead source name or ID',
 				name: 'leadSource',
 				type: 'options',
 				typeOptions: {
@@ -293,14 +293,14 @@ export const leadFields: INodeProperties[] = [
 					'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
 				description: 'Contact’s mobile phone number',
 			},
 			{
-				displayName: 'Number Of Employees',
+				displayName: 'Number of employees',
 				name: 'numberOfEmployees',
 				type: 'number',
 				default: '',
@@ -313,7 +313,7 @@ export const leadFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user or queue...',
@@ -348,14 +348,14 @@ export const leadFields: INodeProperties[] = [
 				description: 'Phone number for the lead',
 			},
 			{
-				displayName: 'Postal Code',
+				displayName: 'Postal code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
 				description: 'Postal code for the address of the lead. Label is Zip/Postal Code.',
 			},
 			{
-				displayName: 'Record Type Name or ID',
+				displayName: 'Record type name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				description:
@@ -387,7 +387,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'State for the address of the lead',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -439,10 +439,10 @@ export const leadFields: INodeProperties[] = [
 		description: 'ID of Lead that needs to be fetched',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -452,7 +452,7 @@ export const leadFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'annualRevenue',
 				type: 'number',
 				typeOptions: {
@@ -484,9 +484,9 @@ export const leadFields: INodeProperties[] = [
 				description: 'Country of the lead',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -496,10 +496,10 @@ export const leadFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -543,14 +543,14 @@ export const leadFields: INodeProperties[] = [
 				description: 'Fax Number of the lead',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstname',
 				type: 'string',
 				default: '',
 				description: 'First name of the lead. Limited to 40 characters.',
 			},
 			{
-				displayName: 'Has Opted Out of Email',
+				displayName: 'Has opted out of email',
 				name: 'hasOptedOutOfEmail',
 				type: 'boolean',
 				default: false,
@@ -558,7 +558,7 @@ export const leadFields: INodeProperties[] = [
 					'Whether the lead doesn’t want to receive email from Salesforce (true) or does (false). Label is Email Opt Out.',
 			},
 			{
-				displayName: 'Has Opted Out of Fax',
+				displayName: 'Has opted out of fax',
 				name: 'HasOptedOutOfFax',
 				type: 'boolean',
 				default: false,
@@ -573,7 +573,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Website for the lead',
 			},
 			{
-				displayName: 'Is Unread By Owner',
+				displayName: 'Is unread by owner',
 				name: 'IsUnreadByOwner',
 				type: 'boolean',
 				default: false,
@@ -589,14 +589,14 @@ export const leadFields: INodeProperties[] = [
 					'References the ID of a contact in Data.com. If a lead has a value in this field, it means that a contact was imported as a lead from Data.com.',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastname',
 				type: 'string',
 				default: '',
 				description: 'Required. Last name of the lead. Limited to 80 characters.',
 			},
 			{
-				displayName: 'Lead Source Name or ID',
+				displayName: 'Lead source name or ID',
 				name: 'leadSource',
 				type: 'options',
 				typeOptions: {
@@ -607,14 +607,14 @@ export const leadFields: INodeProperties[] = [
 					'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
 				description: 'Contact’s mobile phone number',
 			},
 			{
-				displayName: 'Number Of Employees',
+				displayName: 'Number of employees',
 				name: 'numberOfEmployees',
 				type: 'number',
 				default: '',
@@ -627,7 +627,7 @@ export const leadFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user or queue...',
@@ -655,7 +655,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'The user or queue that owns the lead',
 			},
 			{
-				displayName: 'Postal Code',
+				displayName: 'Postal code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
@@ -669,7 +669,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Phone number for the lead',
 			},
 			{
-				displayName: 'Record Type Name or ID',
+				displayName: 'Record type name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				description:
@@ -701,7 +701,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'State for the address of the lead',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -775,7 +775,7 @@ export const leadFields: INodeProperties[] = [
 	/*                                 lead:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -809,7 +809,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -821,7 +821,7 @@ export const leadFields: INodeProperties[] = [
 			{
 				displayName: 'Conditions',
 				name: 'conditionsUi',
-				placeholder: 'Add Condition',
+				placeholder: 'Add condition',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -834,7 +834,7 @@ export const leadFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -911,7 +911,7 @@ export const leadFields: INodeProperties[] = [
 		description: 'ID of contact that needs to be fetched',
 	},
 	{
-		displayName: 'Campaign Name or ID',
+		displayName: 'Campaign name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -932,7 +932,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -986,7 +986,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1003,7 +1003,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Body of the note. Limited to 32 KB.',
 			},
 			{
-				displayName: 'Is Private',
+				displayName: 'Is private',
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
@@ -1017,7 +1017,7 @@ export const leadFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',

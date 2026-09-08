@@ -8,7 +8,7 @@ export const projectRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -62,7 +62,7 @@ export const datasetRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -95,7 +95,7 @@ export const tableRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {

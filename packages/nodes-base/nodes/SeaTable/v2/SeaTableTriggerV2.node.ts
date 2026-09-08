@@ -55,17 +55,17 @@ export class SeaTableTriggerV2 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'New Row',
+							name: 'New row',
 							value: 'newRow',
 							description: 'Trigger on newly created rows',
 						},
 						{
-							name: 'New or Updated Row',
+							name: 'New or updated row',
 							value: 'updatedRow',
 							description: 'Trigger has recently created or modified rows',
 						},
 						{
-							name: 'New Signature',
+							name: 'New signature',
 							value: 'newAsset',
 							description: 'Trigger on new signatures',
 						},
@@ -74,7 +74,7 @@ export class SeaTableTriggerV2 implements INodeType {
 				},
 				{
 					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-					displayName: 'Table Name',
+					displayName: 'Table name',
 					name: 'tableName',
 					type: 'options',
 					required: true,
@@ -88,7 +88,7 @@ export class SeaTableTriggerV2 implements INodeType {
 				},
 				{
 					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-					displayName: 'View Name',
+					displayName: 'View name',
 					name: 'viewName',
 					type: 'options',
 					displayOptions: {
@@ -107,7 +107,7 @@ export class SeaTableTriggerV2 implements INodeType {
 				},
 				{
 					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-					displayName: 'Signature Column',
+					displayName: 'Signature column',
 					name: 'assetColumn',
 					type: 'options',
 					required: true,
@@ -129,7 +129,7 @@ export class SeaTableTriggerV2 implements INodeType {
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add Option',
+					placeholder: 'Add option',
 					default: {},
 					options: [
 						{
@@ -141,7 +141,7 @@ export class SeaTableTriggerV2 implements INodeType {
 								'Whether to return a simplified version of the response instead of the raw data',
 						},
 						{
-							displayName: 'Return Column Names',
+							displayName: 'Return column names',
 							name: 'convert',
 							type: 'boolean',
 							default: true,

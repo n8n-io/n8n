@@ -43,7 +43,7 @@ export const messageLabelFields: INodeProperties[] = [
 		placeholder: '172ce2c4a72cc243',
 	},
 	{
-		displayName: 'Label Names or IDs',
+		displayName: 'Label names or IDs',
 		name: 'labelIds',
 		type: 'multiOptions',
 		typeOptions: {

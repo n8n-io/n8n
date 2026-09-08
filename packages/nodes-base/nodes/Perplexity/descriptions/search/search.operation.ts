@@ -17,7 +17,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: false,
@@ -40,7 +40,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -58,7 +58,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Last Updated After',
+				displayName: 'Last updated after',
 				name: 'lastUpdatedAfter',
 				type: 'string',
 				default: '',
@@ -72,7 +72,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Last Updated Before',
+				displayName: 'Last updated before',
 				name: 'lastUpdatedBefore',
 				type: 'string',
 				default: '',
@@ -86,7 +86,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Results',
+				displayName: 'Max results',
 				name: 'maxResults',
 				type: 'number',
 				default: 10,
@@ -100,7 +100,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Tokens',
+				displayName: 'Max tokens',
 				name: 'maxTokens',
 				type: 'number',
 				default: 10000,
@@ -114,7 +114,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Tokens Per Page',
+				displayName: 'Max tokens per page',
 				name: 'maxTokensPerPage',
 				type: 'number',
 				default: 4096,
@@ -128,7 +128,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search After Date',
+				displayName: 'Search after date',
 				name: 'searchAfterDate',
 				type: 'string',
 				default: '',
@@ -142,7 +142,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search Before Date',
+				displayName: 'Search before date',
 				name: 'searchBeforeDate',
 				type: 'string',
 				default: '',
@@ -156,7 +156,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search Domain Filter',
+				displayName: 'Search domain filter',
 				name: 'searchDomainFilter',
 				type: 'string',
 				default: '',
@@ -171,7 +171,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search Language Filter',
+				displayName: 'Search language filter',
 				name: 'searchLanguageFilter',
 				type: 'string',
 				default: '',
@@ -187,7 +187,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search Recency Filter',
+				displayName: 'Search recency filter',
 				name: 'searchRecencyFilter',
 				type: 'options',
 				options: [

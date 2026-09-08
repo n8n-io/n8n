@@ -2,7 +2,7 @@ import type { TicketProperties } from '../../Interfaces';
 
 export const ticketGetAllDescription: TicketProperties = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -36,7 +36,7 @@ export const ticketGetAllDescription: TicketProperties = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['ticket'],
@@ -46,7 +46,7 @@ export const ticketGetAllDescription: TicketProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Search Query',
+				displayName: 'Search query',
 				name: 'query',
 				type: 'string',
 				default: '',
@@ -59,11 +59,11 @@ export const ticketGetAllDescription: TicketProperties = [
 				type: 'options',
 				options: [
 					{
-						name: 'Customer Reply',
+						name: 'Customer reply',
 						value: 'Customer Reply',
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 'In Progress',
 					},
 					{
@@ -79,11 +79,11 @@ export const ticketGetAllDescription: TicketProperties = [
 						value: 'Scheduled',
 					},
 					{
-						name: 'Waiting for Parts',
+						name: 'Waiting for parts',
 						value: 'Waiting for Parts',
 					},
 					{
-						name: 'Waiting on Customer',
+						name: 'Waiting on customer',
 						value: 'Waiting on Customer',
 					},
 				],

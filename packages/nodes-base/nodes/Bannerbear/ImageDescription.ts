@@ -34,7 +34,7 @@ export const imageFields: INodeProperties[] = [
 	/*                                image:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Template Name or ID',
+		displayName: 'Template name or ID',
 		name: 'templateId',
 		type: 'options',
 		typeOptions: {
@@ -52,10 +52,10 @@ export const imageFields: INodeProperties[] = [
 			'The template ID you want to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['image'],
@@ -72,15 +72,15 @@ export const imageFields: INodeProperties[] = [
 				description: 'Metadata that you need to store e.g. ID of a record in your DB',
 			},
 			{
-				displayName: 'Wait for Image',
+				displayName: 'Wait for image',
 				name: 'waitForImage',
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to wait for the image to be proccesed before returning. If after three tries the images is not ready, an error will be thrown. Number of tries can be increased by setting "Wait Max Tries".',
+					'Whether to wait for the image to be proccesed before returning. If after three tries the images is not ready, an error will be thrown. Number of tries can be increased by setting "Wait max tries".',
 			},
 			{
-				displayName: 'Wait Max Tries',
+				displayName: 'Wait max tries',
 				name: 'waitForImageMaxTries',
 				type: 'number',
 				typeOptions: {
@@ -111,7 +111,7 @@ export const imageFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Modification',
+		placeholder: 'Add modification',
 		displayOptions: {
 			show: {
 				resource: ['image'],

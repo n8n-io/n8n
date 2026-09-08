@@ -14,7 +14,7 @@ export const purchaseOperations: INodeProperties[] = [
 				action: 'Get a purchase',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many purchases',
 			},
@@ -50,7 +50,7 @@ export const purchaseFields: INodeProperties[] = [
 	//         purchase: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -84,7 +84,7 @@ export const purchaseFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{

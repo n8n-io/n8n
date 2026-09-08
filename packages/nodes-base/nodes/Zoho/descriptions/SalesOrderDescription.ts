@@ -28,7 +28,7 @@ export const salesOrderOperations: INodeProperties[] = [
 				action: 'Create a sales order',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 				action: 'Create or update a sales order',
@@ -46,7 +46,7 @@ export const salesOrderOperations: INodeProperties[] = [
 				action: 'Get a sales order',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many sales orders',
 				action: 'Get many sales orders',
@@ -67,7 +67,7 @@ export const salesOrderFields: INodeProperties[] = [
 	//       salesOrder: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Account Name or ID',
+		displayName: 'Account name or ID',
 		name: 'accountId',
 		required: true,
 		type: 'options',
@@ -134,7 +134,7 @@ export const salesOrderFields: INodeProperties[] = [
 			multipleValueButtonText: 'Add Product',
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: productDetailsOptions,
 		displayOptions: {
 			show: {
@@ -144,10 +144,10 @@ export const salesOrderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -175,7 +175,7 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Name of the carrier',
 			},
 			{
-				displayName: 'Contact Name or ID',
+				displayName: 'Contact name or ID',
 				name: 'contactId',
 				type: 'options',
 				description:
@@ -195,7 +195,7 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			makeCustomFieldsFixedCollection('salesOrder'),
 			{
-				displayName: 'Deal Name or ID',
+				displayName: 'Deal name or ID',
 				name: 'dealId',
 				type: 'options',
 				description:
@@ -222,13 +222,13 @@ export const salesOrderFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'Due_Date',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Exchange Rate',
+				displayName: 'Exchange rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: 0,
@@ -238,7 +238,7 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
-				displayName: 'Grand Total',
+				displayName: 'Grand total',
 				name: 'Grand_Total',
 				type: 'number',
 				default: 0,
@@ -248,14 +248,14 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Sales Order Number',
+				displayName: 'Sales order number',
 				name: 'SO_Number',
 				type: 'string',
 				default: '',
 				description: 'ID of the sales order after creating a case',
 			},
 			{
-				displayName: 'Sales Commission',
+				displayName: 'Sales commission',
 				name: 'Sales_Commission',
 				type: 'number',
 				default: 0,
@@ -267,7 +267,7 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
@@ -278,7 +278,7 @@ export const salesOrderFields: INodeProperties[] = [
 					'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sub Total',
+				displayName: 'Sub total',
 				name: 'Sub_Total',
 				type: 'number',
 				default: 0,
@@ -298,7 +298,7 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
-				displayName: 'Terms and Conditions',
+				displayName: 'Terms and conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
@@ -311,7 +311,7 @@ export const salesOrderFields: INodeProperties[] = [
 	//            salesOrder: delete
 	// ----------------------------------------
 	{
-		displayName: 'Sales Order ID',
+		displayName: 'Sales order ID',
 		name: 'salesOrderId',
 		description: 'ID of the sales order to delete',
 		type: 'string',
@@ -329,7 +329,7 @@ export const salesOrderFields: INodeProperties[] = [
 	//             salesOrder: get
 	// ----------------------------------------
 	{
-		displayName: 'Sales Order ID',
+		displayName: 'Sales order ID',
 		name: 'salesOrderId',
 		description: 'ID of the sales order to retrieve',
 		type: 'string',
@@ -352,7 +352,7 @@ export const salesOrderFields: INodeProperties[] = [
 	//            salesOrder: update
 	// ----------------------------------------
 	{
-		displayName: 'Sales Order ID',
+		displayName: 'Sales order ID',
 		name: 'salesOrderId',
 		description: 'ID of the sales order to update',
 		type: 'string',
@@ -366,10 +366,10 @@ export const salesOrderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -379,7 +379,7 @@ export const salesOrderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Name or ID',
+				displayName: 'Account name or ID',
 				name: 'accountId',
 				type: 'options',
 				default: [],
@@ -408,7 +408,7 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Name of the carrier',
 			},
 			{
-				displayName: 'Contact Name or ID',
+				displayName: 'Contact name or ID',
 				name: 'contactId',
 				type: 'options',
 				description:
@@ -428,7 +428,7 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			makeCustomFieldsFixedCollection('salesOrder'),
 			{
-				displayName: 'Deal Name or ID',
+				displayName: 'Deal name or ID',
 				name: 'dealId',
 				type: 'options',
 				description:
@@ -454,13 +454,13 @@ export const salesOrderFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'Due_Date',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Exchange Rate',
+				displayName: 'Exchange rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: 0,
@@ -470,7 +470,7 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
-				displayName: 'Grand Total',
+				displayName: 'Grand total',
 				name: 'Grand_Total',
 				type: 'number',
 				default: 0,
@@ -480,14 +480,14 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Sales Order Number',
+				displayName: 'Sales order number',
 				name: 'SO_Number',
 				type: 'string',
 				default: '',
 				description: 'ID of the sales order after creating a case',
 			},
 			{
-				displayName: 'Sales Commission',
+				displayName: 'Sales commission',
 				name: 'Sales_Commission',
 				type: 'number',
 				default: 0,
@@ -499,7 +499,7 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
@@ -510,7 +510,7 @@ export const salesOrderFields: INodeProperties[] = [
 					'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sub Total',
+				displayName: 'Sub total',
 				name: 'Sub_Total',
 				type: 'number',
 				default: 0,
@@ -537,7 +537,7 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
-				displayName: 'Terms and Conditions',
+				displayName: 'Terms and conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',

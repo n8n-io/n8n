@@ -31,18 +31,18 @@ const properties: INodeProperties[] = [
 	worksheetRLC,
 	tableRLC,
 	{
-		displayName: 'Data Mode',
+		displayName: 'Data mode',
 		name: 'dataMode',
 		type: 'options',
 		default: 'define',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMap',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Map Each Column Below',
+				name: 'Map each column below',
 				value: 'define',
 				description: 'Set the value for each destination column',
 			},
@@ -68,9 +68,9 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Values to Send',
+		displayName: 'Values to send',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -129,7 +129,7 @@ const properties: INodeProperties[] = [
 					"Specifies the relative position of the new row. If not defined, the addition happens at the end. Any row below the inserted row will be shifted downwards. First row index is 0. An index higher than the table's current row count will fail.",
 			},
 			{
-				displayName: 'RAW Data',
+				displayName: 'RAW data',
 				name: 'rawData',
 				type: 'boolean',
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-boolean
@@ -138,7 +138,7 @@ const properties: INodeProperties[] = [
 					'Whether the data should be returned RAW instead of parsed into keys according to their header',
 			},
 			{
-				displayName: 'Data Property',
+				displayName: 'Data property',
 				name: 'dataProperty',
 				type: 'string',
 				default: 'data',

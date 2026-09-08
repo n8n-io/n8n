@@ -30,7 +30,7 @@ export const accountOperations: INodeProperties[] = [
 				action: 'Get an account',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many accounts',
 			},
@@ -63,10 +63,10 @@ export const accountFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -96,7 +96,7 @@ export const accountFields: INodeProperties[] = [
 	//             account:getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -140,7 +140,7 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Field Names or IDs',
+				displayName: 'Return field names or IDs',
 				name: 'returnFields',
 				type: 'multiOptions',
 				description:
@@ -151,7 +151,7 @@ export const accountFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Expand Field Names or IDs',
+				displayName: 'Expand field names or IDs',
 				name: 'expandFields',
 				type: 'multiOptions',
 				description:
@@ -167,7 +167,7 @@ export const accountFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -191,10 +191,10 @@ export const accountFields: INodeProperties[] = [
 	//             account:update
 	// ----------------------------------------
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -218,7 +218,7 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Field Names or IDs',
+				displayName: 'Return field names or IDs',
 				name: 'returnFields',
 				type: 'multiOptions',
 				typeOptions: {

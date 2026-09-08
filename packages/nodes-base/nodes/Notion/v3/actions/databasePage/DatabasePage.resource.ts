@@ -43,13 +43,13 @@ function getQueryOptions(): INodeProperties {
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: { show: { resource: ['databasePage'], operation: ['get', 'getAll'] } },
 		options: [
 			{
 				displayName: 'Sort',
 				name: 'sort',
-				placeholder: 'Add Sort',
+				placeholder: 'Add sort',
 				type: 'fixedCollection',
 				typeOptions: { multipleValues: true },
 				default: {},
@@ -67,7 +67,7 @@ function getQueryOptions(): INodeProperties {
 								description: "Whether or not to use the record's timestamp to sort the response",
 							},
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'key',
 								type: 'options',
 								displayOptions: { show: { timestamp: [false] } },
@@ -80,12 +80,12 @@ function getQueryOptions(): INodeProperties {
 									'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Property Name',
+								displayName: 'Property name',
 								name: 'key',
 								type: 'options',
 								options: [
-									{ name: 'Created Time', value: 'created_time' },
-									{ name: 'Last Edited Time', value: 'last_edited_time' },
+									{ name: 'Created time', value: 'created_time' },
+									{ name: 'Last edited time', value: 'last_edited_time' },
 								],
 								displayOptions: { show: { timestamp: [true] } },
 								default: '',
@@ -114,7 +114,7 @@ function getQueryOptions(): INodeProperties {
 				],
 			},
 			{
-				displayName: 'Download Files',
+				displayName: 'Download files',
 				name: 'downloadFiles',
 				type: 'boolean',
 				default: false,
@@ -137,7 +137,7 @@ function propertiesUi(
 		type: 'fixedCollection',
 		typeOptions: { multipleValues: true },
 		default: {},
-		placeholder: 'Add Property',
+		placeholder: 'Add property',
 		displayOptions: { show: { resource: ['databasePage'], operation: [operation] } },
 		options: [
 			{
@@ -145,7 +145,7 @@ function propertiesUi(
 				displayName: 'Property',
 				values: [
 					{
-						displayName: 'Key Name or ID',
+						displayName: 'Key name or ID',
 						name: 'key',
 						type: 'options',
 						description: PROPERTY_KEY_DESCRIPTION,
@@ -190,7 +190,7 @@ function propertiesUi(
 						displayOptions: { show: { type: ['checkbox'] } },
 					},
 					{
-						displayName: 'Select Name or ID',
+						displayName: 'Select name or ID',
 						name: 'selectValue',
 						type: 'options',
 						description:
@@ -203,7 +203,7 @@ function propertiesUi(
 						displayOptions: { show: { type: ['select'] } },
 					},
 					{
-						displayName: 'Status Name or ID',
+						displayName: 'Status name or ID',
 						name: 'statusValue',
 						type: 'options',
 						description:
@@ -216,7 +216,7 @@ function propertiesUi(
 						displayOptions: { show: { type: ['status'] } },
 					},
 					{
-						displayName: 'Multi Select',
+						displayName: 'Multi select',
 						name: 'multiSelectValue',
 						type: 'string',
 						default: '',
@@ -230,7 +230,7 @@ function propertiesUi(
 						displayOptions: { show: { type: ['url'] } },
 					},
 					{
-						displayName: 'Ignore If Empty',
+						displayName: 'Ignore if empty',
 						name: 'ignoreIfEmpty',
 						type: 'boolean',
 						default: false,
@@ -251,7 +251,7 @@ function propertiesUi(
 						displayOptions: { show: { type: ['phone_number'] } },
 					},
 					{
-						displayName: 'User Names or IDs',
+						displayName: 'User names or IDs',
 						name: 'peopleValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -282,7 +282,7 @@ function propertiesUi(
 						description: 'Whether to define a date range',
 					},
 					{
-						displayName: 'Include Time',
+						displayName: 'Include time',
 						name: 'includeTime',
 						type: 'boolean',
 						default: true,
@@ -298,7 +298,7 @@ function propertiesUi(
 						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
-						displayName: 'Date Start',
+						displayName: 'Date start',
 						name: 'dateStart',
 						type: 'dateTime',
 						default: '',
@@ -306,7 +306,7 @@ function propertiesUi(
 						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
-						displayName: 'Date End',
+						displayName: 'Date end',
 						name: 'dateEnd',
 						type: 'dateTime',
 						default: '',
@@ -315,7 +315,7 @@ function propertiesUi(
 							'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
 					},
 					{
-						displayName: 'Timezone Name or ID',
+						displayName: 'Timezone name or ID',
 						name: 'timezone',
 						type: 'options',
 						typeOptions: {
@@ -329,7 +329,7 @@ function propertiesUi(
 					{
 						displayName: 'File URLs',
 						name: 'fileUrls',
-						placeholder: 'Add File',
+						placeholder: 'Add file',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -380,7 +380,7 @@ export const description: INodeProperties[] = [
 			},
 			{ name: 'Get', value: 'get', description: 'Get a page', action: 'Get a database page' },
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many pages',
 				action: 'Get many database pages',
@@ -427,12 +427,12 @@ export const description: INodeProperties[] = [
 		['pageId', '&key'],
 	),
 	{
-		displayName: 'Content Type',
+		displayName: 'Content type',
 		name: 'contentType',
 		type: 'options',
 		options: [
-			{ name: 'Block Builder', value: 'blockUi' },
-			{ name: 'JSON Blocks', value: 'json' },
+			{ name: 'Block builder', value: 'blockUi' },
+			{ name: 'JSON blocks', value: 'json' },
 			{ name: 'Markdown', value: 'markdown' },
 		],
 		default: 'blockUi',

@@ -70,7 +70,7 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'API Key',
+					name: 'API key',
 					value: 'apiKey',
 				},
 				{
@@ -132,7 +132,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get a task',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get many tasks',
 					action: 'Get many tasks',
@@ -177,14 +177,14 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Project Name or ID',
+			displayName: 'Project name or ID',
 			name: 'project',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
 			required: true,
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					placeholder: 'Select a project...',
@@ -209,7 +209,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The project you want to operate on. Choose from the list, or specify an ID.',
 		},
 		{
-			displayName: 'Section Name or ID',
+			displayName: 'Section name or ID',
 			name: 'section',
 			type: 'options',
 			typeOptions: {
@@ -227,7 +227,7 @@ const versionDescription: INodeTypeDescription = {
 				'Section to which you want move the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Label Names or IDs',
+			displayName: 'Label names or IDs',
 			name: 'labels',
 			type: 'multiOptions',
 			typeOptions: {
@@ -261,7 +261,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Task content',
 		},
 		{
-			displayName: 'Sync Commands',
+			displayName: 'Sync commands',
 			name: 'commands',
 			type: 'string',
 			displayOptions: {
@@ -275,7 +275,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Sync body',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'options',
 			type: 'collection',
 			placeholder: 'Add option',
@@ -295,14 +295,14 @@ const versionDescription: INodeTypeDescription = {
 					description: 'A description for the task',
 				},
 				{
-					displayName: 'Due Date Time',
+					displayName: 'Due date time',
 					name: 'dueDateTime',
 					type: 'dateTime',
 					default: '',
 					description: 'Specific date and time in RFC3339 format in UTC',
 				},
 				{
-					displayName: 'Due String Locale',
+					displayName: 'Due string locale',
 					name: 'dueLang',
 					type: 'string',
 					default: '',
@@ -310,7 +310,7 @@ const versionDescription: INodeTypeDescription = {
 						'2-letter code specifying language in case due_string is not written in English',
 				},
 				{
-					displayName: 'Due String',
+					displayName: 'Due string',
 					name: 'dueString',
 					type: 'string',
 					default: '',
@@ -318,7 +318,7 @@ const versionDescription: INodeTypeDescription = {
 						'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 				},
 				{
-					displayName: 'Parent Name or ID',
+					displayName: 'Parent name or ID',
 					name: 'parentId',
 					type: 'options',
 					typeOptions: {
@@ -341,7 +341,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Task priority from 1 (normal) to 4 (urgent)',
 				},
 				{
-					displayName: 'Section Name or ID',
+					displayName: 'Section name or ID',
 					name: 'section',
 					type: 'options',
 					typeOptions: {
@@ -355,7 +355,7 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Return All',
+			displayName: 'Return all',
 			name: 'returnAll',
 			type: 'boolean',
 			displayOptions: {
@@ -414,7 +414,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'A list of the task IDs to retrieve, this should be a comma-separated list',
 				},
 				{
-					displayName: 'Label Name or ID',
+					displayName: 'Label name or ID',
 					name: 'labelId',
 					type: 'options',
 					typeOptions: {
@@ -433,7 +433,7 @@ const versionDescription: INodeTypeDescription = {
 						'IETF language tag defining what language filter is written in, if differs from default English',
 				},
 				{
-					displayName: 'Parent Name or ID',
+					displayName: 'Parent name or ID',
 					name: 'parentId',
 					type: 'options',
 					typeOptions: {
@@ -445,7 +445,7 @@ const versionDescription: INodeTypeDescription = {
 						'Filter tasks by parent task ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Project Name or ID',
+					displayName: 'Project name or ID',
 					name: 'projectId',
 					type: 'options',
 					typeOptions: {
@@ -456,7 +456,7 @@ const versionDescription: INodeTypeDescription = {
 						'Filter tasks by project ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Section Name or ID',
+					displayName: 'Section name or ID',
 					name: 'sectionId',
 					type: 'options',
 					typeOptions: {
@@ -470,10 +470,10 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'updateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -497,14 +497,14 @@ const versionDescription: INodeTypeDescription = {
 					description: 'A description for the task',
 				},
 				{
-					displayName: 'Due Date Time',
+					displayName: 'Due date time',
 					name: 'dueDateTime',
 					type: 'dateTime',
 					default: '',
 					description: 'Specific date and time in RFC3339 format in UTC',
 				},
 				{
-					displayName: 'Due String Locale',
+					displayName: 'Due string locale',
 					name: 'dueLang',
 					type: 'string',
 					default: '',
@@ -512,7 +512,7 @@ const versionDescription: INodeTypeDescription = {
 						'2-letter code specifying language in case due_string is not written in English',
 				},
 				{
-					displayName: 'Due String',
+					displayName: 'Due string',
 					name: 'dueString',
 					type: 'string',
 					default: '',
@@ -520,7 +520,7 @@ const versionDescription: INodeTypeDescription = {
 						'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 				},
 				{
-					displayName: 'Due String Locale',
+					displayName: 'Due string locale',
 					name: 'dueLang',
 					type: 'string',
 					default: '',
@@ -528,7 +528,7 @@ const versionDescription: INodeTypeDescription = {
 						'2-letter code specifying language in case due_string is not written in English',
 				},
 				{
-					displayName: 'Label Names or IDs',
+					displayName: 'Label names or IDs',
 					name: 'labels',
 					type: 'multiOptions',
 					description:

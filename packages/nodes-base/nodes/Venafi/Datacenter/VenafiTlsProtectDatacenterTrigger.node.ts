@@ -33,12 +33,12 @@ export class VenafiTlsProtectDatacenterTrigger implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'triggerOn',
 				type: 'options',
 				options: [
 					{
-						name: 'Certificate Expired',
+						name: 'Certificate expired',
 						value: 'certificateExpired',
 					},
 				],

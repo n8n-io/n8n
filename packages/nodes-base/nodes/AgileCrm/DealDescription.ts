@@ -31,7 +31,7 @@ export const dealOperations: INodeProperties[] = [
 				action: 'Get a deal',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many deals',
 				action: 'Get many deals',
@@ -87,7 +87,7 @@ export const dealFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -103,7 +103,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                deal:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Close Date',
+		displayName: 'Close date',
 		name: 'closeDate',
 		type: 'dateTime',
 		required: true,
@@ -118,7 +118,7 @@ export const dealFields: INodeProperties[] = [
 		description: 'Closing date of deal',
 	},
 	{
-		displayName: 'Expected Value',
+		displayName: 'Expected value',
 		name: 'expectedValue',
 		type: 'number',
 		required: true,
@@ -186,7 +186,7 @@ export const dealFields: INodeProperties[] = [
 		description: 'Expected probability',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -198,7 +198,7 @@ export const dealFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -216,10 +216,10 @@ export const dealFields: INodeProperties[] = [
 			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -241,7 +241,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Unique contact identifiers',
 			},
 			{
-				displayName: 'Custom Data',
+				displayName: 'Custom data',
 				name: 'customData',
 				type: 'fixedCollection',
 				default: {},
@@ -311,7 +311,7 @@ export const dealFields: INodeProperties[] = [
 		description: 'ID of deal to update',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -323,7 +323,7 @@ export const dealFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -342,10 +342,10 @@ export const dealFields: INodeProperties[] = [
 			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -356,7 +356,7 @@ export const dealFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Expected Value',
+				displayName: 'Expected value',
 				name: 'expectedValue',
 				type: 'number',
 				typeOptions: {
@@ -396,7 +396,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Unique contact identifiers',
 			},
 			{
-				displayName: 'Custom Data',
+				displayName: 'Custom data',
 				name: 'customData',
 				type: 'fixedCollection',
 				default: {},

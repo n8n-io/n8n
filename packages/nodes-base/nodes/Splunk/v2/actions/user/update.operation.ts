@@ -8,10 +8,10 @@ import { splunkApiRequest } from '../../transport';
 const properties: INodeProperties[] = [
 	userRLC,
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -22,7 +22,7 @@ const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'realname',
 				type: 'string',
 				default: '',
@@ -36,7 +36,7 @@ const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Role Names or IDs',
+				displayName: 'Role names or IDs',
 				name: 'roles',
 				type: 'multiOptions',
 				description:

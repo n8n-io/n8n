@@ -25,7 +25,7 @@ export const setInputsProperties: INodeProperties[] = [
 	{
 		displayName: 'Inputs',
 		name: 'inputs',
-		placeholder: 'Add Input',
+		placeholder: 'Add input',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Input',
@@ -98,7 +98,7 @@ export const setOutputProperties: INodeProperties[] = [
 		required: true,
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -120,7 +120,7 @@ export const setOutputProperties: INodeProperties[] = [
 	{
 		displayName: 'Outputs',
 		name: 'outputs',
-		placeholder: 'Add Output',
+		placeholder: 'Add output',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Output',
@@ -173,7 +173,7 @@ export const setCheckIfEvaluatingProperties: INodeProperties[] = [
 
 const correctnessFields: INodeProperties[] = [
 	{
-		displayName: 'Expected Answer',
+		displayName: 'Expected answer',
 		name: 'expectedAnswer',
 		type: 'string',
 		default: '',
@@ -186,7 +186,7 @@ const correctnessFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Actual Answer',
+		displayName: 'Actual answer',
 		name: 'actualAnswer',
 		type: 'string',
 		default: '',
@@ -202,7 +202,7 @@ const correctnessFields: INodeProperties[] = [
 
 const helpfulnessFields: INodeProperties[] = [
 	{
-		displayName: 'User Query',
+		displayName: 'User query',
 		name: 'userQuery',
 		type: 'string',
 		default: '',
@@ -261,10 +261,10 @@ function optionsForMetric(
 			name: 'options',
 			type: 'collection',
 			default: {},
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			options: [
 				{
-					displayName: 'Metric Name',
+					displayName: 'Metric name',
 					name: 'metricName',
 					type: 'string',
 					default: defaultName,
@@ -272,7 +272,7 @@ function optionsForMetric(
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 				{
-					displayName: 'Input Prompt',
+					displayName: 'Input prompt',
 					name: 'inputPrompt',
 					type: 'string',
 					default: prompt[0] ?? '',
@@ -299,10 +299,10 @@ function optionsForMetricBasic(metric: string, defaultName: string): INodeProper
 			name: 'options',
 			type: 'collection',
 			default: {},
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			options: [
 				{
-					displayName: 'Metric Name',
+					displayName: 'Metric name',
 					name: 'metricName',
 					type: 'string',
 					default: defaultName,
@@ -320,7 +320,7 @@ function optionsForMetricBasic(metric: string, defaultName: string): INodeProper
 
 const toolsUsedFields: INodeProperties[] = [
 	{
-		displayName: 'Expected Tools',
+		displayName: 'Expected tools',
 		name: 'expectedTools',
 		type: 'string',
 		default: '',
@@ -334,7 +334,7 @@ const toolsUsedFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Intermediate Steps (of Agent)',
+		displayName: 'Intermediate steps (of agent)',
 		name: 'intermediateSteps',
 		type: 'string',
 		default: '',
@@ -396,7 +396,7 @@ export const setMetricsProperties: INodeProperties[] = [
 					'Whether the response addresses the query. Uses a scale of 1 (worst) to 5 (best).',
 			},
 			{
-				name: 'String Similarity',
+				name: 'String similarity',
 				value: 'stringSimilarity',
 				description:
 					'How close the answer is to a reference answer, measured character-by-character (edit distance). Returns a score between 0 and 1.',
@@ -408,12 +408,12 @@ export const setMetricsProperties: INodeProperties[] = [
 					'Whether the answer exactly matches the reference answer. Returns 1 if so and 0 otherwise.',
 			},
 			{
-				name: 'Tools Used',
+				name: 'Tools used',
 				value: 'toolsUsed',
 				description: 'Whether tool(s) were used or not. Returns a score between 0 and 1.',
 			},
 			{
-				name: 'Custom Metrics',
+				name: 'Custom metrics',
 				value: 'customMetrics',
 				description: 'Define your own metric(s)',
 			},
@@ -445,7 +445,7 @@ export const setMetricsProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Metrics to Return',
+		displayName: 'Metrics to return',
 		name: 'metrics',
 		type: 'assignmentCollection',
 		default: {

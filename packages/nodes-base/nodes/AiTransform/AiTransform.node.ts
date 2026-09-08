@@ -59,7 +59,7 @@ export class AiTransform implements INodeType {
 				},
 			},
 			{
-				displayName: 'Code Generated For Prompt',
+				displayName: 'Code generated for prompt',
 				name: AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
 				type: 'hidden',
 				default: '',

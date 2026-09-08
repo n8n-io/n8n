@@ -72,7 +72,7 @@ export const contactListFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Contact to Add',
+		displayName: 'Contact to add',
 		name: 'id',
 		type: 'number',
 		required: true,
@@ -86,7 +86,7 @@ export const contactListFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'List to Add To',
+		displayName: 'List to add to',
 		name: 'listId',
 		type: 'number',
 		required: true,
@@ -103,7 +103,7 @@ export const contactListFields: INodeProperties[] = [
 	/*                                contactList:remove                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Contact to Remove',
+		displayName: 'Contact to remove',
 		name: 'id',
 		type: 'number',
 		required: true,
@@ -116,7 +116,7 @@ export const contactListFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'List to Remove From',
+		displayName: 'List to remove from',
 		name: 'listId',
 		type: 'number',
 		required: true,

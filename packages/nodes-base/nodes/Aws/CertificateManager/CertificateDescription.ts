@@ -25,13 +25,13 @@ export const certificateOperations: INodeProperties[] = [
 				action: 'Get a certificate',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getMany',
 				description: 'Get many certificates',
 				action: 'Get many certificates',
 			},
 			{
-				name: 'Get Metadata',
+				name: 'Get metadata',
 				value: 'getMetadata',
 				description: 'Get certificate metadata',
 				action: 'Get certificate metadata',
@@ -70,7 +70,7 @@ export const certificateFields: INodeProperties[] = [
 	/*                                certificate:delete                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Bucket Name',
+		displayName: 'Bucket name',
 		name: 'bucketName',
 		type: 'string',
 		required: true,
@@ -83,7 +83,7 @@ export const certificateFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Certificate Key',
+		displayName: 'Certificate key',
 		name: 'certificateKey',
 		type: 'string',
 		required: true,
@@ -99,7 +99,7 @@ export const certificateFields: INodeProperties[] = [
 	/*                                 certificate:getMany                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -133,7 +133,7 @@ export const certificateFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -143,7 +143,7 @@ export const certificateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Certificate Statuses',
+				displayName: 'Certificate statuses',
 				name: 'certificateStatuses',
 				type: 'multiOptions',
 				options: [
@@ -164,7 +164,7 @@ export const certificateFields: INodeProperties[] = [
 						value: 'ISSUED',
 					},
 					{
-						name: 'Pending Validation',
+						name: 'Pending validation',
 						value: 'PENDING_VALIDATION',
 					},
 					{
@@ -172,7 +172,7 @@ export const certificateFields: INodeProperties[] = [
 						value: 'REVOKED',
 					},
 					{
-						name: 'Validation Timed Out',
+						name: 'Validation timed out',
 						value: 'VALIDATION_TIMED_OUT',
 					},
 				],
@@ -180,7 +180,7 @@ export const certificateFields: INodeProperties[] = [
 				description: 'Filter the certificate list by status value',
 			},
 			{
-				displayName: 'Extended Key Usage',
+				displayName: 'Extended key usage',
 				name: 'extendedKeyUsage',
 				type: 'multiOptions',
 				options: [
@@ -189,7 +189,7 @@ export const certificateFields: INodeProperties[] = [
 						value: 'ANY',
 					},
 					{
-						name: 'Code Signing',
+						name: 'Code signing',
 						value: 'CODE_SIGNING',
 					},
 					{
@@ -197,19 +197,19 @@ export const certificateFields: INodeProperties[] = [
 						value: 'CUSTOM',
 					},
 					{
-						name: 'Email Protection',
+						name: 'Email protection',
 						value: 'EMAIL_PROTECTION',
 					},
 					{
-						name: 'IPSEC End System',
+						name: 'IPSEC end system',
 						value: 'IPSEC_END_SYSTEM',
 					},
 					{
-						name: 'IPSEC Tunnel',
+						name: 'IPSEC tunnel',
 						value: 'IPSEC_TUNNEL',
 					},
 					{
-						name: 'IPSEC User',
+						name: 'IPSEC user',
 						value: 'IPSEC_USER',
 					},
 					{
@@ -217,19 +217,19 @@ export const certificateFields: INodeProperties[] = [
 						value: 'NONE',
 					},
 					{
-						name: 'OCSP Signing',
+						name: 'OCSP signing',
 						value: 'OCSP_SIGNING',
 					},
 					{
-						name: 'Time Stamping',
+						name: 'Time stamping',
 						value: 'TIME_STAMPING',
 					},
 					{
-						name: 'TLS Web Client Authentication',
+						name: 'TLS web client authentication',
 						value: 'TLS_WEB_CLIENT_AUTHENTICATION',
 					},
 					{
-						name: 'TLS Web Server Authentication',
+						name: 'TLS web server authentication',
 						value: 'TLS_WEB_SERVER_AUTHENTICATION',
 					},
 				],
@@ -237,7 +237,7 @@ export const certificateFields: INodeProperties[] = [
 				description: 'Specify one or more ExtendedKeyUsage extension values',
 			},
 			{
-				displayName: 'Key Types',
+				displayName: 'Key types',
 				name: 'keyTypes',
 				type: 'multiOptions',
 				options: [
@@ -270,7 +270,7 @@ export const certificateFields: INodeProperties[] = [
 				description: 'Specify one or more algorithms that can be used to generate key pairs',
 			},
 			{
-				displayName: 'Key Usage',
+				displayName: 'Key usage',
 				name: 'keyUsage',
 				type: 'multiOptions',
 				options: [
@@ -279,11 +279,11 @@ export const certificateFields: INodeProperties[] = [
 						value: 'ANY',
 					},
 					{
-						name: 'Certificate Signing',
+						name: 'Certificate signing',
 						value: 'CERTIFICATE_SIGNING',
 					},
 					{
-						name: 'CRL Signing',
+						name: 'CRL signing',
 						value: 'CRL_SIGNING',
 					},
 					{
@@ -291,31 +291,31 @@ export const certificateFields: INodeProperties[] = [
 						value: 'CUSTOM',
 					},
 					{
-						name: 'Data Encipherment',
+						name: 'Data encipherment',
 						value: 'DATA_ENCIPHERMENT',
 					},
 					{
-						name: 'Decipher Only',
+						name: 'Decipher only',
 						value: 'DECIPHER_ONLY',
 					},
 					{
-						name: 'Digital Signature',
+						name: 'Digital signature',
 						value: 'DIGITAL_SIGNATURE',
 					},
 					{
-						name: 'Encipher Only',
+						name: 'Encipher only',
 						value: 'ENCIPHER_ONLY',
 					},
 					{
-						name: 'Key Agreement',
+						name: 'Key agreement',
 						value: 'KEY_AGREEMENT',
 					},
 					{
-						name: 'Key Encipherment',
+						name: 'Key encipherment',
 						value: 'KEY_ENCIPHERMENT',
 					},
 					{
-						name: 'Non Repudiation',
+						name: 'Non repudiation',
 						value: 'NON_REPUDIATION',
 					},
 				],

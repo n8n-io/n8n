@@ -13,7 +13,7 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new user, or update the current one if it already exists (upsert)',
 				action: 'Create or update a user',
@@ -77,7 +77,7 @@ export const userFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: "Create If Doesn't Exist",
+		displayName: "Create if doesn't exist",
 		name: 'preferUserId',
 		type: 'boolean',
 		required: true,
@@ -92,10 +92,10 @@ export const userFields: INodeProperties[] = [
 		description: 'Whether to create a new user if the idetifier does not exist',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -105,18 +105,18 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Data Fields',
+				displayName: 'Data fields',
 				name: 'dataFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Data Field',
+				placeholder: 'Add data field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'dataFieldValues',
-						displayName: 'Data Field',
+						displayName: 'Data field',
 						values: [
 							{
 								displayName: 'Key',
@@ -137,7 +137,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Merge Nested Objects',
+				displayName: 'Merge nested objects',
 				name: 'mergeNestedObjects',
 				type: 'boolean',
 				default: false,

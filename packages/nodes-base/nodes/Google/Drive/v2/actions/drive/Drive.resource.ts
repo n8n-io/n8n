@@ -34,7 +34,7 @@ export const description: INodeProperties[] = [
 				action: 'Get shared drive',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'list',
 				description: 'Get the list of shared drives',
 				action: 'Get many shared drives',

@@ -126,7 +126,7 @@ export class InformationExtractor implements INodeType {
 			{
 				displayName: 'Attributes',
 				name: 'attributes',
-				placeholder: 'Add Attribute',
+				placeholder: 'Add attribute',
 				type: 'fixedCollection',
 				default: {},
 				displayOptions: {
@@ -140,7 +140,7 @@ export class InformationExtractor implements INodeType {
 				options: [
 					{
 						name: 'attributes',
-						displayName: 'Attribute List',
+						displayName: 'Attribute list',
 						values: [
 							{
 								displayName: 'Name',
@@ -203,10 +203,10 @@ export class InformationExtractor implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'System Prompt Template',
+						displayName: 'System prompt template',
 						name: 'systemPromptTemplate',
 						type: 'string',
 						default: SYSTEM_PROMPT_TEMPLATE,

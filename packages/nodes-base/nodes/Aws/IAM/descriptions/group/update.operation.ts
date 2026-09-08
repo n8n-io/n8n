@@ -15,10 +15,10 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. GroupName',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

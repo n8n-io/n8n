@@ -31,7 +31,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many tasks',
 				action: 'Get many tasks',
@@ -46,10 +46,10 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -59,7 +59,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client Name or ID',
+				displayName: 'Client name or ID',
 				name: 'client',
 				type: 'options',
 				description:
@@ -70,13 +70,13 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Custom Value 1',
+				displayName: 'Custom value 1',
 				name: 'customValue1',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Value 2',
+				displayName: 'Custom value 2',
 				name: 'customValue2',
 				type: 'string',
 				default: '',
@@ -88,7 +88,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project name or ID',
 				name: 'project',
 				type: 'options',
 				description:
@@ -101,9 +101,9 @@ export const taskFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Time Logs',
+		displayName: 'Time logs',
 		name: 'timeLogsUi',
-		placeholder: 'Add Time Log',
+		placeholder: 'Add time log',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -118,22 +118,22 @@ export const taskFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'timeLogsValues',
-				displayName: 'Time Log',
+				displayName: 'Time log',
 				values: [
 					{
-						displayName: 'Start Date',
+						displayName: 'Start date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
 					},
 					{
-						displayName: 'End Date',
+						displayName: 'End date',
 						name: 'endDate',
 						type: 'dateTime',
 						default: '',
 					},
 					{
-						displayName: 'Duration (Hours)',
+						displayName: 'Duration (hours)',
 						name: 'duration',
 						type: 'number',
 						typeOptions: {
@@ -181,7 +181,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -208,7 +208,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                  task:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -242,7 +242,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

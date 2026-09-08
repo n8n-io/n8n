@@ -2,7 +2,7 @@ import type { CustomerProperties } from '../../Interfaces';
 
 export const customerGetAllDescription: CustomerProperties = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -36,7 +36,7 @@ export const customerGetAllDescription: CustomerProperties = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['customer'],
@@ -46,7 +46,7 @@ export const customerGetAllDescription: CustomerProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Business Name',
+				displayName: 'Business name',
 				name: 'businessName',
 				type: 'string',
 				default: '',
@@ -59,25 +59,25 @@ export const customerGetAllDescription: CustomerProperties = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Include Disabled',
+				displayName: 'Include disabled',
 				name: 'includeDisabled',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastname',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Search Query',
+				displayName: 'Search query',
 				name: 'query',
 				type: 'string',
 				default: '',

@@ -42,10 +42,10 @@ const properties: INodeProperties[] = [
 		description: 'Type of the activity like "call", "meeting", etc',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -56,7 +56,7 @@ const properties: INodeProperties[] = [
 				description: 'ID of the deal this activity will be associated with',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'due_date',
 				type: 'dateTime',
 				default: '',
@@ -73,7 +73,7 @@ const properties: INodeProperties[] = [
 				description: 'Note of the activity (HTML format)',
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'org_id',
 				type: 'options',
 				typeOptions: {
@@ -91,7 +91,7 @@ const properties: INodeProperties[] = [
 				description: 'ID of the person this activity will be associated with',
 			},
 			{
-				displayName: 'User Name or ID',
+				displayName: 'User name or ID',
 				name: 'user_id',
 				type: 'options',
 				typeOptions: {

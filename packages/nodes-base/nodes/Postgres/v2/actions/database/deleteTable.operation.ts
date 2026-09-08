@@ -33,7 +33,7 @@ const properties: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description:
-					"Delete the rows that match the 'Select Rows' conditions below. If no selection is made, all rows in the table are deleted.",
+					"Delete the rows that match the 'Select rows' conditions below. If no selection is made, all rows in the table are deleted.",
 			},
 			{
 				name: 'Drop',
@@ -43,7 +43,7 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Restart Sequences',
+		displayName: 'Restart sequences',
 		name: 'restartSequences',
 		type: 'boolean',
 		default: false,

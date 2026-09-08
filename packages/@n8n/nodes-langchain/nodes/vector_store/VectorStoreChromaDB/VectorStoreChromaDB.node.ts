@@ -262,7 +262,7 @@ const authenticationProperty: INodeProperties = {
 	type: 'options',
 	options: [
 		{
-			name: 'Self-Hosted',
+			name: 'Self-hosted',
 			value: 'chromaSelfHostedApi',
 			description: 'Connect to a self-hosted ChromaDB instance',
 		},
@@ -282,7 +282,7 @@ const retrieveFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [metadataFilterField],
 	},
@@ -293,11 +293,11 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Clear Collection',
+				displayName: 'Clear collection',
 				name: 'clearCollection',
 				type: 'boolean',
 				default: false,

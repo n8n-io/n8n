@@ -78,7 +78,7 @@ export class Amqp implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Queue / Topic',
+				displayName: 'Queue / topic',
 				name: 'sink',
 				type: 'string',
 				default: '',
@@ -109,7 +109,7 @@ export class Amqp implements INodeType {
 						description: 'Will be used to pass to the RHEA Backend as container_id',
 					},
 					{
-						displayName: 'Data as Object',
+						displayName: 'Data as object',
 						name: 'dataAsObject',
 						type: 'boolean',
 						default: false,
@@ -123,14 +123,14 @@ export class Amqp implements INodeType {
 						description: 'Whether to automatically reconnect if disconnected',
 					},
 					{
-						displayName: 'Reconnect Limit',
+						displayName: 'Reconnect limit',
 						name: 'reconnectLimit',
 						type: 'number',
 						default: 50,
 						description: 'Maximum number of reconnect attempts',
 					},
 					{
-						displayName: 'Send Property',
+						displayName: 'Send property',
 						name: 'sendOnlyProperty',
 						type: 'string',
 						default: '',

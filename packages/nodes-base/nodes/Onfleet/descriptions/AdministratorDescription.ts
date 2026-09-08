@@ -25,7 +25,7 @@ export const adminOperations: INodeProperties[] = [
 				action: 'Delete an admin',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many Onfleet admins',
 				action: 'Get many admins',
@@ -67,7 +67,7 @@ const adminPhoneField = {
 } as INodeProperties;
 
 const adminReadOnlyField = {
-	displayName: 'Read Only',
+	displayName: 'Read only',
 	name: 'isReadOnly',
 	type: 'boolean',
 	default: false,
@@ -92,7 +92,7 @@ export const adminFields: INodeProperties[] = [
 		description: 'The ID of the admin object for lookup',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -143,10 +143,10 @@ export const adminFields: INodeProperties[] = [
 		...adminEmailField,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -157,10 +157,10 @@ export const adminFields: INodeProperties[] = [
 		options: [adminPhoneField, adminReadOnlyField],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

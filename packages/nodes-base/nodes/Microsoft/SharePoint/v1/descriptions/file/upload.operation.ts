@@ -18,7 +18,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		default: '',
 		description: 'The name of the file being uploaded',
@@ -27,7 +27,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 	},
 	{
-		displayName: 'File Contents',
+		displayName: 'File contents',
 		name: 'fileContents',
 		default: '',
 		description:

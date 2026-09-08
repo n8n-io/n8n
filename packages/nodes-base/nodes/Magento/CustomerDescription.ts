@@ -33,7 +33,7 @@ export const customerOperations: INodeProperties[] = [
 				action: 'Get a customer',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many customers',
 				action: 'Get many customers',
@@ -69,7 +69,7 @@ export const customerFields: INodeProperties[] = [
 		description: 'Email address of the user to create',
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstname',
 		type: 'string',
 		required: true,
@@ -83,7 +83,7 @@ export const customerFields: INodeProperties[] = [
 		description: 'First name of the user to create',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastname',
 		type: 'string',
 		required: true,
@@ -97,10 +97,10 @@ export const customerFields: INodeProperties[] = [
 		description: 'Last name of the user to create',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -141,7 +141,7 @@ export const customerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		default: '',
@@ -153,7 +153,7 @@ export const customerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		default: '',
@@ -165,7 +165,7 @@ export const customerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Website Name or ID',
+		displayName: 'Website name or ID',
 		name: 'website_id',
 		type: 'options',
 		description:
@@ -182,10 +182,10 @@ export const customerFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -217,7 +217,7 @@ export const customerFields: INodeProperties[] = [
 	/*                                   customer:getAll			              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

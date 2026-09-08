@@ -134,7 +134,7 @@ export class ToolHttpRequest implements INodeType {
 			...authenticationProperties,
 			//----------------------------------------------------------------
 			{
-				displayName: 'Send Query Parameters',
+				displayName: 'Send query parameters',
 				name: 'sendQuery',
 				type: 'boolean',
 				default: false,
@@ -174,7 +174,7 @@ export class ToolHttpRequest implements INodeType {
 			},
 			//----------------------------------------------------------------
 			{
-				displayName: 'Send Headers',
+				displayName: 'Send headers',
 				name: 'sendHeaders',
 				type: 'boolean',
 				default: false,
@@ -214,7 +214,7 @@ export class ToolHttpRequest implements INodeType {
 			},
 			//----------------------------------------------------------------
 			{
-				displayName: 'Send Body',
+				displayName: 'Send body',
 				name: 'sendBody',
 				type: 'boolean',
 				default: false,

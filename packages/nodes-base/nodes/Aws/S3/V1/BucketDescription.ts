@@ -25,7 +25,7 @@ export const bucketOperations: INodeProperties[] = [
 				action: 'Delete a bucket',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many buckets',
 				action: 'Get many buckets',
@@ -60,10 +60,10 @@ export const bucketFields: INodeProperties[] = [
 		description: 'A succinct description of the nature, symptoms, cause, or effect of the bucket',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['bucket'],
@@ -78,7 +78,7 @@ export const bucketFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Authenticated Read',
+						name: 'Authenticated read',
 						value: 'authenticatedRead',
 					},
 					{
@@ -86,11 +86,11 @@ export const bucketFields: INodeProperties[] = [
 						value: 'Private',
 					},
 					{
-						name: 'Public Read',
+						name: 'Public read',
 						value: 'publicRead',
 					},
 					{
-						name: 'Public Read Write',
+						name: 'Public read write',
 						value: 'publicReadWrite',
 					},
 				],
@@ -98,14 +98,14 @@ export const bucketFields: INodeProperties[] = [
 				description: 'The canned ACL to apply to the bucket',
 			},
 			{
-				displayName: 'Bucket Object Lock Enabled',
+				displayName: 'Bucket object lock enabled',
 				name: 'bucketObjectLockEnabled',
 				type: 'boolean',
 				default: false,
 				description: 'Whether you want S3 Object Lock to be enabled for the new bucket',
 			},
 			{
-				displayName: 'Grant Full Control',
+				displayName: 'Grant full control',
 				name: 'grantFullControl',
 				type: 'boolean',
 				default: false,
@@ -113,21 +113,21 @@ export const bucketFields: INodeProperties[] = [
 					'Whether to allow grantee the read, write, read ACP, and write ACP permissions on the bucket',
 			},
 			{
-				displayName: 'Grant Read',
+				displayName: 'Grant read',
 				name: 'grantRead',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to allow grantee to list the objects in the bucket',
 			},
 			{
-				displayName: 'Grant Read ACP',
+				displayName: 'Grant read ACP',
 				name: 'grantReadAcp',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to allow grantee to read the bucket ACL',
 			},
 			{
-				displayName: 'Grant Write',
+				displayName: 'Grant write',
 				name: 'grantWrite',
 				type: 'boolean',
 				default: false,
@@ -135,7 +135,7 @@ export const bucketFields: INodeProperties[] = [
 					'Whether to allow grantee to create, overwrite, and delete any object in the bucket',
 			},
 			{
-				displayName: 'Grant Write ACP',
+				displayName: 'Grant write ACP',
 				name: 'grantWriteAcp',
 				type: 'boolean',
 				default: false,
@@ -174,7 +174,7 @@ export const bucketFields: INodeProperties[] = [
 	/*                                 bucket:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -208,7 +208,7 @@ export const bucketFields: INodeProperties[] = [
 	/*                                 bucket:search                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Bucket Name',
+		displayName: 'Bucket name',
 		name: 'bucketName',
 		type: 'string',
 		required: true,
@@ -221,7 +221,7 @@ export const bucketFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -252,10 +252,10 @@ export const bucketFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['bucket'],
@@ -272,7 +272,7 @@ export const bucketFields: INodeProperties[] = [
 				description: 'A delimiter is a character you use to group keys',
 			},
 			{
-				displayName: 'Encoding Type',
+				displayName: 'Encoding type',
 				name: 'encodingType',
 				type: 'options',
 				options: [
@@ -285,7 +285,7 @@ export const bucketFields: INodeProperties[] = [
 				description: 'Encoding type used by Amazon S3 to encode object keys in the response',
 			},
 			{
-				displayName: 'Fetch Owner',
+				displayName: 'Fetch owner',
 				name: 'fetchOwner',
 				type: 'boolean',
 				default: false,
@@ -301,7 +301,7 @@ export const bucketFields: INodeProperties[] = [
 				description: 'Limits the response to keys that begin with the specified prefix',
 			},
 			{
-				displayName: 'Requester Pays',
+				displayName: 'Requester pays',
 				name: 'requesterPays',
 				type: 'boolean',
 				default: false,
@@ -309,7 +309,7 @@ export const bucketFields: INodeProperties[] = [
 					'Whether the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
 			},
 			{
-				displayName: 'Start After',
+				displayName: 'Start after',
 				name: 'startAfter',
 				type: 'string',
 				default: '',

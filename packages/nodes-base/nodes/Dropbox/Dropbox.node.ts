@@ -58,7 +58,7 @@ export class Dropbox implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -212,7 +212,7 @@ export class Dropbox implements INodeType {
 			//         file/folder:copy
 			// ----------------------------------
 			{
-				displayName: 'From Path',
+				displayName: 'From path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -227,7 +227,7 @@ export class Dropbox implements INodeType {
 				description: 'The path of file or folder to copy',
 			},
 			{
-				displayName: 'To Path',
+				displayName: 'To path',
 				name: 'toPath',
 				type: 'string',
 				default: '',
@@ -246,7 +246,7 @@ export class Dropbox implements INodeType {
 			//         file/folder:delete
 			// ----------------------------------
 			{
-				displayName: 'Delete Path',
+				displayName: 'Delete path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -265,7 +265,7 @@ export class Dropbox implements INodeType {
 			//         file/folder:move
 			// ----------------------------------
 			{
-				displayName: 'From Path',
+				displayName: 'From path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -280,7 +280,7 @@ export class Dropbox implements INodeType {
 				description: 'The path of file or folder to move',
 			},
 			{
-				displayName: 'To Path',
+				displayName: 'To path',
 				name: 'toPath',
 				type: 'string',
 				default: '',
@@ -299,7 +299,7 @@ export class Dropbox implements INodeType {
 			//         file:download
 			// ----------------------------------
 			{
-				displayName: 'File Path',
+				displayName: 'File path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -314,7 +314,7 @@ export class Dropbox implements INodeType {
 				description: 'The file path of the file to download. Has to contain the full path.',
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -332,7 +332,7 @@ export class Dropbox implements INodeType {
 			//         file:upload
 			// ----------------------------------
 			{
-				displayName: 'File Path',
+				displayName: 'File path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -348,7 +348,7 @@ export class Dropbox implements INodeType {
 					'The file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
-				displayName: 'Binary File',
+				displayName: 'Binary file',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -361,7 +361,7 @@ export class Dropbox implements INodeType {
 				description: 'Whether the data to upload should be taken from binary field',
 			},
 			{
-				displayName: 'File Content',
+				displayName: 'File content',
 				name: 'fileContent',
 				type: 'string',
 				default: '',
@@ -376,7 +376,7 @@ export class Dropbox implements INodeType {
 				description: 'The text content of the file to upload',
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -411,7 +411,7 @@ export class Dropbox implements INodeType {
 					'The string to search for. May match across multiple fields based on the request arguments.',
 			},
 			{
-				displayName: 'File Status',
+				displayName: 'File status',
 				name: 'fileStatus',
 				type: 'options',
 				options: [
@@ -435,7 +435,7 @@ export class Dropbox implements INodeType {
 					'The string to search for. May match across multiple fields based on the request arguments.',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -482,7 +482,7 @@ export class Dropbox implements INodeType {
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				default: {},
 				displayOptions: {
 					show: {
@@ -492,7 +492,7 @@ export class Dropbox implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'File Categories',
+						displayName: 'File categories',
 						name: 'file_categories',
 						type: 'multiOptions',
 						options: [
@@ -546,7 +546,7 @@ export class Dropbox implements INodeType {
 						default: [],
 					},
 					{
-						displayName: 'File Extensions',
+						displayName: 'File extensions',
 						name: 'file_extensions',
 						type: 'string',
 						default: '',
@@ -590,7 +590,7 @@ export class Dropbox implements INodeType {
 			//         folder:list
 			// ----------------------------------
 			{
-				displayName: 'Folder Path',
+				displayName: 'Folder path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -604,7 +604,7 @@ export class Dropbox implements INodeType {
 				description: 'The path of which to list the content',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -637,7 +637,7 @@ export class Dropbox implements INodeType {
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				default: {},
 				displayOptions: {
 					show: {
@@ -647,7 +647,7 @@ export class Dropbox implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Include Deleted',
+						displayName: 'Include deleted',
 						name: 'include_deleted',
 						type: 'boolean',
 						default: false,
@@ -655,7 +655,7 @@ export class Dropbox implements INodeType {
 							'Whether the results will include entries for files and folders that used to exist but were deleted. The default for this field is False.',
 					},
 					{
-						displayName: 'Include Shared Members',
+						displayName: 'Include shared members',
 						name: 'include_has_explicit_shared_members',
 						type: 'boolean',
 						default: false,
@@ -663,7 +663,7 @@ export class Dropbox implements INodeType {
 							'Whether the results will include a flag for each file indicating whether or not that file has any explicit members. The default for this field is False.',
 					},
 					{
-						displayName: 'Include Mounted Folders',
+						displayName: 'Include mounted folders',
 						name: 'include_mounted_folders',
 						type: 'boolean',
 						default: true,
@@ -671,7 +671,7 @@ export class Dropbox implements INodeType {
 							'Whether the results will include entries under mounted folders which includes app folder, shared folder and team folder. The default for this field is True.',
 					},
 					{
-						displayName: 'Include Non Downloadable Files',
+						displayName: 'Include non downloadable files',
 						name: 'include_non_downloadable_files',
 						type: 'boolean',
 						default: true,

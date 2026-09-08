@@ -55,15 +55,15 @@ export class Nasa implements INodeType {
 						value: 'asteroidNeoLookup',
 					},
 					{
-						name: 'Astronomy Picture of the Day',
+						name: 'Astronomy picture of the day',
 						value: 'astronomyPictureOfTheDay',
 					},
 					{
-						name: 'DONKI Coronal Mass Ejection',
+						name: 'DONKI coronal mass ejection',
 						value: 'donkiCoronalMassEjection',
 					},
 					{
-						name: 'DONKI High Speed Stream',
+						name: 'DONKI high speed stream',
 						value: 'donkiHighSpeedStream',
 					},
 					// {
@@ -71,27 +71,27 @@ export class Nasa implements INodeType {
 					// 	value: 'donkiGeomagneticStorm',
 					// },
 					{
-						name: 'DONKI Interplanetary Shock',
+						name: 'DONKI interplanetary shock',
 						value: 'donkiInterplanetaryShock',
 					},
 					{
-						name: 'DONKI Magnetopause Crossing',
+						name: 'DONKI magnetopause crossing',
 						value: 'donkiMagnetopauseCrossing',
 					},
 					{
-						name: 'DONKI Notification',
+						name: 'DONKI notification',
 						value: 'donkiNotifications',
 					},
 					{
-						name: 'DONKI Radiation Belt Enhancement',
+						name: 'DONKI radiation belt enhancement',
 						value: 'donkiRadiationBeltEnhancement',
 					},
 					{
-						name: 'DONKI Solar Energetic Particle',
+						name: 'DONKI solar energetic particle',
 						value: 'donkiSolarEnergeticParticle',
 					},
 					{
-						name: 'DONKI Solar Flare',
+						name: 'DONKI solar flare',
 						value: 'donkiSolarFlare',
 					},
 					{
@@ -99,11 +99,11 @@ export class Nasa implements INodeType {
 						value: 'donkiWsaEnlilSimulation',
 					},
 					{
-						name: 'Earth Asset',
+						name: 'Earth asset',
 						value: 'earthAssets',
 					},
 					{
-						name: 'Earth Imagery',
+						name: 'Earth imagery',
 						value: 'earthImagery',
 					},
 				],
@@ -185,7 +185,7 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Browse the overall asteroid dataset',
 						action: 'Get many asteroid neos',
@@ -508,7 +508,7 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve Two-Line Element Set data',
-						action: 'Get a Two-Line Element Set',
+						action: 'Get a two-line element set',
 					},
 				],
 				default: 'get',
@@ -535,10 +535,10 @@ export class Nasa implements INodeType {
 				},
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -548,7 +548,7 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Include Close Approach Data',
+						displayName: 'Include close approach data',
 						name: 'includeCloseApproachData',
 						type: 'boolean',
 						default: false,
@@ -557,7 +557,7 @@ export class Nasa implements INodeType {
 				],
 			},
 			{
-				displayName: 'Download Image',
+				displayName: 'Download image',
 				name: 'download',
 				type: 'boolean',
 				displayOptions: {
@@ -571,7 +571,7 @@ export class Nasa implements INodeType {
 					'By default just the URL of the image is returned. When set to true the image will be downloaded.',
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -588,7 +588,7 @@ export class Nasa implements INodeType {
 
 			/* date for astronomyPictureOfTheDay */
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				default: {},
@@ -612,7 +612,7 @@ export class Nasa implements INodeType {
 
 			/* startDate and endDate for various resources */
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				default: {},
@@ -636,14 +636,14 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Start Date',
+						displayName: 'Start date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
-						displayName: 'End Date',
+						displayName: 'End date',
 						name: 'endDate',
 						type: 'dateTime',
 						default: '',
@@ -658,7 +658,7 @@ export class Nasa implements INodeType {
 			// instead of _one_ Additional Fields with four fields. So I cannot avoid
 			// duplication without cluttering up the UI. Ideas?
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				default: {},
@@ -671,14 +671,14 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Start Date',
+						displayName: 'Start date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
-						displayName: 'End Date',
+						displayName: 'End date',
 						name: 'endDate',
 						type: 'dateTime',
 						default: '',
@@ -725,11 +725,11 @@ export class Nasa implements INodeType {
 								value: 'ALL',
 							},
 							{
-								name: 'SWRC Catalog',
+								name: 'SWRC catalog',
 								value: 'SWRC_CATALOG',
 							},
 							{
-								name: 'Winslow Messenger ICME Catalog',
+								name: 'Winslow Messenger ICME catalog',
 								value: 'WINSLOW_MESSENGER_ICME_CATALOG',
 							},
 						],
@@ -767,7 +767,7 @@ export class Nasa implements INodeType {
 				},
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -783,7 +783,7 @@ export class Nasa implements INodeType {
 
 			//aqui
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				default: {},
@@ -815,7 +815,7 @@ export class Nasa implements INodeType {
 			},
 
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {

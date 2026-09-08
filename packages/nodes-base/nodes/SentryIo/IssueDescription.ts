@@ -25,7 +25,7 @@ export const issueOperations: INodeProperties[] = [
 				action: 'Get an issue',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many issues',
 				action: 'Get many issues',
@@ -65,7 +65,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                issue:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -83,7 +83,7 @@ export const issueFields: INodeProperties[] = [
 			'The slug of the organization the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Project Slug Name or ID',
+		displayName: 'Project slug name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -102,7 +102,7 @@ export const issueFields: INodeProperties[] = [
 			'The slug of the project the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -133,10 +133,10 @@ export const issueFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -154,24 +154,24 @@ export const issueFields: INodeProperties[] = [
 					'An optional Sentry structured search query. If not provided, an implied "is:unresolved" is assumed. Info <a href="https://docs.sentry.io/product/sentry-basics/search/">here</a>.',
 			},
 			{
-				displayName: 'Stats Period',
+				displayName: 'Stats period',
 				name: 'statsPeriod',
 				type: 'options',
 				default: '',
 				description: 'Time period of stats',
 				options: [
 					{
-						name: '14 Days',
+						name: '14 days',
 						value: '14d',
 					},
 					{
-						name: '24 Hours',
+						name: '24 hours',
 						value: '24h',
 					},
 				],
 			},
 			{
-				displayName: 'Short ID Lookup',
+				displayName: 'Short ID lookup',
 				name: 'shortIdLookUp',
 				type: 'boolean',
 				default: true,
@@ -200,10 +200,10 @@ export const issueFields: INodeProperties[] = [
 		description: 'ID of issue to get',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -213,7 +213,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Assigned to',
 				name: 'assignedTo',
 				type: 'string',
 				default: '',
@@ -221,7 +221,7 @@ export const issueFields: INodeProperties[] = [
 					'The actor ID (or username) of the user or team that should be assigned to this issue',
 			},
 			{
-				displayName: 'Has Seen',
+				displayName: 'Has seen',
 				name: 'hasSeen',
 				type: 'boolean',
 				default: true,
@@ -229,7 +229,7 @@ export const issueFields: INodeProperties[] = [
 					'Whether this API call is invoked with a user context this allows changing of the flag that indicates if the user has seen the event',
 			},
 			{
-				displayName: 'Is Bookmarked',
+				displayName: 'Is bookmarked',
 				name: 'isBookmarked',
 				type: 'boolean',
 				default: true,
@@ -237,14 +237,14 @@ export const issueFields: INodeProperties[] = [
 					'Whether this API call is invoked with a user context this allows changing of the bookmark flag',
 			},
 			{
-				displayName: 'Is Public',
+				displayName: 'Is public',
 				name: 'isPublic',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to set the issue to public or private',
 			},
 			{
-				displayName: 'Is Subscribed',
+				displayName: 'Is subscribed',
 				name: 'isSubscribed',
 				type: 'boolean',
 				default: true,
@@ -265,7 +265,7 @@ export const issueFields: INodeProperties[] = [
 						value: 'resolved',
 					},
 					{
-						name: 'Resolved Next Release',
+						name: 'Resolved next release',
 						value: 'resolvedInNextRelease',
 					},
 					{

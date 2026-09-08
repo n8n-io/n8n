@@ -45,11 +45,11 @@ const dimensionDropdown: INodeProperties[] = [
 				value: 'ga:date',
 			},
 			{
-				name: 'Device Category',
+				name: 'Device category',
 				value: 'ga:deviceCategory',
 			},
 			{
-				name: 'Item Name',
+				name: 'Item name',
 				value: 'ga:productName',
 			},
 			{
@@ -61,7 +61,7 @@ const dimensionDropdown: INodeProperties[] = [
 				value: 'ga:pagePath',
 			},
 			{
-				name: 'Source / Medium',
+				name: 'Source / medium',
 				value: 'ga:sourceMedium',
 			},
 			{
@@ -101,7 +101,7 @@ export const description: INodeProperties[] = [
 		hint: "If this doesn't work, try changing the 'Property Type' field above",
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select a view...',
@@ -155,18 +155,18 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Date Range',
+		displayName: 'Date range',
 		name: 'dateRange',
 		type: 'options',
 		required: true,
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
-				name: 'Last 7 Days',
+				name: 'Last 7 days',
 				value: 'last7days',
 			},
 			{
-				name: 'Last 30 Days',
+				name: 'Last 30 days',
 				value: 'last30days',
 			},
 			{
@@ -178,11 +178,11 @@ export const description: INodeProperties[] = [
 				value: 'yesterday',
 			},
 			{
-				name: 'Last Complete Calendar Week',
+				name: 'Last complete calendar week',
 				value: 'lastCalendarWeek',
 			},
 			{
-				name: 'Last Complete Calendar Month',
+				name: 'Last complete calendar month',
 				value: 'lastCalendarMonth',
 			},
 			{
@@ -260,11 +260,11 @@ export const description: INodeProperties[] = [
 								value: 'ga:totalEvents',
 							},
 							{
-								name: 'Page Views',
+								name: 'Page views',
 								value: 'ga:pageviews',
 							},
 							{
-								name: 'Session Duration',
+								name: 'Session duration',
 								value: 'ga:sessionDuration',
 							},
 							{
@@ -272,11 +272,11 @@ export const description: INodeProperties[] = [
 								value: 'ga:sessions',
 							},
 							{
-								name: 'Sessions per User',
+								name: 'Sessions per user',
 								value: 'ga:sessionsPerUser',
 							},
 							{
-								name: 'Total Users',
+								name: 'Total users',
 								value: 'ga:users',
 							},
 							{
@@ -335,7 +335,7 @@ export const description: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Formatting Type',
+						displayName: 'Formatting type',
 						name: 'formattingType',
 						type: 'options',
 						default: 'INTEGER',
@@ -389,7 +389,7 @@ export const description: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Dimension',
+		placeholder: 'Add dimension',
 		description:
 			'Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, "Paris" or "New York", from which a session originates.',
 		options: [
@@ -408,7 +408,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -442,7 +442,7 @@ export const description: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -456,10 +456,10 @@ export const description: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -470,14 +470,14 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Dimension Filters',
+				displayName: 'Dimension filters',
 				name: 'dimensionFiltersUi',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Dimension Filter',
+				placeholder: 'Add dimension filter',
 				description: 'Dimension Filters in the request',
 				options: [
 					{
@@ -494,35 +494,35 @@ export const description: INodeProperties[] = [
 								description: 'Operator to use in combination with value',
 								options: [
 									{
-										name: 'Begins With',
+										name: 'Begins with',
 										value: 'BEGINS_WITH',
 									},
 									{
-										name: 'Ends With',
+										name: 'Ends with',
 										value: 'ENDS_WITH',
 									},
 									{
-										name: 'Equals (Number)',
+										name: 'Equals (number)',
 										value: 'NUMERIC_EQUAL',
 									},
 									{
-										name: 'Exactly Matches',
+										name: 'Exactly matches',
 										value: 'EXACT',
 									},
 									{
-										name: 'Greater Than (Number)',
+										name: 'Greater than (number)',
 										value: 'NUMERIC_GREATER_THAN',
 									},
 									{
-										name: 'Less Than (Number)',
+										name: 'Less than (number)',
 										value: 'NUMERIC_LESS_THAN',
 									},
 									{
-										name: 'Partly Matches',
+										name: 'Partly matches',
 										value: 'PARTIAL',
 									},
 									{
-										name: 'Regular Expression',
+										name: 'Regular expression',
 										value: 'REGEXP',
 									},
 								],
@@ -541,7 +541,7 @@ export const description: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Hide Totals',
+				displayName: 'Hide totals',
 				name: 'hideTotals',
 				type: 'boolean',
 				default: false,
@@ -554,7 +554,7 @@ export const description: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Hide Value Ranges',
+				displayName: 'Hide value ranges',
 				name: 'hideValueRanges',
 				type: 'boolean',
 				default: false,
@@ -566,7 +566,7 @@ export const description: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Include Empty Rows',
+				displayName: 'Include empty rows',
 				name: 'includeEmptyRows',
 				type: 'boolean',
 				default: false,
@@ -574,7 +574,7 @@ export const description: INodeProperties[] = [
 					'Whether the response exclude rows if all the retrieved metrics are equal to zero',
 			},
 			{
-				displayName: 'Use Resource Quotas',
+				displayName: 'Use resource quotas',
 				name: 'useResourceQuotas',
 				type: 'boolean',
 				default: false,

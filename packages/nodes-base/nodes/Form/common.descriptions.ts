@@ -29,7 +29,7 @@ export const formElementTypes: INodePropertyOptions[] = [
 		value: 'file',
 	},
 	{
-		name: 'Hidden Field',
+		name: 'Hidden field',
 		value: 'hiddenField',
 	},
 	{
@@ -41,11 +41,11 @@ export const formElementTypes: INodePropertyOptions[] = [
 		value: 'password',
 	},
 	{
-		name: 'Radio Buttons',
+		name: 'Radio buttons',
 		value: 'radio',
 	},
 	{
-		name: 'Text Input',
+		name: 'Text input',
 		value: 'text',
 	},
 	{
@@ -61,7 +61,7 @@ export const placeholder: string = `
 `.trimStart();
 
 export const webhookPath: INodeProperties = {
-	displayName: 'Form Path',
+	displayName: 'Form path',
 	name: 'path',
 	type: 'string',
 	default: '',
@@ -71,7 +71,7 @@ export const webhookPath: INodeProperties = {
 };
 
 export const formTitle: INodeProperties = {
-	displayName: 'Form Title',
+	displayName: 'Form title',
 	name: 'formTitle',
 	type: 'string',
 	default: '',
@@ -81,7 +81,7 @@ export const formTitle: INodeProperties = {
 };
 
 export const formDescription: INodeProperties = {
-	displayName: 'Form Description',
+	displayName: 'Form description',
 	name: 'formDescription',
 	type: 'string',
 	default: '',
@@ -94,7 +94,7 @@ export const formDescription: INodeProperties = {
 };
 
 export const ipAllowlist: INodeProperties = {
-	displayName: 'IP(s) Allowlist',
+	displayName: 'IP(s) allowlist',
 	name: 'ipWhitelist',
 	type: 'string',
 	placeholder: 'e.g. 127.0.0.1, 192.168.1.0/24',
@@ -109,7 +109,7 @@ const formOptions: INodePropertyCollection[] = [
 		name: 'values',
 		values: [
 			{
-				displayName: 'Field Name',
+				displayName: 'Field name',
 				name: 'fieldName',
 				description:
 					'The name of the field, used in input attributes and referenced by the workflow',
@@ -143,7 +143,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Field Name',
+				displayName: 'Field name',
 				name: 'fieldLabel',
 				type: 'string',
 				default: '',
@@ -160,7 +160,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Field Name',
+				displayName: 'Field name',
 				name: 'fieldName',
 				description:
 					'The name of the field, used in input attributes and referenced by the workflow',
@@ -174,7 +174,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Element Type',
+				displayName: 'Element type',
 				name: 'fieldType',
 				type: 'options',
 				default: 'text',
@@ -188,7 +188,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Element Name',
+				displayName: 'Element name',
 				name: 'elementName',
 				type: 'string',
 				default: '',
@@ -201,7 +201,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Custom Field Name',
+				displayName: 'Custom field name',
 				name: 'fieldName',
 				description:
 					'The name of the field, used in input attributes and referenced by the workflow',
@@ -229,7 +229,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Default Value',
+				displayName: 'Default value',
 				name: 'defaultValue',
 				description: 'Default value that will be pre-filled in the form field',
 				type: 'string',
@@ -241,7 +241,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Default Value',
+				displayName: 'Default value',
 				name: 'defaultValue',
 				description:
 					'Default date value that will be pre-filled in the form field (format: YYYY-MM-DD)',
@@ -257,7 +257,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Default Value',
+				displayName: 'Default value',
 				name: 'defaultValue',
 				description:
 					'Default value that will be pre-selected. Must match one of the option labels.',
@@ -270,7 +270,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Default Value',
+				displayName: 'Default value',
 				name: 'defaultValue',
 				description:
 					'Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma.',
@@ -283,7 +283,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Field Value',
+				displayName: 'Field value',
 				name: 'fieldValue',
 				description:
 					'Input value can be set here or will be passed as a query parameter via Field Name if no value is set',
@@ -296,9 +296,9 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Field Options',
+				displayName: 'Field options',
 				name: 'fieldOptions',
-				placeholder: 'Add Field Option',
+				placeholder: 'Add field option',
 				description: 'List of options that can be selected from the dropdown',
 				type: 'fixedCollection',
 				default: { values: [{ option: '' }] },
@@ -330,7 +330,7 @@ const formOptions: INodePropertyCollection[] = [
 			{
 				displayName: 'Checkboxes',
 				name: 'fieldOptions',
-				placeholder: 'Add Checkbox',
+				placeholder: 'Add checkbox',
 				type: 'fixedCollection',
 				default: { values: [{ option: '' }] },
 				required: true,
@@ -349,7 +349,7 @@ const formOptions: INodePropertyCollection[] = [
 						name: 'values',
 						values: [
 							{
-								displayName: 'Checkbox Label',
+								displayName: 'Checkbox label',
 								name: 'option',
 								type: 'string',
 								default: '',
@@ -359,9 +359,9 @@ const formOptions: INodePropertyCollection[] = [
 				],
 			},
 			{
-				displayName: 'Radio Buttons',
+				displayName: 'Radio buttons',
 				name: 'fieldOptions',
-				placeholder: 'Add Radio Button',
+				placeholder: 'Add radio button',
 				type: 'fixedCollection',
 				default: { values: [{ option: '' }] },
 				required: true,
@@ -380,7 +380,7 @@ const formOptions: INodePropertyCollection[] = [
 						name: 'values',
 						values: [
 							{
-								displayName: 'Radio Button Label',
+								displayName: 'Radio button label',
 								name: 'option',
 								type: 'string',
 								default: '',
@@ -404,7 +404,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Multiple Choice',
+				displayName: 'Multiple choice',
 				name: 'multiselect',
 				type: 'boolean',
 				default: false,
@@ -417,13 +417,13 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Limit Selection',
+				displayName: 'Limit selection',
 				name: 'limitSelection',
 				type: 'options',
 				default: 'unlimited',
 				options: [
 					{
-						name: 'Exact Number',
+						name: 'Exact number',
 						value: 'exact',
 					},
 					{
@@ -442,7 +442,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Number of Selections',
+				displayName: 'Number of selections',
 				name: 'numberOfSelections',
 				type: 'number',
 				default: 1,
@@ -459,7 +459,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Minimum Selections',
+				displayName: 'Minimum selections',
 				name: 'minSelections',
 				type: 'number',
 				default: 0,
@@ -476,7 +476,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Maximum Selections',
+				displayName: 'Maximum selections',
 				name: 'maxSelections',
 				type: 'number',
 				default: 1,
@@ -510,7 +510,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Multiple Files',
+				displayName: 'Multiple files',
 				name: 'multipleFiles',
 				type: 'boolean',
 				default: true,
@@ -523,7 +523,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Accepted File Types',
+				displayName: 'Accepted file types',
 				name: 'acceptFileTypes',
 				type: 'string',
 				default: '',
@@ -548,7 +548,7 @@ const formOptions: INodePropertyCollection[] = [
 				},
 			},
 			{
-				displayName: 'Required Field',
+				displayName: 'Required field',
 				name: 'requiredField',
 				type: 'boolean',
 				default: false,
@@ -565,9 +565,9 @@ const formOptions: INodePropertyCollection[] = [
 ];
 
 export const formFields: INodeProperties = {
-	displayName: 'Form Elements',
+	displayName: 'Form elements',
 	name: 'formFields',
-	placeholder: 'Add Form Element',
+	placeholder: 'Add form element',
 	type: 'fixedCollection',
 	default: {},
 	typeOptions: {
@@ -582,9 +582,9 @@ export const formFields: INodeProperties = {
 };
 
 export const formFieldsDynamic: INodeProperties = {
-	displayName: 'Form Elements',
+	displayName: 'Form elements',
 	name: 'formFields',
-	placeholder: 'Add Form Element',
+	placeholder: 'Add form element',
 	type: 'fixedCollection',
 	default: {},
 	typeOptions: {
@@ -601,17 +601,17 @@ export const formFieldsDynamic: INodeProperties = {
 };
 
 export const formRespondMode: INodeProperties = {
-	displayName: 'Respond When',
+	displayName: 'Respond when',
 	name: 'responseMode',
 	type: 'options',
 	options: [
 		{
-			name: 'Form Is Submitted',
+			name: 'Form is submitted',
 			value: 'onReceived',
 			description: 'As soon as this node receives the form submission',
 		},
 		{
-			name: 'Workflow Finishes',
+			name: 'Workflow finishes',
 			value: 'lastNode',
 			description: 'When the last node of the workflow is executed',
 		},
@@ -642,7 +642,7 @@ export const formTriggerPanel = {
 };
 
 export const respondWithOptions: INodeProperties = {
-	displayName: 'Form Response',
+	displayName: 'Form response',
 	name: 'respondWithOptions',
 	type: 'fixedCollection',
 	placeholder: 'Add option',
@@ -653,13 +653,13 @@ export const respondWithOptions: INodeProperties = {
 			name: 'values',
 			values: [
 				{
-					displayName: 'Respond With',
+					displayName: 'Respond with',
 					name: 'respondWith',
 					type: 'options',
 					default: 'text',
 					options: [
 						{
-							name: 'Form Submitted Text',
+							name: 'Form submitted text',
 							value: 'text',
 							description: 'Show a response text to the user',
 						},
@@ -671,7 +671,7 @@ export const respondWithOptions: INodeProperties = {
 					],
 				},
 				{
-					displayName: 'Text to Show',
+					displayName: 'Text to show',
 					name: 'formSubmittedText',
 					description:
 						"The text displayed to users after they fill the form. Leave it empty if don't want to show any additional text.",
@@ -685,7 +685,7 @@ export const respondWithOptions: INodeProperties = {
 				},
 				{
 					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					displayName: 'URL to Redirect to',
+					displayName: 'URL to redirect to',
 					name: 'redirectUrl',
 					description:
 						'The URL to redirect users to after they fill the form. Must be a valid URL.',

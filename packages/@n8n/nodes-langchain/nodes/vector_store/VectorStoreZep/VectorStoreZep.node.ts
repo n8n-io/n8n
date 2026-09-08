@@ -6,7 +6,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
 const embeddingDimensions: INodeProperties = {
-	displayName: 'Embedding Dimensions',
+	displayName: 'Embedding dimensions',
 	name: 'embeddingDimensions',
 	type: 'number',
 	default: 1536,
@@ -18,12 +18,12 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			embeddingDimensions,
 			{
-				displayName: 'Is Auto Embedded',
+				displayName: 'Is auto embedded',
 				name: 'isAutoEmbedded',
 				type: 'boolean',
 				default: true,
@@ -38,7 +38,7 @@ const retrieveFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [embeddingDimensions, metadataFilterField],
 	},
@@ -68,7 +68,7 @@ export class VectorStoreZep extends createVectorStoreNode<ZepVectorStore | ZepCl
 			default: '',
 		},
 		{
-			displayName: 'Collection Name',
+			displayName: 'Collection name',
 			name: 'collectionName',
 			type: 'string',
 			default: '',

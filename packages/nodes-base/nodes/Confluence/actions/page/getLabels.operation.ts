@@ -25,7 +25,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -44,13 +44,13 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortBy',
 				type: 'options',
 				default: 'name',
 				description: 'The field to order the labels by',
 				options: [
-					{ name: 'Created Date', value: 'created-date' },
+					{ name: 'Created date', value: 'created-date' },
 					{ name: 'ID', value: 'id' },
 					{ name: 'Name', value: 'name' },
 				],

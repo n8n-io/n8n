@@ -62,7 +62,7 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Access Token',
+					name: 'Access token',
 					value: 'airtableTokenApi',
 				},
 				{
@@ -70,7 +70,7 @@ const versionDescription: INodeTypeDescription = {
 					value: 'airtableOAuth2Api',
 				},
 				{
-					name: 'API Key (Deprecated)',
+					name: 'API key (deprecated)',
 					value: 'airtableApi',
 				},
 			],
@@ -226,7 +226,7 @@ const versionDescription: INodeTypeDescription = {
 		//         append
 		// ----------------------------------
 		{
-			displayName: 'Add All Fields',
+			displayName: 'Add all fields',
 			name: 'addAllFields',
 			type: 'boolean',
 			displayOptions: {
@@ -279,7 +279,7 @@ const versionDescription: INodeTypeDescription = {
 		//         list
 		// ----------------------------------
 		{
-			displayName: 'Return All',
+			displayName: 'Return all',
 			name: 'returnAll',
 			type: 'boolean',
 			displayOptions: {
@@ -308,7 +308,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Max number of results to return',
 		},
 		{
-			displayName: 'Download Attachments',
+			displayName: 'Download attachments',
 			name: 'downloadAttachments',
 			type: 'boolean',
 			displayOptions: {
@@ -317,10 +317,10 @@ const versionDescription: INodeTypeDescription = {
 				},
 			},
 			default: false,
-			description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
+			description: "Whether the attachment fields define in 'Download fields' will be downloaded",
 		},
 		{
-			displayName: 'Download Fields',
+			displayName: 'Download fields',
 			name: 'downloadFieldNames',
 			type: 'string',
 			required: true,
@@ -336,7 +336,7 @@ const versionDescription: INodeTypeDescription = {
 				"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.",
 		},
 		{
-			displayName: 'Additional Options',
+			displayName: 'Additional options',
 			name: 'additionalOptions',
 			type: 'collection',
 			displayOptions: {
@@ -363,7 +363,7 @@ const versionDescription: INodeTypeDescription = {
 						'Only data for fields whose names are in this list will be included in the records',
 				},
 				{
-					displayName: 'Filter By Formula',
+					displayName: 'Filter by formula',
 					name: 'filterByFormula',
 					type: 'string',
 					default: '',
@@ -374,7 +374,7 @@ const versionDescription: INodeTypeDescription = {
 				{
 					displayName: 'Sort',
 					name: 'sort',
-					placeholder: 'Add Sort Rule',
+					placeholder: 'Add sort rule',
 					description: 'Defines how the returned records should be ordered',
 					type: 'fixedCollection',
 					typeOptions: {
@@ -462,7 +462,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'ID of the record to update',
 		},
 		{
-			displayName: 'Update All Fields',
+			displayName: 'Update all fields',
 			name: 'updateAllFields',
 			type: 'boolean',
 			displayOptions: {
@@ -510,7 +510,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Bulk Size',
+					displayName: 'Bulk size',
 					name: 'bulkSize',
 					type: 'number',
 					typeOptions: {
@@ -521,7 +521,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Number of records to process at once',
 				},
 				{
-					displayName: 'Ignore Fields',
+					displayName: 'Ignore fields',
 					name: 'ignoreFields',
 					type: 'string',
 					requiresDataPath: 'multiple',

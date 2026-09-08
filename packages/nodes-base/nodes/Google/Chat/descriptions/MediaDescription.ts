@@ -28,7 +28,7 @@ export const mediaFields: INodeProperties[] = [
 	/*                                 media:download                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Resource Name',
+		displayName: 'Resource name',
 		name: 'resourceName',
 		type: 'string',
 		required: true,
@@ -42,7 +42,7 @@ export const mediaFields: INodeProperties[] = [
 		description: 'Name of the media that is being downloaded',
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

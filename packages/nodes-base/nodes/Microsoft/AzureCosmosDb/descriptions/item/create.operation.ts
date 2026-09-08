@@ -12,7 +12,7 @@ import { containerResourceLocator } from '../common';
 const properties: INodeProperties[] = [
 	{ ...containerResourceLocator, description: 'Select the container you want to use' },
 	{
-		displayName: 'Item Contents',
+		displayName: 'Item contents',
 		name: 'customProperties',
 		default: '{\n\t"id": "replace_with_new_document_id"\n}',
 		description: 'The item contents as a JSON object',

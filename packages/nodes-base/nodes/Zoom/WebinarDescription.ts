@@ -31,7 +31,7 @@ export const webinarOperations: INodeProperties[] = [
 				action: 'Get a webinar',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many webinars',
 				action: 'Get many webinars',
@@ -66,10 +66,10 @@ export const webinarFields: INodeProperties[] = [
 		description: 'User ID or email ID',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -86,27 +86,27 @@ export const webinarFields: INodeProperties[] = [
 				description: 'Webinar agenda',
 			},
 			{
-				displayName: 'Alternative Hosts',
+				displayName: 'Alternative hosts',
 				name: 'alternativeHosts',
 				type: 'string',
 				default: '',
 				description: 'Alternative hosts email IDs',
 			},
 			{
-				displayName: 'Approval Type',
+				displayName: 'Approval type',
 				name: 'approvalType',
 				type: 'options',
 				options: [
 					{
-						name: 'Automatically Approve',
+						name: 'Automatically approve',
 						value: 0,
 					},
 					{
-						name: 'Manually Approve',
+						name: 'Manually approve',
 						value: 1,
 					},
 					{
-						name: 'No Registration Required',
+						name: 'No registration required',
 						value: 2,
 					},
 				],
@@ -118,7 +118,7 @@ export const webinarFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Both Telephony and VoiP',
+						name: 'Both telephony and VoiP',
 						value: 'both',
 					},
 					{
@@ -134,16 +134,16 @@ export const webinarFields: INodeProperties[] = [
 				description: 'Determine how participants can join audio portion of the webinar',
 			},
 			{
-				displayName: 'Auto Recording',
+				displayName: 'Auto recording',
 				name: 'autoRecording',
 				type: 'options',
 				options: [
 					{
-						name: 'Record on Local',
+						name: 'Record on local',
 						value: 'local',
 					},
 					{
-						name: 'Record on Cloud',
+						name: 'Record on cloud',
 						value: 'cloud',
 					},
 					{
@@ -160,14 +160,14 @@ export const webinarFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Host Video',
+				displayName: 'Host video',
 				name: 'hostVideo',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to start a video when host joins the webinar',
 			},
 			{
-				displayName: 'Panelists Video',
+				displayName: 'Panelists video',
 				name: 'panelistsVideo',
 				type: 'boolean',
 				default: false,
@@ -182,14 +182,14 @@ export const webinarFields: INodeProperties[] = [
 				description: 'Password to join the webinar with maximum 10 characters',
 			},
 			{
-				displayName: 'Practice Session',
+				displayName: 'Practice session',
 				name: 'practiceSession',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to enable Practice session',
 			},
 			{
-				displayName: 'Registration Type',
+				displayName: 'Registration type',
 				name: 'registrationType',
 				type: 'options',
 				options: [
@@ -213,7 +213,7 @@ export const webinarFields: INodeProperties[] = [
 				description: 'Registration type. Used for recurring webinar with fixed time only.',
 			},
 			{
-				displayName: 'Start Time',
+				displayName: 'Start time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
@@ -221,7 +221,7 @@ export const webinarFields: INodeProperties[] = [
 					'Start time should be used only for scheduled or recurring webinar with fixed time',
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
@@ -232,13 +232,13 @@ export const webinarFields: INodeProperties[] = [
 					'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Webinar Topic',
+				displayName: 'Webinar topic',
 				name: 'topic',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Webinar Type',
+				displayName: 'Webinar type',
 				name: 'type',
 				type: 'options',
 				options: [
@@ -247,11 +247,11 @@ export const webinarFields: INodeProperties[] = [
 						value: 5,
 					},
 					{
-						name: 'Recurring Webinar with No Fixed Time',
+						name: 'Recurring webinar with no fixed time',
 						value: 6,
 					},
 					{
-						name: 'Recurring Webinar with Fixed Time',
+						name: 'Recurring webinar with fixed time',
 						value: 9,
 					},
 				],
@@ -276,10 +276,10 @@ export const webinarFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -296,7 +296,7 @@ export const webinarFields: INodeProperties[] = [
 				description: 'To view webinar details of a particular occurrence of the recurring webinar',
 			},
 			{
-				displayName: 'Show Previous Occurrences',
+				displayName: 'Show previous occurrences',
 				name: 'showPreviousOccurrences',
 				type: 'boolean',
 				default: false,
@@ -323,7 +323,7 @@ export const webinarFields: INodeProperties[] = [
 		description: 'User ID or email-ID',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -370,10 +370,10 @@ export const webinarFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -409,10 +409,10 @@ export const webinarFields: INodeProperties[] = [
 		description: 'User ID or email address of user',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -429,43 +429,43 @@ export const webinarFields: INodeProperties[] = [
 				description: 'Webinar agenda',
 			},
 			{
-				displayName: 'Alternative Hosts',
+				displayName: 'Alternative hosts',
 				name: 'alternativeHosts',
 				type: 'string',
 				default: '',
 				description: 'Alternative hosts email IDs',
 			},
 			{
-				displayName: 'Approval Type',
+				displayName: 'Approval type',
 				name: 'approvalType',
 				type: 'options',
 				options: [
 					{
-						name: 'Automatically Approve',
+						name: 'Automatically approve',
 						value: 0,
 					},
 					{
-						name: 'Manually Approve',
+						name: 'Manually approve',
 						value: 1,
 					},
 					{
-						name: 'No Registration Required',
+						name: 'No registration required',
 						value: 2,
 					},
 				],
 				default: 2,
 			},
 			{
-				displayName: 'Auto Recording',
+				displayName: 'Auto recording',
 				name: 'autoRecording',
 				type: 'options',
 				options: [
 					{
-						name: 'Record on Local',
+						name: 'Record on local',
 						value: 'local',
 					},
 					{
-						name: 'Record on Cloud',
+						name: 'Record on cloud',
 						value: 'cloud',
 					},
 					{
@@ -481,7 +481,7 @@ export const webinarFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Both Telephony and VoiP',
+						name: 'Both telephony and VoiP',
 						value: 'both',
 					},
 					{
@@ -503,7 +503,7 @@ export const webinarFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Host Video',
+				displayName: 'Host video',
 				name: 'hostVideo',
 				type: 'boolean',
 				default: false,
@@ -525,34 +525,34 @@ export const webinarFields: INodeProperties[] = [
 				description: 'Password to join the webinar with maximum 10 characters',
 			},
 			{
-				displayName: 'Panelists Video',
+				displayName: 'Panelists video',
 				name: 'panelistsVideo',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to start a video when panelists joins the webinar',
 			},
 			{
-				displayName: 'Practice Session',
+				displayName: 'Practice session',
 				name: 'practiceSession',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to enable Practice session',
 			},
 			{
-				displayName: 'Registration Type',
+				displayName: 'Registration type',
 				name: 'registrationType',
 				type: 'options',
 				options: [
 					{
-						name: 'Attendees Register Once and Can Attend Any of the Occurrences',
+						name: 'Attendees register once and can attend any of the occurrences',
 						value: 1,
 					},
 					{
-						name: 'Attendees Need to Register for Every Occurrence',
+						name: 'Attendees need to register for every occurrence',
 						value: 2,
 					},
 					{
-						name: 'Attendees Register Once and Can Choose One or More Occurrences to Attend',
+						name: 'Attendees register once and can choose one or more occurrences to attend',
 						value: 3,
 					},
 				],
@@ -560,7 +560,7 @@ export const webinarFields: INodeProperties[] = [
 				description: 'Registration type. Used for recurring webinars with fixed time only.',
 			},
 			{
-				displayName: 'Start Time',
+				displayName: 'Start time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
@@ -568,7 +568,7 @@ export const webinarFields: INodeProperties[] = [
 					'Start time should be used only for scheduled or recurring webinar with fixed time',
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
@@ -579,13 +579,13 @@ export const webinarFields: INodeProperties[] = [
 					'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Webinar Topic',
+				displayName: 'Webinar topic',
 				name: 'topic',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Webinar Type',
+				displayName: 'Webinar type',
 				name: 'type',
 				type: 'options',
 				options: [
@@ -594,11 +594,11 @@ export const webinarFields: INodeProperties[] = [
 						value: 5,
 					},
 					{
-						name: 'Recurring Webinar with No Fixed Time',
+						name: 'Recurring webinar with no fixed time',
 						value: 6,
 					},
 					{
-						name: 'Recurring Webinar with Fixed Time',
+						name: 'Recurring webinar with fixed time',
 						value: 9,
 					},
 				],

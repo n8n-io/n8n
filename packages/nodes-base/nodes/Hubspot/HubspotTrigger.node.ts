@@ -74,7 +74,7 @@ export class HubspotTrigger implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Event',
+				placeholder: 'Add event',
 				default: {},
 				options: [
 					{
@@ -87,101 +87,101 @@ export class HubspotTrigger implements INodeType {
 								type: 'options',
 								options: [
 									{
-										name: 'Company Created',
+										name: 'Company created',
 										value: 'company.creation',
 										description:
 											"To get notified if any company is created in a customer's account",
 									},
 									{
-										name: 'Company Deleted',
+										name: 'Company deleted',
 										value: 'company.deletion',
 										description:
 											"To get notified if any company is deleted in a customer's account",
 									},
 									{
-										name: 'Company Property Changed',
+										name: 'Company property changed',
 										value: 'company.propertyChange',
 										description:
 											"To get notified if a specified property is changed for any company in a customer's account",
 									},
 									{
-										name: 'Contact Created',
+										name: 'Contact created',
 										value: 'contact.creation',
 										description:
 											"To get notified if any contact is created in a customer's account",
 									},
 									{
-										name: 'Contact Deleted',
+										name: 'Contact deleted',
 										value: 'contact.deletion',
 										description:
 											"To get notified if any contact is deleted in a customer's account",
 									},
 									{
-										name: 'Contact Privacy Deleted',
+										name: 'Contact privacy deleted',
 										value: 'contact.privacyDeletion',
 										description:
 											'To get notified if a contact is deleted for privacy compliance reasons',
 									},
 									{
-										name: 'Contact Property Changed',
+										name: 'Contact property changed',
 										value: 'contact.propertyChange',
 										description:
 											"To get notified if a specified property is changed for any contact in a customer's account",
 									},
 									{
-										name: 'Conversation Creation',
+										name: 'Conversation creation',
 										value: 'conversation.creation',
 										description: 'To get notified if a new thread is created in an account',
 									},
 									{
-										name: 'Conversation Deletion',
+										name: 'Conversation deletion',
 										value: 'conversation.deletion',
 										description:
 											'To get notified if a thread is archived or soft-deleted in an account',
 									},
 									{
-										name: 'Conversation New Message',
+										name: 'Conversation new message',
 										value: 'conversation.newMessage',
 										description: 'To get notified if a new message on a thread has been received',
 									},
 									{
-										name: 'Conversation Privacy Deletion',
+										name: 'Conversation privacy deletion',
 										value: 'conversation.privacyDeletion',
 										description: 'To get notified if a thread is permanently deleted in an account',
 									},
 									{
-										name: 'Conversation Property Change',
+										name: 'Conversation property change',
 										value: 'conversation.propertyChange',
 										description: 'To get notified if a property on a thread has been changed',
 									},
 									{
-										name: 'Deal Created',
+										name: 'Deal created',
 										value: 'deal.creation',
 										description: "To get notified if any deal is created in a customer's account",
 									},
 									{
-										name: 'Deal Deleted',
+										name: 'Deal deleted',
 										value: 'deal.deletion',
 										description: "To get notified if any deal is deleted in a customer's account",
 									},
 									{
-										name: 'Deal Property Changed',
+										name: 'Deal property changed',
 										value: 'deal.propertyChange',
 										description:
 											"To get notified if a specified property is changed for any deal in a customer's account",
 									},
 									{
-										name: 'Ticket Created',
+										name: 'Ticket created',
 										value: 'ticket.creation',
 										description: "To get notified if a ticket is created in a customer's account",
 									},
 									{
-										name: 'Ticket Deleted',
+										name: 'Ticket deleted',
 										value: 'ticket.deletion',
 										description: "To get notified if any ticket is deleted in a customer's account",
 									},
 									{
-										name: 'Ticket Property Changed',
+										name: 'Ticket property changed',
 										value: 'ticket.propertyChange',
 										description:
 											"To get notified if a specified property is changed for any ticket in a customer's account",
@@ -191,7 +191,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'property',
 								type: 'options',
 								description:
@@ -209,7 +209,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'property',
 								type: 'options',
 								description:
@@ -227,7 +227,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'property',
 								type: 'options',
 								description:
@@ -245,7 +245,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'property',
 								type: 'options',
 								description:
@@ -263,18 +263,18 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'property',
 								type: 'options',
 								description:
 									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								options: [
 									{
-										name: 'Assigned To',
+										name: 'Assigned to',
 										value: 'assignedTo',
 									},
 									{
-										name: 'Is Archived',
+										name: 'Is archived',
 										value: 'isArchived',
 									},
 									{
@@ -295,14 +295,14 @@ export class HubspotTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
-						displayName: 'Max Concurrent Requests',
+						displayName: 'Max concurrent requests',
 						name: 'maxConcurrentRequests',
 						type: 'number',
 						typeOptions: {

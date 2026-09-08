@@ -18,7 +18,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Delete Permanently',
+				displayName: 'Delete permanently',
 				name: 'deletePermanently',
 				type: 'boolean',
 				default: false,

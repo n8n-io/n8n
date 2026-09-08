@@ -25,7 +25,7 @@ export const folderOperations: INodeProperties[] = [
 				action: 'Delete a folder',
 			},
 			{
-				name: 'Get Children',
+				name: 'Get children',
 				value: 'getChildren',
 				description: 'Get items inside a folder',
 				action: 'Get items in a folder',
@@ -89,10 +89,10 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
-				displayName: 'Parent Folder ID',
+				displayName: 'Parent folder ID',
 				name: 'parentFolderId',
 				type: 'string',
 				default: '',
@@ -136,7 +136,7 @@ export const folderFields: INodeProperties[] = [
 		description: 'ID of the folder to move',
 	},
 	{
-		displayName: 'Destination Folder ID',
+		displayName: 'Destination folder ID',
 		name: 'destinationFolderId',
 		type: 'string',
 		default: '',
@@ -151,10 +151,10 @@ export const folderFields: INodeProperties[] = [
 			"ID of the destination folder to move the item into. Use `root` for the drive's top-level folder.",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['move'],
@@ -164,7 +164,7 @@ export const folderFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'New Name',
+				displayName: 'New name',
 				name: 'name',
 				type: 'string',
 				default: '',
@@ -189,7 +189,7 @@ export const folderFields: INodeProperties[] = [
 		description: 'ID of the folder',
 	},
 	{
-		displayName: 'New Name',
+		displayName: 'New name',
 		name: 'newName',
 		type: 'string',
 		displayOptions: {

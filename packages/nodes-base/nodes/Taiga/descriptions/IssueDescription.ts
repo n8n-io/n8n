@@ -31,7 +31,7 @@ export const issueOperations: INodeProperties[] = [
 				action: 'Get an issue',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many issues',
 				action: 'Get many issues',
@@ -52,7 +52,7 @@ export const issueFields: INodeProperties[] = [
 	//              issue: create
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		description:
 			'ID of the project to which the issue belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -83,10 +83,10 @@ export const issueFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -96,7 +96,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -108,11 +108,11 @@ export const issueFields: INodeProperties[] = [
 					'ID of the user to whom the issue is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Blocked Note',
+				displayName: 'Blocked note',
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the issue is blocked. Requires "Is Blocked" toggle to be enabled.',
+				description: 'Reason why the issue is blocked. Requires "Is blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',
@@ -121,14 +121,14 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Blocked',
+				displayName: 'Is blocked',
 				name: 'is_blocked',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the issue is blocked',
 			},
 			{
-				displayName: 'Milestone (Sprint) Name or ID',
+				displayName: 'Milestone (sprint) name or ID',
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
@@ -140,7 +140,7 @@ export const issueFields: INodeProperties[] = [
 					'ID of the milestone of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority name or ID',
 				name: 'priority',
 				type: 'options',
 				description:
@@ -152,7 +152,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Severity Name or ID',
+				displayName: 'Severity name or ID',
 				name: 'severity',
 				type: 'options',
 				description:
@@ -164,7 +164,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -176,7 +176,7 @@ export const issueFields: INodeProperties[] = [
 					'ID of the status of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -188,7 +188,7 @@ export const issueFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type name or ID',
 				name: 'type',
 				type: 'options',
 				description:
@@ -242,7 +242,7 @@ export const issueFields: INodeProperties[] = [
 	//              issue: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		description:
 			'ID of the project to which the issue belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -260,7 +260,7 @@ export const issueFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -293,7 +293,7 @@ export const issueFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['issue'],
@@ -303,7 +303,7 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigned_to',
 				description:
 					'ID of the user to assign the issue to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -315,21 +315,21 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				description: 'Field to order the issues by',
 				type: 'options',
 				options: [
 					{
-						name: 'Assigned To',
+						name: 'Assigned to',
 						value: 'assigned_to',
 					},
 					{
-						name: 'Created Date',
+						name: 'Created date',
 						value: 'created_date',
 					},
 					{
-						name: 'Modified Date',
+						name: 'Modified date',
 						value: 'modified_date',
 					},
 					{
@@ -360,7 +360,7 @@ export const issueFields: INodeProperties[] = [
 				default: 'assigned_to',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner',
 				description:
 					'ID of the owner of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -372,7 +372,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority name or ID',
 				name: 'priority',
 				type: 'options',
 				description:
@@ -384,7 +384,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Role Name or ID',
+				displayName: 'Role name or ID',
 				name: 'role',
 				type: 'options',
 				description:
@@ -396,7 +396,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Severity Name or ID',
+				displayName: 'Severity name or ID',
 				name: 'severity',
 				type: 'options',
 				description:
@@ -408,7 +408,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				description:
 					'ID of the status of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -420,7 +420,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -432,7 +432,7 @@ export const issueFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type name or ID',
 				name: 'type',
 				type: 'options',
 				description:
@@ -450,7 +450,7 @@ export const issueFields: INodeProperties[] = [
 	//              issue: update
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
@@ -481,10 +481,10 @@ export const issueFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -494,7 +494,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -506,11 +506,11 @@ export const issueFields: INodeProperties[] = [
 					'ID of the user whom the issue is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Blocked Note',
+				displayName: 'Blocked note',
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the issue is blocked. Requires "Is Blocked" toggle to be enabled.',
+				description: 'Reason why the issue is blocked. Requires "Is blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',
@@ -519,14 +519,14 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Blocked',
+				displayName: 'Is blocked',
 				name: 'is_blocked',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the issue is blocked',
 			},
 			{
-				displayName: 'Milestone (Sprint) Name or ID',
+				displayName: 'Milestone (sprint) name or ID',
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
@@ -538,7 +538,7 @@ export const issueFields: INodeProperties[] = [
 					'ID of the milestone of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority name or ID',
 				name: 'priority',
 				type: 'options',
 				description:
@@ -550,7 +550,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Severity Name or ID',
+				displayName: 'Severity name or ID',
 				name: 'severity',
 				type: 'options',
 				description:
@@ -562,7 +562,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -580,7 +580,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -592,7 +592,7 @@ export const issueFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type name or ID',
 				name: 'type',
 				type: 'options',
 				description:

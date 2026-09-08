@@ -31,7 +31,7 @@ export const playlistOperations: INodeProperties[] = [
 				action: 'Get a playlist',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many playlists',
 				action: 'Get many playlists',
@@ -86,7 +86,7 @@ export const playlistFields: INodeProperties[] = [
 				description: "The playlist's description",
 			},
 			{
-				displayName: 'Privacy Status',
+				displayName: 'Privacy status',
 				name: 'privacyStatus',
 				type: 'options',
 				options: [
@@ -115,7 +115,7 @@ export const playlistFields: INodeProperties[] = [
 					'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
 			},
 			{
-				displayName: 'Default Language Name or ID',
+				displayName: 'Default language name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {
@@ -126,7 +126,7 @@ export const playlistFields: INodeProperties[] = [
 					'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'On Behalf Of Content Owner Channel',
+				displayName: 'On behalf of content owner channel',
 				name: 'onBehalfOfContentOwnerChannel',
 				type: 'string',
 				default: '',
@@ -134,7 +134,7 @@ export const playlistFields: INodeProperties[] = [
 					'The onBehalfOfContentOwnerChannel parameter specifies the YouTube channel ID of the channel to which a video is being added. This parameter is required when a request specifies a value for the onBehalfOfContentOwner parameter, and it can only be used in conjunction with that parameter.',
 			},
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -169,7 +169,7 @@ export const playlistFields: INodeProperties[] = [
 				value: '*',
 			},
 			{
-				name: 'Content Details',
+				name: 'Content details',
 				value: 'contentDetails',
 			},
 			{
@@ -218,7 +218,7 @@ export const playlistFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -226,7 +226,7 @@ export const playlistFields: INodeProperties[] = [
 					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 			{
-				displayName: 'On Behalf Of Content Owner Channel',
+				displayName: 'On behalf of content owner channel',
 				name: 'onBehalfOfContentOwnerChannel',
 				type: 'string',
 				default: '',
@@ -265,7 +265,7 @@ export const playlistFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -287,7 +287,7 @@ export const playlistFields: INodeProperties[] = [
 				value: '*',
 			},
 			{
-				name: 'Content Details',
+				name: 'Content details',
 				value: 'contentDetails',
 			},
 			{
@@ -323,7 +323,7 @@ export const playlistFields: INodeProperties[] = [
 		default: ['*'],
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -398,7 +398,7 @@ export const playlistFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'On Behalf Of Content Owner Channel',
+				displayName: 'On behalf of content owner channel',
 				name: 'onBehalfOfContentOwnerChannel',
 				type: 'string',
 				default: '',
@@ -406,7 +406,7 @@ export const playlistFields: INodeProperties[] = [
 					'The onBehalfOfContentOwnerChannel parameter specifies the YouTube channel ID of the channel to which a video is being added. This parameter is required when a request specifies a value for the onBehalfOfContentOwner parameter, and it can only be used in conjunction with that parameter.',
 			},
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -447,10 +447,10 @@ export const playlistFields: INodeProperties[] = [
 		description: "The playlist's title",
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -460,7 +460,7 @@ export const playlistFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Default Language Name or ID',
+				displayName: 'Default language name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {
@@ -478,7 +478,7 @@ export const playlistFields: INodeProperties[] = [
 				description: "The playlist's description",
 			},
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -486,7 +486,7 @@ export const playlistFields: INodeProperties[] = [
 					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 			{
-				displayName: 'Privacy Status',
+				displayName: 'Privacy status',
 				name: 'privacyStatus',
 				type: 'options',
 				options: [

@@ -8,7 +8,7 @@ export const operatorOptions: INodePropertyOptions[] = [
 		value: 'equal',
 	},
 	{
-		name: 'Not Equal',
+		name: 'Not equal',
 		value: '!=',
 	},
 	{
@@ -16,27 +16,27 @@ export const operatorOptions: INodePropertyOptions[] = [
 		value: 'LIKE',
 	},
 	{
-		name: 'Greater Than',
+		name: 'Greater than',
 		value: '>',
 	},
 	{
-		name: 'Less Than',
+		name: 'Less than',
 		value: '<',
 	},
 	{
-		name: 'Greater Than Or Equal',
+		name: 'Greater than or equal',
 		value: '>=',
 	},
 	{
-		name: 'Less Than Or Equal',
+		name: 'Less than or equal',
 		value: '<=',
 	},
 	{
-		name: 'Is Null',
+		name: 'Is null',
 		value: 'IS NULL',
 	},
 	{
-		name: 'Is Not Null',
+		name: 'Is not null',
 		value: 'IS NOT NULL',
 	},
 ];
@@ -50,10 +50,10 @@ export const tableRLC: INodeProperties = {
 	description: 'The table you want to work on',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Table...',
+			placeholder: 'Select a table...',
 			typeOptions: {
 				searchListMethod: 'searchTables',
 				searchable: true,
@@ -76,7 +76,7 @@ export const optionsCollection: INodeProperties = {
 	placeholder: 'Add option',
 	options: [
 		{
-			displayName: 'Connection Timeout',
+			displayName: 'Connection timeout',
 			name: 'connectionTimeoutMillis',
 			type: 'number',
 			default: 30,
@@ -86,7 +86,7 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Connections Limit',
+			displayName: 'Connections limit',
 			name: 'connectionLimit',
 			type: 'number',
 			default: 10,
@@ -97,14 +97,14 @@ export const optionsCollection: INodeProperties = {
 				'Maximum amount of connections to the database, setting high value can lead to performance issues and potential database crashes',
 		},
 		{
-			displayName: 'Query Batching',
+			displayName: 'Query batching',
 			name: 'queryBatching',
 			type: 'options',
 			noDataExpression: true,
 			description: 'The way queries should be sent to the database',
 			options: [
 				{
-					name: 'Single Query',
+					name: 'Single query',
 					value: BATCH_MODE.SINGLE,
 					description: 'A single query for all incoming items',
 				},
@@ -123,7 +123,7 @@ export const optionsCollection: INodeProperties = {
 			default: SINGLE,
 		},
 		{
-			displayName: 'Query Parameters',
+			displayName: 'Query parameters',
 			name: 'queryReplacement',
 			type: 'string',
 			default: '',
@@ -137,7 +137,7 @@ export const optionsCollection: INodeProperties = {
 		},
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-			displayName: 'Output Columns',
+			displayName: 'Output columns',
 			name: 'outputColumns',
 			type: 'multiOptions',
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
@@ -153,7 +153,7 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Output Large-Format Numbers As',
+			displayName: 'Output large-format numbers as',
 			name: 'largeNumbersOutput',
 			type: 'options',
 			options: [
@@ -175,7 +175,7 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Output Decimals as Numbers',
+			displayName: 'Output decimals as numbers',
 			name: 'decimalNumbers',
 			type: 'boolean',
 			default: false,
@@ -190,13 +190,13 @@ export const optionsCollection: INodeProperties = {
 			type: 'options',
 			options: [
 				{
-					name: 'Low Prioirity',
+					name: 'Low prioirity',
 					value: 'LOW_PRIORITY',
 					description:
 						'Delays execution of the INSERT until no other clients are reading from the table',
 				},
 				{
-					name: 'High Priority',
+					name: 'High priority',
 					value: 'HIGH_PRIORITY',
 					description:
 						'Overrides the effect of the --low-priority-updates option if the server was started with that option. It also causes concurrent inserts not to be used.',
@@ -211,7 +211,7 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Replace Empty Strings with NULL',
+			displayName: 'Replace empty strings with NULL',
 			name: 'replaceEmptyStrings',
 			type: 'boolean',
 			default: false,
@@ -224,7 +224,7 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Select Distinct',
+			displayName: 'Select distinct',
 			name: 'selectDistinct',
 			type: 'boolean',
 			default: false,
@@ -236,7 +236,7 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Output Query Execution Details',
+			displayName: 'Output query execution details',
 			name: 'detailedOutput',
 			type: 'boolean',
 			default: false,
@@ -244,7 +244,7 @@ export const optionsCollection: INodeProperties = {
 				'Whether to show in output details of the ofexecuted query for each statement, or just confirmation of success',
 		},
 		{
-			displayName: 'Skip on Conflict',
+			displayName: 'Skip on conflict',
 			name: 'skipOnConflict',
 			type: 'boolean',
 			default: false,
@@ -260,13 +260,13 @@ export const optionsCollection: INodeProperties = {
 };
 
 export const selectRowsFixedCollection: INodeProperties = {
-	displayName: 'Select Rows',
+	displayName: 'Select rows',
 	name: 'where',
 	type: 'fixedCollection',
 	typeOptions: {
 		multipleValues: true,
 	},
-	placeholder: 'Add Condition',
+	placeholder: 'Add condition',
 	default: {},
 	description: 'If not set, all rows will be selected',
 	options: [
@@ -322,7 +322,7 @@ export const sortFixedCollection: INodeProperties = {
 	typeOptions: {
 		multipleValues: true,
 	},
-	placeholder: 'Add Sort Rule',
+	placeholder: 'Add sort rule',
 	default: {},
 	options: [
 		{
@@ -365,11 +365,11 @@ export const sortFixedCollection: INodeProperties = {
 };
 
 export const combineConditionsCollection: INodeProperties = {
-	displayName: 'Combine Conditions',
+	displayName: 'Combine conditions',
 	name: 'combineConditions',
 	type: 'options',
 	description:
-		'How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true',
+		'How to combine the conditions defined in "Select rows": AND requires all conditions to be true, OR requires at least one condition to be true',
 	options: [
 		{
 			name: 'AND',

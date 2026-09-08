@@ -31,7 +31,7 @@ export const dealOperations: INodeProperties[] = [
 				action: 'Get a deal',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many deals',
 				action: 'Get many deals',
@@ -65,7 +65,7 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Owner Name or ID',
+		displayName: 'Owner name or ID',
 		name: 'owner',
 		type: 'options',
 		description:
@@ -83,7 +83,7 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Primary Contact Name or ID',
+		displayName: 'Primary contact name or ID',
 		name: 'primaryContact',
 		type: 'options',
 		default: '',
@@ -154,7 +154,7 @@ export const dealFields: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
-				name: 'New (Untouched)',
+				name: 'New (untouched)',
 				value: 'New (Untouched)',
 			},
 			{
@@ -166,11 +166,11 @@ export const dealFields: INodeProperties[] = [
 				value: 'Qualified',
 			},
 			{
-				name: 'In Negotiation',
+				name: 'In negotiation',
 				value: 'In Negotiation',
 			},
 			{
-				name: 'Proposal Presented',
+				name: 'Proposal presented',
 				value: 'Proposal Presented',
 			},
 		],
@@ -196,7 +196,7 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -209,10 +209,10 @@ export const dealFields: INodeProperties[] = [
 		description: 'Whether the data should include the fields details',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -236,7 +236,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'This field contains tags associated with an deal',
 			},
 			{
-				displayName: 'Primary Company Name or ID',
+				displayName: 'Primary company name or ID',
 				name: 'primaryCompany',
 				type: 'options',
 				description:
@@ -264,20 +264,20 @@ export const dealFields: INodeProperties[] = [
 						value: 'Website',
 					},
 					{
-						name: 'Word of Mouth',
+						name: 'Word of mouth',
 						value: 'Word of mouth',
 					},
 				],
 				default: 'Ads',
 			},
 			{
-				displayName: 'Estimated Close Date',
+				displayName: 'Estimated close date',
 				name: 'estimatedCloseDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Deal Value',
+				displayName: 'Deal value',
 				name: 'dealValue',
 				type: 'number',
 				typeOptions: {
@@ -324,7 +324,7 @@ export const dealFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -337,10 +337,10 @@ export const dealFields: INodeProperties[] = [
 		description: 'Whether the data should include the fields details',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -356,7 +356,7 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner',
 				type: 'options',
 				description:
@@ -367,7 +367,7 @@ export const dealFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Primary Contact Name or ID',
+				displayName: 'Primary contact name or ID',
 				name: 'primaryContact',
 				type: 'options',
 				description:
@@ -420,15 +420,15 @@ export const dealFields: INodeProperties[] = [
 						value: 'Contacted',
 					},
 					{
-						name: 'In Negotiation',
+						name: 'In negotiation',
 						value: 'In Negotiation',
 					},
 					{
-						name: 'New (Untouched)',
+						name: 'New (untouched)',
 						value: 'New (Untouched)',
 					},
 					{
-						name: 'Proposal Presented',
+						name: 'Proposal presented',
 						value: 'Proposal Presented',
 					},
 					{
@@ -458,7 +458,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'This field contains tags associated with an deal',
 			},
 			{
-				displayName: 'Primary Company Name or ID',
+				displayName: 'Primary company name or ID',
 				name: 'primaryCompany',
 				type: 'options',
 				description:
@@ -486,20 +486,20 @@ export const dealFields: INodeProperties[] = [
 						value: 'Website',
 					},
 					{
-						name: 'Word of Mouth',
+						name: 'Word of mouth',
 						value: 'Word of mouth',
 					},
 				],
 				default: 'Ads',
 			},
 			{
-				displayName: 'Estimated Close Date',
+				displayName: 'Estimated close date',
 				name: 'estimatedCloseDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Deal Value',
+				displayName: 'Deal value',
 				name: 'dealValue',
 				type: 'number',
 				typeOptions: {
@@ -546,7 +546,7 @@ export const dealFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -562,7 +562,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                 deal:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -593,7 +593,7 @@ export const dealFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -625,14 +625,14 @@ export const dealFields: INodeProperties[] = [
 				description: 'Comma-separated list of fields to return',
 			},
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
 				description: 'The field to sort by',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sortOrder',
 				type: 'options',
 				options: [
@@ -705,7 +705,7 @@ export const dealFields: INodeProperties[] = [
 					{
 						displayName: 'Conditions',
 						name: 'conditions',
-						placeholder: 'Add Condition',
+						placeholder: 'Add condition',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -730,7 +730,7 @@ export const dealFields: INodeProperties[] = [
 												value: 'tags',
 											},
 											{
-												name: 'Last Communication Mode',
+												name: 'Last communication mode',
 												value: 'lastCommunicationMode',
 											},
 										],
@@ -747,7 +747,7 @@ export const dealFields: INodeProperties[] = [
 												value: 'EQUALS',
 											},
 											{
-												name: 'Not Equals',
+												name: 'Not equals',
 												value: 'NOT_EQUALS',
 											},
 											{
@@ -755,7 +755,7 @@ export const dealFields: INodeProperties[] = [
 												value: 'Contains',
 											},
 											{
-												name: 'Does Not Contains',
+												name: 'Does not contains',
 												value: 'DOES_NOT_CONTAINS',
 											},
 											{
@@ -763,15 +763,15 @@ export const dealFields: INodeProperties[] = [
 												value: 'EMPTY',
 											},
 											{
-												name: 'Not Empty',
+												name: 'Not empty',
 												value: 'NOT_EMPTY',
 											},
 											{
-												name: 'Starts With',
+												name: 'Starts with',
 												value: 'STARTS_WITH',
 											},
 											{
-												name: 'Ends With',
+												name: 'Ends with',
 												value: 'ENDS_WITH',
 											},
 										],

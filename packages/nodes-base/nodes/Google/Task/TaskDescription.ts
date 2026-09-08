@@ -31,7 +31,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many tasks from a tasklist',
 				action: 'Get many tasks',
@@ -52,7 +52,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList Name or ID',
+		displayName: 'TaskList name or ID',
 		name: 'task',
 		type: 'options',
 		description:
@@ -83,10 +83,10 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -96,7 +96,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Completion Date',
+				displayName: 'Completion date',
 				name: 'completed',
 				type: 'dateTime',
 				default: '',
@@ -111,7 +111,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Whether the task has been deleted',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
@@ -146,7 +146,7 @@ export const taskFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Needs Action',
+						name: 'Needs action',
 						value: 'needsAction',
 					},
 					{
@@ -163,7 +163,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList Name or ID',
+		displayName: 'TaskList name or ID',
 		name: 'task',
 		type: 'options',
 		description:
@@ -197,7 +197,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList Name or ID',
+		displayName: 'TaskList name or ID',
 		name: 'task',
 		type: 'options',
 		description:
@@ -231,7 +231,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList Name or ID',
+		displayName: 'TaskList name or ID',
 		name: 'task',
 		type: 'options',
 		description:
@@ -249,7 +249,7 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -280,10 +280,10 @@ export const taskFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -293,7 +293,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Completed Max',
+				displayName: 'Completed max',
 				name: 'completedMax',
 				type: 'dateTime',
 				default: '',
@@ -301,7 +301,7 @@ export const taskFields: INodeProperties[] = [
 					'Upper bound for a task completion date (as a RFC 3339 timestamp) to filter by',
 			},
 			{
-				displayName: 'Completed Min',
+				displayName: 'Completed min',
 				name: 'completedMin',
 				type: 'dateTime',
 				default: '',
@@ -309,21 +309,21 @@ export const taskFields: INodeProperties[] = [
 					'Lower bound for a task completion date (as a RFC 3339 timestamp) to filter by',
 			},
 			{
-				displayName: 'Due Min',
+				displayName: 'Due min',
 				name: 'dueMin',
 				type: 'dateTime',
 				default: '',
 				description: 'Lower bound for a task due date (as a RFC 3339 timestamp) to filter by',
 			},
 			{
-				displayName: 'Due Max',
+				displayName: 'Due max',
 				name: 'dueMax',
 				type: 'dateTime',
 				default: '',
 				description: 'Upper bound for a task due date (as a RFC 3339 timestamp) to filter by',
 			},
 			{
-				displayName: 'Show Completed',
+				displayName: 'Show completed',
 				name: 'showCompleted',
 				type: 'boolean',
 				default: true,
@@ -332,21 +332,21 @@ export const taskFields: INodeProperties[] = [
 					"Whether completed tasks are returned in the result. <strong>Show Hidden</strong> must also be True to show tasks completed in first party clients such as the web UI or Google's mobile apps.",
 			},
 			{
-				displayName: 'Show Deleted',
+				displayName: 'Show deleted',
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
 				description: 'Whether deleted tasks are returned in the result',
 			},
 			{
-				displayName: 'Show Hidden',
+				displayName: 'Show hidden',
 				name: 'showHidden',
 				type: 'boolean',
 				default: false,
 				description: 'Whether hidden tasks are returned in the result',
 			},
 			{
-				displayName: 'Updated Min',
+				displayName: 'Updated min',
 				name: 'updatedMin',
 				type: 'dateTime',
 				default: '',
@@ -359,7 +359,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList Name or ID',
+		displayName: 'TaskList name or ID',
 		name: 'task',
 		type: 'options',
 		description:
@@ -390,7 +390,7 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Update Field',
@@ -403,7 +403,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Completion Date',
+				displayName: 'Completion date',
 				name: 'completed',
 				type: 'dateTime',
 				default: '',
@@ -419,7 +419,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Whether the task has been deleted',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
@@ -446,7 +446,7 @@ export const taskFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Needs Update',
+						name: 'Needs update',
 						value: 'needsAction',
 					},
 					{

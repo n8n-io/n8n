@@ -13,7 +13,7 @@ export const issueOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Link',
+				name: 'Add link',
 				value: 'addLink',
 				description: 'Add a link to an issue',
 				action: 'Add a link to an issue',
@@ -37,7 +37,7 @@ export const issueOperations: INodeProperties[] = [
 				action: 'Get an issue',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many issues',
 				action: 'Get many issues',
@@ -58,7 +58,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                 issue:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		type: 'options',
 		description:
@@ -89,10 +89,10 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -102,7 +102,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigneeId',
 				type: 'options',
 				description:
@@ -140,14 +140,14 @@ export const issueFields: INodeProperties[] = [
 						value: 4,
 					},
 					{
-						name: 'No Priority',
+						name: 'No priority',
 						value: 0,
 					},
 				],
 				default: 0,
 			},
 			{
-				displayName: 'State Name or ID',
+				displayName: 'State name or ID',
 				name: 'stateId',
 				type: 'options',
 				description:
@@ -179,7 +179,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                 issue:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -225,10 +225,10 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -239,7 +239,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigneeId',
 				type: 'options',
 				description:
@@ -256,7 +256,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority Name/ID',
+				displayName: 'Priority name/ID',
 				name: 'priorityId',
 				type: 'options',
 				options: [
@@ -277,14 +277,14 @@ export const issueFields: INodeProperties[] = [
 						value: 3,
 					},
 					{
-						name: 'No Priority',
+						name: 'No priority',
 						value: 0,
 					},
 				],
 				default: 0,
 			},
 			{
-				displayName: 'State Name or ID',
+				displayName: 'State name or ID',
 				name: 'stateId',
 				type: 'options',
 				description:
@@ -295,7 +295,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Team Name or ID',
+				displayName: 'Team name or ID',
 				name: 'teamId',
 				type: 'options',
 				description:
@@ -314,10 +314,10 @@ export const issueFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -330,7 +330,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigneeId',
 				type: 'options',
 				description:
@@ -347,7 +347,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority Name/ID',
+				displayName: 'Priority name/ID',
 				name: 'priorityId',
 				type: 'options',
 				options: [
@@ -368,14 +368,14 @@ export const issueFields: INodeProperties[] = [
 						value: 4,
 					},
 					{
-						name: 'No Priority',
+						name: 'No priority',
 						value: 0,
 					},
 				],
 				default: 0,
 			},
 			{
-				displayName: 'State Name or ID',
+				displayName: 'State name or ID',
 				name: 'stateId',
 				type: 'options',
 				description:
@@ -386,7 +386,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Team Name or ID',
+				displayName: 'Team name or ID',
 				name: 'teamId',
 				type: 'options',
 				description:

@@ -75,12 +75,12 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['page'], operation: ['create'] } },
 	},
 	{
-		displayName: 'Content Type',
+		displayName: 'Content type',
 		name: 'contentType',
 		type: 'options',
 		options: [
-			{ name: 'Block Builder', value: 'blockUi' },
-			{ name: 'JSON Blocks', value: 'json' },
+			{ name: 'Block builder', value: 'blockUi' },
+			{ name: 'JSON blocks', value: 'json' },
 			{ name: 'Markdown', value: 'markdown' },
 		],
 		default: 'blockUi',
@@ -107,19 +107,19 @@ export const description: INodeProperties[] = [
 	},
 	iconOptions('page', ['create']),
 	{
-		displayName: 'Include Transcript',
+		displayName: 'Include transcript',
 		name: 'includeTranscript',
 		type: 'boolean',
 		default: false,
 		displayOptions: { show: { resource: ['page'], operation: ['getMarkdown'] } },
 	},
 	{
-		displayName: 'Update Type',
+		displayName: 'Update type',
 		name: 'markdownUpdateType',
 		type: 'options',
 		options: [
-			{ name: 'Replace Content', value: 'replace_content' },
-			{ name: 'Update Content', value: 'update_content' },
+			{ name: 'Replace content', value: 'replace_content' },
+			{ name: 'Update content', value: 'update_content' },
 		],
 		default: 'replace_content',
 		displayOptions: { show: { resource: ['page'], operation: ['updateMarkdown'] } },
@@ -139,14 +139,14 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Content Updates',
+		displayName: 'Content updates',
 		name: 'contentUpdates',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
 		},
 		default: {},
-		placeholder: 'Add Update',
+		placeholder: 'Add update',
 		displayOptions: {
 			show: {
 				resource: ['page'],
@@ -160,21 +160,21 @@ export const description: INodeProperties[] = [
 				displayName: 'Update',
 				values: [
 					{
-						displayName: 'Old String',
+						displayName: 'Old string',
 						name: 'oldString',
 						type: 'string',
 						default: '',
 						description: 'Existing markdown content to find',
 					},
 					{
-						displayName: 'New String',
+						displayName: 'New string',
 						name: 'newString',
 						type: 'string',
 						default: '',
 						description: 'Replacement markdown content',
 					},
 					{
-						displayName: 'Replace All Matches',
+						displayName: 'Replace all matches',
 						name: 'replaceAllMatches',
 						type: 'boolean',
 						default: false,
@@ -185,7 +185,7 @@ export const description: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Search Text',
+		displayName: 'Search text',
 		name: 'text',
 		type: 'string',
 		default: '',

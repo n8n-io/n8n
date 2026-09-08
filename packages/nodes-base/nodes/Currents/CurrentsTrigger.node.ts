@@ -63,22 +63,22 @@ export class CurrentsTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Run Canceled',
+						name: 'Run canceled',
 						value: 'RUN_CANCELED',
 						description: 'Triggered when a run is manually canceled',
 					},
 					{
-						name: 'Run Finished',
+						name: 'Run finished',
 						value: 'RUN_FINISH',
 						description: 'Triggered when a run completes',
 					},
 					{
-						name: 'Run Started',
+						name: 'Run started',
 						value: 'RUN_START',
 						description: 'Triggered when a new run begins',
 					},
 					{
-						name: 'Run Timeout',
+						name: 'Run timeout',
 						value: 'RUN_TIMEOUT',
 						description: 'Triggered when a run exceeds the time limit',
 					},

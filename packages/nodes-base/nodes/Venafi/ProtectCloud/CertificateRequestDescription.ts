@@ -25,7 +25,7 @@ export const certificateRequestOperations: INodeProperties[] = [
 				action: 'Get a certificate request',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getMany',
 				description: 'Retrieve many certificate requests',
 				action: 'Get many certificate requests',
@@ -40,7 +40,7 @@ export const certificateRequestFields: INodeProperties[] = [
 	/*                                 certificateRequest:create                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Application Name or ID',
+		displayName: 'Application name or ID',
 		name: 'applicationId',
 		type: 'options',
 		description:
@@ -57,7 +57,7 @@ export const certificateRequestFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Certificate Issuing Template Name or ID',
+		displayName: 'Certificate issuing template name or ID',
 		name: 'certificateIssuingTemplateId',
 		type: 'options',
 		description:
@@ -87,7 +87,7 @@ export const certificateRequestFields: INodeProperties[] = [
 		default: false,
 	},
 	{
-		displayName: 'Common Name',
+		displayName: 'Common name',
 		name: 'commonName',
 		required: true,
 		displayOptions: {
@@ -103,10 +103,10 @@ export const certificateRequestFields: INodeProperties[] = [
 	},
 	// Optional...
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -117,7 +117,7 @@ export const certificateRequestFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Key Type',
+				displayName: 'Key type',
 				name: 'keyType',
 				type: 'options',
 				options: [
@@ -136,7 +136,7 @@ export const certificateRequestFields: INodeProperties[] = [
 				description: 'The encryption algorithm for the public key',
 			},
 			{
-				displayName: 'Key Curve',
+				displayName: 'Key curve',
 				name: 'keyCurve',
 				type: 'options',
 				options: [
@@ -168,21 +168,21 @@ export const certificateRequestFields: INodeProperties[] = [
 				default: 'ED25519',
 			},
 			{
-				displayName: 'Key Length',
+				displayName: 'Key length',
 				name: 'keyLength',
 				type: 'number',
 				default: 2048,
 				description: 'The number of bits to allow for key generation',
 			},
 			{
-				displayName: '(O) Organization',
+				displayName: '(O) organization',
 				name: 'organization',
 				type: 'string',
 				default: '',
 				description: 'The name of a company or organization',
 			},
 			{
-				displayName: '(OU) Organizational Unit(s)',
+				displayName: '(OU) organizational unit(s)',
 				name: 'organizationalUnits',
 				type: 'string',
 				typeOptions: {
@@ -192,7 +192,7 @@ export const certificateRequestFields: INodeProperties[] = [
 				description: 'The name of a department or section',
 			},
 			{
-				displayName: '(L) City/Locality',
+				displayName: '(L) city/locality',
 				name: 'locality',
 				type: 'string',
 				default: '',
@@ -200,23 +200,23 @@ export const certificateRequestFields: INodeProperties[] = [
 			},
 
 			{
-				displayName: '(ST) State',
+				displayName: '(ST) state',
 				name: 'state',
 				type: 'string',
 				default: '',
 				description: 'The name of a state or province',
 			},
 			{
-				displayName: '(C) Country',
+				displayName: '(C) country',
 				name: 'country',
 				type: 'string',
 				default: '',
 				description: 'A 2 letter country code',
 			},
 			{
-				displayName: 'Subject Alt Names',
+				displayName: 'Subject alt names',
 				name: 'SubjectAltNamesUi',
-				placeholder: 'Add Subject',
+				placeholder: 'Add subject',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -225,7 +225,7 @@ export const certificateRequestFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'SubjectAltNamesValues',
-						displayName: 'Subject Alt Name',
+						displayName: 'Subject alt name',
 						values: [
 							{
 								displayName: 'Typename',
@@ -269,7 +269,7 @@ export const certificateRequestFields: INodeProperties[] = [
 	},
 	// End CSR Builder
 	{
-		displayName: 'Certificate Signing Request',
+		displayName: 'Certificate signing request',
 		name: 'certificateSigningRequest',
 		type: 'string',
 		displayOptions: {
@@ -285,7 +285,7 @@ export const certificateRequestFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -295,7 +295,7 @@ export const certificateRequestFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Validity Period',
+				displayName: 'Validity period',
 				name: 'validityPeriod',
 				type: 'string',
 				placeholder: 'P1Y',
@@ -310,7 +310,7 @@ export const certificateRequestFields: INodeProperties[] = [
 	/*                                 certificateRequest:get                     */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Certificate Request ID',
+		displayName: 'Certificate request ID',
 		name: 'certificateRequestId',
 		type: 'string',
 		required: true,
@@ -326,7 +326,7 @@ export const certificateRequestFields: INodeProperties[] = [
 	/*                                 certificateRequest:getMany                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

@@ -39,13 +39,13 @@ export const description: INodeProperties[] = [
 				action: 'Get a search job',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many search jobs',
 				action: 'Get many search jobs',
 			},
 			{
-				name: 'Get Result',
+				name: 'Get result',
 				value: 'getResult',
 				description: 'Get the result of a search job',
 				action: 'Get the result of a search job',

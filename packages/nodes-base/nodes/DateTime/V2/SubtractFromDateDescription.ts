@@ -16,7 +16,7 @@ export const SubtractFromDateDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Date to Subtract From',
+		displayName: 'Date to subtract from',
 		name: 'magnitude',
 		type: 'string',
 		description: 'The date that you want to change',
@@ -29,7 +29,7 @@ export const SubtractFromDateDescription: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Time Unit to Subtract',
+		displayName: 'Time unit to subtract',
 		name: 'timeUnit',
 		description: 'Time unit for Duration parameter below',
 		displayOptions: {
@@ -93,7 +93,7 @@ export const SubtractFromDateDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Output Field Name',
+		displayName: 'Output field name',
 		name: 'outputFieldName',
 		type: 'string',
 		default: 'newDate',

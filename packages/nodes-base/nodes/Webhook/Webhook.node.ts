@@ -77,7 +77,7 @@ export class Webhook extends Node {
 		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
 		properties: [
 			{
-				displayName: 'Allow Multiple HTTP Methods',
+				displayName: 'Allow multiple HTTP methods',
 				name: 'multipleMethods',
 				type: 'boolean',
 				default: false,
@@ -93,7 +93,7 @@ export class Webhook extends Node {
 				},
 			},
 			{
-				displayName: 'HTTP Methods',
+				displayName: 'HTTP methods',
 				name: 'httpMethod',
 				type: 'multiOptions',
 				options: [

@@ -31,7 +31,7 @@ export const userStoryOperations: INodeProperties[] = [
 				action: 'Get a user story',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many user stories',
 				action: 'Get many user stories',
@@ -52,7 +52,7 @@ export const userStoryFields: INodeProperties[] = [
 	//            userStory: create
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		description:
 			'ID of the project to which the user story belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -83,10 +83,10 @@ export const userStoryFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -96,7 +96,7 @@ export const userStoryFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -108,7 +108,7 @@ export const userStoryFields: INodeProperties[] = [
 					'ID of the user to whom the user story is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Backlog Order',
+				displayName: 'Backlog order',
 				name: 'backlog_order',
 				type: 'number',
 				default: 1,
@@ -118,12 +118,12 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'Order of the user story in the backlog',
 			},
 			{
-				displayName: 'Blocked Note',
+				displayName: 'Blocked note',
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
 				description:
-					'Reason why the user story is blocked. Requires "Is Blocked" toggle to be enabled.',
+					'Reason why the user story is blocked. Requires "Is blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',
@@ -132,14 +132,14 @@ export const userStoryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Blocked',
+				displayName: 'Is blocked',
 				name: 'is_blocked',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user story is blocked',
 			},
 			{
-				displayName: 'Kanban Order',
+				displayName: 'Kanban order',
 				name: 'kanban_order',
 				type: 'number',
 				default: 1,
@@ -149,7 +149,7 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'Order of the user story in the kanban',
 			},
 			{
-				displayName: 'Milestone (Sprint) Name or ID',
+				displayName: 'Milestone (sprint) name or ID',
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
@@ -161,7 +161,7 @@ export const userStoryFields: INodeProperties[] = [
 					'ID of the milestone of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sprint Order',
+				displayName: 'Sprint order',
 				name: 'sprint_order',
 				type: 'number',
 				default: 1,
@@ -171,7 +171,7 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'Order of the user story in the milestone',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -183,7 +183,7 @@ export const userStoryFields: INodeProperties[] = [
 					'ID of the status of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -195,7 +195,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type name or ID',
 				name: 'type',
 				type: 'options',
 				description:
@@ -213,7 +213,7 @@ export const userStoryFields: INodeProperties[] = [
 	//            userStory: delete
 	// ----------------------------------------
 	{
-		displayName: 'User Story ID',
+		displayName: 'User story ID',
 		name: 'userStoryId',
 		description: 'ID of the user story to delete',
 		type: 'string',
@@ -231,7 +231,7 @@ export const userStoryFields: INodeProperties[] = [
 	//              userStory: get
 	// ----------------------------------------
 	{
-		displayName: 'User Story ID',
+		displayName: 'User story ID',
 		name: 'userStoryId',
 		description: 'ID of the user story to retrieve',
 		type: 'string',
@@ -249,7 +249,7 @@ export const userStoryFields: INodeProperties[] = [
 	//            userStory: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		description:
 			'ID of the project to which the user story belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -267,7 +267,7 @@ export const userStoryFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -300,7 +300,7 @@ export const userStoryFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['userStory'],
@@ -310,7 +310,7 @@ export const userStoryFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigned_to',
 				description:
 					'ID of the user whom the user story is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -322,7 +322,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Epic Name or ID',
+				displayName: 'Epic name or ID',
 				name: 'epic',
 				description:
 					'ID of the epic to which the user story belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -334,21 +334,21 @@ export const userStoryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Closed',
+				displayName: 'Is closed',
 				name: 'statusIsClosed',
 				description: 'Whether the user story is closed',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Is Archived',
+				displayName: 'Is archived',
 				name: 'statusIsArchived',
 				description: 'Whether the user story has been archived',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Milestone (Sprint) Name or ID',
+				displayName: 'Milestone (sprint) name or ID',
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
@@ -360,7 +360,7 @@ export const userStoryFields: INodeProperties[] = [
 					'ID of the milestone of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Role Name or ID',
+				displayName: 'Role name or ID',
 				name: 'role',
 				type: 'options',
 				description:
@@ -372,7 +372,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				description:
 					'ID of the status of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -384,7 +384,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -402,7 +402,7 @@ export const userStoryFields: INodeProperties[] = [
 	//            userStory: update
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
@@ -419,7 +419,7 @@ export const userStoryFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User Story ID',
+		displayName: 'User story ID',
 		name: 'userStoryId',
 		description: 'ID of the user story to update',
 		type: 'string',
@@ -433,10 +433,10 @@ export const userStoryFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -446,7 +446,7 @@ export const userStoryFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -458,7 +458,7 @@ export const userStoryFields: INodeProperties[] = [
 					'ID of the user to assign the the user story to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Backlog Order',
+				displayName: 'Backlog order',
 				name: 'backlog_order',
 				type: 'number',
 				default: 1,
@@ -468,12 +468,12 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'Order of the user story in the backlog',
 			},
 			{
-				displayName: 'Blocked Note',
+				displayName: 'Blocked note',
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
 				description:
-					'Reason why the user story is blocked. Requires "Is Blocked" toggle to be enabled.',
+					'Reason why the user story is blocked. Requires "Is blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',
@@ -482,14 +482,14 @@ export const userStoryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Blocked',
+				displayName: 'Is blocked',
 				name: 'is_blocked',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user story is blocked',
 			},
 			{
-				displayName: 'Kanban Order',
+				displayName: 'Kanban order',
 				name: 'kanban_order',
 				type: 'number',
 				default: 1,
@@ -499,7 +499,7 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'Order of the user story in the kanban',
 			},
 			{
-				displayName: 'Milestone (Sprint) Name or ID',
+				displayName: 'Milestone (sprint) name or ID',
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
@@ -517,7 +517,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Sprint Order',
+				displayName: 'Sprint order',
 				name: 'sprint_order',
 				type: 'number',
 				default: 1,
@@ -527,7 +527,7 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'Order of the user story in the milestone',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -539,7 +539,7 @@ export const userStoryFields: INodeProperties[] = [
 					'ID of the status of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -551,7 +551,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type name or ID',
 				name: 'type',
 				type: 'options',
 				description:

@@ -87,7 +87,7 @@ export class LmOpenAi implements INodeType {
 					'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						typeOptions: {
@@ -123,7 +123,7 @@ export class LmOpenAi implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
@@ -136,7 +136,7 @@ export class LmOpenAi implements INodeType {
 						type: 'string',
 					},
 					{
-						displayName: 'Frequency Penalty',
+						displayName: 'Frequency penalty',
 						name: 'frequencyPenalty',
 						default: 0,
 						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -145,7 +145,7 @@ export class LmOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Maximum Number of Tokens',
+						displayName: 'Maximum number of tokens',
 						name: 'maxTokens',
 						default: -1,
 						description:
@@ -156,7 +156,7 @@ export class LmOpenAi implements INodeType {
 						},
 					},
 					{
-						displayName: 'Presence Penalty',
+						displayName: 'Presence penalty',
 						name: 'presencePenalty',
 						default: 0,
 						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -165,7 +165,7 @@ export class LmOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Sampling Temperature',
+						displayName: 'Sampling temperature',
 						name: 'temperature',
 						default: 0.7,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -181,7 +181,7 @@ export class LmOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Max Retries',
+						displayName: 'Max retries',
 						name: 'maxRetries',
 						default: 2,
 						description: 'Maximum number of retries to attempt',

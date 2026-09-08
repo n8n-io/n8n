@@ -70,7 +70,7 @@ export class ClickUp implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -91,7 +91,7 @@ export class ClickUp implements INodeType {
 						value: 'checklist',
 					},
 					{
-						name: 'Checklist Item',
+						name: 'Checklist item',
 						value: 'checklistItem',
 					},
 					{
@@ -107,7 +107,7 @@ export class ClickUp implements INodeType {
 						value: 'goal',
 					},
 					{
-						name: 'Goal Key Result',
+						name: 'Goal key result',
 						value: 'goalKeyResult',
 					},
 					// {
@@ -119,7 +119,7 @@ export class ClickUp implements INodeType {
 						value: 'list',
 					},
 					{
-						name: 'Space Tag',
+						name: 'Space tag',
 						value: 'spaceTag',
 					},
 					{
@@ -127,23 +127,23 @@ export class ClickUp implements INodeType {
 						value: 'task',
 					},
 					{
-						name: 'Task Dependency',
+						name: 'Task dependency',
 						value: 'taskDependency',
 					},
 					{
-						name: 'Task List',
+						name: 'Task list',
 						value: 'taskList',
 					},
 					{
-						name: 'Task Tag',
+						name: 'Task tag',
 						value: 'taskTag',
 					},
 					{
-						name: 'Time Entry',
+						name: 'Time entry',
 						value: 'timeEntry',
 					},
 					{
-						name: 'Time Entry Tag',
+						name: 'Time entry tag',
 						value: 'timeEntryTag',
 					},
 				],

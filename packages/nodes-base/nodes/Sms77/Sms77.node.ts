@@ -42,7 +42,7 @@ export class Sms77 implements INodeType {
 						value: 'sms',
 					},
 					{
-						name: 'Voice Call',
+						name: 'Voice call',
 						value: 'voice',
 					},
 				],
@@ -139,7 +139,7 @@ export class Sms77 implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -180,7 +180,7 @@ export class Sms77 implements INodeType {
 						description: 'Custom label used to group analytics',
 					},
 					{
-						displayName: 'Performance Tracking',
+						displayName: 'Performance tracking',
 						name: 'performance_tracking',
 						type: 'boolean',
 						default: false,
@@ -204,7 +204,7 @@ export class Sms77 implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {

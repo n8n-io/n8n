@@ -36,10 +36,10 @@ const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -50,7 +50,7 @@ const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'realname',
 				type: 'string',
 				default: '',

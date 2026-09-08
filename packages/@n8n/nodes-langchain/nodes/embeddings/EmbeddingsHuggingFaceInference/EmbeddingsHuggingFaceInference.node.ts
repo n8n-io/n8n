@@ -58,7 +58,7 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Model Name',
+				displayName: 'Model name',
 				name: 'modelName',
 				type: 'string',
 				default: 'sentence-transformers/distilbert-base-nli-mean-tokens',
@@ -67,13 +67,13 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Custom Inference Endpoint',
+						displayName: 'Custom inference endpoint',
 						name: 'endpointUrl',
 						default: '',
 						description: 'Custom endpoint URL',

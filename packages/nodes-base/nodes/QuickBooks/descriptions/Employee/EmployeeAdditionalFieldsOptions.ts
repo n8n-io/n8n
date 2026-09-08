@@ -9,21 +9,21 @@ export const employeeAdditionalFieldsOptions: INodeProperties[] = [
 		default: false,
 	},
 	{
-		displayName: 'Billable Time',
+		displayName: 'Billable time',
 		name: 'BillableTime',
 		type: 'boolean',
 		default: false,
 	},
 	{
-		displayName: 'Display Name',
+		displayName: 'Display name',
 		name: 'DisplayName',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Billing Address',
+		displayName: 'Billing address',
 		name: 'BillAddr',
-		placeholder: 'Add Billing Address Fields',
+		placeholder: 'Add billing address fields',
 		type: 'fixedCollection',
 		default: {},
 		options: [
@@ -44,7 +44,7 @@ export const employeeAdditionalFieldsOptions: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'PostalCode',
 						type: 'string',
 						default: '',
@@ -62,7 +62,7 @@ export const employeeAdditionalFieldsOptions: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Subdivision Code',
+						displayName: 'Country subdivision code',
 						name: 'CountrySubDivisionCode',
 						type: 'string',
 						default: '',
@@ -72,20 +72,20 @@ export const employeeAdditionalFieldsOptions: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Primary Phone',
+		displayName: 'Primary phone',
 		name: 'PrimaryPhone',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Print-On-Check Name',
+		displayName: 'Print-on-check name',
 		name: 'PrintOnCheckName',
 		description: 'Name of the employee as printed on a check',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Social Security Number',
+		displayName: 'Social security number',
 		name: 'SSN',
 		type: 'string',
 		default: '',

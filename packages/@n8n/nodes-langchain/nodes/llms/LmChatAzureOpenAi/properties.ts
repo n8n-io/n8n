@@ -14,7 +14,7 @@ export const properties: INodeProperties[] = [
 		default: AuthenticationType.ApiKey,
 		options: [
 			{
-				name: 'API Key',
+				name: 'API key',
 				value: AuthenticationType.ApiKey,
 			},
 			{
@@ -37,7 +37,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Model (Deployment) Name',
+		displayName: 'Model (deployment) name',
 		name: 'model',
 		type: 'string',
 		description: 'The name of the model(deployment) to use (e.g., gpt-4, gpt-35-turbo)',
@@ -47,13 +47,13 @@ export const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		description: 'Additional options to add',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Frequency Penalty',
+				displayName: 'Frequency penalty',
 				name: 'frequencyPenalty',
 				default: 0,
 				typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -62,7 +62,7 @@ export const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Maximum Number of Tokens',
+				displayName: 'Maximum number of tokens',
 				name: 'maxTokens',
 				default: -1,
 				description:
@@ -73,7 +73,7 @@ export const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Response Format',
+				displayName: 'Response format',
 				name: 'responseFormat',
 				default: 'text',
 				type: 'options',
@@ -92,7 +92,7 @@ export const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Presence Penalty',
+				displayName: 'Presence penalty',
 				name: 'presencePenalty',
 				default: 0,
 				typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -101,7 +101,7 @@ export const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Sampling Temperature',
+				displayName: 'Sampling temperature',
 				name: 'temperature',
 				default: 0.7,
 				typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 }, // Max temp can be 2
@@ -110,14 +110,14 @@ export const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Timeout (Ms)',
+				displayName: 'Timeout (ms)',
 				name: 'timeout',
 				default: 60000,
 				description: 'Maximum amount of time a request is allowed to take in milliseconds',
 				type: 'number',
 			},
 			{
-				displayName: 'Max Retries',
+				displayName: 'Max retries',
 				name: 'maxRetries',
 				default: 2,
 				description: 'Maximum number of retries to attempt on failure',

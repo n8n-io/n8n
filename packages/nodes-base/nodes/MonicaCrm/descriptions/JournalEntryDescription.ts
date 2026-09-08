@@ -31,7 +31,7 @@ export const journalEntryOperations: INodeProperties[] = [
 				action: 'Get a journal entry',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many journal entries',
 				action: 'Get many journal entries',
@@ -84,7 +84,7 @@ export const journalEntryFields: INodeProperties[] = [
 	//           journalEntry: delete
 	// ----------------------------------------
 	{
-		displayName: 'Journal Entry ID',
+		displayName: 'Journal entry ID',
 		name: 'journalId',
 		description: 'ID of the journal entry to delete',
 		type: 'string',
@@ -102,7 +102,7 @@ export const journalEntryFields: INodeProperties[] = [
 	//            journalEntry: get
 	// ----------------------------------------
 	{
-		displayName: 'Journal Entry ID',
+		displayName: 'Journal entry ID',
 		name: 'journalId',
 		description: 'ID of the journal entry to retrieve',
 		type: 'string',
@@ -120,7 +120,7 @@ export const journalEntryFields: INodeProperties[] = [
 	//           journalEntry: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -154,7 +154,7 @@ export const journalEntryFields: INodeProperties[] = [
 	//           journalEntry: update
 	// ----------------------------------------
 	{
-		displayName: 'Journal Entry ID',
+		displayName: 'Journal entry ID',
 		name: 'journalId',
 		description: 'ID of the journal entry to update',
 		type: 'string',
@@ -168,10 +168,10 @@ export const journalEntryFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

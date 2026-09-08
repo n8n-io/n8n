@@ -46,7 +46,7 @@ export class RenameKeys implements INodeType {
 						name: 'key',
 						values: [
 							{
-								displayName: 'Current Key Name',
+								displayName: 'Current key name',
 								name: 'currentKey',
 								type: 'string',
 								default: '',
@@ -56,7 +56,7 @@ export class RenameKeys implements INodeType {
 									'The current name of the key. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
 							},
 							{
-								displayName: 'New Key Name',
+								displayName: 'New key name',
 								name: 'newKey',
 								type: 'string',
 								default: '',
@@ -69,7 +69,7 @@ export class RenameKeys implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Options',
+				displayName: 'Additional options',
 				name: 'additionalOptions',
 				type: 'collection',
 				default: {},
@@ -99,7 +99,7 @@ export class RenameKeys implements INodeType {
 										default: '',
 									},
 									{
-										displayName: 'Regular Expression',
+										displayName: 'Regular expression',
 										name: 'searchRegex',
 										type: 'string',
 										default: '',
@@ -108,7 +108,7 @@ export class RenameKeys implements INodeType {
 										hint: 'Learn more and test RegEx <a href="https://regex101.com/">here</a>',
 									},
 									{
-										displayName: 'Replace With',
+										displayName: 'Replace with',
 										name: 'replaceRegex',
 										type: 'string',
 										default: '',
@@ -121,17 +121,17 @@ export class RenameKeys implements INodeType {
 										name: 'options',
 										type: 'collection',
 										default: {},
-										placeholder: 'Add Regex Option',
+										placeholder: 'Add regex option',
 										options: [
 											{
-												displayName: 'Case Insensitive',
+												displayName: 'Case insensitive',
 												name: 'caseInsensitive',
 												type: 'boolean',
 												description: 'Whether to use case insensitive match',
 												default: false,
 											},
 											{
-												displayName: 'Max Depth',
+												displayName: 'Max depth',
 												name: 'depth',
 												type: 'number',
 												default: -1,

@@ -58,7 +58,7 @@ export const callFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Answer Method',
+		displayName: 'Answer method',
 		name: 'answer_method',
 		type: 'options',
 		required: true,

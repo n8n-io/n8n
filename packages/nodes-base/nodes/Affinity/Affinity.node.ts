@@ -50,7 +50,7 @@ export class Affinity implements INodeType {
 						value: 'list',
 					},
 					{
-						name: 'List Entry',
+						name: 'List entry',
 						value: 'listEntry',
 					},
 					{

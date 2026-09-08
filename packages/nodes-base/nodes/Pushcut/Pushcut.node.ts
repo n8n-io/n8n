@@ -68,7 +68,7 @@ export class Pushcut implements INodeType {
 				default: 'send',
 			},
 			{
-				displayName: 'Notification Name or ID',
+				displayName: 'Notification name or ID',
 				name: 'notificationName',
 				type: 'options',
 				description:
@@ -85,10 +85,10 @@ export class Pushcut implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['send'],
@@ -98,7 +98,7 @@ export class Pushcut implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Device Names or IDs',
+						displayName: 'Device names or IDs',
 						name: 'devices',
 						type: 'multiOptions',
 						typeOptions: {

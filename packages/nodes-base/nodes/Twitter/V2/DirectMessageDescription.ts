@@ -16,7 +16,7 @@ export const directMessageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Send a direct message to a user',
-				action: 'Create Direct Message',
+				action: 'Create direct message',
 			},
 		],
 		default: 'create',
@@ -42,7 +42,7 @@ export const directMessageFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'By Username',
+				displayName: 'By username',
 				name: 'username',
 				type: 'string',
 				validation: [],
@@ -78,10 +78,10 @@ export const directMessageFields: INodeProperties[] = [
 			'The text of the direct message. URL encoding is required. Max length of 10,000 characters.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

@@ -31,7 +31,7 @@ export const boardOperations: INodeProperties[] = [
 				action: 'Get a board',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many boards',
 				action: 'Get many boards',
@@ -46,7 +46,7 @@ export const boardFields: INodeProperties[] = [
 	/*                                 board:archive                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',
@@ -109,10 +109,10 @@ export const boardFields: INodeProperties[] = [
 		description: "The board's kind (public / private / share)",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -137,7 +137,7 @@ export const boardFields: INodeProperties[] = [
 	/*                                  board:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',
@@ -158,7 +158,7 @@ export const boardFields: INodeProperties[] = [
 	/*                                  board:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

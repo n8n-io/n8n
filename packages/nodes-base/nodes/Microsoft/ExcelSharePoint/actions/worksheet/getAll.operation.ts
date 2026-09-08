@@ -17,7 +17,7 @@ const properties: INodeProperties[] = [
 	libraryRLC,
 	workbookRLC,
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

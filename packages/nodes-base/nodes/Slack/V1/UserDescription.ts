@@ -19,13 +19,13 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get information about a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get a list of many users',
 				action: 'Get many users',
 			},
 			{
-				name: 'Get Presence',
+				name: 'Get presence',
 				value: 'getPresence',
 				description: 'Get online status of a user',
 				action: "Get a user's presence status",
@@ -60,7 +60,7 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

@@ -36,7 +36,7 @@ export const description: INodeProperties[] = [
 				action: 'Get a record',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many records',
 				action: 'Get many records',
@@ -50,7 +50,7 @@ export const description: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Resource Name or ID',
+		displayName: 'Resource name or ID',
 		name: 'customResource',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -59,7 +59,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['custom'] } },
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -68,7 +68,7 @@ export const description: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'id',
 				type: 'string',
 				placeholder: 'e.g. res.partner',

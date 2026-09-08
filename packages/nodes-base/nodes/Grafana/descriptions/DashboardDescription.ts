@@ -31,7 +31,7 @@ export const dashboardOperations: INodeProperties[] = [
 				action: 'Get a dashboard',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many dashboards',
 				action: 'Get many dashboards',
@@ -63,10 +63,10 @@ export const dashboardFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -76,7 +76,7 @@ export const dashboardFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Folder Name or ID',
+				displayName: 'Folder name or ID',
 				name: 'folderId',
 				type: 'options',
 				default: '',
@@ -130,7 +130,7 @@ export const dashboardFields: INodeProperties[] = [
 	//         dashboard: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -164,7 +164,7 @@ export const dashboardFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -174,7 +174,7 @@ export const dashboardFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Search Query',
+				displayName: 'Search query',
 				name: 'query',
 				type: 'string',
 				default: '',
@@ -201,10 +201,10 @@ export const dashboardFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -214,7 +214,7 @@ export const dashboardFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Folder Name or ID',
+				displayName: 'Folder name or ID',
 				name: 'folderId',
 				type: 'options',
 				default: '',

@@ -26,7 +26,7 @@ export const description: INodeProperties[] = [
 				action: 'Add a product to a deal',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many products of a deal',
 				action: 'Get many products of a deal',

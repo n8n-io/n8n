@@ -61,7 +61,7 @@ export class MemoryMongoDbChat implements INodeType {
 			scopedSessionHint(1.1),
 			sessionKeyProperty,
 			{
-				displayName: 'Collection Name',
+				displayName: 'Collection name',
 				name: 'collectionName',
 				type: 'string',
 				default: 'n8n_chat_histories',
@@ -69,7 +69,7 @@ export class MemoryMongoDbChat implements INodeType {
 					'The collection name to store the chat history in. If collection does not exist, it will be created.',
 			},
 			{
-				displayName: 'Database Name',
+				displayName: 'Database name',
 				name: 'databaseName',
 				type: 'string',
 				default: '',

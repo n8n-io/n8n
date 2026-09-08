@@ -13,7 +13,7 @@ export const flowOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many flows',
 				action: 'Get many flows',
@@ -34,7 +34,7 @@ export const flowFields: INodeProperties[] = [
 	/*                                flow:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -69,7 +69,7 @@ export const flowFields: INodeProperties[] = [
 	/*                                flow:invoke                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'API Name',
+		displayName: 'API name',
 		name: 'apiName',
 		type: 'string',
 		default: '',
@@ -83,7 +83,7 @@ export const flowFields: INodeProperties[] = [
 		description: 'Required. API name of the flow.',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -112,7 +112,7 @@ export const flowFields: INodeProperties[] = [
 	{
 		displayName: 'Variables',
 		name: 'variablesUi',
-		placeholder: 'Add Variable',
+		placeholder: 'Add variable',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,

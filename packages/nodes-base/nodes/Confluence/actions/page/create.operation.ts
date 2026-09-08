@@ -49,12 +49,12 @@ export const description: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: { show: showOnCreate },
 		options: [
 			{
-				displayName: 'Create as Draft',
+				displayName: 'Create as draft',
 				name: 'createAsDraft',
 				type: 'boolean',
 				default: false,
@@ -69,7 +69,7 @@ export const description: INodeProperties[] = [
 					'Whether only the creating user can view and edit the page. The creator is the connected account, which needs permission to restrict content in the space.',
 			},
 			{
-				displayName: 'Root Level',
+				displayName: 'Root level',
 				name: 'rootLevel',
 				type: 'boolean',
 				default: false,

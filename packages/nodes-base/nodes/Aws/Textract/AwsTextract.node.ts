@@ -41,14 +41,14 @@ export class AwsTextract implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Analyze Receipt or Invoice',
+						name: 'Analyze receipt or invoice',
 						value: 'analyzeExpense',
 					},
 				],
 				default: 'analyzeExpense',
 			},
 			{
-				displayName: 'Input Data Field Name',
+				displayName: 'Input data field name',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',

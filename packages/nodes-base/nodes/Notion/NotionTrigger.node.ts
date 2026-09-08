@@ -97,7 +97,7 @@ export class NotionTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Key',
+						name: 'API key',
 						value: 'apiKey',
 					},
 					{
@@ -113,11 +113,11 @@ export class NotionTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Page Added to Database',
+						name: 'Page added to database',
 						value: 'pageAddedToDatabase',
 					},
 					{
-						name: 'Page Updated in Database',
+						name: 'Page updated in database',
 						value: 'pagedUpdatedInDatabase',
 					},
 				],
@@ -142,7 +142,7 @@ export class NotionTrigger implements INodeType {
 						displayName: 'Database',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Database...',
+						placeholder: 'Select a database...',
 						typeOptions: {
 							searchListMethod: 'getDatabases',
 							searchable: true,
@@ -198,17 +198,17 @@ export class NotionTrigger implements INodeType {
 				description: 'The Notion Database to operate on',
 			},
 			{
-				displayName: 'Data Source',
+				displayName: 'Data source',
 				name: 'dataSourceId',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
 				modes: [
 					{
-						displayName: 'Data Source',
+						displayName: 'Data source',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Data Source...',
+						placeholder: 'Select a data source...',
 						typeOptions: {
 							searchListMethod: 'getDataSources',
 							searchable: true,

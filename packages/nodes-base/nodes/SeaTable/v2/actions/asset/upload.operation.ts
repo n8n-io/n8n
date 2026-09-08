@@ -12,7 +12,7 @@ import type { IUploadLink, IRowObject } from '../Interfaces';
 const properties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Table Name',
+		displayName: 'Table name',
 		name: 'tableName',
 		type: 'options',
 		placeholder: 'Select a table',
@@ -27,7 +27,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Column Name',
+		displayName: 'Column name',
 		name: 'uploadColumn',
 		type: 'options',
 		typeOptions: {
@@ -55,7 +55,7 @@ const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Property Name',
+		displayName: 'Property name',
 		name: 'dataPropertyName',
 		type: 'string',
 		default: 'data',
@@ -66,11 +66,11 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Replace Existing File',
+				displayName: 'Replace existing file',
 				name: 'replace',
 				type: 'boolean',
 				default: true,
@@ -78,7 +78,7 @@ const properties: INodeProperties[] = [
 					'Whether to replace the existing asset with the same name (true). Otherwise, a new version with a different name (numeral in parentheses) will be uploaded (false).',
 			},
 			{
-				displayName: 'Append to Column',
+				displayName: 'Append to column',
 				name: 'append',
 				type: 'boolean',
 				default: true,

@@ -29,7 +29,7 @@ export const databaseOperations: INodeProperties[] = [
 				action: 'Get a database',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many databases',
 				action: 'Get many databases',
@@ -62,7 +62,7 @@ export const databaseOperations: INodeProperties[] = [
 				action: 'Get a database',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many databases',
 				action: 'Get many databases',
@@ -88,7 +88,7 @@ export const databaseFields: INodeProperties[] = [
 				displayName: 'Database',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a Database...',
+				placeholder: 'Select a database...',
 				typeOptions: {
 					searchListMethod: 'getDatabases',
 					searchable: true,
@@ -148,7 +148,7 @@ export const databaseFields: INodeProperties[] = [
 	/*                                database:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -197,7 +197,7 @@ export const databaseFields: INodeProperties[] = [
 	/*                                database:search                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Search Text',
+		displayName: 'Search text',
 		name: 'text',
 		type: 'string',
 		default: '',
@@ -210,7 +210,7 @@ export const databaseFields: INodeProperties[] = [
 		description: 'The text to search for',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -264,12 +264,12 @@ export const databaseFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Sort',
 				name: 'sort',
-				placeholder: 'Add Sort',
+				placeholder: 'Add sort',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -303,7 +303,7 @@ export const databaseFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Last Edited Time',
+										name: 'Last edited time',
 										value: 'last_edited_time',
 									},
 								],

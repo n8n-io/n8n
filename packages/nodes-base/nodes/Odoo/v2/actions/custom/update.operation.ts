@@ -14,7 +14,7 @@ const properties: INodeProperties[] = [
 		'customResource.value',
 	]),
 	{
-		displayName: 'Fields to Update',
+		displayName: 'Fields to update',
 		name: 'fieldsToSend',
 		type: 'resourceMapper',
 		default: {

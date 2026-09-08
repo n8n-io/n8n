@@ -24,7 +24,7 @@ export const versionDescription: INodeTypeDescription = {
 			type: 'hidden',
 			options: [
 				{
-					name: 'Item List',
+					name: 'Item list',
 					value: 'itemList',
 				},
 			],

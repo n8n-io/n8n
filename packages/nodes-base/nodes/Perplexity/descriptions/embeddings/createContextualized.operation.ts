@@ -18,7 +18,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Documents',
+		displayName: 'Input documents',
 		name: 'input',
 		type: 'json',
 		required: true,
@@ -36,7 +36,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -59,13 +59,13 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Encoding Format',
+				displayName: 'Encoding format',
 				name: 'encoding_format',
 				type: 'options',
 				default: 'base64_int8',
 				options: [
 					{ name: 'Base64 Int8', value: 'base64_int8' },
-					{ name: 'Base64 Binary', value: 'base64_binary' },
+					{ name: 'Base64 binary', value: 'base64_binary' },
 				],
 				description:
 					'The format of the returned embeddings. Float is not supported by this endpoint.',

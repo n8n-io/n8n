@@ -49,11 +49,11 @@ export class Autopilot implements INodeType {
 						value: 'contact',
 					},
 					{
-						name: 'Contact Journey',
+						name: 'Contact journey',
 						value: 'contactJourney',
 					},
 					{
-						name: 'Contact List',
+						name: 'Contact list',
 						value: 'contactList',
 					},
 					{

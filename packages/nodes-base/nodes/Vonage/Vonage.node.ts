@@ -313,10 +313,10 @@ export class Vonage implements INodeType {
 			// 	description: 'A calendar event in vCal format',
 			// },
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						resource: ['sms'],
@@ -326,7 +326,7 @@ export class Vonage implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Account Ref',
+						displayName: 'Account ref',
 						name: 'account-ref',
 						type: 'string',
 						default: '',
@@ -342,14 +342,14 @@ export class Vonage implements INodeType {
 							'The webhook endpoint the delivery receipt for this sms is sent to. This parameter overrides the webhook endpoint you set in Dashboard.',
 					},
 					{
-						displayName: 'Client Ref',
+						displayName: 'Client ref',
 						name: 'client-ref',
 						type: 'string',
 						default: '',
 						description: 'You can optionally include your own reference of up to 40 characters',
 					},
 					{
-						displayName: 'Message Class',
+						displayName: 'Message class',
 						name: 'message-class',
 						type: 'options',
 						options: [
@@ -382,14 +382,14 @@ export class Vonage implements INodeType {
 							'The value of the protocol identifier to use. Ensure that the value is aligned with udh.',
 					},
 					{
-						displayName: 'Status Report Req',
+						displayName: 'Status report req',
 						name: 'status-report-req',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to receive a Delivery Receipt',
 					},
 					{
-						displayName: 'TTL (in Minutes)',
+						displayName: 'TTL (in minutes)',
 						name: 'ttl',
 						type: 'number',
 						default: 4320,

@@ -38,7 +38,7 @@ export const properties: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Select Included Fields',
+				name: 'Select included fields',
 				value: 'fields',
 			},
 		],
@@ -72,7 +72,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filtersUI',
 		type: 'fixedCollection',
-		placeholder: 'Add Filters',
+		placeholder: 'Add filters',
 		default: {},
 		options: [
 			{
@@ -80,7 +80,7 @@ export const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Filter By',
+						displayName: 'Filter by',
 						name: 'filterBy',
 						type: 'options',
 						options: [
@@ -113,7 +113,7 @@ export const properties: INodeProperties[] = [
 						displayName: 'Filters',
 						name: 'filters',
 						type: 'collection',
-						placeholder: 'Add Filter',
+						placeholder: 'Add filter',
 						default: {},
 						displayOptions: {
 							show: {
@@ -122,7 +122,7 @@ export const properties: INodeProperties[] = [
 						},
 						options: [
 							{
-								displayName: 'Filter Query',
+								displayName: 'Filter query',
 								name: 'custom',
 								type: 'string',
 								default: '',
@@ -130,13 +130,13 @@ export const properties: INodeProperties[] = [
 								hint: 'Search query to filter messages. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
 							},
 							{
-								displayName: 'Has Attachments',
+								displayName: 'Has attachments',
 								name: 'hasAttachments',
 								type: 'boolean',
 								default: false,
 							},
 							{
-								displayName: 'Read Status',
+								displayName: 'Read status',
 								name: 'readStatus',
 								type: 'options',
 								default: 'unread',
@@ -160,7 +160,7 @@ export const properties: INodeProperties[] = [
 								],
 							},
 							{
-								displayName: 'Received After',
+								displayName: 'Received after',
 								name: 'receivedAfter',
 								type: 'dateTime',
 								default: '',
@@ -168,7 +168,7 @@ export const properties: INodeProperties[] = [
 									'Get all messages received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 							},
 							{
-								displayName: 'Received Before',
+								displayName: 'Received before',
 								name: 'receivedBefore',
 								type: 'dateTime',
 								default: '',
@@ -196,7 +196,7 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Attachments Prefix',
+				displayName: 'Attachments prefix',
 				name: 'attachmentsPrefix',
 				type: 'string',
 				default: 'attachment_',
@@ -204,7 +204,7 @@ export const properties: INodeProperties[] = [
 					'Prefix for name of the output fields to put the binary files data in. An index starting from 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
-				displayName: 'Download Attachments',
+				displayName: 'Download attachments',
 				name: 'downloadAttachments',
 				type: 'boolean',
 				default: false,

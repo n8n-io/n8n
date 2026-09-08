@@ -51,7 +51,7 @@ const versionDescription: INodeTypeDescription = {
 					value: 'report',
 				},
 				{
-					name: 'User Activity',
+					name: 'User activity',
 					value: 'userActivity',
 				},
 			],

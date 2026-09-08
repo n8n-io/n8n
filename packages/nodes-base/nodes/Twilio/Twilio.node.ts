@@ -186,11 +186,11 @@ export class Twilio implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
-						displayName: 'Status Callback',
+						displayName: 'Status callback',
 						name: 'statusCallback',
 						type: 'string',
 						default: '',

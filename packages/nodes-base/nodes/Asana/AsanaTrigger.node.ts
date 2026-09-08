@@ -61,7 +61,7 @@ export class AsanaTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -80,7 +80,7 @@ export class AsanaTrigger implements INodeType {
 				description: 'The resource ID to subscribe to. The resource can be a task or project.',
 			},
 			{
-				displayName: 'Workspace Name or ID',
+				displayName: 'Workspace name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {

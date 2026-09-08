@@ -80,7 +80,7 @@ export class Snowflake implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Execute Query',
+						name: 'Execute query',
 						value: 'executeQuery',
 						description: 'Execute an SQL query',
 						action: 'Execute a SQL query',
@@ -121,7 +121,7 @@ export class Snowflake implements INodeType {
 				placeholder: 'SELECT id, name FROM product WHERE id < 40',
 				required: true,
 				description:
-					"The SQL query to execute. Use ? (bound in order) or :1, :2, :3 to refer to the 'Query Parameters' set in the options below.",
+					"The SQL query to execute. Use ? (bound in order) or :1, :2, :3 to refer to the 'Query parameters' set in the options below.",
 				hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
 			},
 			{
@@ -137,7 +137,7 @@ export class Snowflake implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Query Parameters',
+						displayName: 'Query parameters',
 						name: 'queryReplacement',
 						type: 'string',
 						default: '',
@@ -197,7 +197,7 @@ export class Snowflake implements INodeType {
 				description: 'Name of the table in which to update data in',
 			},
 			{
-				displayName: 'Update Key',
+				displayName: 'Update key',
 				name: 'updateKey',
 				type: 'string',
 				displayOptions: {

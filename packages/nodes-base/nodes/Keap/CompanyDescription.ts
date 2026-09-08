@@ -19,7 +19,7 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Create a company',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many companies',
 				action: 'Get many companies',
@@ -34,7 +34,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                 company:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Company Name',
+		displayName: 'Company name',
 		name: 'companyName',
 		required: true,
 		type: 'string',
@@ -47,10 +47,10 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -72,7 +72,7 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Opt In Reason',
+				displayName: 'Opt in reason',
 				name: 'optInReason',
 				type: 'string',
 				default: '',
@@ -93,7 +93,7 @@ export const companyFields: INodeProperties[] = [
 			multipleValues: false,
 		},
 		default: {},
-		placeholder: 'Add Address',
+		placeholder: 'Add address',
 		displayOptions: {
 			show: {
 				resource: ['company'],
@@ -106,7 +106,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Address',
 				values: [
 					{
-						displayName: 'Country Code',
+						displayName: 'Country code',
 						name: 'countryCode',
 						type: 'string',
 						default: '',
@@ -131,7 +131,7 @@ export const companyFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
@@ -143,13 +143,13 @@ export const companyFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Zip Code',
+						displayName: 'Zip code',
 						name: 'zipCode',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Zip Four',
+						displayName: 'Zip four',
 						name: 'zipFour',
 						type: 'string',
 						default: '',
@@ -166,7 +166,7 @@ export const companyFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: false,
 		},
-		placeholder: 'Add Fax',
+		placeholder: 'Add fax',
 		displayOptions: {
 			show: {
 				resource: ['company'],
@@ -202,7 +202,7 @@ export const companyFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Phone',
+		placeholder: 'Add phone',
 		displayOptions: {
 			show: {
 				resource: ['company'],
@@ -234,7 +234,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                 company:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -278,7 +278,7 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company Name',
+				displayName: 'Company name',
 				name: 'companyName',
 				type: 'string',
 				default: '',
@@ -290,7 +290,7 @@ export const companyFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Date Created',
+						name: 'Date created',
 						value: 'datecreated',
 					},
 					{
@@ -306,7 +306,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'Attribute to order items by',
 			},
 			{
-				displayName: 'Order Direction',
+				displayName: 'Order direction',
 				name: 'orderDirection',
 				type: 'options',
 				options: [

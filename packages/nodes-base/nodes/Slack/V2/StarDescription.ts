@@ -26,7 +26,7 @@ export const starOperations: INodeProperties[] = [
 				action: 'Delete a star',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many stars of autenticated user',
 				action: 'Get many stars',
@@ -41,7 +41,7 @@ export const starFields: INodeProperties[] = [
 	/*                                star:add                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Item to Add Star',
+		displayName: 'Item to add star',
 		name: 'target',
 		type: 'options',
 		required: true,
@@ -96,7 +96,7 @@ export const starFields: INodeProperties[] = [
 		description: 'File to add star to',
 	},
 	{
-		displayName: 'Message Timestamp',
+		displayName: 'Message timestamp',
 		name: 'timestamp',
 		type: 'number',
 		default: undefined,
@@ -125,7 +125,7 @@ export const starFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'File Comment',
+				displayName: 'File comment',
 				name: 'fileComment',
 				type: 'string',
 				default: '',
@@ -152,7 +152,7 @@ export const starFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Channel Name or ID',
+				displayName: 'Channel name or ID',
 				name: 'channelId',
 				type: 'options',
 				typeOptions: {
@@ -170,14 +170,14 @@ export const starFields: INodeProperties[] = [
 				description: 'File to add star to',
 			},
 			{
-				displayName: 'File Comment',
+				displayName: 'File comment',
 				name: 'fileComment',
 				type: 'string',
 				default: '',
 				description: 'File comment to add star to',
 			},
 			{
-				displayName: 'Message Timestamp',
+				displayName: 'Message timestamp',
 				name: 'timestamp',
 				type: 'number',
 				default: 0,
@@ -191,7 +191,7 @@ export const starFields: INodeProperties[] = [
 	/*                                 star:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

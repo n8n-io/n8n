@@ -36,7 +36,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Additional Expand Fields',
+				displayName: 'Additional expand fields',
 				name: 'additionalExpandFields',
 				type: 'string',
 				default: '',
@@ -44,7 +44,7 @@ const properties: INodeProperties[] = [
 				description: 'Comma-separated list of extra fields to expand on each search result',
 			},
 			{
-				displayName: 'Content Status',
+				displayName: 'Content status',
 				name: 'contentStatuses',
 				type: 'multiOptions',
 				default: [],
@@ -56,7 +56,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Fetch Full Page Content',
+				displayName: 'Fetch full page content',
 				name: 'fetchFullPageContent',
 				type: 'boolean',
 				default: false,

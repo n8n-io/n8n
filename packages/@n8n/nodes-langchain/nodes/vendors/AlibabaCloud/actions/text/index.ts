@@ -17,7 +17,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Message a Model',
+				name: 'Message a model',
 				value: 'message',
 				action: 'Message a model',
 				description: 'Create a completion with a Qwen model',

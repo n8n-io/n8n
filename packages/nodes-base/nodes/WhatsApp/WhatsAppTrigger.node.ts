@@ -89,30 +89,30 @@ export class WhatsAppTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'updates',
 				type: 'multiOptions',
 				required: true,
 				default: [],
 				options: [
 					{
-						name: 'Account Review Update',
+						name: 'Account review update',
 						value: 'account_review_update',
 					},
 					{
-						name: 'Account Update',
+						name: 'Account update',
 						value: 'account_update',
 					},
 					{
-						name: 'Business Capability Update',
+						name: 'Business capability update',
 						value: 'business_capability_update',
 					},
 					{
-						name: 'Message Template Quality Update',
+						name: 'Message template quality update',
 						value: 'message_template_quality_update',
 					},
 					{
-						name: 'Message Template Status Update',
+						name: 'Message template status update',
 						value: 'message_template_status_update',
 					},
 					{
@@ -120,11 +120,11 @@ export class WhatsAppTrigger implements INodeType {
 						value: 'messages',
 					},
 					{
-						name: 'Phone Number Name Update',
+						name: 'Phone number name update',
 						value: 'phone_number_name_update',
 					},
 					{
-						name: 'Phone Number Quality Update',
+						name: 'Phone number quality update',
 						value: 'phone_number_quality_update',
 					},
 					{
@@ -132,7 +132,7 @@ export class WhatsAppTrigger implements INodeType {
 						value: 'security',
 					},
 					{
-						name: 'Template Category Update',
+						name: 'Template category update',
 						value: 'template_category_update',
 					},
 				],
@@ -146,7 +146,7 @@ export class WhatsAppTrigger implements INodeType {
 				options: [
 					{
 						// https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples#message-status-updates
-						displayName: 'Receive Message Status Updates',
+						displayName: 'Receive message status updates',
 						name: 'messageStatusUpdates',
 						type: 'multiOptions',
 						default: ['all'],

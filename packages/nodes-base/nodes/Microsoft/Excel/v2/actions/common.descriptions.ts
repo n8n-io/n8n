@@ -8,7 +8,7 @@ export const workbookRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -41,7 +41,7 @@ export const worksheetRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -73,7 +73,7 @@ export const tableRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -98,7 +98,7 @@ export const tableRLC: INodeProperties = {
 };
 
 export const rawDataOutput: INodeProperties = {
-	displayName: 'Raw Data Output',
+	displayName: 'Raw data output',
 	name: 'rawDataOutput',
 	type: 'fixedCollection',
 	default: { values: { rawData: false } },
@@ -108,7 +108,7 @@ export const rawDataOutput: INodeProperties = {
 			name: 'values',
 			values: [
 				{
-					displayName: 'RAW Data',
+					displayName: 'RAW data',
 					name: 'rawData',
 					type: 'boolean',
 					// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-boolean
@@ -117,7 +117,7 @@ export const rawDataOutput: INodeProperties = {
 						'Whether the data should be returned RAW instead of parsed into keys according to their header',
 				},
 				{
-					displayName: 'Data Property',
+					displayName: 'Data property',
 					name: 'dataProperty',
 					type: 'string',
 					default: 'data',

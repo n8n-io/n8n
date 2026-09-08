@@ -26,22 +26,22 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Click Type',
+		displayName: 'Click type',
 		name: 'clickType',
 		type: 'options',
 		default: 'click',
 		description: 'The type of click to perform. Defaults to left click.',
 		options: [
 			{
-				name: 'Left Click',
+				name: 'Left click',
 				value: 'click',
 			},
 			{
-				name: 'Double Click',
+				name: 'Double click',
 				value: 'doubleClick',
 			},
 			{
-				name: 'Right Click',
+				name: 'Right click',
 				value: 'rightClick',
 			},
 		],

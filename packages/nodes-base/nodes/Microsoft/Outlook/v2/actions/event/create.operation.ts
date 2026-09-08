@@ -33,10 +33,10 @@ export const properties: INodeProperties[] = [
 		default: DateTime.now().plus({ minutes: 30 }).toISO(),
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			eventAttendeesField,
@@ -62,13 +62,13 @@ export const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Description Preview',
+				displayName: 'Description preview',
 				name: 'bodyPreview',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Hide Attendees',
+				displayName: 'Hide attendees',
 				name: 'hideAttendees',
 				type: 'boolean',
 				default: false,
@@ -96,25 +96,25 @@ export const properties: INodeProperties[] = [
 				default: 'normal',
 			},
 			{
-				displayName: 'Is All Day',
+				displayName: 'Is all day',
 				name: 'isAllDay',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Is Cancelled',
+				displayName: 'Is cancelled',
 				name: 'isCancelled',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Is Draft',
+				displayName: 'Is draft',
 				name: 'isDraft',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Is Online Meeting',
+				displayName: 'Is online meeting',
 				name: 'isOnlineMeeting',
 				type: 'boolean',
 				default: false,
@@ -145,7 +145,7 @@ export const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Show As',
+				displayName: 'Show as',
 				name: 'showAs',
 				type: 'options',
 				default: 'free',
@@ -167,7 +167,7 @@ export const properties: INodeProperties[] = [
 						value: 'tentative',
 					},
 					{
-						name: 'Working Elsewhere',
+						name: 'Working elsewhere',
 						value: 'workingElsewhere',
 					},
 				],
@@ -189,7 +189,7 @@ export const properties: INodeProperties[] = [
 				default: 'singleInstance',
 				options: [
 					{
-						name: 'Single Instance',
+						name: 'Single instance',
 						value: 'singleInstance',
 					},
 					{
@@ -201,7 +201,7 @@ export const properties: INodeProperties[] = [
 						value: 'exception',
 					},
 					{
-						name: 'Series Master',
+						name: 'Series master',
 						value: 'seriesMaster',
 					},
 				],

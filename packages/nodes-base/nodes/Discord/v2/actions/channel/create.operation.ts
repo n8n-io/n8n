@@ -29,15 +29,15 @@ const properties: INodeProperties[] = [
 		description: 'The type of channel to create',
 		options: [
 			{
-				name: 'Guild Text',
+				name: 'Guild text',
 				value: '0',
 			},
 			{
-				name: 'Guild Voice',
+				name: 'Guild voice',
 				value: '2',
 			},
 			{
-				name: 'Guild Category',
+				name: 'Guild category',
 				value: '4',
 			},
 		],
@@ -50,7 +50,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Age-Restricted (NSFW)',
+				displayName: 'Age-restricted (NSFW)',
 				name: 'nsfw',
 				type: 'boolean',
 				default: false,
@@ -93,7 +93,7 @@ const properties: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Rate Limit Per User',
+				displayName: 'Rate limit per user',
 				name: 'rate_limit_per_user',
 				type: 'number',
 				default: 0,
@@ -121,7 +121,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'User Limit',
+				displayName: 'User limit',
 				name: 'user_limit',
 				type: 'number',
 				default: 0,

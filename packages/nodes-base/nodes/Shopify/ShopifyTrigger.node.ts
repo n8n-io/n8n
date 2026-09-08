@@ -69,7 +69,7 @@ export class ShopifyTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -77,252 +77,252 @@ export class ShopifyTrigger implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'API Key',
+						name: 'API key',
 						value: 'apiKey',
 					},
 				],
 				default: 'apiKey',
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'topic',
 				type: 'options',
 				default: '',
 				options: [
 					{
-						name: 'App Uninstalled',
+						name: 'App uninstalled',
 						value: 'app/uninstalled',
 					},
 					{
-						name: 'Cart Created',
+						name: 'Cart created',
 						value: 'carts/create',
 					},
 					{
-						name: 'Cart Updated',
+						name: 'Cart updated',
 						value: 'carts/update',
 					},
 					{
-						name: 'Checkout Created',
+						name: 'Checkout created',
 						value: 'checkouts/create',
 					},
 					{
-						name: 'Checkout Delete',
+						name: 'Checkout delete',
 						value: 'checkouts/delete',
 					},
 					{
-						name: 'Checkout Update',
+						name: 'Checkout update',
 						value: 'checkouts/update',
 					},
 					{
-						name: 'Collection Created',
+						name: 'Collection created',
 						value: 'collections/create',
 					},
 					{
-						name: 'Collection Deleted',
+						name: 'Collection deleted',
 						value: 'collections/delete',
 					},
 					{
-						name: 'Collection Listings Added',
+						name: 'Collection listings added',
 						value: 'collection_listings/add',
 					},
 					{
-						name: 'Collection Listings Removed',
+						name: 'Collection listings removed',
 						value: 'collection_listings/remove',
 					},
 					{
-						name: 'Collection Listings Updated',
+						name: 'Collection listings updated',
 						value: 'collection_listings/update',
 					},
 					{
-						name: 'Collection Updated',
+						name: 'Collection updated',
 						value: 'collections/update',
 					},
 					{
-						name: 'Customer Created',
+						name: 'Customer created',
 						value: 'customers/create',
 					},
 					{
-						name: 'Customer Deleted',
+						name: 'Customer deleted',
 						value: 'customers/delete',
 					},
 					{
-						name: 'Customer Disabled',
+						name: 'Customer disabled',
 						value: 'customers/disable',
 					},
 					{
-						name: 'Customer Enabled',
+						name: 'Customer enabled',
 						value: 'customers/enable',
 					},
 					{
-						name: 'Customer Groups Created',
+						name: 'Customer groups created',
 						value: 'customer_groups/create',
 					},
 					{
-						name: 'Customer Groups Deleted',
+						name: 'Customer groups deleted',
 						value: 'customer_groups/delete',
 					},
 					{
-						name: 'Customer Groups Updated',
+						name: 'Customer groups updated',
 						value: 'customer_groups/update',
 					},
 					{
-						name: 'Customer Updated',
+						name: 'Customer updated',
 						value: 'customers/update',
 					},
 					{
-						name: 'Draft Orders Created',
+						name: 'Draft orders created',
 						value: 'draft_orders/create',
 					},
 					{
-						name: 'Draft Orders Deleted',
+						name: 'Draft orders deleted',
 						value: 'draft_orders/delete',
 					},
 					{
-						name: 'Draft Orders Updated',
+						name: 'Draft orders updated',
 						value: 'draft_orders/update',
 					},
 					{
-						name: 'Fulfillment Created',
+						name: 'Fulfillment created',
 						value: 'fulfillments/create',
 					},
 					{
-						name: 'Fulfillment Events Created',
+						name: 'Fulfillment events created',
 						value: 'fulfillment_events/create',
 					},
 					{
-						name: 'Fulfillment Events Deleted',
+						name: 'Fulfillment events deleted',
 						value: 'fulfillment_events/delete',
 					},
 					{
-						name: 'Fulfillment Updated',
+						name: 'Fulfillment updated',
 						value: 'fulfillments/update',
 					},
 					{
-						name: 'Inventory Items Created',
+						name: 'Inventory items created',
 						value: 'inventory_items/create',
 					},
 					{
-						name: 'Inventory Items Deleted',
+						name: 'Inventory items deleted',
 						value: 'inventory_items/delete',
 					},
 					{
-						name: 'Inventory Items Updated',
+						name: 'Inventory items updated',
 						value: 'inventory_items/update',
 					},
 					{
-						name: 'Inventory Levels Connected',
+						name: 'Inventory levels connected',
 						value: 'inventory_levels/connect',
 					},
 					{
-						name: 'Inventory Levels Disconnected',
+						name: 'Inventory levels disconnected',
 						value: 'inventory_levels/disconnect',
 					},
 					{
-						name: 'Inventory Levels Updated',
+						name: 'Inventory levels updated',
 						value: 'inventory_levels/update',
 					},
 					{
-						name: 'Locale Created',
+						name: 'Locale created',
 						value: 'locales/create',
 					},
 					{
-						name: 'Locale Updated',
+						name: 'Locale updated',
 						value: 'locales/update',
 					},
 					{
-						name: 'Location Created',
+						name: 'Location created',
 						value: 'locations/create',
 					},
 					{
-						name: 'Location Deleted',
+						name: 'Location deleted',
 						value: 'locations/delete',
 					},
 					{
-						name: 'Location Updated',
+						name: 'Location updated',
 						value: 'locations/update',
 					},
 					{
-						name: 'Order Cancelled',
+						name: 'Order cancelled',
 						value: 'orders/cancelled',
 					},
 					{
-						name: 'Order Created',
+						name: 'Order created',
 						value: 'orders/create',
 					},
 					{
-						name: 'Order Fulfilled',
+						name: 'Order fulfilled',
 						value: 'orders/fulfilled',
 					},
 					{
-						name: 'Order Paid',
+						name: 'Order paid',
 						value: 'orders/paid',
 					},
 					{
-						name: 'Order Partially Fulfilled',
+						name: 'Order partially fulfilled',
 						value: 'orders/partially_fulfilled',
 					},
 					{
-						name: 'Order Transactions Created',
+						name: 'Order transactions created',
 						value: 'order_transactions/create',
 					},
 					{
-						name: 'Order Updated',
+						name: 'Order updated',
 						value: 'orders/updated',
 					},
 					{
-						name: 'Orders Deleted',
+						name: 'Orders deleted',
 						value: 'orders/delete',
 					},
 					{
-						name: 'Product Created',
+						name: 'Product created',
 						value: 'products/create',
 					},
 					{
-						name: 'Product Deleted',
+						name: 'Product deleted',
 						value: 'products/delete',
 					},
 					{
-						name: 'Product Listings Added',
+						name: 'Product listings added',
 						value: 'product_listings/add',
 					},
 					{
-						name: 'Product Listings Removed',
+						name: 'Product listings removed',
 						value: 'product_listings/remove',
 					},
 					{
-						name: 'Product Listings Updated',
+						name: 'Product listings updated',
 						value: 'product_listings/update',
 					},
 					{
-						name: 'Product Updated',
+						name: 'Product updated',
 						value: 'products/update',
 					},
 					{
-						name: 'Refund Created',
+						name: 'Refund created',
 						value: 'refunds/create',
 					},
 					{
-						name: 'Shop Updated',
+						name: 'Shop updated',
 						value: 'shop/update',
 					},
 					{
-						name: 'Tender Transactions Created',
+						name: 'Tender transactions created',
 						value: 'tender_transactions/create',
 					},
 					{
-						name: 'Theme Created',
+						name: 'Theme created',
 						value: 'themes/create',
 					},
 					{
-						name: 'Theme Deleted',
+						name: 'Theme deleted',
 						value: 'themes/delete',
 					},
 					{
-						name: 'Theme Published',
+						name: 'Theme published',
 						value: 'themes/publish',
 					},
 					{
-						name: 'Theme Updated',
+						name: 'Theme updated',
 						value: 'themes/update',
 					},
 				],

@@ -45,7 +45,7 @@ export class AwsSes implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Custom Verification Email',
+						name: 'Custom verification email',
 						value: 'customVerificationEmail',
 					},
 					{
@@ -89,7 +89,7 @@ export class AwsSes implements INodeType {
 						action: 'Get a custom verification email',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description:
 							'Get many of the existing custom verification email templates for your account',
@@ -112,7 +112,7 @@ export class AwsSes implements INodeType {
 			},
 
 			{
-				displayName: 'From Email',
+				displayName: 'From email',
 				name: 'fromEmailAddress',
 				type: 'string',
 				displayOptions: {
@@ -126,7 +126,7 @@ export class AwsSes implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Template Name',
+				displayName: 'Template name',
 				name: 'templateName',
 				type: 'string',
 				displayOptions: {
@@ -139,7 +139,7 @@ export class AwsSes implements INodeType {
 				description: 'The name of the custom verification email template',
 			},
 			{
-				displayName: 'Template Content',
+				displayName: 'Template content',
 				name: 'templateContent',
 				type: 'string',
 				displayOptions: {
@@ -153,7 +153,7 @@ export class AwsSes implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Template Subject',
+				displayName: 'Template subject',
 				name: 'templateSubject',
 				type: 'string',
 				displayOptions: {
@@ -167,7 +167,7 @@ export class AwsSes implements INodeType {
 				description: 'The subject line of the custom verification email',
 			},
 			{
-				displayName: 'Success Redirection URL',
+				displayName: 'Success redirection URL',
 				name: 'successRedirectionURL',
 				type: 'string',
 				displayOptions: {
@@ -182,7 +182,7 @@ export class AwsSes implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Failure Redirection URL',
+				displayName: 'Failure redirection URL',
 				name: 'failureRedirectionURL',
 				type: 'string',
 				displayOptions: {
@@ -213,7 +213,7 @@ export class AwsSes implements INodeType {
 				description: 'The email address to verify',
 			},
 			{
-				displayName: 'Template Name',
+				displayName: 'Template name',
 				name: 'templateName',
 				type: 'string',
 				displayOptions: {
@@ -228,10 +228,10 @@ export class AwsSes implements INodeType {
 					'The name of the custom verification email template to use when sending the verification email',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -241,7 +241,7 @@ export class AwsSes implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Configuration Set Name',
+						displayName: 'Configuration set name',
 						name: 'configurationSetName',
 						type: 'string',
 						description: 'Name of a configuration set to use when sending the verification email',
@@ -251,7 +251,7 @@ export class AwsSes implements INodeType {
 			},
 
 			{
-				displayName: 'Template Name',
+				displayName: 'Template name',
 				name: 'templateName',
 				type: 'string',
 				displayOptions: {
@@ -264,10 +264,10 @@ export class AwsSes implements INodeType {
 				description: 'The name of the custom verification email template',
 			},
 			{
-				displayName: 'Update Fields',
+				displayName: 'Update fields',
 				name: 'updateFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -277,7 +277,7 @@ export class AwsSes implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Failure Redirection URL',
+						displayName: 'Failure redirection URL',
 						name: 'failureRedirectionURL',
 						type: 'string',
 						description:
@@ -285,14 +285,14 @@ export class AwsSes implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'From Email',
+						displayName: 'From email',
 						name: 'fromEmailAddress',
 						type: 'string',
 						description: 'The email address that the custom verification email is sent from',
 						default: '',
 					},
 					{
-						displayName: 'Success Redirection URL',
+						displayName: 'Success redirection URL',
 						name: 'successRedirectionURL',
 						type: 'string',
 						description:
@@ -300,7 +300,7 @@ export class AwsSes implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Template Content',
+						displayName: 'Template content',
 						name: 'templateContent',
 						type: 'string',
 						description:
@@ -308,7 +308,7 @@ export class AwsSes implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Template Subject',
+						displayName: 'Template subject',
 						name: 'templateSubject',
 						type: 'string',
 						default: '',
@@ -317,7 +317,7 @@ export class AwsSes implements INodeType {
 				],
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -363,7 +363,7 @@ export class AwsSes implements INodeType {
 						action: 'Send an email',
 					},
 					{
-						name: 'Send Template',
+						name: 'Send template',
 						value: 'sendTemplate',
 						action: 'Send an email based on a template',
 					},
@@ -371,7 +371,7 @@ export class AwsSes implements INodeType {
 				default: 'send',
 			},
 			{
-				displayName: 'Is Body HTML',
+				displayName: 'Is body HTML',
 				name: 'isBodyHtml',
 				type: 'boolean',
 				displayOptions: {
@@ -411,7 +411,7 @@ export class AwsSes implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'From Email',
+				displayName: 'From email',
 				name: 'fromEmail',
 				type: 'string',
 				displayOptions: {
@@ -426,7 +426,7 @@ export class AwsSes implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'To Addresses',
+				displayName: 'To addresses',
 				name: 'toAddresses',
 				type: 'string',
 				description: 'Email addresses of the recipients',
@@ -444,7 +444,7 @@ export class AwsSes implements INodeType {
 				default: [],
 			},
 			{
-				displayName: 'Template Name or ID',
+				displayName: 'Template name or ID',
 				name: 'templateName',
 				type: 'options',
 				typeOptions: {
@@ -461,7 +461,7 @@ export class AwsSes implements INodeType {
 					'The ARN of the template to use when sending this email. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'From Email',
+				displayName: 'From email',
 				name: 'fromEmail',
 				type: 'string',
 				displayOptions: {
@@ -476,7 +476,7 @@ export class AwsSes implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'To Addresses',
+				displayName: 'To addresses',
 				name: 'toAddresses',
 				type: 'string',
 				description: 'Email addresses of the recipients',
@@ -494,10 +494,10 @@ export class AwsSes implements INodeType {
 				default: [],
 			},
 			{
-				displayName: 'Template Data',
+				displayName: 'Template data',
 				name: 'templateDataUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Data',
+				placeholder: 'Add data',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -530,10 +530,10 @@ export class AwsSes implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -543,7 +543,7 @@ export class AwsSes implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Bcc Addresses',
+						displayName: 'BCC addresses',
 						name: 'bccAddresses',
 						type: 'string',
 						typeOptions: {
@@ -554,7 +554,7 @@ export class AwsSes implements INodeType {
 						default: [],
 					},
 					{
-						displayName: 'Cc Addresses',
+						displayName: 'CC addresses',
 						name: 'ccAddresses',
 						type: 'string',
 						typeOptions: {
@@ -565,26 +565,26 @@ export class AwsSes implements INodeType {
 						default: [],
 					},
 					{
-						displayName: 'Configuration Set Name',
+						displayName: 'Configuration set name',
 						name: 'configurationSetName',
 						type: 'string',
 						description: 'Name of the configuration set to use when you send an email using send',
 						default: '',
 					},
 					{
-						displayName: 'Reply To Addresses',
+						displayName: 'Reply to addresses',
 						name: 'replyToAddresses',
 						type: 'string',
 						typeOptions: {
 							multipleValues: true,
 							multipleValueButtonText: 'Add Reply To Email',
 						},
-						placeholder: 'Add Reply Address',
+						placeholder: 'Add reply address',
 						description: 'Reply-to email address(es) for the message',
 						default: [],
 					},
 					{
-						displayName: 'Return Path',
+						displayName: 'Return path',
 						name: 'returnPath',
 						type: 'string',
 						description:
@@ -592,7 +592,7 @@ export class AwsSes implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Return Path ARN',
+						displayName: 'Return path ARN',
 						name: 'returnPathArn',
 						type: 'string',
 						default: '',
@@ -637,7 +637,7 @@ export class AwsSes implements INodeType {
 						action: 'Get a template',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many templates',
 						action: 'Get many templates',
@@ -652,7 +652,7 @@ export class AwsSes implements INodeType {
 				default: 'create',
 			},
 			{
-				displayName: 'Template Name',
+				displayName: 'Template name',
 				name: 'templateName',
 				type: 'string',
 				displayOptions: {
@@ -666,7 +666,7 @@ export class AwsSes implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Subject Part',
+				displayName: 'Subject part',
 				name: 'subjectPart',
 				type: 'string',
 				displayOptions: {
@@ -679,7 +679,7 @@ export class AwsSes implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Html Part',
+				displayName: 'HTML part',
 				name: 'htmlPart',
 				type: 'string',
 				displayOptions: {
@@ -692,10 +692,10 @@ export class AwsSes implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -705,7 +705,7 @@ export class AwsSes implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Text Part',
+						displayName: 'Text part',
 						name: 'textPart',
 						type: 'string',
 						description:
@@ -715,10 +715,10 @@ export class AwsSes implements INodeType {
 				],
 			},
 			{
-				displayName: 'Update Fields',
+				displayName: 'Update fields',
 				name: 'updateFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -728,7 +728,7 @@ export class AwsSes implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Text Part',
+						displayName: 'Text part',
 						name: 'textPart',
 						type: 'string',
 						description:
@@ -736,14 +736,14 @@ export class AwsSes implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Subject Part',
+						displayName: 'Subject part',
 						name: 'subjectPart',
 						type: 'string',
 						description: 'The subject line of the email',
 						default: '',
 					},
 					{
-						displayName: 'Html Part',
+						displayName: 'HTML part',
 						name: 'htmlPart',
 						type: 'string',
 						description: 'The HTML body of the email',
@@ -752,7 +752,7 @@ export class AwsSes implements INodeType {
 				],
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {

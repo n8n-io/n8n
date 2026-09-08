@@ -4,7 +4,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Max Items',
+		displayName: 'Max items',
 		name: 'maxItems',
 		type: 'number',
 		typeOptions: {
@@ -19,11 +19,11 @@ const properties: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'First Items',
+				name: 'First items',
 				value: 'firstItems',
 			},
 			{
-				name: 'Last Items',
+				name: 'Last items',
 				value: 'lastItems',
 			},
 		],

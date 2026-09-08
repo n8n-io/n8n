@@ -54,7 +54,7 @@ const properties: INodeProperties[] = [
 			sortable: true,
 			multipleValues: true,
 		},
-		placeholder: 'Add Message',
+		placeholder: 'Add message',
 		default: { values: [{ content: '', role: 'user' }] },
 		options: [
 			{
@@ -97,7 +97,7 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
@@ -106,12 +106,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Hide Thinking',
+				displayName: 'Hide thinking',
 				name: 'hideThinking',
 				type: 'boolean',
 				default: true,
@@ -119,7 +119,7 @@ const properties: INodeProperties[] = [
 					'Whether to strip chain-of-thought reasoning from the response, returning only the final answer',
 			},
 			{
-				displayName: 'Maximum Number of Tokens',
+				displayName: 'Maximum number of tokens',
 				name: 'maxTokens',
 				default: 1024,
 				description: 'The maximum number of tokens to generate in the completion',
@@ -130,7 +130,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Tool Calls Iterations',
+				displayName: 'Max tool calls iterations',
 				name: 'maxToolsIterations',
 				type: 'number',
 				default: 15,
@@ -142,7 +142,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Temperature)',
+				displayName: 'Output randomness (temperature)',
 				name: 'temperature',
 				default: 0.7,
 				description:
@@ -155,7 +155,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Top P)',
+				displayName: 'Output randomness (top P)',
 				name: 'topP',
 				default: 0.95,
 				description: 'The maximum cumulative probability of tokens to consider when sampling',
@@ -167,7 +167,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'System Message',
+				displayName: 'System message',
 				name: 'system',
 				type: 'string',
 				default: '',

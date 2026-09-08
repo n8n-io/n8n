@@ -85,10 +85,10 @@ export class Signl4 implements INodeType {
 				description: 'A more detailed description for the alert',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['send'],
@@ -98,7 +98,7 @@ export class Signl4 implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Alerting Scenario',
+						displayName: 'Alerting scenario',
 						name: 'alertingScenario',
 						type: 'options',
 						options: [
@@ -119,7 +119,7 @@ export class Signl4 implements INodeType {
 					{
 						displayName: 'Attachments',
 						name: 'attachmentsUi',
-						placeholder: 'Add Attachments',
+						placeholder: 'Add attachments',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: false,
@@ -127,10 +127,10 @@ export class Signl4 implements INodeType {
 						options: [
 							{
 								name: 'attachmentsBinary',
-								displayName: 'Attachments Binary',
+								displayName: 'Attachments binary',
 								values: [
 									{
-										displayName: 'Property Name',
+										displayName: 'Property name',
 										name: 'property',
 										type: 'string',
 										placeholder: 'data',
@@ -163,7 +163,7 @@ export class Signl4 implements INodeType {
 						displayName: 'Location',
 						name: 'locationFieldsUi',
 						type: 'fixedCollection',
-						placeholder: 'Add Location',
+						placeholder: 'Add location',
 						default: {},
 						description:
 							"Transmit location information ('latitude, longitude') with your event and display a map in the mobile app",

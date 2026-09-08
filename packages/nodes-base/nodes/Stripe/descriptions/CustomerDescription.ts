@@ -27,7 +27,7 @@ export const customerOperations: INodeProperties[] = [
 				action: 'Get a customer',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many customers',
 				action: 'Get many customers',
@@ -66,10 +66,10 @@ export const customerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -83,7 +83,7 @@ export const customerFields: INodeProperties[] = [
 				name: 'address',
 				type: 'fixedCollection',
 				description: 'Address of the customer to create',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
@@ -127,7 +127,7 @@ export const customerFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Postal Code',
+								displayName: 'Postal code',
 								name: 'postal_code',
 								description: 'ZIP or postal code',
 								type: 'string',
@@ -157,14 +157,14 @@ export const customerFields: INodeProperties[] = [
 				name: 'metadata',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Metadata Item',
+				placeholder: 'Add metadata item',
 				description: 'Set of key-value pairs to attach to the customer to create',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
-						displayName: 'Metadata Properties',
+						displayName: 'Metadata properties',
 						name: 'metadataProperties',
 						values: [
 							{
@@ -199,24 +199,24 @@ export const customerFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				options: [
 					{
-						displayName: 'Shipping Properties',
+						displayName: 'Shipping properties',
 						name: 'shippingProperties',
 						values: [
 							{
-								displayName: 'Recipient Name',
+								displayName: 'Recipient name',
 								name: 'name',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Recipient Address',
+								displayName: 'Recipient address',
 								name: 'address',
 								type: 'fixedCollection',
 								default: {},
-								placeholder: 'Add Address Details',
+								placeholder: 'Add address details',
 								options: [
 									{
 										displayName: 'Details',
@@ -259,7 +259,7 @@ export const customerFields: INodeProperties[] = [
 												default: '',
 											},
 											{
-												displayName: 'Postal Code',
+												displayName: 'Postal code',
 												name: 'postal_code',
 												description: 'ZIP or postal code',
 												type: 'string',
@@ -270,7 +270,7 @@ export const customerFields: INodeProperties[] = [
 								],
 							},
 							{
-								displayName: 'Recipient Phone',
+								displayName: 'Recipient phone',
 								name: 'phone',
 								type: 'string',
 								default: '',
@@ -322,7 +322,7 @@ export const customerFields: INodeProperties[] = [
 	//       customer: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -356,7 +356,7 @@ export const customerFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -394,10 +394,10 @@ export const customerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -411,7 +411,7 @@ export const customerFields: INodeProperties[] = [
 				name: 'address',
 				type: 'fixedCollection',
 				description: 'Address of the customer to update',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
@@ -455,7 +455,7 @@ export const customerFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Postal Code',
+								displayName: 'Postal code',
 								name: 'postal_code',
 								description: 'ZIP or postal code',
 								type: 'string',
@@ -485,14 +485,14 @@ export const customerFields: INodeProperties[] = [
 				name: 'metadata',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Metadata Item',
+				placeholder: 'Add metadata item',
 				description: 'Set of key-value pairs to attach to the customer to create',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
-						displayName: 'Metadata Properties',
+						displayName: 'Metadata properties',
 						name: 'metadataProperties',
 						values: [
 							{
@@ -530,29 +530,29 @@ export const customerFields: INodeProperties[] = [
 				name: 'shipping',
 				type: 'fixedCollection',
 				description: 'Shipping information for the customer',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				default: {},
 				options: [
 					{
-						displayName: 'Shipping Properties',
+						displayName: 'Shipping properties',
 						name: 'shippingProperties',
 						values: [
 							{
-								displayName: 'Recipient Name',
+								displayName: 'Recipient name',
 								name: 'name',
 								type: 'string',
 								default: '',
 								description: 'Name of the person who will receive the shipment',
 							},
 							{
-								displayName: 'Recipient Address',
+								displayName: 'Recipient address',
 								name: 'address',
 								type: 'fixedCollection',
 								default: {},
-								placeholder: 'Add Address Details',
+								placeholder: 'Add address details',
 								options: [
 									{
 										displayName: 'Details',
@@ -595,7 +595,7 @@ export const customerFields: INodeProperties[] = [
 												default: '',
 											},
 											{
-												displayName: 'Postal Code',
+												displayName: 'Postal code',
 												name: 'postal_code',
 												description: 'ZIP or postal code',
 												type: 'string',
@@ -606,7 +606,7 @@ export const customerFields: INodeProperties[] = [
 								],
 							},
 							{
-								displayName: 'Recipient Phone',
+								displayName: 'Recipient phone',
 								name: 'phone',
 								type: 'string',
 								default: '',

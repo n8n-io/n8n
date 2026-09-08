@@ -15,7 +15,7 @@ const properties: INodeProperties[] = [
 	observableRLC,
 	observableTypeOptions,
 	{
-		displayName: 'Analyzer Names or IDs',
+		displayName: 'Analyzer names or IDs',
 		name: 'analyzers',
 		type: 'multiOptions',
 		description:

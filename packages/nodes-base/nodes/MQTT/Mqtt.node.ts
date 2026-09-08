@@ -46,7 +46,7 @@ export class Mqtt implements INodeType {
 				description: 'The topic to publish to',
 			},
 			{
-				displayName: 'Send Input Data',
+				displayName: 'Send input data',
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
@@ -78,15 +78,15 @@ export class Mqtt implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Received at Most Once',
+								name: 'Received at most once',
 								value: 0,
 							},
 							{
-								name: 'Received at Least Once',
+								name: 'Received at least once',
 								value: 1,
 							},
 							{
-								name: 'Exactly Once',
+								name: 'Exactly once',
 								value: 2,
 							},
 						],

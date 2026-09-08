@@ -20,7 +20,7 @@ export const storyContentOperations: INodeProperties[] = [
 				action: 'Get a story',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many stories',
 				action: 'Get many stories',
@@ -54,7 +54,7 @@ export const storyContentFields: INodeProperties[] = [
 	/*                                story:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -90,7 +90,7 @@ export const storyContentFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -101,7 +101,7 @@ export const storyContentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Starts With',
+				displayName: 'Starts with',
 				name: 'starts_with',
 				type: 'string',
 				default: '',

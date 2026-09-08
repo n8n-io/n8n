@@ -26,7 +26,7 @@ export const rowOperations: INodeProperties[] = [
 				action: 'Get a row',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many rows',
 				action: 'Get many rows',
@@ -50,7 +50,7 @@ export const rowFields: INodeProperties[] = [
 
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Table Name',
+		displayName: 'Table name',
 		name: 'tableName',
 		type: 'options',
 		placeholder: 'Name of the table',
@@ -108,17 +108,17 @@ export const rowFields: INodeProperties[] = [
 	//             create
 	// ----------------------------------
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'fieldsToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
@@ -132,7 +132,7 @@ export const rowFields: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
@@ -147,9 +147,9 @@ export const rowFields: INodeProperties[] = [
 		placeholder: 'Enter properties...',
 	},
 	{
-		displayName: 'Columns to Send',
+		displayName: 'Columns to send',
 		name: 'columnsUi',
-		placeholder: 'Add Column',
+		placeholder: 'Add column',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Column to Send',
@@ -162,7 +162,7 @@ export const rowFields: INodeProperties[] = [
 				values: [
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-						displayName: 'Column Name',
+						displayName: 'Column name',
 						name: 'columnName',
 						type: 'options',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
@@ -175,7 +175,7 @@ export const rowFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Column Value',
+						displayName: 'Column value',
 						name: 'columnValue',
 						type: 'string',
 						default: '',
@@ -226,7 +226,7 @@ export const rowFields: INodeProperties[] = [
 	//             getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -257,7 +257,7 @@ export const rowFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -267,7 +267,7 @@ export const rowFields: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'View Name',
+				displayName: 'View name',
 				name: 'view_name',
 				type: 'options',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
@@ -293,7 +293,7 @@ export const rowFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Convert Link ID',
+				displayName: 'Convert link ID',
 				name: 'convert_link_id',
 				type: 'boolean',
 				default: false,
@@ -319,7 +319,7 @@ export const rowFields: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Order By Column',
+				displayName: 'Order by column',
 				name: 'order_by',
 				type: 'options',
 				typeOptions: {

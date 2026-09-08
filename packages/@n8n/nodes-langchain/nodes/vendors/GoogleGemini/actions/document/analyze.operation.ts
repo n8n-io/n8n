@@ -7,7 +7,7 @@ import { modelRLC } from '../descriptions';
 const properties: INodeProperties[] = [
 	modelRLC('modelSearch'),
 	{
-		displayName: 'Text Input',
+		displayName: 'Text input',
 		name: 'text',
 		type: 'string',
 		placeholder: "e.g. What's in this document?",
@@ -17,7 +17,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Type',
+		displayName: 'Input type',
 		name: 'inputType',
 		type: 'options',
 		default: 'url',
@@ -27,7 +27,7 @@ const properties: INodeProperties[] = [
 				value: 'url',
 			},
 			{
-				name: 'Binary File(s)',
+				name: 'Binary file(s)',
 				value: 'binary',
 			},
 		],
@@ -47,7 +47,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Data Field Name(s)',
+		displayName: 'Input data field name(s)',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -62,7 +62,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
@@ -71,12 +71,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Length of Description (Max Tokens)',
+				displayName: 'Length of description (max tokens)',
 				description: 'Fewer tokens will result in shorter, less detailed document description',
 				name: 'maxOutputTokens',
 				type: 'number',

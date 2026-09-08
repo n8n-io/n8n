@@ -65,13 +65,13 @@ export const lemonadeModel: INodeProperties = {
 export const lemonadeOptions: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	description: 'Additional options to add',
 	type: 'collection',
 	default: {},
 	options: [
 		{
-			displayName: 'Sampling Temperature',
+			displayName: 'Sampling temperature',
 			name: 'temperature',
 			default: 0.7,
 			typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
@@ -89,7 +89,7 @@ export const lemonadeOptions: INodeProperties = {
 			type: 'number',
 		},
 		{
-			displayName: 'Frequency Penalty',
+			displayName: 'Frequency penalty',
 			name: 'frequencyPenalty',
 			type: 'number',
 			default: 0.0,
@@ -98,7 +98,7 @@ export const lemonadeOptions: INodeProperties = {
 				'Adjusts the penalty for tokens that have already appeared in the generated text. Positive values discourage repetition, negative values encourage it.',
 		},
 		{
-			displayName: 'Presence Penalty',
+			displayName: 'Presence penalty',
 			name: 'presencePenalty',
 			type: 'number',
 			default: 0.0,
@@ -107,7 +107,7 @@ export const lemonadeOptions: INodeProperties = {
 				'Adjusts the penalty for tokens based on their presence in the generated text so far. Positive values penalize tokens that have already appeared, encouraging diversity.',
 		},
 		{
-			displayName: 'Max Tokens to Generate',
+			displayName: 'Max tokens to generate',
 			name: 'maxTokens',
 			type: 'number',
 			default: -1,
@@ -115,7 +115,7 @@ export const lemonadeOptions: INodeProperties = {
 				'The maximum number of tokens to generate. Set to -1 for no limit. Be cautious when setting this to a large value, as it can lead to very long outputs.',
 		},
 		{
-			displayName: 'Stop Sequences',
+			displayName: 'Stop sequences',
 			name: 'stop',
 			type: 'string',
 			default: '',

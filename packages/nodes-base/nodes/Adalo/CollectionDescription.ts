@@ -20,17 +20,17 @@ export const collectionFields: INodeProperties[] = [
 	 */
 
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'dataToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
@@ -45,7 +45,7 @@ export const collectionFields: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
@@ -61,9 +61,9 @@ export const collectionFields: INodeProperties[] = [
 		placeholder: 'Enter properties...',
 	},
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		description:
 			'Field must be defined in the collection, otherwise it will be ignored. If field defined in the collection is not set here, it will be set to null.',
@@ -91,7 +91,7 @@ export const collectionFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -106,7 +106,7 @@ export const collectionFields: INodeProperties[] = [
 	 */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

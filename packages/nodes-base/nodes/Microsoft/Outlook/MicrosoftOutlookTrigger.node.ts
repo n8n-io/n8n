@@ -97,7 +97,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 						value: 'microsoftOAuth2Api',
 					},
 					{
-						name: 'Microsoft Entra Service Principal (App-Only)',
+						name: 'Microsoft Entra service principal (app-only)',
 						value: 'microsoftEntraServicePrincipalApi',
 						description:
 							'App-only access via a Microsoft Entra app registration. Choose which mailbox to act on under "Mailbox".',
@@ -119,13 +119,13 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				},
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'event',
 				type: 'options',
 				default: 'messageReceived',
 				options: [
 					{
-						name: 'Message Received',
+						name: 'Message received',
 						value: 'messageReceived',
 					},
 				],

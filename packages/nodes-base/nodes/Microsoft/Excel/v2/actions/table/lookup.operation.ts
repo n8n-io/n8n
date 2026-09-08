@@ -18,7 +18,7 @@ const properties: INodeProperties[] = [
 	worksheetRLC,
 	tableRLC,
 	{
-		displayName: 'Lookup Column',
+		displayName: 'Lookup column',
 		name: 'lookupColumn',
 		type: 'string',
 		default: '',
@@ -27,7 +27,7 @@ const properties: INodeProperties[] = [
 		description: 'The name of the column in which to look for value',
 	},
 	{
-		displayName: 'Lookup Value',
+		displayName: 'Lookup value',
 		name: 'lookupValue',
 		type: 'string',
 		default: '',
@@ -43,7 +43,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Return All Matches',
+				displayName: 'Return all matches',
 				name: 'returnAllMatches',
 				type: 'boolean',
 				default: false,

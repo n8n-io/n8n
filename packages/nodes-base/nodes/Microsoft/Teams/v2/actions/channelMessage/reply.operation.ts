@@ -21,7 +21,7 @@ const properties: INodeProperties[] = [
 			'The ID of the message to reply to. The message ID is the number before "?tenantId" in the message URL.',
 	},
 	{
-		displayName: 'Content Type',
+		displayName: 'Content type',
 		name: 'contentType',
 		required: true,
 		type: 'options',

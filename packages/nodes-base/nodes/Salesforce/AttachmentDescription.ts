@@ -31,13 +31,13 @@ export const attachmentOperations: INodeProperties[] = [
 				action: 'Get an attachment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many attachments',
 				action: 'Get many attachments',
 			},
 			{
-				name: 'Get Summary',
+				name: 'Get summary',
 				value: 'getSummary',
 				description: "Returns an overview of attachment's metadata",
 				action: 'Get an attachment summary',
@@ -86,7 +86,7 @@ export const attachmentFields: INodeProperties[] = [
 			'Required. Name of the attached file. Maximum size is 255 characters. Label is File Name.',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -101,10 +101,10 @@ export const attachmentFields: INodeProperties[] = [
 		hint: 'The name of the input binary field containing the file to be uploaded',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -121,7 +121,7 @@ export const attachmentFields: INodeProperties[] = [
 				description: 'Text description of the Document. Limit: 255 characters.',
 			},
 			{
-				displayName: 'Is Private',
+				displayName: 'Is private',
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
@@ -135,7 +135,7 @@ export const attachmentFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',
@@ -183,10 +183,10 @@ export const attachmentFields: INodeProperties[] = [
 		description: 'ID of attachment that needs to be fetched',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -196,7 +196,7 @@ export const attachmentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -211,7 +211,7 @@ export const attachmentFields: INodeProperties[] = [
 				description: 'Text description of the Document. Limit: 255 characters.',
 			},
 			{
-				displayName: 'Is Private',
+				displayName: 'Is private',
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
@@ -233,7 +233,7 @@ export const attachmentFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',
@@ -303,7 +303,7 @@ export const attachmentFields: INodeProperties[] = [
 	/*                                 attachment:getAll                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -337,7 +337,7 @@ export const attachmentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -349,7 +349,7 @@ export const attachmentFields: INodeProperties[] = [
 			{
 				displayName: 'Conditions',
 				name: 'conditionsUi',
-				placeholder: 'Add Condition',
+				placeholder: 'Add condition',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -362,7 +362,7 @@ export const attachmentFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {

@@ -110,7 +110,7 @@ export class SlackV1 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'Access Token',
+							name: 'Access token',
 							value: 'accessToken',
 						},
 						{
@@ -152,11 +152,11 @@ export class SlackV1 implements INodeType {
 							value: 'user',
 						},
 						{
-							name: 'User Group',
+							name: 'User group',
 							value: 'userGroup',
 						},
 						{
-							name: 'User Profile',
+							name: 'User profile',
 							value: 'userProfile',
 						},
 					],

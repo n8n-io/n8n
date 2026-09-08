@@ -31,7 +31,7 @@ export const fileOperations: INodeProperties[] = [
 				action: 'Get a file content',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many files',
 				action: 'Get many files',
@@ -46,7 +46,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                file:*                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name or ID',
+		displayName: 'Form name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -80,7 +80,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'Uid of the file (should start with "af" e.g. "afQoJxA4kmKEXVpkH6SYbhb"',
 	},
 	{
-		displayName: 'Property Name',
+		displayName: 'Property name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,
@@ -94,7 +94,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'Name of the binary property to write the file into',
 	},
 	{
-		displayName: 'Download File Content',
+		displayName: 'Download file content',
 		name: 'download',
 		type: 'boolean',
 		required: true,
@@ -108,7 +108,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'Whether to download the file content into a binary property',
 	},
 	{
-		displayName: 'File Upload Mode',
+		displayName: 'File upload mode',
 		name: 'fileMode',
 		type: 'options',
 		required: true,
@@ -121,7 +121,7 @@ export const fileFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Binary File',
+				name: 'Binary file',
 				value: 'binary',
 			},
 			{
@@ -131,7 +131,7 @@ export const fileFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Property Name',
+		displayName: 'Property name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,

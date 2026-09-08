@@ -31,7 +31,7 @@ export const loadBalancerOperations: INodeProperties[] = [
 				action: 'Get a load balancer',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getMany',
 				description: 'Get many load balancers',
 				action: 'Get many load balancers',
@@ -46,7 +46,7 @@ export const loadBalancerFields: INodeProperties[] = [
 	/*                                  loadBalancer:create                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'IP Address Type',
+		displayName: 'IP address type',
 		name: 'ipAddressType',
 		type: 'options',
 		required: true,
@@ -101,7 +101,7 @@ export const loadBalancerFields: INodeProperties[] = [
 				value: 'internal',
 			},
 			{
-				name: 'Internet Facing',
+				name: 'Internet facing',
 				value: 'internet-facing',
 			},
 		],
@@ -131,7 +131,7 @@ export const loadBalancerFields: INodeProperties[] = [
 		default: 'application',
 	},
 	{
-		displayName: 'Subnet ID Names or IDs',
+		displayName: 'Subnet ID names or IDs',
 		name: 'subnets',
 		type: 'multiOptions',
 		description:
@@ -149,10 +149,10 @@ export const loadBalancerFields: INodeProperties[] = [
 		default: [],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -162,7 +162,7 @@ export const loadBalancerFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Security Group IDs',
+				displayName: 'Security group IDs',
 				name: 'securityGroups',
 				type: 'multiOptions',
 				description:
@@ -175,7 +175,7 @@ export const loadBalancerFields: INodeProperties[] = [
 			{
 				displayName: 'Tags',
 				name: 'tagsUi',
-				placeholder: 'Add Tag',
+				placeholder: 'Add tag',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -211,7 +211,7 @@ export const loadBalancerFields: INodeProperties[] = [
 	/*                                  loadBalancer:get                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Load Balancer ARN',
+		displayName: 'Load balancer ARN',
 		name: 'loadBalancerId',
 		type: 'string',
 		required: true,
@@ -229,7 +229,7 @@ export const loadBalancerFields: INodeProperties[] = [
 	/*                                  loadBalancer:getMany                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -263,7 +263,7 @@ export const loadBalancerFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				operation: ['getMany'],
@@ -288,7 +288,7 @@ export const loadBalancerFields: INodeProperties[] = [
 	/*                                  loadBalancer:delete                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Load Balancer ARN',
+		displayName: 'Load balancer ARN',
 		name: 'loadBalancerId',
 		type: 'string',
 		required: true,

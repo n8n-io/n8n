@@ -41,7 +41,7 @@ export class TwilioTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'updates',
 				type: 'multiOptions',
 				options: [
@@ -51,7 +51,7 @@ export class TwilioTrigger implements INodeType {
 						description: 'When an SMS message is received',
 					},
 					{
-						name: 'New Call',
+						name: 'New call',
 						value: 'com.twilio.voice.insights.call-summary.complete',
 						description: 'When a call is received',
 					},
@@ -60,7 +60,7 @@ export class TwilioTrigger implements INodeType {
 				default: [],
 			},
 			{
-				displayName: "The 'New Call' event may take up to thirty minutes to be triggered",
+				displayName: "The 'New call' event may take up to thirty minutes to be triggered",
 				name: 'callTriggerNotice',
 				type: 'notice',
 				default: '',

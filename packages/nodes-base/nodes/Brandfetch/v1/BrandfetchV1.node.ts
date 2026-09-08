@@ -98,7 +98,7 @@ export class BrandfetchV1 implements INodeType {
 					description: 'Name of the binary property to which to write the data of the read file',
 				},
 				{
-					displayName: 'Image Type',
+					displayName: 'Image type',
 					name: 'imageTypes',
 					type: 'multiOptions',
 					displayOptions: {
@@ -121,7 +121,7 @@ export class BrandfetchV1 implements INodeType {
 					required: true,
 				},
 				{
-					displayName: 'Image Format',
+					displayName: 'Image format',
 					name: 'imageFormats',
 					type: 'multiOptions',
 					displayOptions: {

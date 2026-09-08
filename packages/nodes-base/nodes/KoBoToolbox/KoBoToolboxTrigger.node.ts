@@ -46,7 +46,7 @@ export class KoBoToolboxTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Form Name or ID',
+				displayName: 'Form name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -58,14 +58,14 @@ export class KoBoToolboxTrigger implements INodeType {
 					'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'triggerOn',
 				type: 'options',
 				required: true,
 				default: 'formSubmission',
 				options: [
 					{
-						name: 'On Form Submission',
+						name: 'On form submission',
 						value: 'formSubmission',
 					},
 				],

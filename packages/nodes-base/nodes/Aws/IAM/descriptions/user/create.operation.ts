@@ -11,10 +11,10 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. UserName',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -30,7 +30,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Permissions Boundary',
+				displayName: 'Permissions boundary',
 				name: 'permissionsBoundary',
 				default: '',
 				description:
@@ -50,7 +50,7 @@ const properties: INodeProperties[] = [
 				type: 'fixedCollection',
 				description: 'A list of tags that you want to attach to the new user',
 				default: [],
-				placeholder: 'Add Tag',
+				placeholder: 'Add tag',
 				typeOptions: {
 					multipleValues: true,
 				},

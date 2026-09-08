@@ -21,7 +21,7 @@ export const categoryOperations: INodeProperties[] = [
 				action: 'Create a category',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many categories',
 				action: 'Get many categories',
@@ -70,7 +70,7 @@ export const categoryFields: INodeProperties[] = [
 		description: 'Color of the category',
 	},
 	{
-		displayName: 'Text Color',
+		displayName: 'Text color',
 		name: 'textColor',
 		type: 'color',
 		required: true,
@@ -88,7 +88,7 @@ export const categoryFields: INodeProperties[] = [
 	/*                                category:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -151,10 +151,10 @@ export const categoryFields: INodeProperties[] = [
 		description: 'New name of the category',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -171,7 +171,7 @@ export const categoryFields: INodeProperties[] = [
 				description: 'Color of the category',
 			},
 			{
-				displayName: 'Text Color',
+				displayName: 'Text color',
 				name: 'textColor',
 				type: 'color',
 				default: '0000FF',

@@ -1,14 +1,14 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 export const pineconeIndexRLC: INodeProperties = {
-	displayName: 'Pinecone Index',
+	displayName: 'Pinecone index',
 	name: 'pineconeIndex',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -24,14 +24,14 @@ export const pineconeIndexRLC: INodeProperties = {
 };
 
 export const supabaseTableNameRLC: INodeProperties = {
-	displayName: 'Table Name',
+	displayName: 'Table name',
 	name: 'tableName',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -47,14 +47,14 @@ export const supabaseTableNameRLC: INodeProperties = {
 };
 
 export const qdrantCollectionRLC: INodeProperties = {
-	displayName: 'Qdrant Collection',
+	displayName: 'Qdrant collection',
 	name: 'qdrantCollection',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -70,14 +70,14 @@ export const qdrantCollectionRLC: INodeProperties = {
 };
 
 export const milvusCollectionRLC: INodeProperties = {
-	displayName: 'Milvus Collection',
+	displayName: 'Milvus collection',
 	name: 'milvusCollection',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -93,14 +93,14 @@ export const milvusCollectionRLC: INodeProperties = {
 };
 
 export const weaviateCollectionRLC: INodeProperties = {
-	displayName: 'Weaviate Collection',
+	displayName: 'Weaviate collection',
 	name: 'weaviateCollection',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -115,14 +115,14 @@ export const weaviateCollectionRLC: INodeProperties = {
 	],
 };
 export const chromaCollectionRLC: INodeProperties = {
-	displayName: 'Chroma Collection',
+	displayName: 'Chroma collection',
 	name: 'chromaCollection',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {

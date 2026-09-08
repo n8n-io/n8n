@@ -8,7 +8,7 @@ import { modelRLC } from '../descriptions';
 const properties: INodeProperties[] = [
 	modelRLC,
 	{
-		displayName: 'Text Input',
+		displayName: 'Text input',
 		name: 'text',
 		type: 'string',
 		placeholder: "e.g. What's in this image?",
@@ -18,13 +18,13 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Type',
+		displayName: 'Input type',
 		name: 'inputType',
 		type: 'options',
 		default: 'binary',
 		options: [
 			{
-				name: 'Binary File(s)',
+				name: 'Binary file(s)',
 				value: 'binary',
 			},
 			{
@@ -34,7 +34,7 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Input Data Field Name(s)',
+		displayName: 'Input data field name(s)',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -62,7 +62,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
@@ -71,12 +71,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'System Message',
+				displayName: 'System message',
 				name: 'system',
 				type: 'string',
 				default: '',
@@ -107,7 +107,7 @@ const properties: INodeProperties[] = [
 					"Whether to enable (default) thinking mode for supported models. When enabled, the model's thinking process is separated from the output. When disabled, the model outputs content directly (only for supported models).",
 			},
 			{
-				displayName: 'Output Randomness (Top P)',
+				displayName: 'Output randomness (top P)',
 				name: 'top_p',
 				default: 0.7,
 				description: 'The maximum cumulative probability of tokens to consider when sampling',
@@ -129,7 +129,7 @@ const properties: INodeProperties[] = [
 				description: 'Controls diversity by limiting the number of top tokens to consider',
 			},
 			{
-				displayName: 'Max Tokens',
+				displayName: 'Max tokens',
 				name: 'num_predict',
 				type: 'number',
 				default: 1024,
@@ -140,7 +140,7 @@ const properties: INodeProperties[] = [
 				description: 'Maximum number of tokens to generate in the completion',
 			},
 			{
-				displayName: 'Frequency Penalty',
+				displayName: 'Frequency penalty',
 				name: 'frequency_penalty',
 				type: 'number',
 				default: 0.0,
@@ -152,7 +152,7 @@ const properties: INodeProperties[] = [
 					'Adjusts the penalty for tokens that have already appeared in the generated text. Higher values discourage repetition.',
 			},
 			{
-				displayName: 'Presence Penalty',
+				displayName: 'Presence penalty',
 				name: 'presence_penalty',
 				type: 'number',
 				default: 0.0,
@@ -163,7 +163,7 @@ const properties: INodeProperties[] = [
 					'Adjusts the penalty for tokens based on their presence in the generated text so far. Positive values penalize tokens that have already appeared, encouraging diversity.',
 			},
 			{
-				displayName: 'Repetition Penalty',
+				displayName: 'Repetition penalty',
 				name: 'repeat_penalty',
 				type: 'number',
 				default: 1.1,
@@ -175,7 +175,7 @@ const properties: INodeProperties[] = [
 					'Sets how strongly to penalize repetitions. A higher value (e.g., 1.5) will penalize repetitions more strongly, while a lower value (e.g., 0.9) will be more lenient.',
 			},
 			{
-				displayName: 'Context Length',
+				displayName: 'Context length',
 				name: 'num_ctx',
 				type: 'number',
 				default: 4096,
@@ -186,7 +186,7 @@ const properties: INodeProperties[] = [
 				description: 'Sets the size of the context window used to generate the next token',
 			},
 			{
-				displayName: 'Repeat Last N',
+				displayName: 'Repeat last N',
 				name: 'repeat_last_n',
 				type: 'number',
 				default: 64,
@@ -223,7 +223,7 @@ const properties: INodeProperties[] = [
 					'Sets the random number seed to use for generation. Setting this to a specific number will make the model generate the same text for the same prompt.',
 			},
 			{
-				displayName: 'Stop Sequences',
+				displayName: 'Stop sequences',
 				name: 'stop',
 				type: 'string',
 				default: '',
@@ -231,7 +231,7 @@ const properties: INodeProperties[] = [
 					'Sets the stop sequences to use. When this pattern is encountered the LLM will stop generating text and return. Separate multiple patterns with commas',
 			},
 			{
-				displayName: 'Keep Alive',
+				displayName: 'Keep alive',
 				name: 'keep_alive',
 				type: 'string',
 				default: '5m',
@@ -239,7 +239,7 @@ const properties: INodeProperties[] = [
 					'Specifies the duration to keep the loaded model in memory after use. Format: 1h30m (1 hour 30 minutes).',
 			},
 			{
-				displayName: 'Low VRAM Mode',
+				displayName: 'Low VRAM mode',
 				name: 'low_vram',
 				type: 'boolean',
 				default: false,
@@ -259,7 +259,7 @@ const properties: INodeProperties[] = [
 					'Specifies the ID of the GPU to use for the main computation. Only change this if you have multiple GPUs.',
 			},
 			{
-				displayName: 'Context Batch Size',
+				displayName: 'Context batch size',
 				name: 'num_batch',
 				type: 'number',
 				default: 512,
@@ -283,7 +283,7 @@ const properties: INodeProperties[] = [
 					'Specifies the number of GPUs to use for parallel processing. Set to -1 for auto-detection.',
 			},
 			{
-				displayName: 'Number of CPU Threads',
+				displayName: 'Number of CPU threads',
 				name: 'num_thread',
 				type: 'number',
 				default: 0,
@@ -295,7 +295,7 @@ const properties: INodeProperties[] = [
 					'Specifies the number of CPU threads to use for processing. Set to 0 for auto-detection.',
 			},
 			{
-				displayName: 'Penalize Newlines',
+				displayName: 'Penalize newlines',
 				name: 'penalize_newline',
 				type: 'boolean',
 				default: true,
@@ -303,7 +303,7 @@ const properties: INodeProperties[] = [
 					'Whether the model will be less likely to generate newline characters, encouraging longer continuous sequences of text',
 			},
 			{
-				displayName: 'Use Memory Locking',
+				displayName: 'Use memory locking',
 				name: 'use_mlock',
 				type: 'boolean',
 				default: false,
@@ -311,7 +311,7 @@ const properties: INodeProperties[] = [
 					'Whether to lock the model in memory to prevent swapping. This can improve performance but requires sufficient available memory.',
 			},
 			{
-				displayName: 'Use Memory Mapping',
+				displayName: 'Use memory mapping',
 				name: 'use_mmap',
 				type: 'boolean',
 				default: true,
@@ -319,7 +319,7 @@ const properties: INodeProperties[] = [
 					'Whether to use memory mapping for loading the model. This can reduce memory usage but may impact performance.',
 			},
 			{
-				displayName: 'Load Vocabulary Only',
+				displayName: 'Load vocabulary only',
 				name: 'vocab_only',
 				type: 'boolean',
 				default: false,
@@ -327,7 +327,7 @@ const properties: INodeProperties[] = [
 					'Whether to only load the model vocabulary without the weights. Useful for quickly testing tokenization.',
 			},
 			{
-				displayName: 'Output Format',
+				displayName: 'Output format',
 				name: 'format',
 				type: 'options',
 				options: [

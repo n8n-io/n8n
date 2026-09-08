@@ -5,7 +5,7 @@ import type { INodeProperties } from 'n8n-workflow';
  * Static descriptors — runtime resolution lives in `resolveScopeRoot` (transport/index.ts).
  */
 export const resourceTargetParam: INodeProperties = {
-	displayName: 'Access As',
+	displayName: 'Access as',
 	name: 'resourceTarget',
 	type: 'options',
 	noDataExpression: true,

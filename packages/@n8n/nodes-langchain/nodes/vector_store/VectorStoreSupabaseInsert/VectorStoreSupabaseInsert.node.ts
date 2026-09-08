@@ -75,7 +75,7 @@ export class VectorStoreSupabaseInsert implements INodeType {
 			},
 			supabaseTableNameRLC,
 			{
-				displayName: 'Query Name',
+				displayName: 'Query name',
 				name: 'queryName',
 				type: 'string',
 				default: 'match_documents',

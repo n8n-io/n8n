@@ -30,7 +30,7 @@ export class SplitInBatchesV1 implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Batch Size',
+				displayName: 'Batch size',
 				name: 'batchSize',
 				type: 'number',
 				typeOptions: {

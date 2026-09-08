@@ -16,7 +16,7 @@ export function recordRLC(
 		description,
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: { searchListMethod, searchable: true },

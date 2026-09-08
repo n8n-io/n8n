@@ -190,13 +190,13 @@ export class LmChatOpenRouter implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Frequency Penalty',
+						displayName: 'Frequency penalty',
 						name: 'frequencyPenalty',
 						default: 0,
 						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -205,7 +205,7 @@ export class LmChatOpenRouter implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Maximum Number of Tokens',
+						displayName: 'Maximum number of tokens',
 						name: 'maxTokens',
 						default: -1,
 						description:
@@ -216,7 +216,7 @@ export class LmChatOpenRouter implements INodeType {
 						},
 					},
 					{
-						displayName: 'Response Format',
+						displayName: 'Response format',
 						name: 'responseFormat',
 						default: 'text',
 						type: 'options',
@@ -235,7 +235,7 @@ export class LmChatOpenRouter implements INodeType {
 						],
 					},
 					{
-						displayName: 'Presence Penalty',
+						displayName: 'Presence penalty',
 						name: 'presencePenalty',
 						default: 0,
 						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -244,7 +244,7 @@ export class LmChatOpenRouter implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Sampling Temperature',
+						displayName: 'Sampling temperature',
 						name: 'temperature',
 						default: 0.7,
 						typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
@@ -260,7 +260,7 @@ export class LmChatOpenRouter implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Max Retries',
+						displayName: 'Max retries',
 						name: 'maxRetries',
 						default: 2,
 						description: 'Maximum number of retries to attempt',
@@ -276,13 +276,13 @@ export class LmChatOpenRouter implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Provider Routing',
+						displayName: 'Provider routing',
 						name: 'providerRouting',
 						type: 'collection',
 						default: {},
 						description:
 							'Configure which sub-providers handle your requests. <a href="https://openrouter.ai/docs/provider-routing">Learn more</a>.',
-						placeholder: 'Add Provider Routing Option',
+						placeholder: 'Add provider routing option',
 						options: [
 							{
 								displayName: 'Order',
@@ -294,14 +294,14 @@ export class LmChatOpenRouter implements INodeType {
 									'Comma-separated list of provider slugs to try in order. <a href="https://openrouter.ai/docs/provider-routing#provider-sorting">Learn more</a>.',
 							},
 							{
-								displayName: 'Allow Fallbacks',
+								displayName: 'Allow fallbacks',
 								name: 'allowFallbacks',
 								type: 'boolean',
 								default: true,
 								description: 'Whether to allow backup providers when the primary is unavailable',
 							},
 							{
-								displayName: 'Require Parameters',
+								displayName: 'Require parameters',
 								name: 'requireParameters',
 								type: 'boolean',
 								default: false,
@@ -309,7 +309,7 @@ export class LmChatOpenRouter implements INodeType {
 									'Whether to only use providers that support all parameters in your request',
 							},
 							{
-								displayName: 'Data Collection',
+								displayName: 'Data collection',
 								name: 'dataCollection',
 								type: 'options',
 								options: [
@@ -321,7 +321,7 @@ export class LmChatOpenRouter implements INodeType {
 									"Select 'Deny' to route requests only through providers that don't collect your data",
 							},
 							{
-								displayName: 'Zero Data Retention (ZDR)',
+								displayName: 'Zero data retention (ZDR)',
 								name: 'zdr',
 								type: 'boolean',
 								default: false,

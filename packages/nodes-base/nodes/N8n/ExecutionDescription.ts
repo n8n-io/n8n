@@ -28,7 +28,7 @@ export const executionOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many executions',
 				routing: {
@@ -77,7 +77,7 @@ const deleteOperation: INodeProperties[] = [
 
 const getAllOperation: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -118,7 +118,7 @@ const getAllOperation: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -183,7 +183,7 @@ const getAllOperation: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Execution Details',
+				displayName: 'Include execution details',
 				name: 'activeWorkflows',
 				type: 'boolean',
 				default: false,
@@ -228,7 +228,7 @@ const getOperation: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Execution Details',
+				displayName: 'Include execution details',
 				name: 'activeWorkflows',
 				type: 'boolean',
 				default: false,

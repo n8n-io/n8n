@@ -30,16 +30,16 @@ export class StopAndError implements INodeType {
 		outputs: [],
 		properties: [
 			{
-				displayName: 'Error Type',
+				displayName: 'Error type',
 				name: 'errorType',
 				type: 'options',
 				options: [
 					{
-						name: 'Error Message',
+						name: 'Error message',
 						value: 'errorMessage',
 					},
 					{
-						name: 'Error Object',
+						name: 'Error object',
 						value: 'errorObject',
 					},
 				],
@@ -47,7 +47,7 @@ export class StopAndError implements INodeType {
 				description: 'Type of error to throw',
 			},
 			{
-				displayName: 'Error Message',
+				displayName: 'Error message',
 				name: 'errorMessage',
 				type: 'string',
 				placeholder: 'An error occurred!',
@@ -60,7 +60,7 @@ export class StopAndError implements INodeType {
 				},
 			},
 			{
-				displayName: 'Error Object',
+				displayName: 'Error object',
 				name: 'errorObject',
 				type: 'json',
 				description: 'Object containing error properties',

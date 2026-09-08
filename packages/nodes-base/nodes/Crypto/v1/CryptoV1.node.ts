@@ -76,7 +76,7 @@ const versionDescription: INodeTypeDescription = {
 			default: 'hash',
 		},
 		{
-			displayName: 'Binary File',
+			displayName: 'Binary file',
 			name: 'binaryData',
 			type: 'boolean',
 			default: false,
@@ -89,7 +89,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Whether the data to hashed should be taken from binary field',
 		},
 		{
-			displayName: 'Binary Property Name',
+			displayName: 'Binary property name',
 			name: 'binaryPropertyName',
 			displayOptions: {
 				show: {
@@ -164,7 +164,7 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		{
-			displayName: 'Property Name',
+			displayName: 'Property name',
 			name: 'dataPropertyName',
 			type: 'string',
 			default: 'data',
@@ -260,7 +260,7 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		{
-			displayName: 'Property Name',
+			displayName: 'Property name',
 			name: 'dataPropertyName',
 			type: 'string',
 			default: 'data',
@@ -322,7 +322,7 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		{
-			displayName: 'Property Name',
+			displayName: 'Property name',
 			name: 'dataPropertyName',
 			type: 'string',
 			default: 'data',
@@ -335,7 +335,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Name of the property to which to write the signed value',
 		},
 		{
-			displayName: 'Algorithm Name or ID',
+			displayName: 'Algorithm name or ID',
 			name: 'algorithm',
 			displayOptions: {
 				show: {
@@ -372,7 +372,7 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		{
-			displayName: 'Private Key',
+			displayName: 'Private key',
 			name: 'privateKey',
 			displayOptions: {
 				show: {
@@ -386,7 +386,7 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		{
-			displayName: 'Property Name',
+			displayName: 'Property name',
 			name: 'dataPropertyName',
 			type: 'string',
 			default: 'data',

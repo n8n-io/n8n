@@ -77,7 +77,7 @@ export const draftFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Body Content',
+		displayName: 'Body content',
 		name: 'bodyContent',
 		description: 'Message body content',
 		type: 'string',
@@ -90,10 +90,10 @@ export const draftFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -106,7 +106,7 @@ export const draftFields: INodeProperties[] = [
 				displayName: 'Attachments',
 				name: 'attachments',
 				type: 'fixedCollection',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
@@ -117,7 +117,7 @@ export const draftFields: INodeProperties[] = [
 						displayName: 'Attachment',
 						values: [
 							{
-								displayName: 'Binary Property Name',
+								displayName: 'Binary property name',
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
@@ -129,14 +129,14 @@ export const draftFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'BCC Recipients',
+				displayName: 'BCC recipients',
 				name: 'bccRecipients',
 				description: 'Email addresses of BCC recipients',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Body Content Type',
+				displayName: 'Body content type',
 				name: 'bodyContentType',
 				description: 'Message body content type',
 				type: 'options',
@@ -153,7 +153,7 @@ export const draftFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Category Names or IDs',
+				displayName: 'Category names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				description:
@@ -164,16 +164,16 @@ export const draftFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'CC Recipients',
+				displayName: 'CC recipients',
 				name: 'ccRecipients',
 				description: 'Email addresses of CC recipients',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Headers',
+				displayName: 'Custom headers',
 				name: 'internetMessageHeaders',
-				placeholder: 'Add Header',
+				placeholder: 'Add header',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -232,7 +232,7 @@ export const draftFields: INodeProperties[] = [
 				default: 'Low',
 			},
 			{
-				displayName: 'Read Receipt Requested',
+				displayName: 'Read receipt requested',
 				name: 'isReadReceiptRequested',
 				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
@@ -246,7 +246,7 @@ export const draftFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Reply To',
+				displayName: 'Reply to',
 				name: 'replyTo',
 				description: 'Email addresses to use when replying',
 				type: 'string',
@@ -257,10 +257,10 @@ export const draftFields: INodeProperties[] = [
 
 	// draft:send
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

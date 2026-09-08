@@ -90,11 +90,11 @@ export class Freshservice implements INodeType {
 						value: 'agent',
 					},
 					{
-						name: 'Agent Group',
+						name: 'Agent group',
 						value: 'agentGroup',
 					},
 					{
-						name: 'Agent Role',
+						name: 'Agent role',
 						value: 'agentRole',
 					},
 					{
@@ -106,7 +106,7 @@ export class Freshservice implements INodeType {
 					// 	value: 'asset',
 					// },
 					{
-						name: 'Asset Type',
+						name: 'Asset type',
 						value: 'assetType',
 					},
 					{
@@ -138,7 +138,7 @@ export class Freshservice implements INodeType {
 						value: 'requester',
 					},
 					{
-						name: 'Requester Group',
+						name: 'Requester group',
 						value: 'requesterGroup',
 					},
 					{

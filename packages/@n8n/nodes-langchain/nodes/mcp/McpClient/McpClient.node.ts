@@ -45,7 +45,7 @@ export class McpClient implements INodeType {
 				defaultOption: 'httpStreamable',
 			}),
 			{
-				displayName: 'MCP Endpoint URL',
+				displayName: 'MCP endpoint URL',
 				name: 'endpointUrl',
 				type: 'string',
 				default: '',
@@ -59,11 +59,11 @@ export class McpClient implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Bearer Auth',
+						name: 'Bearer auth',
 						value: 'bearerAuth',
 					},
 					{
-						name: 'Header Auth',
+						name: 'Header auth',
 						value: 'headerAuth',
 					},
 					{
@@ -71,7 +71,7 @@ export class McpClient implements INodeType {
 						value: 'mcpOAuth2Api',
 					},
 					{
-						name: 'Multiple Headers Auth',
+						name: 'Multiple headers auth',
 						value: 'multipleHeadersAuth',
 					},
 					{
@@ -102,7 +102,7 @@ export class McpClient implements INodeType {
 				description: 'The tool to use',
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						typeOptions: {
@@ -119,7 +119,7 @@ export class McpClient implements INodeType {
 				],
 			},
 			{
-				displayName: 'Input Mode',
+				displayName: 'Input mode',
 				name: 'inputMode',
 				type: 'options',
 				default: 'manual',
@@ -185,13 +185,13 @@ export class McpClient implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Convert to Binary',
+						displayName: 'Convert to binary',
 						name: 'convertToBinary',
 						type: 'boolean',
 						default: true,

@@ -33,7 +33,7 @@ export class OpenThesaurus implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Get Synonyms',
+						name: 'Get synonyms',
 						value: 'getSynonyms',
 						description: 'Get synonyms for a German word in German',
 						action: 'Get synonyms',
@@ -85,7 +85,7 @@ export class OpenThesaurus implements INodeType {
 							'This also returns up to five similarly written words for each answer. This is useful to be able to make a suggestion to the user in the event of a possible typing error.',
 					},
 					{
-						displayName: 'Starts With',
+						displayName: 'Starts with',
 						name: 'startswith',
 						type: 'boolean',
 						default: false,
@@ -102,7 +102,7 @@ export class OpenThesaurus implements INodeType {
 							'Whether up to ten words are returned for each answer that only contain the search term as a partial word',
 					},
 					{
-						displayName: 'Substring From Results',
+						displayName: 'Substring from results',
 						name: 'substringFromResults',
 						type: 'number',
 						default: 0,
@@ -110,7 +110,7 @@ export class OpenThesaurus implements INodeType {
 							'Specifies from which entry the partial word hits are to be returned. Only works together with substring = true.',
 					},
 					{
-						displayName: 'Substring Max Results',
+						displayName: 'Substring max results',
 						name: 'substringMaxResults',
 						type: 'number',
 						typeOptions: {

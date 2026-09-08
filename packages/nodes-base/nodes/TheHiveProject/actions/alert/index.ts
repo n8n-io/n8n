@@ -31,7 +31,7 @@ export const description: INodeProperties[] = [
 				action: 'Delete an alert',
 			},
 			{
-				name: 'Execute Responder',
+				name: 'Execute responder',
 				value: 'executeResponder',
 				action: 'Execute responder on an alert',
 			},
@@ -41,12 +41,12 @@ export const description: INodeProperties[] = [
 				action: 'Get an alert',
 			},
 			{
-				name: 'Merge Into Case',
+				name: 'Merge into case',
 				value: 'merge',
 				action: 'Merge an alert into a case',
 			},
 			{
-				name: 'Promote to Case',
+				name: 'Promote to case',
 				value: 'promote',
 				action: 'Promote an alert to a case',
 			},
@@ -61,7 +61,7 @@ export const description: INodeProperties[] = [
 				action: 'Update an alert',
 			},
 			{
-				name: 'Update Status',
+				name: 'Update status',
 				value: 'status',
 				action: 'Update an alert status',
 			},

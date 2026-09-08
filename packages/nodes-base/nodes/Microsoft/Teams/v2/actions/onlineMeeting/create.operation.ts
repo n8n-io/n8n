@@ -16,7 +16,7 @@ const properties: INodeProperties[] = [
 		description: 'The subject of the meeting',
 	},
 	{
-		displayName: 'Start Time',
+		displayName: 'Start time',
 		name: 'startDateTime',
 		required: true,
 		type: 'dateTime',
@@ -24,7 +24,7 @@ const properties: INodeProperties[] = [
 		description: 'The date and time when the meeting starts',
 	},
 	{
-		displayName: 'End Time',
+		displayName: 'End time',
 		name: 'endDateTime',
 		required: true,
 		type: 'dateTime',
@@ -39,21 +39,21 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Allow Attendees to Enable Camera',
+				displayName: 'Allow attendees to enable camera',
 				name: 'allowAttendeeToEnableCamera',
 				type: 'boolean',
 				default: true,
 				description: 'Whether attendees can turn on their camera',
 			},
 			{
-				displayName: 'Allow Attendees to Enable Microphone',
+				displayName: 'Allow attendees to enable microphone',
 				name: 'allowAttendeeToEnableMic',
 				type: 'boolean',
 				default: true,
 				description: 'Whether attendees can turn on their microphone',
 			},
 			{
-				displayName: 'Allow Meeting Chat',
+				displayName: 'Allow meeting chat',
 				name: 'allowMeetingChat',
 				type: 'options',
 				options: [
@@ -75,14 +75,14 @@ const properties: INodeProperties[] = [
 				description: 'The mode of the meeting chat',
 			},
 			{
-				displayName: 'Allow Teamwork Reactions',
+				displayName: 'Allow teamwork reactions',
 				name: 'allowTeamworkReactions',
 				type: 'boolean',
 				default: true,
 				description: 'Whether Teams reactions are enabled for the meeting',
 			},
 			{
-				displayName: 'Allowed Presenters',
+				displayName: 'Allowed presenters',
 				name: 'allowedPresenters',
 				type: 'options',
 				options: [
@@ -103,14 +103,14 @@ const properties: INodeProperties[] = [
 				description: 'Who can present in the meeting',
 			},
 			{
-				displayName: 'Announce Entry and Exit',
+				displayName: 'Announce entry and exit',
 				name: 'isEntryExitAnnounced',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to announce when callers join or leave the meeting',
 			},
 			{
-				displayName: 'Lobby Bypass Scope',
+				displayName: 'Lobby bypass scope',
 				name: 'lobbyBypassScope',
 				type: 'options',
 				options: [
@@ -123,7 +123,7 @@ const properties: INodeProperties[] = [
 						value: 'organization',
 					},
 					{
-						name: 'Organization and Federated',
+						name: 'Organization and federated',
 						value: 'organizationAndFederated',
 						description: 'People in the organization and guests from trusted organizations',
 					},
@@ -136,14 +136,14 @@ const properties: INodeProperties[] = [
 				description: 'Who can join the meeting without waiting in the lobby',
 			},
 			{
-				displayName: 'Record Automatically',
+				displayName: 'Record automatically',
 				name: 'recordAutomatically',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to record the meeting automatically',
 			},
 			{
-				displayName: 'Require Passcode',
+				displayName: 'Require passcode',
 				name: 'passcodeRequired',
 				type: 'boolean',
 				default: false,

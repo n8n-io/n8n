@@ -31,7 +31,7 @@ export const reminderOperations: INodeProperties[] = [
 				action: 'Get a reminder',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many reminders',
 				action: 'Get many reminders',
@@ -65,7 +65,7 @@ export const reminderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Frequency Type',
+		displayName: 'Frequency type',
 		name: 'frequencyType',
 		description: 'Type of frequency of the reminder',
 		type: 'options',
@@ -97,7 +97,7 @@ export const reminderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Recurring Interval',
+		displayName: 'Recurring interval',
 		name: 'frequencyNumber',
 		type: 'number',
 		default: 0,
@@ -111,7 +111,7 @@ export const reminderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Initial Date',
+		displayName: 'Initial date',
 		name: 'initialDate',
 		description: 'Date of the reminder',
 		type: 'dateTime',
@@ -139,10 +139,10 @@ export const reminderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -201,7 +201,7 @@ export const reminderFields: INodeProperties[] = [
 	//             reminder: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -249,10 +249,10 @@ export const reminderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -276,14 +276,14 @@ export const reminderFields: INodeProperties[] = [
 				description: 'Description about the reminder - Max 100,000 characters',
 			},
 			{
-				displayName: 'Frequency Type',
+				displayName: 'Frequency type',
 				name: 'frequency_type',
 				description: 'Frequency of the reminder',
 				type: 'options',
 				default: 'one_time',
 				options: [
 					{
-						name: 'One Time',
+						name: 'One time',
 						value: 'one_time',
 					},
 					{
@@ -301,14 +301,14 @@ export const reminderFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Initial Date',
+				displayName: 'Initial date',
 				name: 'initial_data',
 				description: 'Date of the reminder',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Recurring Interval',
+				displayName: 'Recurring interval',
 				name: 'frequency_number',
 				type: 'number',
 				default: 0,

@@ -60,7 +60,7 @@ export const conversationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Field Type Name or ID',
+		displayName: 'Contact field type name or ID',
 		name: 'contactFieldTypeId',
 		type: 'options',
 		description:
@@ -78,7 +78,7 @@ export const conversationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Happened At',
+		displayName: 'Happened at',
 		name: 'happenedAt',
 		description: 'Date when the conversation happened',
 		type: 'dateTime',
@@ -146,7 +146,7 @@ export const conversationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Field Type Name or ID',
+		displayName: 'Contact field type name or ID',
 		name: 'contactFieldTypeId',
 		type: 'options',
 		description:
@@ -164,7 +164,7 @@ export const conversationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Happened At',
+		displayName: 'Happened at',
 		name: 'happenedAt',
 		description: 'Date when the conversation happened',
 		type: 'dateTime',

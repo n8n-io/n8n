@@ -96,7 +96,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Access',
@@ -193,7 +193,7 @@ export const folderFields: INodeProperties[] = [
 			'The string to search for. This query is matched against item names, descriptions, text content of files, and various other fields of the different item types.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -224,10 +224,10 @@ export const folderFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['search'],
@@ -237,7 +237,7 @@ export const folderFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Content Types',
+				displayName: 'Content types',
 				name: 'contet_types',
 				type: 'string',
 				default: '',
@@ -245,13 +245,13 @@ export const folderFields: INodeProperties[] = [
 					'Limits search results to items with the given content types. Content types are defined as a comma-separated lists of Box recognized content types.',
 			},
 			{
-				displayName: 'Created At Range',
+				displayName: 'Created at range',
 				name: 'createdRangeUi',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
 				},
-				placeholder: 'Add Range',
+				placeholder: 'Add range',
 				default: {},
 				options: [
 					{
@@ -301,7 +301,7 @@ export const folderFields: INodeProperties[] = [
 					'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
 			},
 			{
-				displayName: 'File Extensions',
+				displayName: 'File extensions',
 				name: 'file_extensions',
 				type: 'string',
 				default: '',
@@ -322,11 +322,11 @@ export const folderFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'User Content',
+						name: 'User content',
 						value: 'user_content',
 					},
 					{
-						name: 'Enterprise Content',
+						name: 'Enterprise content',
 						value: 'enterprise_content',
 					},
 				],
@@ -334,7 +334,7 @@ export const folderFields: INodeProperties[] = [
 				description: 'Limits search results to a user scope',
 			},
 			{
-				displayName: 'Size Range',
+				displayName: 'Size range',
 				name: 'size_range',
 				type: 'string',
 				default: '',
@@ -352,7 +352,7 @@ export const folderFields: INodeProperties[] = [
 						value: 'relevance',
 					},
 					{
-						name: 'Modified At',
+						name: 'Modified at',
 						value: 'modified_at',
 					},
 				],
@@ -361,16 +361,16 @@ export const folderFields: INodeProperties[] = [
 					'Returns the results ordered in descending order by date at which the item was last modified',
 			},
 			{
-				displayName: 'Trash Content',
+				displayName: 'Trash content',
 				name: 'trash_content',
 				type: 'options',
 				options: [
 					{
-						name: 'Non Trashed Only',
+						name: 'Non trashed only',
 						value: 'non_trashed_only',
 					},
 					{
-						name: 'Trashed Only',
+						name: 'Trashed only',
 						value: 'trashed_only',
 					},
 				],
@@ -378,13 +378,13 @@ export const folderFields: INodeProperties[] = [
 				description: 'Controls if search results include the trash',
 			},
 			{
-				displayName: 'Update At Range',
+				displayName: 'Update at range',
 				name: 'updatedRangeUi',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
 				},
-				placeholder: 'Add Range',
+				placeholder: 'Add range',
 				default: {},
 				options: [
 					{
@@ -435,7 +435,7 @@ export const folderFields: INodeProperties[] = [
 		description: 'The ID of the folder to share',
 	},
 	{
-		displayName: 'Accessible By',
+		displayName: 'Accessible by',
 		name: 'accessibleBy',
 		type: 'options',
 		options: [
@@ -458,7 +458,7 @@ export const folderFields: INodeProperties[] = [
 		description: 'The type of object the file will be shared with',
 	},
 	{
-		displayName: 'Use Email',
+		displayName: 'Use email',
 		name: 'useEmail',
 		type: 'boolean',
 		displayOptions: {
@@ -522,7 +522,7 @@ export const folderFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Co-Owner',
+				name: 'Co-owner',
 				value: 'coOwner',
 				description: 'A Co-owner has all of functional read/write access that an editor does',
 			},
@@ -537,7 +537,7 @@ export const folderFields: INodeProperties[] = [
 				description: 'A previewer has limited read access',
 			},
 			{
-				name: 'Previewer Uploader',
+				name: 'Previewer uploader',
 				value: 'previewerUploader',
 				description: 'This access level is a combination of Previewer and Uploader',
 			},
@@ -552,7 +552,7 @@ export const folderFields: INodeProperties[] = [
 				description: 'A viewer has read access to a folder or file',
 			},
 			{
-				name: 'Viewer Uploader',
+				name: 'Viewer uploader',
 				value: 'viewerUploader',
 				description: 'This access level is a combination of Viewer and Uploader',
 			},
@@ -580,7 +580,7 @@ export const folderFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Can View Path',
+				displayName: 'Can view path',
 				name: 'can_view_path',
 				type: 'boolean',
 				default: false,
@@ -588,7 +588,7 @@ export const folderFields: INodeProperties[] = [
 					'Whether the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.',
 			},
 			{
-				displayName: 'Expires At',
+				displayName: 'Expires at',
 				name: 'expires_at',
 				type: 'dateTime',
 				default: '',
@@ -630,7 +630,7 @@ export const folderFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		displayOptions: {
@@ -640,10 +640,10 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
-				displayName: 'Can Non-Owners Invite',
+				displayName: 'Can non-owners invite',
 				name: 'can_non_owners_invite',
 				type: 'boolean',
 				default: false,
@@ -651,7 +651,7 @@ export const folderFields: INodeProperties[] = [
 					'Whether users who are not the owner of the folder can invite new collaborators to the folder',
 			},
 			{
-				displayName: 'Can Non-Owners View Colaborators',
+				displayName: 'Can non-owners view colaborators',
 				name: 'can_non_owners_view_collaborators',
 				type: 'boolean',
 				default: false,
@@ -674,7 +674,7 @@ export const folderFields: INodeProperties[] = [
 					'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
 			},
 			{
-				displayName: 'Is Collaboration Restricted To Enterprise',
+				displayName: 'Is collaboration restricted to Enterprise',
 				name: 'is_collaboration_restricted_to_enterprise',
 				type: 'boolean',
 				default: false,
@@ -697,14 +697,14 @@ export const folderFields: INodeProperties[] = [
 					'The parent folder for this folder. Use this to move the folder or to restore it out of the trash.',
 			},
 			{
-				displayName: 'Shared Link',
+				displayName: 'Shared link',
 				name: 'shared_link',
 				type: 'collection',
 				typeOptions: {
 					multipleValues: false,
 				},
 				description: 'Share link information',
-				placeholder: 'Add Shared Link Config',
+				placeholder: 'Add shared link config',
 				default: {},
 				options: [
 					{
@@ -748,25 +748,25 @@ export const folderFields: INodeProperties[] = [
 						displayName: 'Permissions',
 						name: 'permissions',
 						type: 'collection',
-						placeholder: 'Add Permition',
+						placeholder: 'Add permition',
 						default: {},
 						options: [
 							{
-								displayName: 'Can Download',
+								displayName: 'Can download',
 								name: 'can_download',
 								type: 'boolean',
 								default: false,
 								description: 'Whether the shared link allows for downloading of files',
 							},
 							{
-								displayName: 'Unshared At',
+								displayName: 'Unshared at',
 								name: 'unshared_at',
 								type: 'dateTime',
 								default: '',
 								description: 'The timestamp at which this shared link will expire',
 							},
 							{
-								displayName: 'Vanity Name',
+								displayName: 'Vanity name',
 								name: 'vanity_name',
 								type: 'string',
 								default: '',

@@ -36,7 +36,7 @@ export const description: INodeProperties[] = [
 			multipleValues: true,
 		},
 		default: {},
-		placeholder: 'Add Column',
+		placeholder: 'Add column',
 		description: 'The columns to create in the data table',
 		displayOptions,
 		options: [
@@ -73,12 +73,12 @@ export const description: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions,
 		options: [
 			{
-				displayName: 'Reuse Existing Tables',
+				displayName: 'Reuse existing tables',
 				name: 'createIfNotExists',
 				type: 'boolean',
 				default: true,

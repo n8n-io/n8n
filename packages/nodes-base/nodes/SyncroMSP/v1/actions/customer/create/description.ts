@@ -16,10 +16,10 @@ export const customerCreateDescription: CustomerProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['customer'],
@@ -30,13 +30,13 @@ export const customerCreateDescription: CustomerProperties = [
 		options: [
 			addressFixedCollection,
 			{
-				displayName: 'Business Name',
+				displayName: 'Business name',
 				name: 'businessName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
@@ -48,7 +48,7 @@ export const customerCreateDescription: CustomerProperties = [
 				default: false,
 			},
 			{
-				displayName: 'Invoice Emails',
+				displayName: 'Invoice emails',
 				name: 'invoiceCcEmails',
 				type: 'string',
 				typeOptions: {
@@ -58,13 +58,13 @@ export const customerCreateDescription: CustomerProperties = [
 				default: '',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastname',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'No Email',
+				displayName: 'No email',
 				name: 'noEmail',
 				type: 'boolean',
 				default: false,
@@ -76,7 +76,7 @@ export const customerCreateDescription: CustomerProperties = [
 				default: '',
 			},
 			{
-				displayName: 'Notification Email',
+				displayName: 'Notification email',
 				name: 'notificationEmail',
 				type: 'string',
 				default: '',
@@ -93,7 +93,7 @@ export const customerCreateDescription: CustomerProperties = [
 				default: '',
 			},
 			{
-				displayName: 'Referred By',
+				displayName: 'Referred by',
 				name: 'referredBy',
 				type: 'string',
 				default: '',

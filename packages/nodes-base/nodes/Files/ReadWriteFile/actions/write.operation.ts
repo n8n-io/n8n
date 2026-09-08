@@ -24,7 +24,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Path and Name',
+		displayName: 'File path and name',
 		name: 'fileName',
 		type: 'string',
 		default: '',
@@ -34,7 +34,7 @@ export const properties: INodeProperties[] = [
 			'Path and name of the file that should be written. Also include the file extension.',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'dataPropertyName',
 		type: 'string',
 		default: 'data',

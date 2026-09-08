@@ -13,7 +13,7 @@ export const paymentOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many payments',
 				action: 'Get many payments',
@@ -34,7 +34,7 @@ export const paymentFields: INodeProperties[] = [
 	/*                                 payment:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -65,7 +65,7 @@ export const paymentFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -77,7 +77,7 @@ export const paymentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -94,10 +94,10 @@ export const paymentFields: INodeProperties[] = [
 		description: 'Attributes in JSON form',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['payment'],
@@ -108,21 +108,21 @@ export const paymentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Date From',
+				displayName: 'Date from',
 				name: 'from',
 				type: 'dateTime',
 				default: '',
 				description: 'Payment starting from date',
 			},
 			{
-				displayName: 'Date To',
+				displayName: 'Date to',
 				name: 'to',
 				type: 'dateTime',
 				default: '',
 				description: 'Payment up until date',
 			},
 			{
-				displayName: 'Is Paid',
+				displayName: 'Is paid',
 				name: 'isPaid',
 				type: 'boolean',
 				default: false,
@@ -155,7 +155,7 @@ export const paymentFields: INodeProperties[] = [
 						value: 'active',
 					},
 					{
-						name: 'Past Due',
+						name: 'Past due',
 						value: 'past_due',
 					},
 					{
@@ -169,7 +169,7 @@ export const paymentFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'One Off Charge',
+				displayName: 'One off charge',
 				name: 'isOneOffCharge',
 				type: 'boolean',
 				default: false,
@@ -180,7 +180,7 @@ export const paymentFields: INodeProperties[] = [
 	/*                                 payment:reschedule                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Payment Name or ID',
+		displayName: 'Payment name or ID',
 		name: 'paymentId',
 		type: 'options',
 		typeOptions: {

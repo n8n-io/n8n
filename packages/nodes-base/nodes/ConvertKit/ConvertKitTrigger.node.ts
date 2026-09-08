@@ -51,49 +51,49 @@ export class ConvertKitTrigger implements INodeType {
 				description: 'The events that can trigger the webhook and whether they are enabled',
 				options: [
 					{
-						name: 'Form Subscribe',
+						name: 'Form subscribe',
 						value: 'formSubscribe',
 					},
 					{
-						name: 'Link Click',
+						name: 'Link click',
 						value: 'linkClick',
 					},
 					{
-						name: 'Product Purchase',
+						name: 'Product purchase',
 						value: 'productPurchase',
 					},
 					{
-						name: 'Purchase Created',
+						name: 'Purchase created',
 						value: 'purchaseCreate',
 					},
 					{
-						name: 'Sequence Complete',
+						name: 'Sequence complete',
 						value: 'courseComplete',
 					},
 					{
-						name: 'Sequence Subscribe',
+						name: 'Sequence subscribe',
 						value: 'courseSubscribe',
 					},
 					{
-						name: 'Subscriber Activated',
+						name: 'Subscriber activated',
 						value: 'subscriberActivate',
 					},
 					{
-						name: 'Subscriber Unsubscribe',
+						name: 'Subscriber unsubscribe',
 						value: 'subscriberUnsubscribe',
 					},
 					{
-						name: 'Tag Add',
+						name: 'Tag add',
 						value: 'tagAdd',
 					},
 					{
-						name: 'Tag Remove',
+						name: 'Tag remove',
 						value: 'tagRemove',
 					},
 				],
 			},
 			{
-				displayName: 'Form Name or ID',
+				displayName: 'Form name or ID',
 				name: 'formId',
 				type: 'options',
 				description:
@@ -110,7 +110,7 @@ export class ConvertKitTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Sequence Name or ID',
+				displayName: 'Sequence name or ID',
 				name: 'courseId',
 				type: 'options',
 				description:
@@ -127,7 +127,7 @@ export class ConvertKitTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Initiating Link',
+				displayName: 'Initiating link',
 				name: 'link',
 				type: 'string',
 				required: true,
@@ -152,7 +152,7 @@ export class ConvertKitTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Tag Name or ID',
+				displayName: 'Tag name or ID',
 				name: 'tagId',
 				type: 'options',
 				description:

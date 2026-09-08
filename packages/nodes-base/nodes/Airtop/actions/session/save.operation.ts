@@ -17,7 +17,7 @@ import { sessionIdField, profileNameField } from '../common/fields';
 export const description: INodeProperties[] = [
 	{
 		displayName:
-			"Note: This operation is not needed if you enabled 'Save Profile' in the 'Create Session' operation",
+			"Note: This operation is not needed if you enabled 'Save profile' in the 'Create session' operation",
 		name: 'notice',
 		type: 'notice',
 		displayOptions: {

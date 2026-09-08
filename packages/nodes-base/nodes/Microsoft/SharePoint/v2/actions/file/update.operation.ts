@@ -34,7 +34,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Updated File Name',
+		displayName: 'Updated file name',
 		name: 'fileName',
 		type: 'string',
 		default: '',
@@ -42,14 +42,14 @@ const properties: INodeProperties[] = [
 		description: 'New name for the file. Leave empty to keep the current name.',
 	},
 	{
-		displayName: 'Change File Content',
+		displayName: 'Change file content',
 		name: 'changeFileContent',
 		type: 'boolean',
 		default: false,
 		description: 'Whether to replace the file’s contents with the input binary data',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,

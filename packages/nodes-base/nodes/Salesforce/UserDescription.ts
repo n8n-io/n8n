@@ -19,7 +19,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many users',
 				action: 'Get many users',
@@ -52,7 +52,7 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -86,7 +86,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -98,7 +98,7 @@ export const userFields: INodeProperties[] = [
 			{
 				displayName: 'Conditions',
 				name: 'conditionsUi',
-				placeholder: 'Add Condition',
+				placeholder: 'Add condition',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -111,7 +111,7 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {

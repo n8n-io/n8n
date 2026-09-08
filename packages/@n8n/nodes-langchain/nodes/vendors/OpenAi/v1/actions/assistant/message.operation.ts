@@ -36,7 +36,7 @@ const properties: INodeProperties[] = [
 		name: 'prompt',
 	},
 	{
-		displayName: 'Prompt (User Message)',
+		displayName: 'Prompt (user message)',
 		name: 'text',
 		type: 'string',
 		default: '',
@@ -98,7 +98,7 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		description: 'Additional options to add',
 		type: 'collection',
 		default: {},
@@ -116,7 +116,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Retries',
+				displayName: 'Max retries',
 				name: 'maxRetries',
 				default: 2,
 				description: 'Maximum number of retries to attempt',
@@ -130,7 +130,7 @@ const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Preserve Original Tools',
+				displayName: 'Preserve original tools',
 				name: 'preserveOriginalTools',
 				type: 'boolean',
 				default: true,

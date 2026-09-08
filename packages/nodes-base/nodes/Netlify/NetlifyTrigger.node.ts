@@ -45,7 +45,7 @@ export class NetlifyTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Site Name or ID',
+				displayName: 'Site name or ID',
 				name: 'siteId',
 				required: true,
 				type: 'options',
@@ -64,25 +64,25 @@ export class NetlifyTrigger implements INodeType {
 				default: '',
 				options: [
 					{
-						name: 'Deploy Building',
+						name: 'Deploy building',
 						value: 'deployBuilding',
 					},
 					{
-						name: 'Deploy Failed',
+						name: 'Deploy failed',
 						value: 'deployFailed',
 					},
 					{
-						name: 'Deploy Created',
+						name: 'Deploy created',
 						value: 'deployCreated',
 					},
 					{
-						name: 'Form Submitted',
+						name: 'Form submitted',
 						value: 'submissionCreated',
 					},
 				],
 			},
 			{
-				displayName: 'Form Name or ID',
+				displayName: 'Form name or ID',
 				name: 'formId',
 				type: 'options',
 				required: true,

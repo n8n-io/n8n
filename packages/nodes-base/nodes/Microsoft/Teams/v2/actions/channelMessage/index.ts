@@ -34,13 +34,13 @@ export const description: INodeProperties[] = [
 				action: 'Get message',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many messages from a channel',
 				action: 'Get many messages',
 			},
 			{
-				name: 'Get Many Replies',
+				name: 'Get many replies',
 				value: 'getAllReplies',
 				description: 'Get many replies to a message in a channel',
 				action: 'Get many replies',

@@ -37,7 +37,7 @@ export const recipientOperations: INodeProperties[] = [
 
 const additionalRecipientFields: INodeProperties[] = [
 	{
-		displayName: 'Recipient Notes',
+		displayName: 'Recipient notes',
 		name: 'recipientNotes',
 		type: 'string',
 		default: '',
@@ -45,7 +45,7 @@ const additionalRecipientFields: INodeProperties[] = [
 			'Notes for this recipient: these are global notes that should not be task- or destination-specific',
 	},
 	{
-		displayName: 'Skip Recipient SMS Notifications',
+		displayName: 'Skip recipient SMS notifications',
 		name: 'recipientSkipSMSNotifications',
 		type: 'boolean',
 		default: false,
@@ -54,7 +54,7 @@ const additionalRecipientFields: INodeProperties[] = [
 ];
 
 const recipientName = {
-	displayName: 'Recipient Name',
+	displayName: 'Recipient name',
 	name: 'recipientName',
 	type: 'string',
 	description: "The recipient's complete name",
@@ -62,7 +62,7 @@ const recipientName = {
 } as INodeProperties;
 
 const recipientPhone = {
-	displayName: 'Recipient Phone',
+	displayName: 'Recipient phone',
 	name: 'recipientPhone',
 	type: 'string',
 	description:
@@ -76,7 +76,7 @@ const updateFields: INodeProperties[] = [
 		required: false,
 	},
 	{
-		displayName: 'Recipient Notes',
+		displayName: 'Recipient notes',
 		name: 'notes',
 		type: 'string',
 		default: '',
@@ -88,7 +88,7 @@ const updateFields: INodeProperties[] = [
 		required: false,
 	},
 	{
-		displayName: 'Skip Recipient SMS Notifications',
+		displayName: 'Skip recipient SMS notifications',
 		name: 'skipSMSNotifications',
 		type: 'boolean',
 		default: false,
@@ -100,11 +100,11 @@ export const recipientExternalField = {
 	displayName: 'Recipient',
 	name: 'recipient',
 	type: 'fixedCollection',
-	placeholder: 'Add Recipient',
+	placeholder: 'Add recipient',
 	default: {},
 	options: [
 		{
-			displayName: 'Recipient Properties',
+			displayName: 'Recipient properties',
 			name: 'recipientProperties',
 			default: {},
 			values: [
@@ -124,7 +124,7 @@ export const recipientExternalField = {
 
 export const recipientFields: INodeProperties[] = [
 	{
-		displayName: 'Get By',
+		displayName: 'Get by',
 		name: 'getBy',
 		type: 'options',
 		displayOptions: {
@@ -231,10 +231,10 @@ export const recipientFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -245,7 +245,7 @@ export const recipientFields: INodeProperties[] = [
 		options: additionalRecipientFields,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Update Fields',
@@ -262,7 +262,7 @@ export const recipientFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -272,7 +272,7 @@ export const recipientFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Skip Recipient Phone Number Validation',
+				displayName: 'Skip recipient phone number validation',
 				name: 'recipientSkipPhoneNumberValidation',
 				type: 'boolean',
 				default: false,

@@ -25,7 +25,7 @@ export const eventOperations: INodeProperties[] = [
 				action: 'Get an event',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many events',
 			},
@@ -39,7 +39,7 @@ export const eventFields: INodeProperties[] = [
 	//              event: create
 	// ----------------------------------------
 	{
-		displayName: 'Origin System',
+		displayName: 'Origin system',
 		name: 'originSystem',
 		description: 'Source where the event originated',
 		type: 'string',
@@ -68,10 +68,10 @@ export const eventFields: INodeProperties[] = [
 	},
 	makeSimpleField('event', 'create'),
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -105,7 +105,7 @@ export const eventFields: INodeProperties[] = [
 	//              event: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

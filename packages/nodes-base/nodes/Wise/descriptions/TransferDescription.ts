@@ -29,7 +29,7 @@ export const transferOperations: INodeProperties[] = [
 				action: 'Get a transfer',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many transfers',
 			},
@@ -47,7 +47,7 @@ export const transferFields: INodeProperties[] = [
 	//         transfer: create
 	// ----------------------------------
 	{
-		displayName: 'Profile Name or ID',
+		displayName: 'Profile name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -80,7 +80,7 @@ export const transferFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Target Account Name or ID',
+		displayName: 'Target account name or ID',
 		name: 'targetAccountId',
 		type: 'options',
 		required: true,
@@ -98,10 +98,10 @@ export const transferFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -142,7 +142,7 @@ export const transferFields: INodeProperties[] = [
 	//        transfer: execute
 	// ----------------------------------
 	{
-		displayName: 'Profile Name or ID',
+		displayName: 'Profile name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -192,13 +192,13 @@ export const transferFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Download Receipt',
+		displayName: 'Download receipt',
 		name: 'downloadReceipt',
 		type: 'boolean',
 		required: true,
 		default: false,
 		description:
-			"Whether to download the transfer receipt as a PDF file. Only for executed transfers, having status 'Outgoing Payment Sent'.",
+			"Whether to download the transfer receipt as a PDF file. Only for executed transfers, having status 'Outgoing payment sent'.",
 		displayOptions: {
 			show: {
 				resource: ['transfer'],
@@ -207,7 +207,7 @@ export const transferFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
@@ -222,7 +222,7 @@ export const transferFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		required: true,
@@ -242,7 +242,7 @@ export const transferFields: INodeProperties[] = [
 	//        transfer: getAll
 	// ----------------------------------
 	{
-		displayName: 'Profile Name or ID',
+		displayName: 'Profile name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -260,7 +260,7 @@ export const transferFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -294,7 +294,7 @@ export const transferFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -307,22 +307,22 @@ export const transferFields: INodeProperties[] = [
 				displayName: 'Range',
 				name: 'range',
 				type: 'fixedCollection',
-				placeholder: 'Add Range',
+				placeholder: 'Add range',
 				description: 'Range of time for filtering the transfers',
 				default: {},
 				options: [
 					{
-						displayName: 'Range Properties',
+						displayName: 'Range properties',
 						name: 'rangeProperties',
 						values: [
 							{
-								displayName: 'Created Date Start',
+								displayName: 'Created date start',
 								name: 'createdDateStart',
 								type: 'dateTime',
 								default: '',
 							},
 							{
-								displayName: 'Created Date End',
+								displayName: 'Created date end',
 								name: 'createdDateEnd',
 								type: 'dateTime',
 								default: '',
@@ -332,7 +332,7 @@ export const transferFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Source Currency',
+				displayName: 'Source currency',
 				name: 'sourceCurrency',
 				type: 'string',
 				default: '',
@@ -345,7 +345,7 @@ export const transferFields: INodeProperties[] = [
 				default: 'processing',
 				options: [
 					{
-						name: 'Bounced Back',
+						name: 'Bounced back',
 						value: 'bounced_back',
 					},
 					{
@@ -353,23 +353,23 @@ export const transferFields: INodeProperties[] = [
 						value: 'cancelled',
 					},
 					{
-						name: 'Charged Back',
+						name: 'Charged back',
 						value: 'charged_back',
 					},
 					{
-						name: 'Funds Converted',
+						name: 'Funds converted',
 						value: 'funds_converted',
 					},
 					{
-						name: 'Funds Refunded',
+						name: 'Funds refunded',
 						value: 'funds_refunded',
 					},
 					{
-						name: 'Incoming Payment Waiting',
+						name: 'Incoming payment waiting',
 						value: 'incoming_payment_waiting',
 					},
 					{
-						name: 'Outgoing Payment Sent',
+						name: 'Outgoing payment sent',
 						value: 'outgoing_payment_sent',
 					},
 					{
@@ -381,13 +381,13 @@ export const transferFields: INodeProperties[] = [
 						value: 'unknown',
 					},
 					{
-						name: 'Waiting for Recipient Input to Proceed',
+						name: 'Waiting for recipient input to proceed',
 						value: 'waiting_recipient_input_to_proceed',
 					},
 				],
 			},
 			{
-				displayName: 'Target Currency',
+				displayName: 'Target currency',
 				name: 'targetCurrency',
 				type: 'string',
 				default: '',

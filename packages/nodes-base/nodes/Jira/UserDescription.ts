@@ -81,7 +81,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Email Address',
+		displayName: 'Email address',
 		name: 'emailAddress',
 		type: 'string',
 		default: '',
@@ -94,7 +94,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Display Name',
+		displayName: 'Display name',
 		name: 'displayName',
 		type: 'string',
 		required: true,
@@ -107,10 +107,10 @@ export const userFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -173,10 +173,10 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -198,7 +198,7 @@ export const userFields: INodeProperties[] = [
 						description: 'Include all groups to which the user belongs',
 					},
 					{
-						name: 'Application Roles',
+						name: 'Application roles',
 						value: 'applicationRoles',
 						description: 'Include details of all the applications the user can access',
 					},

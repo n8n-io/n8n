@@ -27,7 +27,7 @@ export const caseOperations: INodeProperties[] = [
 
 export const caseFields: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -129,7 +129,7 @@ export const caseFields: INodeProperties[] = [
 		description: 'Severity of the alert. Default=Medium.',
 	},
 	{
-		displayName: 'Start Date',
+		displayName: 'Start date',
 		name: 'startDate',
 		type: 'dateTime',
 		required: true,
@@ -217,7 +217,7 @@ export const caseFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder Name or ID',
+		displayName: 'Responder name or ID',
 		name: 'responder',
 		type: 'options',
 		description:
@@ -239,7 +239,7 @@ export const caseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: true,
@@ -265,7 +265,7 @@ export const caseFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
@@ -277,14 +277,14 @@ export const caseFields: INodeProperties[] = [
 						'/jsonParameters': [false],
 					},
 				},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				options: [
 					{
 						name: 'customFields',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								description:
@@ -306,7 +306,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Custom Fields (JSON)',
+				displayName: 'Custom fields (JSON)',
 				name: 'customFieldsJson',
 				type: 'string',
 				default: '',
@@ -318,7 +318,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'endDate',
 				default: '',
 				type: 'dateTime',
@@ -347,10 +347,10 @@ export const caseFields: INodeProperties[] = [
 	},
 	// Optional fields (Update operations)
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		type: 'collection',
 		name: 'updateFields',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['case'],
@@ -360,7 +360,7 @@ export const caseFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
@@ -372,14 +372,14 @@ export const caseFields: INodeProperties[] = [
 						'/jsonParameters': [false],
 					},
 				},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				options: [
 					{
 						name: 'customFields',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								description:
@@ -401,7 +401,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Custom Fields (JSON)',
+				displayName: 'Custom fields (JSON)',
 				name: 'customFieldsJson',
 				type: 'string',
 				default: '',
@@ -420,7 +420,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'Description of the case',
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
@@ -435,21 +435,21 @@ export const caseFields: INodeProperties[] = [
 				description: 'Flag of the case default=false',
 			},
 			{
-				displayName: 'Impact Status',
+				displayName: 'Impact status',
 				name: 'impactStatus',
 				type: 'options',
 				default: '',
 				options: [
 					{
-						name: 'No Impact',
+						name: 'No impact',
 						value: 'NoImpact',
 					},
 					{
-						name: 'With Impact',
+						name: 'With impact',
 						value: 'WithImpact',
 					},
 					{
-						name: 'Not Applicable',
+						name: 'Not applicable',
 						value: 'NotApplicable',
 					},
 				],
@@ -474,7 +474,7 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Resolution Status',
+				displayName: 'Resolution status',
 				name: 'resolutionStatus',
 				type: 'options',
 				default: '',
@@ -485,7 +485,7 @@ export const caseFields: INodeProperties[] = [
 					},
 					{
 						value: 'FalsePositive',
-						name: 'False Positive',
+						name: 'False positive',
 					},
 					{
 						value: 'Indeterminate',
@@ -497,7 +497,7 @@ export const caseFields: INodeProperties[] = [
 					},
 					{
 						value: 'TruePositive',
-						name: 'True Positive',
+						name: 'True positive',
 					},
 				],
 				description: 'Resolution status of the case',
@@ -524,7 +524,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
@@ -627,7 +627,7 @@ export const caseFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add a Filter',
+		placeholder: 'Add a filter',
 		displayOptions: {
 			show: {
 				resource: ['case'],
@@ -636,21 +636,21 @@ export const caseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				options: [
 					{
 						name: 'customFields',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								description:
@@ -679,7 +679,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'Description of the case',
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
@@ -694,21 +694,21 @@ export const caseFields: INodeProperties[] = [
 				description: 'Flag of the case default=false',
 			},
 			{
-				displayName: 'Impact Status',
+				displayName: 'Impact status',
 				name: 'impactStatus',
 				type: 'options',
 				default: '',
 				options: [
 					{
-						name: 'No Impact',
+						name: 'No impact',
 						value: 'NoImpact',
 					},
 					{
-						name: 'With Impact',
+						name: 'With impact',
 						value: 'WithImpact',
 					},
 					{
-						name: 'Not Applicable',
+						name: 'Not applicable',
 						value: 'NotApplicable',
 					},
 				],
@@ -720,7 +720,7 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Resolution Status',
+				displayName: 'Resolution status',
 				name: 'resolutionStatus',
 				type: 'options',
 				default: '',
@@ -769,7 +769,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',

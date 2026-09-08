@@ -31,7 +31,7 @@ export const projectOperations: INodeProperties[] = [
 				action: 'Get a project',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many projects',
 				action: 'Get many projects',
@@ -52,7 +52,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                project:create/get                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -70,7 +70,7 @@ export const projectFields: INodeProperties[] = [
 			'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Project Slug Name or ID',
+		displayName: 'Project slug name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -89,7 +89,7 @@ export const projectFields: INodeProperties[] = [
 			'The slug of the project to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Team Slug Name or ID',
+		displayName: 'Team slug name or ID',
 		name: 'teamSlug',
 		type: 'options',
 		typeOptions: {
@@ -122,10 +122,10 @@ export const projectFields: INodeProperties[] = [
 		description: 'The name for the new project',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -149,7 +149,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                project:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -184,7 +184,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                project:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -202,7 +202,7 @@ export const projectFields: INodeProperties[] = [
 			'The slug of the organization the project belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Project Slug Name or ID',
+		displayName: 'Project slug name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -221,10 +221,10 @@ export const projectFields: INodeProperties[] = [
 			'The slug of the project to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -242,14 +242,14 @@ export const projectFields: INodeProperties[] = [
 				description: 'The new platform for the updated project',
 			},
 			{
-				displayName: 'Digests Maximum Delay',
+				displayName: 'Digests maximum delay',
 				name: 'digestsMaxDelay',
 				type: 'number',
 				default: 1800,
 				description: 'Maximum interval to digest alerts',
 			},
 			{
-				displayName: 'Digests Minimun Delay',
+				displayName: 'Digests minimun delay',
 				name: 'digestsMinDelay',
 				type: 'number',
 				default: 60,
@@ -290,7 +290,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                project:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -308,7 +308,7 @@ export const projectFields: INodeProperties[] = [
 			'The slug of the organization the project belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Project Slug Name or ID',
+		displayName: 'Project slug name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {

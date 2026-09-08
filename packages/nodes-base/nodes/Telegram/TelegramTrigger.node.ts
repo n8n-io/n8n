@@ -82,7 +82,7 @@ export class TelegramTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'updates',
 				type: 'multiOptions',
 				options: [
@@ -92,30 +92,30 @@ export class TelegramTrigger implements INodeType {
 						description: 'All updates',
 					},
 					{
-						name: 'Callback Query',
+						name: 'Callback query',
 						value: 'callback_query',
 						description: 'Trigger on new incoming callback query',
 					},
 					{
-						name: 'Channel Post',
+						name: 'Channel post',
 						value: 'channel_post',
 						description:
 							'Trigger on new incoming channel post of any kind — text, photo, sticker, etc',
 					},
 					{
-						name: 'Edited Channel Post',
+						name: 'Edited channel post',
 						value: 'edited_channel_post',
 						description:
 							'Trigger on new version of a channel post that is known to the bot and was edited',
 					},
 					{
-						name: 'Edited Message',
+						name: 'Edited message',
 						value: 'edited_message',
 						description:
 							'Trigger on new version of a channel post that is known to the bot and was edited',
 					},
 					{
-						name: 'Inline Query',
+						name: 'Inline query',
 						value: 'inline_query',
 						description: 'Trigger on new incoming inline query',
 					},
@@ -127,18 +127,18 @@ export class TelegramTrigger implements INodeType {
 					{
 						name: 'Poll',
 						value: 'poll',
-						action: 'On Poll Change',
+						action: 'On poll change',
 						description:
 							'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
 					},
 					{
-						name: 'Pre-Checkout Query',
+						name: 'Pre-checkout query',
 						value: 'pre_checkout_query',
 						description:
 							'Trigger on new incoming pre-checkout query. Contains full information about checkout.',
 					},
 					{
-						name: 'Shipping Query',
+						name: 'Shipping query',
 						value: 'shipping_query',
 						description:
 							'Trigger on new incoming shipping query. Only for invoices with flexible price.',
@@ -155,23 +155,23 @@ export class TelegramTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
-						displayName: 'Download Images/Files',
+						displayName: 'Download images/files',
 						name: 'download',
 						type: 'boolean',
 						default: false,
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description:
-							"Telegram delivers the image in multiple sizes. By default, just the large image would be downloaded. If you want to change the size, set the field 'Image Size'.",
+							"Telegram delivers the image in multiple sizes. By default, just the large image would be downloaded. If you want to change the size, set the field 'Image size'.",
 					},
 					{
-						displayName: 'Image Size',
+						displayName: 'Image size',
 						name: 'imageSize',
 						type: 'options',
 						displayOptions: {
@@ -193,7 +193,7 @@ export class TelegramTrigger implements INodeType {
 								value: 'large',
 							},
 							{
-								name: 'Extra Large',
+								name: 'Extra large',
 								value: 'extraLarge',
 							},
 						],
@@ -201,7 +201,7 @@ export class TelegramTrigger implements INodeType {
 						description: 'The size of the image to be downloaded',
 					},
 					{
-						displayName: 'Restrict to Chat IDs',
+						displayName: 'Restrict to chat IDs',
 						name: 'chatIds',
 						type: 'string',
 						default: '',
@@ -214,7 +214,7 @@ export class TelegramTrigger implements INodeType {
 						},
 					},
 					{
-						displayName: 'Restrict to User IDs',
+						displayName: 'Restrict to user IDs',
 						name: 'userIds',
 						type: 'string',
 						default: '',

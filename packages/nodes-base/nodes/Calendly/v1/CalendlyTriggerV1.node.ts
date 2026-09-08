@@ -97,7 +97,7 @@ export class CalendlyTriggerV1 implements INodeType {
 							value: 'oAuth2',
 						},
 						{
-							name: 'Personal Access Token',
+							name: 'Personal access token',
 							value: 'apiKey',
 						},
 					],
@@ -129,12 +129,12 @@ export class CalendlyTriggerV1 implements INodeType {
 					type: 'multiOptions',
 					options: [
 						{
-							name: 'Event Created',
+							name: 'Event created',
 							value: 'invitee.created',
 							description: 'Receive notifications when a new Calendly event is created',
 						},
 						{
-							name: 'Event Canceled',
+							name: 'Event canceled',
 							value: 'invitee.canceled',
 							description: 'Receive notifications when a Calendly event is canceled',
 						},

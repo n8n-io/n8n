@@ -33,7 +33,7 @@ export const accountOperations: INodeProperties[] = [
 				action: 'Get an account',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many accounts',
 				action: 'Get many accounts',
@@ -68,10 +68,10 @@ export const accountFields: INodeProperties[] = [
 		description: "Account's name",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -90,7 +90,7 @@ export const accountFields: INodeProperties[] = [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				placeholder: 'Add Custom Fields',
+				placeholder: 'Add custom fields',
 				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -103,7 +103,7 @@ export const accountFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
@@ -114,7 +114,7 @@ export const accountFields: INodeProperties[] = [
 									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
@@ -145,11 +145,11 @@ export const accountFields: INodeProperties[] = [
 		description: 'ID of the account to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		description: 'The fields to update',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -175,7 +175,7 @@ export const accountFields: INodeProperties[] = [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				placeholder: 'Add Fields',
+				placeholder: 'Add fields',
 				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -188,7 +188,7 @@ export const accountFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
@@ -199,7 +199,7 @@ export const accountFields: INodeProperties[] = [
 									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
@@ -253,7 +253,7 @@ export const accountFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],

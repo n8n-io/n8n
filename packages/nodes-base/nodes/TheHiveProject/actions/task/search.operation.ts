@@ -19,7 +19,7 @@ import { theHiveApiQuery } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Search in All Cases',
+		displayName: 'Search in all cases',
 		name: 'allCases',
 		type: 'boolean',
 		default: true,

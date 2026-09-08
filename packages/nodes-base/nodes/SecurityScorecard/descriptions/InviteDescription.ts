@@ -40,7 +40,7 @@ export const inviteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		default: '',
@@ -53,7 +53,7 @@ export const inviteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		default: '',
@@ -80,10 +80,10 @@ export const inviteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['invite'],
@@ -93,7 +93,7 @@ export const inviteFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Days to Resolve Issue',
+				displayName: 'Days to resolve issue',
 				description: 'Minimum days to resolve a scorecard issue',
 				name: 'days_to_resolve_issue',
 				type: 'number',
@@ -107,14 +107,14 @@ export const inviteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Grade to Maintain',
+				displayName: 'Grade to maintain',
 				description: "Request the invitee's organisation to maintain a minimum grade",
 				name: 'grade_to_maintain',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Is Organisation Point of Contact',
+				displayName: 'Is organisation point of contact',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: "Is the invitee organisation's point of contact",
 				name: 'is_organization_point_of_contact',
@@ -122,25 +122,25 @@ export const inviteFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Issue Description',
+				displayName: 'Issue description',
 				name: 'issue_desc',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Issue Title',
+				displayName: 'Issue title',
 				name: 'issue_title',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Issue Type',
+				displayName: 'Issue type',
 				name: 'issue_type',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Send Me a Copy',
+				displayName: 'Send me a copy',
 				name: 'sendme_copy',
 				description: 'Whether to send a copy of the invite to the requesting user',
 				type: 'boolean',

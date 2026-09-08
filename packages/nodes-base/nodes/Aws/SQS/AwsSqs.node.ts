@@ -40,7 +40,7 @@ export class AwsSqs implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Send Message',
+						name: 'Send message',
 						value: 'sendMessage',
 						description: 'Send a message to a queue',
 						action: 'Send a message to a queue',
@@ -49,7 +49,7 @@ export class AwsSqs implements INodeType {
 				default: 'sendMessage',
 			},
 			{
-				displayName: 'Queue Name or ID',
+				displayName: 'Queue name or ID',
 				name: 'queue',
 				type: 'options',
 				typeOptions: {
@@ -67,7 +67,7 @@ export class AwsSqs implements INodeType {
 					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Queue Type',
+				displayName: 'Queue type',
 				name: 'queueType',
 				type: 'options',
 				options: [
@@ -85,7 +85,7 @@ export class AwsSqs implements INodeType {
 				default: 'standard',
 			},
 			{
-				displayName: 'Send Input Data',
+				displayName: 'Send input data',
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
@@ -106,7 +106,7 @@ export class AwsSqs implements INodeType {
 				description: 'Message to send to the queue',
 			},
 			{
-				displayName: 'Message Group ID',
+				displayName: 'Message group ID',
 				name: 'messageGroupId',
 				type: 'string',
 				default: '',
@@ -132,7 +132,7 @@ export class AwsSqs implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Delay Seconds',
+						displayName: 'Delay seconds',
 						name: 'delaySeconds',
 						type: 'number',
 						displayOptions: {
@@ -148,9 +148,9 @@ export class AwsSqs implements INodeType {
 						},
 					},
 					{
-						displayName: 'Message Attributes',
+						displayName: 'Message attributes',
 						name: 'messageAttributes',
-						placeholder: 'Add Attribute',
+						placeholder: 'Add attribute',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -170,7 +170,7 @@ export class AwsSqs implements INodeType {
 										description: 'Name of the attribute',
 									},
 									{
-										displayName: 'Property Name',
+										displayName: 'Property name',
 										name: 'dataPropertyName',
 										type: 'string',
 										default: 'data',
@@ -222,7 +222,7 @@ export class AwsSqs implements INodeType {
 						],
 					},
 					{
-						displayName: 'Message Deduplication ID',
+						displayName: 'Message deduplication ID',
 						name: 'messageDeduplicationId',
 						type: 'string',
 						default: '',

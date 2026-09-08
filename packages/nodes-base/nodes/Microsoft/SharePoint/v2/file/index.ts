@@ -20,7 +20,7 @@ export const fileRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {

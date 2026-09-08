@@ -19,17 +19,17 @@ import { cellFormatDefault, untilSheetSelected } from '../../helpers/GoogleSheet
 
 export const description: SheetProperties = [
 	{
-		displayName: 'Data Mode',
+		displayName: 'Data mode',
 		name: 'dataMode',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Map Each Column Below',
+				name: 'Map each column below',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
@@ -77,7 +77,7 @@ export const description: SheetProperties = [
 		},
 	},
 	{
-		displayName: 'Value of Column to Match On',
+		displayName: 'Value of column to match on',
 		name: 'valueToMatchOn',
 		type: 'string',
 		default: '',
@@ -94,9 +94,9 @@ export const description: SheetProperties = [
 		},
 	},
 	{
-		displayName: 'Values to Send',
+		displayName: 'Values to send',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -132,7 +132,7 @@ export const description: SheetProperties = [
 						default: '',
 					},
 					{
-						displayName: 'Column Name',
+						displayName: 'Column name',
 						name: 'columnName',
 						type: 'string',
 						default: '',

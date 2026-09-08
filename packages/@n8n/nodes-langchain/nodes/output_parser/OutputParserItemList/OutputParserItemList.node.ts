@@ -46,11 +46,11 @@ export class OutputParserItemList implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
-						displayName: 'Number Of Items',
+						displayName: 'Number of items',
 						name: 'numberOfItems',
 						type: 'number',
 						default: -1,

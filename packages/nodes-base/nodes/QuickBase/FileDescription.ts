@@ -76,7 +76,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The unique identifier of the field',
 	},
 	{
-		displayName: 'Version Number',
+		displayName: 'Version number',
 		name: 'versionNumber',
 		type: 'number',
 		default: 1,
@@ -90,7 +90,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The file attachment version number',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		displayOptions: {
 			show: {
 				resource: ['file'],

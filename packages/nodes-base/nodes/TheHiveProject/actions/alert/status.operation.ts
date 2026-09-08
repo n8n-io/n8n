@@ -8,7 +8,7 @@ import { theHiveApiRequest } from '../../transport';
 const properties: INodeProperties[] = [
 	alertRLC,
 	{
-		displayName: 'Status Name or ID',
+		displayName: 'Status name or ID',
 		name: 'status',
 		type: 'options',
 		description:

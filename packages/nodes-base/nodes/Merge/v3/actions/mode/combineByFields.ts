@@ -24,18 +24,18 @@ import {
 } from '../../helpers/utils';
 
 const multipleMatchesProperty: INodeProperties = {
-	displayName: 'Multiple Matches',
+	displayName: 'Multiple matches',
 	name: 'multipleMatches',
 	type: 'options',
 	default: 'all',
 	options: [
 		{
-			name: 'Include All Matches',
+			name: 'Include all matches',
 			value: 'all',
 			description: 'Output multiple items if there are multiple matches',
 		},
 		{
-			name: 'Include First Match Only',
+			name: 'Include first match only',
 			value: 'first',
 			description: 'Only ever output a single item per match',
 		},
@@ -44,14 +44,14 @@ const multipleMatchesProperty: INodeProperties = {
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Fields To Match Have Different Names',
+		displayName: 'Fields to match have different names',
 		name: 'advanced',
 		type: 'boolean',
 		default: false,
 		description: 'Whether name(s) of field to match are different in input 1 and input 2',
 	},
 	{
-		displayName: 'Fields to Match',
+		displayName: 'Fields to match',
 		name: 'fieldsToMatchString',
 		type: 'string',
 		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
@@ -67,10 +67,10 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Fields to Match',
+		displayName: 'Fields to match',
 		name: 'mergeByFields',
 		type: 'fixedCollection',
-		placeholder: 'Add Fields to Match',
+		placeholder: 'Add fields to match',
 		default: { values: [{ field1: '', field2: '' }] },
 		typeOptions: {
 			multipleValues: true,
@@ -87,7 +87,7 @@ export const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Input 1 Field',
+						displayName: 'Input 1 field',
 						name: 'field1',
 						type: 'string',
 						default: '',
@@ -97,7 +97,7 @@ export const properties: INodeProperties[] = [
 						requiresDataPath: 'single',
 					},
 					{
-						displayName: 'Input 2 Field',
+						displayName: 'Input 2 field',
 						name: 'field2',
 						type: 'string',
 						default: '',
@@ -111,34 +111,34 @@ export const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Output Type',
+		displayName: 'Output type',
 		name: 'joinMode',
 		type: 'options',
 		description: 'How to select the items to send to output',
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
-				name: 'Keep Matches',
+				name: 'Keep matches',
 				value: 'keepMatches',
 				description: 'Items that match, merged together (inner join)',
 			},
 			{
-				name: 'Keep Non-Matches',
+				name: 'Keep non-matches',
 				value: 'keepNonMatches',
 				description: "Items that don't match",
 			},
 			{
-				name: 'Keep Everything',
+				name: 'Keep everything',
 				value: 'keepEverything',
 				description: "Items that match merged together, plus items that don't match (outer join)",
 			},
 			{
-				name: 'Enrich Input 1',
+				name: 'Enrich input 1',
 				value: 'enrichInput1',
 				description: 'All of input 1, with data from input 2 added in (left join)',
 			},
 			{
-				name: 'Enrich Input 2',
+				name: 'Enrich input 2',
 				value: 'enrichInput2',
 				description: 'All of input 2, with data from input 1 added in (right join)',
 			},
@@ -146,12 +146,12 @@ export const properties: INodeProperties[] = [
 		default: 'keepMatches',
 	},
 	{
-		displayName: 'Output Data From',
+		displayName: 'Output data from',
 		name: 'outputDataFrom',
 		type: 'options',
 		options: [
 			{
-				name: 'Both Inputs Merged Together',
+				name: 'Both inputs merged together',
 				value: 'both',
 			},
 			{
@@ -171,12 +171,12 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Output Data From',
+		displayName: 'Output data from',
 		name: 'outputDataFrom',
 		type: 'options',
 		options: [
 			{
-				name: 'Both Inputs Appended Together',
+				name: 'Both inputs appended together',
 				value: 'both',
 			},
 			{
@@ -220,7 +220,7 @@ export const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Disable Dot Notation',
+				displayName: 'Disable dot notation',
 				name: 'disableDotNotation',
 				type: 'boolean',
 				default: false,

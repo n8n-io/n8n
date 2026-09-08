@@ -39,7 +39,7 @@ export class IfV1 implements INodeType {
 				{
 					displayName: 'Conditions',
 					name: 'conditions',
-					placeholder: 'Add Condition',
+					placeholder: 'Add condition',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
@@ -71,7 +71,7 @@ export class IfV1 implements INodeType {
 											value: 'equal',
 										},
 										{
-											name: 'Not Equal',
+											name: 'Not equal',
 											value: 'notEqual',
 										},
 									],
@@ -106,11 +106,11 @@ export class IfV1 implements INodeType {
 									type: 'options',
 									options: [
 										{
-											name: 'Occurred After',
+											name: 'Occurred after',
 											value: 'after',
 										},
 										{
-											name: 'Occurred Before',
+											name: 'Occurred before',
 											value: 'before',
 										},
 									],
@@ -149,7 +149,7 @@ export class IfV1 implements INodeType {
 											value: 'smaller',
 										},
 										{
-											name: 'Smaller or Equal',
+											name: 'Smaller or equal',
 											value: 'smallerEqual',
 										},
 										{
@@ -157,7 +157,7 @@ export class IfV1 implements INodeType {
 											value: 'equal',
 										},
 										{
-											name: 'Not Equal',
+											name: 'Not equal',
 											value: 'notEqual',
 										},
 										{
@@ -165,15 +165,15 @@ export class IfV1 implements INodeType {
 											value: 'larger',
 										},
 										{
-											name: 'Larger or Equal',
+											name: 'Larger or equal',
 											value: 'largerEqual',
 										},
 										{
-											name: 'Is Empty',
+											name: 'Is empty',
 											value: 'isEmpty',
 										},
 										{
-											name: 'Is Not Empty',
+											name: 'Is not empty',
 											value: 'isNotEmpty',
 										},
 									],
@@ -217,15 +217,15 @@ export class IfV1 implements INodeType {
 											value: 'contains',
 										},
 										{
-											name: 'Not Contains',
+											name: 'Not contains',
 											value: 'notContains',
 										},
 										{
-											name: 'Ends With',
+											name: 'Ends with',
 											value: 'endsWith',
 										},
 										{
-											name: 'Not Ends With',
+											name: 'Not ends with',
 											value: 'notEndsWith',
 										},
 										{
@@ -233,31 +233,31 @@ export class IfV1 implements INodeType {
 											value: 'equal',
 										},
 										{
-											name: 'Not Equal',
+											name: 'Not equal',
 											value: 'notEqual',
 										},
 										{
-											name: 'Regex Match',
+											name: 'Regex match',
 											value: 'regex',
 										},
 										{
-											name: 'Regex Not Match',
+											name: 'Regex not match',
 											value: 'notRegex',
 										},
 										{
-											name: 'Starts With',
+											name: 'Starts with',
 											value: 'startsWith',
 										},
 										{
-											name: 'Not Starts With',
+											name: 'Not starts with',
 											value: 'notStartsWith',
 										},
 										{
-											name: 'Is Empty',
+											name: 'Is empty',
 											value: 'isEmpty',
 										},
 										{
-											name: 'Is Not Empty',
+											name: 'Is not empty',
 											value: 'isNotEmpty',
 										},
 									],

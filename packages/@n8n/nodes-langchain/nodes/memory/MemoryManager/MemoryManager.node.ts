@@ -117,31 +117,31 @@ export class MemoryManager implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Operation Mode',
+				displayName: 'Operation mode',
 				name: 'mode',
 				type: 'options',
 				noDataExpression: true,
 				default: 'load',
 				options: [
 					{
-						name: 'Get Many Messages',
+						name: 'Get many messages',
 						description: 'Retrieve chat messages from connected memory',
 						value: 'load',
 					},
 					{
-						name: 'Insert Messages',
+						name: 'Insert messages',
 						description: 'Insert chat messages into connected memory',
 						value: 'insert',
 					},
 					{
-						name: 'Delete Messages',
+						name: 'Delete messages',
 						description: 'Delete chat messages from connected memory',
 						value: 'delete',
 					},
 				],
 			},
 			{
-				displayName: 'Insert Mode',
+				displayName: 'Insert mode',
 				name: 'insertMode',
 				type: 'options',
 				description: 'Choose how new messages are inserted into the memory',
@@ -149,12 +149,12 @@ export class MemoryManager implements INodeType {
 				default: 'insert',
 				options: [
 					{
-						name: 'Insert Messages',
+						name: 'Insert messages',
 						value: 'insert',
 						description: 'Add messages alongside existing ones',
 					},
 					{
-						name: 'Override All Messages',
+						name: 'Override all messages',
 						value: 'override',
 						description: 'Replace the current memory with new messages',
 					},
@@ -166,7 +166,7 @@ export class MemoryManager implements INodeType {
 				},
 			},
 			{
-				displayName: 'Delete Mode',
+				displayName: 'Delete mode',
 				name: 'deleteMode',
 				type: 'options',
 				description: 'How messages are deleted from memory',
@@ -179,7 +179,7 @@ export class MemoryManager implements INodeType {
 						description: 'Delete the last N messages',
 					},
 					{
-						name: 'All Messages',
+						name: 'All messages',
 						value: 'all',
 						description: 'Clear all messages from memory',
 					},
@@ -191,7 +191,7 @@ export class MemoryManager implements INodeType {
 				},
 			},
 			{
-				displayName: 'Chat Messages',
+				displayName: 'Chat messages',
 				name: 'messages',
 				description: 'Chat messages to insert into memory',
 				type: 'fixedCollection',
@@ -206,7 +206,7 @@ export class MemoryManager implements INodeType {
 						displayName: 'Message',
 						values: [
 							{
-								displayName: 'Type Name or ID',
+								displayName: 'Type name or ID',
 								name: 'type',
 								type: 'options',
 								options: [
@@ -233,7 +233,7 @@ export class MemoryManager implements INodeType {
 								default: '',
 							},
 							{
-								displayName: 'Hide Message in Chat',
+								displayName: 'Hide message in chat',
 								name: 'hideFromUI',
 								type: 'boolean',
 								required: true,
@@ -250,7 +250,7 @@ export class MemoryManager implements INodeType {
 				},
 			},
 			{
-				displayName: 'Messages Count',
+				displayName: 'Messages count',
 				name: 'lastMessagesCount',
 				type: 'number',
 				description: 'The amount of last messages to delete',
@@ -263,7 +263,7 @@ export class MemoryManager implements INodeType {
 				},
 			},
 			{
-				displayName: 'Simplify Output',
+				displayName: 'Simplify output',
 				name: 'simplifyOutput',
 				type: 'boolean',
 				description: 'Whether to simplify the output to only include the sender and the text',
@@ -277,12 +277,12 @@ export class MemoryManager implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Group Messages',
+						displayName: 'Group messages',
 						name: 'groupMessages',
 						type: 'boolean',
 						default: true,

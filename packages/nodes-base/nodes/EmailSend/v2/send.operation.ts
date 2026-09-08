@@ -29,7 +29,7 @@ const properties: INodeProperties[] = [
 		description: 'Subject line of the email',
 	},
 	{
-		displayName: 'Email Format',
+		displayName: 'Email format',
 		name: 'emailFormat',
 		type: 'options',
 		options: [
@@ -57,7 +57,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Email Format',
+		displayName: 'Email format',
 		name: 'emailFormat',
 		type: 'options',
 		options: [
@@ -124,15 +124,15 @@ const properties: INodeProperties[] = [
 					'Whether to include the phrase “This email was sent automatically with n8n” to the end of the email',
 			},
 			{
-				displayName: 'Attachments (Inline)',
+				displayName: 'Attachments (inline)',
 				name: 'attachments',
 				type: 'string',
 				default: '',
 				description:
-					'Binary properties to embed in the email body. Multiple ones can be comma-separated. Reference them in HTML via <code>cid:propertyName</code>, e.g. &lt;img src="cid:image_1"&gt;. Use \'Attachments (File)\' for regular file attachments.',
+					'Binary properties to embed in the email body. Multiple ones can be comma-separated. Reference them in HTML via <code>cid:propertyName</code>, e.g. &lt;img src="cid:image_1"&gt;. Use \'Attachments (file)\' for regular file attachments.',
 			},
 			{
-				displayName: 'Attachments (File)',
+				displayName: 'Attachments (file)',
 				name: 'fileAttachments',
 				type: 'string',
 				default: '',
@@ -140,7 +140,7 @@ const properties: INodeProperties[] = [
 					"Binary properties to attach to the email as regular files. Multiple ones can be comma-separated. They appear in the recipient's attachments list and are not embedded in the body.",
 			},
 			{
-				displayName: 'CC Email',
+				displayName: 'CC email',
 				name: 'ccEmail',
 				type: 'string',
 				default: '',
@@ -148,7 +148,7 @@ const properties: INodeProperties[] = [
 				description: 'Email address of CC recipient',
 			},
 			{
-				displayName: 'BCC Email',
+				displayName: 'BCC email',
 				name: 'bccEmail',
 				type: 'string',
 				default: '',
@@ -156,14 +156,14 @@ const properties: INodeProperties[] = [
 				description: 'Email address of BCC recipient',
 			},
 			{
-				displayName: 'Ignore SSL Issues (Insecure)',
+				displayName: 'Ignore SSL issues (insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to connect even if SSL certificate validation is not possible',
 			},
 			{
-				displayName: 'Reply To',
+				displayName: 'Reply to',
 				name: 'replyTo',
 				type: 'string',
 				default: '',

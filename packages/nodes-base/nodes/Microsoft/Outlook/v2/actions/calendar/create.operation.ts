@@ -15,15 +15,15 @@ export const properties: INodeProperties[] = [
 		placeholder: 'e.g. My Calendar',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Calendar Group',
+				displayName: 'Calendar group',
 				name: 'calendarGroup',
 				type: 'options',
 				typeOptions: {
@@ -40,39 +40,39 @@ export const properties: INodeProperties[] = [
 				default: 'lightBlue',
 				options: [
 					{
-						name: 'Light Blue',
+						name: 'Light blue',
 						value: 'lightBlue',
 					},
 					{
-						name: 'Light Brown',
+						name: 'Light brown',
 						value: 'lightBrown',
 					},
 					{
-						name: 'Light Gray',
+						name: 'Light gray',
 						value: 'lightGray',
 					},
 					{
-						name: 'Light Green',
+						name: 'Light green',
 						value: 'lightGreen',
 					},
 					{
-						name: 'Light Orange',
+						name: 'Light orange',
 						value: 'lightOrange',
 					},
 					{
-						name: 'Light Pink',
+						name: 'Light pink',
 						value: 'lightPink',
 					},
 					{
-						name: 'Light Red',
+						name: 'Light red',
 						value: 'lightRed',
 					},
 					{
-						name: 'Light Teal',
+						name: 'Light teal',
 						value: 'lightTeal',
 					},
 					{
-						name: 'Light Yellow',
+						name: 'Light yellow',
 						value: 'lightYellow',
 					},
 				],

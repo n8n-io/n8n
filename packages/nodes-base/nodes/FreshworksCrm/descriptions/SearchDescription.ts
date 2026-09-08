@@ -34,7 +34,7 @@ export const searchFields: INodeProperties[] = [
 	//          Search: query
 	// ----------------------------------------
 	{
-		displayName: 'Search Term',
+		displayName: 'Search term',
 		name: 'query',
 		type: 'string',
 		required: true,
@@ -48,7 +48,7 @@ export const searchFields: INodeProperties[] = [
 		description: 'Enter a term that will be used for searching entities',
 	},
 	{
-		displayName: 'Search on Entities',
+		displayName: 'Search on entities',
 		name: 'entities',
 		type: 'multiOptions',
 		options: [
@@ -61,7 +61,7 @@ export const searchFields: INodeProperties[] = [
 				value: 'deal',
 			},
 			{
-				name: 'Sales Account',
+				name: 'Sales account',
 				value: 'sales_account',
 			},
 			{
@@ -80,7 +80,7 @@ export const searchFields: INodeProperties[] = [
 		description: 'Enter a term that will be used for searching entities',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -113,7 +113,7 @@ export const searchFields: INodeProperties[] = [
 	//          Search: lookup
 	// ----------------------------------------
 	{
-		displayName: 'Search Field',
+		displayName: 'Search field',
 		name: 'searchField',
 		type: 'options',
 		options: [
@@ -126,7 +126,7 @@ export const searchFields: INodeProperties[] = [
 				value: 'name',
 			},
 			{
-				name: 'Custom Field',
+				name: 'Custom field',
 				value: 'customField',
 				description:
 					'Only allowed custom fields of type "Text field", "Number", "Dropdown" or "Radio button"',
@@ -143,7 +143,7 @@ export const searchFields: INodeProperties[] = [
 		description: 'Field against which the entities have to be searched',
 	},
 	{
-		displayName: 'Custom Field Name',
+		displayName: 'Custom field name',
 		name: 'customFieldName',
 		type: 'string',
 		required: true,
@@ -157,7 +157,7 @@ export const searchFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Custom Field Value',
+		displayName: 'Custom field value',
 		name: 'customFieldValue',
 		type: 'string',
 		required: true,
@@ -171,7 +171,7 @@ export const searchFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Field Value',
+		displayName: 'Field value',
 		name: 'fieldValue',
 		type: 'string',
 		required: true,
@@ -212,7 +212,7 @@ export const searchFields: INodeProperties[] = [
 						value: 'deal',
 					},
 					{
-						name: 'Sales Account',
+						name: 'Sales account',
 						value: 'sales_account',
 					},
 				],

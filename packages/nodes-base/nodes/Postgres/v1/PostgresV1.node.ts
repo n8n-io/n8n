@@ -44,7 +44,7 @@ const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Execute Query',
+					name: 'Execute query',
 					value: 'executeQuery',
 					description: 'Execute an SQL query',
 					action: 'Execute a SQL query',
@@ -163,7 +163,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Name of the table in which to update data in',
 		},
 		{
-			displayName: 'Update Key',
+			displayName: 'Update key',
 			name: 'updateKey',
 			type: 'string',
 			displayOptions: {
@@ -197,7 +197,7 @@ const versionDescription: INodeTypeDescription = {
 		//         insert,update
 		// ----------------------------------
 		{
-			displayName: 'Return Fields',
+			displayName: 'Return fields',
 			name: 'returnFields',
 			type: 'string',
 			requiresDataPath: 'multiple',
@@ -213,10 +213,10 @@ const versionDescription: INodeTypeDescription = {
 		//         Additional fields
 		// ----------------------------------
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			options: [
 				{
@@ -230,7 +230,7 @@ const versionDescription: INodeTypeDescription = {
 							description: 'Execute each query independently',
 						},
 						{
-							name: 'Multiple Queries',
+							name: 'Multiple queries',
 							value: 'multiple',
 							description: '<b>Default</b>. Sends multiple queries at once to database.',
 						},
@@ -245,7 +245,7 @@ const versionDescription: INodeTypeDescription = {
 						'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
 				},
 				{
-					displayName: 'Output Large-Format Numbers As',
+					displayName: 'Output large-format numbers as',
 					name: 'largeNumbersOutput',
 					type: 'options',
 					options: [
@@ -264,7 +264,7 @@ const versionDescription: INodeTypeDescription = {
 					default: 'text',
 				},
 				{
-					displayName: 'Query Parameters',
+					displayName: 'Query parameters',
 					name: 'queryParams',
 					type: 'string',
 					displayOptions: {

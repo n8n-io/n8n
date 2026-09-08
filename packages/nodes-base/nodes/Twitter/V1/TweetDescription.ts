@@ -67,10 +67,10 @@ export const tweetFields: INodeProperties[] = [
 			'The text of the status update. URL encode as necessary. t.co link wrapping will affect character counts.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -88,7 +88,7 @@ export const tweetFields: INodeProperties[] = [
 					'Name of the binary properties which contain data which should be added to tweet as attachment. Multiple ones can be comma-separated.',
 			},
 			{
-				displayName: 'Display Coordinates',
+				displayName: 'Display coordinates',
 				name: 'displayCoordinates',
 				type: 'boolean',
 				default: false,
@@ -96,7 +96,7 @@ export const tweetFields: INodeProperties[] = [
 					'Whether or not to put a pin on the exact coordinates a Tweet has been sent from',
 			},
 			{
-				displayName: 'In Reply to Tweet',
+				displayName: 'In reply to tweet',
 				name: 'inReplyToStatusId',
 				type: 'string',
 				default: '',
@@ -106,7 +106,7 @@ export const tweetFields: INodeProperties[] = [
 				displayName: 'Location',
 				name: 'locationFieldsUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Location',
+				placeholder: 'Add location',
 				default: {},
 				description: 'Subscriber location information.n',
 				options: [
@@ -135,7 +135,7 @@ export const tweetFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Possibly Sensitive',
+				displayName: 'Possibly sensitive',
 				name: 'possiblySensitive',
 				type: 'boolean',
 				default: false,
@@ -167,7 +167,7 @@ export const tweetFields: INodeProperties[] = [
 	/*                                tweet:search                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Search Text',
+		displayName: 'Search text',
 		name: 'searchText',
 		type: 'string',
 		required: true,
@@ -182,7 +182,7 @@ export const tweetFields: INodeProperties[] = [
 			'A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -212,10 +212,10 @@ export const tweetFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -225,14 +225,14 @@ export const tweetFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Entities',
+				displayName: 'Include entities',
 				name: 'includeEntities',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the entities node will be included',
 			},
 			{
-				displayName: 'Language Name or ID',
+				displayName: 'Language name or ID',
 				name: 'lang',
 				type: 'options',
 				typeOptions: {
@@ -246,7 +246,7 @@ export const tweetFields: INodeProperties[] = [
 				displayName: 'Location',
 				name: 'locationFieldsUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Location',
+				placeholder: 'Add location',
 				default: {},
 				description: 'Subscriber location information.n',
 				options: [
@@ -304,7 +304,7 @@ export const tweetFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Result Type',
+				displayName: 'Result type',
 				name: 'resultType',
 				type: 'options',
 				options: [
@@ -328,7 +328,7 @@ export const tweetFields: INodeProperties[] = [
 				description: 'Specifies what type of search results you would prefer to receive',
 			},
 			{
-				displayName: 'Tweet Mode',
+				displayName: 'Tweet mode',
 				name: 'tweetMode',
 				type: 'options',
 				options: [
@@ -373,10 +373,10 @@ export const tweetFields: INodeProperties[] = [
 		description: 'The ID of the tweet',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -386,7 +386,7 @@ export const tweetFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Entities',
+				displayName: 'Include entities',
 				name: 'includeEntities',
 				type: 'boolean',
 				default: false,
@@ -413,10 +413,10 @@ export const tweetFields: INodeProperties[] = [
 		description: 'The ID of the tweet',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -426,7 +426,7 @@ export const tweetFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Trim User',
+				displayName: 'Trim user',
 				name: 'trimUser',
 				type: 'boolean',
 				default: false,

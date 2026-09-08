@@ -12,7 +12,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Analyze Image',
+				name: 'Analyze image',
 				value: 'analyze',
 				action: 'Analyze image',
 				description: 'Analyze an image and answer questions about it',

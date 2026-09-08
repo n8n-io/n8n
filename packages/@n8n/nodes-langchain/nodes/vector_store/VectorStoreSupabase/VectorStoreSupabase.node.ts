@@ -8,7 +8,7 @@ import { supabaseTableNameRLC } from '../shared/descriptions';
 import { createSupabaseClient } from '../shared/supabase';
 
 const queryNameField: INodeProperties = {
-	displayName: 'Query Name',
+	displayName: 'Query name',
 	name: 'queryName',
 	type: 'string',
 	default: 'match_documents',
@@ -21,7 +21,7 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [queryNameField],
 	},
@@ -32,7 +32,7 @@ const retrieveFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [queryNameField, metadataFilterField],
 	},

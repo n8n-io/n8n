@@ -21,7 +21,7 @@ export const testOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get aggregated test metrics for a project',
 				routing: {
@@ -61,7 +61,7 @@ export const testFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Date Start',
+		displayName: 'Date start',
 		name: 'dateStart',
 		type: 'dateTime',
 		required: true,
@@ -81,7 +81,7 @@ export const testFields: INodeProperties[] = [
 		description: 'Start date for metrics (ISO 8601 format)',
 	},
 	{
-		displayName: 'Date End',
+		displayName: 'Date end',
 		name: 'dateEnd',
 		type: 'dateTime',
 		required: true,
@@ -127,7 +127,7 @@ export const testFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -140,7 +140,7 @@ export const testFields: INodeProperties[] = [
 			filterBranchesOption,
 			filterGroupsOption,
 			{
-				displayName: 'Minimum Executions',
+				displayName: 'Minimum executions',
 				name: 'minExecutions',
 				type: 'number',
 				typeOptions: {
@@ -156,7 +156,7 @@ export const testFields: INodeProperties[] = [
 				description: 'Minimum number of executions to include a test',
 			},
 			{
-				displayName: 'Spec File',
+				displayName: 'Spec file',
 				name: 'spec',
 				type: 'string',
 				default: '',
@@ -170,7 +170,7 @@ export const testFields: INodeProperties[] = [
 			},
 			filterTagsOption,
 			{
-				displayName: 'Test State',
+				displayName: 'Test state',
 				name: 'testState',
 				type: 'multiOptions',
 				options: [
@@ -207,7 +207,7 @@ export const testFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -217,20 +217,20 @@ export const testFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'order',
 				type: 'options',
 				options: [
 					{ name: 'Duration', value: 'duration' },
-					{ name: 'Duration Delta', value: 'durationDelta' },
-					{ name: 'Duration Impact', value: 'durationXSamples' },
+					{ name: 'Duration delta', value: 'durationDelta' },
+					{ name: 'Duration impact', value: 'durationXSamples' },
 					{ name: 'Executions', value: 'executions' },
-					{ name: 'Failure Impact', value: 'failRateXSamples' },
-					{ name: 'Failure Rate Delta', value: 'failureRateDelta' },
+					{ name: 'Failure impact', value: 'failRateXSamples' },
+					{ name: 'Failure rate delta', value: 'failureRateDelta' },
 					{ name: 'Failures', value: 'failures' },
 					{ name: 'Flakiness', value: 'flakiness' },
-					{ name: 'Flakiness Impact', value: 'flakinessXSamples' },
-					{ name: 'Flakiness Rate Delta', value: 'flakinessRateDelta' },
+					{ name: 'Flakiness impact', value: 'flakinessXSamples' },
+					{ name: 'Flakiness rate delta', value: 'flakinessRateDelta' },
 					{ name: 'Passes', value: 'passes' },
 					{ name: 'Title', value: 'title' },
 				],
@@ -244,7 +244,7 @@ export const testFields: INodeProperties[] = [
 				description: 'The field to order results by',
 			},
 			{
-				displayName: 'Sort Direction',
+				displayName: 'Sort direction',
 				name: 'dir',
 				type: 'options',
 				options: [
@@ -277,7 +277,7 @@ export const testFields: INodeProperties[] = [
 				description: 'Page number (0-indexed)',
 			},
 			{
-				displayName: 'Metric Settings',
+				displayName: 'Metric settings',
 				name: 'metric_settings',
 				type: 'string',
 				default: '',

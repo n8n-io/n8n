@@ -271,7 +271,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			description: 'Color of the TextBlock element',
 		},
 		{
-			displayName: 'Font Type',
+			displayName: 'Font type',
 			name: 'fontType',
 			type: 'options',
 			displayOptions: {
@@ -293,7 +293,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			description: 'Type of font to use for rendering',
 		},
 		{
-			displayName: 'Horizontal Alignment',
+			displayName: 'Horizontal alignment',
 			name: 'horizontalAlignment',
 			type: 'options',
 			displayOptions: {
@@ -319,7 +319,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			description: 'Controls the horizontal text alignment',
 		},
 		{
-			displayName: 'Is Subtle',
+			displayName: 'Is subtle',
 			name: 'isSubtle',
 			type: 'boolean',
 			displayOptions: {
@@ -331,7 +331,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			description: 'Whether to display text slightly toned down to appear less prominent',
 		},
 		{
-			displayName: 'Max Lines',
+			displayName: 'Max lines',
 			name: 'maxLines',
 			type: 'number',
 			displayOptions: {
@@ -357,7 +357,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 					value: 'default',
 				},
 				{
-					name: 'Extra Large',
+					name: 'Extra large',
 					value: 'extraLarge',
 				},
 				{
@@ -463,7 +463,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 					value: 'default',
 				},
 				{
-					name: 'Extra Large',
+					name: 'Extra large',
 					value: 'extraLarge',
 				},
 				{
@@ -503,7 +503,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			description: 'A unique identifier associated with the item',
 		},
 		{
-			displayName: 'Is Visible',
+			displayName: 'Is visible',
 			name: 'isVisible',
 			type: 'boolean',
 			displayOptions: {
@@ -534,7 +534,7 @@ export function getInputTextProperties(): INodeProperties[] {
 				'Unique identifier for the value. Used to identify collected input when the Submit action is performed.',
 		},
 		{
-			displayName: 'Is Multiline',
+			displayName: 'Is multiline',
 			name: 'isMultiline',
 			type: 'boolean',
 			displayOptions: {
@@ -546,7 +546,7 @@ export function getInputTextProperties(): INodeProperties[] {
 			description: 'Whether to allow multiple lines of input',
 		},
 		{
-			displayName: 'Max Length',
+			displayName: 'Max length',
 			name: 'maxLength',
 			type: 'number',
 			displayOptions: {

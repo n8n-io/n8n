@@ -26,7 +26,7 @@ const properties: INodeProperties[] = [
 			'The model to use. Uses provider/model format (e.g. openai/gpt-5.2). Leave empty when using a preset.',
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -64,7 +64,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: false,
@@ -88,7 +88,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -106,7 +106,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Language Preference',
+				displayName: 'Language preference',
 				name: 'languagePreference',
 				type: 'string',
 				default: '',
@@ -120,7 +120,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Output Tokens',
+				displayName: 'Max output tokens',
 				name: 'maxOutputTokens',
 				type: 'number',
 				default: 1024,
@@ -134,7 +134,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Steps',
+				displayName: 'Max steps',
 				name: 'maxSteps',
 				type: 'number',
 				default: 5,
@@ -148,7 +148,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Models (Fallback)',
+				displayName: 'Models (fallback)',
 				name: 'modelsFallback',
 				type: 'string',
 				default: '',
@@ -177,7 +177,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Response Format',
+				displayName: 'Response format',
 				name: 'responseFormat',
 				type: 'json',
 				default: '',

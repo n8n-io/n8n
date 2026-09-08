@@ -133,7 +133,7 @@ export class ChainRetrievalQa implements INodeType {
 				displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.4 } }] } },
 			},
 			{
-				displayName: 'Prompt (User Message)',
+				displayName: 'Prompt (user message)',
 				name: 'text',
 				type: 'string',
 				required: true,
@@ -153,7 +153,7 @@ export class ChainRetrievalQa implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						...systemPromptOption,

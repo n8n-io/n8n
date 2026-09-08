@@ -62,7 +62,7 @@ export class GetResponseTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Key',
+						name: 'API key',
 						value: 'apiKey',
 					},
 					{
@@ -78,27 +78,27 @@ export class GetResponseTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Customer Subscribed',
+						name: 'Customer subscribed',
 						value: 'subscribe',
 						description: 'Receive notifications when a customer is subscribed to a list',
 					},
 					{
-						name: 'Customer Unsubscribed',
+						name: 'Customer unsubscribed',
 						value: 'unsubscribe',
 						description: 'Receive notifications when a customer is unsubscribed from a list',
 					},
 					{
-						name: 'Email Clicked',
+						name: 'Email clicked',
 						value: 'click',
 						description: 'Receive notifications when a email is clicked',
 					},
 					{
-						name: 'Email Opened',
+						name: 'Email opened',
 						value: 'open',
 						description: 'Receive notifications when a email is opened',
 					},
 					{
-						name: 'Survey Submitted',
+						name: 'Survey submitted',
 						value: 'survey',
 						description: 'Receive notifications when a survey is submitted',
 					},
@@ -107,7 +107,7 @@ export class GetResponseTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'List Names or IDs',
+				displayName: 'List names or IDs',
 				name: 'listIds',
 				type: 'multiOptions',
 				description:
@@ -125,7 +125,7 @@ export class GetResponseTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Delete Current Subscription',
+						displayName: 'Delete current subscription',
 						name: 'delete',
 						type: 'boolean',
 						default: false,

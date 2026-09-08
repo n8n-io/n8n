@@ -39,7 +39,7 @@ export class UProc implements INodeType {
 			...toolOperations,
 			...toolParameters,
 			{
-				displayName: 'Additional Options',
+				displayName: 'Additional options',
 				name: 'additionalOptions',
 				type: 'collection',
 				placeholder: 'Add option',
@@ -63,7 +63,7 @@ export class UProc implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Data Webhook',
+						displayName: 'Data webhook',
 						name: 'dataWebhook',
 						type: 'string',
 						description: 'URL to send tool response when tool has resolved your request',

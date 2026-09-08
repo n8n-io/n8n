@@ -18,7 +18,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 	},
 	[
 		{
-			displayName: 'Row ID Value',
+			displayName: 'Row ID value',
 			name: 'id',
 			type: 'string',
 			default: '',

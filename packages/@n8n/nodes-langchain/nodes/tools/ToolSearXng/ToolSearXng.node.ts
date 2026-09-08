@@ -134,17 +134,17 @@ export class ToolSearXng implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
-						displayName: 'Number of Results',
+						displayName: 'Number of results',
 						name: 'numResults',
 						type: 'number',
 						default: 10,
 					},
 					{
-						displayName: 'Search Page Number',
+						displayName: 'Search page number',
 						name: 'pageNumber',
 						type: 'number',
 						default: 1,
@@ -158,7 +158,7 @@ export class ToolSearXng implements INodeType {
 							'Defines the language to use. It\'s a two-letter language code. (e.g., `en` for English, `es` for Spanish, or `fr` for French). Head to <a href="https://docs.searxng.org/user/search-syntax.html#select-language">SearXNG search syntax page</a> for more info.',
 					},
 					{
-						displayName: 'Safe Search',
+						displayName: 'Safe search',
 						name: 'safesearch',
 						type: 'options',
 						options: [

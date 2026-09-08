@@ -38,16 +38,16 @@ export class LocalFileTrigger implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'triggerOn',
 				type: 'options',
 				options: [
 					{
-						name: 'Changes to a Specific File',
+						name: 'Changes to a specific file',
 						value: 'file',
 					},
 					{
-						name: 'Changes Involving a Specific Folder',
+						name: 'Changes involving a specific folder',
 						value: 'folder',
 					},
 				],
@@ -55,7 +55,7 @@ export class LocalFileTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'File to Watch',
+				displayName: 'File to watch',
 				name: 'path',
 				type: 'string',
 				displayOptions: {
@@ -67,7 +67,7 @@ export class LocalFileTrigger implements INodeType {
 				placeholder: '/data/invoices/1.pdf',
 			},
 			{
-				displayName: 'Folder to Watch',
+				displayName: 'Folder to watch',
 				name: 'path',
 				type: 'string',
 				displayOptions: {
@@ -89,27 +89,27 @@ export class LocalFileTrigger implements INodeType {
 				},
 				options: [
 					{
-						name: 'File Added',
+						name: 'File added',
 						value: 'add',
 						description: 'Triggers whenever a new file was added',
 					},
 					{
-						name: 'File Changed',
+						name: 'File changed',
 						value: 'change',
 						description: 'Triggers whenever a file was changed',
 					},
 					{
-						name: 'File Deleted',
+						name: 'File deleted',
 						value: 'unlink',
 						description: 'Triggers whenever a file was deleted',
 					},
 					{
-						name: 'Folder Added',
+						name: 'Folder added',
 						value: 'addDir',
 						description: 'Triggers whenever a new folder was added',
 					},
 					{
-						name: 'Folder Deleted',
+						name: 'Folder deleted',
 						value: 'unlinkDir',
 						description: 'Triggers whenever a folder was deleted',
 					},
@@ -127,14 +127,14 @@ export class LocalFileTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Await Write Finish',
+						displayName: 'Await write finish',
 						name: 'awaitWriteFinish',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to wait until files finished writing to avoid partially read',
 					},
 					{
-						displayName: 'Include Linked Files/Folders',
+						displayName: 'Include linked files/folders',
 						name: 'followSymlinks',
 						type: 'boolean',
 						default: true,
@@ -148,42 +148,42 @@ export class LocalFileTrigger implements INodeType {
 						default: '',
 						placeholder: '**/*.txt or ignore-me/subfolder',
 						description:
-							"Files or paths to ignore. The whole path is tested, not just the filename. Supports <a href=\"https://github.com/micromatch/anymatch\">Anymatch</a>- syntax. Regex patterns may not work on macOS. To ignore files based on substring matching, use the 'Ignore Mode' option with 'Contain'.",
+							"Files or paths to ignore. The whole path is tested, not just the filename. Supports <a href=\"https://github.com/micromatch/anymatch\">Anymatch</a>- syntax. Regex patterns may not work on macOS. To ignore files based on substring matching, use the 'Ignore mode' option with 'Contain'.",
 					},
 					{
-						displayName: 'Ignore Existing Files/Folders',
+						displayName: 'Ignore existing files/folders',
 						name: 'ignoreInitial',
 						type: 'boolean',
 						default: true,
 						description: 'Whether to ignore existing files/folders to not trigger an event',
 					},
 					{
-						displayName: 'Max Folder Depth',
+						displayName: 'Max folder depth',
 						name: 'depth',
 						type: 'options',
 						options: [
 							{
-								name: '1 Levels Down',
+								name: '1 levels down',
 								value: 1,
 							},
 							{
-								name: '2 Levels Down',
+								name: '2 levels down',
 								value: 2,
 							},
 							{
-								name: '3 Levels Down',
+								name: '3 levels down',
 								value: 3,
 							},
 							{
-								name: '4 Levels Down',
+								name: '4 levels down',
 								value: 4,
 							},
 							{
-								name: '5 Levels Down',
+								name: '5 levels down',
 								value: 5,
 							},
 							{
-								name: 'Top Folder Only',
+								name: 'Top folder only',
 								value: 0,
 							},
 							{
@@ -195,7 +195,7 @@ export class LocalFileTrigger implements INodeType {
 						description: 'How deep into the folder structure to watch for changes',
 					},
 					{
-						displayName: 'Use Polling',
+						displayName: 'Use polling',
 						name: 'usePolling',
 						type: 'boolean',
 						default: false,
@@ -203,7 +203,7 @@ export class LocalFileTrigger implements INodeType {
 							'Whether to use polling for watching. Typically necessary to successfully watch files over a network.',
 					},
 					{
-						displayName: 'Ignore Mode',
+						displayName: 'Ignore mode',
 						name: 'ignoreMode',
 						type: 'options',
 						options: [

@@ -29,7 +29,7 @@ export const attachmentFields: INodeProperties[] = [
 	/*                                 attachments:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Attachment Name',
+		displayName: 'Attachment name',
 		name: 'attachmentName',
 		type: 'string',
 		required: true,

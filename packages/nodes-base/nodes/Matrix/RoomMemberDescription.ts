@@ -13,7 +13,7 @@ export const roomMemberOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many members',
 				action: 'Get many room members',
@@ -28,7 +28,7 @@ export const roomMemberFields: INodeProperties[] = [
 	/*                             roomMember:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room name or ID',
 		name: 'roomId',
 		type: 'options',
 		description:
@@ -60,7 +60,7 @@ export const roomMemberFields: INodeProperties[] = [
 		placeholder: 'Add filter',
 		options: [
 			{
-				displayName: 'Exclude Membership',
+				displayName: 'Exclude membership',
 				name: 'notMembership',
 				type: 'options',
 				default: '',

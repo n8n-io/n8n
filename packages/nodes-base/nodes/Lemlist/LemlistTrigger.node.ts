@@ -52,11 +52,11 @@ export class LemlistTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
-						displayName: 'Campaign Name or ID',
+						displayName: 'Campaign name or ID',
 						name: 'campaignId',
 						type: 'options',
 						typeOptions: {
@@ -67,7 +67,7 @@ export class LemlistTrigger implements INodeType {
 							'We\'ll call this hook only for this campaignId. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Is First',
+						displayName: 'Is first',
 						name: 'isFirst',
 						type: 'boolean',
 						default: false,

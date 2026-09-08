@@ -123,13 +123,13 @@ export class LmChatVercelAiGateway implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Frequency Penalty',
+						displayName: 'Frequency penalty',
 						name: 'frequencyPenalty',
 						default: 0,
 						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -138,7 +138,7 @@ export class LmChatVercelAiGateway implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Maximum Number of Tokens',
+						displayName: 'Maximum number of tokens',
 						name: 'maxTokens',
 						default: -1,
 						description:
@@ -149,7 +149,7 @@ export class LmChatVercelAiGateway implements INodeType {
 						},
 					},
 					{
-						displayName: 'Response Format',
+						displayName: 'Response format',
 						name: 'responseFormat',
 						default: 'text',
 						type: 'options',
@@ -168,7 +168,7 @@ export class LmChatVercelAiGateway implements INodeType {
 						],
 					},
 					{
-						displayName: 'Presence Penalty',
+						displayName: 'Presence penalty',
 						name: 'presencePenalty',
 						default: 0,
 						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -177,7 +177,7 @@ export class LmChatVercelAiGateway implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Sampling Temperature',
+						displayName: 'Sampling temperature',
 						name: 'temperature',
 						default: 0.7,
 						typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
@@ -193,7 +193,7 @@ export class LmChatVercelAiGateway implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Max Retries',
+						displayName: 'Max retries',
 						name: 'maxRetries',
 						default: 2,
 						description: 'Maximum number of retries to attempt',

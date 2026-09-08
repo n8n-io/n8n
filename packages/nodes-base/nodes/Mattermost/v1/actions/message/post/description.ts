@@ -2,7 +2,7 @@ import type { MessageProperties } from '../../Interfaces';
 
 export const messagePostDescription: MessageProperties = [
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -54,7 +54,7 @@ export const messagePostDescription: MessageProperties = [
 			{
 				displayName: 'Actions',
 				name: 'actions',
-				placeholder: 'Add Actions',
+				placeholder: 'Add actions',
 				description:
 					'Actions to add to message. More information can be found <a href="https://docs.mattermost.com/developer/interactive-messages.html" target="_blank">here</a>.',
 				type: 'fixedCollection',
@@ -85,7 +85,7 @@ export const messagePostDescription: MessageProperties = [
 								description: 'The type of the action',
 							},
 							{
-								displayName: 'Data Source',
+								displayName: 'Data source',
 								name: 'data_source',
 								type: 'options',
 								displayOptions: {
@@ -133,14 +133,14 @@ export const messagePostDescription: MessageProperties = [
 										default: {},
 										values: [
 											{
-												displayName: 'Option Text',
+												displayName: 'Option text',
 												name: 'text',
 												type: 'string',
 												default: '',
 												description: 'Text of the option',
 											},
 											{
-												displayName: 'Option Value',
+												displayName: 'Option value',
 												name: 'value',
 												type: 'string',
 												default: '',
@@ -160,7 +160,7 @@ export const messagePostDescription: MessageProperties = [
 							{
 								displayName: 'Integration',
 								name: 'integration',
-								placeholder: 'Add Integration',
+								placeholder: 'Add integration',
 								description: 'Integration to add to message',
 								type: 'fixedCollection',
 								typeOptions: {
@@ -183,7 +183,7 @@ export const messagePostDescription: MessageProperties = [
 											{
 												displayName: 'Context',
 												name: 'context',
-												placeholder: 'Add Context to Integration',
+												placeholder: 'Add context to integration',
 												description: 'Adds a Context values set',
 												type: 'fixedCollection',
 												typeOptions: {
@@ -197,14 +197,14 @@ export const messagePostDescription: MessageProperties = [
 														default: {},
 														values: [
 															{
-																displayName: 'Property Name',
+																displayName: 'Property name',
 																name: 'name',
 																type: 'string',
 																default: '',
 																description: 'Name of the property to set',
 															},
 															{
-																displayName: 'Property Value',
+																displayName: 'Property value',
 																name: 'value',
 																type: 'string',
 																default: '',
@@ -223,21 +223,21 @@ export const messagePostDescription: MessageProperties = [
 				],
 			},
 			{
-				displayName: 'Author Icon',
+				displayName: 'Author icon',
 				name: 'author_icon',
 				type: 'string',
 				default: '',
 				description: 'Icon which should appear for the user',
 			},
 			{
-				displayName: 'Author Link',
+				displayName: 'Author link',
 				name: 'author_link',
 				type: 'string',
 				default: '',
 				description: 'Link for the author',
 			},
 			{
-				displayName: 'Author Name',
+				displayName: 'Author name',
 				name: 'author_name',
 				type: 'string',
 				default: '',
@@ -251,7 +251,7 @@ export const messagePostDescription: MessageProperties = [
 				description: 'Color of the line left of text',
 			},
 			{
-				displayName: 'Fallback Text',
+				displayName: 'Fallback text',
 				name: 'fallback',
 				type: 'string',
 				default: '',
@@ -260,7 +260,7 @@ export const messagePostDescription: MessageProperties = [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				placeholder: 'Add Fields',
+				placeholder: 'Add fields',
 				description: 'Fields to add to message',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -305,7 +305,7 @@ export const messagePostDescription: MessageProperties = [
 				description: 'Text of footer to add',
 			},
 			{
-				displayName: 'Footer Icon',
+				displayName: 'Footer icon',
 				name: 'footer_icon',
 				type: 'string',
 				default: '',
@@ -347,7 +347,7 @@ export const messagePostDescription: MessageProperties = [
 				description: 'Title of the message',
 			},
 			{
-				displayName: 'Title Link',
+				displayName: 'Title link',
 				name: 'title_link',
 				type: 'string',
 				default: '',
@@ -356,7 +356,7 @@ export const messagePostDescription: MessageProperties = [
 		],
 	},
 	{
-		displayName: 'Other Options',
+		displayName: 'Other options',
 		name: 'otherOptions',
 		type: 'collection',
 		displayOptions: {
@@ -370,7 +370,7 @@ export const messagePostDescription: MessageProperties = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Parent Post ID',
+				displayName: 'Parent post ID',
 				name: 'root_id',
 				type: 'string',
 				default: '',

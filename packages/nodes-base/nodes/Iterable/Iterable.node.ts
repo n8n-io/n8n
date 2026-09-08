@@ -54,7 +54,7 @@ export class Iterable implements INodeType {
 						value: 'user',
 					},
 					{
-						name: 'User List',
+						name: 'User list',
 						value: 'userList',
 					},
 				],

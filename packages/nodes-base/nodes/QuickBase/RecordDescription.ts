@@ -19,7 +19,7 @@ export const recordOperations: INodeProperties[] = [
 				action: 'Create a record',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 				action: 'Create or update a record',
@@ -31,7 +31,7 @@ export const recordOperations: INodeProperties[] = [
 				action: 'Delete a record',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many records',
 				action: 'Get many records',
@@ -77,7 +77,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		placeholder: 'Select Fields...',
+		placeholder: 'Select fields...',
 		description:
 			'Comma-separated list of the properties which should used as columns for the new rows',
 	},
@@ -108,7 +108,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Field Names or IDs',
+				displayName: 'Return field names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -120,7 +120,7 @@ export const recordFields: INodeProperties[] = [
 					'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Use Field IDs',
+				displayName: 'Use field IDs',
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,
@@ -178,7 +178,7 @@ export const recordFields: INodeProperties[] = [
 		description: 'The table identifier',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -212,7 +212,7 @@ export const recordFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -234,9 +234,9 @@ export const recordFields: INodeProperties[] = [
 					'An array of field IDs for the fields that should be returned in the response. If empty, the default columns on the table will be returned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortByUi',
-				placeholder: 'Add Sort By',
+				placeholder: 'Add sort by',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -245,10 +245,10 @@ export const recordFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'sortByValues',
-						displayName: 'Sort By',
+						displayName: 'Sort by',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -324,7 +324,7 @@ export const recordFields: INodeProperties[] = [
 			'Comma-separated list of the properties which should used as columns for the new rows',
 	},
 	{
-		displayName: 'Update Key',
+		displayName: 'Update key',
 		name: 'updateKey',
 		type: 'string',
 		displayOptions: {
@@ -363,7 +363,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -375,7 +375,7 @@ export const recordFields: INodeProperties[] = [
 					'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Use Field IDs',
+				displayName: 'Use field IDs',
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,
@@ -429,7 +429,7 @@ export const recordFields: INodeProperties[] = [
 			'Comma-separated list of the properties which should used as columns for the new rows',
 	},
 	{
-		displayName: 'Update Key',
+		displayName: 'Update key',
 		name: 'updateKey',
 		type: 'string',
 		displayOptions: {
@@ -442,7 +442,7 @@ export const recordFields: INodeProperties[] = [
 		description: 'Update can use the key field on the table, or any other supported unique field',
 	},
 	{
-		displayName: 'Merge Field Name or ID',
+		displayName: 'Merge field name or ID',
 		name: 'mergeFieldId',
 		type: 'options',
 		typeOptions: {
@@ -485,7 +485,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -497,7 +497,7 @@ export const recordFields: INodeProperties[] = [
 					'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Use Field IDs',
+				displayName: 'Use field IDs',
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,

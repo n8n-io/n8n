@@ -28,7 +28,7 @@ export const tableRecordOperations: INodeProperties[] = [
 				action: 'Get a table record',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many table records',
 			},
@@ -47,7 +47,7 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:create                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'tableName',
 		type: 'options',
 		description:
@@ -65,17 +65,17 @@ export const tableRecordFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'dataToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'mapInput',
 				description: 'Use when node input names match destination field names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'columns',
 				description: 'Set the value for each destination column',
 			},
@@ -94,7 +94,7 @@ export const tableRecordFields: INodeProperties[] = [
 		default: 'columns',
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
@@ -109,7 +109,7 @@ export const tableRecordFields: INodeProperties[] = [
 			'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsToSend',
 		type: 'fixedCollection',
 		placeholder: 'Add field to send',
@@ -130,7 +130,7 @@ export const tableRecordFields: INodeProperties[] = [
 				name: 'field',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'column',
 						type: 'options',
 						description:
@@ -142,7 +142,7 @@ export const tableRecordFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'value',
 						type: 'string',
 						default: '',
@@ -156,7 +156,7 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:getAll                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'tableName',
 		type: 'options',
 		description:
@@ -174,7 +174,7 @@ export const tableRecordFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -208,7 +208,7 @@ export const tableRecordFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['tableRecord'],
@@ -218,14 +218,14 @@ export const tableRecordFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Exclude Reference Link',
+				displayName: 'Exclude reference link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -246,12 +246,12 @@ export const tableRecordFields: INodeProperties[] = [
 					'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
-				displayName: 'Return Values',
+				displayName: 'Return values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
 					{
-						name: 'Actual Values',
+						name: 'Actual values',
 						value: 'false',
 					},
 					{
@@ -259,7 +259,7 @@ export const tableRecordFields: INodeProperties[] = [
 						value: 'all',
 					},
 					{
-						name: 'Display Values',
+						name: 'Display values',
 						value: 'true',
 					},
 				],
@@ -273,7 +273,7 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:get/delete                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'tableName',
 		type: 'options',
 		typeOptions: {
@@ -291,7 +291,7 @@ export const tableRecordFields: INodeProperties[] = [
 			'Name of the table in which the record exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Table Record ID',
+		displayName: 'Table record ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -308,7 +308,7 @@ export const tableRecordFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['tableRecord'],
@@ -318,14 +318,14 @@ export const tableRecordFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Exclude Reference Link',
+				displayName: 'Exclude reference link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -338,12 +338,12 @@ export const tableRecordFields: INodeProperties[] = [
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
-				displayName: 'Return Values',
+				displayName: 'Return values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
 					{
-						name: 'Actual Values',
+						name: 'Actual values',
 						value: 'false',
 					},
 					{
@@ -351,7 +351,7 @@ export const tableRecordFields: INodeProperties[] = [
 						value: 'all',
 					},
 					{
-						name: 'Display Values',
+						name: 'Display values',
 						value: 'true',
 					},
 				],
@@ -365,7 +365,7 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:update                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'tableName',
 		type: 'options',
 		description:
@@ -383,7 +383,7 @@ export const tableRecordFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Table Record ID',
+		displayName: 'Table record ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -397,17 +397,17 @@ export const tableRecordFields: INodeProperties[] = [
 		description: 'Unique identifier of the record',
 	},
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'dataToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'mapInput',
 				description: 'Use when node input names match destination field names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'columns',
 				description: 'Set the value for each destination column',
 			},
@@ -426,7 +426,7 @@ export const tableRecordFields: INodeProperties[] = [
 		default: 'columns',
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
@@ -441,7 +441,7 @@ export const tableRecordFields: INodeProperties[] = [
 			'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsToSend',
 		type: 'fixedCollection',
 		placeholder: 'Add field to send',
@@ -462,7 +462,7 @@ export const tableRecordFields: INodeProperties[] = [
 				name: 'field',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'column',
 						type: 'options',
 						description:
@@ -474,7 +474,7 @@ export const tableRecordFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'value',
 						type: 'string',
 						default: '',

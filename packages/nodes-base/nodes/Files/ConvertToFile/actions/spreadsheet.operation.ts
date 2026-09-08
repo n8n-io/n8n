@@ -13,7 +13,7 @@ export const operations = ['csv', 'html', 'rtf', 'ods', 'xls', 'xlsx'];
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -53,21 +53,21 @@ export const properties: INodeProperties[] = [
 				description: 'The character to use to separate fields',
 			},
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
 				description: 'Name of the output file',
 			},
 			{
-				displayName: 'Header Row',
+				displayName: 'Header row',
 				name: 'headerRow',
 				type: 'boolean',
 				default: true,
 				description: 'Whether the first row of the file contains the header names',
 			},
 			{
-				displayName: 'Sheet Name',
+				displayName: 'Sheet name',
 				name: 'sheetName',
 				type: 'string',
 				displayOptions: {

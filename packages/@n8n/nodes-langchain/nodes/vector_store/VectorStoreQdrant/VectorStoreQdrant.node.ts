@@ -32,14 +32,14 @@ const sharedFields: INodeProperties[] = [qdrantCollectionRLC];
 
 const sharedOptions: INodeProperties[] = [
 	{
-		displayName: 'Content Payload Key',
+		displayName: 'Content payload key',
 		name: 'contentPayloadKey',
 		type: 'string',
 		default: 'content',
 		description: 'The key to use for the content payload in Qdrant. Default is "content".',
 	},
 	{
-		displayName: 'Metadata Payload Key',
+		displayName: 'Metadata payload key',
 		name: 'metadataPayloadKey',
 		type: 'string',
 		default: 'metadata',
@@ -52,11 +52,11 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Collection Config',
+				displayName: 'Collection config',
 				name: 'collectionConfig',
 				type: 'json',
 				default: '',
@@ -73,11 +73,11 @@ const retrieveFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Search Filter',
+				displayName: 'Search filter',
 				name: 'searchFilterJson',
 				type: 'json',
 				typeOptions: {

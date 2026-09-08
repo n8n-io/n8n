@@ -30,12 +30,12 @@ export const description: INodeProperties[] = [
 				action: 'Delete an observable',
 			},
 			{
-				name: 'Execute Analyzer',
+				name: 'Execute analyzer',
 				value: 'executeAnalyzer',
 				action: 'Execute analyzer on an observable',
 			},
 			{
-				name: 'Execute Responder',
+				name: 'Execute responder',
 				value: 'executeResponder',
 				action: 'Execute responder on an observable',
 			},

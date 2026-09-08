@@ -32,7 +32,7 @@ export const noteOperations: INodeProperties[] = [
 				action: 'Get a note',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many notes',
 				action: 'Get many notes',
@@ -111,7 +111,7 @@ export const noteDescription: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -147,7 +147,7 @@ export const noteDescription: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['getAll', 'get'],
@@ -156,7 +156,7 @@ export const noteDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields to Include',
+				displayName: 'Fields to include',
 				name: 'fieldsList',
 				type: 'multiOptions',
 				description:

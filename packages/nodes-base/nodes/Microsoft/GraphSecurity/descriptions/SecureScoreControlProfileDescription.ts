@@ -18,7 +18,7 @@ export const secureScoreControlProfileOperations: INodeProperties[] = [
 				action: 'Get a secure score control profile',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many secure score control profiles',
 			},
@@ -37,7 +37,7 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 	//             secureScore: get
 	// ----------------------------------------
 	{
-		displayName: 'Secure Score Control Profile ID',
+		displayName: 'Secure Score control profile ID',
 		name: 'secureScoreControlProfileId',
 		description: 'ID of the secure score control profile to retrieve',
 		type: 'string',
@@ -55,7 +55,7 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 	//    secureScoreControlProfile: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -90,7 +90,7 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['secureScoreControlProfile'],
@@ -99,7 +99,7 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Filter Query Parameter',
+				displayName: 'Filter query parameter',
 				name: 'filter',
 				description:
 					'<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
@@ -115,7 +115,7 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 	//    secureScoreControlProfile: update
 	// ----------------------------------------
 	{
-		displayName: 'Secure Score Control Profile ID',
+		displayName: 'Secure Score control profile ID',
 		name: 'secureScoreControlProfileId',
 		description: 'ID of the secure score control profile to update',
 		type: 'string',
@@ -159,10 +159,10 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -187,7 +187,7 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 						value: 'Ignored',
 					},
 					{
-						name: 'Third Party',
+						name: 'Third party',
 						value: 'ThirdParty',
 					},
 				],

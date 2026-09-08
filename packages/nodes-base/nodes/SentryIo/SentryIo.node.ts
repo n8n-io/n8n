@@ -69,15 +69,15 @@ export class SentryIo implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token (Cloud)',
+						name: 'Access token (cloud)',
 						value: 'accessToken',
 					},
 					{
-						name: 'OAuth2 (Cloud)',
+						name: 'OAuth2 (cloud)',
 						value: 'oAuth2',
 					},
 					{
-						name: 'Access Token (Self Hosted)',
+						name: 'Access token (self hosted)',
 						value: 'accessTokenServer',
 					},
 				],

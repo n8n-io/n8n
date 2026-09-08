@@ -24,10 +24,10 @@ const properties: INodeProperties[] = [
 		description: 'The name of the product',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -52,7 +52,7 @@ const properties: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Price',
+				placeholder: 'Add price',
 				options: [
 					{
 						displayName: 'Price',

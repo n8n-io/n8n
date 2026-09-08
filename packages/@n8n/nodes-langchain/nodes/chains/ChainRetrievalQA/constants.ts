@@ -10,7 +10,7 @@ export const LEGACY_INPUT_TEMPLATE_KEY = 'question';
 export const INPUT_TEMPLATE_KEY = 'input';
 
 export const systemPromptOption: INodeProperties = {
-	displayName: 'System Prompt Template',
+	displayName: 'System prompt template',
 	name: 'systemPromptTemplate',
 	type: 'string',
 	default: SYSTEM_PROMPT_TEMPLATE,

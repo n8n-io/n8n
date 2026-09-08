@@ -45,7 +45,7 @@ export const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Service Account',
+					name: 'Service account',
 					value: 'serviceAccount',
 				},
 				{
@@ -71,7 +71,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'oAuth2',
 				},
 				{
-					name: 'Service Account',
+					name: 'Service account',
 					value: 'serviceAccount',
 				},
 			],
@@ -129,7 +129,7 @@ export const versionDescription: INodeTypeDescription = {
 					action: 'Create a sheet',
 				},
 				{
-					name: 'Create or Update',
+					name: 'Create or update',
 					value: 'upsert',
 					description:
 						'Create a new record, or update the current one if it already exists (upsert)',
@@ -208,9 +208,9 @@ export const versionDescription: INodeTypeDescription = {
 		//         Delete
 		// ----------------------------------
 		{
-			displayName: 'To Delete',
+			displayName: 'To delete',
 			name: 'toDelete',
-			placeholder: 'Add Columns/Rows to delete',
+			placeholder: 'Add columns/rows to delete',
 			description: 'Deletes columns and rows from a sheet',
 			type: 'fixedCollection',
 			typeOptions: {
@@ -229,7 +229,7 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'columns',
 					values: [
 						{
-							displayName: 'Sheet Name or ID',
+							displayName: 'Sheet name or ID',
 							name: 'sheetId',
 							type: 'options',
 							typeOptions: {
@@ -242,7 +242,7 @@ export const versionDescription: INodeTypeDescription = {
 								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						},
 						{
-							displayName: 'Start Index',
+							displayName: 'Start index',
 							name: 'startIndex',
 							type: 'number',
 							typeOptions: {
@@ -268,7 +268,7 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'rows',
 					values: [
 						{
-							displayName: 'Sheet Name or ID',
+							displayName: 'Sheet name or ID',
 							name: 'sheetId',
 							type: 'options',
 							typeOptions: {
@@ -281,7 +281,7 @@ export const versionDescription: INodeTypeDescription = {
 								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						},
 						{
-							displayName: 'Start Index',
+							displayName: 'Start index',
 							name: 'startIndex',
 							type: 'number',
 							typeOptions: {
@@ -309,7 +309,7 @@ export const versionDescription: INodeTypeDescription = {
 		//         Read
 		// ----------------------------------
 		{
-			displayName: 'RAW Data',
+			displayName: 'RAW data',
 			name: 'rawData',
 			type: 'boolean',
 			displayOptions: {
@@ -323,7 +323,7 @@ export const versionDescription: INodeTypeDescription = {
 				'Whether the data should be returned RAW instead of parsed into keys according to their header',
 		},
 		{
-			displayName: 'Data Property',
+			displayName: 'Data property',
 			name: 'dataProperty',
 			type: 'string',
 			default: 'data',
@@ -341,7 +341,7 @@ export const versionDescription: INodeTypeDescription = {
 		//         Update
 		// ----------------------------------
 		{
-			displayName: 'RAW Data',
+			displayName: 'RAW data',
 			name: 'rawData',
 			type: 'boolean',
 			displayOptions: {
@@ -354,7 +354,7 @@ export const versionDescription: INodeTypeDescription = {
 			description: 'Whether the data supplied is RAW instead of parsed into keys',
 		},
 		{
-			displayName: 'Data Property',
+			displayName: 'Data property',
 			name: 'dataProperty',
 			type: 'string',
 			default: 'data',
@@ -372,7 +372,7 @@ export const versionDescription: INodeTypeDescription = {
 		//         Read & Update & lookupColumn
 		// ----------------------------------
 		{
-			displayName: 'Data Start Row',
+			displayName: 'Data start row',
 			name: 'dataStartRow',
 			type: 'number',
 			typeOptions: {
@@ -396,7 +396,7 @@ export const versionDescription: INodeTypeDescription = {
 		//         Mixed
 		// ----------------------------------
 		{
-			displayName: 'Key Row',
+			displayName: 'Key row',
 			name: 'keyRow',
 			type: 'number',
 			typeOptions: {
@@ -420,7 +420,7 @@ export const versionDescription: INodeTypeDescription = {
 		//         lookup
 		// ----------------------------------
 		{
-			displayName: 'Lookup Column',
+			displayName: 'Lookup column',
 			name: 'lookupColumn',
 			type: 'string',
 			default: '',
@@ -435,7 +435,7 @@ export const versionDescription: INodeTypeDescription = {
 			description: 'The name of the column in which to look for value',
 		},
 		{
-			displayName: 'Lookup Value',
+			displayName: 'Lookup value',
 			name: 'lookupValue',
 			type: 'string',
 			default: '',
@@ -481,7 +481,7 @@ export const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'Continue If Empty',
+					displayName: 'Continue if empty',
 					name: 'continue',
 					type: 'boolean',
 					default: false,
@@ -495,7 +495,7 @@ export const versionDescription: INodeTypeDescription = {
 						'By default, the workflow stops executing if the lookup/read does not return values',
 				},
 				{
-					displayName: 'Return All Matches',
+					displayName: 'Return all matches',
 					name: 'returnAllMatches',
 					type: 'boolean',
 					default: false,
@@ -509,7 +509,7 @@ export const versionDescription: INodeTypeDescription = {
 						'By default only the first result gets returned. If options gets set all found matches get returned.',
 				},
 				{
-					displayName: 'Use Header Names as JSON Paths',
+					displayName: 'Use header names as JSON paths',
 					name: 'usePathForKeyRow',
 					type: 'boolean',
 					default: false,
@@ -522,7 +522,7 @@ export const versionDescription: INodeTypeDescription = {
 						'Whether you want to match the headers as path, for example, the row header "category.name" will match the "category" object and get the field "name" from it. By default "category.name" will match with the field with exact name, not nested object.',
 				},
 				{
-					displayName: 'Value Input Mode',
+					displayName: 'Value input mode',
 					name: 'valueInputMode',
 					type: 'options',
 					displayOptions: {
@@ -537,7 +537,7 @@ export const versionDescription: INodeTypeDescription = {
 							description: 'The values will not be parsed and will be stored as-is',
 						},
 						{
-							name: 'User Entered',
+							name: 'User entered',
 							value: 'USER_ENTERED',
 							description:
 								'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
@@ -547,7 +547,7 @@ export const versionDescription: INodeTypeDescription = {
 					description: 'Determines how data should be interpreted',
 				},
 				{
-					displayName: 'Value Render Mode',
+					displayName: 'Value render mode',
 					name: 'valueRenderMode',
 					type: 'options',
 					displayOptions: {
@@ -557,7 +557,7 @@ export const versionDescription: INodeTypeDescription = {
 					},
 					options: [
 						{
-							name: 'Formatted Value',
+							name: 'Formatted value',
 							value: 'FORMATTED_VALUE',
 							description:
 								"Values will be calculated & formatted in the reply according to the cell's formatting.Formatting is based on the spreadsheet's locale, not the requesting user's locale.For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return \"$1.23\"",
@@ -569,7 +569,7 @@ export const versionDescription: INodeTypeDescription = {
 								'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
 						},
 						{
-							name: 'Unformatted Value',
+							name: 'Unformatted value',
 							value: 'UNFORMATTED_VALUE',
 							description:
 								'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.',
@@ -579,7 +579,7 @@ export const versionDescription: INodeTypeDescription = {
 					description: 'Determines how values should be rendered in the output',
 				},
 				{
-					displayName: 'Value Render Mode',
+					displayName: 'Value render mode',
 					name: 'valueRenderMode',
 					type: 'options',
 					displayOptions: {
@@ -590,7 +590,7 @@ export const versionDescription: INodeTypeDescription = {
 					},
 					options: [
 						{
-							name: 'Formatted Value',
+							name: 'Formatted value',
 							value: 'FORMATTED_VALUE',
 							description:
 								"Values will be calculated & formatted in the reply according to the cell's formatting.Formatting is based on the spreadsheet's locale, not the requesting user's locale. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return \"$1.23\".",
@@ -602,7 +602,7 @@ export const versionDescription: INodeTypeDescription = {
 								'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
 						},
 						{
-							name: 'Unformatted Value',
+							name: 'Unformatted value',
 							value: 'UNFORMATTED_VALUE',
 							description:
 								'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.',
@@ -653,7 +653,7 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			displayName: 'Sheets',
 			name: 'sheetsUi',
-			placeholder: 'Add Sheet',
+			placeholder: 'Add sheet',
 			type: 'fixedCollection',
 			typeOptions: {
 				multipleValues: true,
@@ -671,9 +671,9 @@ export const versionDescription: INodeTypeDescription = {
 					displayName: 'Sheet',
 					values: [
 						{
-							displayName: 'Sheet Properties',
+							displayName: 'Sheet properties',
 							name: 'propertiesUi',
-							placeholder: 'Add Property',
+							placeholder: 'Add property',
 							type: 'collection',
 							default: {},
 							options: [
@@ -724,7 +724,7 @@ export const versionDescription: INodeTypeDescription = {
 					<ul>`,
 				},
 				{
-					displayName: 'Recalculation Interval',
+					displayName: 'Recalculation interval',
 					name: 'autoRecalc',
 					type: 'options',
 					options: [
@@ -734,7 +734,7 @@ export const versionDescription: INodeTypeDescription = {
 							description: 'Default value',
 						},
 						{
-							name: 'On Change',
+							name: 'On change',
 							value: 'ON_CHANGE',
 							description: 'Volatile functions are updated on every change',
 						},
@@ -785,56 +785,56 @@ export const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'Grid Properties',
+					displayName: 'Grid properties',
 					name: 'gridProperties',
 					type: 'collection',
-					placeholder: 'Add Property',
+					placeholder: 'Add property',
 					default: {},
 					options: [
 						{
-							displayName: 'Column Count',
+							displayName: 'Column count',
 							name: 'columnCount',
 							type: 'number',
 							default: 0,
 							description: 'The number of columns in the grid',
 						},
 						{
-							displayName: 'Column Group Control After',
+							displayName: 'Column group control after',
 							name: 'columnGroupControlAfter',
 							type: 'boolean',
 							default: false,
 							description: 'Whether the column grouping control toggle is shown after the group',
 						},
 						{
-							displayName: 'Frozen Column Count',
+							displayName: 'Frozen column count',
 							name: 'frozenColumnCount',
 							type: 'number',
 							default: 0,
 							description: 'The number of columns that are frozen in the grid',
 						},
 						{
-							displayName: 'Frozen Row Count',
+							displayName: 'Frozen row count',
 							name: 'frozenRowCount',
 							type: 'number',
 							default: 0,
 							description: 'The number of rows that are frozen in the grid',
 						},
 						{
-							displayName: 'Hide Gridlines',
+							displayName: 'Hide gridlines',
 							name: 'hideGridlines',
 							type: 'boolean',
 							default: false,
 							description: "Whether the grid isn't showing gridlines in the UI",
 						},
 						{
-							displayName: 'Row Count',
+							displayName: 'Row count',
 							name: 'rowCount',
 							type: 'number',
 							default: 0,
 							description: 'The number of rows in the grid',
 						},
 						{
-							displayName: 'Row Group Control After',
+							displayName: 'Row group control after',
 							name: 'rowGroupControlAfter',
 							type: 'boolean',
 							default: false,
@@ -851,7 +851,7 @@ export const versionDescription: INodeTypeDescription = {
 					description: "Whether the sheet is hidden in the UI, false if it's visible",
 				},
 				{
-					displayName: 'Right To Left',
+					displayName: 'Right to left',
 					name: 'rightToLeft',
 					type: 'boolean',
 					default: false,
@@ -866,14 +866,14 @@ export const versionDescription: INodeTypeDescription = {
 						'The ID of the sheet. Must be non-negative. This field cannot be changed once set.',
 				},
 				{
-					displayName: 'Sheet Index',
+					displayName: 'Sheet index',
 					name: 'index',
 					type: 'number',
 					default: 0,
 					description: 'The index of the sheet within the spreadsheet',
 				},
 				{
-					displayName: 'Tab Color',
+					displayName: 'Tab color',
 					name: 'tabColor',
 					type: 'color',
 					default: '0aa55c',

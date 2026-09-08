@@ -2,7 +2,7 @@ import type { ChannelProperties } from '../../Interfaces';
 
 export const channelMembersDescription: ChannelProperties = [
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		type: 'options',
 		typeOptions: {
@@ -21,7 +21,7 @@ export const channelMembersDescription: ChannelProperties = [
 			'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -41,7 +41,7 @@ export const channelMembersDescription: ChannelProperties = [
 			'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Resolve Data',
+		displayName: 'Resolve data',
 		name: 'resolveData',
 		type: 'boolean',
 		displayOptions: {
@@ -56,7 +56,7 @@ export const channelMembersDescription: ChannelProperties = [
 			'By default the response only contain the ID of the user. If this option gets activated, it will resolve the user automatically.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

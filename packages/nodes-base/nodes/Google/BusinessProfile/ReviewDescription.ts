@@ -17,7 +17,7 @@ export const reviewOperations: INodeProperties[] = [
 		displayOptions: { show: { resource: ['review'] } },
 		options: [
 			{
-				name: 'Delete Reply',
+				name: 'Delete reply',
 				value: 'delete',
 				action: 'Delete a reply to a review',
 				description: 'Delete a reply to a review',
@@ -50,7 +50,7 @@ export const reviewOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many reviews',
 				description: 'Retrieve multiple reviews',
@@ -416,7 +416,7 @@ export const reviewFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',

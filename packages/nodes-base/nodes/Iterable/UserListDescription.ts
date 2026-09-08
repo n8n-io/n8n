@@ -34,7 +34,7 @@ export const userListFields: INodeProperties[] = [
 	/*                                userList:add                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -93,7 +93,7 @@ export const userListFields: INodeProperties[] = [
 	/*                                userList:remove                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -148,10 +148,10 @@ export const userListFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -168,7 +168,7 @@ export const userListFields: INodeProperties[] = [
 				description: 'Attribute unsubscribe to a campaign',
 			},
 			{
-				displayName: 'Channel Unsubscribe',
+				displayName: 'Channel unsubscribe',
 				name: 'channelUnsubscribe',
 				type: 'boolean',
 				default: false,

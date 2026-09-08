@@ -33,7 +33,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get data of a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many contacts',
 				action: 'Get data of all contacts',
@@ -55,7 +55,7 @@ export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -89,7 +89,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -99,14 +99,14 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to only return active clients and false to return inactive clients',
 			},
 			{
-				displayName: 'Updated Since',
+				displayName: 'Updated since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
@@ -155,7 +155,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		displayOptions: {
@@ -183,10 +183,10 @@ export const contactFields: INodeProperties[] = [
 		description: 'The ID of the client associated with this contact',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -211,21 +211,21 @@ export const contactFields: INodeProperties[] = [
 				description: 'The contact’s fax number',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 				description: 'The last name of the contact',
 			},
 			{
-				displayName: 'Phone Mobile',
+				displayName: 'Phone mobile',
 				name: 'phone_mobile',
 				type: 'string',
 				default: '',
 				description: 'The contact’s mobile phone number',
 			},
 			{
-				displayName: 'Phone Office',
+				displayName: 'Phone office',
 				name: 'phone_office',
 				type: 'string',
 				default: '',
@@ -260,10 +260,10 @@ export const contactFields: INodeProperties[] = [
 		description: 'The ID of the contact want to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -295,28 +295,28 @@ export const contactFields: INodeProperties[] = [
 				description: 'The contact’s fax number',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
 				description: 'The first name of the contact',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 				description: 'The last name of the contact',
 			},
 			{
-				displayName: 'Phone Mobile',
+				displayName: 'Phone mobile',
 				name: 'phone_mobile',
 				type: 'string',
 				default: '',
 				description: 'The contact’s mobile phone number',
 			},
 			{
-				displayName: 'Phone Office',
+				displayName: 'Phone office',
 				name: 'phone_office',
 				type: 'string',
 				default: '',

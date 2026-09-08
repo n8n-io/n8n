@@ -83,7 +83,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Type of Data',
+				displayName: 'Type of data',
 				name: 'dataType',
 				type: 'options',
 				default: 'json',
@@ -115,12 +115,12 @@ export class DocumentDefaultDataLoader implements INodeType {
 				},
 				options: [
 					{
-						name: 'Load All Input Data',
+						name: 'Load all input data',
 						value: 'allInputData',
 						description: 'Use all JSON data that flows into the parent agent or chain',
 					},
 					{
-						name: 'Load Specific Data',
+						name: 'Load specific data',
 						value: 'expressionData',
 						description:
 							'Load a subset of data, and/or data from any previous step in the workflow',
@@ -140,19 +140,19 @@ export class DocumentDefaultDataLoader implements INodeType {
 				},
 				options: [
 					{
-						name: 'Load All Input Data',
+						name: 'Load all input data',
 						value: 'allInputData',
 						description: 'Use all Binary data that flows into the parent agent or chain',
 					},
 					{
-						name: 'Load Specific Data',
+						name: 'Load specific data',
 						value: 'specificField',
 						description: 'Load data from a specific field in the parent agent or chain',
 					},
 				],
 			},
 			{
-				displayName: 'Data Format',
+				displayName: 'Data format',
 				name: 'loader',
 				type: 'options',
 				default: 'auto',
@@ -164,7 +164,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 				},
 				options: [
 					{
-						name: 'Automatically Detect by Mime Type',
+						name: 'Automatically detect by MIME type',
 						value: 'auto',
 						description: 'Uses the mime type to detect the format',
 					},
@@ -218,7 +218,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 				},
 			},
 			{
-				displayName: 'Input Data Field Name',
+				displayName: 'Input data field name',
 				name: 'binaryDataKey',
 				type: 'string',
 				default: 'data',
@@ -235,7 +235,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 				},
 			},
 			{
-				displayName: 'Text Splitting',
+				displayName: 'Text splitting',
 				name: 'textSplittingMode',
 				type: 'options',
 				default: 'simple',
@@ -263,11 +263,11 @@ export class DocumentDefaultDataLoader implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
-						displayName: 'JSON Pointers',
+						displayName: 'JSON pointers',
 						name: 'pointers',
 						type: 'string',
 						default: '',
@@ -279,7 +279,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 						},
 					},
 					{
-						displayName: 'CSV Separator',
+						displayName: 'CSV separator',
 						name: 'separator',
 						type: 'string',
 						description: 'Separator to use for CSV',
@@ -291,7 +291,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 						},
 					},
 					{
-						displayName: 'CSV Column',
+						displayName: 'CSV column',
 						name: 'column',
 						type: 'string',
 						default: '',
@@ -303,7 +303,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 						},
 					},
 					{
-						displayName: 'Split Pages in PDF',
+						displayName: 'Split pages in PDF',
 						description: 'Whether to split PDF pages into separate documents',
 						name: 'splitPages',
 						type: 'boolean',

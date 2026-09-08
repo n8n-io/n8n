@@ -28,7 +28,7 @@ export const reportFields: INodeProperties[] = [
 	/*                                   report:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Event Name or ID',
+		displayName: 'Event name or ID',
 		name: 'eventId',
 		type: 'options',
 		description:
@@ -45,7 +45,7 @@ export const reportFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Session Name or ID',
+		displayName: 'Session name or ID',
 		name: 'dateId',
 		type: 'options',
 		typeOptions: {
@@ -67,7 +67,7 @@ export const reportFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -94,11 +94,11 @@ export const reportFields: INodeProperties[] = [
 						value: 'completed',
 					},
 					{
-						name: 'Did Not Attend',
+						name: 'Did not attend',
 						value: 'did-not-attend',
 					},
 					{
-						name: 'Left Early',
+						name: 'Left early',
 						value: 'left-early',
 					},
 				],

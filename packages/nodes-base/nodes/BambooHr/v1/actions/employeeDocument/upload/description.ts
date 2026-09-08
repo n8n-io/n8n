@@ -16,7 +16,7 @@ export const employeeDocumentUploadDescription: EmployeeDocumentProperties = [
 		description: 'ID of the employee',
 	},
 	{
-		displayName: 'Employee Document Category ID',
+		displayName: 'Employee document category ID',
 		name: 'categoryId',
 		type: 'string',
 		required: true,
@@ -29,7 +29,7 @@ export const employeeDocumentUploadDescription: EmployeeDocumentProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -47,7 +47,7 @@ export const employeeDocumentUploadDescription: EmployeeDocumentProperties = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['upload'],
@@ -57,7 +57,7 @@ export const employeeDocumentUploadDescription: EmployeeDocumentProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Share with Employee',
+				displayName: 'Share with employee',
 				name: 'share',
 				type: 'boolean',
 				default: true,

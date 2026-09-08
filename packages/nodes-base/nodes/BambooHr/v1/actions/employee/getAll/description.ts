@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const employeeGetAllDescription: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

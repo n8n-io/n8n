@@ -38,7 +38,7 @@ export const certificateOperations: INodeProperties[] = [
 				action: 'Get a certificate',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getMany',
 				description: 'Retrieve many certificates',
 				action: 'Get many certificates',
@@ -86,10 +86,10 @@ export const certificateFields: INodeProperties[] = [
 		description: 'The Common Name field for the certificate Subject (DN)',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -117,12 +117,12 @@ export const certificateFields: INodeProperties[] = [
 					'Only required when no policy sets a CA template. The Distinguished Name (DN) of the Trust Protection Platform Certificate Authority Template object for enrolling the certificate.',
 			},
 			{
-				displayName: 'Certificate Type',
+				displayName: 'Certificate type',
 				name: 'CertificateType',
 				type: 'options',
 				options: [
 					{
-						name: 'Code Signing',
+						name: 'Code signing',
 						value: 'Code Signing',
 						description: 'X.509 Code Signing Certificate',
 					},
@@ -173,7 +173,7 @@ export const certificateFields: INodeProperties[] = [
 					'The Country field for the certificate Subject DN. Specify a value when requesting a centrally generated CSR.',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				placeholder: 'Custom Fields',
 				type: 'fixedCollection',
@@ -203,7 +203,7 @@ export const certificateFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Created By',
+				displayName: 'Created by',
 				name: 'CreatedBy',
 				type: 'string',
 				default: 'Web SDK',
@@ -214,7 +214,7 @@ export const certificateFields: INodeProperties[] = [
 				displayName: 'Devices',
 				name: 'Devices',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Device',
@@ -230,14 +230,14 @@ export const certificateFields: INodeProperties[] = [
 							'An array of one or more Application objects to allow software, which runs on ObjectName, to use the same certificate',
 					},
 					{
-						displayName: 'Cloud Instance ID',
+						displayName: 'Cloud instance ID',
 						name: 'CloudInstanceID',
 						type: 'string',
 						default: '',
 						description: 'Required for Amazon EC2 provisioning. The unique cloud instance ID.',
 					},
 					{
-						displayName: 'Cloud Region',
+						displayName: 'Cloud region',
 						name: 'CloudRegion',
 						type: 'string',
 						default: '',
@@ -245,7 +245,7 @@ export const certificateFields: INodeProperties[] = [
 							'Required for Amazon EC2 provisioning. The geographic location where the cloud service instance resides. An instance in AWS can only exist in a single region.',
 					},
 					{
-						displayName: 'Cloud Service',
+						displayName: 'Cloud service',
 						name: 'CloudService',
 						type: 'string',
 						default: '',
@@ -253,7 +253,7 @@ export const certificateFields: INodeProperties[] = [
 							'Required for Amazon EC2 provisioning. AWS: An Amazon E2C cloud service. Requires you to install and configure the Cloud Instance Monitoring feature.',
 					},
 					{
-						displayName: 'Concurrent Connection Limit',
+						displayName: 'Concurrent connection limit',
 						name: 'ConcurrentConnectionLimit',
 						type: 'number',
 						default: 0,
@@ -272,7 +272,7 @@ export const certificateFields: INodeProperties[] = [
 							'An array of one or more identities who receive notifications for this device',
 					},
 					{
-						displayName: 'Created By',
+						displayName: 'Created by',
 						name: 'CreatedBy',
 						type: 'string',
 						default: 'Web SDK',
@@ -294,7 +294,7 @@ export const certificateFields: INodeProperties[] = [
 						description: 'The description for this device',
 					},
 					{
-						displayName: 'Enforce Known Host',
+						displayName: 'Enforce known host',
 						name: 'EnforceKnownHost',
 						type: 'boolean',
 						default: true,
@@ -310,7 +310,7 @@ export const certificateFields: INodeProperties[] = [
 							'The physical Fully Qualified Domain Name (FQDN) for the host or the IP address for a device',
 					},
 					{
-						displayName: 'Object Name',
+						displayName: 'Object name',
 						name: 'ObjectName',
 						type: 'string',
 						default: '',
@@ -325,7 +325,7 @@ export const certificateFields: INodeProperties[] = [
 						description: 'The port number to communicate with the device',
 					},
 					{
-						displayName: 'Sudo Credential DN',
+						displayName: 'Sudo credential DN',
 						name: 'SudoCredentialDN',
 						type: 'number',
 						default: 0,
@@ -333,7 +333,7 @@ export const certificateFields: INodeProperties[] = [
 							'Use in conjunction with UseSudo. The DN that holds the password credential to be used if sudo is configured to prompt for a password when executing a command.',
 					},
 					{
-						displayName: 'Temp Directory',
+						displayName: 'Temp directory',
 						name: 'TempDirectory',
 						type: 'string',
 						default: '',
@@ -341,7 +341,7 @@ export const certificateFields: INodeProperties[] = [
 							'The host directory path to hold temporary files during provisioning. For example /tmp/. The folder should have the necessary write permissions.',
 					},
 					{
-						displayName: 'Trusted Fingerprint',
+						displayName: 'Trusted fingerprint',
 						name: 'TrustedFingerprint',
 						type: 'string',
 						default: '',
@@ -359,7 +359,7 @@ export const certificateFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Disable Automatic Renewal',
+				displayName: 'Disable automatic renewal',
 				name: 'DisableAutomaticRenewal',
 				type: 'boolean',
 				default: false,
@@ -367,7 +367,7 @@ export const certificateFields: INodeProperties[] = [
 					'The setting to control whether manual intervention is required for certificate renewal',
 			},
 			{
-				displayName: 'Elliptic Curve',
+				displayName: 'Elliptic curve',
 				name: 'EllipticCurve',
 				type: 'options',
 				options: [
@@ -393,7 +393,7 @@ export const certificateFields: INodeProperties[] = [
 					'For Elliptic Curve Cryptography (ECC), use this parameter in conjunction with KeyAlgorithm',
 			},
 			{
-				displayName: 'Key Algorithm',
+				displayName: 'Key algorithm',
 				name: 'KeyAlgorithm',
 				type: 'options',
 				options: [
@@ -412,7 +412,7 @@ export const certificateFields: INodeProperties[] = [
 				description: 'The encryption algorithm for the public ke:',
 			},
 			{
-				displayName: 'Key Bit Size',
+				displayName: 'Key bit size',
 				name: 'KeyBitSize',
 				type: 'number',
 				default: 2048,
@@ -420,7 +420,7 @@ export const certificateFields: INodeProperties[] = [
 					'Use this parameter when KeyAlgorithm is RSA. The number of bits to allow for key generation.',
 			},
 			{
-				displayName: 'Management Type',
+				displayName: 'Management type',
 				name: 'ManagementType',
 				type: 'options',
 				options: [
@@ -473,7 +473,7 @@ export const certificateFields: INodeProperties[] = [
 					'The Organization field for the certificate Subject DN. Specify a value when the CSR centrally generates.',
 			},
 			{
-				displayName: 'Organizational Unit',
+				displayName: 'Organizational unit',
 				name: 'OrganizationalUnit',
 				type: 'string',
 				default: '',
@@ -496,7 +496,7 @@ export const certificateFields: INodeProperties[] = [
 				description: 'The action to control a previously disabled certificate',
 			},
 			{
-				displayName: 'Set Work To Do',
+				displayName: 'Set work to do',
 				name: 'SetWorkToDo',
 				type: 'boolean',
 				default: false,
@@ -511,9 +511,9 @@ export const certificateFields: INodeProperties[] = [
 					'The State field for the certificate Subject DN. Specify a value when requesting a centrally generated CSR.',
 			},
 			{
-				displayName: 'Subject Alt Names',
+				displayName: 'Subject alt names',
 				name: 'SubjectAltNamesUi',
-				placeholder: 'Add Subject',
+				placeholder: 'Add subject',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -522,7 +522,7 @@ export const certificateFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'SubjectAltNamesValues',
-						displayName: 'Subject Alt Name',
+						displayName: 'Subject alt name',
 						values: [
 							{
 								displayName: 'Typename',
@@ -547,7 +547,7 @@ export const certificateFields: INodeProperties[] = [
 										value: 6,
 									},
 									{
-										name: 'IP Address',
+										name: 'IP address',
 										value: 7,
 									},
 								],
@@ -585,7 +585,7 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Include Private Key',
+		displayName: 'Include private key',
 		name: 'includePrivateKey',
 		type: 'boolean',
 		displayOptions: {
@@ -612,7 +612,7 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
@@ -626,10 +626,10 @@ export const certificateFields: INodeProperties[] = [
 		description: 'The name of the input field containing the binary file data to be uploaded',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -639,19 +639,19 @@ export const certificateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Chain',
+				displayName: 'Include chain',
 				name: 'IncludeChain',
 				type: 'boolean',
 				default: true,
 			},
 			{
-				displayName: 'Root First Order',
+				displayName: 'Root first order',
 				name: 'RootFirstOrder',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Keystore Password',
+				displayName: 'Keystore password',
 				name: 'KeystorePassword',
 				type: 'string',
 				typeOptions: { password: true },
@@ -680,7 +680,7 @@ export const certificateFields: INodeProperties[] = [
 	/*                                 certificate:getMany                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -769,10 +769,10 @@ export const certificateFields: INodeProperties[] = [
 		description: 'The Distinguished Name (DN) of the certificate to renew',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

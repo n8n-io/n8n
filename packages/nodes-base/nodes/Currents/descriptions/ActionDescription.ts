@@ -95,7 +95,7 @@ export const actionOperations: INodeProperties[] = [
 				action: 'Get an action',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many actions for a project',
 				routing: {
@@ -199,7 +199,7 @@ export const actionFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -267,7 +267,7 @@ export const actionFields: INodeProperties[] = [
 		description: 'The name of the action (1-255 characters)',
 	},
 	{
-		displayName: 'Action Type',
+		displayName: 'Action type',
 		name: 'actionType',
 		type: 'options',
 		required: true,
@@ -314,16 +314,16 @@ export const actionFields: INodeProperties[] = [
 		description: 'Comma-separated list of tags to apply',
 	},
 	{
-		displayName: 'Matcher Type',
+		displayName: 'Matcher type',
 		name: 'matcherType',
 		type: 'options',
 		required: true,
 		options: [
-			{ name: 'Spec File Contains', value: 'specContains' },
-			{ name: 'Spec File Equals', value: 'specEquals' },
-			{ name: 'Test Signature', value: 'signature' },
-			{ name: 'Test Title Contains', value: 'titleContains' },
-			{ name: 'Test Title Equals', value: 'titleEquals' },
+			{ name: 'Spec file contains', value: 'specContains' },
+			{ name: 'Spec file equals', value: 'specEquals' },
+			{ name: 'Test signature', value: 'signature' },
+			{ name: 'Test title contains', value: 'titleContains' },
+			{ name: 'Test title equals', value: 'titleEquals' },
 		],
 		default: 'titleContains',
 		displayOptions: {
@@ -336,7 +336,7 @@ export const actionFields: INodeProperties[] = [
 		description: 'How to match tests for this action',
 	},
 	{
-		displayName: 'Matcher Value',
+		displayName: 'Matcher value',
 		name: 'matcherValue',
 		type: 'string',
 		required: true,
@@ -361,7 +361,7 @@ export const actionFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'createOptions',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -384,7 +384,7 @@ export const actionFields: INodeProperties[] = [
 				description: 'A description for the action',
 			},
 			{
-				displayName: 'Expires After',
+				displayName: 'Expires after',
 				name: 'expiresAfter',
 				type: 'dateTime',
 				default: '',
@@ -403,10 +403,10 @@ export const actionFields: INodeProperties[] = [
 	//         action:update
 	// ----------------------------------
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -442,7 +442,7 @@ export const actionFields: INodeProperties[] = [
 				description: 'A description for the action',
 			},
 			{
-				displayName: 'Expires After',
+				displayName: 'Expires after',
 				name: 'expiresAfter',
 				type: 'dateTime',
 				default: '',

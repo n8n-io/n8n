@@ -26,7 +26,7 @@ export const FILTER = 'filter';
 export const SEMANTIC_CONFIGURATION = 'semanticConfiguration';
 
 const indexNameField: INodeProperties = {
-	displayName: 'Index Name',
+	displayName: 'Index name',
 	name: INDEX_NAME,
 	type: 'string',
 	default: 'n8n-vectorstore',
@@ -36,7 +36,7 @@ const indexNameField: INodeProperties = {
 };
 
 const queryTypeField: INodeProperties = {
-	displayName: 'Query Type',
+	displayName: 'Query type',
 	name: QUERY_TYPE,
 	type: 'options',
 	default: 'hybrid',
@@ -53,7 +53,7 @@ const queryTypeField: INodeProperties = {
 			description: 'Combines vector and keyword search (recommended)',
 		},
 		{
-			name: 'Semantic Hybrid',
+			name: 'Semantic hybrid',
 			value: 'semanticHybrid',
 			description: 'Hybrid search with semantic ranking (requires Basic tier or higher)',
 		},
@@ -71,7 +71,7 @@ const filterField: INodeProperties = {
 };
 
 const semanticConfigurationField: INodeProperties = {
-	displayName: 'Semantic Configuration',
+	displayName: 'Semantic configuration',
 	name: SEMANTIC_CONFIGURATION,
 	type: 'string',
 	default: '',
@@ -90,7 +90,7 @@ const retrieveFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [queryTypeField, filterField, semanticConfigurationField],
 	},
@@ -101,11 +101,11 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Clear Index',
+				displayName: 'Clear index',
 				name: 'clearIndex',
 				type: 'boolean',
 				default: false,
@@ -113,7 +113,7 @@ const insertFields: INodeProperties[] = [
 					'Whether to delete and recreate the index before inserting new data. Warning: This will reset any custom index configuration (semantic ranking, analyzers, etc.) to defaults.',
 			},
 			{
-				displayName: 'Metadata Keys to Insert',
+				displayName: 'Metadata keys to insert',
 				name: 'metadataKeysToInsert',
 				type: 'string',
 				default: '',

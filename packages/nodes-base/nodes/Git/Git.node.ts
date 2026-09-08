@@ -138,7 +138,7 @@ export class Git implements INodeType {
 						action: 'Add a file or folder to commit',
 					},
 					{
-						name: 'Add Config',
+						name: 'Add config',
 						value: 'addConfig',
 						description: 'Add configuration property',
 						action: 'Add configuration property',
@@ -162,7 +162,7 @@ export class Git implements INodeType {
 						action: 'Fetch from remote repository',
 					},
 					{
-						name: 'List Config',
+						name: 'List config',
 						value: 'listConfig',
 						description: 'Return current configuration',
 						action: 'Return current configuration',
@@ -186,7 +186,7 @@ export class Git implements INodeType {
 						action: 'Push to remote repository',
 					},
 					{
-						name: 'Push Tags',
+						name: 'Push tags',
 						value: 'pushTags',
 						description: 'Push Tags to remote repository',
 						action: 'Push tags to remote repository',
@@ -204,7 +204,7 @@ export class Git implements INodeType {
 						action: 'Return status of current repository',
 					},
 					{
-						name: 'Switch Branch',
+						name: 'Switch branch',
 						value: 'switchBranch',
 						description: 'Switch to a different branch',
 						action: 'Switch to a different branch',
@@ -216,7 +216,7 @@ export class Git implements INodeType {
 						action: 'Create a new tag',
 					},
 					{
-						name: 'User Setup',
+						name: 'User setup',
 						value: 'userSetup',
 						description: 'Set the user',
 						action: 'Set up a user',
@@ -225,7 +225,7 @@ export class Git implements INodeType {
 			},
 
 			{
-				displayName: 'Repository Path',
+				displayName: 'Repository path',
 				name: 'repositoryPath',
 				type: 'string',
 				displayOptions: {
@@ -239,7 +239,7 @@ export class Git implements INodeType {
 				description: 'Local path of the git repository to operate on',
 			},
 			{
-				displayName: 'New Repository Path',
+				displayName: 'New repository path',
 				name: 'repositoryPath',
 				type: 'string',
 				displayOptions: {

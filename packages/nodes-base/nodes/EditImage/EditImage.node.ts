@@ -81,67 +81,67 @@ const nodeOperations: INodePropertyOptions[] = [
 		name: 'Blur',
 		value: 'blur',
 		description: 'Adds a blur to the image and so makes it less sharp',
-		action: 'Blur Image',
+		action: 'Blur image',
 	},
 	{
 		name: 'Border',
 		value: 'border',
 		description: 'Adds a border to the image',
-		action: 'Border Image',
+		action: 'Border image',
 	},
 	{
 		name: 'Composite',
 		value: 'composite',
 		description: 'Composite image on top of another one',
-		action: 'Composite Image',
+		action: 'Composite image',
 	},
 	{
 		name: 'Create',
 		value: 'create',
 		description: 'Create a new image',
-		action: 'Create Image',
+		action: 'Create image',
 	},
 	{
 		name: 'Crop',
 		value: 'crop',
 		description: 'Crops the image',
-		action: 'Crop Image',
+		action: 'Crop image',
 	},
 	{
 		name: 'Draw',
 		value: 'draw',
 		description: 'Draw on image',
-		action: 'Draw Image',
+		action: 'Draw image',
 	},
 	{
 		name: 'Rotate',
 		value: 'rotate',
 		description: 'Rotate image',
-		action: 'Rotate Image',
+		action: 'Rotate image',
 	},
 	{
 		name: 'Resize',
 		value: 'resize',
 		description: 'Change the size of image',
-		action: 'Resize Image',
+		action: 'Resize image',
 	},
 	{
 		name: 'Shear',
 		value: 'shear',
 		description: 'Shear image along the X or Y axis',
-		action: 'Shear Image',
+		action: 'Shear image',
 	},
 	{
 		name: 'Text',
 		value: 'text',
 		description: 'Adds text to image',
-		action: 'Apply Text to Image',
+		action: 'Apply text to image',
 	},
 	{
 		name: 'Transparent',
 		value: 'transparent',
 		description: 'Make a color in image transparent',
-		action: 'Add Transparency to Image',
+		action: 'Add transparency to image',
 	},
 ];
 
@@ -150,7 +150,7 @@ const nodeOperationOptions: INodeProperties[] = [
 	//         create
 	// ----------------------------------
 	{
-		displayName: 'Background Color',
+		displayName: 'Background color',
 		name: 'backgroundColor',
 		type: 'color',
 		default: '#ffffff00',
@@ -165,7 +165,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'The background color of the image to create',
 	},
 	{
-		displayName: 'Image Width',
+		displayName: 'Image width',
 		name: 'width',
 		type: 'number',
 		default: 50,
@@ -180,7 +180,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'The width of the image to create',
 	},
 	{
-		displayName: 'Image Height',
+		displayName: 'Image height',
 		name: 'height',
 		type: 'number',
 		default: 50,
@@ -240,7 +240,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'The color of the primitive to draw',
 	},
 	{
-		displayName: 'Start Position X',
+		displayName: 'Start position X',
 		name: 'startPositionX',
 		type: 'number',
 		default: 50,
@@ -253,7 +253,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'X (horizontal) start position of the primitive',
 	},
 	{
-		displayName: 'Start Position Y',
+		displayName: 'Start position Y',
 		name: 'startPositionY',
 		type: 'number',
 		default: 50,
@@ -266,7 +266,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'Y (horizontal) start position of the primitive',
 	},
 	{
-		displayName: 'End Position X',
+		displayName: 'End position X',
 		name: 'endPositionX',
 		type: 'number',
 		default: 250,
@@ -279,7 +279,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'X (horizontal) end position of the primitive',
 	},
 	{
-		displayName: 'End Position Y',
+		displayName: 'End position Y',
 		name: 'endPositionY',
 		type: 'number',
 		default: 250,
@@ -292,7 +292,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'Y (horizontal) end position of the primitive',
 	},
 	{
-		displayName: 'Corner Radius',
+		displayName: 'Corner radius',
 		name: 'cornerRadius',
 		type: 'number',
 		default: 0,
@@ -325,7 +325,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'Text to write on the image',
 	},
 	{
-		displayName: 'Font Size',
+		displayName: 'Font size',
 		name: 'fontSize',
 		type: 'number',
 		default: 18,
@@ -337,7 +337,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'Size of the text',
 	},
 	{
-		displayName: 'Font Color',
+		displayName: 'Font color',
 		name: 'fontColor',
 		type: 'color',
 		default: '#000000',
@@ -373,7 +373,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'Y (vertical) position of the text',
 	},
 	{
-		displayName: 'Horizontal Alignment',
+		displayName: 'Horizontal alignment',
 		name: 'horizontalAlignment',
 		type: 'options',
 		options: [
@@ -400,7 +400,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'Horizontal alignment of the text',
 	},
 	{
-		displayName: 'Vertical Alignment',
+		displayName: 'Vertical alignment',
 		name: 'verticalAlignment',
 		type: 'options',
 		options: [
@@ -427,7 +427,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'Vertical alignment of the text',
 	},
 	{
-		displayName: 'Max Line Length',
+		displayName: 'Max line length',
 		name: 'lineLength',
 		type: 'number',
 		typeOptions: {
@@ -482,7 +482,7 @@ const nodeOperationOptions: INodeProperties[] = [
 	//         border
 	// ----------------------------------
 	{
-		displayName: 'Border Width',
+		displayName: 'Border width',
 		name: 'borderWidth',
 		type: 'number',
 		default: 10,
@@ -494,7 +494,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'The width of the border',
 	},
 	{
-		displayName: 'Border Height',
+		displayName: 'Border height',
 		name: 'borderHeight',
 		type: 'number',
 		default: 10,
@@ -506,7 +506,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'The height of the border',
 	},
 	{
-		displayName: 'Border Color',
+		displayName: 'Border color',
 		name: 'borderColor',
 		type: 'color',
 		default: '#000000',
@@ -522,7 +522,7 @@ const nodeOperationOptions: INodeProperties[] = [
 	//         composite
 	// ----------------------------------
 	{
-		displayName: 'Composite Image Property',
+		displayName: 'Composite image property',
 		name: 'dataPropertyNameComposite',
 		type: 'string',
 		default: '',
@@ -562,35 +562,35 @@ const nodeOperationOptions: INodeProperties[] = [
 				value: 'Copy',
 			},
 			{
-				name: 'Copy Black',
+				name: 'Copy black',
 				value: 'CopyBlack',
 			},
 			{
-				name: 'Copy Blue',
+				name: 'Copy blue',
 				value: 'CopyBlue',
 			},
 			{
-				name: 'Copy Cyan',
+				name: 'Copy cyan',
 				value: 'CopyCyan',
 			},
 			{
-				name: 'Copy Green',
+				name: 'Copy green',
 				value: 'CopyGreen',
 			},
 			{
-				name: 'Copy Magenta',
+				name: 'Copy magenta',
 				value: 'CopyMagenta',
 			},
 			{
-				name: 'Copy Opacity',
+				name: 'Copy opacity',
 				value: 'CopyOpacity',
 			},
 			{
-				name: 'Copy Red',
+				name: 'Copy red',
 				value: 'CopyRed',
 			},
 			{
-				name: 'Copy Yellow',
+				name: 'Copy yellow',
 				value: 'CopyYellow',
 			},
 			{
@@ -747,27 +747,27 @@ const nodeOperationOptions: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Ignore Aspect Ratio',
+				name: 'Ignore aspect ratio',
 				value: 'ignoreAspectRatio',
 				description: 'Ignore aspect ratio and resize exactly to specified values',
 			},
 			{
-				name: 'Maximum Area',
+				name: 'Maximum area',
 				value: 'maximumArea',
 				description: 'Specified values are maximum area',
 			},
 			{
-				name: 'Minimum Area',
+				name: 'Minimum area',
 				value: 'minimumArea',
 				description: 'Specified values are minimum area',
 			},
 			{
-				name: 'Only if Larger',
+				name: 'Only if larger',
 				value: 'onlyIfLarger',
 				description: 'Resize only if image is larger than width or height',
 			},
 			{
-				name: 'Only if Smaller',
+				name: 'Only if smaller',
 				value: 'onlyIfSmaller',
 				description: 'Resize only if image is smaller than width or height',
 			},
@@ -806,7 +806,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'How much the image should be rotated',
 	},
 	{
-		displayName: 'Background Color',
+		displayName: 'Background color',
 		name: 'backgroundColor',
 		type: 'color',
 		default: '#ffffffff',
@@ -912,7 +912,7 @@ export class EditImage implements INodeType {
 				default: 'border',
 			},
 			{
-				displayName: 'Property Name',
+				displayName: 'Property name',
 				name: 'dataPropertyName',
 				type: 'string',
 				default: 'data',
@@ -925,7 +925,7 @@ export class EditImage implements INodeType {
 			{
 				displayName: 'Operations',
 				name: 'operations',
-				placeholder: 'Add Operation',
+				placeholder: 'Add operation',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -953,7 +953,7 @@ export class EditImage implements INodeType {
 							},
 							...nodeOperationOptions,
 							{
-								displayName: 'Font Name or ID',
+								displayName: 'Font name or ID',
 								name: 'font',
 								type: 'options',
 								displayOptions: {
@@ -987,7 +987,7 @@ export class EditImage implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Destination Output Field',
+						displayName: 'Destination output field',
 						name: 'destinationKey',
 						type: 'string',
 						default: 'data',
@@ -995,14 +995,14 @@ export class EditImage implements INodeType {
 						description: 'The name of the output field that will contain the file data',
 					},
 					{
-						displayName: 'File Name',
+						displayName: 'File name',
 						name: 'fileName',
 						type: 'string',
 						default: '',
 						description: 'File name to set in binary data',
 					},
 					{
-						displayName: 'Font Name or ID',
+						displayName: 'Font name or ID',
 						name: 'font',
 						type: 'options',
 						displayOptions: {

@@ -89,7 +89,7 @@ export const attributeOperations: INodeProperties[] = [
 				action: 'Delete an attribute',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				routing: {
 					request: {
@@ -232,10 +232,10 @@ const createAttributeOperations: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Attribute List',
+		displayName: 'Contact attribute list',
 		name: 'attributeCategoryList',
 		type: 'collection',
-		placeholder: 'Add Attributes',
+		placeholder: 'Add attributes',
 		default: {},
 		displayOptions: {
 			show: {
@@ -246,9 +246,9 @@ const createAttributeOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Contact Attributes',
+				displayName: 'Contact attributes',
 				name: 'categoryEnumeration',
-				placeholder: 'Add Attribute',
+				placeholder: 'Add attribute',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -362,12 +362,12 @@ const updateAttributeOperations: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateAttributeCategoryList',
 		default: {},
 		description: 'List of the values and labels that the attribute can take',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
@@ -377,9 +377,9 @@ const updateAttributeOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Contact Attributes',
+				displayName: 'Contact attributes',
 				name: 'updateCategoryEnumeration',
-				placeholder: 'Add Attribute',
+				placeholder: 'Add attribute',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -480,7 +480,7 @@ const deleteAttribueOperations: INodeProperties[] = [
 
 const getAllAttributeOperations: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

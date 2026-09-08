@@ -25,7 +25,7 @@ export const zoneCertificateOperations: INodeProperties[] = [
 				action: 'Get a certificate',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getMany',
 				description: 'Get many certificates',
 				action: 'Get many certificates',
@@ -46,7 +46,7 @@ export const zoneCertificateFields: INodeProperties[] = [
 	/*                          certificate:upload                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Zone Name or ID',
+		displayName: 'Zone name or ID',
 		name: 'zoneId',
 		type: 'options',
 		description:
@@ -64,7 +64,7 @@ export const zoneCertificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Certificate Content',
+		displayName: 'Certificate content',
 		name: 'certificate',
 		type: 'string',
 		required: true,
@@ -78,7 +78,7 @@ export const zoneCertificateFields: INodeProperties[] = [
 		description: "The zone's leaf certificate",
 	},
 	{
-		displayName: 'Private Key',
+		displayName: 'Private key',
 		name: 'privateKey',
 		type: 'string',
 		required: true,
@@ -94,7 +94,7 @@ export const zoneCertificateFields: INodeProperties[] = [
 	/*                          certificate:getMany                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		description: 'Whether to return all results or only up to a given limit',
@@ -128,7 +128,7 @@ export const zoneCertificateFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

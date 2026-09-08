@@ -33,12 +33,12 @@ export const messageFields: INodeProperties[] = [
 				action: 'Send message',
 			},
 			{
-				name: 'Send and Wait for Response',
+				name: 'Send and wait for response',
 				value: SEND_AND_WAIT_OPERATION,
 				action: 'Send message and wait for response',
 			},
 			{
-				name: 'Send Template',
+				name: 'Send template',
 				value: 'sendTemplate',
 				action: 'Send template',
 			},
@@ -61,7 +61,7 @@ export const messageFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Messaging Product',
+		displayName: 'Messaging product',
 		name: 'messagingProduct',
 		default: 'whatsapp',
 		type: 'hidden',
@@ -78,7 +78,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Sender Phone Number (or ID)',
+		displayName: 'Sender phone number (or ID)',
 		name: 'phoneNumberId',
 		type: 'options',
 		typeOptions: {
@@ -132,7 +132,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: "Recipient's Phone Number",
+		displayName: "Recipient's phone number",
 		name: 'recipientPhoneNumber',
 		type: 'string',
 		default: '',
@@ -215,7 +215,7 @@ export const messageTypeFields: INodeProperties[] = [
 				messageType: ['contacts'],
 			},
 		},
-		placeholder: 'Add Parameter',
+		placeholder: 'Add parameter',
 		default: {},
 		options: [
 			{
@@ -223,7 +223,7 @@ export const messageTypeFields: INodeProperties[] = [
 				name: 'data',
 				values: [
 					{
-						displayName: 'Formatted Name',
+						displayName: 'Formatted name',
 						name: 'formatted_name',
 						type: 'string',
 						required: true,
@@ -236,7 +236,7 @@ export const messageTypeFields: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'first_name',
 						type: 'string',
 						default: '',
@@ -248,7 +248,7 @@ export const messageTypeFields: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'last_name',
 						type: 'string',
 						default: '',
@@ -260,7 +260,7 @@ export const messageTypeFields: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Middle Name',
+						displayName: 'Middle name',
 						name: 'middle_name',
 						type: 'string',
 						default: '',
@@ -300,10 +300,10 @@ export const messageTypeFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -319,7 +319,7 @@ export const messageTypeFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				default: {},
 				options: [
 					{
@@ -409,7 +409,7 @@ export const messageTypeFields: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'Country Code',
+								displayName: 'Country code',
 								name: 'country_code',
 								type: 'string',
 								default: '',
@@ -444,7 +444,7 @@ export const messageTypeFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				default: {},
 				options: [
 					{
@@ -497,7 +497,7 @@ export const messageTypeFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: false,
 				},
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				default: {},
 				options: [
 					{
@@ -551,7 +551,7 @@ export const messageTypeFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				default: {},
 				options: [
 					{
@@ -653,7 +653,7 @@ export const messageTypeFields: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'WhatsApp User ID',
+								displayName: 'WhatsApp user ID',
 								name: 'whatsapp_user_id',
 								type: 'string',
 								default: '',
@@ -682,7 +682,7 @@ export const messageTypeFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				default: {},
 				options: [
 					{
@@ -781,10 +781,10 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'fixedCollection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -795,7 +795,7 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Name and Address',
+				displayName: 'Name and address',
 				name: 'nameAndAddress',
 				values: [
 					{
@@ -830,7 +830,7 @@ export const messageTypeFields: INodeProperties[] = [
 	//         type: text
 	// ----------------------------------
 	{
-		displayName: 'Text Body',
+		displayName: 'Text body',
 		name: 'textBody',
 		type: 'string',
 		required: true,
@@ -854,7 +854,7 @@ export const messageTypeFields: INodeProperties[] = [
 	//         type: media
 	// ----------------------------------
 	{
-		displayName: 'Take Audio From',
+		displayName: 'Take audio from',
 		name: 'mediaPath',
 		type: 'options',
 		default: 'useMediaLink',
@@ -867,7 +867,7 @@ export const messageTypeFields: INodeProperties[] = [
 					'WhatsApp will download the audio, saving you the step of uploading audio yourself',
 			},
 			{
-				name: 'WhatsApp Media',
+				name: 'WhatsApp media',
 				value: 'useMediaId',
 				description: 'If you have already uploaded the audio to WhatsApp',
 			},
@@ -886,7 +886,7 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Take Document From',
+		displayName: 'Take document from',
 		name: 'mediaPath',
 		type: 'options',
 		default: 'useMediaLink',
@@ -899,7 +899,7 @@ export const messageTypeFields: INodeProperties[] = [
 					'When using a link, WhatsApp will download the document, saving you the step of uploading document yourself',
 			},
 			{
-				name: 'WhatsApp Media',
+				name: 'WhatsApp media',
 				value: 'useMediaId',
 				description: 'You can use an ID if you have already uploaded the document to WhatsApp',
 			},
@@ -918,7 +918,7 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Take Image From',
+		displayName: 'Take image from',
 		name: 'mediaPath',
 		type: 'options',
 		default: 'useMediaLink',
@@ -931,7 +931,7 @@ export const messageTypeFields: INodeProperties[] = [
 					'When using a link, WhatsApp will download the image, saving you the step of uploading image yourself',
 			},
 			{
-				name: 'WhatsApp Media',
+				name: 'WhatsApp media',
 				value: 'useMediaId',
 				description: 'You can use an ID if you have already uploaded the image to WhatsApp',
 			},
@@ -950,7 +950,7 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Take Video From',
+		displayName: 'Take video from',
 		name: 'mediaPath',
 		type: 'options',
 		default: 'useMediaLink',
@@ -963,7 +963,7 @@ export const messageTypeFields: INodeProperties[] = [
 					'When using a link, WhatsApp will download the video, saving you the step of uploading video yourself',
 			},
 			{
-				name: 'WhatsApp Media',
+				name: 'WhatsApp media',
 				value: 'useMediaId',
 				description: 'You can use an ID if you have already uploaded the video to WhatsApp',
 			},
@@ -1022,7 +1022,7 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'mediaPropertyName',
 		type: 'string',
 		default: 'data',
@@ -1064,10 +1064,10 @@ export const messageTypeFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1198,7 +1198,7 @@ export const messageTypeFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Component',
+		placeholder: 'Add component',
 		displayOptions: {
 			show: {
 				operation: ['sendTemplate'],
@@ -1248,7 +1248,7 @@ export const messageTypeFields: INodeProperties[] = [
 								type: ['body'],
 							},
 						},
-						placeholder: 'Add Parameter',
+						placeholder: 'Add parameter',
 						default: {},
 						options: [
 							{
@@ -1269,7 +1269,7 @@ export const messageTypeFields: INodeProperties[] = [
 												value: 'currency',
 											},
 											{
-												name: 'Date Time',
+												name: 'Date time',
 												value: 'date_time',
 											},
 										],
@@ -1287,7 +1287,7 @@ export const messageTypeFields: INodeProperties[] = [
 										default: '',
 									},
 									{
-										displayName: 'Currency Code',
+										displayName: 'Currency code',
 										name: 'code',
 										type: 'options',
 										options: currencies,
@@ -1312,7 +1312,7 @@ export const messageTypeFields: INodeProperties[] = [
 										placeholder: '',
 									},
 									{
-										displayName: 'Date Time',
+										displayName: 'Date time',
 										name: 'date_time',
 										type: 'dateTime',
 										displayOptions: {
@@ -1324,7 +1324,7 @@ export const messageTypeFields: INodeProperties[] = [
 										placeholder: '',
 									},
 									{
-										displayName: 'Fallback Value',
+										displayName: 'Fallback value',
 										name: 'fallback_value',
 										type: 'string',
 										displayOptions: {
@@ -1339,7 +1339,7 @@ export const messageTypeFields: INodeProperties[] = [
 						],
 					},
 					{
-						displayName: 'Sub Type',
+						displayName: 'Sub type',
 						name: 'sub_type',
 						type: 'options',
 						displayOptions: {
@@ -1349,7 +1349,7 @@ export const messageTypeFields: INodeProperties[] = [
 						},
 						options: [
 							{
-								name: 'Quick Reply',
+								name: 'Quick reply',
 								value: 'quick_reply',
 								description: 'Allows your customer to call a phone number and visit a website',
 							},
@@ -1387,7 +1387,7 @@ export const messageTypeFields: INodeProperties[] = [
 								type: ['button'],
 							},
 						},
-						placeholder: 'Add Parameter',
+						placeholder: 'Add parameter',
 						default: {},
 						options: [
 							{
@@ -1449,7 +1449,7 @@ export const messageTypeFields: INodeProperties[] = [
 								type: ['header'],
 							},
 						},
-						placeholder: 'Add Parameter',
+						placeholder: 'Add parameter',
 						default: {},
 						options: [
 							{
@@ -1470,7 +1470,7 @@ export const messageTypeFields: INodeProperties[] = [
 												value: 'currency',
 											},
 											{
-												name: 'Date Time',
+												name: 'Date time',
 												value: 'date_time',
 											},
 											{
@@ -1492,7 +1492,7 @@ export const messageTypeFields: INodeProperties[] = [
 										default: '',
 									},
 									{
-										displayName: 'Currency Code',
+										displayName: 'Currency code',
 										name: 'code',
 										type: 'options',
 										options: currencies,
@@ -1517,7 +1517,7 @@ export const messageTypeFields: INodeProperties[] = [
 										placeholder: '',
 									},
 									{
-										displayName: 'Date Time',
+										displayName: 'Date time',
 										name: 'date_time',
 										type: 'dateTime',
 										displayOptions: {
@@ -1529,7 +1529,7 @@ export const messageTypeFields: INodeProperties[] = [
 										placeholder: '',
 									},
 									{
-										displayName: 'Image Link',
+										displayName: 'Image link',
 										name: 'imageLink',
 										type: 'string',
 										displayOptions: {
@@ -1548,10 +1548,10 @@ export const messageTypeFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1562,7 +1562,7 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Show URL Previews',
+				displayName: 'Show URL previews',
 				name: 'previewUrl',
 				type: 'boolean',
 				default: false,

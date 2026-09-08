@@ -12,7 +12,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Upload Media File',
+				name: 'Upload media file',
 				value: 'upload',
 				action: 'Upload a media file',
 				description: 'Upload a file to the Google Gemini API for later use',

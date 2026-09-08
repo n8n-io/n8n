@@ -25,7 +25,7 @@ export class WriteBinaryFile implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
@@ -34,7 +34,7 @@ export class WriteBinaryFile implements INodeType {
 				description: 'Path to which the file should be written',
 			},
 			{
-				displayName: 'Property Name',
+				displayName: 'Property name',
 				name: 'dataPropertyName',
 				type: 'string',
 				default: 'data',

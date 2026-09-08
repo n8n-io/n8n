@@ -31,7 +31,7 @@ export const accountOperations: INodeProperties[] = [
 				action: 'Get an account',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many accounts',
 				action: 'Get many accounts',
@@ -66,10 +66,10 @@ export const accountFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -86,14 +86,14 @@ export const accountFields: INodeProperties[] = [
 				description: 'Address of the account',
 			},
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'annual_revenue',
 				type: 'number',
 				default: 0,
 				description: 'Annual revenue of the account',
 			},
 			{
-				displayName: 'Business Type Name or ID',
+				displayName: 'Business type name or ID',
 				name: 'business_type_id',
 				type: 'options',
 				default: '',
@@ -125,7 +125,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Facebook username of the account',
 			},
 			{
-				displayName: 'Industry Type Name or ID',
+				displayName: 'Industry type name or ID',
 				name: 'industry_type_id',
 				type: 'options',
 				default: '',
@@ -143,14 +143,14 @@ export const accountFields: INodeProperties[] = [
 				description: 'LinkedIn account of the account',
 			},
 			{
-				displayName: 'Number of Employees',
+				displayName: 'Number of employees',
 				name: 'number_of_employees',
 				type: 'number',
 				default: 0,
 				description: 'Number of employees in the account',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -161,7 +161,7 @@ export const accountFields: INodeProperties[] = [
 					'ID of the user to whom the account is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Parent Sales Account ID',
+				displayName: 'Parent sales account ID',
 				name: 'parent_sales_account_id',
 				type: 'string',
 				default: '',
@@ -182,7 +182,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'State that the account belongs to',
 			},
 			{
-				displayName: 'Territory Name or ID',
+				displayName: 'Territory name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',
@@ -256,7 +256,7 @@ export const accountFields: INodeProperties[] = [
 	//             account: getAll
 	// ----------------------------------------
 	{
-		displayName: 'View Name or ID',
+		displayName: 'View name or ID',
 		name: 'view',
 		type: 'options',
 		description:
@@ -274,7 +274,7 @@ export const accountFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -322,10 +322,10 @@ export const accountFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -342,14 +342,14 @@ export const accountFields: INodeProperties[] = [
 				description: 'Address of the account',
 			},
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'annual_revenue',
 				type: 'number',
 				default: 0,
 				description: 'Annual revenue of the account',
 			},
 			{
-				displayName: 'Business Type Name or ID',
+				displayName: 'Business type name or ID',
 				name: 'business_type_id',
 				type: 'options',
 				default: '',
@@ -381,7 +381,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Facebook username of the account',
 			},
 			{
-				displayName: 'Industry Type Name or ID',
+				displayName: 'Industry type name or ID',
 				name: 'industry_type_id',
 				type: 'options',
 				default: '',
@@ -406,14 +406,14 @@ export const accountFields: INodeProperties[] = [
 				description: 'Name of the account',
 			},
 			{
-				displayName: 'Number of Employees',
+				displayName: 'Number of employees',
 				name: 'number_of_employees',
 				type: 'number',
 				default: 0,
 				description: 'Number of employees in the account',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -424,7 +424,7 @@ export const accountFields: INodeProperties[] = [
 					'ID of the user to whom the account is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Parent Sales Account ID',
+				displayName: 'Parent sales account ID',
 				name: 'parent_sales_account_id',
 				type: 'string',
 				default: '',
@@ -445,7 +445,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'State that the account belongs to',
 			},
 			{
-				displayName: 'Territory Name or ID',
+				displayName: 'Territory name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',

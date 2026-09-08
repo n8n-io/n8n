@@ -18,7 +18,7 @@ import type { IDtableMetadataColumn, IRowResponse } from '../Interfaces';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Column Name or ID',
+		displayName: 'Column name or ID',
 		name: 'searchColumn',
 		type: 'options',
 		typeOptions: {
@@ -32,7 +32,7 @@ export const properties: INodeProperties[] = [
 			'Select the column to be searched. Not all column types are supported for search. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Search Term',
+		displayName: 'Search term',
 		name: 'searchTerm',
 		type: 'string',
 		required: true,
@@ -43,11 +43,11 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Case Insensitive Search',
+				displayName: 'Case insensitive search',
 				name: 'insensitive',
 				type: 'boolean',
 				default: false,
@@ -55,7 +55,7 @@ export const properties: INodeProperties[] = [
 					'Whether the search ignores case sensitivity (true). Otherwise, it distinguishes between uppercase and lowercase characters.',
 			},
 			{
-				displayName: 'Activate Wildcard Search',
+				displayName: 'Activate wildcard search',
 				name: 'wildcard',
 				type: 'boolean',
 				default: true,
@@ -71,7 +71,7 @@ export const properties: INodeProperties[] = [
 					'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
-				displayName: 'Return Column Names',
+				displayName: 'Return column names',
 				name: 'convert',
 				type: 'boolean',
 				default: true,

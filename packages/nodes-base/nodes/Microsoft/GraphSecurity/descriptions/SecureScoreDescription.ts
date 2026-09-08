@@ -18,7 +18,7 @@ export const secureScoreOperations: INodeProperties[] = [
 				action: 'Get a secure score',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many secure scores',
 			},
@@ -50,7 +50,7 @@ export const secureScoreFields: INodeProperties[] = [
 	//           secureScore: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -85,7 +85,7 @@ export const secureScoreFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['secureScore'],
@@ -94,7 +94,7 @@ export const secureScoreFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Filter Query Parameter',
+				displayName: 'Filter query parameter',
 				name: 'filter',
 				description:
 					'<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
@@ -103,7 +103,7 @@ export const secureScoreFields: INodeProperties[] = [
 				placeholder: 'currentScore eq 13',
 			},
 			{
-				displayName: 'Include Control Scores',
+				displayName: 'Include control scores',
 				name: 'includeControlScores',
 				type: 'boolean',
 				default: false,

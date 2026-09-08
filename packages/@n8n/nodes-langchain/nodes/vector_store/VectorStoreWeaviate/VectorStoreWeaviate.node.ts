@@ -102,7 +102,7 @@ const sharedFields: INodeProperties[] = [weaviateCollectionRLC];
 
 const shared_options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> = [
 	{
-		displayName: 'Tenant Name',
+		displayName: 'Tenant name',
 		name: 'tenant',
 		type: 'string',
 		default: '',
@@ -110,7 +110,7 @@ const shared_options: Array<INodePropertyOptions | INodeProperties | INodeProper
 		description: 'Tenant Name. Collection must have been created with tenant support enabled.',
 	},
 	{
-		displayName: 'Text Key',
+		displayName: 'Text key',
 		name: 'textKey',
 		type: 'string',
 		default: 'text',
@@ -118,7 +118,7 @@ const shared_options: Array<INodePropertyOptions | INodeProperties | INodeProper
 		description: 'The key in the document that contains the embedded text',
 	},
 	{
-		displayName: 'Skip Init Checks',
+		displayName: 'Skip init checks',
 		name: 'skip_init_checks',
 		type: 'boolean',
 		default: false,
@@ -126,7 +126,7 @@ const shared_options: Array<INodePropertyOptions | INodeProperties | INodeProper
 		description: 'Whether to skip init checks while instantiating the client',
 	},
 	{
-		displayName: 'Init Timeout',
+		displayName: 'Init timeout',
 		name: 'timeout_init',
 		type: 'number',
 		default: 2,
@@ -134,7 +134,7 @@ const shared_options: Array<INodePropertyOptions | INodeProperties | INodeProper
 		description: 'Number of timeout seconds for initial checks',
 	},
 	{
-		displayName: 'Insert Timeout',
+		displayName: 'Insert timeout',
 		name: 'timeout_insert',
 		type: 'number',
 		default: 90,
@@ -142,7 +142,7 @@ const shared_options: Array<INodePropertyOptions | INodeProperties | INodeProper
 		description: 'Number of timeout seconds for inserts',
 	},
 	{
-		displayName: 'Query Timeout',
+		displayName: 'Query timeout',
 		name: 'timeout_query',
 		type: 'number',
 		default: 30,
@@ -150,7 +150,7 @@ const shared_options: Array<INodePropertyOptions | INodeProperties | INodeProper
 		description: 'Number of timeout seconds for queries',
 	},
 	{
-		displayName: 'GRPC Proxy',
+		displayName: 'GRPC proxy',
 		name: 'proxy_grpc',
 		type: 'string',
 		default: '',
@@ -164,12 +164,12 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			...shared_options,
 			{
-				displayName: 'Clear Data',
+				displayName: 'Clear data',
 				name: 'clearStore',
 				type: 'boolean',
 				default: false,
@@ -184,11 +184,11 @@ const retrieveFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Search Filters',
+				displayName: 'Search filters',
 				name: 'searchFilterJson',
 				type: 'json',
 				typeOptions: {
@@ -201,7 +201,7 @@ const retrieveFields: INodeProperties[] = [
 					'Filter pageContent or metadata using this <a href="https://weaviate.io/" target="_blank">filtering syntax</a>',
 			},
 			{
-				displayName: 'Metadata Keys',
+				displayName: 'Metadata keys',
 				name: 'metadataKeys',
 				type: 'string',
 				default: 'source,page',
@@ -209,7 +209,7 @@ const retrieveFields: INodeProperties[] = [
 				description: 'Select the metadata to retrieve along the content',
 			},
 			{
-				displayName: 'Hybrid: Query Text',
+				displayName: 'Hybrid: query text',
 				name: 'hybridQuery',
 				type: 'string',
 				default: '',
@@ -217,7 +217,7 @@ const retrieveFields: INodeProperties[] = [
 				description: 'Provide a query text to combine vector search with a keyword/text search',
 			},
 			{
-				displayName: 'Hybrid: Explain Score',
+				displayName: 'Hybrid: explain score',
 				name: 'hybridExplainScore',
 				type: 'boolean',
 				default: false,
@@ -225,12 +225,12 @@ const retrieveFields: INodeProperties[] = [
 				description: 'Whether to show the score fused between hybrid and vector search explanation',
 			},
 			{
-				displayName: 'Hybrid: Fusion Type',
+				displayName: 'Hybrid: fusion type',
 				name: 'fusionType',
 				type: 'options',
 				options: [
 					{
-						name: 'Relative Score',
+						name: 'Relative score',
 						value: 'RelativeScore',
 					},
 					{
@@ -242,7 +242,7 @@ const retrieveFields: INodeProperties[] = [
 				description: 'Select the fusion type for combining vector and keyword search results',
 			},
 			{
-				displayName: 'Hybrid: Auto Cut Limit',
+				displayName: 'Hybrid: auto cut limit',
 				name: 'autoCutLimit',
 				type: 'number',
 				default: undefined,
@@ -250,7 +250,7 @@ const retrieveFields: INodeProperties[] = [
 				description: 'Limit result groups by detecting sudden jumps in score',
 			},
 			{
-				displayName: 'Hybrid: Alpha',
+				displayName: 'Hybrid: alpha',
 				name: 'alpha',
 				type: 'number',
 				default: 0.5,
@@ -259,7 +259,7 @@ const retrieveFields: INodeProperties[] = [
 					'Change the relative weights of the keyword and vector components. 1.0 = pure vector, 0.0 = pure keyword.',
 			},
 			{
-				displayName: 'Hybrid: Query Properties',
+				displayName: 'Hybrid: query properties',
 				name: 'queryProperties',
 				type: 'string',
 				default: '',
@@ -268,7 +268,7 @@ const retrieveFields: INodeProperties[] = [
 					'Comma-separated list of properties to include in the query with optionally weighted values, e.g., "question^2,answer"',
 			},
 			{
-				displayName: 'Hybrid: Max Vector Distance',
+				displayName: 'Hybrid: max vector distance',
 				name: 'maxVectorDistance',
 				type: 'number',
 				default: undefined,

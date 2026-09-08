@@ -25,7 +25,7 @@ export const contactTagOperations: INodeProperties[] = [
 				action: 'Delete a contact tag',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: "Retrieve many contact's tags",
 				action: 'Get many contact tags',
@@ -53,7 +53,7 @@ export const contactTagFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Tag Names or IDs',
+		displayName: 'Tag names or IDs',
 		name: 'tagIds',
 		type: 'multiOptions',
 		description:
@@ -116,7 +116,7 @@ export const contactTagFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

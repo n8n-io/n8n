@@ -13,7 +13,7 @@ import { modelRLC } from '../descriptions';
 const properties: INodeProperties[] = [
 	modelRLC('audioModelSearch'),
 	{
-		displayName: 'Input Type',
+		displayName: 'Input type',
 		name: 'inputType',
 		type: 'options',
 		default: 'url',
@@ -23,7 +23,7 @@ const properties: INodeProperties[] = [
 				value: 'url',
 			},
 			{
-				name: 'Binary File(s)',
+				name: 'Binary file(s)',
 				value: 'binary',
 			},
 		],
@@ -43,7 +43,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Data Field Name(s)',
+		displayName: 'Input data field name(s)',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -58,7 +58,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
@@ -71,7 +71,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Start Time',
+				displayName: 'Start time',
 				name: 'startTime',
 				type: 'string',
 				default: '',
@@ -79,7 +79,7 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. 00:15',
 			},
 			{
-				displayName: 'End Time',
+				displayName: 'End time',
 				name: 'endTime',
 				type: 'string',
 				default: '',

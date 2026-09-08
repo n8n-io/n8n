@@ -57,14 +57,14 @@ export class RabbitMQ implements INodeType {
 				// To remove when action view is fixed
 				options: [
 					{
-						name: 'Send a Message to RabbitMQ',
+						name: 'Send a message to RabbitMQ',
 						value: 'sendMessage',
-						action: 'Send a Message to RabbitMQ',
+						action: 'Send a message to RabbitMQ',
 					},
 					{
-						name: 'Delete From Queue',
+						name: 'Delete from queue',
 						value: 'deleteMessage',
-						action: 'Delete From Queue',
+						action: 'Delete from queue',
 					},
 				],
 			},
@@ -81,14 +81,14 @@ export class RabbitMQ implements INodeType {
 				},
 				options: [
 					{
-						name: 'Send a Message to RabbitMQ',
+						name: 'Send a message to RabbitMQ',
 						value: 'sendMessage',
-						action: 'Send a Message to RabbitMQ',
+						action: 'Send a message to RabbitMQ',
 					},
 					{
-						name: 'Delete From Queue',
+						name: 'Delete from queue',
 						value: 'deleteMessage',
-						action: 'Delete From Queue',
+						action: 'Delete from queue',
 					},
 				],
 			},
@@ -133,7 +133,7 @@ export class RabbitMQ implements INodeType {
 			//         Queue
 			// ----------------------------------
 			{
-				displayName: 'Queue / Topic',
+				displayName: 'Queue / topic',
 				name: 'queue',
 				type: 'string',
 				displayOptions: {
@@ -201,7 +201,7 @@ export class RabbitMQ implements INodeType {
 				description: 'Type of exchange',
 			},
 			{
-				displayName: 'Routing Key',
+				displayName: 'Routing key',
 				name: 'routingKey',
 				type: 'string',
 				displayOptions: {
@@ -219,7 +219,7 @@ export class RabbitMQ implements INodeType {
 			// ----------------------------------
 
 			{
-				displayName: 'Send Input Data',
+				displayName: 'Send input data',
 				name: 'sendInputData',
 				type: 'boolean',
 				displayOptions: {
@@ -255,7 +255,7 @@ export class RabbitMQ implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Alternate Exchange',
+						displayName: 'Alternate exchange',
 						name: 'alternateExchange',
 						type: 'string',
 						displayOptions: {
@@ -270,7 +270,7 @@ export class RabbitMQ implements INodeType {
 					{
 						displayName: 'Arguments',
 						name: 'arguments',
-						placeholder: 'Add Argument',
+						placeholder: 'Add argument',
 						description:
 							'Arguments to add, See <a href="https://amqp-node.github.io/amqplib/channel_api.html#channel_publish" target="_blank">here</a> for valid options',
 						type: 'fixedCollection',
@@ -300,7 +300,7 @@ export class RabbitMQ implements INodeType {
 						],
 					},
 					{
-						displayName: 'Auto Delete Queue',
+						displayName: 'Auto delete queue',
 						name: 'autoDelete',
 						type: 'boolean',
 						default: false,
@@ -329,7 +329,7 @@ export class RabbitMQ implements INodeType {
 					{
 						displayName: 'Headers',
 						name: 'headers',
-						placeholder: 'Add Header',
+						placeholder: 'Add header',
 						description: 'Headers to add',
 						type: 'fixedCollection',
 						typeOptions: {

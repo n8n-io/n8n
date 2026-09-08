@@ -71,7 +71,7 @@ export class Pushbullet implements INodeType {
 						action: 'Delete a push',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many pushes',
 						action: 'Get many pushes',
@@ -158,7 +158,7 @@ export class Pushbullet implements INodeType {
 				description: 'URL of the push',
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -179,7 +179,7 @@ export class Pushbullet implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Channel Tag',
+						name: 'Channel tag',
 						value: 'channel_tag',
 						description: 'Send the push to all subscribers to your channel that has this tag',
 					},
@@ -228,7 +228,7 @@ export class Pushbullet implements INodeType {
 					'The value to be set depending on the target selected. For example, if the target selected is email then this field would take the email address of the person you are trying to send the push to.',
 			},
 			{
-				displayName: 'Value Name or ID',
+				displayName: 'Value name or ID',
 				name: 'value',
 				type: 'options',
 				typeOptions: {
@@ -260,7 +260,7 @@ export class Pushbullet implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -294,7 +294,7 @@ export class Pushbullet implements INodeType {
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				default: {},
 				displayOptions: {
 					show: {
@@ -312,7 +312,7 @@ export class Pushbullet implements INodeType {
 						description: "Don't return deleted pushes",
 					},
 					{
-						displayName: 'Modified After',
+						displayName: 'Modified after',
 						name: 'modified_after',
 						type: 'dateTime',
 						default: '',

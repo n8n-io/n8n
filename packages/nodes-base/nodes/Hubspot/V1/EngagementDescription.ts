@@ -31,7 +31,7 @@ export const engagementOperations: INodeProperties[] = [
 				action: 'Get an engagement',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many engagements',
 				action: 'Get many engagements',
@@ -80,7 +80,7 @@ export const engagementFields: INodeProperties[] = [
 		displayName: 'Metadata',
 		name: 'metadata',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -97,7 +97,7 @@ export const engagementFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'For Object Type',
+				displayName: 'For object type',
 				name: 'forObjectType',
 				type: 'options',
 				options: [
@@ -126,11 +126,11 @@ export const engagementFields: INodeProperties[] = [
 						value: 'DEFERRED',
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 'IN_PROGRESS',
 					},
 					{
-						name: 'Not Started',
+						name: 'Not started',
 						value: 'NOT_STARTED',
 					},
 					{
@@ -152,7 +152,7 @@ export const engagementFields: INodeProperties[] = [
 		displayName: 'Metadata',
 		name: 'metadata',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -183,19 +183,19 @@ export const engagementFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'From Email',
+				displayName: 'From email',
 				name: 'fromEmail',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'From First Name',
+				displayName: 'From first name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'From Last Name',
+				displayName: 'From last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -213,7 +213,7 @@ export const engagementFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'To Emails',
+				displayName: 'To emails',
 				name: 'toEmail',
 				type: 'string',
 				typeOptions: {
@@ -228,7 +228,7 @@ export const engagementFields: INodeProperties[] = [
 		displayName: 'Metadata',
 		name: 'metadata',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -245,19 +245,19 @@ export const engagementFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'End Time',
+				displayName: 'End time',
 				name: 'endTime',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Internal Meeting Notes',
+				displayName: 'Internal meeting notes',
 				name: 'internalMeetingNotes',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Start Time',
+				displayName: 'Start time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
@@ -274,7 +274,7 @@ export const engagementFields: INodeProperties[] = [
 		displayName: 'Metadata',
 		name: 'metadata',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -291,13 +291,13 @@ export const engagementFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Duration Milliseconds',
+				displayName: 'Duration milliseconds',
 				name: 'durationMilliseconds',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'From Number',
+				displayName: 'From number',
 				name: 'fromNumber',
 				type: 'string',
 				default: '',
@@ -318,7 +318,7 @@ export const engagementFields: INodeProperties[] = [
 						value: 'BUSY',
 					},
 					{
-						name: 'Calling CRM User',
+						name: 'Calling CRM user',
 						value: 'CALLING_CRM_USER',
 					},
 					{
@@ -338,11 +338,11 @@ export const engagementFields: INodeProperties[] = [
 						value: 'FAILED',
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 'IN_PROGRESS',
 					},
 					{
-						name: 'No Answer',
+						name: 'No answer',
 						value: 'NO_ANSWER',
 					},
 					{
@@ -357,7 +357,7 @@ export const engagementFields: INodeProperties[] = [
 				default: 'QUEUED',
 			},
 			{
-				displayName: 'To Number',
+				displayName: 'To number',
 				name: 'toNumber',
 				type: 'string',
 				default: '',
@@ -365,10 +365,10 @@ export const engagementFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -381,7 +381,7 @@ export const engagementFields: INodeProperties[] = [
 				displayName: 'Associations',
 				name: 'associations',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
@@ -440,7 +440,7 @@ export const engagementFields: INodeProperties[] = [
 	/*                                 engagement:getAll                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

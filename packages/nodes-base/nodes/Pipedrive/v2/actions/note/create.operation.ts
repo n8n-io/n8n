@@ -21,10 +21,10 @@ const properties: INodeProperties[] = [
 		description: 'The content of the note to create',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -42,7 +42,7 @@ const properties: INodeProperties[] = [
 				description: 'ID of the lead this note will be associated with',
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'org_id',
 				type: 'options',
 				typeOptions: {
@@ -60,21 +60,21 @@ const properties: INodeProperties[] = [
 				description: 'ID of the person this note will be associated with',
 			},
 			{
-				displayName: 'Pinned to Deal',
+				displayName: 'Pinned to deal',
 				name: 'pinned_to_deal_flag',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the note is pinned to the deal',
 			},
 			{
-				displayName: 'Pinned to Organization',
+				displayName: 'Pinned to organization',
 				name: 'pinned_to_organization_flag',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the note is pinned to the organization',
 			},
 			{
-				displayName: 'Pinned to Person',
+				displayName: 'Pinned to person',
 				name: 'pinned_to_person_flag',
 				type: 'boolean',
 				default: false,

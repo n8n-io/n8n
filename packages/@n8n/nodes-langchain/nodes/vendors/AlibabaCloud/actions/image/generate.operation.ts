@@ -89,10 +89,10 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Reference Images',
+		displayName: 'Reference images',
 		name: 'referenceImages',
 		type: 'fixedCollection',
-		placeholder: 'Add Image',
+		placeholder: 'Add image',
 		typeOptions: {
 			multipleValues: true,
 			multipleValueButtonText: 'Add Image',
@@ -115,7 +115,7 @@ const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Input Type',
+						displayName: 'Input type',
 						name: 'inputType',
 						type: 'options',
 						options: [
@@ -124,7 +124,7 @@ const properties: INodeProperties[] = [
 								value: 'url',
 							},
 							{
-								name: 'Binary Data',
+								name: 'Binary data',
 								value: 'binary',
 							},
 						],
@@ -143,7 +143,7 @@ const properties: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Input Data Field Name',
+						displayName: 'Input data field name',
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
@@ -163,7 +163,7 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Download Image',
+		displayName: 'Download image',
 		name: 'downloadImage',
 		type: 'boolean',
 		default: true,
@@ -174,7 +174,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'imageOptions',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -272,7 +272,7 @@ const properties: INodeProperties[] = [
 				description: 'The size of the generated image',
 			},
 			{
-				displayName: 'Prompt Extend',
+				displayName: 'Prompt extend',
 				name: 'promptExtend',
 				type: 'boolean',
 				default: false,

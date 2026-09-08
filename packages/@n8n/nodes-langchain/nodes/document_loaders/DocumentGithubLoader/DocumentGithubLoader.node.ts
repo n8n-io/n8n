@@ -80,7 +80,7 @@ export class DocumentGithubLoader implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
-				displayName: 'Repository Link',
+				displayName: 'Repository link',
 				name: 'repository',
 				type: 'string',
 				default: '',
@@ -92,7 +92,7 @@ export class DocumentGithubLoader implements INodeType {
 				default: 'main',
 			},
 			{
-				displayName: 'Text Splitting',
+				displayName: 'Text splitting',
 				name: 'textSplittingMode',
 				type: 'options',
 				default: 'simple',
@@ -120,7 +120,7 @@ export class DocumentGithubLoader implements INodeType {
 				displayName: 'Options',
 				name: 'additionalOptions',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 
 				options: [
@@ -131,7 +131,7 @@ export class DocumentGithubLoader implements INodeType {
 						default: false,
 					},
 					{
-						displayName: 'Ignore Paths',
+						displayName: 'Ignore paths',
 						name: 'ignorePaths',
 						type: 'string',
 						description: 'Comma-separated list of paths to ignore, e.g. "docs, src/tests',

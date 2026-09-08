@@ -32,7 +32,7 @@ export class Mailgun implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'From Email',
+				displayName: 'From email',
 				name: 'fromEmail',
 				type: 'string',
 				default: '',
@@ -41,7 +41,7 @@ export class Mailgun implements INodeType {
 				description: 'Email address of the sender optional with name',
 			},
 			{
-				displayName: 'To Email',
+				displayName: 'To email',
 				name: 'toEmail',
 				type: 'string',
 				default: '',
@@ -50,7 +50,7 @@ export class Mailgun implements INodeType {
 				description: 'Email address of the recipient. Multiple ones can be separated by comma.',
 			},
 			{
-				displayName: 'Cc Email',
+				displayName: 'CC email',
 				name: 'ccEmail',
 				type: 'string',
 				default: '',
@@ -58,7 +58,7 @@ export class Mailgun implements INodeType {
 				description: 'Cc Email address of the recipient. Multiple ones can be separated by comma.',
 			},
 			{
-				displayName: 'Bcc Email',
+				displayName: 'BCC email',
 				name: 'bccEmail',
 				type: 'string',
 				default: '',
@@ -66,7 +66,7 @@ export class Mailgun implements INodeType {
 				description: 'Bcc Email address of the recipient. Multiple ones can be separated by comma.',
 			},
 			{
-				displayName: 'Reply-To',
+				displayName: 'Reply-to',
 				name: 'replyTo',
 				type: 'string',
 				default: '',
@@ -74,14 +74,14 @@ export class Mailgun implements INodeType {
 				description: 'Reply-To header. Recipients will use this address when replying.',
 			},
 			{
-				displayName: 'Custom Headers',
+				displayName: 'Custom headers',
 				name: 'customHeaders',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
 				},
 				default: {},
-				placeholder: 'Add Header',
+				placeholder: 'Add header',
 				description:
 					'Arbitrary email headers. Enter only the header name (e.g. X-Custom-Header); the h: prefix is added automatically.',
 				options: [

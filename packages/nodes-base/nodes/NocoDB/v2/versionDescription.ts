@@ -12,11 +12,11 @@ export const authentication: INodeProperties = {
 	type: 'options',
 	options: [
 		{
-			name: 'API Token',
+			name: 'API token',
 			value: 'nocoDbApiToken',
 		},
 		{
-			name: 'User Token',
+			name: 'User token',
 			value: 'nocoDb',
 		},
 	],
@@ -71,7 +71,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'row',
 				},
 				{
-					name: 'Linked Row',
+					name: 'Linked row',
 					value: 'linkrow',
 				},
 				{

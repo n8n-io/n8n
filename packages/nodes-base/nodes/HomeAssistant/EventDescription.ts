@@ -19,7 +19,7 @@ export const eventOperations: INodeProperties[] = [
 				action: 'Create an event',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many events',
 				action: 'Get many events',
@@ -34,7 +34,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                event:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -69,7 +69,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                event:create                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Event Type',
+		displayName: 'Event type',
 		name: 'eventType',
 		type: 'string',
 		displayOptions: {
@@ -83,13 +83,13 @@ export const eventFields: INodeProperties[] = [
 		description: 'The Entity ID for which an event will be created',
 	},
 	{
-		displayName: 'Event Attributes',
+		displayName: 'Event attributes',
 		name: 'eventAttributes',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Attribute',
+		placeholder: 'Add attribute',
 		default: {},
 		displayOptions: {
 			show: {

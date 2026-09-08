@@ -19,7 +19,7 @@ export const formOperations: INodeProperties[] = [
 				action: 'Get a form',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many forms',
 				action: 'Get many forms',
@@ -28,7 +28,7 @@ export const formOperations: INodeProperties[] = [
 				name: 'Redeploy',
 				value: 'redeploy',
 				description: 'Redeploy Current Form Version',
-				action: 'Redeploy Current Form Version',
+				action: 'Redeploy current form version',
 			},
 		],
 		default: 'get',
@@ -40,7 +40,7 @@ export const formFields: INodeProperties[] = [
 	/*                                form:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name or ID',
+		displayName: 'Form name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -61,7 +61,7 @@ export const formFields: INodeProperties[] = [
 	/*                                form:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		required: true,
@@ -112,7 +112,7 @@ export const formFields: INodeProperties[] = [
 					multipleValues: false,
 				},
 				default: {},
-				placeholder: 'Add Sort',
+				placeholder: 'Add sort',
 				options: [
 					{
 						displayName: 'Sort',
@@ -126,17 +126,17 @@ export const formFields: INodeProperties[] = [
 								description: 'Whether to sort by descending order',
 							},
 							{
-								displayName: 'Order By',
+								displayName: 'Order by',
 								name: 'ordering',
 								type: 'options',
 								default: 'date_modified',
 								options: [
 									{
-										name: 'Asset Type',
+										name: 'Asset type',
 										value: 'asset_type',
 									},
 									{
-										name: 'Date Modified',
+										name: 'Date modified',
 										value: 'date_modified',
 									},
 									{
@@ -144,11 +144,11 @@ export const formFields: INodeProperties[] = [
 										value: 'name',
 									},
 									{
-										name: 'Owner Username',
+										name: 'Owner username',
 										value: 'owner__username',
 									},
 									{
-										name: 'Subscribers Count',
+										name: 'Subscribers count',
 										value: 'subscribers_count',
 									},
 								],
@@ -164,7 +164,7 @@ export const formFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {

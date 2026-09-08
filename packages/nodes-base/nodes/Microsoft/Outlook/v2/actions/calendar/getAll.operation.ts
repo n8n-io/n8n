@@ -11,11 +11,11 @@ export const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
-				displayName: 'Filter Query',
+				displayName: 'Filter query',
 				name: 'custom',
 				type: 'string',
 				default: '',

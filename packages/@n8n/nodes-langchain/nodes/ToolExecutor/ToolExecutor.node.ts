@@ -49,7 +49,7 @@ export class ToolExecutor implements INodeType {
 					'Key-value pairs, where key is the name of the tool name and value is the parameters to pass to the tool',
 			},
 			{
-				displayName: 'Tool Name',
+				displayName: 'Tool name',
 				name: 'toolName',
 				type: 'string',
 				default: '',

@@ -32,7 +32,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many contacts',
 				action: 'Get many contacts',
@@ -96,10 +96,10 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create', 'update'],
@@ -131,10 +131,10 @@ export const contactFields: INodeProperties[] = [
 				description: 'ID of the primary company to which this contact belongs',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFields',
 				type: 'fixedCollection',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -143,7 +143,7 @@ export const contactFields: INodeProperties[] = [
 				default: [],
 				options: [
 					{
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						name: 'customField',
 						values: [
 							{
@@ -186,7 +186,7 @@ export const contactFields: INodeProperties[] = [
 					'Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
@@ -220,26 +220,26 @@ export const contactFields: INodeProperties[] = [
 				description: 'Name of the contact',
 			},
 			{
-				displayName: 'Other Companies',
+				displayName: 'Other companies',
 				name: 'other_companies',
 				type: 'string',
 				default: [],
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Company',
+				placeholder: 'Add company',
 				description:
 					'Additional companies associated with the contact. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).',
 			},
 			{
-				displayName: 'Other Emails',
+				displayName: 'Other emails',
 				name: 'other_emails',
 				type: 'string',
 				default: [],
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Email',
+				placeholder: 'Add email',
 				description: 'Additional emails associated with the contact',
 			},
 			{
@@ -260,7 +260,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Tags associated with this contact',
 			},
 			{
-				displayName: 'Time Zone',
+				displayName: 'Time zone',
 				name: 'time_zone',
 				type: 'string',
 				default: '',
@@ -275,14 +275,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Twitter handle of the contact',
 			},
 			{
-				displayName: 'Unique External ID',
+				displayName: 'Unique external ID',
 				name: 'unique_external_id',
 				type: 'string',
 				default: '',
 				description: 'External ID of the contact',
 			},
 			{
-				displayName: 'View All Tickets',
+				displayName: 'View all tickets',
 				name: 'view_all_tickets',
 				type: 'boolean',
 				default: false,
@@ -330,7 +330,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -389,7 +389,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Updated Since',
+				displayName: 'Updated since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',

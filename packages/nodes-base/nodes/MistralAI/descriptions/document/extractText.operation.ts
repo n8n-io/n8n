@@ -17,7 +17,7 @@ const properties: INodeProperties[] = [
 		default: 'mistral-ocr-latest',
 	},
 	{
-		displayName: 'Document Type',
+		displayName: 'Document type',
 		name: 'documentType',
 		type: 'options',
 		options: [
@@ -35,12 +35,12 @@ const properties: INodeProperties[] = [
 		default: 'document_url',
 	},
 	{
-		displayName: 'Input Type',
+		displayName: 'Input type',
 		name: 'inputType',
 		type: 'options',
 		options: [
 			{
-				name: 'Binary Data',
+				name: 'Binary data',
 				value: 'binary',
 			},
 			{
@@ -58,7 +58,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryProperty',
 		type: 'string',
 		description: 'Name of the input binary field that contains the file to process',
@@ -90,11 +90,11 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Enable Batch Processing',
+				displayName: 'Enable batch processing',
 				name: 'batch',
 				type: 'boolean',
 				description:
@@ -102,7 +102,7 @@ const properties: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Batch Size',
+				displayName: 'Batch size',
 				name: 'batchSize',
 				type: 'number',
 				description: 'Maximum number of documents to process in a single batch',
@@ -116,7 +116,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Delete Files After Processing',
+				displayName: 'Delete files after processing',
 				name: 'deleteFiles',
 				type: 'boolean',
 				default: true,

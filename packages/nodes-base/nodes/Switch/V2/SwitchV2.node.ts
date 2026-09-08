@@ -92,7 +92,7 @@ export class SwitchV2 implements INodeType {
 				},
 
 				{
-					displayName: 'Outputs Amount',
+					displayName: 'Outputs amount',
 					name: 'outputsAmount',
 					type: 'number',
 					displayOptions: {
@@ -108,7 +108,7 @@ export class SwitchV2 implements INodeType {
 				//         mode:rules
 				// ----------------------------------
 				{
-					displayName: 'Data Type',
+					displayName: 'Data type',
 					name: 'dataType',
 					type: 'options',
 					displayOptions: {
@@ -156,9 +156,9 @@ export class SwitchV2 implements INodeType {
 					description: 'The value to compare with the first one',
 				},
 				{
-					displayName: 'Routing Rules',
+					displayName: 'Routing rules',
 					name: 'rules',
-					placeholder: 'Add Routing Rule',
+					placeholder: 'Add routing rule',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
@@ -187,7 +187,7 @@ export class SwitchV2 implements INodeType {
 											value: 'equal',
 										},
 										{
-											name: 'Not Equal',
+											name: 'Not equal',
 											value: 'notEqual',
 										},
 									],
@@ -203,7 +203,7 @@ export class SwitchV2 implements INodeType {
 									description: 'The value to compare with the first one',
 								},
 								{
-									displayName: 'Output Key',
+									displayName: 'Output key',
 									name: 'outputKey',
 									type: 'string',
 									default: '',
@@ -231,9 +231,9 @@ export class SwitchV2 implements INodeType {
 					description: 'The value to compare with the second one',
 				},
 				{
-					displayName: 'Routing Rules',
+					displayName: 'Routing rules',
 					name: 'rules',
-					placeholder: 'Add Routing Rule',
+					placeholder: 'Add routing rule',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
@@ -258,11 +258,11 @@ export class SwitchV2 implements INodeType {
 									type: 'options',
 									options: [
 										{
-											name: 'Occurred After',
+											name: 'Occurred after',
 											value: 'after',
 										},
 										{
-											name: 'Occurred Before',
+											name: 'Occurred before',
 											value: 'before',
 										},
 									],
@@ -277,7 +277,7 @@ export class SwitchV2 implements INodeType {
 									description: 'The value to compare with the first one',
 								},
 								{
-									displayName: 'Output Key',
+									displayName: 'Output key',
 									name: 'outputKey',
 									type: 'string',
 									default: '',
@@ -305,9 +305,9 @@ export class SwitchV2 implements INodeType {
 					description: 'The value to compare with the second one',
 				},
 				{
-					displayName: 'Routing Rules',
+					displayName: 'Routing rules',
 					name: 'rules',
-					placeholder: 'Add Routing Rule',
+					placeholder: 'Add routing rule',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
@@ -337,7 +337,7 @@ export class SwitchV2 implements INodeType {
 											value: 'smaller',
 										},
 										{
-											name: 'Smaller Equal',
+											name: 'Smaller equal',
 											value: 'smallerEqual',
 										},
 										{
@@ -345,7 +345,7 @@ export class SwitchV2 implements INodeType {
 											value: 'equal',
 										},
 										{
-											name: 'Not Equal',
+											name: 'Not equal',
 											value: 'notEqual',
 										},
 										{
@@ -353,7 +353,7 @@ export class SwitchV2 implements INodeType {
 											value: 'larger',
 										},
 										{
-											name: 'Larger Equal',
+											name: 'Larger equal',
 											value: 'largerEqual',
 										},
 									],
@@ -368,7 +368,7 @@ export class SwitchV2 implements INodeType {
 									description: 'The value to compare with the first one',
 								},
 								{
-									displayName: 'Output Key',
+									displayName: 'Output key',
 									name: 'outputKey',
 									type: 'string',
 									default: '',
@@ -396,9 +396,9 @@ export class SwitchV2 implements INodeType {
 					description: 'The value to compare with the second one',
 				},
 				{
-					displayName: 'Routing Rules',
+					displayName: 'Routing rules',
 					name: 'rules',
-					placeholder: 'Add Routing Rule',
+					placeholder: 'Add routing rule',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
@@ -428,15 +428,15 @@ export class SwitchV2 implements INodeType {
 											value: 'contains',
 										},
 										{
-											name: 'Not Contains',
+											name: 'Not contains',
 											value: 'notContains',
 										},
 										{
-											name: 'Ends With',
+											name: 'Ends with',
 											value: 'endsWith',
 										},
 										{
-											name: 'Not Ends With',
+											name: 'Not ends with',
 											value: 'notEndsWith',
 										},
 										{
@@ -444,23 +444,23 @@ export class SwitchV2 implements INodeType {
 											value: 'equal',
 										},
 										{
-											name: 'Not Equal',
+											name: 'Not equal',
 											value: 'notEqual',
 										},
 										{
-											name: 'Regex Match',
+											name: 'Regex match',
 											value: 'regex',
 										},
 										{
-											name: 'Regex Not Match',
+											name: 'Regex not match',
 											value: 'notRegex',
 										},
 										{
-											name: 'Starts With',
+											name: 'Starts with',
 											value: 'startsWith',
 										},
 										{
-											name: 'Not Starts With',
+											name: 'Not starts with',
 											value: 'notStartsWith',
 										},
 									],
@@ -493,7 +493,7 @@ export class SwitchV2 implements INodeType {
 									description: 'The regex which has to match',
 								},
 								{
-									displayName: 'Output Key',
+									displayName: 'Output key',
 									name: 'outputKey',
 									type: 'string',
 									default: '',
@@ -505,7 +505,7 @@ export class SwitchV2 implements INodeType {
 				},
 
 				{
-					displayName: 'Fallback Output Name or ID',
+					displayName: 'Fallback output name or ID',
 					name: 'fallbackOutput',
 					type: 'options',
 					displayOptions: {

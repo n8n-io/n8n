@@ -93,7 +93,7 @@ export class AgentV3 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Require Specific Output Format',
+					displayName: 'Require specific output format',
 					name: 'hasOutputParser',
 					type: 'boolean',
 					default: false,
@@ -115,7 +115,7 @@ export class AgentV3 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Enable Fallback Model',
+					displayName: 'Enable fallback model',
 					name: 'needsFallback',
 					type: 'boolean',
 					default: false,

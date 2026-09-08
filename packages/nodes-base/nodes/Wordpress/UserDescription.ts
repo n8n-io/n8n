@@ -25,7 +25,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many users',
 				action: 'Get many users',
@@ -74,7 +74,7 @@ export const userFields: INodeProperties[] = [
 		description: 'Display name for the user',
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		required: true,
@@ -88,7 +88,7 @@ export const userFields: INodeProperties[] = [
 		description: 'First name for the user',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		required: true,
@@ -132,10 +132,10 @@ export const userFields: INodeProperties[] = [
 		description: 'Password for the user (never included)',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -192,10 +192,10 @@ export const userFields: INodeProperties[] = [
 		description: 'Unique identifier for the user',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -219,14 +219,14 @@ export const userFields: INodeProperties[] = [
 				description: 'Display name for the user',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'First name for the user',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -335,7 +335,7 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -400,7 +400,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Scope under which the request is made; determines fields present in response',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'options',
 				options: [
@@ -417,7 +417,7 @@ export const userFields: INodeProperties[] = [
 						value: 'include',
 					},
 					{
-						name: 'Include Slugs',
+						name: 'Include slugs',
 						value: 'include_slugs',
 					},
 					{
@@ -425,7 +425,7 @@ export const userFields: INodeProperties[] = [
 						value: 'name',
 					},
 					{
-						name: 'Registered Date',
+						name: 'Registered date',
 						value: 'registered_date',
 					},
 					{

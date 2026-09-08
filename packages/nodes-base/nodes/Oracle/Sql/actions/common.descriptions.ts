@@ -28,7 +28,7 @@ export const optionsCollection: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Auto Commit',
+				displayName: 'Auto commit',
 				name: 'autoCommit',
 				type: 'boolean',
 				default: true,
@@ -36,9 +36,9 @@ export const optionsCollection: INodeProperties[] = [
 					'Whether this property is true, then the transaction in the current connection is automatically committed at the end of statement execution',
 			},
 			{
-				displayName: 'Bind Variable Placeholder Values',
+				displayName: 'Bind variable placeholder values',
 				name: 'params',
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValueButtonText: 'Add another Parameter',
@@ -57,7 +57,7 @@ export const optionsCollection: INodeProperties[] = [
 						name: 'values',
 						values: [
 							{
-								displayName: 'Bind Name or Number',
+								displayName: 'Bind name or number',
 								name: 'name',
 								type: 'string',
 								default: '',
@@ -67,7 +67,7 @@ export const optionsCollection: INodeProperties[] = [
 								required: true,
 							},
 							{
-								displayName: 'Bind Direction',
+								displayName: 'Bind direction',
 								name: 'bindDirection',
 								type: 'options',
 								default: 'in',
@@ -81,7 +81,7 @@ export const optionsCollection: INodeProperties[] = [
 								],
 							},
 							{
-								displayName: 'Data Type',
+								displayName: 'Data type',
 								name: 'datatype',
 								type: 'options',
 								required: true,
@@ -98,7 +98,7 @@ export const optionsCollection: INodeProperties[] = [
 								],
 							},
 							{
-								displayName: 'Value (String)',
+								displayName: 'Value (string)',
 								name: 'valueString',
 								type: 'string',
 								default: '',
@@ -109,7 +109,7 @@ export const optionsCollection: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'Value (Number)',
+								displayName: 'Value (number)',
 								name: 'valueNumber',
 								type: 'number',
 								default: 0,
@@ -120,7 +120,7 @@ export const optionsCollection: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'Value (Date)',
+								displayName: 'Value (date)',
 								name: 'valueDate',
 								type: 'dateTime',
 								default: 0,
@@ -131,7 +131,7 @@ export const optionsCollection: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'Value (Boolean)',
+								displayName: 'Value (boolean)',
 								name: 'valueBoolean',
 								type: 'boolean',
 								default: false,
@@ -179,7 +179,7 @@ export const optionsCollection: INodeProperties[] = [
 								description: 'A Binary data',
 							},
 							{
-								displayName: 'Value (Sparse Vector)',
+								displayName: 'Value (sparse vector)',
 								name: 'valueSparse',
 								type: 'collection',
 								default: {},
@@ -215,7 +215,7 @@ export const optionsCollection: INodeProperties[] = [
 								],
 							},
 							{
-								displayName: 'Parse for IN Statement',
+								displayName: 'Parse for IN statement',
 								name: 'parseInStatement',
 								type: 'options',
 								required: true,
@@ -231,7 +231,7 @@ export const optionsCollection: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Fetch Array Size',
+				displayName: 'Fetch array size',
 				name: 'fetchArraySize',
 				type: 'number',
 				default: 100,
@@ -248,7 +248,7 @@ export const optionsCollection: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Number of Rows to Prefetch',
+				displayName: 'Number of rows to prefetch',
 				name: 'prefetchRows',
 				type: 'number',
 				default: 2,
@@ -264,7 +264,7 @@ export const optionsCollection: INodeProperties[] = [
 					'This property is a query tuning option to set the number of additional rows the underlying Oracle driver fetches during the internal initial statement execution phase of a query',
 			},
 			{
-				displayName: 'String OUT Bind Max Size',
+				displayName: 'String OUT bind max size',
 				name: 'stringOutBindMaxSize',
 				type: 'number',
 				default: 4000,
@@ -281,7 +281,7 @@ export const optionsCollection: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Output Columns',
+				displayName: 'Output columns',
 				name: 'outputColumns',
 				type: 'multiOptions',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
@@ -297,7 +297,7 @@ export const optionsCollection: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Numbers As String',
+				displayName: 'Output numbers as string',
 				name: 'largeNumbersOutputAsString',
 				type: 'boolean',
 				default: false,
@@ -310,7 +310,7 @@ export const optionsCollection: INodeProperties[] = [
 				hint: 'Applies to NUMBER, FLOAT, LONG type columns only',
 			},
 			{
-				displayName: 'Statement Batching',
+				displayName: 'Statement batching',
 				name: 'stmtBatching',
 				type: 'options',
 				noDataExpression: true,
@@ -322,7 +322,7 @@ export const optionsCollection: INodeProperties[] = [
 				description: 'The way queries should be sent to the database',
 			},
 			{
-				displayName: 'Statement Batching',
+				displayName: 'Statement batching',
 				name: 'stmtBatching',
 				type: 'options',
 				noDataExpression: true,
@@ -358,7 +358,7 @@ export const schemaRLC: INodeProperties = {
 	description: 'The schema that contains the table you want to work on',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -366,7 +366,7 @@ export const schemaRLC: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'name',
 			type: 'string',
 		},
@@ -382,7 +382,7 @@ export const tableRLC: INodeProperties = {
 	description: 'The table you want to work on',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -390,7 +390,7 @@ export const tableRLC: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'name',
 			type: 'string',
 		},
@@ -398,13 +398,13 @@ export const tableRLC: INodeProperties = {
 };
 
 export const whereFixedCollection: INodeProperties = {
-	displayName: 'Select Rows',
+	displayName: 'Select rows',
 	name: 'where',
 	type: 'fixedCollection',
 	typeOptions: {
 		multipleValues: true,
 	},
-	placeholder: 'Add Condition',
+	placeholder: 'Add condition',
 	default: {},
 	description: 'If not set, all rows will be selected',
 	options: [
@@ -440,7 +440,7 @@ export const whereFixedCollection: INodeProperties = {
 							value: 'equal',
 						},
 						{
-							name: 'Not Equal',
+							name: 'Not equal',
 							value: '!=',
 						},
 						{
@@ -448,27 +448,27 @@ export const whereFixedCollection: INodeProperties = {
 							value: 'LIKE',
 						},
 						{
-							name: 'Greater Than',
+							name: 'Greater than',
 							value: '>',
 						},
 						{
-							name: 'Less Than',
+							name: 'Less than',
 							value: '<',
 						},
 						{
-							name: 'Greater Than Or Equal',
+							name: 'Greater than or equal',
 							value: '>=',
 						},
 						{
-							name: 'Less Than Or Equal',
+							name: 'Less than or equal',
 							value: '<=',
 						},
 						{
-							name: 'Is Null',
+							name: 'Is null',
 							value: 'IS NULL',
 						},
 						{
-							name: 'Is Not Null',
+							name: 'Is not null',
 							value: 'IS NOT NULL',
 						},
 					],
@@ -499,7 +499,7 @@ export const sortFixedCollection: INodeProperties = {
 	typeOptions: {
 		multipleValues: true,
 	},
-	placeholder: 'Add Sort Rule',
+	placeholder: 'Add sort rule',
 	default: {},
 	options: [
 		{
@@ -542,11 +542,11 @@ export const sortFixedCollection: INodeProperties = {
 };
 
 export const combineConditionsCollection: INodeProperties = {
-	displayName: 'Combine Conditions',
+	displayName: 'Combine conditions',
 	name: 'combineConditions',
 	type: 'options',
 	description:
-		'How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true',
+		'How to combine the conditions defined in "Select rows": AND requires all conditions to be true, OR requires at least one condition to be true',
 	options: [
 		{
 			name: 'AND',

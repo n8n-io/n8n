@@ -57,10 +57,10 @@ export const directMessageFields: INodeProperties[] = [
 			'The text of your Direct Message. URL encode as necessary. Max length of 10,000 characters.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

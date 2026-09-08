@@ -18,7 +18,7 @@ const properties: INodeProperties[] = [
 		description: 'ID of the deal whose product to remove',
 	},
 	{
-		displayName: 'Product Attachment ID',
+		displayName: 'Product attachment ID',
 		name: 'productAttachmentId',
 		type: 'number',
 		default: 0,

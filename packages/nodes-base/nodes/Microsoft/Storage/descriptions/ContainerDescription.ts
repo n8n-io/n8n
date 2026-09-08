@@ -154,7 +154,7 @@ export const containerOperations: INodeProperties[] = [
 				action: 'Get container',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of containers',
 				routing: {
@@ -196,7 +196,7 @@ export const containerOperations: INodeProperties[] = [
 
 const createFields: INodeProperties[] = [
 	{
-		displayName: 'Container Name',
+		displayName: 'Container name',
 		name: 'containerCreate',
 		default: '',
 		description: 'The name of the new container',
@@ -267,7 +267,7 @@ const createFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Access Level',
+				displayName: 'Access level',
 				name: 'accessLevel',
 				default: '',
 				options: [
@@ -310,7 +310,7 @@ const createFields: INodeProperties[] = [
 						displayName: 'Metadata',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field name',
 								name: 'fieldName',
 								default: '',
 								description:
@@ -318,7 +318,7 @@ const createFields: INodeProperties[] = [
 								type: 'string',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'fieldValue',
 								default: '',
 								type: 'string',
@@ -374,7 +374,7 @@ const deleteFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -383,7 +383,7 @@ const deleteFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'id',
 				placeholder: 'e.g. mycontainer',
 				type: 'string',
@@ -411,7 +411,7 @@ const getFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -420,7 +420,7 @@ const getFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'id',
 				placeholder: 'e.g. mycontainer',
 				type: 'string',
@@ -456,7 +456,7 @@ const getFields: INodeProperties[] = [
 
 const getAllFields: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',

@@ -15,12 +15,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Case Template Name or ID',
+				displayName: 'Case template name or ID',
 				name: 'caseTemplate',
 				type: 'options',
 				description:

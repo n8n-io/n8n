@@ -77,10 +77,10 @@ export const boardFields: INodeProperties[] = [
 		description: 'The description of the board',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -169,7 +169,7 @@ export const boardFields: INodeProperties[] = [
 				description: 'Determines what types of members can invite users to join',
 			},
 			{
-				displayName: 'Keep From Source',
+				displayName: 'Keep from source',
 				name: 'keepFromSource',
 				type: 'string',
 				default: 'none',
@@ -198,7 +198,7 @@ export const boardFields: INodeProperties[] = [
 				description: 'The ID or name of the team the board should belong to',
 			},
 			{
-				displayName: 'Permission Level',
+				displayName: 'Permission level',
 				name: 'prefs_permissionLevel',
 				type: 'options',
 				options: [
@@ -232,7 +232,7 @@ export const boardFields: INodeProperties[] = [
 						value: 'calendar',
 					},
 					{
-						name: 'Card Aging',
+						name: 'Card aging',
 						value: 'cardAging',
 					},
 					{
@@ -248,7 +248,7 @@ export const boardFields: INodeProperties[] = [
 				description: 'The Power-Ups that should be enabled on the new board',
 			},
 			{
-				displayName: 'Self Join',
+				displayName: 'Self join',
 				name: 'prefs_selfJoin',
 				type: 'boolean',
 				default: true,
@@ -309,10 +309,10 @@ export const boardFields: INodeProperties[] = [
 		description: 'The ID of the board',
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a Board...',
+				placeholder: 'Select a board...',
 				initType: 'board',
 				typeOptions: {
 					searchListMethod: 'searchBoards',
@@ -362,10 +362,10 @@ export const boardFields: INodeProperties[] = [
 	//         board:get
 	// ----------------------------------
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -383,7 +383,7 @@ export const boardFields: INodeProperties[] = [
 					'Fields to return. Either "all" or a comma-separated list: closed, dateLastActivity, dateLastView, desc, descData, idOrganization, invitations, invited, labelNames, memberships, name, pinned, powerUps, prefs, shortLink, shortUrl, starred, subscribed, URL.',
 			},
 			{
-				displayName: 'Plugin Data',
+				displayName: 'Plugin data',
 				name: 'pluginData',
 				type: 'boolean',
 				default: false,
@@ -396,10 +396,10 @@ export const boardFields: INodeProperties[] = [
 	//         board:update
 	// ----------------------------------
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],

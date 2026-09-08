@@ -70,7 +70,7 @@ export class GoToWebinar implements INodeType {
 						value: 'attendee',
 					},
 					{
-						name: 'Co-Organizer',
+						name: 'Co-organizer',
 						value: 'coorganizer',
 					},
 					{

@@ -73,7 +73,7 @@ export const userOperations: INodeProperties[] = [
 			},
 			// Get All Operation
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many users',
 				routing: {
@@ -115,7 +115,7 @@ export const userOperations: INodeProperties[] = [
 ];
 const mainProfileFields: INodeProperties[] = [
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		placeholder: 'e.g. Nathan',
@@ -128,7 +128,7 @@ const mainProfileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		placeholder: 'e.g. Smith',
@@ -182,7 +182,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Cost Center',
+		displayName: 'Cost center',
 		name: 'costCenter',
 		type: 'string',
 		default: '',
@@ -194,7 +194,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Country Code',
+		displayName: 'Country code',
 		name: 'countryCode',
 		type: 'string',
 		default: '',
@@ -218,7 +218,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Display Name',
+		displayName: 'Display name',
 		name: 'displayName',
 		type: 'string',
 		default: '',
@@ -242,7 +242,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Employee Number',
+		displayName: 'Employee number',
 		name: 'employeeNumber',
 		type: 'string',
 		default: '',
@@ -254,7 +254,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Honorific Prefix',
+		displayName: 'Honorific prefix',
 		name: 'honorificPrefix',
 		type: 'string',
 		default: '',
@@ -266,7 +266,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Honorific Suffix',
+		displayName: 'Honorific suffix',
 		name: 'honorificSuffix',
 		type: 'string',
 		default: '',
@@ -314,7 +314,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Middle Name',
+		displayName: 'Middle name',
 		name: 'middleName',
 		type: 'string',
 		default: '',
@@ -326,7 +326,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Mobile Phone',
+		displayName: 'Mobile phone',
 		name: 'mobilePhone',
 		type: 'string',
 		default: '',
@@ -338,7 +338,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Nick Name',
+		displayName: 'Nick name',
 		name: 'nickName',
 		type: 'string',
 		default: '',
@@ -375,7 +375,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Postal Address',
+		displayName: 'Postal address',
 		name: 'postalAddress',
 		type: 'string',
 		default: '',
@@ -387,7 +387,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Preferred Language',
+		displayName: 'Preferred language',
 		name: 'preferredLanguage',
 		type: 'string',
 		default: '',
@@ -399,7 +399,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Primary Phone',
+		displayName: 'Primary phone',
 		name: 'primaryPhone',
 		type: 'string',
 		default: '',
@@ -411,7 +411,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Profile Url',
+		displayName: 'Profile URL',
 		name: 'profileUrl',
 		type: 'string',
 		default: '',
@@ -423,7 +423,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Recovery Question Answer',
+		displayName: 'Recovery question answer',
 		name: 'recoveryQuestionAnswer',
 		type: 'string',
 		default: '',
@@ -435,7 +435,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Recovery Question Question',
+		displayName: 'Recovery question question',
 		name: 'recoveryQuestionQuestion',
 		type: 'string',
 		default: '',
@@ -447,7 +447,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Second Email',
+		displayName: 'Second email',
 		name: 'secondEmail',
 		type: 'string',
 		typeOptions: { email: true },
@@ -472,7 +472,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Street Address',
+		displayName: 'Street address',
 		name: 'streetAddress',
 		type: 'string',
 		default: '',
@@ -508,7 +508,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User Type',
+		displayName: 'User type',
 		name: 'userType',
 		type: 'string',
 		default: '',
@@ -520,7 +520,7 @@ const createFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Zip Code',
+		displayName: 'Zip code',
 		name: 'zipCode',
 		type: 'string',
 		default: '',
@@ -547,7 +547,7 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select a user...',
@@ -579,7 +579,7 @@ export const userFields: INodeProperties[] = [
 	},
 	//  Fields specific to 'create' operation
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		required: true,
@@ -599,7 +599,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		required: true,
@@ -705,7 +705,7 @@ export const userFields: INodeProperties[] = [
 
 	// Fields specific to 'getAll' operation
 	{
-		displayName: 'Search Query',
+		displayName: 'Search query',
 		name: 'searchQuery',
 		type: 'string',
 		placeholder: 'e.g. profile.lastName sw "Smi"',
@@ -753,7 +753,7 @@ export const userFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

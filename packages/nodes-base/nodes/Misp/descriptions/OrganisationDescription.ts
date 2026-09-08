@@ -28,7 +28,7 @@ export const organisationOperations: INodeProperties[] = [
 				action: 'Get an organization',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many organizations',
 			},
@@ -60,10 +60,10 @@ export const organisationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -73,7 +73,7 @@ export const organisationFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Created by Email',
+				displayName: 'Created by email',
 				name: 'created_by_email',
 				type: 'string',
 				default: '',
@@ -103,7 +103,7 @@ export const organisationFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User Count',
+				displayName: 'User count',
 				name: 'usercount',
 				type: 'number',
 				typeOptions: {
@@ -150,7 +150,7 @@ export const organisationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -198,10 +198,10 @@ export const organisationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

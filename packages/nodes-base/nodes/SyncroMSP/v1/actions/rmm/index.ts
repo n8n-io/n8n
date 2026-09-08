@@ -39,7 +39,7 @@ export const descriptions = [
 				action: 'Get an RMM alert',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many RMM Alerts',
 				action: 'Get many RMM alerts',

@@ -35,7 +35,7 @@ export const description: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'SQL Query',
+				name: 'SQL query',
 				value: 'combineBySql',
 				description: 'Write a query to do the merge',
 				builderHint: {
@@ -44,7 +44,7 @@ export const description: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Choose Branch',
+				name: 'Choose branch',
 				value: 'chooseBranch',
 				description: 'Output data from a specific branch, without modifying it',
 				builderHint: {
@@ -57,13 +57,13 @@ export const description: INodeProperties[] = [
 		description: 'How input data should be merged',
 	},
 	{
-		displayName: 'Combine By',
+		displayName: 'Combine by',
 		name: 'combineBy',
 		type: 'options',
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Matching Fields',
+				name: 'Matching fields',
 				value: 'combineByFields',
 				description: 'Combine items with the same field values',
 			},
@@ -73,7 +73,7 @@ export const description: INodeProperties[] = [
 				description: 'Combine items based on their order',
 			},
 			{
-				name: 'All Possible Combinations',
+				name: 'All possible combinations',
 				value: 'combineAll',
 				description: 'Every pairing of every two items (cross join)',
 			},

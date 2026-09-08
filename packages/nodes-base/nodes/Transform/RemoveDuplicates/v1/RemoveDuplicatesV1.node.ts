@@ -30,15 +30,15 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'All Fields',
+					name: 'All fields',
 					value: 'allFields',
 				},
 				{
-					name: 'All Fields Except',
+					name: 'All fields except',
 					value: 'allFieldsExcept',
 				},
 				{
-					name: 'Selected Fields',
+					name: 'Selected fields',
 					value: 'selectedFields',
 				},
 			],
@@ -46,7 +46,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The fields of the input items to compare to see if they are the same',
 		},
 		{
-			displayName: 'Fields To Exclude',
+			displayName: 'Fields to exclude',
 			name: 'fieldsToExclude',
 			type: 'string',
 			placeholder: 'e.g. email, name',
@@ -60,7 +60,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Fields To Compare',
+			displayName: 'Fields to compare',
 			name: 'fieldsToCompare',
 			type: 'string',
 			placeholder: 'e.g. email, name',
@@ -77,7 +77,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -86,7 +86,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'Disable Dot Notation',
+					displayName: 'Disable dot notation',
 					name: 'disableDotNotation',
 					type: 'boolean',
 					default: false,
@@ -94,7 +94,7 @@ const versionDescription: INodeTypeDescription = {
 						'Whether to disallow referencing child fields using `parent.child` in the field name',
 				},
 				{
-					displayName: 'Remove Other Fields',
+					displayName: 'Remove other fields',
 					name: 'removeOtherFields',
 					type: 'boolean',
 					default: false,

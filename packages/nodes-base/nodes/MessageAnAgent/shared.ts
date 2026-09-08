@@ -69,7 +69,7 @@ const defaultJsonSchemaExample = `{
 
 export const commonProperties: INodeProperties[] = [
 	{
-		displayName: 'Require Specific Output Format',
+		displayName: 'Require specific output format',
 		name: 'useStructuredOutput',
 		type: 'boolean',
 		default: false,
@@ -77,18 +77,18 @@ export const commonProperties: INodeProperties[] = [
 			'Whether to constrain the agent response to a JSON Schema you provide. The conforming object is returned on the "structuredOutput" field.',
 	},
 	{
-		displayName: 'Schema Type',
+		displayName: 'Schema type',
 		name: 'schemaType',
 		type: 'options',
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Generate From JSON Example',
+				name: 'Generate from JSON example',
 				value: 'fromJson',
 				description: 'Generate a schema from an example JSON object',
 			},
 			{
-				name: 'Define Using JSON Schema',
+				name: 'Define using JSON Schema',
 				value: 'manual',
 				description: 'Define the JSON schema manually',
 			},
@@ -103,7 +103,7 @@ export const commonProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'JSON Example',
+		displayName: 'JSON example',
 		name: 'jsonSchemaExample',
 		type: 'json',
 		default: defaultJsonSchemaExample,
@@ -135,7 +135,7 @@ export const commonProperties: INodeProperties[] = [
 	},
 	// v1/v2: raw schema is the only option
 	{
-		displayName: 'Output Schema',
+		displayName: 'Output schema',
 		name: 'outputSchema',
 		type: 'json',
 		default: defaultOutputSchema,
@@ -153,7 +153,7 @@ export const commonProperties: INodeProperties[] = [
 	},
 	// v3+: raw schema is the advanced/manual option
 	{
-		displayName: 'Output Schema',
+		displayName: 'Output schema',
 		name: 'outputSchema',
 		type: 'json',
 		default: defaultOutputSchema,
@@ -186,18 +186,18 @@ export const commonProperties: INodeProperties[] = [
 		displayName: 'Advanced',
 		name: 'advanced',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Enable Streaming',
+				displayName: 'Enable streaming',
 				name: 'enableStreaming',
 				type: 'boolean',
 				default: true,
 				description: "Whether to stream the agent's response as it generates text",
 			},
 			{
-				displayName: 'Invoke Agent',
+				displayName: 'Invoke agent',
 				name: 'invokeMode',
 				type: 'options',
 				noDataExpression: true,
@@ -210,12 +210,12 @@ export const commonProperties: INodeProperties[] = [
 				},
 				options: [
 					{
-						name: 'Once for All Items',
+						name: 'Once for all items',
 						value: 'allItems',
 						description: 'Call the agent a single time; it can read all input items',
 					},
 					{
-						name: 'Once Per Item',
+						name: 'Once per item',
 						value: 'perItem',
 						description: 'Call the agent separately for each input item',
 					},
@@ -278,7 +278,7 @@ export const commonProperties: INodeProperties[] = [
 								default: 'fromInput',
 							},
 							{
-								displayName: 'Session Key From Previous Node',
+								displayName: 'Session key from previous node',
 								name: 'sessionKey',
 								type: 'string',
 								default: '={{ $json.sessionId }}',
@@ -306,7 +306,7 @@ export const commonProperties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: "Allow Agent to Access Other Nodes' Data",
+				displayName: "Allow agent to access other nodes' data",
 				name: 'allowOtherNodesData',
 				type: 'boolean',
 				default: false,

@@ -13,19 +13,19 @@ export const sequenceOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Subscriber',
+				name: 'Add subscriber',
 				value: 'addSubscriber',
 				description: 'Add a subscriber',
 				action: 'Add a subscriber',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many sequences',
 				action: 'Get many sequences',
 			},
 			{
-				name: 'Get Subscriptions',
+				name: 'Get subscriptions',
 				value: 'getSubscriptions',
 				description: 'Get all subscriptions to a sequence including subscriber data',
 				action: 'Get all subscriptions to a sequence',
@@ -38,7 +38,7 @@ export const sequenceOperations: INodeProperties[] = [
 
 export const sequenceFields: INodeProperties[] = [
 	{
-		displayName: 'Sequence Name or ID',
+		displayName: 'Sequence name or ID',
 		name: 'id',
 		type: 'options',
 		description:
@@ -71,7 +71,7 @@ export const sequenceFields: INodeProperties[] = [
 		description: "The subscriber's email address",
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -102,10 +102,10 @@ export const sequenceFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -115,9 +115,9 @@ export const sequenceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'fieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				description:
 					'Object of key/value pairs for custom fields (the custom field must exist before you can use it here)',
 				type: 'fixedCollection',
@@ -128,10 +128,10 @@ export const sequenceFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'fieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Key',
+								displayName: 'Field key',
 								name: 'key',
 								type: 'string',
 								default: '',
@@ -139,7 +139,7 @@ export const sequenceFields: INodeProperties[] = [
 								description: "The field's key",
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -151,14 +151,14 @@ export const sequenceFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: "The subscriber's first name",
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -171,10 +171,10 @@ export const sequenceFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -184,7 +184,7 @@ export const sequenceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Subscriber State',
+				displayName: 'Subscriber state',
 				name: 'subscriberState',
 				type: 'options',
 				options: [

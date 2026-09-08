@@ -107,7 +107,7 @@ export class ModelSelector implements INodeType {
 			{
 				displayName: 'Rules',
 				name: 'rules',
-				placeholder: 'Add Rule',
+				placeholder: 'Add rule',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -135,7 +135,7 @@ export class ModelSelector implements INodeType {
 							{
 								displayName: 'Conditions',
 								name: 'conditions',
-								placeholder: 'Add Condition',
+								placeholder: 'Add condition',
 								type: 'filter',
 								default: {},
 								typeOptions: {

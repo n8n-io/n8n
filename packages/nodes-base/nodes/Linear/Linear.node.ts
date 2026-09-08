@@ -70,7 +70,7 @@ export class Linear implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Token',
+						name: 'API token',
 						value: 'apiToken',
 					},
 					{

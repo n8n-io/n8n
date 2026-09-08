@@ -79,7 +79,7 @@ export class Misp implements INodeType {
 						value: 'event',
 					},
 					{
-						name: 'Event Tag',
+						name: 'Event tag',
 						value: 'eventTag',
 					},
 					{

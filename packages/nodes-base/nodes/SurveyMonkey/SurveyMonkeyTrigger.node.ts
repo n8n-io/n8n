@@ -69,7 +69,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -107,62 +107,62 @@ export class SurveyMonkeyTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Collector Created',
+						name: 'Collector created',
 						value: 'collector_created',
 						description: 'A collector is created',
 					},
 					{
-						name: 'Collector Deleted',
+						name: 'Collector deleted',
 						value: 'collector_deleted',
 						description: 'A collector is deleted',
 					},
 					{
-						name: 'Collector Updated',
+						name: 'Collector updated',
 						value: 'collector_updated',
 						description: 'A collector is updated',
 					},
 					{
-						name: 'Response Completed',
+						name: 'Response completed',
 						value: 'response_completed',
 						description: 'A survey response is completed',
 					},
 					{
-						name: 'Response Created',
+						name: 'Response created',
 						value: 'response_created',
 						description: 'A respondent begins a survey',
 					},
 					{
-						name: 'Response Deleted',
+						name: 'Response deleted',
 						value: 'response_deleted',
 						description: 'A response is deleted',
 					},
 					{
-						name: 'Response Disqualified',
+						name: 'Response disqualified',
 						value: 'response_disqualified',
 						description: 'A survey response is disqualified',
 					},
 					{
-						name: 'Response Overquota',
+						name: 'Response overquota',
 						value: 'response_overquota',
 						description: 'A response is over a survey’s quota',
 					},
 					{
-						name: 'Response Updated',
+						name: 'Response updated',
 						value: 'response_updated',
 						description: 'A survey response is updated',
 					},
 					{
-						name: 'Survey Created',
+						name: 'Survey created',
 						value: 'survey_created',
 						description: 'A survey is created',
 					},
 					{
-						name: 'Survey Deleted',
+						name: 'Survey deleted',
 						value: 'survey_deleted',
 						description: 'A survey is deleted',
 					},
 					{
-						name: 'Survey Updated',
+						name: 'Survey updated',
 						value: 'survey_updated',
 						description: 'A survey is updated',
 					},
@@ -181,42 +181,42 @@ export class SurveyMonkeyTrigger implements INodeType {
 				},
 				options: [
 					{
-						name: 'Collector Deleted',
+						name: 'Collector deleted',
 						value: 'collector_deleted',
 						description: 'A collector is deleted',
 					},
 					{
-						name: 'Collector Updated',
+						name: 'Collector updated',
 						value: 'collector_updated',
 						description: 'A collector is updated',
 					},
 					{
-						name: 'Response Completed',
+						name: 'Response completed',
 						value: 'response_completed',
 						description: 'A survey response is completed',
 					},
 					{
-						name: 'Response Created',
+						name: 'Response created',
 						value: 'response_created',
 						description: 'A respondent begins a survey',
 					},
 					{
-						name: 'Response Deleted',
+						name: 'Response deleted',
 						value: 'response_deleted',
 						description: 'A response is deleted',
 					},
 					{
-						name: 'Response Disqualified',
+						name: 'Response disqualified',
 						value: 'response_disqualified',
 						description: 'A survey response is disqualified',
 					},
 					{
-						name: 'Response Overquota',
+						name: 'Response overquota',
 						value: 'response_overquota',
 						description: 'A response is over a survey’s quota',
 					},
 					{
-						name: 'Response Updated',
+						name: 'Response updated',
 						value: 'response_updated',
 						description: 'A survey response is updated',
 					},
@@ -225,7 +225,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Survey Names or IDs',
+				displayName: 'Survey names or IDs',
 				name: 'surveyIds',
 				type: 'multiOptions',
 				description:
@@ -246,7 +246,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Survey Name or ID',
+				displayName: 'Survey name or ID',
 				name: 'surveyId',
 				type: 'options',
 				description:
@@ -263,7 +263,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Collector Names or IDs',
+				displayName: 'Collector names or IDs',
 				name: 'collectorIds',
 				type: 'multiOptions',
 				description:
@@ -282,7 +282,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Resolve Data',
+				displayName: 'Resolve data',
 				name: 'resolveData',
 				type: 'boolean',
 				displayOptions: {
@@ -296,7 +296,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					'By default the webhook-data only contain the IDs. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
-				displayName: 'Only Answers',
+				displayName: 'Only answers',
 				name: 'onlyAnswers',
 				displayOptions: {
 					show: {

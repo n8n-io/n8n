@@ -67,7 +67,7 @@ export class MailchimpTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Key',
+						name: 'API key',
 						value: 'apiKey',
 					},
 					{
@@ -78,7 +78,7 @@ export class MailchimpTrigger implements INodeType {
 				default: 'apiKey',
 			},
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List name or ID',
 				name: 'list',
 				type: 'options',
 				required: true,
@@ -99,7 +99,7 @@ export class MailchimpTrigger implements INodeType {
 				description: 'The events that can trigger the webhook and whether they are enabled',
 				options: [
 					{
-						name: 'Campaign Sent',
+						name: 'Campaign sent',
 						value: 'campaign',
 						description: 'Whether the webhook is triggered when a campaign is sent or cancelled',
 					},
@@ -110,13 +110,13 @@ export class MailchimpTrigger implements INodeType {
 							"Whether the webhook is triggered when a subscriber's email address is cleaned from the list",
 					},
 					{
-						name: 'Email Address Updated',
+						name: 'Email address updated',
 						value: 'upemail',
 						description:
 							"Whether the webhook is triggered when a subscriber's email address is changed",
 					},
 					{
-						name: 'Profile Updated',
+						name: 'Profile updated',
 						value: 'profile',
 						description: "Whether the webhook is triggered when a subscriber's profile is updated",
 					},

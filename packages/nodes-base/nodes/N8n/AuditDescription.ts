@@ -31,10 +31,10 @@ export const auditOperations: INodeProperties[] = [
 
 export const auditFields: INodeProperties[] = [
 	{
-		displayName: 'Additional Options',
+		displayName: 'Additional options',
 		name: 'additionalOptions',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['audit'],
@@ -79,7 +79,7 @@ export const auditFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Days Abandoned Workflow',
+				displayName: 'Days abandoned workflow',
 				name: 'daysAbandonedWorkflow',
 				description: 'Days for a workflow to be considered abandoned if not executed',
 				type: 'number',

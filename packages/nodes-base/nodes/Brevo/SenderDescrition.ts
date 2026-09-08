@@ -39,7 +39,7 @@ export const senderOperations: INodeProperties[] = [
 				action: 'Delete a sender',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				routing: {
 					request: {
@@ -133,7 +133,7 @@ const senderDeleteOperation: INodeProperties[] = [
 
 const senderGetAllOperation: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

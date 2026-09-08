@@ -64,7 +64,7 @@ export const postOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many posts',
 				description: 'Retrieve multiple posts',
@@ -181,7 +181,7 @@ export const postFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Post Type',
+		displayName: 'Post type',
 		name: 'postType',
 		required: true,
 		type: 'options',
@@ -229,7 +229,7 @@ export const postFields: INodeProperties[] = [
 		routing: { send: { type: 'body', property: 'event.title' } },
 	},
 	{
-		displayName: 'Start Date and Time',
+		displayName: 'Start date and time',
 		name: 'startDateTime',
 		required: true,
 		type: 'dateTime',
@@ -238,7 +238,7 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['create'], postType: ['EVENT'] } },
 	},
 	{
-		displayName: 'End Date and Time',
+		displayName: 'End date and time',
 		name: 'endDateTime',
 		required: true,
 		type: 'dateTime',
@@ -257,7 +257,7 @@ export const postFields: INodeProperties[] = [
 		routing: { send: { type: 'body', property: 'event.title' } },
 	},
 	{
-		displayName: 'Start Date',
+		displayName: 'Start date',
 		name: 'startDate',
 		required: true,
 		type: 'string',
@@ -267,7 +267,7 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['create'], postType: ['OFFER'] } },
 	},
 	{
-		displayName: 'End Date',
+		displayName: 'End date',
 		name: 'endDate',
 		required: true,
 		type: 'string',
@@ -277,7 +277,7 @@ export const postFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['post'], operation: ['create'], postType: ['OFFER'] } },
 	},
 	{
-		displayName: 'Alert Type',
+		displayName: 'Alert type',
 		name: 'alertType',
 		required: true,
 		type: 'options',
@@ -300,7 +300,7 @@ export const postFields: INodeProperties[] = [
 		name: 'additionalOptions',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 		options: [
 			{
@@ -314,7 +314,7 @@ export const postFields: INodeProperties[] = [
 				routing: { send: { type: 'body', property: 'languageCode' } },
 			},
 			{
-				displayName: 'Call to Action Type',
+				displayName: 'Call to action type',
 				name: 'callToActionType',
 				type: 'options',
 				default: 'ACTION_TYPE_UNSPECIFIED',
@@ -325,7 +325,7 @@ export const postFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						name: 'Action Type Unspecified',
+						name: 'Action type unspecified',
 						value: 'ACTION_TYPE_UNSPECIFIED',
 						description: 'Type unspecified',
 					},
@@ -340,7 +340,7 @@ export const postFields: INodeProperties[] = [
 						description: 'This post wants a user to call the business',
 					},
 					{
-						name: 'Learn More',
+						name: 'Learn more',
 						value: 'LEARN_MORE',
 						description: 'This post wants a user to learn more (at their website)',
 					},
@@ -355,14 +355,14 @@ export const postFields: INodeProperties[] = [
 						description: 'This post wants a user to browse a product catalog',
 					},
 					{
-						name: 'Sign Up',
+						name: 'Sign up',
 						value: 'SIGN_UP',
 						description: 'This post wants a user to register/sign up/join something',
 					},
 				],
 			},
 			{
-				displayName: 'Call to Action Url',
+				displayName: 'Call to action URL',
 				name: 'url',
 				type: 'string',
 				default: '',
@@ -373,7 +373,7 @@ export const postFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Coupon Code',
+				displayName: 'Coupon code',
 				name: 'couponCode',
 				type: 'string',
 				default: '',
@@ -384,7 +384,7 @@ export const postFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Redeem Online Url',
+				displayName: 'Redeem online URL',
 				name: 'redeemOnlineUrl',
 				type: 'string',
 				default: '',
@@ -395,7 +395,7 @@ export const postFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Terms and Conditions',
+				displayName: 'Terms and conditions',
 				name: 'termsConditions',
 				type: 'string',
 				default: '',
@@ -706,7 +706,7 @@ export const postFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
@@ -848,7 +848,7 @@ export const postFields: INodeProperties[] = [
 		name: 'additionalOptions',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		options: [
 			{
@@ -870,7 +870,7 @@ export const postFields: INodeProperties[] = [
 				routing: { send: { type: 'body', property: 'languageCode' } },
 			},
 			{
-				displayName: 'Call to Action Type',
+				displayName: 'Call to action type',
 				name: 'callToActionType',
 				type: 'options',
 				default: 'ACTION_TYPE_UNSPECIFIED',
@@ -880,7 +880,7 @@ export const postFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						name: 'Action Type Unspecified',
+						name: 'Action type unspecified',
 						value: 'ACTION_TYPE_UNSPECIFIED',
 						description: 'Type unspecified',
 					},
@@ -890,13 +890,13 @@ export const postFields: INodeProperties[] = [
 						description: 'This post wants a user to book an appointment/table/etc',
 					},
 					{
-						name: 'Get Offer',
+						name: 'Get offer',
 						value: 'GET_OFFER',
 						description:
 							'Deprecated. Use OFFER in LocalPostTopicType to create a post with offer content.',
 					},
 					{
-						name: 'Learn More',
+						name: 'Learn more',
 						value: 'LEARN_MORE',
 						description: 'This post wants a user to learn more (at their website)',
 					},
@@ -911,14 +911,14 @@ export const postFields: INodeProperties[] = [
 						description: 'This post wants a user to browse a product catalog',
 					},
 					{
-						name: 'Sign Up',
+						name: 'Sign up',
 						value: 'SIGN_UP',
 						description: 'This post wants a user to register/sign up/join something',
 					},
 				],
 			},
 			{
-				displayName: 'Call to Action Url',
+				displayName: 'Call to action URL',
 				name: 'url',
 				type: 'string',
 				default: '',
@@ -928,14 +928,14 @@ export const postFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Start Date and Time',
+				displayName: 'Start date and time',
 				name: 'startDateTime',
 				type: 'dateTime',
 				default: '',
 				description: 'The start date and time of the event',
 			},
 			{
-				displayName: 'End Date and Time',
+				displayName: 'End date and time',
 				name: 'endDateTime',
 				type: 'dateTime',
 				default: '',
@@ -950,7 +950,7 @@ export const postFields: INodeProperties[] = [
 				routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startDate',
 				type: 'string',
 				default: '',
@@ -958,7 +958,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The start date of the offer',
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'endDate',
 				type: 'string',
 				default: '',
@@ -966,7 +966,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The end date of the offer',
 			},
 			{
-				displayName: 'Coupon Code',
+				displayName: 'Coupon code',
 				name: 'couponCode',
 				type: 'string',
 				default: '',
@@ -976,7 +976,7 @@ export const postFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Redeem Online Url',
+				displayName: 'Redeem online URL',
 				name: 'redeemOnlineUrl',
 				type: 'string',
 				default: '',
@@ -986,7 +986,7 @@ export const postFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Terms and Conditions',
+				displayName: 'Terms and conditions',
 				name: 'termsConditions',
 				type: 'string',
 				default: '',

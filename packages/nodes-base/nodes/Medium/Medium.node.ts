@@ -54,7 +54,7 @@ export class Medium implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -119,7 +119,7 @@ export class Medium implements INodeType {
 				description: 'Whether you are posting for a publication',
 			},
 			{
-				displayName: 'Publication Name or ID',
+				displayName: 'Publication name or ID',
 				name: 'publicationId',
 				type: 'options',
 				displayOptions: {
@@ -152,7 +152,7 @@ export class Medium implements INodeType {
 				description: 'Title of the post. Max Length : 100 characters.',
 			},
 			{
-				displayName: 'Content Format',
+				displayName: 'Content format',
 				name: 'contentFormat',
 				default: '',
 				required: true,
@@ -191,10 +191,10 @@ export class Medium implements INodeType {
 				description: 'The body of the post, in a valid semantic HTML fragment, or Markdown',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['create'],
@@ -204,7 +204,7 @@ export class Medium implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Canonical Url',
+						displayName: 'Canonical URL',
 						name: 'canonicalUrl',
 						type: 'string',
 						default: '',
@@ -257,14 +257,14 @@ export class Medium implements INodeType {
 						description: 'License of the post',
 					},
 					{
-						displayName: 'Notify Followers',
+						displayName: 'Notify followers',
 						name: 'notifyFollowers',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to notify followers that the user has published',
 					},
 					{
-						displayName: 'Publish Status',
+						displayName: 'Publish status',
 						name: 'publishStatus',
 						default: 'public',
 						type: 'options',
@@ -307,7 +307,7 @@ export class Medium implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many publications',
 						action: 'Get many publications',
@@ -319,7 +319,7 @@ export class Medium implements INodeType {
 			//         publication:getAll
 			// ----------------------------------
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {

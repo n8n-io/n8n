@@ -31,7 +31,7 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Get a company',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many companies',
 				action: 'Get many companies',
@@ -65,7 +65,7 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Owner Name or ID',
+		displayName: 'Owner name or ID',
 		name: 'owner',
 		type: 'options',
 		description:
@@ -83,7 +83,7 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -96,10 +96,10 @@ export const companyFields: INodeProperties[] = [
 		description: 'Whether the data should include the fields details',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -121,25 +121,25 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Other Phone',
+				displayName: 'Other phone',
 				name: 'otherPhone',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Facebook Handle',
+				displayName: 'Facebook handle',
 				name: 'facebookHandle',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Google Plus Handle',
+				displayName: 'Google Plus handle',
 				name: 'googlePlusHandle',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'LinkedIn Handle',
+				displayName: 'LinkedIn handle',
 				name: 'linkedInHandle',
 				type: 'string',
 				default: '',
@@ -151,7 +151,7 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Twitter Handle',
+				displayName: 'Twitter handle',
 				name: 'twitterHandle',
 				type: 'string',
 				default: '',
@@ -163,37 +163,37 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Billing Address Line 1',
+				displayName: 'Billing address line 1',
 				name: 'billingAddressLine1',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Billing Address Line 2',
+				displayName: 'Billing address line 2',
 				name: 'billingAddressLine2',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Billing City',
+				displayName: 'Billing city',
 				name: 'billingCity',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Billing Zip Code',
+				displayName: 'Billing zip code',
 				name: 'billingZipCode',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Billing State',
+				displayName: 'Billing state',
 				name: 'billingState',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Billing Country',
+				displayName: 'Billing country',
 				name: 'billingState',
 				type: 'string',
 				default: '',
@@ -229,7 +229,7 @@ export const companyFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -242,10 +242,10 @@ export const companyFields: INodeProperties[] = [
 		description: 'Whether the data should include the fields details',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -261,7 +261,7 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner',
 				type: 'options',
 				description:
@@ -284,25 +284,25 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Other Phone',
+				displayName: 'Other phone',
 				name: 'otherPhone',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Facebook Handle',
+				displayName: 'Facebook handle',
 				name: 'facebookHandle',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Google Plus Handle',
+				displayName: 'Google Plus handle',
 				name: 'googlePlusHandle',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'LinkedIn Handle',
+				displayName: 'LinkedIn handle',
 				name: 'linkedInHandle',
 				type: 'string',
 				default: '',
@@ -314,7 +314,7 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Twitter Handle',
+				displayName: 'Twitter handle',
 				name: 'twitterHandle',
 				type: 'string',
 				default: '',
@@ -326,37 +326,37 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Billing Address Line 1',
+				displayName: 'Billing address line 1',
 				name: 'billingAddressLine1',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Billing Address Line 2',
+				displayName: 'Billing address line 2',
 				name: 'billingAddressLine2',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Billing City',
+				displayName: 'Billing city',
 				name: 'billingCity',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Billing Zip Code',
+				displayName: 'Billing zip code',
 				name: 'billingZipCode',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Billing State',
+				displayName: 'Billing state',
 				name: 'billingState',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Billing Country',
+				displayName: 'Billing country',
 				name: 'billingState',
 				type: 'string',
 				default: '',
@@ -392,7 +392,7 @@ export const companyFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -408,7 +408,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                 company:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -439,7 +439,7 @@ export const companyFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -471,14 +471,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'Comma-separated list of fields to return',
 			},
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
 				description: 'The field to sort by',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sortOrder',
 				type: 'options',
 				options: [
@@ -551,7 +551,7 @@ export const companyFields: INodeProperties[] = [
 					{
 						displayName: 'Conditions',
 						name: 'conditions',
-						placeholder: 'Add Condition',
+						placeholder: 'Add condition',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -593,7 +593,7 @@ export const companyFields: INodeProperties[] = [
 												value: 'EQUALS',
 											},
 											{
-												name: 'Not Equals',
+												name: 'Not equals',
 												value: 'NOT_EQUALS',
 											},
 											{
@@ -601,7 +601,7 @@ export const companyFields: INodeProperties[] = [
 												value: 'Contains',
 											},
 											{
-												name: 'Does Not Contains',
+												name: 'Does not contains',
 												value: 'DOES_NOT_CONTAINS',
 											},
 											{
@@ -609,15 +609,15 @@ export const companyFields: INodeProperties[] = [
 												value: 'EMPTY',
 											},
 											{
-												name: 'Not Empty',
+												name: 'Not empty',
 												value: 'NOT_EMPTY',
 											},
 											{
-												name: 'Starts With',
+												name: 'Starts with',
 												value: 'STARTS_WITH',
 											},
 											{
-												name: 'Ends With',
+												name: 'Ends with',
 												value: 'ENDS_WITH',
 											},
 										],

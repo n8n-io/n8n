@@ -50,7 +50,7 @@ export class InvoiceNinja implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'API Version',
+				displayName: 'API version',
 				name: 'apiVersion',
 				type: 'options',
 				isNodeSetting: true,
@@ -72,7 +72,7 @@ export class InvoiceNinja implements INodeType {
 				default: 'v4',
 			},
 			{
-				displayName: 'API Version',
+				displayName: 'API version',
 				name: 'apiVersion',
 				type: 'options',
 				isNodeSetting: true,
@@ -100,7 +100,7 @@ export class InvoiceNinja implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Bank Transaction',
+						name: 'Bank transaction',
 						value: 'bank_transaction',
 						displayOptions: {
 							show: {

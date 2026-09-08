@@ -19,7 +19,7 @@ export const postOperations: INodeProperties[] = [
 				action: 'Create a post',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many posts',
 				action: 'Get many posts',
@@ -40,7 +40,7 @@ export const postFields: INodeProperties[] = [
 	/*                                post:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -86,10 +86,10 @@ export const postFields: INodeProperties[] = [
 			'Supply any URL and Orbit will do its best job to parse out a title, description, and image',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['post'],
@@ -99,7 +99,7 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Occurred At',
+				displayName: 'Occurred at',
 				name: 'publishedAt',
 				type: 'dateTime',
 				default: '',
@@ -111,7 +111,7 @@ export const postFields: INodeProperties[] = [
 	/*                                post:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -129,7 +129,7 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -163,7 +163,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -186,7 +186,7 @@ export const postFields: INodeProperties[] = [
 	/*                                post:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:

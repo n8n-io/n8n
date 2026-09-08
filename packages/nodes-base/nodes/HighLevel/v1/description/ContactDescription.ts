@@ -15,7 +15,7 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'create',
 				routing: {
 					request: {
@@ -81,7 +81,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				routing: {
 					request: {
@@ -161,9 +161,9 @@ export const contactNotes: INodeProperties[] = [
 ];
 
 const customFields: INodeProperties = {
-	displayName: 'Custom Fields',
+	displayName: 'Custom fields',
 	name: 'customFields',
-	placeholder: 'Add Field',
+	placeholder: 'Add field',
 	type: 'fixedCollection',
 	default: {},
 	typeOptions: {
@@ -175,7 +175,7 @@ const customFields: INodeProperties = {
 			displayName: 'Value',
 			values: [
 				{
-					displayName: 'Field Name or ID',
+					displayName: 'Field name or ID',
 					name: 'fieldId',
 					type: 'options',
 					required: true,
@@ -217,7 +217,7 @@ const customFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Field Value',
+					displayName: 'Field value',
 					name: 'fieldValue',
 					type: 'string',
 					default: '',
@@ -277,10 +277,10 @@ const createProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -315,7 +315,7 @@ const createProperties: INodeProperties[] = [
 			},
 			customFields,
 			{
-				displayName: 'Do Not Disturb',
+				displayName: 'Do not disturb',
 				name: 'dnd',
 				description:
 					'Whether automated/manual outbound messages are permitted to go out or not. True means NO outbound messages are permitted.',
@@ -329,7 +329,7 @@ const createProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
@@ -341,7 +341,7 @@ const createProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -358,7 +358,7 @@ const createProperties: INodeProperties[] = [
 				type: 'string',
 				default: 'e.g. John Deo',
 				description:
-					"The full name of the contact, will be overwritten by 'First Name' and 'Last Name' if set",
+					"The full name of the contact, will be overwritten by 'First name' and 'Last name' if set",
 				routing: {
 					send: {
 						type: 'body',
@@ -367,7 +367,7 @@ const createProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Postal Code',
+				displayName: 'Postal code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
@@ -465,10 +465,10 @@ const updateProperties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -503,7 +503,7 @@ const updateProperties: INodeProperties[] = [
 			},
 			customFields,
 			{
-				displayName: 'Do Not Disturb',
+				displayName: 'Do not disturb',
 				name: 'dnd',
 				description:
 					'Whether automated/manual outbound messages are permitted to go out or not. True means NO outbound messages are permitted.',
@@ -530,7 +530,7 @@ const updateProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
@@ -542,7 +542,7 @@ const updateProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -558,7 +558,7 @@ const updateProperties: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				description:
-					"The full name of the contact, will be overwritten by 'First Name' and 'Last Name' if set",
+					"The full name of the contact, will be overwritten by 'First name' and 'Last name' if set",
 				default: 'e.g. John Deo',
 				routing: {
 					send: {
@@ -583,7 +583,7 @@ const updateProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Postal Code',
+				displayName: 'Postal code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
@@ -686,7 +686,7 @@ const getProperties: INodeProperties[] = [
 
 const getAllProperties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -729,7 +729,7 @@ const getAllProperties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -790,16 +790,16 @@ const getAllProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortBy',
 				type: 'options',
 				options: [
 					{
-						name: 'Date Added',
+						name: 'Date added',
 						value: 'date_added',
 					},
 					{
-						name: 'Date Updated',
+						name: 'Date updated',
 						value: 'date_updated',
 					},
 				],

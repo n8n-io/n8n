@@ -24,7 +24,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				placeholder: 'e.g. data',
@@ -33,14 +33,14 @@ const properties: INodeProperties[] = [
 				hint: 'The name of the output binary field to put the file in',
 			},
 			{
-				displayName: 'Google File Conversion',
+				displayName: 'Google file conversion',
 				name: 'googleFileConversion',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
 				},
 				default: {},
-				placeholder: 'Add Conversion',
+				placeholder: 'Add conversion',
 				options: [
 					{
 						displayName: 'Conversion',
@@ -62,12 +62,12 @@ const properties: INodeProperties[] = [
 										value: 'text/markdown',
 									},
 									{
-										name: 'MS Word Document',
+										name: 'MS Word document',
 										value:
 											'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 									},
 									{
-										name: 'Open Office Document',
+										name: 'Open office document',
 										value: 'application/vnd.oasis.opendocument.text',
 									},
 									{
@@ -76,7 +76,7 @@ const properties: INodeProperties[] = [
 									},
 									{
 										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										name: 'Rich Text (rtf)',
+										name: 'Rich text (rtf)',
 										value: 'application/rtf',
 									},
 									{
@@ -150,7 +150,7 @@ const properties: INodeProperties[] = [
 										value: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 									},
 									{
-										name: 'Open Office Sheet',
+										name: 'Open office sheet',
 										value: 'application/vnd.oasis.opendocument.spreadsheet',
 									},
 									{
@@ -166,7 +166,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',

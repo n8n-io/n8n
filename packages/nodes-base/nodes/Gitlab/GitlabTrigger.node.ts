@@ -128,7 +128,7 @@ export class GitlabTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -139,7 +139,7 @@ export class GitlabTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Repository Owner',
+				displayName: 'Repository owner',
 				name: 'owner',
 				type: 'string',
 				default: '',
@@ -148,7 +148,7 @@ export class GitlabTrigger implements INodeType {
 				description: 'Owner of the repository',
 			},
 			{
-				displayName: 'Repository Name',
+				displayName: 'Repository name',
 				name: 'repository',
 				type: 'string',
 				default: '',

@@ -91,7 +91,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Images',
 		name: 'images',
 		type: 'fixedCollection',
-		placeholder: 'Add Image',
+		placeholder: 'Add image',
 		typeOptions: {
 			multipleValues: true,
 			multipleValueButtonText: 'Add Image',
@@ -104,7 +104,7 @@ const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Binary Field Name',
+						displayName: 'Binary field name',
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
@@ -118,12 +118,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Put Output in Field',
+				displayName: 'Put output in field',
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'edited',

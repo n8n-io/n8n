@@ -25,7 +25,7 @@ export const chatMessageOperations: INodeProperties[] = [
 				action: 'Get a chat message',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many messages',
 				action: 'Get many chat messages',
@@ -40,7 +40,7 @@ export const chatMessageFields: INodeProperties[] = [
 	/*                                 chatMessage:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Chat Name or ID',
+		displayName: 'Chat name or ID',
 		name: 'chatId',
 		required: true,
 		type: 'options',
@@ -58,7 +58,7 @@ export const chatMessageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Message Type',
+		displayName: 'Message type',
 		name: 'messageType',
 		required: true,
 		type: 'options',
@@ -110,7 +110,7 @@ export const chatMessageFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Include Link to Workflow',
+				displayName: 'Include link to workflow',
 				name: 'includeLinkToWorkflow',
 				type: 'boolean',
 				default: true,
@@ -140,7 +140,7 @@ export const chatMessageFields: INodeProperties[] = [
 	/*                                 chatMessage:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Chat Name or ID',
+		displayName: 'Chat name or ID',
 		name: 'chatId',
 		required: true,
 		type: 'options',
@@ -158,7 +158,7 @@ export const chatMessageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

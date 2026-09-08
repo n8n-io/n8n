@@ -22,7 +22,7 @@ interface IQueryParameterOptions {
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'SQL Query',
+		displayName: 'SQL query',
 		name: 'sqlQuery',
 		type: 'string',
 		noDataExpression: true,
@@ -37,10 +37,10 @@ const properties: INodeProperties[] = [
 		default: '',
 		placeholder: 'SELECT * FROM dataset.table LIMIT 100',
 		description:
-			'SQL query to execute, you can find more information <a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank">here</a>. Standard SQL syntax used by default, but you can also use Legacy SQL syntax by using optinon \'Use Legacy SQL\'.',
+			'SQL query to execute, you can find more information <a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank">here</a>. Standard SQL syntax used by default, but you can also use Legacy SQL syntax by using optinon \'Use legacy SQL\'.',
 	},
 	{
-		displayName: 'SQL Query',
+		displayName: 'SQL query',
 		name: 'sqlQuery',
 		type: 'string',
 		noDataExpression: true,
@@ -66,7 +66,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Default Dataset Name or ID',
+				displayName: 'Default dataset name or ID',
 				name: 'defaultDataset',
 				type: 'options',
 				typeOptions: {
@@ -78,7 +78,7 @@ const properties: INodeProperties[] = [
 					'If not set, all table names in the query string must be qualified in the format \'datasetId.tableId\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Dry Run',
+				displayName: 'Dry run',
 				name: 'dryRun',
 				type: 'boolean',
 				default: false,
@@ -86,7 +86,7 @@ const properties: INodeProperties[] = [
 					"Whether set to true BigQuery doesn't run the job. Instead, if the query is valid, BigQuery returns statistics about the job such as how many bytes would be processed. If the query is invalid, an error returns.",
 			},
 			{
-				displayName: 'Include Schema in Output',
+				displayName: 'Include schema in output',
 				name: 'includeSchema',
 				type: 'boolean',
 				default: false,
@@ -99,7 +99,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Location (Region)',
+				displayName: 'Location (region)',
 				name: 'location',
 				type: 'string',
 				default: '',
@@ -108,7 +108,7 @@ const properties: INodeProperties[] = [
 					'Location or the region where data would be stored and processed. Pricing for storage and analysis is also defined by location of data and reservations, more information <a href="https://cloud.google.com/bigquery/docs/locations" target="_blank">here</a>.',
 			},
 			{
-				displayName: 'Maximum Bytes Billed',
+				displayName: 'Maximum bytes billed',
 				name: 'maximumBytesBilled',
 				type: 'string',
 				default: '',
@@ -116,7 +116,7 @@ const properties: INodeProperties[] = [
 					'Limits the bytes billed for this query. Queries with bytes billed above this limit will fail (without incurring a charge). String in <a href="https://developers.google.com/discovery/v1/type-format?utm_source=cloud.google.com&utm_medium=referral" target="_blank">Int64Value</a> format',
 			},
 			{
-				displayName: 'Max Results Per Page',
+				displayName: 'Max results per page',
 				name: 'maxResults',
 				type: 'number',
 				default: 1000,
@@ -133,7 +133,7 @@ const properties: INodeProperties[] = [
 					'Specifies the maximum amount of time, in milliseconds, that the client is willing to wait for the query to complete. Be aware that the call is not guaranteed to wait for the specified timeout; it typically returns after around 200 seconds (200,000 milliseconds), even if the query is not complete.',
 			},
 			{
-				displayName: 'Raw Output',
+				displayName: 'Raw output',
 				name: 'rawOutput',
 				type: 'boolean',
 				default: false,
@@ -144,7 +144,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Use Legacy SQL',
+				displayName: 'Use legacy SQL',
 				name: 'useLegacySql',
 				type: 'boolean',
 				default: false,
@@ -152,7 +152,7 @@ const properties: INodeProperties[] = [
 					"Whether to use BigQuery's legacy SQL dialect for this query. If set to false, the query will use BigQuery's standard SQL.",
 			},
 			{
-				displayName: 'Return Integers as Numbers',
+				displayName: 'Return integers as numbers',
 				name: 'returnAsNumbers',
 				type: 'boolean',
 				default: false,
@@ -160,7 +160,7 @@ const properties: INodeProperties[] = [
 					'Whether all integer values will be returned as numbers. If set to false, all integer values will be returned as strings.',
 			},
 			{
-				displayName: 'Query Parameters (Named)',
+				displayName: 'Query parameters (named)',
 				name: 'queryParameters',
 				type: 'fixedCollection',
 				description:
@@ -173,7 +173,7 @@ const properties: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				default: {
 					namedParameters: [
 						{
@@ -185,7 +185,7 @@ const properties: INodeProperties[] = [
 				options: [
 					{
 						name: 'namedParameters',
-						displayName: 'Named Parameter',
+						displayName: 'Named parameter',
 						values: [
 							{
 								displayName: 'Name',

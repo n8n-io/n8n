@@ -30,7 +30,7 @@ export const description: INodeProperties[] = [
 		placeholder: 'e.g. email@example.com',
 	},
 	{
-		displayName: 'Press Enter Key',
+		displayName: 'Press Enter key',
 		name: 'pressEnterKey',
 		type: 'boolean',
 		default: false,

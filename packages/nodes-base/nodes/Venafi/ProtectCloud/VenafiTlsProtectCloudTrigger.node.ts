@@ -55,7 +55,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'triggerOn',
 				type: 'multiOptions',
 				typeOptions: {

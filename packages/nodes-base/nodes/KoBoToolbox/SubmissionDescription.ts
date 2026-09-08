@@ -25,19 +25,19 @@ export const submissionOperations: INodeProperties[] = [
 				action: 'Get a submission',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many submissions',
 				action: 'Get many submissions',
 			},
 			{
-				name: 'Get Validation Status',
+				name: 'Get validation status',
 				value: 'getValidation',
 				description: 'Get the validation status for the submission',
 				action: 'Get the validation status for a submission',
 			},
 			{
-				name: 'Update Validation Status',
+				name: 'Update validation status',
 				value: 'setValidation',
 				description: 'Set the validation status of the submission',
 				action: 'Update the validation status for a submission',
@@ -52,7 +52,7 @@ export const submissionFields: INodeProperties[] = [
 	/*                                submission:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name or ID',
+		displayName: 'Form name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -84,7 +84,7 @@ export const submissionFields: INodeProperties[] = [
 		description: 'Submission ID (number, e.g. 245128)',
 	},
 	{
-		displayName: 'Validation Status',
+		displayName: 'Validation status',
 		name: 'validationStatus',
 		type: 'options',
 		required: true,
@@ -101,11 +101,11 @@ export const submissionFields: INodeProperties[] = [
 				value: 'validation_status_approved',
 			},
 			{
-				name: 'Not Approved',
+				name: 'Not approved',
 				value: 'validation_status_not_approved',
 			},
 			{
-				name: 'On Hold',
+				name: 'On hold',
 				value: 'validation_status_on_hold',
 			},
 		],
@@ -115,7 +115,7 @@ export const submissionFields: INodeProperties[] = [
 	/*                                submission:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		required: true,
@@ -208,14 +208,14 @@ export const submissionFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Download Attachments',
+				displayName: 'Download attachments',
 				name: 'download',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to download submitted attachments',
 			},
 			{
-				displayName: 'Attachments Naming Scheme',
+				displayName: 'Attachments naming scheme',
 				name: 'binaryNamingScheme',
 				type: 'options',
 				default: 'sequence',
@@ -230,13 +230,13 @@ export const submissionFields: INodeProperties[] = [
 						value: 'sequence',
 					},
 					{
-						name: 'Use Original Form Question ID',
+						name: 'Use original form question ID',
 						value: 'question',
 					},
 				],
 			},
 			{
-				displayName: 'Attachments Prefix',
+				displayName: 'Attachments prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				displayOptions: {
@@ -250,7 +250,7 @@ export const submissionFields: INodeProperties[] = [
 					'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
-				displayName: 'Fields to Retrieve',
+				displayName: 'Fields to retrieve',
 				name: 'fields',
 				type: 'string',
 				default: '',
@@ -258,7 +258,7 @@ export const submissionFields: INodeProperties[] = [
 					'Comma-separated list of fields to retrieve (e.g. _submission_time,_submitted_by). If left blank, all fields are retrieved.',
 			},
 			{
-				displayName: 'File Size',
+				displayName: 'File size',
 				name: 'version',
 				type: 'options',
 				displayOptions: {
@@ -288,7 +288,7 @@ export const submissionFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Multiselect Mask',
+				displayName: 'Multiselect mask',
 				name: 'selectMask',
 				type: 'string',
 				default: 'select_*',
@@ -296,7 +296,7 @@ export const submissionFields: INodeProperties[] = [
 					'Comma-separated list of wildcard-style selectors for fields that should be treated as multiselect fields, i.e. parsed as arrays.',
 			},
 			{
-				displayName: 'Number Mask',
+				displayName: 'Number mask',
 				name: 'numberMask',
 				type: 'string',
 				default: 'n_*, f_*',

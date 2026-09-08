@@ -19,7 +19,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: showOnDelete },
 	},
 	{
-		displayName: 'Permanently Delete (Purge)',
+		displayName: 'Permanently delete (purge)',
 		name: 'purge',
 		type: 'boolean',
 		default: false,

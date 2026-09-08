@@ -34,7 +34,7 @@ export const listOperations: INodeProperties[] = [
 				action: 'Get a list',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many board lists',
 				action: 'Get many lists',
@@ -49,7 +49,7 @@ export const listFields: INodeProperties[] = [
 	//         list:create
 	// ----------------------------------
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -86,7 +86,7 @@ export const listFields: INodeProperties[] = [
 	//         list:delete
 	// ----------------------------------
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -104,7 +104,7 @@ export const listFields: INodeProperties[] = [
 			'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -127,7 +127,7 @@ export const listFields: INodeProperties[] = [
 	//         list:get
 	// ----------------------------------
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -163,7 +163,7 @@ export const listFields: INodeProperties[] = [
 	//         list:getAll
 	// ----------------------------------
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -181,7 +181,7 @@ export const listFields: INodeProperties[] = [
 			'ID of the board where the lists are in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

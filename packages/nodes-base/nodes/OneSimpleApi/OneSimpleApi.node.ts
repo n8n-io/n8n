@@ -41,7 +41,7 @@ export class OneSimpleApi implements INodeType {
 						value: 'information',
 					},
 					{
-						name: 'Social Profile',
+						name: 'Social profile',
 						value: 'socialProfile',
 					},
 					{
@@ -75,13 +75,13 @@ export class OneSimpleApi implements INodeType {
 						action: 'Generate PDF',
 					},
 					{
-						name: 'Get SEO Data',
+						name: 'Get SEO data',
 						value: 'seo',
 						description: 'Get SEO information from website',
-						action: 'Get SEO Data',
+						action: 'Get SEO data',
 					},
 					{
-						name: 'Take Screenshot',
+						name: 'Take screenshot',
 						value: 'screenshot',
 						description: 'Create a screenshot from a webpage',
 						action: 'Screenshot',
@@ -129,13 +129,13 @@ export class OneSimpleApi implements INodeType {
 				},
 				options: [
 					{
-						name: 'Exchange Rate',
+						name: 'Exchange rate',
 						value: 'exchangeRate',
 						description: 'Convert a value between currencies',
 						action: 'Convert a value between currencies',
 					},
 					{
-						name: 'Image Metadata',
+						name: 'Image metadata',
 						value: 'imageMetadata',
 						description: 'Retrieve image metadata from a URL',
 						action: 'Get image metadata from a URL',
@@ -162,13 +162,13 @@ export class OneSimpleApi implements INodeType {
 						action: 'Expand a shortened URL',
 					},
 					{
-						name: 'Generate QR Code',
+						name: 'Generate QR code',
 						value: 'qrCode',
 						description: 'Generate a QR Code',
 						action: 'Generate a QR code utility',
 					},
 					{
-						name: 'Validate Email',
+						name: 'Validate email',
 						value: 'validateEmail',
 						description: 'Validate an email address',
 						action: 'Validate an email address',
@@ -206,7 +206,7 @@ export class OneSimpleApi implements INodeType {
 				description: 'Whether to download the PDF or return a link to it',
 			},
 			{
-				displayName: 'Put Output In Field',
+				displayName: 'Put output in field',
 				name: 'output',
 				type: 'string',
 				required: true,
@@ -234,7 +234,7 @@ export class OneSimpleApi implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Page Size',
+						displayName: 'Page size',
 						name: 'page',
 						type: 'options',
 						options: [
@@ -286,7 +286,7 @@ export class OneSimpleApi implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Force Refresh',
+						displayName: 'Force refresh',
 						name: 'force',
 						type: 'boolean',
 						default: false,
@@ -298,7 +298,7 @@ export class OneSimpleApi implements INodeType {
 			},
 			// website: qrCode
 			{
-				displayName: 'QR Content',
+				displayName: 'QR content',
 				name: 'message',
 				type: 'string',
 				required: true,
@@ -312,7 +312,7 @@ export class OneSimpleApi implements INodeType {
 				description: 'The text that should be turned into a QR code - like a website URL',
 			},
 			{
-				displayName: 'Download Image?',
+				displayName: 'Download image?',
 				name: 'download',
 				type: 'boolean',
 				required: true,
@@ -326,7 +326,7 @@ export class OneSimpleApi implements INodeType {
 				description: 'Whether to download the QR code or return a link to it',
 			},
 			{
-				displayName: 'Put Output In Field',
+				displayName: 'Put output in field',
 				name: 'output',
 				type: 'string',
 				required: true,
@@ -409,7 +409,7 @@ export class OneSimpleApi implements INodeType {
 				description: 'Link to webpage to convert',
 			},
 			{
-				displayName: 'Download Screenshot?',
+				displayName: 'Download screenshot?',
 				name: 'download',
 				type: 'boolean',
 				required: true,
@@ -423,7 +423,7 @@ export class OneSimpleApi implements INodeType {
 				description: 'Whether to download the screenshot or return a link to it',
 			},
 			{
-				displayName: 'Put Output In Field',
+				displayName: 'Put output in field',
 				name: 'output',
 				type: 'string',
 				required: true,
@@ -451,7 +451,7 @@ export class OneSimpleApi implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Screen Size',
+						displayName: 'Screen size',
 						name: 'screen',
 						type: 'options',
 						options: [
@@ -460,7 +460,7 @@ export class OneSimpleApi implements INodeType {
 								value: 'phone',
 							},
 							{
-								name: 'Phone Landscape',
+								name: 'Phone landscape',
 								value: 'phone-landscape',
 							},
 							{
@@ -472,14 +472,14 @@ export class OneSimpleApi implements INodeType {
 								value: 'tablet',
 							},
 							{
-								name: 'Tablet Landscape',
+								name: 'Tablet landscape',
 								value: 'tablet-landscape',
 							},
 						],
 						default: '',
 					},
 					{
-						displayName: 'Force Refresh',
+						displayName: 'Force refresh',
 						name: 'force',
 						type: 'boolean',
 						default: false,
@@ -488,7 +488,7 @@ export class OneSimpleApi implements INodeType {
 							"Normally the API will reuse a previously taken screenshot of the URL to give a faster response. This option allows you to retake the screenshot at that exact time, for those times when it's necessary.",
 					},
 					{
-						displayName: 'Full Page',
+						displayName: 'Full page',
 						name: 'fullpage',
 						type: 'boolean',
 						default: false,
@@ -500,7 +500,7 @@ export class OneSimpleApi implements INodeType {
 			},
 			// socialProfile: instagramProfile
 			{
-				displayName: 'Profile Name',
+				displayName: 'Profile name',
 				name: 'profileName',
 				type: 'string',
 				required: true,
@@ -515,7 +515,7 @@ export class OneSimpleApi implements INodeType {
 			},
 			// socialProfile: spotifyArtistProfile
 			{
-				displayName: 'Artist Name',
+				displayName: 'Artist name',
 				name: 'artistName',
 				type: 'string',
 				required: true,
@@ -544,7 +544,7 @@ export class OneSimpleApi implements INodeType {
 				description: 'Value to convert',
 			},
 			{
-				displayName: 'From Currency',
+				displayName: 'From currency',
 				name: 'fromCurrency',
 				type: 'string',
 				required: true,
@@ -558,7 +558,7 @@ export class OneSimpleApi implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'To Currency',
+				displayName: 'To currency',
 				name: 'toCurrency',
 				type: 'string',
 				placeholder: 'EUR',
@@ -573,7 +573,7 @@ export class OneSimpleApi implements INodeType {
 			},
 			// information: imageMetadata
 			{
-				displayName: 'Link To Image',
+				displayName: 'Link to image',
 				name: 'link',
 				type: 'string',
 				required: true,
@@ -615,7 +615,7 @@ export class OneSimpleApi implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Include Headers?',
+						displayName: 'Include headers?',
 						name: 'headers',
 						type: 'boolean',
 						default: false,
@@ -624,7 +624,7 @@ export class OneSimpleApi implements INodeType {
 			},
 			// utility: validateEmail
 			{
-				displayName: 'Email Address',
+				displayName: 'Email address',
 				name: 'emailAddress',
 				type: 'string',
 				required: true,

@@ -69,7 +69,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['block'] } },
 		options: [
 			{
-				name: 'Append After',
+				name: 'Append after',
 				value: 'append',
 				description: 'Append a block',
 				action: 'Append a block',
@@ -81,7 +81,7 @@ export const description: INodeProperties[] = [
 				action: 'Get block markdown',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many child blocks',
 				action: 'Get many child blocks',
@@ -96,7 +96,7 @@ export const description: INodeProperties[] = [
 		description: 'The Notion block to append blocks to',
 	},
 	{
-		displayName: 'Insert After Block',
+		displayName: 'Insert after block',
 		name: 'afterBlockId',
 		type: 'string',
 		default: '',
@@ -116,7 +116,7 @@ export const description: INodeProperties[] = [
 		description: 'The Notion block to get markdown from',
 	},
 	{
-		displayName: 'Include Transcript',
+		displayName: 'Include transcript',
 		name: 'includeTranscript',
 		type: 'boolean',
 		default: false,
@@ -124,14 +124,14 @@ export const description: INodeProperties[] = [
 	},
 	...returnAllOrLimit('block', 'getAll'),
 	{
-		displayName: 'Fetch Nested Blocks',
+		displayName: 'Fetch nested blocks',
 		name: 'fetchNestedBlocks',
 		type: 'boolean',
 		default: false,
 		displayOptions: { show: { resource: ['block'], operation: ['getAll'] } },
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplifyOutput',
 		type: 'boolean',
 		default: true,

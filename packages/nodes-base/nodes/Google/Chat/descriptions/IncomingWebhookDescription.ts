@@ -41,7 +41,7 @@ export const incomingWebhookFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Incoming Webhook URL',
+		displayName: 'Incoming webhook URL',
 		name: 'incomingWebhookUrl',
 		type: 'string',
 		required: true,
@@ -55,7 +55,7 @@ export const incomingWebhookFields: INodeProperties[] = [
 		description: 'URL for the incoming webhook',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		displayOptions: {
@@ -125,10 +125,10 @@ export const incomingWebhookFields: INodeProperties[] = [
 		description: 'Message input as JSON Object or JSON String',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -138,7 +138,7 @@ export const incomingWebhookFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Thread Key',
+				displayName: 'Thread key',
 				name: 'threadKey',
 				type: 'string',
 				default: '',

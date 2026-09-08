@@ -25,7 +25,7 @@ export const invoiceOperations: INodeProperties[] = [
 				action: 'Get an invoice',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many invoices',
 				action: 'Get many invoices',
@@ -46,7 +46,7 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                invoice:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization name or ID',
 		name: 'organizationId',
 		type: 'options',
 		description:
@@ -74,7 +74,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'Accounts Payable or supplier invoice',
 			},
 			{
-				name: 'Sales Invoice',
+				name: 'Sales invoice',
 				value: 'ACCREC',
 				description: 'Accounts Receivable or customer invoice',
 			},
@@ -103,9 +103,9 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Line Items',
+		displayName: 'Line items',
 		name: 'lineItemsUi',
-		placeholder: 'Add Line Item',
+		placeholder: 'Add line item',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -121,7 +121,7 @@ export const invoiceFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'lineItemsValues',
-				displayName: 'Line Item',
+				displayName: 'Line item',
 				values: [
 					{
 						displayName: 'Description',
@@ -141,7 +141,7 @@ export const invoiceFields: INodeProperties[] = [
 						description: 'LineItem Quantity',
 					},
 					{
-						displayName: 'Unit Amount',
+						displayName: 'Unit amount',
 						name: 'unitAmount',
 						type: 'string',
 						default: '',
@@ -149,7 +149,7 @@ export const invoiceFields: INodeProperties[] = [
 							'Lineitem unit amount. By default, unit amount will be rounded to two decimal places.',
 					},
 					{
-						displayName: 'Item Code Name or ID',
+						displayName: 'Item code name or ID',
 						name: 'itemCode',
 						type: 'options',
 						description:
@@ -161,7 +161,7 @@ export const invoiceFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Account Code Name or ID',
+						displayName: 'Account code name or ID',
 						name: 'accountCode',
 						type: 'options',
 						description:
@@ -173,24 +173,24 @@ export const invoiceFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Tax Type',
+						displayName: 'Tax type',
 						name: 'taxType',
 						type: 'options',
 						options: [
 							{
-								name: 'Tax on Purchases',
+								name: 'Tax on purchases',
 								value: 'INPUT',
 							},
 							{
-								name: 'Tax Exempt',
+								name: 'Tax exempt',
 								value: 'NONE',
 							},
 							{
-								name: 'Tax on Sales',
+								name: 'Tax on sales',
 								value: 'OUTPUT',
 							},
 							{
-								name: 'Sales Tax on Imports',
+								name: 'Sales tax on imports',
 								value: 'GSTONIMPORTS',
 							},
 						],
@@ -198,7 +198,7 @@ export const invoiceFields: INodeProperties[] = [
 						required: true,
 					},
 					{
-						displayName: 'Tax Amount',
+						displayName: 'Tax amount',
 						name: 'taxAmount',
 						type: 'string',
 						default: '',
@@ -206,7 +206,7 @@ export const invoiceFields: INodeProperties[] = [
 							'The tax amount is auto calculated as a percentage of the line amount based on the tax rate',
 					},
 					{
-						displayName: 'Line Amount',
+						displayName: 'Line amount',
 						name: 'lineAmount',
 						type: 'string',
 						default: '',
@@ -214,7 +214,7 @@ export const invoiceFields: INodeProperties[] = [
 							'The line amount reflects the discounted price if a DiscountRate has been used',
 					},
 					{
-						displayName: 'Discount Rate',
+						displayName: 'Discount rate',
 						name: 'discountRate',
 						type: 'string',
 						default: '',
@@ -271,10 +271,10 @@ export const invoiceFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -284,7 +284,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Branding Theme Name or ID',
+				displayName: 'Branding theme name or ID',
 				name: 'brandingThemeId',
 				type: 'options',
 				description:
@@ -296,7 +296,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency Name or ID',
+				displayName: 'Currency name or ID',
 				name: 'currency',
 				type: 'options',
 				description:
@@ -308,7 +308,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency Rate',
+				displayName: 'Currency rate',
 				name: 'currencyRate',
 				type: 'string',
 				default: '',
@@ -324,27 +324,27 @@ export const invoiceFields: INodeProperties[] = [
 					'Date invoice was issued - YYYY-MM-DD. If the Date element is not specified it will default to the current date based on the timezone setting of the organisation.',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
 				description: 'Date invoice is due - YYYY-MM-DD',
 			},
 			{
-				displayName: 'Expected Payment Date',
+				displayName: 'Expected payment date',
 				name: 'expectedPaymentDate',
 				type: 'dateTime',
 				default: '',
 				description: 'Shown on sales invoices (Accounts Receivable) when this has been set',
 			},
 			{
-				displayName: 'Invoice Number',
+				displayName: 'Invoice number',
 				name: 'invoiceNumber',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Line Amount Type',
+				displayName: 'Line amount type',
 				name: 'lineAmountType',
 				type: 'options',
 				options: [
@@ -367,7 +367,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: 'Exclusive',
 			},
 			{
-				displayName: 'Planned Payment Date',
+				displayName: 'Planned payment date',
 				name: 'plannedPaymentDate',
 				type: 'dateTime',
 				default: '',
@@ -381,7 +381,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'ACCREC only - additional reference number (max length = 255)',
 			},
 			{
-				displayName: 'Send To Contact',
+				displayName: 'Send to contact',
 				name: 'sendToContact',
 				type: 'boolean',
 				default: false,
@@ -421,7 +421,7 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                invoice:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization name or ID',
 		name: 'organizationId',
 		type: 'options',
 		description:
@@ -452,10 +452,10 @@ export const invoiceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -465,7 +465,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Branding Theme Name or ID',
+				displayName: 'Branding theme name or ID',
 				name: 'brandingThemeId',
 				type: 'options',
 				description:
@@ -483,7 +483,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency Name or ID',
+				displayName: 'Currency name or ID',
 				name: 'currency',
 				type: 'options',
 				description:
@@ -495,7 +495,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency Rate',
+				displayName: 'Currency rate',
 				name: 'currencyRate',
 				type: 'string',
 				default: '',
@@ -511,27 +511,27 @@ export const invoiceFields: INodeProperties[] = [
 					'Date invoice was issued - YYYY-MM-DD. If the Date element is not specified it will default to the current date based on the timezone setting of the organisation.',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
 				description: 'Date invoice is due - YYYY-MM-DD',
 			},
 			{
-				displayName: 'Expected Payment Date',
+				displayName: 'Expected payment date',
 				name: 'expectedPaymentDate',
 				type: 'dateTime',
 				default: '',
 				description: 'Shown on sales invoices (Accounts Receivable) when this has been set',
 			},
 			{
-				displayName: 'Invoice Number',
+				displayName: 'Invoice number',
 				name: 'invoiceNumber',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Line Amount Type',
+				displayName: 'Line amount type',
 				name: 'lineAmountType',
 				type: 'options',
 				options: [
@@ -554,9 +554,9 @@ export const invoiceFields: INodeProperties[] = [
 				default: 'Exclusive',
 			},
 			{
-				displayName: 'Line Items',
+				displayName: 'Line items',
 				name: 'lineItemsUi',
-				placeholder: 'Add Line Item',
+				placeholder: 'Add line item',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -566,10 +566,10 @@ export const invoiceFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'lineItemsValues',
-						displayName: 'Line Item',
+						displayName: 'Line item',
 						values: [
 							{
-								displayName: 'Line Item ID',
+								displayName: 'Line item ID',
 								name: 'lineItemId',
 								type: 'string',
 								default: '',
@@ -593,7 +593,7 @@ export const invoiceFields: INodeProperties[] = [
 								description: 'LineItem Quantity',
 							},
 							{
-								displayName: 'Unit Amount',
+								displayName: 'Unit amount',
 								name: 'unitAmount',
 								type: 'string',
 								default: '',
@@ -601,7 +601,7 @@ export const invoiceFields: INodeProperties[] = [
 									'Lineitem unit amount. By default, unit amount will be rounded to two decimal places.',
 							},
 							{
-								displayName: 'Item Code Name or ID',
+								displayName: 'Item code name or ID',
 								name: 'itemCode',
 								type: 'options',
 								description:
@@ -613,7 +613,7 @@ export const invoiceFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Account Code Name or ID',
+								displayName: 'Account code name or ID',
 								name: 'accountCode',
 								type: 'options',
 								description:
@@ -625,24 +625,24 @@ export const invoiceFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Tax Type',
+								displayName: 'Tax type',
 								name: 'taxType',
 								type: 'options',
 								options: [
 									{
-										name: 'Tax on Purchases',
+										name: 'Tax on purchases',
 										value: 'INPUT',
 									},
 									{
-										name: 'Tax Exempt',
+										name: 'Tax exempt',
 										value: 'NONE',
 									},
 									{
-										name: 'Tax on Sales',
+										name: 'Tax on sales',
 										value: 'OUTPUT',
 									},
 									{
-										name: 'Sales Tax on Imports',
+										name: 'Sales tax on imports',
 										value: 'GSTONIMPORTS',
 									},
 								],
@@ -650,7 +650,7 @@ export const invoiceFields: INodeProperties[] = [
 								required: true,
 							},
 							{
-								displayName: 'Tax Amount',
+								displayName: 'Tax amount',
 								name: 'taxAmount',
 								type: 'string',
 								default: '',
@@ -658,7 +658,7 @@ export const invoiceFields: INodeProperties[] = [
 									'The tax amount is auto calculated as a percentage of the line amount based on the tax rate',
 							},
 							{
-								displayName: 'Line Amount',
+								displayName: 'Line amount',
 								name: 'lineAmount',
 								type: 'string',
 								default: '',
@@ -666,7 +666,7 @@ export const invoiceFields: INodeProperties[] = [
 									'The line amount reflects the discounted price if a DiscountRate has been used',
 							},
 							{
-								displayName: 'Discount Rate',
+								displayName: 'Discount rate',
 								name: 'discountRate',
 								type: 'string',
 								default: '',
@@ -723,7 +723,7 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Planned Payment Date',
+				displayName: 'Planned payment date',
 				name: 'plannedPaymentDate',
 				type: 'dateTime',
 				default: '',
@@ -737,7 +737,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'ACCREC only - additional reference number (max length = 255)',
 			},
 			{
-				displayName: 'Send To Contact',
+				displayName: 'Send to contact',
 				name: 'sendToContact',
 				type: 'boolean',
 				default: false,
@@ -777,7 +777,7 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                 invoice:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization name or ID',
 		name: 'organizationId',
 		type: 'options',
 		description:
@@ -811,7 +811,7 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                   invoice:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization name or ID',
 		name: 'organizationId',
 		type: 'options',
 		description:
@@ -829,7 +829,7 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -873,14 +873,14 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Created By My App',
+				displayName: 'Created by my app',
 				name: 'createdByMyApp',
 				type: 'boolean',
 				default: false,
 				description: "Whether you'll only retrieve Invoices created by your app",
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'string',
 				placeholder: 'InvoiceID',
@@ -888,7 +888,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'Order by any element returned',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sortOrder',
 				type: 'options',
 				options: [

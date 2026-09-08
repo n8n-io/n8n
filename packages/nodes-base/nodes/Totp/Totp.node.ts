@@ -37,7 +37,7 @@ export class Totp implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Generate Secret',
+						name: 'Generate secret',
 						value: 'generateSecret',
 						action: 'Generate secret',
 					},

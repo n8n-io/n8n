@@ -13,7 +13,7 @@ import { theHiveApiRequest } from '../../transport';
 const properties: INodeProperties[] = [
 	caseRLC,
 	{
-		displayName: 'Attachment Name or ID',
+		displayName: 'Attachment name or ID',
 		name: 'attachmentId',
 		type: 'options',
 		default: '',
@@ -33,14 +33,14 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
 				description: 'Rename the file when downloading',
 			},
 			{
-				displayName: 'Data Property Name',
+				displayName: 'Data property name',
 				name: 'dataPropertyName',
 				type: 'string',
 				default: 'data',

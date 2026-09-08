@@ -13,13 +13,13 @@ export const logOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Error Logs',
+				name: 'Get error logs',
 				value: 'getErroLogs',
 				description: 'Get a log for a specific entity',
 				action: 'Get a log for an entity',
 			},
 			{
-				name: 'Get Logbook Entries',
+				name: 'Get logbook entries',
 				value: 'getLogbookEntries',
 				description: 'Get all logs',
 				action: 'Get all logs for an entity',
@@ -34,10 +34,10 @@ export const logFields: INodeProperties[] = [
 	/*                                log:getLogbookEntries                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -47,7 +47,7 @@ export const logFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'End Time',
+				displayName: 'End time',
 				name: 'endTime',
 				type: 'dateTime',
 				default: '',
@@ -60,7 +60,7 @@ export const logFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Start Time',
+				displayName: 'Start time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',

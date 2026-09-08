@@ -83,7 +83,7 @@ export class ActionNetwork implements INodeType {
 						value: 'person',
 					},
 					{
-						name: 'Person Tag',
+						name: 'Person tag',
 						value: 'personTag',
 					},
 					{

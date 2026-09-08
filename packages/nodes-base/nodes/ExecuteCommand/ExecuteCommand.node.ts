@@ -118,7 +118,7 @@ export class ExecuteCommand implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				displayName: 'Execute Once',
+				displayName: 'Execute once',
 				name: 'executeOnce',
 				type: 'boolean',
 				default: true,

@@ -8,7 +8,7 @@ export const calendarRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a calendar...',
@@ -34,7 +34,7 @@ export const contactRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a contact...',
@@ -60,7 +60,7 @@ export const draftRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a draft...',
@@ -86,7 +86,7 @@ export const messageRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a message...',
@@ -115,7 +115,7 @@ export const eventRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a event...',
@@ -162,7 +162,7 @@ export const folderRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a folder...',
@@ -210,7 +210,7 @@ export const attachmentRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a attachment...',

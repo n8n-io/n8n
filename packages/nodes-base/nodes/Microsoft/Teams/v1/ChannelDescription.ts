@@ -31,7 +31,7 @@ export const channelOperations: INodeProperties[] = [
 				action: 'Get a channel',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many channels',
 				action: 'Get many channels',
@@ -52,7 +52,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -94,7 +94,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Description',
@@ -127,7 +127,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -145,7 +145,7 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		description:
@@ -167,7 +167,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -185,7 +185,7 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		description:
@@ -207,7 +207,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -225,7 +225,7 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -260,7 +260,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
@@ -278,7 +278,7 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		description:
@@ -296,7 +296,7 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		displayOptions: {
@@ -306,7 +306,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Name',

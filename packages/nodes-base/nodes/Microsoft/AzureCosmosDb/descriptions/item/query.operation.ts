@@ -10,7 +10,7 @@ const properties: INodeProperties[] = [
 		name: 'query',
 		default: '',
 		description:
-			"The SQL query to execute. Use $1, $2, $3, etc., to reference the 'Query Parameters' set in the options below.",
+			"The SQL query to execute. Use $1, $2, $3, etc., to reference the 'Query parameters' set in the options below.",
 		hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below.',
 		noDataExpression: true,
 		placeholder: 'e.g. SELECT id, name FROM c WHERE c.name = $1',
@@ -41,15 +41,15 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Query Options',
+				displayName: 'Query options',
 				name: 'queryOptions',
 				values: [
 					{
-						displayName: 'Query Parameters',
+						displayName: 'Query parameters',
 						name: 'queryParameters',
 						default: '',
 						description:
-							'Comma-separated list of string values used as query parameters. Use $1, $2, $3, etc., in your query. All values are treated as strings — use "Query Parameters (JSON)" for typed values.',
+							'Comma-separated list of string values used as query parameters. Use $1, $2, $3, etc., in your query. All values are treated as strings — use "Query parameters (JSON)" for typed values.',
 						hint: 'Reference them in your query as $1, $2, $3…',
 						placeholder: 'e.g. value1,value2,value3',
 						routing: {
@@ -60,7 +60,7 @@ const properties: INodeProperties[] = [
 						type: 'string',
 					},
 					{
-						displayName: 'Query Parameters (JSON)',
+						displayName: 'Query parameters (JSON)',
 						name: 'queryParametersJson',
 						default: '',
 						description:

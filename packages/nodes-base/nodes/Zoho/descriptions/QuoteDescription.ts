@@ -28,7 +28,7 @@ export const quoteOperations: INodeProperties[] = [
 				action: 'Create a quote',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 				action: 'Create or update a quote',
@@ -46,7 +46,7 @@ export const quoteOperations: INodeProperties[] = [
 				action: 'Get a quote',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many quotes',
 				action: 'Get many quotes',
@@ -112,7 +112,7 @@ export const quoteFields: INodeProperties[] = [
 			multipleValueButtonText: 'Add Product',
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: productDetailsOptions,
 		displayOptions: {
 			show: {
@@ -122,10 +122,10 @@ export const quoteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -167,7 +167,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Exchange Rate',
+				displayName: 'Exchange rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: 0,
@@ -177,7 +177,7 @@ export const quoteFields: INodeProperties[] = [
 				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
-				displayName: 'Grand Total',
+				displayName: 'Grand total',
 				name: 'Grand_Total',
 				type: 'number',
 				default: 0,
@@ -187,7 +187,7 @@ export const quoteFields: INodeProperties[] = [
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Quote Stage Name or ID',
+				displayName: 'Quote stage name or ID',
 				name: 'Quote_Stage',
 				type: 'options',
 				default: [],
@@ -199,7 +199,7 @@ export const quoteFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Sub Total',
+				displayName: 'Sub total',
 				name: 'Sub_Total',
 				type: 'number',
 				default: 0,
@@ -226,14 +226,14 @@ export const quoteFields: INodeProperties[] = [
 				description: 'Team for whom the quote is created',
 			},
 			{
-				displayName: 'Terms and Conditions',
+				displayName: 'Terms and conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
 				description: 'Terms and conditions associated with the quote',
 			},
 			{
-				displayName: 'Valid Till',
+				displayName: 'Valid till',
 				name: 'Valid_Till',
 				type: 'dateTime',
 				default: '',
@@ -301,10 +301,10 @@ export const quoteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -346,7 +346,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Exchange Rate',
+				displayName: 'Exchange rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: 0,
@@ -356,7 +356,7 @@ export const quoteFields: INodeProperties[] = [
 				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
-				displayName: 'Grand Total',
+				displayName: 'Grand total',
 				name: 'Grand_Total',
 				type: 'number',
 				default: 0,
@@ -366,7 +366,7 @@ export const quoteFields: INodeProperties[] = [
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Quote Stage Name or ID',
+				displayName: 'Quote stage name or ID',
 				name: 'Quote_Stage',
 				type: 'options',
 				default: [],
@@ -378,7 +378,7 @@ export const quoteFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Sub Total',
+				displayName: 'Sub total',
 				name: 'Sub_Total',
 				type: 'number',
 				default: 0,
@@ -412,14 +412,14 @@ export const quoteFields: INodeProperties[] = [
 				description: 'Team for whom the quote is created',
 			},
 			{
-				displayName: 'Terms and Conditions',
+				displayName: 'Terms and conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
 				description: 'Terms and conditions associated with the quote',
 			},
 			{
-				displayName: 'Valid Till',
+				displayName: 'Valid till',
 				name: 'Valid_Till',
 				type: 'dateTime',
 				default: '',

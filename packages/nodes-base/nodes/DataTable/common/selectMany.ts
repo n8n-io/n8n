@@ -48,7 +48,7 @@ export function getSelectFields(
 ): INodeProperties[] {
 	return [
 		{
-			displayName: 'Must Match',
+			displayName: 'Must match',
 			name: 'matchType',
 			type: 'options',
 			options: [
@@ -74,7 +74,7 @@ export function getSelectFields(
 			},
 			displayOptions,
 			default: {},
-			placeholder: 'Add Condition',
+			placeholder: 'Add condition',
 			options: [
 				{
 					displayName: 'Conditions',

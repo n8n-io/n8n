@@ -2,7 +2,7 @@ import type { ReactionProperties } from '../../Interfaces';
 
 export const reactionCreateDescription: ReactionProperties = [
 	{
-		displayName: 'User Name or ID',
+		displayName: 'User name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -37,7 +37,7 @@ export const reactionCreateDescription: ReactionProperties = [
 			'ID of the post to react to. Obtainable from the post link: <code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
 	},
 	{
-		displayName: 'Emoji Name',
+		displayName: 'Emoji name',
 		name: 'emojiName',
 		type: 'string',
 		default: '',

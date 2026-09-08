@@ -24,7 +24,7 @@ export const registrantOperations: INodeProperties[] = [
 				action: 'Get a registrant',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many registrants',
 			},
@@ -42,7 +42,7 @@ export const registrantFields: INodeProperties[] = [
 	//         registrant: create
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -60,7 +60,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		default: '',
@@ -73,7 +73,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		default: '',
@@ -100,10 +100,10 @@ export const registrantFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['registrant'],
@@ -113,9 +113,9 @@ export const registrantFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Full Address',
+				displayName: 'Full address',
 				name: 'fullAddress',
-				placeholder: 'Add Address Fields',
+				placeholder: 'Add address fields',
 				type: 'fixedCollection',
 				description: 'Full address of the registrant to create',
 				default: {},
@@ -143,7 +143,7 @@ export const registrantFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zipCode',
 								type: 'string',
 								default: '',
@@ -166,15 +166,15 @@ export const registrantFields: INodeProperties[] = [
 				description: "The type of industry the registrant's organization belongs to",
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'MultiChoice Responses',
+				displayName: 'MultiChoice responses',
 				name: 'multiChoiceResponses',
-				placeholder: 'Add MultiChoice Response',
+				placeholder: 'Add MultiChoice response',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -187,7 +187,7 @@ export const registrantFields: INodeProperties[] = [
 						name: 'details',
 						values: [
 							{
-								displayName: 'Question Key Name or ID',
+								displayName: 'Question key name or ID',
 								name: 'questionKey',
 								type: 'options',
 								description:
@@ -199,7 +199,7 @@ export const registrantFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Answer Key',
+								displayName: 'Answer key',
 								name: 'AnswerKey',
 								type: 'string',
 								default: '',
@@ -210,7 +210,7 @@ export const registrantFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Number of Employees',
+				displayName: 'Number of employees',
 				name: 'numberOfEmployees',
 				type: 'string',
 				default: '',
@@ -229,36 +229,36 @@ export const registrantFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Purchasing Role',
+				displayName: 'Purchasing role',
 				name: 'purchasingRole',
 				type: 'string',
 				default: '',
 				description: "Registrant's role in purchasing the product",
 			},
 			{
-				displayName: 'Purchasing Time Frame',
+				displayName: 'Purchasing time frame',
 				name: 'purchasingTimeFrame',
 				type: 'string',
 				default: '',
 				description: 'Time frame within which the product will be purchased',
 			},
 			{
-				displayName: 'Questions and Comments',
+				displayName: 'Questions and comments',
 				name: 'questionsAndComments',
 				type: 'string',
 				default: '',
 				description: 'Questions or comments made by the registrant during registration',
 			},
 			{
-				displayName: 'Resend Confirmation',
+				displayName: 'Resend confirmation',
 				name: 'resendConfirmation',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Simple Responses',
+				displayName: 'Simple responses',
 				name: 'simpleResponses',
-				placeholder: 'Add Simple Response',
+				placeholder: 'Add simple response',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -271,7 +271,7 @@ export const registrantFields: INodeProperties[] = [
 						name: 'details',
 						values: [
 							{
-								displayName: 'Question Key Name or ID',
+								displayName: 'Question key name or ID',
 								name: 'questionKey',
 								type: 'options',
 								description:
@@ -283,7 +283,7 @@ export const registrantFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Response Text',
+								displayName: 'Response text',
 								name: 'responseText',
 								type: 'string',
 								default: '',
@@ -307,7 +307,7 @@ export const registrantFields: INodeProperties[] = [
 	//        registrant: getAll
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -325,7 +325,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -360,7 +360,7 @@ export const registrantFields: INodeProperties[] = [
 	//         registrant: delete
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -378,7 +378,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Registrant Key',
+		displayName: 'Registrant key',
 		name: 'registrantKey',
 		type: 'string',
 		required: true,
@@ -396,7 +396,7 @@ export const registrantFields: INodeProperties[] = [
 	//         registrant: get
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -414,7 +414,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Registrant Key',
+		displayName: 'Registrant key',
 		name: 'registrantKey',
 		type: 'string',
 		required: true,

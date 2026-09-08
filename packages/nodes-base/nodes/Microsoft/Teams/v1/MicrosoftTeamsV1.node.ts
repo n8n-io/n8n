@@ -53,11 +53,11 @@ const versionDescription: INodeTypeDescription = {
 					value: 'channel',
 				},
 				{
-					name: 'Channel Message (Beta)',
+					name: 'Channel message (beta)',
 					value: 'channelMessage',
 				},
 				{
-					name: 'Chat Message',
+					name: 'Chat message',
 					value: 'chatMessage',
 				},
 				{

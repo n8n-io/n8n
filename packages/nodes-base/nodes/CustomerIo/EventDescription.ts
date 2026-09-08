@@ -19,7 +19,7 @@ export const eventOperations: INodeProperties[] = [
 				action: 'Track a customer event',
 			},
 			{
-				name: 'Track Anonymous',
+				name: 'Track anonymous',
 				value: 'trackAnonymous',
 				description: 'Track an anonymous event',
 				action: 'Track an anonymous event',
@@ -48,7 +48,7 @@ export const eventFields: INodeProperties[] = [
 		description: 'The unique identifier for the customer',
 	},
 	{
-		displayName: 'Event Name',
+		displayName: 'Event name',
 		name: 'eventName',
 		type: 'string',
 		default: '',
@@ -61,7 +61,7 @@ export const eventFields: INodeProperties[] = [
 		description: 'Name of the event to track',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -73,7 +73,7 @@ export const eventFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -91,10 +91,10 @@ export const eventFields: INodeProperties[] = [
 			'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting">here</a>',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -105,7 +105,7 @@ export const eventFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Attributes',
+				displayName: 'Custom attributes',
 				name: 'customAttributes',
 				type: 'fixedCollection',
 				default: {},
@@ -154,7 +154,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                   event:track anonymous                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Event Name',
+		displayName: 'Event name',
 		name: 'eventName',
 		type: 'string',
 		required: true,
@@ -168,7 +168,7 @@ export const eventFields: INodeProperties[] = [
 		description: 'The unique identifier for the customer',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -180,7 +180,7 @@ export const eventFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -198,10 +198,10 @@ export const eventFields: INodeProperties[] = [
 			'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting">here</a>',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -212,7 +212,7 @@ export const eventFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Attributes',
+				displayName: 'Custom attributes',
 				name: 'customAttributes',
 				type: 'fixedCollection',
 				default: {},

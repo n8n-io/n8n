@@ -34,7 +34,7 @@ export const groupDescription: INodeProperties[] = [
 				action: 'Get a group',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many groups',
 				action: 'Get many groups',
@@ -53,7 +53,7 @@ export const groupDescription: INodeProperties[] = [
 	//             fields
 	// ----------------------------------
 	{
-		displayName: 'Group Name',
+		displayName: 'Group name',
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -112,7 +112,7 @@ export const groupDescription: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
@@ -122,7 +122,7 @@ export const groupDescription: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Active',
@@ -131,21 +131,21 @@ export const groupDescription: INodeProperties[] = [
 				default: true,
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldPairs',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -156,7 +156,7 @@ export const groupDescription: INodeProperties[] = [
 									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -175,7 +175,7 @@ export const groupDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		displayOptions: {
@@ -185,7 +185,7 @@ export const groupDescription: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Active',
@@ -194,21 +194,21 @@ export const groupDescription: INodeProperties[] = [
 				default: true,
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldPairs',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -219,7 +219,7 @@ export const groupDescription: INodeProperties[] = [
 									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -230,7 +230,7 @@ export const groupDescription: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Group Name',
+				displayName: 'Group name',
 				name: 'name',
 				type: 'string',
 				default: '',
@@ -244,7 +244,7 @@ export const groupDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

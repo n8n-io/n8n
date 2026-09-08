@@ -7,7 +7,7 @@ import { getColumnNumber, untilSheetSelected } from '../../helpers/GoogleSheets.
 
 export const description: SheetProperties = [
 	{
-		displayName: 'To Delete',
+		displayName: 'To delete',
 		name: 'toDelete',
 		type: 'options',
 		options: [
@@ -35,7 +35,7 @@ export const description: SheetProperties = [
 		description: 'What to delete',
 	},
 	{
-		displayName: 'Start Row Number',
+		displayName: 'Start row number',
 		name: 'startIndex',
 		type: 'number',
 		typeOptions: {
@@ -55,7 +55,7 @@ export const description: SheetProperties = [
 		},
 	},
 	{
-		displayName: 'Number of Rows to Delete',
+		displayName: 'Number of rows to delete',
 		name: 'numberToDelete',
 		type: 'number',
 		typeOptions: {
@@ -74,7 +74,7 @@ export const description: SheetProperties = [
 		},
 	},
 	{
-		displayName: 'Start Column',
+		displayName: 'Start column',
 		name: 'startIndex',
 		type: 'string',
 		default: 'A',
@@ -91,7 +91,7 @@ export const description: SheetProperties = [
 		},
 	},
 	{
-		displayName: 'Number of Columns to Delete',
+		displayName: 'Number of columns to delete',
 		name: 'numberToDelete',
 		type: 'number',
 		typeOptions: {

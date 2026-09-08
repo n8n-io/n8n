@@ -57,7 +57,7 @@ export class StripeTrigger implements INodeType {
 						description: 'Any time any event is triggered (Wildcard Event)',
 					},
 					{
-						name: 'Account Updated',
+						name: 'Account updated',
 						value: 'account.updated',
 						description: 'Occurs whenever an account status or property has changed',
 					},
@@ -105,48 +105,48 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs whenever an application fee refund is updated.',
 					},
 					{
-						name: 'Balance Available',
+						name: 'Balance available',
 						value: 'balance.available',
 						description:
 							'Occurs whenever your Stripe balance has been updated (e.g., when a charge is available to be paid out). By default, Stripe automatically transfers funds in your balance to your bank account on a daily basis.',
 					},
 					{
-						name: 'Capability Updated',
+						name: 'Capability updated',
 						value: 'capability.updated',
 						description: 'Occurs whenever a capability has new requirements or a new status.',
 					},
 					{
-						name: 'Charge Captured',
+						name: 'Charge captured',
 						value: 'charge.captured',
 						description: 'Occurs whenever a previously uncaptured charge is captured.',
 					},
 					{
-						name: 'Charge Expired',
+						name: 'Charge expired',
 						value: 'charge.expired',
 						description: 'Occurs whenever an uncaptured charge expires.',
 					},
 					{
-						name: 'Charge Failed',
+						name: 'Charge failed',
 						value: 'charge.failed',
 						description: 'Occurs whenever a failed charge attempt occurs.',
 					},
 					{
-						name: 'Charge Pending',
+						name: 'Charge pending',
 						value: 'charge.pending',
 						description: 'Occurs whenever a pending charge is created.',
 					},
 					{
-						name: 'Charge Refunded',
+						name: 'Charge refunded',
 						value: 'charge.refunded',
 						description: 'Occurs whenever a charge is refunded, including partial refunds.',
 					},
 					{
-						name: 'Charge Succeeded',
+						name: 'Charge succeeded',
 						value: 'charge.succeeded',
 						description: 'Occurs whenever a new charge is created and is successful.',
 					},
 					{
-						name: 'Charge Updated',
+						name: 'Charge updated',
 						value: 'charge.updated',
 						description: 'Occurs whenever a charge description or metadata is updated.',
 					},
@@ -188,17 +188,17 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs when a Checkout Session has been successfully completed.',
 					},
 					{
-						name: 'Coupon Created',
+						name: 'Coupon created',
 						value: 'coupon.created',
 						description: 'Occurs whenever a coupon is created.',
 					},
 					{
-						name: 'Coupon Deleted',
+						name: 'Coupon deleted',
 						value: 'coupon.deleted',
 						description: 'Occurs whenever a coupon is deleted.',
 					},
 					{
-						name: 'Coupon Updated',
+						name: 'Coupon updated',
 						value: 'coupon.updated',
 						description: 'Occurs whenever a coupon is updated.',
 					},
@@ -218,17 +218,17 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs whenever a credit note is voided.',
 					},
 					{
-						name: 'Customer Created',
+						name: 'Customer created',
 						value: 'customer.created',
 						description: 'Occurs whenever a new customer is created.',
 					},
 					{
-						name: 'Customer Deleted',
+						name: 'Customer deleted',
 						value: 'customer.deleted',
 						description: 'Occurs whenever a customer is deleted.',
 					},
 					{
-						name: 'Customer Updated',
+						name: 'Customer updated',
 						value: 'customer.updated',
 						description: 'Occurs whenever any property of a customer changes.',
 					},
@@ -305,24 +305,24 @@ export class StripeTrigger implements INodeType {
 						description: "Occurs whenever a customer's tax ID is updated.",
 					},
 					{
-						name: 'File Created',
+						name: 'File created',
 						value: 'file.created',
 						description:
 							'Occurs whenever a new Stripe-generated file is available for your account.',
 					},
 					{
-						name: 'Invoice Created',
+						name: 'Invoice created',
 						value: 'invoice.created',
 						description:
 							'Occurs whenever a new invoice is created. To learn how webhooks can be used with this event, and how they can affect it, see Using Webhooks with Subscriptions.',
 					},
 					{
-						name: 'Invoice Deleted',
+						name: 'Invoice deleted',
 						value: 'invoice.deleted',
 						description: 'Occurs whenever a draft invoice is deleted.',
 					},
 					{
-						name: 'Invoice Finalized',
+						name: 'Invoice finalized',
 						value: 'invoice.finalized',
 						description:
 							'Occurs whenever a draft invoice is finalized and updated to be an open invoice.',
@@ -333,7 +333,7 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs whenever an invoice is marked uncollectible.',
 					},
 					{
-						name: 'Invoice Paid',
+						name: 'Invoice paid',
 						value: 'invoice.paid',
 						description:
 							'Occurs whenever an invoice payment attempt succeeds or an invoice is marked as paid out-of-band.',
@@ -361,38 +361,38 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs whenever an invoice payment attempt succeeds.',
 					},
 					{
-						name: 'Invoice Sent',
+						name: 'Invoice sent',
 						value: 'invoice.sent',
 						description: 'Occurs whenever an invoice email is sent out.',
 					},
 					{
-						name: 'Invoice Upcoming',
+						name: 'Invoice upcoming',
 						value: 'invoice.upcoming',
 						description:
 							'Occurs X number of days before a subscription is scheduled to create an invoice that is automatically charged—where X is determined by your subscriptions settings. Note: The received Invoice object will not have an invoice ID.',
 					},
 					{
-						name: 'Invoice Updated',
+						name: 'Invoice updated',
 						value: 'invoice.updated',
 						description: 'Occurs whenever an invoice changes (e.g., the invoice amount).',
 					},
 					{
-						name: 'Invoice Voided',
+						name: 'Invoice voided',
 						value: 'invoice.voided',
 						description: 'Occurs whenever an invoice is voided.',
 					},
 					{
-						name: 'Invoiceitem Created',
+						name: 'Invoiceitem created',
 						value: 'invoiceitem.created',
 						description: 'Occurs whenever an invoice item is created.',
 					},
 					{
-						name: 'Invoiceitem Deleted',
+						name: 'Invoiceitem deleted',
 						value: 'invoiceitem.deleted',
 						description: 'Occurs whenever an invoice item is deleted.',
 					},
 					{
-						name: 'Invoiceitem Updated',
+						name: 'Invoiceitem updated',
 						value: 'invoiceitem.updated',
 						description: 'Occurs whenever an invoice item is updated.',
 					},
@@ -463,7 +463,7 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs whenever an issuing transaction is updated.',
 					},
 					{
-						name: 'Order Created',
+						name: 'Order created',
 						value: 'order.created',
 						description: 'Occurs whenever an order is created.',
 					},
@@ -478,7 +478,7 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs whenever an order payment attempt succeeds.',
 					},
 					{
-						name: 'Order Updated',
+						name: 'Order updated',
 						value: 'order.updated',
 						description: 'Occurs whenever an order is updated.',
 					},
@@ -542,73 +542,73 @@ export class StripeTrigger implements INodeType {
 							'Occurs whenever a payment method is updated via the PaymentMethod update API.',
 					},
 					{
-						name: 'Payout Canceled',
+						name: 'Payout canceled',
 						value: 'payout.canceled',
 						description: 'Occurs whenever a payout is canceled.',
 					},
 					{
-						name: 'Payout Created',
+						name: 'Payout created',
 						value: 'payout.created',
 						description: 'Occurs whenever a payout is created.',
 					},
 					{
-						name: 'Payout Failed',
+						name: 'Payout failed',
 						value: 'payout.failed',
 						description: 'Occurs whenever a payout attempt fails.',
 					},
 					{
-						name: 'Payout Paid',
+						name: 'Payout paid',
 						value: 'payout.paid',
 						description:
 							'Occurs whenever a payout is expected to be available in the destination account. If the payout fails, a payout.failed notification is also sent, at a later time.',
 					},
 					{
-						name: 'Payout Updated',
+						name: 'Payout updated',
 						value: 'payout.updated',
 						description: 'Occurs whenever a payout is updated.',
 					},
 					{
-						name: 'Person Created',
+						name: 'Person created',
 						value: 'person.created',
 						description: 'Occurs whenever a person associated with an account is created.',
 					},
 					{
-						name: 'Person Deleted',
+						name: 'Person deleted',
 						value: 'person.deleted',
 						description: 'Occurs whenever a person associated with an account is deleted.',
 					},
 					{
-						name: 'Person Updated',
+						name: 'Person updated',
 						value: 'person.updated',
 						description: 'Occurs whenever a person associated with an account is updated.',
 					},
 					{
-						name: 'Plan Created',
+						name: 'Plan created',
 						value: 'plan.created',
 						description: 'Occurs whenever a plan is created.',
 					},
 					{
-						name: 'Plan Deleted',
+						name: 'Plan deleted',
 						value: 'plan.deleted',
 						description: 'Occurs whenever a plan is deleted.',
 					},
 					{
-						name: 'Plan Updated',
+						name: 'Plan updated',
 						value: 'plan.updated',
 						description: 'Occurs whenever a plan is updated.',
 					},
 					{
-						name: 'Product Created',
+						name: 'Product created',
 						value: 'product.created',
 						description: 'Occurs whenever a product is created.',
 					},
 					{
-						name: 'Product Deleted',
+						name: 'Product deleted',
 						value: 'product.deleted',
 						description: 'Occurs whenever a product is deleted.',
 					},
 					{
-						name: 'Product Updated',
+						name: 'Product updated',
 						value: 'product.updated',
 						description: 'Occurs whenever a product is updated.',
 					},
@@ -623,17 +623,17 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs whenever an early fraud warning is updated.',
 					},
 					{
-						name: 'Recipient Created',
+						name: 'Recipient created',
 						value: 'recipient.created',
 						description: 'Occurs whenever a recipient is created.',
 					},
 					{
-						name: 'Recipient Deleted',
+						name: 'Recipient deleted',
 						value: 'recipient.deleted',
 						description: 'Occurs whenever a recipient is deleted.',
 					},
 					{
-						name: 'Recipient Updated',
+						name: 'Recipient updated',
 						value: 'recipient.updated',
 						description: 'Occurs whenever a recipient is updated.',
 					},
@@ -654,13 +654,13 @@ export class StripeTrigger implements INodeType {
 							"Occurs whenever a **ReportType** is updated (typically to indicate that a new day's data has come available).",
 					},
 					{
-						name: 'Review Closed',
+						name: 'Review closed',
 						value: 'review.closed',
 						description:
 							"Occurs whenever a review is closed. The review's reason field indicates why: approved, disputed, refunded, or refunded_as_fraud.",
 					},
 					{
-						name: 'Review Opened',
+						name: 'Review opened',
 						value: 'review.opened',
 						description: 'Occurs whenever a review is opened.',
 					},
@@ -691,32 +691,32 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs whenever a Sigma scheduled query run finishes.',
 					},
 					{
-						name: 'Sku Created',
+						name: 'SKU created',
 						value: 'sku.created',
 						description: 'Occurs whenever a SKU is created.',
 					},
 					{
-						name: 'Sku Deleted',
+						name: 'SKU deleted',
 						value: 'sku.deleted',
 						description: 'Occurs whenever a SKU is deleted.',
 					},
 					{
-						name: 'Sku Updated',
+						name: 'SKU updated',
 						value: 'sku.updated',
 						description: 'Occurs whenever a SKU is updated.',
 					},
 					{
-						name: 'Source Canceled',
+						name: 'Source canceled',
 						value: 'source.canceled',
 						description: 'Occurs whenever a source is canceled.',
 					},
 					{
-						name: 'Source Chargeable',
+						name: 'Source chargeable',
 						value: 'source.chargeable',
 						description: 'Occurs whenever a source transitions to chargeable.',
 					},
 					{
-						name: 'Source Failed',
+						name: 'Source failed',
 						value: 'source.failed',
 						description: 'Occurs whenever a source fails.',
 					},
@@ -788,60 +788,60 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs whenever a tax rate is updated.',
 					},
 					{
-						name: 'Topup Canceled',
+						name: 'Topup canceled',
 						value: 'topup.canceled',
 						description: 'Occurs whenever a top-up is canceled.',
 					},
 					{
-						name: 'Topup Created',
+						name: 'Topup created',
 						value: 'topup.created',
 						description: 'Occurs whenever a top-up is created.',
 					},
 					{
-						name: 'Topup Failed',
+						name: 'Topup failed',
 						value: 'topup.failed',
 						description: 'Occurs whenever a top-up fails.',
 					},
 					{
-						name: 'Topup Reversed',
+						name: 'Topup reversed',
 						value: 'topup.reversed',
 						description: 'Occurs whenever a top-up is reversed.',
 					},
 					{
-						name: 'Topup Succeeded',
+						name: 'Topup succeeded',
 						value: 'topup.succeeded',
 						description: 'Occurs whenever a top-up succeeds.',
 					},
 					{
-						name: 'Transfer Created',
+						name: 'Transfer created',
 						value: 'transfer.created',
 						description: 'Occurs whenever a transfer is created.',
 					},
 					{
-						name: 'Transfer Failed',
+						name: 'Transfer failed',
 						value: 'transfer.failed',
 						description: 'Occurs whenever a transfer failed.',
 					},
 					{
-						name: 'Transfer Paid',
+						name: 'Transfer paid',
 						value: 'transfer.paid',
 						description:
 							'Occurs after a transfer is paid. For Instant Payouts, the event will be sent on the next business day, although the funds should be received well beforehand.',
 					},
 					{
-						name: 'Transfer Reversed',
+						name: 'Transfer reversed',
 						value: 'transfer.reversed',
 						description: 'Occurs whenever a transfer is reversed, including partial reversals.',
 					},
 					{
-						name: 'Transfer Updated',
+						name: 'Transfer updated',
 						value: 'transfer.updated',
 						description: "Occurs whenever a transfer's description or metadata is updated.",
 					},
 				],
 			},
 			{
-				displayName: 'API Version',
+				displayName: 'API version',
 				name: 'apiVersion',
 				type: 'string',
 				placeholder: '2026-01-28.clover',

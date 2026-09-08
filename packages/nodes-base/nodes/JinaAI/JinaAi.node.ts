@@ -137,7 +137,7 @@ export class JinaAi implements INodeType {
 				},
 				options: [
 					{
-						name: 'Deep Research',
+						name: 'Deep research',
 						value: 'deepResearch',
 						action: 'Perform deep research',
 						description: 'Research a topic and generate a structured research report',
@@ -211,7 +211,7 @@ export class JinaAi implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -221,7 +221,7 @@ export class JinaAi implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Output Format',
+						displayName: 'Output format',
 						name: 'outputFormat',
 						description: 'Specify desired output format',
 						type: 'options',
@@ -250,7 +250,7 @@ export class JinaAi implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Target CSS Selector',
+						displayName: 'Target CSS selector',
 						name: 'targetSelector',
 						type: 'string',
 						description: 'CSS selector to focus on specific page elements',
@@ -258,7 +258,7 @@ export class JinaAi implements INodeType {
 						placeholder: 'e.g. #main-content .article',
 					},
 					{
-						displayName: 'Exclude CSS Selector',
+						displayName: 'Exclude CSS selector',
 						name: 'excludeSelector',
 						type: 'string',
 						description: 'CSS selector for elements to exclude',
@@ -266,14 +266,14 @@ export class JinaAi implements INodeType {
 						placeholder: 'e.g. header, footer, .ads',
 					},
 					{
-						displayName: 'Enable Image Captioning',
+						displayName: 'Enable image captioning',
 						name: 'enableImageCaptioning',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to generate captions for images within the content',
 					},
 					{
-						displayName: 'Wait for CSS Selector',
+						displayName: 'Wait for CSS selector',
 						name: 'waitForSelector',
 						type: 'string',
 						description:
@@ -284,7 +284,7 @@ export class JinaAi implements INodeType {
 				],
 			},
 			{
-				displayName: 'Search Query',
+				displayName: 'Search query',
 				name: 'searchQuery',
 				type: 'string',
 				required: true,
@@ -315,7 +315,7 @@ export class JinaAi implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -325,7 +325,7 @@ export class JinaAi implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Output Format',
+						displayName: 'Output format',
 						name: 'outputFormat',
 						description: 'Specify desired output format',
 						type: 'options',
@@ -354,7 +354,7 @@ export class JinaAi implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Site Filter',
+						displayName: 'Site filter',
 						name: 'siteFilter',
 						type: 'string',
 						description: 'Restrict search to specific websites',
@@ -362,7 +362,7 @@ export class JinaAi implements INodeType {
 						placeholder: 'e.g. jina.ai, github.com',
 					},
 					{
-						displayName: 'Page Number',
+						displayName: 'Page number',
 						name: 'pageNumber',
 						type: 'number',
 						typeOptions: {
@@ -377,7 +377,7 @@ export class JinaAi implements INodeType {
 			},
 			// Options for Research
 			{
-				displayName: 'Research Query',
+				displayName: 'Research query',
 				name: 'researchQuery',
 				type: 'string',
 				required: true,
@@ -413,7 +413,7 @@ export class JinaAi implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -423,7 +423,7 @@ export class JinaAi implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Max Returned Sources',
+						displayName: 'Max returned sources',
 						name: 'maxReturnedSources',
 						description: 'The maximum number of URLs to include in the final answer',
 						type: 'number',
@@ -435,7 +435,7 @@ export class JinaAi implements INodeType {
 						placeholder: 'e.g. 5',
 					},
 					{
-						displayName: 'Prioritize Sources',
+						displayName: 'Prioritize sources',
 						name: 'prioritizeSources',
 						type: 'string',
 						description: 'A list of domains that are given a higher priority for content retrieval',
@@ -443,7 +443,7 @@ export class JinaAi implements INodeType {
 						placeholder: 'e.g. jina.ai, github.com',
 					},
 					{
-						displayName: 'Exclude Sources',
+						displayName: 'Exclude sources',
 						name: 'excludeSources',
 						type: 'string',
 						description: 'A list of domains to be strictly excluded from content retrieval',
@@ -451,7 +451,7 @@ export class JinaAi implements INodeType {
 						placeholder: 'e.g. jina.ai, github.com',
 					},
 					{
-						displayName: 'Site Filter',
+						displayName: 'Site filter',
 						name: 'siteFilter',
 						type: 'string',
 						description: 'Restrict search to specific websites',

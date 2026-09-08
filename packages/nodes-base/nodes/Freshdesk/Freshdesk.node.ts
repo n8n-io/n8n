@@ -148,7 +148,7 @@ export class Freshdesk implements INodeType {
 						action: 'Get a ticket',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many tickets',
 						action: 'Get many tickets',
@@ -163,7 +163,7 @@ export class Freshdesk implements INodeType {
 				default: 'create',
 			},
 			{
-				displayName: 'Requester Identification',
+				displayName: 'Requester identification',
 				name: 'requester',
 				type: 'options',
 				required: true,
@@ -205,7 +205,7 @@ export class Freshdesk implements INodeType {
 							'Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.',
 					},
 					{
-						name: 'Unique External ID',
+						name: 'Unique external ID',
 						value: 'uniqueExternalId',
 						description:
 							'External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.',
@@ -310,7 +310,7 @@ export class Freshdesk implements INodeType {
 						value: 'email',
 					},
 					{
-						name: 'Feedback Widget',
+						name: 'Feedback widget',
 						value: 'feedbackWidget',
 					},
 					{
@@ -318,7 +318,7 @@ export class Freshdesk implements INodeType {
 						value: 'mobileHelp',
 					},
 					{
-						name: 'Outbound Email',
+						name: 'Outbound email',
 						value: 'OutboundEmail',
 					},
 					{
@@ -364,7 +364,7 @@ export class Freshdesk implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Agent Name or ID',
+						displayName: 'Agent name or ID',
 						name: 'agent',
 						type: 'options',
 						default: '',
@@ -375,7 +375,7 @@ export class Freshdesk implements INodeType {
 							'ID of the agent to whom the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'CC Emails',
+						displayName: 'CC emails',
 						name: 'ccEmails',
 						type: 'string',
 						default: '',
@@ -383,7 +383,7 @@ export class Freshdesk implements INodeType {
 							"Separated by a comma (,) email addresses added in the 'cc' field of the incoming ticket email",
 					},
 					{
-						displayName: 'Company Name or ID',
+						displayName: 'Company name or ID',
 						name: 'company',
 						type: 'options',
 						default: '',
@@ -404,14 +404,14 @@ export class Freshdesk implements INodeType {
 						description: 'HTML content of the ticket',
 					},
 					{
-						displayName: 'Due By',
+						displayName: 'Due by',
 						name: 'dueBy',
 						type: 'dateTime',
 						default: '',
 						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
-						displayName: 'Email Config ID',
+						displayName: 'Email config ID',
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
@@ -419,14 +419,14 @@ export class Freshdesk implements INodeType {
 							"ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com) If product_id is given and email_config_id is not given, product's primary email_config_id will be set.",
 					},
 					{
-						displayName: 'FR Due By',
+						displayName: 'FR due by',
 						name: 'frDueBy',
 						type: 'dateTime',
 						default: '',
 						description: 'Timestamp that denotes when the first response is due',
 					},
 					{
-						displayName: 'Group Name or ID',
+						displayName: 'Group name or ID',
 						name: 'group',
 						type: 'options',
 						default: '',
@@ -445,7 +445,7 @@ export class Freshdesk implements INodeType {
 						description: 'Name of the requester',
 					},
 					{
-						displayName: 'Product Name or ID',
+						displayName: 'Product name or ID',
 						name: 'product',
 						type: 'options',
 						default: '',
@@ -479,7 +479,7 @@ export class Freshdesk implements INodeType {
 							'Helps categorize the ticket according to the different kinds of issues your support team deals with',
 						options: [
 							{
-								name: 'Feature Request',
+								name: 'Feature request',
 								value: 'Feature Request',
 							},
 							{
@@ -590,10 +590,10 @@ export class Freshdesk implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Update Fields',
+				displayName: 'Update fields',
 				name: 'updateFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -603,7 +603,7 @@ export class Freshdesk implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Agent Name or ID',
+						displayName: 'Agent name or ID',
 						name: 'agent',
 						type: 'options',
 						default: '',
@@ -614,7 +614,7 @@ export class Freshdesk implements INodeType {
 							'ID of the agent to whom the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'CC Emails',
+						displayName: 'CC emails',
 						name: 'ccEmails',
 						type: 'string',
 						default: '',
@@ -622,7 +622,7 @@ export class Freshdesk implements INodeType {
 							"Separated by a comma (,) email addresses added in the 'cc' field of the incoming ticket email",
 					},
 					{
-						displayName: 'Company Name or ID',
+						displayName: 'Company name or ID',
 						name: 'company',
 						type: 'options',
 						default: '',
@@ -633,14 +633,14 @@ export class Freshdesk implements INodeType {
 							'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Due By',
+						displayName: 'Due by',
 						name: 'dueBy',
 						type: 'dateTime',
 						default: '',
 						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
-						displayName: 'Email Config ID',
+						displayName: 'Email config ID',
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
@@ -648,14 +648,14 @@ export class Freshdesk implements INodeType {
 							"ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com) If product_id is given and email_config_id is not given, product's primary email_config_id will be set.",
 					},
 					{
-						displayName: 'FR Due By',
+						displayName: 'FR due by',
 						name: 'frDueBy',
 						type: 'dateTime',
 						default: '',
 						description: 'Timestamp that denotes when the first response is due',
 					},
 					{
-						displayName: 'Group Name or ID',
+						displayName: 'Group name or ID',
 						name: 'group',
 						type: 'options',
 						default: '',
@@ -674,7 +674,7 @@ export class Freshdesk implements INodeType {
 						description: 'Name of the requester',
 					},
 					{
-						displayName: 'Product Name or ID',
+						displayName: 'Product name or ID',
 						name: 'product',
 						type: 'options',
 						default: '',
@@ -709,7 +709,7 @@ export class Freshdesk implements INodeType {
 						default: 'low',
 					},
 					{
-						displayName: 'Requester Identification',
+						displayName: 'Requester identification',
 						name: 'requester',
 						type: 'options',
 						options: [
@@ -744,7 +744,7 @@ export class Freshdesk implements INodeType {
 									'Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.',
 							},
 							{
-								name: 'Unique External ID',
+								name: 'Unique external ID',
 								value: 'uniqueExternalId',
 								description:
 									'External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.',
@@ -753,7 +753,7 @@ export class Freshdesk implements INodeType {
 						default: 'requesterId',
 					},
 					{
-						displayName: 'Requester Value',
+						displayName: 'Requester value',
 						name: 'requesterIdentificationValue',
 						type: 'string',
 						default: '',
@@ -797,7 +797,7 @@ export class Freshdesk implements INodeType {
 								value: 'email',
 							},
 							{
-								name: 'Feedback Widget',
+								name: 'Feedback widget',
 								value: 'feedbackWidget',
 							},
 							{
@@ -806,7 +806,7 @@ export class Freshdesk implements INodeType {
 							},
 
 							{
-								name: 'Outbound Email',
+								name: 'Outbound email',
 								value: 'OutboundEmail',
 							},
 							{
@@ -837,7 +837,7 @@ export class Freshdesk implements INodeType {
 							'Helps categorize the ticket according to the different kinds of issues your support team deals with',
 						options: [
 							{
-								name: 'Feature Request',
+								name: 'Feature request',
 								value: 'Feature Request',
 							},
 							{
@@ -874,7 +874,7 @@ export class Freshdesk implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -965,20 +965,20 @@ export class Freshdesk implements INodeType {
 						description: 'Order sort attribute ascending or descending',
 					},
 					{
-						displayName: 'Order By',
+						displayName: 'Order by',
 						name: 'orderBy',
 						type: 'options',
 						options: [
 							{
-								name: 'Created At',
+								name: 'Created at',
 								value: 'createdAt',
 							},
 							{
-								name: 'Due By',
+								name: 'Due by',
 								value: 'dueBy',
 							},
 							{
-								name: 'Updated At',
+								name: 'Updated at',
 								value: 'updatedAt',
 							},
 						],
@@ -986,7 +986,7 @@ export class Freshdesk implements INodeType {
 						description: 'Sort collection by object attribute',
 					},
 					{
-						displayName: 'Requester Email',
+						displayName: 'Requester email',
 						name: 'requesterEmail',
 						type: 'string',
 						default: '',
@@ -998,7 +998,7 @@ export class Freshdesk implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Updated Since',
+						displayName: 'Updated since',
 						name: 'updatedSince',
 						type: 'dateTime',
 						default: '',

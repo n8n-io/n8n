@@ -9,7 +9,7 @@ export const campaignOperations: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Add Contact',
+				name: 'Add contact',
 				value: 'addContact',
 				action: 'Add a contact to a campaign',
 			},
@@ -29,7 +29,7 @@ export const campaignOperations: INodeProperties[] = [
 				action: 'Get a campaign',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many campaigns',
 			},
@@ -57,7 +57,7 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: addContact
 	// ----------------------------------
 	{
-		displayName: 'Campaign Name or ID',
+		displayName: 'Campaign name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -75,7 +75,7 @@ export const campaignFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Email',
+		displayName: 'Contact email',
 		name: 'contactEmail',
 		type: 'string',
 		required: true,
@@ -89,10 +89,10 @@ export const campaignFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -102,9 +102,9 @@ export const campaignFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -114,10 +114,10 @@ export const campaignFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field name',
 								name: 'fieldName',
 								type: 'string',
 								default: '',
@@ -135,49 +135,49 @@ export const campaignFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'First name of the contact to add',
 			},
 			{
-				displayName: 'Last Contacted',
+				displayName: 'Last contacted',
 				name: 'lastContacted',
 				type: 'dateTime',
 				default: '',
 				description: 'Last contacted date of the contact to add',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
 				description: 'Last name of the contact to add',
 			},
 			{
-				displayName: 'Last Open',
+				displayName: 'Last open',
 				name: 'lastOpen',
 				type: 'dateTime',
 				default: '',
 				description: 'Last opened date of the contact to add',
 			},
 			{
-				displayName: 'Last Replied',
+				displayName: 'Last replied',
 				name: 'lastReplied',
 				type: 'dateTime',
 				default: '',
 				description: 'Last replied date of the contact to add',
 			},
 			{
-				displayName: 'Mails Sent',
+				displayName: 'Mails sent',
 				name: 'mailsSent',
 				type: 'number',
 				default: 0,
 				description: 'Number of emails sent to the contact to add',
 			},
 			{
-				displayName: 'Phone Number',
+				displayName: 'Phone number',
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
@@ -190,7 +190,7 @@ export const campaignFields: INodeProperties[] = [
 	//         campaign: create
 	// ----------------------------------
 	{
-		displayName: 'Campaign Name',
+		displayName: 'Campaign name',
 		name: 'campaignName',
 		type: 'string',
 		required: true,
@@ -226,7 +226,7 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -297,7 +297,7 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: duplicate
 	// ----------------------------------
 	{
-		displayName: 'Campaign Name or ID',
+		displayName: 'Campaign name or ID',
 		name: 'campaignId',
 		type: 'options',
 		default: '',
@@ -315,7 +315,7 @@ export const campaignFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'New Campaign Name',
+		displayName: 'New campaign name',
 		name: 'campaignName',
 		type: 'string',
 		required: true,
@@ -333,7 +333,7 @@ export const campaignFields: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['duplicate'],
@@ -342,21 +342,21 @@ export const campaignFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Copy Contacts',
+				displayName: 'Copy contacts',
 				name: 'copyContacts',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to copy all the contacts from the original campaign',
 			},
 			{
-				displayName: 'Copy Email Provider',
+				displayName: 'Copy email provider',
 				name: 'copyProvider',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to set the same email provider than the original campaign',
 			},
 			{
-				displayName: 'Copy Email Sequence',
+				displayName: 'Copy email sequence',
 				name: 'copyMails',
 				type: 'boolean',
 				default: true,
@@ -364,7 +364,7 @@ export const campaignFields: INodeProperties[] = [
 					'Whether to copy all the steps of the email sequence from the original campaign',
 			},
 			{
-				displayName: 'Copy Global Settings',
+				displayName: 'Copy global settings',
 				name: 'copySettings',
 				type: 'boolean',
 				default: true,

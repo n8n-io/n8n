@@ -15,7 +15,7 @@ export const distTagOperations: INodeProperties[] = [
 
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get all',
 				value: 'getMany',
 				action: 'Returns all the dist-tags for a package',
 				description: 'Returns all the dist-tags for a package',
@@ -53,7 +53,7 @@ export const distTagOperations: INodeProperties[] = [
 
 export const distTagFields: INodeProperties[] = [
 	{
-		displayName: 'Package Name',
+		displayName: 'Package name',
 		name: 'packageName',
 		type: 'string',
 		required: true,
@@ -66,7 +66,7 @@ export const distTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Package Version',
+		displayName: 'Package version',
 		name: 'packageVersion',
 		type: 'string',
 		required: true,
@@ -79,7 +79,7 @@ export const distTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Distribution Tag Name',
+		displayName: 'Distribution tag name',
 		name: 'distTagName',
 		type: 'string',
 		required: true,

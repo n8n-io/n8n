@@ -31,7 +31,7 @@ export const monitorOperations: INodeProperties[] = [
 				action: 'Get a monitor',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many monitors',
 				action: 'Get many monitors',
@@ -58,7 +58,7 @@ export const monitorFields: INodeProperties[] = [
 	/*                                monitor:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Friendly Name',
+		displayName: 'Friendly name',
 		name: 'friendlyName',
 		type: 'string',
 		required: true,
@@ -144,7 +144,7 @@ export const monitorFields: INodeProperties[] = [
 	/*                                monitor:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -178,7 +178,7 @@ export const monitorFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -188,7 +188,7 @@ export const monitorFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Alert Contacts',
+				displayName: 'Alert contacts',
 				name: 'alert_contacts',
 				type: 'boolean',
 				default: false,
@@ -202,7 +202,7 @@ export const monitorFields: INodeProperties[] = [
 				description: 'Whether the logs of each monitor will be returned',
 			},
 			{
-				displayName: 'Maintenance Window',
+				displayName: 'Maintenance window',
 				name: 'mwindow',
 				type: 'boolean',
 				default: false,
@@ -216,7 +216,7 @@ export const monitorFields: INodeProperties[] = [
 				description: 'Monitors IDs separated with dash, e.g. 15830-32696-83920',
 			},
 			{
-				displayName: 'Response Times',
+				displayName: 'Response times',
 				name: 'response_times',
 				type: 'boolean',
 				default: false,
@@ -241,7 +241,7 @@ export const monitorFields: INodeProperties[] = [
 						value: 0,
 					},
 					{
-						name: 'Not Checked Yet',
+						name: 'Not checked yet',
 						value: 1,
 					},
 					{
@@ -249,7 +249,7 @@ export const monitorFields: INodeProperties[] = [
 						value: 2,
 					},
 					{
-						name: 'Seems Down',
+						name: 'Seems down',
 						value: 8,
 					},
 					{
@@ -308,10 +308,10 @@ export const monitorFields: INodeProperties[] = [
 		description: 'The ID of the monitor',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -321,20 +321,20 @@ export const monitorFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Friendly Name',
+				displayName: 'Friendly name',
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
 				description: 'The friendly name of the monitor',
 			},
 			{
-				displayName: 'HTTP Auth Type',
+				displayName: 'HTTP auth type',
 				name: 'http_auth_type',
 				type: 'options',
 				default: '',
 				options: [
 					{
-						name: 'HTTP Basic',
+						name: 'HTTP basic',
 						value: 1,
 					},
 					{
@@ -345,7 +345,7 @@ export const monitorFields: INodeProperties[] = [
 				description: 'The authentication type for password-protected web pages',
 			},
 			{
-				displayName: 'HTTP Method',
+				displayName: 'HTTP method',
 				name: 'http_method',
 				type: 'options',
 				default: '',
@@ -382,7 +382,7 @@ export const monitorFields: INodeProperties[] = [
 				description: 'The HTTP method to be used',
 			},
 			{
-				displayName: 'HTTP Password',
+				displayName: 'HTTP password',
 				name: 'http_password',
 				type: 'string',
 				typeOptions: { password: true },
@@ -390,7 +390,7 @@ export const monitorFields: INodeProperties[] = [
 				description: 'The password used for password-protected web pages',
 			},
 			{
-				displayName: 'HTTP Username',
+				displayName: 'HTTP username',
 				name: 'http_username',
 				type: 'string',
 				default: '',
@@ -428,13 +428,13 @@ export const monitorFields: INodeProperties[] = [
 				description: 'Select monitor statuses',
 			},
 			{
-				displayName: 'Sub Type',
+				displayName: 'Sub type',
 				name: 'sub_type',
 				type: 'options',
 				default: '',
 				options: [
 					{
-						name: 'Custom Port',
+						name: 'Custom port',
 						value: 99,
 					},
 					{

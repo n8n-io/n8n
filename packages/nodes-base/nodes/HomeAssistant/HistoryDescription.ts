@@ -13,7 +13,7 @@ export const historyOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many state changes',
 				action: 'Get many state changes',
@@ -28,7 +28,7 @@ export const historyFields: INodeProperties[] = [
 	/*                                history:getLogbookEntries                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -59,10 +59,10 @@ export const historyFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -72,7 +72,7 @@ export const historyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'End Time',
+				displayName: 'End time',
 				name: 'endTime',
 				type: 'dateTime',
 				default: '',
@@ -86,21 +86,21 @@ export const historyFields: INodeProperties[] = [
 				description: 'The entities IDs separated by comma',
 			},
 			{
-				displayName: 'Minimal Response',
+				displayName: 'Minimal response',
 				name: 'minimalResponse',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to only return <code>last_changed</code> and state for states',
 			},
 			{
-				displayName: 'Significant Changes Only',
+				displayName: 'Significant changes only',
 				name: 'significantChangesOnly',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to only return significant state changes',
 			},
 			{
-				displayName: 'Start Time',
+				displayName: 'Start time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',

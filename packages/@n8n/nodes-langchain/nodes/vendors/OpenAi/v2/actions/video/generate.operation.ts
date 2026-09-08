@@ -46,7 +46,7 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
@@ -59,7 +59,7 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. data',
 			},
 			{
-				displayName: 'Wait Timeout',
+				displayName: 'Wait timeout',
 				name: 'waitTime',
 				type: 'number',
 				default: 300,
@@ -70,7 +70,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Field Name',
+				displayName: 'Output field name',
 				name: 'fileName',
 				type: 'string',
 				default: 'data',

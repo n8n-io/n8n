@@ -18,7 +18,7 @@ export const fileRLC: INodeProperties = {
 	description: 'Select the file to download',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -39,7 +39,7 @@ export const fileRLC: INodeProperties = {
 };
 
 export const folderRLC: INodeProperties = {
-	displayName: 'Parent Folder',
+	displayName: 'Parent folder',
 	name: 'folder',
 	default: {
 		mode: 'list',
@@ -48,7 +48,7 @@ export const folderRLC: INodeProperties = {
 	description: 'Select the folder to update the file in',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -78,7 +78,7 @@ export const itemRLC: INodeProperties = {
 	description: 'Select the item you want to delete',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -107,7 +107,7 @@ export const listRLC: INodeProperties = {
 	description: 'Select the list you want to retrieve',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -136,7 +136,7 @@ export const siteRLC: INodeProperties = {
 	description: 'Select the site to retrieve folders from',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {

@@ -22,7 +22,7 @@ export const operations: INodeProperties[] = [
 				value: 'get',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 			},
 		],
@@ -46,7 +46,7 @@ export const fields: INodeProperties[] = [
 			'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -90,10 +90,10 @@ export const fields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -148,7 +148,7 @@ export const fields: INodeProperties[] = [
 					'Search for all data that matches the condition: {attribute}[in]={value}. Attribute can use dot notation.',
 			},
 			{
-				displayName: 'Not Equal',
+				displayName: 'Not equal',
 				name: 'notEqual',
 				type: 'string',
 				default: '',
@@ -174,7 +174,7 @@ export const fields: INodeProperties[] = [
 					'Full-text search is case insensitive and might return more results than expected. A query will only take values with more than 1 character.',
 			},
 			{
-				displayName: 'RAW Data',
+				displayName: 'RAW data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,

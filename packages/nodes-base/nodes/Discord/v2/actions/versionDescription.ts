@@ -53,19 +53,19 @@ export const versionDescription: INodeTypeDescription = {
 	],
 	properties: [
 		{
-			displayName: 'Connection Type',
+			displayName: 'Connection type',
 			name: 'authentication',
 			type: 'options',
 			options: [
 				{
-					name: 'Bot Token',
+					name: 'Bot token',
 					value: 'botToken',
 					description: 'Manage messages, channels, and members on a server',
 				},
 				{
 					name: 'OAuth2',
 					value: 'oAuth2',
-					description: "Same features as 'Bot Token' with easier Bot installation",
+					description: "Same features as 'Bot token' with easier Bot installation",
 				},
 				{
 					name: 'Webhook',

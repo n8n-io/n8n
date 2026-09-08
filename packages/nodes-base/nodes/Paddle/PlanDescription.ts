@@ -19,7 +19,7 @@ export const planOperations: INodeProperties[] = [
 				action: 'Get a plan',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many plans',
 				action: 'Get many plans',
@@ -48,7 +48,7 @@ export const planFields: INodeProperties[] = [
 		description: 'Filter: The subscription plan ID',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

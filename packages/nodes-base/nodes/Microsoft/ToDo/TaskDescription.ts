@@ -28,7 +28,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many tasks',
 			},
@@ -47,7 +47,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'taskListId',
 		type: 'options',
 		typeOptions: {
@@ -79,10 +79,10 @@ export const taskFields: INodeProperties[] = [
 		description: 'A brief description of the task',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -140,11 +140,11 @@ export const taskFields: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Not Started',
+						name: 'Not started',
 						value: 'notStarted',
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 'inProgress',
 					},
 					{
@@ -152,7 +152,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'completed',
 					},
 					{
-						name: 'Waiting On Others',
+						name: 'Waiting on others',
 						value: 'waitingOnOthers',
 					},
 					{
@@ -170,7 +170,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:get/delete/update/getAll              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'taskListId',
 		type: 'options',
 		typeOptions: {
@@ -205,7 +205,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -240,10 +240,10 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -260,7 +260,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'The content of the task',
 			},
 			{
-				displayName: 'Due Date Time',
+				displayName: 'Due date time',
 				name: 'dueDateTime',
 				type: 'dateTime',
 				default: '',
@@ -301,11 +301,11 @@ export const taskFields: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Not Started',
+						name: 'Not started',
 						value: 'notStarted',
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 'inProgress',
 					},
 					{
@@ -313,7 +313,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'completed',
 					},
 					{
-						name: 'Waiting On Others',
+						name: 'Waiting on others',
 						value: 'waitingOnOthers',
 					},
 					{

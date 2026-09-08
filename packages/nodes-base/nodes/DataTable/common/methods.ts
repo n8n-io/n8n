@@ -75,30 +75,30 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	const keyName = this.getCurrentNodeParameter('&keyName') as string;
 
 	const nullConditions: INodePropertyOptions[] = [
-		{ name: 'Is Empty', value: 'isEmpty' },
-		{ name: 'Is Not Empty', value: 'isNotEmpty' },
+		{ name: 'Is empty', value: 'isEmpty' },
+		{ name: 'Is not empty', value: 'isNotEmpty' },
 	];
 
 	const equalsConditions: INodePropertyOptions[] = [
 		{ name: 'Equals', value: 'eq' },
-		{ name: 'Not Equals', value: 'neq' },
+		{ name: 'Not equals', value: 'neq' },
 	];
 
 	const booleanConditions: INodePropertyOptions[] = [
-		{ name: 'Is True', value: 'isTrue' },
-		{ name: 'Is False', value: 'isFalse' },
+		{ name: 'Is true', value: 'isTrue' },
+		{ name: 'Is false', value: 'isFalse' },
 	];
 
 	const comparableConditions: INodePropertyOptions[] = [
-		{ name: 'Greater Than', value: 'gt' },
-		{ name: 'Greater Than or Equal', value: 'gte' },
-		{ name: 'Less Than', value: 'lt' },
-		{ name: 'Less Than or Equal', value: 'lte' },
+		{ name: 'Greater than', value: 'gt' },
+		{ name: 'Greater than or equal', value: 'gte' },
+		{ name: 'Less than', value: 'lt' },
+		{ name: 'Less than or equal', value: 'lte' },
 	];
 
 	const stringConditions: INodePropertyOptions[] = [
-		{ name: 'Contains (Case-Sensitive)', value: 'like' },
-		{ name: 'Contains (Case-Insensitive)', value: 'ilike' },
+		{ name: 'Contains (case-sensitive)', value: 'like' },
+		{ name: 'Contains (case-insensitive)', value: 'ilike' },
 	];
 
 	const allConditions = [

@@ -31,7 +31,7 @@ export const descriptions: INodeProperties[] = [
 				action: 'Post a message',
 			},
 			{
-				name: 'Post Ephemeral',
+				name: 'Post ephemeral',
 				value: 'postEphemeral',
 				description: 'Post an ephemeral message into a channel',
 				action: 'Post an ephemeral message',

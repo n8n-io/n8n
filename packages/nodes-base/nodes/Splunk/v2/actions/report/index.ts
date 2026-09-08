@@ -20,7 +20,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create From Search',
+				name: 'Create from search',
 				value: 'create',
 				description: 'Create a search report from a search job',
 				action: 'Create a search report',
@@ -38,7 +38,7 @@ export const description: INodeProperties[] = [
 				action: 'Get a search report',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many search reports',
 				action: 'Get many search reports',

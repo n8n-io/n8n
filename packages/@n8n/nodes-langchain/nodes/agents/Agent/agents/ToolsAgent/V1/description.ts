@@ -13,7 +13,7 @@ export const toolsAgentProperties: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [...commonOptions],
 	},
 ];

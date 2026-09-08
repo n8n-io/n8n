@@ -69,13 +69,13 @@ export class RetrieverMultiQuery implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Query Count',
+						displayName: 'Query count',
 						name: 'queryCount',
 						default: 3,
 						typeOptions: { minValue: 1 },

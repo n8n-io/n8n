@@ -66,30 +66,30 @@ export class AwsRekognition implements INodeType {
 				},
 				options: [
 					{
-						name: 'Detect Faces',
+						name: 'Detect faces',
 						value: 'detectFaces',
 					},
 					{
-						name: 'Detect Labels',
+						name: 'Detect labels',
 						value: 'detectLabels',
 					},
 					{
-						name: 'Detect Moderation Labels',
+						name: 'Detect moderation labels',
 						value: 'detectModerationLabels',
 					},
 					{
-						name: 'Detect Text',
+						name: 'Detect text',
 						value: 'detectText',
 					},
 					{
-						name: 'Recognize Celebrity',
+						name: 'Recognize celebrity',
 						value: 'recognizeCelebrity',
 					},
 				],
 				default: 'detectFaces',
 			},
 			{
-				displayName: 'Binary File',
+				displayName: 'Binary file',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -103,7 +103,7 @@ export class AwsRekognition implements INodeType {
 				description: 'Whether the image to analyze should be taken from binary field',
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				displayOptions: {
 					show: {
 						operation: ['analyze'],
@@ -148,10 +148,10 @@ export class AwsRekognition implements INodeType {
 				description: 'S3 object key name',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['analyze'],
@@ -161,11 +161,11 @@ export class AwsRekognition implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Regions of Interest',
+						displayName: 'Regions of interest',
 						name: 'regionsOfInterestUi',
 						type: 'fixedCollection',
 						default: {},
-						placeholder: 'Add Region of Interest',
+						placeholder: 'Add region of interest',
 						displayOptions: {
 							show: {
 								'/type': ['detectText'],
@@ -177,7 +177,7 @@ export class AwsRekognition implements INodeType {
 						options: [
 							{
 								name: 'regionsOfInterestValues',
-								displayName: 'Region of Interest',
+								displayName: 'Region of interest',
 								values: [
 									{
 										displayName: 'Height',
@@ -227,11 +227,11 @@ export class AwsRekognition implements INodeType {
 						description: 'If the bucket is versioning enabled, you can specify the object version',
 					},
 					{
-						displayName: 'Word Filter',
+						displayName: 'Word filter',
 						name: 'wordFilterUi',
 						type: 'collection',
 						default: {},
-						placeholder: 'Add Word Filter',
+						placeholder: 'Add word filter',
 						displayOptions: {
 							show: {
 								'/type': ['detectText'],
@@ -242,7 +242,7 @@ export class AwsRekognition implements INodeType {
 						},
 						options: [
 							{
-								displayName: 'Min Bounding Box Height',
+								displayName: 'Min bounding box height',
 								name: 'MinBoundingBoxHeight',
 								type: 'number',
 								description:
@@ -250,7 +250,7 @@ export class AwsRekognition implements INodeType {
 								default: 0,
 							},
 							{
-								displayName: 'Min Bounding Box Width',
+								displayName: 'Min bounding box width',
 								name: 'MinBoundingBoxWidth',
 								type: 'number',
 								description:
@@ -258,7 +258,7 @@ export class AwsRekognition implements INodeType {
 								default: 0,
 							},
 							{
-								displayName: 'Min Confidence',
+								displayName: 'Min confidence',
 								name: 'MinConfidence',
 								type: 'number',
 								description:
@@ -268,7 +268,7 @@ export class AwsRekognition implements INodeType {
 						],
 					},
 					{
-						displayName: 'Max Labels',
+						displayName: 'Max labels',
 						name: 'maxLabels',
 						type: 'number',
 						displayOptions: {
@@ -284,7 +284,7 @@ export class AwsRekognition implements INodeType {
 							'Maximum number of labels you want the service to return in the response. The service returns the specified number of highest confidence labels.',
 					},
 					{
-						displayName: 'Min Confidence',
+						displayName: 'Min confidence',
 						name: 'minConfidence',
 						type: 'number',
 						displayOptions: {

@@ -34,7 +34,7 @@ export const requestOperations: INodeProperties[] = [
 				action: 'Get a request',
 			},
 			{
-				name: 'Remove First',
+				name: 'Remove first',
 				value: 'removeFirst',
 				description: 'Remove the first request from bin',
 				routing: {
@@ -49,7 +49,7 @@ export const requestOperations: INodeProperties[] = [
 						],
 					},
 				},
-				action: 'Remove First a request',
+				action: 'Remove first a request',
 			},
 			{
 				name: 'Send',
@@ -100,7 +100,7 @@ export const requestFields: INodeProperties[] = [
 		description: 'Unique identifier for each bin',
 	},
 	{
-		displayName: 'Bin Content',
+		displayName: 'Bin content',
 		name: 'binContent',
 		type: 'string',
 		default: '',

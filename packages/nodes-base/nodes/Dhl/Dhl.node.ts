@@ -61,7 +61,7 @@ export class Dhl implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get Tracking Details',
+						name: 'Get tracking details',
 						value: 'get',
 						action: 'Get tracking details for a shipment',
 					},
@@ -69,7 +69,7 @@ export class Dhl implements INodeType {
 				default: 'get',
 			},
 			{
-				displayName: 'Tracking Number',
+				displayName: 'Tracking number',
 				name: 'trackingNumber',
 				type: 'string',
 				required: true,
@@ -83,7 +83,7 @@ export class Dhl implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: "Recipient's Postal Code",
+						displayName: "Recipient's postal code",
 						name: 'recipientPostalCode',
 						type: 'string',
 						default: '',

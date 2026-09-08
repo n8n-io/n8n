@@ -36,13 +36,13 @@ export const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'API Key (Recommended)',
+					name: 'API key (recommended)',
 					value: 'odooApiKeyApi',
 					description:
 						'Use an API key — generate at Settings &gt; Technical &gt; API Keys. Requires Odoo 19+.',
 				},
 				{
-					name: 'Username & Password',
+					name: 'Username & password',
 					value: 'odooApi',
 					description: 'Legacy authentication using username and password',
 				},
@@ -64,7 +64,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'contact',
 				},
 				{
-					name: 'Custom Resource',
+					name: 'Custom resource',
 					value: 'custom',
 				},
 				{

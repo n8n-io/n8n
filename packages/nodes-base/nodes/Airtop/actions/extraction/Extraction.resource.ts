@@ -20,19 +20,19 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Query Page',
+				name: 'Query page',
 				value: 'query',
 				description: 'Query a page to extract data or ask a question given the data on the page',
 				action: 'Query page',
 			},
 			{
-				name: 'Query Page with Pagination',
+				name: 'Query page with pagination',
 				value: 'getPaginated',
 				description: 'Extract content from paginated or dynamically loaded pages',
 				action: 'Query page with pagination',
 			},
 			{
-				name: 'Smart Scrape',
+				name: 'Smart scrape',
 				value: 'scrape',
 				description: 'Scrape a page and return the data as markdown',
 				action: 'Smart scrape page',

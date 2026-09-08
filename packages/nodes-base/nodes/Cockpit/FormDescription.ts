@@ -13,7 +13,7 @@ export const formOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Submit a Form',
+				name: 'Submit a form',
 				value: 'submit',
 				description: 'Store data from a form submission',
 				action: 'Submit a form',
@@ -40,7 +40,7 @@ export const formFields: INodeProperties[] = [
 
 	// Form:submit
 	{
-		displayName: 'JSON Data Fields',
+		displayName: 'JSON data fields',
 		name: 'jsonDataFields',
 		type: 'boolean',
 		default: false,
@@ -53,7 +53,7 @@ export const formFields: INodeProperties[] = [
 		description: 'Whether form fields should be set via the value-key pair UI or JSON',
 	},
 	{
-		displayName: 'Form Data',
+		displayName: 'Form data',
 		name: 'dataFieldsJson',
 		type: 'json',
 		default: '',
@@ -70,7 +70,7 @@ export const formFields: INodeProperties[] = [
 		description: 'Form data to send as JSON',
 	},
 	{
-		displayName: 'Form Data',
+		displayName: 'Form data',
 		name: 'dataFieldsUi',
 		type: 'fixedCollection',
 		typeOptions: {

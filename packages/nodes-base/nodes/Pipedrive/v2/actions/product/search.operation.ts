@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 		description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
 	},
 	{
-		displayName: 'Exact Match',
+		displayName: 'Exact match',
 		name: 'exactMatch',
 		type: 'boolean',
 		default: false,
@@ -27,7 +27,7 @@ const properties: INodeProperties[] = [
 			'Whether only full exact matches against the given term are returned. It is not case sensitive.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -50,14 +50,14 @@ const properties: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Include Fields',
+				displayName: 'Include fields',
 				name: 'includeFields',
 				type: 'string',
 				default: '',
@@ -65,7 +65,7 @@ const properties: INodeProperties[] = [
 					'Supports including optional fields in the results which are not provided by default',
 			},
 			{
-				displayName: 'Search Fields',
+				displayName: 'Search fields',
 				name: 'fields',
 				type: 'multiOptions',
 				options: [
@@ -74,7 +74,7 @@ const properties: INodeProperties[] = [
 						value: 'code',
 					},
 					{
-						name: 'Custom Fields',
+						name: 'Custom fields',
 						value: 'custom_fields',
 					},
 					{

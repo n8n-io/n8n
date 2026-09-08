@@ -45,10 +45,10 @@ export class CompareDatasets implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Fields to Match',
+				displayName: 'Fields to match',
 				name: 'mergeByFields',
 				type: 'fixedCollection',
-				placeholder: 'Add Fields to Match',
+				placeholder: 'Add fields to match',
 				default: { values: [{ field1: '', field2: '' }] },
 				typeOptions: {
 					multipleValues: true,
@@ -59,7 +59,7 @@ export class CompareDatasets implements INodeType {
 						name: 'values',
 						values: [
 							{
-								displayName: 'Input A Field',
+								displayName: 'Input A field',
 								name: 'field1',
 								type: 'string',
 								default: '',
@@ -69,7 +69,7 @@ export class CompareDatasets implements INodeType {
 								requiresDataPath: 'single',
 							},
 							{
-								displayName: 'Input B Field',
+								displayName: 'Input B field',
 								name: 'field2',
 								type: 'string',
 								default: '',
@@ -83,26 +83,26 @@ export class CompareDatasets implements INodeType {
 				],
 			},
 			{
-				displayName: 'When There Are Differences',
+				displayName: 'When there are differences',
 				name: 'resolve',
 				type: 'options',
 				default: 'preferInput2',
 				options: [
 					{
-						name: 'Use Input A Version',
+						name: 'Use input A version',
 						value: 'preferInput1',
 					},
 					{
-						name: 'Use Input B Version',
+						name: 'Use input B version',
 						value: 'preferInput2',
 					},
 					{
-						name: 'Use a Mix of Versions',
+						name: 'Use a mix of versions',
 						value: 'mix',
 						description: 'Output uses different inputs for different fields',
 					},
 					{
-						name: 'Include Both Versions',
+						name: 'Include both versions',
 						value: 'includeBoth',
 						description: 'Output contains all data (but structure more complex)',
 					},
@@ -114,26 +114,26 @@ export class CompareDatasets implements INodeType {
 				},
 			},
 			{
-				displayName: 'When There Are Differences',
+				displayName: 'When there are differences',
 				name: 'resolve',
 				type: 'options',
 				default: 'includeBoth',
 				options: [
 					{
-						name: 'Use Input A Version',
+						name: 'Use input A version',
 						value: 'preferInput1',
 					},
 					{
-						name: 'Use Input B Version',
+						name: 'Use input B version',
 						value: 'preferInput2',
 					},
 					{
-						name: 'Use a Mix of Versions',
+						name: 'Use a mix of versions',
 						value: 'mix',
 						description: 'Output uses different inputs for different fields',
 					},
 					{
-						name: 'Include Both Versions',
+						name: 'Include both versions',
 						value: 'includeBoth',
 						description: 'Output contains all data (but structure more complex)',
 					},
@@ -145,7 +145,7 @@ export class CompareDatasets implements INodeType {
 				},
 			},
 			{
-				displayName: 'Fuzzy Compare',
+				displayName: 'Fuzzy compare',
 				name: 'fuzzyCompare',
 				type: 'boolean',
 				default: false,
@@ -164,11 +164,11 @@ export class CompareDatasets implements INodeType {
 				default: 'input1',
 				options: [
 					{
-						name: 'Input A Version',
+						name: 'Input A version',
 						value: 'input1',
 					},
 					{
-						name: 'Input B Version',
+						name: 'Input B version',
 						value: 'input2',
 					},
 				],
@@ -179,7 +179,7 @@ export class CompareDatasets implements INodeType {
 				},
 			},
 			{
-				displayName: 'For Everything Except',
+				displayName: 'For everything except',
 				name: 'exceptWhenMix',
 				type: 'string',
 				default: '',
@@ -201,7 +201,7 @@ export class CompareDatasets implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Fields to Skip Comparing',
+						displayName: 'Fields to skip comparing',
 						name: 'skipFields',
 						type: 'string',
 						default: '',
@@ -212,7 +212,7 @@ export class CompareDatasets implements INodeType {
 						requiresDataPath: 'multiple',
 					},
 					{
-						displayName: 'Fuzzy Compare',
+						displayName: 'Fuzzy compare',
 						name: 'fuzzyCompare',
 						type: 'boolean',
 						default: false,
@@ -225,7 +225,7 @@ export class CompareDatasets implements INodeType {
 						},
 					},
 					{
-						displayName: 'Disable Dot Notation',
+						displayName: 'Disable dot notation',
 						name: 'disableDotNotation',
 						type: 'boolean',
 						default: false,
@@ -233,18 +233,18 @@ export class CompareDatasets implements INodeType {
 							'Whether to disallow referencing child fields using `parent.child` in the field name',
 					},
 					{
-						displayName: 'Multiple Matches',
+						displayName: 'Multiple matches',
 						name: 'multipleMatches',
 						type: 'options',
 						default: 'first',
 						options: [
 							{
-								name: 'Include First Match Only',
+								name: 'Include first match only',
 								value: 'first',
 								description: 'Only ever output a single item per match',
 							},
 							{
-								name: 'Include All Matches',
+								name: 'Include all matches',
 								value: 'all',
 								description: 'Output multiple items if there are multiple matches',
 							},

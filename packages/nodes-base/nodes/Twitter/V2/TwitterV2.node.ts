@@ -55,7 +55,7 @@ export class TwitterV2 implements INodeType {
 					noDataExpression: true,
 					options: [
 						{
-							name: 'Direct Message',
+							name: 'Direct message',
 							value: 'directMessage',
 							description: 'Send a direct message to a user',
 						},

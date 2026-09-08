@@ -25,7 +25,7 @@ export const incidentOperations: INodeProperties[] = [
 				action: 'Get an incident',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many incidents',
 				action: 'Get many incidents',
@@ -60,7 +60,7 @@ export const incidentFields: INodeProperties[] = [
 		description: 'A succinct description of the nature, symptoms, cause, or effect of the incident',
 	},
 	{
-		displayName: 'Service Name or ID',
+		displayName: 'Service name or ID',
 		name: 'serviceId',
 		type: 'options',
 		typeOptions: {
@@ -93,10 +93,10 @@ export const incidentFields: INodeProperties[] = [
 		description: 'The email address of a valid user associated with the account making the request',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['incident'],
@@ -106,7 +106,7 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Escalation Policy Name or ID',
+				displayName: 'Escalation policy name or ID',
 				name: 'escalationPolicyId',
 				type: 'options',
 				typeOptions: {
@@ -117,14 +117,14 @@ export const incidentFields: INodeProperties[] = [
 					'Delegate this incident to the specified escalation policy. Cannot be specified if an assignee is given. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Incident Details',
+				displayName: 'Incident details',
 				name: 'details',
 				type: 'string',
 				default: '',
 				description: 'Additional details about the incident which will go in the body',
 			},
 			{
-				displayName: 'Incident Key',
+				displayName: 'Incident key',
 				name: 'incidentKey',
 				type: 'string',
 				default: '',
@@ -132,7 +132,7 @@ export const incidentFields: INodeProperties[] = [
 					'Sending subsequent requests referencing the same service and with the same incident_key will result in those requests being rejected if an open incident matches that incident_key',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority name or ID',
 				name: 'priorityId',
 				type: 'options',
 				typeOptions: {
@@ -162,13 +162,13 @@ export const incidentFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Conference Bridge',
+		displayName: 'Conference bridge',
 		name: 'conferenceBridgeUi',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
 		},
-		placeholder: 'Add Conference Bridge',
+		placeholder: 'Add conference bridge',
 		displayOptions: {
 			show: {
 				resource: ['incident'],
@@ -178,11 +178,11 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Conference Bridge',
+				displayName: 'Conference bridge',
 				name: 'conferenceBridgeValues',
 				values: [
 					{
-						displayName: 'Conference Number',
+						displayName: 'Conference number',
 						name: 'conferenceNumber',
 						type: 'string',
 						default: '',
@@ -222,7 +222,7 @@ export const incidentFields: INodeProperties[] = [
 	/*                                 incident:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -256,7 +256,7 @@ export const incidentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -266,7 +266,7 @@ export const incidentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Date Range',
+				displayName: 'Date range',
 				name: 'dateRange',
 				type: 'options',
 				options: [
@@ -279,7 +279,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'When set to all, the since and until parameters and defaults are ignored',
 			},
 			{
-				displayName: 'Incident Key',
+				displayName: 'Incident key',
 				name: 'incidentKey',
 				type: 'string',
 				default: '',
@@ -300,15 +300,15 @@ export const incidentFields: INodeProperties[] = [
 						value: 'assignees',
 					},
 					{
-						name: 'Conference Bridge',
+						name: 'Conference bridge',
 						value: 'conferenceBridge',
 					},
 					{
-						name: 'Escalation Policies',
+						name: 'Escalation policies',
 						value: 'escalationPolicies',
 					},
 					{
-						name: 'First Trigger Log Entries',
+						name: 'First trigger log entries',
 						value: 'firstTriggerLogEntries',
 					},
 					{
@@ -332,7 +332,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Additional details to include',
 			},
 			{
-				displayName: 'Service Names or IDs',
+				displayName: 'Service names or IDs',
 				name: 'serviceIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -351,7 +351,7 @@ export const incidentFields: INodeProperties[] = [
 					'The start of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
@@ -389,7 +389,7 @@ export const incidentFields: INodeProperties[] = [
 					'Team IDs. Only results related to these teams will be returned. Account must have the teams ability to use this parameter. (multiples IDs can be added separated by comma)',
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
@@ -468,10 +468,10 @@ export const incidentFields: INodeProperties[] = [
 		description: 'The email address of a valid user associated with the account making the request',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['incident'],
@@ -481,7 +481,7 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Escalation Level',
+				displayName: 'Escalation level',
 				name: 'escalationLevel',
 				type: 'number',
 				default: 0,
@@ -491,7 +491,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Escalate the incident to this level in the escalation policy',
 			},
 			{
-				displayName: 'Escalation Policy Name or ID',
+				displayName: 'Escalation policy name or ID',
 				name: 'escalationPolicyId',
 				type: 'options',
 				typeOptions: {
@@ -502,7 +502,7 @@ export const incidentFields: INodeProperties[] = [
 					'Delegate this incident to the specified escalation policy. Cannot be specified if an assignee is given. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority name or ID',
 				name: 'priorityId',
 				type: 'options',
 				typeOptions: {
@@ -564,13 +564,13 @@ export const incidentFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Conference Bridge',
+		displayName: 'Conference bridge',
 		name: 'conferenceBridgeUi',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
 		},
-		placeholder: 'Add Conference Bridge',
+		placeholder: 'Add conference bridge',
 		displayOptions: {
 			show: {
 				resource: ['incident'],
@@ -580,11 +580,11 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Conference Bridge',
+				displayName: 'Conference bridge',
 				name: 'conferenceBridgeValues',
 				values: [
 					{
-						displayName: 'Conference Number',
+						displayName: 'Conference number',
 						name: 'conferenceNumber',
 						type: 'string',
 						default: '',

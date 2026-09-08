@@ -44,16 +44,16 @@ export class WorkableTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'triggerOn',
 				type: 'options',
 				options: [
 					{
-						name: 'Candidate Created',
+						name: 'Candidate created',
 						value: 'candidateCreated',
 					},
 					{
-						name: 'Candidate Moved',
+						name: 'Candidate moved',
 						value: 'candidateMoved',
 					},
 				],
@@ -64,11 +64,11 @@ export class WorkableTrigger implements INodeType {
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				default: {},
 				options: [
 					{
-						displayName: 'Job Name or ID',
+						displayName: 'Job name or ID',
 						name: 'job',
 						type: 'options',
 						typeOptions: {
@@ -79,7 +79,7 @@ export class WorkableTrigger implements INodeType {
 							'Get notifications only for one job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Stage Name or ID',
+						displayName: 'Stage name or ID',
 						name: 'stage',
 						type: 'options',
 						typeOptions: {

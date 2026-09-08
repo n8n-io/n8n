@@ -49,12 +49,12 @@ export class WorkflowTrigger implements INodeType {
 					</ul>`,
 				options: [
 					{
-						name: 'Active Workflow Updated',
+						name: 'Active workflow updated',
 						value: 'update',
 						description: 'Triggers when this workflow is updated',
 					},
 					{
-						name: 'Workflow Activated',
+						name: 'Workflow activated',
 						value: 'activate',
 						description: 'Triggers when this workflow is activated',
 					},

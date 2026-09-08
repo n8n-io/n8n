@@ -9,7 +9,7 @@ const properties: INodeProperties[] = [
 		description: 'Select the group you want to retrieve',
 	},
 	{
-		displayName: 'Include Users',
+		displayName: 'Include users',
 		name: 'includeUsers',
 		type: 'boolean',
 		default: false,

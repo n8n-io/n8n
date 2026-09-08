@@ -138,7 +138,7 @@ export class EmbeddingsOpenAi implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
@@ -186,7 +186,7 @@ export class EmbeddingsOpenAi implements INodeType {
 						},
 					},
 					{
-						displayName: 'Batch Size',
+						displayName: 'Batch size',
 						name: 'batchSize',
 						default: 512,
 						typeOptions: { maxValue: 2048 },
@@ -194,7 +194,7 @@ export class EmbeddingsOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Strip New Lines',
+						displayName: 'Strip new lines',
 						name: 'stripNewLines',
 						default: true,
 						description: 'Whether to strip new lines from the input text',
@@ -209,7 +209,7 @@ export class EmbeddingsOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Encoding Format',
+						displayName: 'Encoding format',
 						name: 'encodingFormat',
 						type: 'options',
 						description: 'The format to return the embeddings in',

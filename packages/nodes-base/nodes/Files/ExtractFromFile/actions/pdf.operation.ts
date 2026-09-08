@@ -7,7 +7,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -23,7 +23,7 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Join Pages',
+				displayName: 'Join pages',
 				name: 'joinPages',
 				type: 'boolean',
 				default: true,
@@ -31,7 +31,7 @@ export const properties: INodeProperties[] = [
 					'Whether to join the text from all pages or return an array of text from each page',
 			},
 			{
-				displayName: 'Keep Source',
+				displayName: 'Keep source',
 				name: 'keepSource',
 				type: 'options',
 				default: 'json',
@@ -54,7 +54,7 @@ export const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Max Pages',
+				displayName: 'Max pages',
 				name: 'maxPages',
 				type: 'number',
 				default: 0,

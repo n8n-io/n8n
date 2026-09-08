@@ -78,7 +78,7 @@ export class MemoryChatRetriever implements INodeType {
 				name: 'deprecatedNotice',
 			},
 			{
-				displayName: 'Simplify Output',
+				displayName: 'Simplify output',
 				name: 'simplifyOutput',
 				type: 'boolean',
 				description: 'Whether to simplify the output to only include the sender and the text',

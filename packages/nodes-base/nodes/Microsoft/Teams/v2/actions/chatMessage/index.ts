@@ -49,13 +49,13 @@ export const description: INodeProperties[] = [
 				action: 'Get chat message',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many messages from a chat',
 				action: 'Get many chat messages',
 			},
 			{
-				name: 'Send and Wait for Response',
+				name: 'Send and wait for response',
 				value: SEND_AND_WAIT_OPERATION,
 				description: 'Send a message and wait for response',
 				action: 'Send message and wait for response',

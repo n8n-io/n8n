@@ -131,7 +131,7 @@ export default workflow('id', 'name')
 					description: 'How data should be routed',
 				},
 				{
-					displayName: 'Number of Outputs',
+					displayName: 'Number of outputs',
 					name: 'numberOutputs',
 					type: 'number',
 					noDataExpression: true,
@@ -145,7 +145,7 @@ export default workflow('id', 'name')
 					description: 'How many outputs to create',
 				},
 				{
-					displayName: 'Number of Outputs',
+					displayName: 'Number of outputs',
 					name: 'numberOutputs',
 					type: 'number',
 					displayOptions: {
@@ -158,7 +158,7 @@ export default workflow('id', 'name')
 					description: 'How many outputs to create',
 				},
 				{
-					displayName: 'Output Index',
+					displayName: 'Output index',
 					name: 'output',
 					type: 'number',
 					validateType: 'number',
@@ -174,9 +174,9 @@ export default workflow('id', 'name')
 						'The output index to send the input item to. Use an expression to calculate which input item should be routed to which output. The expression must return a number.',
 				},
 				{
-					displayName: 'Routing Rules',
+					displayName: 'Routing rules',
 					name: 'rules',
-					placeholder: 'Add Routing Rule',
+					placeholder: 'Add routing rule',
 					type: 'fixedCollection',
 					builderHint: {
 						propertyHint:
@@ -218,12 +218,12 @@ export default workflow('id', 'name')
 					options: [
 						{
 							name: 'values',
-							displayName: 'Routing Rule',
+							displayName: 'Routing rule',
 							values: [
 								{
 									displayName: 'Conditions',
 									name: 'conditions',
-									placeholder: 'Add Condition',
+									placeholder: 'Add condition',
 									type: 'filter',
 									default: {},
 									typeOptions: {
@@ -236,13 +236,13 @@ export default workflow('id', 'name')
 									},
 								},
 								{
-									displayName: 'Rename Output',
+									displayName: 'Rename output',
 									name: 'renameOutput',
 									type: 'boolean',
 									default: false,
 								},
 								{
-									displayName: 'Output Name',
+									displayName: 'Output name',
 									name: 'outputKey',
 									type: 'string',
 									default: '',
@@ -280,7 +280,7 @@ export default workflow('id', 'name')
 					options: [
 						{
 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-							displayName: 'Fallback Output',
+							displayName: 'Fallback output',
 							name: 'fallbackOutput',
 							type: 'options',
 							typeOptions: {
@@ -297,7 +297,7 @@ export default workflow('id', 'name')
 								'If no rule matches the item will be sent to this output, by default they will be ignored',
 						},
 						{
-							displayName: 'Ignore Case',
+							displayName: 'Ignore case',
 							description: 'Whether to ignore letter case when evaluating conditions',
 							name: 'ignoreCase',
 							type: 'boolean',
@@ -312,7 +312,7 @@ export default workflow('id', 'name')
 							},
 						},
 						{
-							displayName: 'Rename Fallback Output',
+							displayName: 'Rename fallback output',
 							name: 'renameFallbackOutput',
 							type: 'string',
 							placeholder: 'e.g. Fallback',
@@ -355,7 +355,7 @@ export default workflow('id', 'name')
 						description: 'Items will be ignored',
 					},
 					{
-						name: 'Extra Output',
+						name: 'Extra output',
 						value: 'extra',
 						description: 'Items will be sent to the extra, separate, output',
 					},

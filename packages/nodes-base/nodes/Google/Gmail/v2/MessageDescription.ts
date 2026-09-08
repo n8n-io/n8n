@@ -16,7 +16,7 @@ export const messageOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Label',
+				name: 'Add label',
 				value: 'addLabels',
 				action: 'Add label to message',
 			},
@@ -31,22 +31,22 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many messages',
 			},
 			{
-				name: 'Mark as Read',
+				name: 'Mark as read',
 				value: 'markAsRead',
 				action: 'Mark a message as read',
 			},
 			{
-				name: 'Mark as Unread',
+				name: 'Mark as unread',
 				value: 'markAsUnread',
 				action: 'Mark a message as unread',
 			},
 			{
-				name: 'Remove Label',
+				name: 'Remove label',
 				value: 'removeLabels',
 				action: 'Remove label from message',
 			},
@@ -61,7 +61,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Send a message',
 			},
 			{
-				name: 'Send and Wait for Response',
+				name: 'Send and wait for response',
 				value: SEND_AND_WAIT_OPERATION,
 				action: 'Send message and wait for response',
 			},
@@ -130,7 +130,7 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Hello World!',
 	},
 	{
-		displayName: 'Email Type',
+		displayName: 'Email type',
 		name: 'emailType',
 		type: 'options',
 		default: 'html',
@@ -157,7 +157,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Email Type',
+		displayName: 'Email type',
 		name: 'emailType',
 		type: 'options',
 		default: 'html',
@@ -215,7 +215,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Attachments',
 				name: 'attachmentsUi',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -223,10 +223,10 @@ export const messageFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'attachmentsBinary',
-						displayName: 'Attachment Binary',
+						displayName: 'Attachment binary',
 						values: [
 							{
-								displayName: 'Attachment Field Name',
+								displayName: 'Attachment field name',
 								name: 'property',
 								type: 'string',
 								default: 'data',
@@ -259,7 +259,7 @@ export const messageFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Sender Name',
+				displayName: 'Sender name',
 				name: 'senderName',
 				type: 'string',
 				placeholder: 'e.g. Nathan',
@@ -267,7 +267,7 @@ export const messageFields: INodeProperties[] = [
 				description: "The name that will be shown in recipients' inboxes",
 			},
 			{
-				displayName: 'Send Replies To',
+				displayName: 'Send replies to',
 				name: 'replyTo',
 				type: 'string',
 				placeholder: 'reply@example.com',
@@ -280,7 +280,7 @@ export const messageFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Reply to Sender Only',
+				displayName: 'Reply to sender only',
 				name: 'replyToSenderOnly',
 				type: 'boolean',
 				default: false,
@@ -325,7 +325,7 @@ export const messageFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Attachment Prefix',
+				displayName: 'Attachment prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
@@ -333,7 +333,7 @@ export const messageFields: INodeProperties[] = [
 					"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
 			},
 			{
-				displayName: 'Download Attachments',
+				displayName: 'Download attachments',
 				name: 'downloadAttachments',
 				type: 'boolean',
 				default: false,
@@ -347,7 +347,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -415,7 +415,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -425,14 +425,14 @@ export const messageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Spam and Trash',
+				displayName: 'Include spam and trash',
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to include messages from SPAM and TRASH in the results',
 			},
 			{
-				displayName: 'Label Names or IDs',
+				displayName: 'Label names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -452,7 +452,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Only return messages matching the specified query',
 			},
 			{
-				displayName: 'Read Status',
+				displayName: 'Read status',
 				name: 'readStatus',
 				type: 'options',
 				default: 'unread',
@@ -476,7 +476,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Received After',
+				displayName: 'Received after',
 				name: 'receivedAfter',
 				type: 'dateTime',
 				default: '',
@@ -484,7 +484,7 @@ export const messageFields: INodeProperties[] = [
 					'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 			},
 			{
-				displayName: 'Received Before',
+				displayName: 'Received before',
 				name: 'receivedBefore',
 				type: 'dateTime',
 				default: '',
@@ -518,7 +518,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Attachment Prefix',
+				displayName: 'Attachment prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
@@ -526,7 +526,7 @@ export const messageFields: INodeProperties[] = [
 					"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
 			},
 			{
-				displayName: 'Download Attachments',
+				displayName: 'Download attachments',
 				name: 'downloadAttachments',
 				type: 'boolean',
 				default: false,
@@ -554,7 +554,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Label Names or IDs',
+		displayName: 'Label names or IDs',
 		name: 'labelIds',
 		type: 'multiOptions',
 		typeOptions: {

@@ -50,11 +50,11 @@ export class Tapfiliate implements INodeType {
 						value: 'affiliate',
 					},
 					{
-						name: 'Affiliate Metadata',
+						name: 'Affiliate metadata',
 						value: 'affiliateMetadata',
 					},
 					{
-						name: 'Program Affiliate',
+						name: 'Program affiliate',
 						value: 'programAffiliate',
 					},
 				],

@@ -33,7 +33,7 @@ export const ecomCustomerOperations: INodeProperties[] = [
 				action: 'Get an e-commerce customer',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many E-commerce Customers',
 				action: 'Get many e-commerce customers',
@@ -82,7 +82,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 		description: 'The ID of the customer in the external service',
 	},
 	{
-		displayName: 'Customer Email',
+		displayName: 'Customer email',
 		name: 'email',
 		type: 'string',
 		placeholder: 'name@email.com',
@@ -97,10 +97,10 @@ export const ecomCustomerFields: INodeProperties[] = [
 		description: 'The email address of the customer',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -110,7 +110,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Accepts Marketing',
+				displayName: 'Accepts marketing',
 				name: 'acceptsMarketing',
 				type: 'boolean',
 				default: false,
@@ -137,11 +137,11 @@ export const ecomCustomerFields: INodeProperties[] = [
 		description: 'ID of the E-commerce customer to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		description: 'The fields to update',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -166,7 +166,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				description: 'The ID of the customer in the external service',
 			},
 			{
-				displayName: 'Customer Email',
+				displayName: 'Customer email',
 				name: 'email',
 				type: 'string',
 				placeholder: 'name@email.com',
@@ -174,7 +174,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				description: 'The email address of the customer',
 			},
 			{
-				displayName: 'Accepts Marketing',
+				displayName: 'Accepts marketing',
 				name: 'acceptsMarketing',
 				type: 'boolean',
 				default: false,

@@ -31,7 +31,7 @@ export const clientOperations: INodeProperties[] = [
 				action: 'Get a client',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many clients',
 				action: 'Get many clients',
@@ -46,10 +46,10 @@ export const clientFields: INodeProperties[] = [
 	/*                                 client:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -59,31 +59,31 @@ export const clientFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client Name',
+				displayName: 'Client name',
 				name: 'clientName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'ID Number',
+				displayName: 'ID number',
 				name: 'idNumber',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Private Notes',
+				displayName: 'Private notes',
 				name: 'privateNotes',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'VAT Number',
+				displayName: 'VAT number',
 				name: 'vatNumber',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Work Phone',
+				displayName: 'Work phone',
 				name: 'workPhone',
 				type: 'string',
 				default: '',
@@ -97,9 +97,9 @@ export const clientFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Billing Address',
+		displayName: 'Billing address',
 		name: 'billingAddressUi',
-		placeholder: 'Add Billing Address',
+		placeholder: 'Add billing address',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
@@ -114,16 +114,16 @@ export const clientFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'billingAddressValue',
-				displayName: 'Billing Address',
+				displayName: 'Billing address',
 				values: [
 					{
-						displayName: 'Street Address',
+						displayName: 'Street address',
 						name: 'streetAddress',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Apt/Suite',
+						displayName: 'Apt/suite',
 						name: 'aptSuite',
 						type: 'string',
 						default: '',
@@ -141,13 +141,13 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country code name or ID',
 						name: 'countryCode',
 						type: 'options',
 						description:
@@ -164,7 +164,7 @@ export const clientFields: INodeProperties[] = [
 	{
 		displayName: 'Contacts',
 		name: 'contactsUi',
-		placeholder: 'Add Contact',
+		placeholder: 'Add contact',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -183,13 +183,13 @@ export const clientFields: INodeProperties[] = [
 				displayName: 'Contact',
 				values: [
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'firstName',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'lastName',
 						type: 'string',
 						default: '',
@@ -212,9 +212,9 @@ export const clientFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Shipping Address',
+		displayName: 'Shipping address',
 		name: 'shippingAddressUi',
-		placeholder: 'Add Shipping Address',
+		placeholder: 'Add shipping address',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
@@ -229,16 +229,16 @@ export const clientFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'shippingAddressValue',
-				displayName: 'Shipping Address',
+				displayName: 'Shipping address',
 				values: [
 					{
-						displayName: 'Street Address',
+						displayName: 'Street address',
 						name: 'streetAddress',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Apt/Suite',
+						displayName: 'Apt/suite',
 						name: 'aptSuite',
 						type: 'string',
 						default: '',
@@ -256,13 +256,13 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country code name or ID',
 						name: 'countryCode',
 						type: 'options',
 						description:
@@ -312,7 +312,7 @@ export const clientFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -339,7 +339,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                  client:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -373,7 +373,7 @@ export const clientFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -415,19 +415,19 @@ export const clientFields: INodeProperties[] = [
 				default: 'active',
 			},
 			{
-				displayName: 'Created At',
+				displayName: 'Created at',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Updated At',
+				displayName: 'Updated at',
 				name: 'updatedAt',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Is Deleted',
+				displayName: 'Is deleted',
 				name: 'isDeleted',
 				type: 'boolean',
 				default: false,

@@ -142,13 +142,13 @@ export class McpTrigger extends Node {
 					{
 						// n8n is a brand name and should be lowercase
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'n8n User Auth (OAuth2)',
+						name: 'n8n user auth (OAuth2)',
 						value: 'n8nOAuth2',
 						description: 'Require user to give consent to use their n8n account',
 						displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
 					},
-					{ name: 'Bearer Auth', value: 'bearerAuth' },
-					{ name: 'Header Auth', value: 'headerAuth' },
+					{ name: 'Bearer auth', value: 'bearerAuth' },
+					{ name: 'Header auth', value: 'headerAuth' },
 				],
 				default: 'none',
 				description: 'The way to authenticate',
@@ -158,7 +158,7 @@ export class McpTrigger extends Node {
 				},
 			},
 			{
-				displayName: 'Require Workflow Execute Permission',
+				displayName: 'Require workflow execute permission',
 				name: 'requireExecuteAccess',
 				type: 'boolean',
 				default: true,
@@ -167,7 +167,7 @@ export class McpTrigger extends Node {
 					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
 			},
 			{
-				displayName: 'Include User in Output',
+				displayName: 'Include user in output',
 				name: 'includeUserInOutput',
 				type: 'boolean',
 				default: true,

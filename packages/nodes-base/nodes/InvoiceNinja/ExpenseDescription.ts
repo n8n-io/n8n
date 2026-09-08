@@ -31,7 +31,7 @@ export const expenseOperations: INodeProperties[] = [
 				action: 'Get an expense',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many expenses',
 				action: 'Get many expenses',
@@ -46,10 +46,10 @@ export const expenseFields: INodeProperties[] = [
 	/*                                 expense:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -72,7 +72,7 @@ export const expenseFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Client Name or ID',
+				displayName: 'Client name or ID',
 				name: 'client',
 				type: 'options',
 				description:
@@ -83,19 +83,19 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Custom Value 1',
+				displayName: 'Custom value 1',
 				name: 'customValue1',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Value 2',
+				displayName: 'Custom value 2',
 				name: 'customValue2',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category name or ID',
 				name: 'category',
 				type: 'options',
 				description:
@@ -106,19 +106,19 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Expense Date',
+				displayName: 'Expense date',
 				name: 'expenseDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Payment Date',
+				displayName: 'Payment date',
 				name: 'paymentDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Payment Type',
+				displayName: 'Payment type',
 				name: 'paymentType',
 				type: 'options',
 				options: [
@@ -135,11 +135,11 @@ export const expenseFields: INodeProperties[] = [
 						value: 8,
 					},
 					{
-						name: 'Apply Credit',
+						name: 'Apply credit',
 						value: 1,
 					},
 					{
-						name: 'Bank Transfer',
+						name: 'Bank transfer',
 						value: 2,
 					},
 					{
@@ -159,7 +159,7 @@ export const expenseFields: INodeProperties[] = [
 						value: 16,
 					},
 					{
-						name: 'Credit Card Other',
+						name: 'Credit card other',
 						value: 13,
 					},
 					{
@@ -167,11 +167,11 @@ export const expenseFields: INodeProperties[] = [
 						value: 4,
 					},
 					{
-						name: 'Diners Card',
+						name: 'Diners card',
 						value: 10,
 					},
 					{
-						name: 'Discover Card',
+						name: 'Discover card',
 						value: 9,
 					},
 					{
@@ -207,7 +207,7 @@ export const expenseFields: INodeProperties[] = [
 						value: 7,
 					},
 					{
-						name: 'Money Order',
+						name: 'Money order',
 						value: 27,
 					},
 					{
@@ -247,56 +247,56 @@ export const expenseFields: INodeProperties[] = [
 						value: 26,
 					},
 					{
-						name: 'Visa Card',
+						name: 'Visa card',
 						value: 6,
 					},
 				],
 				default: 1,
 			},
 			{
-				displayName: 'Private Notes',
+				displayName: 'Private notes',
 				name: 'privateNotes',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Public Notes',
+				displayName: 'Public notes',
 				name: 'publicNotes',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Name 1',
+				displayName: 'Tax name 1',
 				name: 'taxName1',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Name 2',
+				displayName: 'Tax name 2',
 				name: 'taxName2',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Rate 1',
+				displayName: 'Tax rate 1',
 				name: 'taxRate1',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Tax Rate 2',
+				displayName: 'Tax rate 2',
 				name: 'taxRate2',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Transaction Reference',
+				displayName: 'Transaction reference',
 				name: 'transactionReference',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Vendor Name or ID',
+				displayName: 'Vendor name or ID',
 				name: 'vendor',
 				type: 'options',
 				description:
@@ -309,10 +309,10 @@ export const expenseFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -335,7 +335,7 @@ export const expenseFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Client Name or ID',
+				displayName: 'Client name or ID',
 				name: 'client',
 				type: 'options',
 				description:
@@ -346,19 +346,19 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Custom Value 1',
+				displayName: 'Custom value 1',
 				name: 'customValue1',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Value 2',
+				displayName: 'Custom value 2',
 				name: 'customValue2',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category name or ID',
 				name: 'category',
 				type: 'options',
 				description:
@@ -369,24 +369,24 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Expense Date',
+				displayName: 'Expense date',
 				name: 'expenseDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Payment Date',
+				displayName: 'Payment date',
 				name: 'paymentDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Payment Type',
+				displayName: 'Payment type',
 				name: 'paymentType',
 				type: 'options',
 				options: [
 					{
-						name: 'Bank Transfer',
+						name: 'Bank transfer',
 						value: 1,
 					},
 					{
@@ -426,7 +426,7 @@ export const expenseFields: INodeProperties[] = [
 						value: 11,
 					},
 					{
-						name: 'Credit Card Other',
+						name: 'Credit card other',
 						value: 12,
 					},
 					{
@@ -498,7 +498,7 @@ export const expenseFields: INodeProperties[] = [
 						value: 33,
 					},
 					{
-						name: 'Mollie Bank Transfer',
+						name: 'Mollie bank transfer',
 						value: 34,
 					},
 					{
@@ -514,7 +514,7 @@ export const expenseFields: INodeProperties[] = [
 						value: 37,
 					},
 					{
-						name: 'Hosted Page',
+						name: 'Hosted page',
 						value: 38,
 					},
 					{
@@ -530,7 +530,7 @@ export const expenseFields: INodeProperties[] = [
 						value: 41,
 					},
 					{
-						name: 'Direct Debit',
+						name: 'Direct debit',
 						value: 42,
 					},
 					{
@@ -542,7 +542,7 @@ export const expenseFields: INodeProperties[] = [
 						value: 44,
 					},
 					{
-						name: 'Instant Bank Pay',
+						name: 'Instant bank pay',
 						value: 45,
 					},
 					{
@@ -562,7 +562,7 @@ export const expenseFields: INodeProperties[] = [
 						value: 49,
 					},
 					{
-						name: 'Stripe Bank Transfer',
+						name: 'Stripe bank transfer',
 						value: 50,
 					},
 					{
@@ -570,56 +570,56 @@ export const expenseFields: INodeProperties[] = [
 						value: 51,
 					},
 					{
-						name: 'Pay Later',
+						name: 'Pay later',
 						value: 52,
 					},
 				],
 				default: 1,
 			},
 			{
-				displayName: 'Private Notes',
+				displayName: 'Private notes',
 				name: 'privateNotes',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Public Notes',
+				displayName: 'Public notes',
 				name: 'publicNotes',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Name 1',
+				displayName: 'Tax name 1',
 				name: 'taxName1',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Name 2',
+				displayName: 'Tax name 2',
 				name: 'taxName2',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Rate 1',
+				displayName: 'Tax rate 1',
 				name: 'taxRate1',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Tax Rate 2',
+				displayName: 'Tax rate 2',
 				name: 'taxRate2',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Transaction Reference',
+				displayName: 'Transaction reference',
 				name: 'transactionReference',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Vendor Name or ID',
+				displayName: 'Vendor name or ID',
 				name: 'vendor',
 				type: 'options',
 				description:
@@ -667,7 +667,7 @@ export const expenseFields: INodeProperties[] = [
 	/*                                  expense:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

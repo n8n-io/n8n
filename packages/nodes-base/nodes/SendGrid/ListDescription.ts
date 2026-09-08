@@ -31,7 +31,7 @@ export const listOperations: INodeProperties[] = [
 				action: 'Get a list',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many lists',
 				action: 'Get many lists',
@@ -52,7 +52,7 @@ export const listFields: INodeProperties[] = [
 	/*                                 list:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -119,7 +119,7 @@ export const listFields: INodeProperties[] = [
 		description: 'ID of the list',
 	},
 	{
-		displayName: 'Delete Contacts',
+		displayName: 'Delete contacts',
 		name: 'deleteContacts',
 		type: 'boolean',
 		default: false,
@@ -150,7 +150,7 @@ export const listFields: INodeProperties[] = [
 		description: 'ID of the list',
 	},
 	{
-		displayName: 'Contact Sample',
+		displayName: 'Contact sample',
 		name: 'contactSample',
 		type: 'boolean',
 		default: false,

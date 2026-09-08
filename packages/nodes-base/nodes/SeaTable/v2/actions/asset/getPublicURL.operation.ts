@@ -10,7 +10,7 @@ import { seaTableApiRequest } from '../../GenericFunctions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Asset Path',
+		displayName: 'Asset path',
 		name: 'assetPath',
 		type: 'string',
 		placeholder: '/images/2023-09/logo.png',

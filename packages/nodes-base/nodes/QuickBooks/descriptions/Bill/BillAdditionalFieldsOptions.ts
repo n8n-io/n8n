@@ -2,9 +2,9 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const billAdditionalFieldsOptions: INodeProperties[] = [
 	{
-		displayName: 'Accounts Payable Account',
+		displayName: 'Accounts payable account',
 		name: 'APAccountRef',
-		placeholder: 'Add APA Fields',
+		placeholder: 'Add APA fields',
 		description: 'Accounts Payable account to which the bill will be credited',
 		type: 'fixedCollection',
 		default: {},
@@ -37,17 +37,17 @@ export const billAdditionalFieldsOptions: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Due Date',
+		displayName: 'Due date',
 		name: 'DueDate',
 		description: 'Date when the payment of the transaction is due',
 		type: 'dateTime',
 		default: '',
 	},
 	{
-		displayName: 'Sales Term',
+		displayName: 'Sales term',
 		name: 'SalesTermRef',
 		description: 'Sales term associated with the transaction',
-		placeholder: 'Add Sales Term Fields',
+		placeholder: 'Add sales term fields',
 		type: 'fixedCollection',
 		default: {},
 		options: [
@@ -72,14 +72,14 @@ export const billAdditionalFieldsOptions: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Total Amount',
+		displayName: 'Total amount',
 		name: 'TotalAmt',
 		description: 'Total amount of the transaction',
 		type: 'number',
 		default: 0,
 	},
 	{
-		displayName: 'Transaction Date',
+		displayName: 'Transaction date',
 		name: 'TxnDate',
 		description: 'Date when the transaction occurred',
 		type: 'dateTime',

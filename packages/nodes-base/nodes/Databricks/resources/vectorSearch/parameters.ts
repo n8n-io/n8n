@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const vectorSearchParameters: INodeProperties[] = [
 	{
-		displayName: 'Index Name',
+		displayName: 'Index name',
 		name: 'indexName',
 		type: 'string',
 		required: true,
@@ -16,7 +16,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		description: 'Name of the vector search index',
 	},
 	{
-		displayName: 'Endpoint Name',
+		displayName: 'Endpoint name',
 		name: 'endpointName',
 		type: 'string',
 		required: true,
@@ -30,7 +30,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		description: 'Name of the vector search endpoint',
 	},
 	{
-		displayName: 'Primary Key',
+		displayName: 'Primary key',
 		name: 'primaryKey',
 		type: 'string',
 		required: true,
@@ -45,7 +45,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		description: 'Primary key column of the index',
 	},
 	{
-		displayName: 'Index Type',
+		displayName: 'Index type',
 		name: 'indexType',
 		type: 'options',
 		required: true,
@@ -57,12 +57,12 @@ export const vectorSearchParameters: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Delta Sync',
+				name: 'Delta sync',
 				value: 'DELTA_SYNC',
 				description: 'Automatically syncs with a source Delta Table',
 			},
 			{
-				name: 'Direct Access',
+				name: 'Direct access',
 				value: 'DIRECT_ACCESS',
 				description: 'Supports direct read and write of vectors and metadata',
 			},
@@ -71,7 +71,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		description: 'Type of vector search index to create',
 	},
 	{
-		displayName: 'Delta Sync Index Spec',
+		displayName: 'Delta sync index spec',
 		name: 'deltaSyncIndexSpec',
 		type: 'json',
 		required: true,
@@ -90,7 +90,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Direct Access Index Spec',
+		displayName: 'Direct access index spec',
 		name: 'directAccessIndexSpec',
 		type: 'json',
 		required: true,
@@ -109,7 +109,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Query Type',
+		displayName: 'Query type',
 		name: 'queryType',
 		type: 'options',
 		required: true,
@@ -121,12 +121,12 @@ export const vectorSearchParameters: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Text Query',
+				name: 'Text query',
 				value: 'text',
 				description: 'Query using text (automatically converted to vectors)',
 			},
 			{
-				name: 'Vector Query',
+				name: 'Vector query',
 				value: 'vector',
 				description: 'Query using pre-computed vector embeddings',
 			},
@@ -135,7 +135,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		description: 'Type of query to perform',
 	},
 	{
-		displayName: 'Query Text',
+		displayName: 'Query text',
 		name: 'queryText',
 		type: 'string',
 		required: true,
@@ -151,7 +151,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		placeholder: 'What is machine learning?',
 	},
 	{
-		displayName: 'Query Vector',
+		displayName: 'Query vector',
 		name: 'queryVector',
 		type: 'json',
 		required: true,
@@ -167,7 +167,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		placeholder: '[0.1, 0.2, 0.3, ...]',
 	},
 	{
-		displayName: 'Search Mode',
+		displayName: 'Search mode',
 		name: 'searchMode',
 		type: 'options',
 		displayOptions: {
@@ -183,7 +183,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 				description: 'Combines semantic (vector) and keyword search for best results',
 			},
 			{
-				name: 'ANN (Approximate Nearest Neighbor)',
+				name: 'ANN (approximate nearest neighbor)',
 				value: 'ANN',
 				description: 'Pure vector similarity search',
 			},
@@ -192,7 +192,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		description: 'Search algorithm to use',
 	},
 	{
-		displayName: 'Columns to Return',
+		displayName: 'Columns to return',
 		name: 'columns',
 		type: 'string',
 		required: true,
@@ -208,7 +208,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		placeholder: 'content, url',
 	},
 	{
-		displayName: 'Number of Results',
+		displayName: 'Number of results',
 		name: 'numResults',
 		type: 'number',
 		displayOptions: {
@@ -221,7 +221,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		description: 'Maximum number of results to return',
 	},
 	{
-		displayName: 'Enable Reranking',
+		displayName: 'Enable reranking',
 		name: 'enableReranking',
 		type: 'boolean',
 		default: false,
@@ -234,7 +234,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		description: 'Whether to rerank results using a reranker model for improved relevance',
 	},
 	{
-		displayName: 'Reranker Model',
+		displayName: 'Reranker model',
 		name: 'rerankerModel',
 		type: 'string',
 		required: true,
@@ -249,7 +249,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		description: 'Name of the reranker model to use',
 	},
 	{
-		displayName: 'Columns to Rerank',
+		displayName: 'Columns to rerank',
 		name: 'columnsToRerank',
 		type: 'string',
 		required: true,
@@ -268,7 +268,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -278,7 +278,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Filter Expression',
+				displayName: 'Filter expression',
 				name: 'filterExpression',
 				type: 'string',
 				default: '',
@@ -287,7 +287,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 				placeholder: 'category = "documentation"',
 			},
 			{
-				displayName: 'Score Threshold',
+				displayName: 'Score threshold',
 				name: 'scoreThreshold',
 				type: 'number',
 				default: 0,

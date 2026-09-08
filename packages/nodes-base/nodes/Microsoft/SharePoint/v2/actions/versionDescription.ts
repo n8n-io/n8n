@@ -63,7 +63,7 @@ export const versionDescription: INodeTypeDescription = {
 						'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Sites.ReadWrite.All) on the credential.',
 				},
 				{
-					name: 'Microsoft Entra Service Principal (App-Only)',
+					name: 'Microsoft Entra service principal (app-only)',
 					value: SERVICE_PRINCIPAL_AUTH,
 					description:
 						'App-only access via a Microsoft Entra app registration with admin-consented SharePoint application permissions',

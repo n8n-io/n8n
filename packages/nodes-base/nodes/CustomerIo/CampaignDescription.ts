@@ -18,12 +18,12 @@ export const campaignOperations: INodeProperties[] = [
 				action: 'Get a campaign',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many campaigns',
 			},
 			{
-				name: 'Get Metrics',
+				name: 'Get metrics',
 				value: 'getMetrics',
 				action: 'Get metrics for a campaign',
 			},
@@ -99,7 +99,7 @@ export const campaignFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -111,10 +111,10 @@ export const campaignFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

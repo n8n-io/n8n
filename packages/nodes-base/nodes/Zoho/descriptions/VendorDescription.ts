@@ -26,7 +26,7 @@ export const vendorOperations: INodeProperties[] = [
 				action: 'Create a vendor',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 				action: 'Create or update a vendor',
@@ -44,7 +44,7 @@ export const vendorOperations: INodeProperties[] = [
 				action: 'Get a vendor',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many vendors',
 				action: 'Get many vendors',
@@ -65,7 +65,7 @@ export const vendorFields: INodeProperties[] = [
 	//            vendor: create
 	// ----------------------------------------
 	{
-		displayName: 'Vendor Name',
+		displayName: 'Vendor name',
 		name: 'vendorName',
 		type: 'string',
 		required: true,
@@ -82,7 +82,7 @@ export const vendorFields: INodeProperties[] = [
 	//           vendor: upsert
 	// ----------------------------------------
 	{
-		displayName: 'Vendor Name',
+		displayName: 'Vendor name',
 		name: 'vendorName',
 		description:
 			'Name of the vendor. If a record with this vendor name exists it will be updated, otherwise a new one will be created.',
@@ -101,10 +101,10 @@ export const vendorFields: INodeProperties[] = [
 	//         vendor: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -214,10 +214,10 @@ export const vendorFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -259,7 +259,7 @@ export const vendorFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor Name',
+				displayName: 'Vendor name',
 				name: 'Vendor_Name',
 				type: 'string',
 				default: '',

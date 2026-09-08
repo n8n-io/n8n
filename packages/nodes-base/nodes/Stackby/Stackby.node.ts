@@ -101,7 +101,7 @@ export class Stackby implements INodeType {
 			//         list
 			// ----------------------------------
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -130,7 +130,7 @@ export class Stackby implements INodeType {
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				displayOptions: {
@@ -139,7 +139,7 @@ export class Stackby implements INodeType {
 					},
 				},
 				default: {},
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				options: [
 					{
 						displayName: 'View',

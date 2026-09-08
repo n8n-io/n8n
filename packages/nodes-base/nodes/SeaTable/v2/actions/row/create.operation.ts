@@ -19,17 +19,17 @@ import type { IRowObject } from '../Interfaces';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'fieldsToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
@@ -38,7 +38,7 @@ export const properties: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Apply Column Default Values',
+		displayName: 'Apply column default values',
 		name: 'apply_default',
 		type: 'boolean',
 		default: false,
@@ -63,7 +63,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		default: '',
@@ -77,9 +77,9 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Columns to Send',
+		displayName: 'Columns to send',
 		name: 'columnsUi',
-		placeholder: 'Add Column',
+		placeholder: 'Add column',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Column to Send',
@@ -96,7 +96,7 @@ export const properties: INodeProperties[] = [
 				name: 'columnValues',
 				values: [
 					{
-						displayName: 'Column Name or ID',
+						displayName: 'Column name or ID',
 						name: 'columnName',
 						type: 'options',
 						description:
@@ -108,7 +108,7 @@ export const properties: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Column Value',
+						displayName: 'Column value',
 						name: 'columnValue',
 						type: 'string',
 						default: '',
@@ -121,7 +121,7 @@ export const properties: INodeProperties[] = [
 			'Add destination column with its value. Provide the value in this way. Date: YYYY-MM-DD or YYYY-MM-DD hh:mm. Duration: time in seconds. Checkbox: true, on or 1. Multi-Select: comma-separated list.',
 	},
 	{
-		displayName: 'Save to "Big Data" Backend',
+		displayName: 'Save to "big data" backend',
 		name: 'bigdata',
 		type: 'boolean',
 		default: false,

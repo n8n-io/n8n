@@ -68,7 +68,7 @@ export class Wise implements INodeType {
 						value: 'account',
 					},
 					{
-						name: 'Exchange Rate',
+						name: 'Exchange rate',
 						value: 'exchangeRate',
 					},
 					{

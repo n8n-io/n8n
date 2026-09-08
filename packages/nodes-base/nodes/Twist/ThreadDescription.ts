@@ -31,7 +31,7 @@ export const threadOperations: INodeProperties[] = [
 				action: 'Get a thread',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many threads',
 				action: 'Get many threads',
@@ -94,10 +94,10 @@ export const threadFields: INodeProperties[] = [
 		description: 'The content of the thread',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -111,7 +111,7 @@ export const threadFields: INodeProperties[] = [
 				name: 'actionsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Action',
+				placeholder: 'Add action',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -131,18 +131,18 @@ export const threadFields: INodeProperties[] = [
 										value: 'open_url',
 									},
 									{
-										name: 'Prefill Message',
+										name: 'Prefill message',
 										value: 'prefill_message',
 									},
 									{
-										name: 'Send Reply',
+										name: 'Send reply',
 										value: 'send_reply',
 									},
 								],
 								default: '',
 							},
 							{
-								displayName: 'Button Text',
+								displayName: 'Button text',
 								name: 'button_text',
 								type: 'string',
 								description: 'The text for the action button',
@@ -199,7 +199,7 @@ export const threadFields: INodeProperties[] = [
 					'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
-				displayName: 'Direct Mention Names or IDs',
+				displayName: 'Direct mention names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
@@ -211,7 +211,7 @@ export const threadFields: INodeProperties[] = [
 					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Recipient Names or IDs',
+				displayName: 'Recipient names or IDs',
 				name: 'recipients',
 				type: 'multiOptions',
 				typeOptions: {
@@ -223,7 +223,7 @@ export const threadFields: INodeProperties[] = [
 					'The users that will attached to the thread. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Send as Integration',
+				displayName: 'Send as integration',
 				name: 'send_as_integration',
 				type: 'boolean',
 				default: false,
@@ -273,7 +273,7 @@ export const threadFields: INodeProperties[] = [
 		description: 'The ID of the channel',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -307,7 +307,7 @@ export const threadFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -324,12 +324,12 @@ export const threadFields: INodeProperties[] = [
 				description: 'Whether only the IDs of the threads are returned',
 			},
 			{
-				displayName: 'Filter By',
+				displayName: 'Filter by',
 				name: 'filter_by',
 				type: 'options',
 				options: [
 					{
-						name: 'Attached to Me',
+						name: 'Attached to me',
 						value: 'attached_to_me',
 					},
 					{
@@ -346,14 +346,14 @@ export const threadFields: INodeProperties[] = [
 					'A filter can be one of <code>attached_to_me</code>, <code>everyone</code> and <code>is_starred</code>',
 			},
 			{
-				displayName: 'Newer Than',
+				displayName: 'Newer than',
 				name: 'newer_than_ts',
 				type: 'dateTime',
 				default: '',
 				description: 'Limits threads to those newer when the specified Unix time',
 			},
 			{
-				displayName: 'Older Than',
+				displayName: 'Older than',
 				name: 'older_than_ts',
 				type: 'dateTime',
 				default: '',
@@ -380,10 +380,10 @@ export const threadFields: INodeProperties[] = [
 		description: 'The ID of the thread',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -397,7 +397,7 @@ export const threadFields: INodeProperties[] = [
 				name: 'actionsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Action',
+				placeholder: 'Add action',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -417,18 +417,18 @@ export const threadFields: INodeProperties[] = [
 										value: 'open_url',
 									},
 									{
-										name: 'Prefill Message',
+										name: 'Prefill message',
 										value: 'prefill_message',
 									},
 									{
-										name: 'Send Reply',
+										name: 'Send reply',
 										value: 'send_reply',
 									},
 								],
 								default: '',
 							},
 							{
-								displayName: 'Button Text',
+								displayName: 'Button text',
 								name: 'button_text',
 								type: 'string',
 								description: 'The text for the action button',
@@ -492,7 +492,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'The content of the thread',
 			},
 			{
-				displayName: 'Direct Mention Names or IDs',
+				displayName: 'Direct mention names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {

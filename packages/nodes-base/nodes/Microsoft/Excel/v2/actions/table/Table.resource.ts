@@ -29,7 +29,7 @@ export const description: INodeProperties[] = [
 				action: 'Append rows to table',
 			},
 			{
-				name: 'Convert to Range',
+				name: 'Convert to range',
 				value: 'convertToRange',
 				description: 'Convert a table to a range',
 				action: 'Convert to range',
@@ -47,13 +47,13 @@ export const description: INodeProperties[] = [
 				action: 'Delete a table',
 			},
 			{
-				name: 'Get Columns',
+				name: 'Get columns',
 				value: 'getColumns',
 				description: 'Retrieve a list of table columns',
 				action: 'Get columns',
 			},
 			{
-				name: 'Get Rows',
+				name: 'Get rows',
 				value: 'getRows',
 				description: 'Retrieve a list of table rows',
 				action: 'Get rows',

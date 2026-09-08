@@ -27,10 +27,10 @@ export const accountOperations: INodeProperties[] = [
 				action: 'Create an account',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
-				action: 'Create or Update an account',
+				action: 'Create or update an account',
 			},
 			{
 				name: 'Delete',
@@ -45,7 +45,7 @@ export const accountOperations: INodeProperties[] = [
 				action: 'Get an account',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many accounts',
 				action: 'Get many accounts',
@@ -66,7 +66,7 @@ export const accountFields: INodeProperties[] = [
 	//            account: create
 	// ----------------------------------------
 	{
-		displayName: 'Account Name',
+		displayName: 'Account name',
 		name: 'accountName',
 		type: 'string',
 		required: true,
@@ -83,7 +83,7 @@ export const accountFields: INodeProperties[] = [
 	//          account: upsert
 	// ----------------------------------------
 	{
-		displayName: 'Account Name',
+		displayName: 'Account name',
 		name: 'accountName',
 		description:
 			'Name of the account. If a record with this account name exists it will be updated, otherwise a new one will be created.',
@@ -102,10 +102,10 @@ export const accountFields: INodeProperties[] = [
 	//        account: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -115,20 +115,20 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Number',
+				displayName: 'Account number',
 				name: 'Account_Number',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Account Site',
+				displayName: 'Account site',
 				name: 'Account_Site',
 				type: 'string',
 				default: '',
 				description: 'Name of the account’s location, e.g. Headquarters or London',
 			},
 			{
-				displayName: 'Account Type Name or ID',
+				displayName: 'Account type name or ID',
 				name: 'Account_Type',
 				type: 'options',
 				description:
@@ -139,14 +139,14 @@ export const accountFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'Annual_Revenue',
 				type: 'number',
 				default: '',
 			},
 			billingAddress,
 			{
-				displayName: 'Contact Details',
+				displayName: 'Contact details',
 				name: 'Contact_Details',
 				type: 'string',
 				default: '',
@@ -174,7 +174,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Number of employees in the account’s company',
 			},
 			{
-				displayName: 'Exchange Rate',
+				displayName: 'Exchange rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: '',
@@ -200,7 +200,7 @@ export const accountFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Ticker Symbol',
+				displayName: 'Ticker symbol',
 				name: 'Ticker_Symbol',
 				type: 'string',
 				default: '',
@@ -273,10 +273,10 @@ export const accountFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -286,26 +286,26 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Name',
+				displayName: 'Account name',
 				name: 'Account_Name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Account Number',
+				displayName: 'Account number',
 				name: 'Account_Number',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Account Site',
+				displayName: 'Account site',
 				name: 'Account_Site',
 				type: 'string',
 				default: '',
 				description: 'Name of the account’s location, e.g. Headquarters or London',
 			},
 			{
-				displayName: 'Account Type Name or ID',
+				displayName: 'Account type name or ID',
 				name: 'Account_Type',
 				type: 'options',
 				description:
@@ -316,14 +316,14 @@ export const accountFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'Annual_Revenue',
 				type: 'number',
 				default: '',
 			},
 			billingAddress,
 			{
-				displayName: 'Contact Details',
+				displayName: 'Contact details',
 				name: 'Contact_Details',
 				type: 'string',
 				default: '',
@@ -351,7 +351,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Number of employees in the account’s company',
 			},
 			{
-				displayName: 'Exchange Rate',
+				displayName: 'Exchange rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: '',
@@ -377,7 +377,7 @@ export const accountFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Ticker Symbol',
+				displayName: 'Ticker symbol',
 				name: 'Ticker_Symbol',
 				type: 'string',
 				default: '',

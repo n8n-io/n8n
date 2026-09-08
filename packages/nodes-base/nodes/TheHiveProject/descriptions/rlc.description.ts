@@ -8,7 +8,7 @@ export const caseRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a case...',
@@ -61,7 +61,7 @@ export const alertRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a alert...',
@@ -114,7 +114,7 @@ export const taskRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a task...',
@@ -152,7 +152,7 @@ export const pageRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a page...',
@@ -180,14 +180,14 @@ export const pageRLC: INodeProperties = {
 };
 
 export const logRLC: INodeProperties = {
-	displayName: 'Task Log',
+	displayName: 'Task log',
 	name: 'logId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a task log...',
@@ -222,7 +222,7 @@ export const commentRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a comment...',
@@ -257,7 +257,7 @@ export const observableRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select an observable...',

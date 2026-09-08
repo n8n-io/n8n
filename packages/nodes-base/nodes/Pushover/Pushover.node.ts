@@ -66,7 +66,7 @@ export class Pushover implements INodeType {
 				default: 'push',
 			},
 			{
-				displayName: 'User Key',
+				displayName: 'User key',
 				name: 'userKey',
 				type: 'string',
 				required: true,
@@ -108,23 +108,23 @@ export class Pushover implements INodeType {
 				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Lowest Priority',
+						name: 'Lowest priority',
 						value: -2,
 					},
 					{
-						name: 'Low Priority',
+						name: 'Low priority',
 						value: -1,
 					},
 					{
-						name: 'Normal Priority',
+						name: 'Normal priority',
 						value: 0,
 					},
 					{
-						name: 'High Priority',
+						name: 'High priority',
 						value: 1,
 					},
 					{
-						name: 'Emergency Priority',
+						name: 'Emergency priority',
 						value: 2,
 					},
 				],
@@ -133,7 +133,7 @@ export class Pushover implements INodeType {
 					"Send as -2 to generate no notification/alert, -1 to always send as a quiet notification, 1 to display as high-priority and bypass the user's quiet hours, or 2 to also require confirmation from the user",
 			},
 			{
-				displayName: 'Retry (Seconds)',
+				displayName: 'Retry (seconds)',
 				name: 'retry',
 				type: 'number',
 				typeOptions: {
@@ -152,7 +152,7 @@ export class Pushover implements INodeType {
 					'Specifies how often (in seconds) the Pushover servers will send the same notification to the user. This parameter must have a value of at least 30 seconds between retries.',
 			},
 			{
-				displayName: 'Expire (Seconds)',
+				displayName: 'Expire (seconds)',
 				name: 'expire',
 				type: 'number',
 				typeOptions: {
@@ -172,10 +172,10 @@ export class Pushover implements INodeType {
 					'Specifies how many seconds your notification will continue to be retried for (every retry seconds)',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						resource: ['message'],
@@ -187,7 +187,7 @@ export class Pushover implements INodeType {
 					{
 						displayName: 'Attachment',
 						name: 'attachmentsUi',
-						placeholder: 'Add Attachments',
+						placeholder: 'Add attachments',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: false,
@@ -195,10 +195,10 @@ export class Pushover implements INodeType {
 						options: [
 							{
 								name: 'attachmentsValues',
-								displayName: 'Attachment Property',
+								displayName: 'Attachment property',
 								values: [
 									{
-										displayName: 'Input Binary Field',
+										displayName: 'Input binary field',
 										name: 'binaryPropertyName',
 										type: 'string',
 										default: '',
@@ -219,14 +219,14 @@ export class Pushover implements INodeType {
 							"Your user's device name to send the message directly to that device, rather than all of the user's devices (multiple devices may be separated by a comma)",
 					},
 					{
-						displayName: 'HTML Formatting',
+						displayName: 'HTML formatting',
 						name: 'html',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to enable messages formatting with HTML tags',
 					},
 					{
-						displayName: 'Sound Name or ID',
+						displayName: 'Sound name or ID',
 						name: 'sound',
 						type: 'options',
 						typeOptions: {
@@ -252,7 +252,7 @@ export class Pushover implements INodeType {
 						description: "Your message's title, otherwise your app's name is used",
 					},
 					{
-						displayName: 'TTL (Seconds)',
+						displayName: 'TTL (seconds)',
 						name: 'ttl',
 						type: 'number',
 						default: '',
@@ -267,7 +267,7 @@ export class Pushover implements INodeType {
 						description: 'A supplementary URL to show with your message',
 					},
 					{
-						displayName: 'URL Title',
+						displayName: 'URL title',
 						name: 'url_title',
 						type: 'string',
 						default: '',

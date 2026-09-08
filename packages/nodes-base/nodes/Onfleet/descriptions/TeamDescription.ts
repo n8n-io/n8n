@@ -13,7 +13,7 @@ export const teamOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Auto-Dispatch',
+				name: 'Auto-dispatch',
 				value: 'autoDispatch',
 				description: 'Automatically dispatch tasks assigned to a team to on-duty drivers',
 				action: 'Auto-dispatch a team',
@@ -37,13 +37,13 @@ export const teamOperations: INodeProperties[] = [
 				action: 'Get a team',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many Onfleet teams',
 				action: 'Get many teams',
 			},
 			{
-				name: 'Get Time Estimates',
+				name: 'Get time estimates',
 				value: 'getTimeEstimates',
 				description: 'Get estimated times for upcoming tasks for a team, returns a selected driver',
 				action: 'Get time estimates for a team',
@@ -68,7 +68,7 @@ const nameField = {
 } as INodeProperties;
 
 const workersField = {
-	displayName: 'Worker Names or IDs',
+	displayName: 'Worker names or IDs',
 	name: 'workers',
 	type: 'multiOptions',
 	typeOptions: {
@@ -80,7 +80,7 @@ const workersField = {
 } as INodeProperties;
 
 const managersField = {
-	displayName: 'Administrator Names or IDs',
+	displayName: 'Administrator names or IDs',
 	name: 'managers',
 	type: 'multiOptions',
 	typeOptions: {
@@ -92,7 +92,7 @@ const managersField = {
 } as INodeProperties;
 
 const hubField = {
-	displayName: 'Hub Name or ID',
+	displayName: 'Hub name or ID',
 	name: 'hub',
 	type: 'options',
 	typeOptions: {
@@ -104,7 +104,7 @@ const hubField = {
 } as INodeProperties;
 
 const enableSelfAssignmentField = {
-	displayName: 'Self Assignment',
+	displayName: 'Self assignment',
 	name: 'enableSelfAssignment',
 	type: 'boolean',
 	default: false,
@@ -113,7 +113,7 @@ const enableSelfAssignmentField = {
 } as INodeProperties;
 
 const maxTasksPerRouteField = {
-	displayName: 'Max Number Of Tasks Per Route',
+	displayName: 'Max number of tasks per route',
 	name: 'maxTasksPerRoute',
 	type: 'number',
 	default: 100,
@@ -125,7 +125,7 @@ const maxTasksPerRouteField = {
 } as INodeProperties;
 
 const serviceTimeField = {
-	displayName: 'Service Time',
+	displayName: 'Service time',
 	name: 'serviceTime',
 	type: 'number',
 	default: 2,
@@ -137,16 +137,16 @@ const serviceTimeField = {
 } as INodeProperties;
 
 const routeEndField = {
-	displayName: 'Route End',
+	displayName: 'Route end',
 	name: 'routeEnd',
 	type: 'options',
 	options: [
 		{
-			name: 'Team’s Hub',
+			name: 'Team’s hub',
 			value: 'team_hub',
 		},
 		{
-			name: 'Worker Routing Address',
+			name: 'Worker routing address',
 			value: 'worker_routing_address',
 		},
 		{
@@ -154,7 +154,7 @@ const routeEndField = {
 			value: 'hub',
 		},
 		{
-			name: 'End Anywhere',
+			name: 'End anywhere',
 			value: 'anywhere',
 		},
 	],
@@ -163,7 +163,7 @@ const routeEndField = {
 } as INodeProperties;
 
 const maxAllowedDelayField = {
-	displayName: 'Max Allowed Delay',
+	displayName: 'Max allowed delay',
 	name: 'maxAllowedDelay',
 	type: 'number',
 	default: 10,
@@ -174,7 +174,7 @@ const maxAllowedDelayField = {
 } as INodeProperties;
 
 const longitudeDropOffField = {
-	displayName: 'Drop Off Longitude',
+	displayName: 'Drop off longitude',
 	name: 'dropOffLongitude',
 	type: 'number',
 	typeOptions: {
@@ -185,7 +185,7 @@ const longitudeDropOffField = {
 } as INodeProperties;
 
 const latitudeDropOffField = {
-	displayName: 'Drop Off Latitude',
+	displayName: 'Drop off latitude',
 	name: 'dropOffLatitude',
 	type: 'number',
 	typeOptions: {
@@ -196,7 +196,7 @@ const latitudeDropOffField = {
 } as INodeProperties;
 
 const longitudePickupField = {
-	displayName: 'Pick Up Longitude',
+	displayName: 'Pick up longitude',
 	name: 'pickupLongitude',
 	type: 'number',
 	typeOptions: {
@@ -207,7 +207,7 @@ const longitudePickupField = {
 } as INodeProperties;
 
 const latitudePickupField = {
-	displayName: 'Pick Up Latitude',
+	displayName: 'Pick up latitude',
 	name: 'pickupLatitude',
 	type: 'number',
 	typeOptions: {
@@ -218,7 +218,7 @@ const latitudePickupField = {
 } as INodeProperties;
 
 const pickupTimeField = {
-	displayName: 'Pick Up Time',
+	displayName: 'Pick up time',
 	name: 'pickupTime',
 	type: 'dateTime',
 	default: '',
@@ -227,7 +227,7 @@ const pickupTimeField = {
 } as INodeProperties;
 
 const restrictedVehicleTypesField = {
-	displayName: 'Restricted Vehicle Types',
+	displayName: 'Restricted vehicle types',
 	name: 'restrictedVehicleTypes',
 	type: 'options',
 	options: [
@@ -253,7 +253,7 @@ const restrictedVehicleTypesField = {
 } as INodeProperties;
 
 const serviceTimeEstimateField = {
-	displayName: 'Service Time',
+	displayName: 'Service time',
 	name: 'serviceTime',
 	type: 'number',
 	default: 120,
@@ -310,10 +310,10 @@ export const teamFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -324,7 +324,7 @@ export const teamFields: INodeProperties[] = [
 		options: [hubField, enableSelfAssignmentField],
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -355,10 +355,10 @@ export const teamFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -369,10 +369,10 @@ export const teamFields: INodeProperties[] = [
 		options: [managersField, hubField, nameField, enableSelfAssignmentField, workersField],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -382,14 +382,14 @@ export const teamFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Ending Route',
+				displayName: 'Ending route',
 				name: 'endingRoute',
 				type: 'fixedCollection',
-				placeholder: 'Add Route',
+				placeholder: 'Add route',
 				default: {},
 				options: [
 					{
-						displayName: 'Ending Route Properties',
+						displayName: 'Ending route properties',
 						name: 'endingRouteProperties',
 						type: 'fixedCollection',
 						default: {},
@@ -414,26 +414,26 @@ export const teamFields: INodeProperties[] = [
 			maxAllowedDelayField,
 			maxTasksPerRouteField,
 			{
-				displayName: 'Schedule Time Window',
+				displayName: 'Schedule time window',
 				name: 'scheduleTimeWindow',
 				type: 'fixedCollection',
-				placeholder: 'Add Time Window',
+				placeholder: 'Add time window',
 				default: {},
 				options: [
 					{
-						displayName: 'Schedule Time Window Properties',
+						displayName: 'Schedule time window properties',
 						name: 'scheduleTimeWindowProperties',
 						type: 'fixedCollection',
 						default: {},
 						values: [
 							{
-								displayName: 'Start Time',
+								displayName: 'Start time',
 								name: 'startTime',
 								type: 'dateTime',
 								default: '',
 							},
 							{
-								displayName: 'End Time',
+								displayName: 'End time',
 								name: 'endTime',
 								type: 'dateTime',
 								default: '',
@@ -444,26 +444,26 @@ export const teamFields: INodeProperties[] = [
 			},
 			serviceTimeField,
 			{
-				displayName: 'Task Time Window',
+				displayName: 'Task time window',
 				name: 'taskTimeWindow',
 				type: 'fixedCollection',
-				placeholder: 'Add Time Window',
+				placeholder: 'Add time window',
 				default: {},
 				options: [
 					{
-						displayName: 'Task Time Window Properties',
+						displayName: 'Task time window properties',
 						name: 'taskTimeWindowProperties',
 						type: 'fixedCollection',
 						default: {},
 						values: [
 							{
-								displayName: 'Start Time',
+								displayName: 'Start time',
 								name: 'startTime',
 								type: 'dateTime',
 								default: '',
 							},
 							{
-								displayName: 'End Time',
+								displayName: 'End time',
 								name: 'endTime',
 								type: 'dateTime',
 								default: '',
@@ -478,7 +478,7 @@ export const teamFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -488,14 +488,14 @@ export const teamFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Drop Off',
+				displayName: 'Drop off',
 				name: 'dropOff',
 				type: 'fixedCollection',
-				placeholder: 'Add Drop Off',
+				placeholder: 'Add drop off',
 				default: {},
 				options: [
 					{
-						displayName: 'DropOff Properties',
+						displayName: 'DropOff properties',
 						name: 'dropOffProperties',
 						type: 'fixedCollection',
 						default: {},
@@ -513,14 +513,14 @@ export const teamFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Pick Up',
+				displayName: 'Pick up',
 				name: 'pickUp',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Pick Up',
+				placeholder: 'Add pick up',
 				options: [
 					{
-						displayName: 'Pick Up Properties',
+						displayName: 'Pick up properties',
 						name: 'pickUpProperties',
 						type: 'fixedCollection',
 						default: {},

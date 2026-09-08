@@ -37,20 +37,20 @@ const properties: INodeProperties[] = [
 		description: 'The fields of the input items to compare to see if they are the same',
 	},
 	{
-		displayName: 'Fields To Sort By',
+		displayName: 'Fields to sort by',
 		name: 'sortFieldsUi',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Field To Sort By',
+		placeholder: 'Add field to sort by',
 		options: [
 			{
 				displayName: '',
 				name: 'sortField',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field name',
 						name: 'fieldName',
 						type: 'string',
 						required: true,
@@ -124,7 +124,7 @@ return 0;`,
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

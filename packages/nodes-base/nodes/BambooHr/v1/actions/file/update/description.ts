@@ -16,10 +16,10 @@ export const fileUpdateDescription: FileProperties = [
 		description: 'ID of the file',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -29,7 +29,7 @@ export const fileUpdateDescription: FileProperties = [
 		},
 		options: [
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category name or ID',
 				name: 'categoryId',
 				type: 'options',
 				typeOptions: {
@@ -47,7 +47,7 @@ export const fileUpdateDescription: FileProperties = [
 				description: 'New name of the file',
 			},
 			{
-				displayName: 'Share with Employee',
+				displayName: 'Share with employee',
 				name: 'shareWithEmployee',
 				type: 'boolean',
 				default: true,

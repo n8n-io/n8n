@@ -14,7 +14,7 @@ import { microsoftApiRequest } from '../../transport';
 export const properties: INodeProperties[] = [
 	messageRLC,
 	{
-		displayName: 'Reply to Sender Only',
+		displayName: 'Reply to sender only',
 		name: 'replyToSenderOnly',
 		type: 'boolean',
 		default: false,
@@ -32,10 +32,10 @@ export const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -47,7 +47,7 @@ export const properties: INodeProperties[] = [
 				displayName: 'Attachments',
 				name: 'attachments',
 				type: 'fixedCollection',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
@@ -58,7 +58,7 @@ export const properties: INodeProperties[] = [
 						displayName: 'Attachment',
 						values: [
 							{
-								displayName: 'Input Data Field Name',
+								displayName: 'Input data field name',
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
@@ -70,23 +70,23 @@ export const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'BCC Recipients',
+				displayName: 'BCC recipients',
 				name: 'bccRecipients',
 				description: 'Comma-separated list of email addresses of BCC recipients',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'CC Recipients',
+				displayName: 'CC recipients',
 				name: 'ccRecipients',
 				description: 'Comma-separated list of email addresses of CC recipients',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Headers',
+				displayName: 'Custom headers',
 				name: 'internetMessageHeaders',
-				placeholder: 'Add Header',
+				placeholder: 'Add header',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -145,7 +145,7 @@ export const properties: INodeProperties[] = [
 				default: 'Normal',
 			},
 			{
-				displayName: 'Message Type',
+				displayName: 'Message type',
 				name: 'bodyContentType',
 				description: 'Message body content type',
 				type: 'options',
@@ -162,7 +162,7 @@ export const properties: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Read Receipt Requested',
+				displayName: 'Read receipt requested',
 				name: 'isReadReceiptRequested',
 				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
@@ -176,7 +176,7 @@ export const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Reply To',
+				displayName: 'Reply to',
 				name: 'replyTo',
 				description: 'Email address to use when replying',
 				type: 'string',
@@ -195,11 +195,11 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Save as Draft',
+				displayName: 'Save as draft',
 				name: 'saveAsDraft',
 				description:
 					'Whether to save the message as a draft. If false, the message is sent immediately.',

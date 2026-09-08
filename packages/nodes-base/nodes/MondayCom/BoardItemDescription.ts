@@ -13,19 +13,19 @@ export const boardItemOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Update',
+				name: 'Add update',
 				value: 'addUpdate',
 				description: 'Add an update to an item',
 				action: 'Add an update to an item',
 			},
 			{
-				name: 'Change Column Value',
+				name: 'Change column value',
 				value: 'changeColumnValue',
 				description: 'Change a column value for a board item',
 				action: 'Change a column value for a board item',
 			},
 			{
-				name: 'Change Multiple Column Values',
+				name: 'Change multiple column values',
 				value: 'changeMultipleColumnValues',
 				description: 'Change multiple column values for a board item',
 				action: 'Change multiple column values for a board item',
@@ -49,13 +49,13 @@ export const boardItemOperations: INodeProperties[] = [
 				action: 'Get an item',
 			},
 			{
-				name: 'Get By Column Value',
+				name: 'Get by column value',
 				value: 'getByColumnValue',
 				description: 'Get items by column value',
 				action: 'Get items item by column value',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many items',
 				action: 'Get many items',
@@ -90,7 +90,7 @@ export const boardItemFields: INodeProperties[] = [
 		description: 'The unique identifier of the item to add update to',
 	},
 	{
-		displayName: 'Update Text',
+		displayName: 'Update text',
 		name: 'value',
 		type: 'string',
 		required: true,
@@ -107,7 +107,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:changeColumnValue                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -139,7 +139,7 @@ export const boardItemFields: INodeProperties[] = [
 		description: 'The unique identifier of the item to change column of',
 	},
 	{
-		displayName: 'Column Name or ID',
+		displayName: 'Column name or ID',
 		name: 'columnId',
 		type: 'options',
 		typeOptions: {
@@ -176,7 +176,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:changeMultipleColumnValues       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -208,7 +208,7 @@ export const boardItemFields: INodeProperties[] = [
 		description: "Item's ID",
 	},
 	{
-		displayName: 'Column Values',
+		displayName: 'Column values',
 		name: 'columnValues',
 		type: 'json',
 		required: true,
@@ -229,7 +229,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		description:
@@ -247,7 +247,7 @@ export const boardItemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group Name or ID',
+		displayName: 'Group name or ID',
 		name: 'groupId',
 		type: 'options',
 		description:
@@ -280,10 +280,10 @@ export const boardItemFields: INodeProperties[] = [
 		description: "The new item's name",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -293,7 +293,7 @@ export const boardItemFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Column Values',
+				displayName: 'Column values',
 				name: 'columnValues',
 				type: 'json',
 				typeOptions: {
@@ -342,7 +342,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		description:
@@ -360,7 +360,7 @@ export const boardItemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group Name or ID',
+		displayName: 'Group name or ID',
 		name: 'groupId',
 		default: '',
 		type: 'options',
@@ -379,7 +379,7 @@ export const boardItemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -413,7 +413,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:getByColumnValue                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -431,7 +431,7 @@ export const boardItemFields: INodeProperties[] = [
 			'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Column Name or ID',
+		displayName: 'Column name or ID',
 		name: 'columnId',
 		type: 'options',
 		typeOptions: {
@@ -450,7 +450,7 @@ export const boardItemFields: INodeProperties[] = [
 			'The column\'s unique identifier. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Column Value',
+		displayName: 'Column value',
 		name: 'columnValue',
 		type: 'string',
 		required: true,
@@ -464,7 +464,7 @@ export const boardItemFields: INodeProperties[] = [
 		description: 'The column value to search items by',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -498,7 +498,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:move                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		description:
@@ -530,7 +530,7 @@ export const boardItemFields: INodeProperties[] = [
 		description: "The item's ID",
 	},
 	{
-		displayName: 'Group Name or ID',
+		displayName: 'Group name or ID',
 		name: 'groupId',
 		type: 'options',
 		description:

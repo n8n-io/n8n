@@ -82,7 +82,7 @@ export const genieParameters: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Initial Message',
+		displayName: 'Initial message',
 		name: 'initialMessage',
 		type: 'string',
 		typeOptions: {

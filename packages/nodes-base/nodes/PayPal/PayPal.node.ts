@@ -60,7 +60,7 @@ export class PayPal implements INodeType {
 						value: 'payout',
 					},
 					{
-						name: 'Payout Item',
+						name: 'Payout item',
 						value: 'payoutItem',
 					},
 				],

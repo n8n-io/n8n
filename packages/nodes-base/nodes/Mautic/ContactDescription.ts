@@ -25,13 +25,13 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Delete a contact',
 			},
 			{
-				name: 'Edit Contact Points',
+				name: 'Edit contact points',
 				value: 'editContactPoint',
 				description: "Edit contact's points",
 				action: "Edit a contact's points",
 			},
 			{
-				name: 'Edit Do Not Contact List',
+				name: 'Edit do not contact list',
 				value: 'editDoNotContactList',
 				description: 'Add/remove contacts from/to the do not contact list',
 				action: 'Add/remove contacts from/to the do not contact list',
@@ -43,7 +43,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many contacts',
 				action: 'Get many contacts',
@@ -70,7 +70,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -97,7 +97,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'Email address of the contact',
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		displayOptions: {
@@ -110,7 +110,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		displayOptions: {
@@ -123,7 +123,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Primary Company Name or ID',
+		displayName: 'Primary company name or ID',
 		name: 'company',
 		type: 'options',
 		description:
@@ -181,10 +181,10 @@ export const contactFields: INodeProperties[] = [
 		description: 'Contact parameters',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -208,13 +208,13 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Address',
 						values: [
 							{
-								displayName: 'Address Line 1',
+								displayName: 'Address line 1',
 								name: 'address1',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Address Line 2',
+								displayName: 'Address line 2',
 								name: 'address2',
 								type: 'string',
 								default: '',
@@ -238,7 +238,7 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zipCode',
 								type: 'string',
 								default: '',
@@ -270,9 +270,9 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Fields',
+				placeholder: 'Add custom fields',
 				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -285,7 +285,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -296,7 +296,7 @@ export const contactFields: INodeProperties[] = [
 									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
@@ -313,20 +313,20 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Has Purchased',
+				displayName: 'Has purchased',
 				name: 'hasPurchased',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'IP Address',
+				displayName: 'IP address',
 				name: 'ipAddress',
 				type: 'string',
 				default: '',
 				description: 'IP address to associate with the contact',
 			},
 			{
-				displayName: 'Last Active',
+				displayName: 'Last active',
 				name: 'lastActive',
 				type: 'dateTime',
 				default: '',
@@ -352,7 +352,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Prospect or Customer',
+				displayName: 'Prospect or customer',
 				name: 'prospectOrCustomer',
 				type: 'options',
 				options: [
@@ -374,7 +374,7 @@ export const contactFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage name or ID',
 				name: 'stage',
 				type: 'options',
 				description:
@@ -385,7 +385,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -396,7 +396,7 @@ export const contactFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Social Media',
+				displayName: 'Social media',
 				name: 'socialMediaUi',
 				placeholder: 'Social Media',
 				type: 'fixedCollection',
@@ -407,7 +407,7 @@ export const contactFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'socialMediaValues',
-						displayName: 'Social Media',
+						displayName: 'Social media',
 						values: [
 							{
 								displayName: 'Facebook',
@@ -474,7 +474,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -486,10 +486,10 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -530,13 +530,13 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Address',
 						values: [
 							{
-								displayName: 'Address Line 1',
+								displayName: 'Address line 1',
 								name: 'address1',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Address Line 2',
+								displayName: 'Address line 2',
 								name: 'address2',
 								type: 'string',
 								default: '',
@@ -560,7 +560,7 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zipCode',
 								type: 'string',
 								default: '',
@@ -602,9 +602,9 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Fields',
+				placeholder: 'Add custom fields',
 				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -617,7 +617,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -628,7 +628,7 @@ export const contactFields: INodeProperties[] = [
 									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
@@ -663,7 +663,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				displayOptions: {
@@ -674,7 +674,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Has Purchased',
+				displayName: 'Has purchased',
 				name: 'hasPurchased',
 				type: 'boolean',
 				displayOptions: {
@@ -685,7 +685,7 @@ export const contactFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'IP Address',
+				displayName: 'IP address',
 				name: 'ipAddress',
 				type: 'string',
 				displayOptions: {
@@ -697,7 +697,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'IP address to associate with the contact',
 			},
 			{
-				displayName: 'Last Active',
+				displayName: 'Last active',
 				name: 'lastActive',
 				type: 'dateTime',
 				displayOptions: {
@@ -709,7 +709,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Date/time in UTC;',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				displayOptions: {
@@ -766,7 +766,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Primary Company Name or ID',
+				displayName: 'Primary company name or ID',
 				name: 'company',
 				type: 'options',
 				description:
@@ -782,7 +782,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Prospect or Customer',
+				displayName: 'Prospect or customer',
 				name: 'prospectOrCustomer',
 				type: 'options',
 				displayOptions: {
@@ -814,7 +814,7 @@ export const contactFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage name or ID',
 				name: 'stage',
 				type: 'options',
 				description:
@@ -830,7 +830,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -857,7 +857,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Social Media',
+				displayName: 'Social media',
 				name: 'socialMediaUi',
 				placeholder: 'Social Media',
 				type: 'fixedCollection',
@@ -873,7 +873,7 @@ export const contactFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'socialMediaValues',
-						displayName: 'Social Media',
+						displayName: 'Social media',
 						values: [
 							{
 								displayName: 'Facebook',
@@ -927,7 +927,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'IP Address',
+				displayName: 'IP address',
 				name: 'ipAddress',
 				type: 'string',
 				displayOptions: {
@@ -1004,10 +1004,10 @@ export const contactFields: INodeProperties[] = [
 		default: 'email',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1017,7 +1017,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Reason To Do Not Contact',
+				displayName: 'Reason to do not contact',
 				name: 'reason',
 				type: 'options',
 				options: [
@@ -1116,7 +1116,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -1195,7 +1195,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'String or search command to filter entities by',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'string',
 				displayOptions: {
@@ -1208,7 +1208,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Column to sort by. Can use any column listed in the response.',
 			},
 			{
-				displayName: 'Order By Dir',
+				displayName: 'Order by dir',
 				name: 'orderByDir',
 				type: 'options',
 				displayOptions: {
@@ -1231,7 +1231,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Sort direction: ASC or DESC',
 			},
 			{
-				displayName: 'Published Only',
+				displayName: 'Published only',
 				name: 'publishedOnly',
 				type: 'boolean',
 				displayOptions: {
@@ -1257,7 +1257,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Whether to return array of entities without additional lists in it',
 			},
 			{
-				displayName: 'RAW Data',
+				displayName: 'RAW data',
 				name: 'rawData',
 				type: 'boolean',
 				default: true,
@@ -1271,7 +1271,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:sendEmail                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Campaign Email Name or ID',
+		displayName: 'Campaign email name or ID',
 		name: 'campaignEmailId',
 		type: 'options',
 		description:

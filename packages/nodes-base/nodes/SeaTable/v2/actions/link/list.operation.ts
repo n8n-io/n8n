@@ -12,7 +12,7 @@ import { seaTableApiRequest } from '../../GenericFunctions';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Table Name',
+		displayName: 'Table name',
 		name: 'tableName',
 		type: 'options',
 		placeholder: 'Select a table',
@@ -25,7 +25,7 @@ export const properties: INodeProperties[] = [
 			'Choose from the list, of specify by using an expression. Provide it in the way "table_name:::table_id".',
 	},
 	{
-		displayName: 'Link Column',
+		displayName: 'Link column',
 		name: 'linkColumn',
 		type: 'options',
 		typeOptions: {

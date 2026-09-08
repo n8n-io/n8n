@@ -28,7 +28,7 @@ export const purchaseOrderOperations: INodeProperties[] = [
 				action: 'Create a purchase order',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 				action: 'Create or update a purchase order',
@@ -46,7 +46,7 @@ export const purchaseOrderOperations: INodeProperties[] = [
 				action: 'Get a purchase order',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many purchase orders',
 				action: 'Get many purchase orders',
@@ -104,7 +104,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 	//      purchaseOrder: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Vendor Name or ID',
+		displayName: 'Vendor name or ID',
 		name: 'vendorId',
 		type: 'options',
 		default: [],
@@ -129,7 +129,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 			multipleValueButtonText: 'Add Product',
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: productDetailsOptions,
 		displayOptions: {
 			show: {
@@ -139,10 +139,10 @@ export const purchaseOrderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -162,42 +162,42 @@ export const purchaseOrderFields: INodeProperties[] = [
 				description: 'Adjustment in the grand total, if any',
 			},
 			{
-				displayName: 'Billing Address',
+				displayName: 'Billing address',
 				name: 'Billing_Address',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Billing Address Field',
+				placeholder: 'Add billing address field',
 				options: [
 					{
-						displayName: 'Billing Address Fields',
+						displayName: 'Billing address fields',
 						name: 'billing_address_fields',
 						values: [
 							{
-								displayName: 'Billing City',
+								displayName: 'Billing city',
 								name: 'Billing_City',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Billing Code',
+								displayName: 'Billing code',
 								name: 'Billing_Code',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Billing Country',
+								displayName: 'Billing country',
 								name: 'Billing_Country',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Billing State',
+								displayName: 'Billing state',
 								name: 'Billing_State',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Billing Street',
+								displayName: 'Billing street',
 								name: 'Billing_Street',
 								type: 'string',
 								default: '',
@@ -239,13 +239,13 @@ export const purchaseOrderFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'Due_Date',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Exchange Rate',
+				displayName: 'Exchange rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: 0,
@@ -255,7 +255,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
-				displayName: 'Grand Total',
+				displayName: 'Grand total',
 				name: 'Grand_Total',
 				type: 'number',
 				default: 0,
@@ -265,21 +265,21 @@ export const purchaseOrderFields: INodeProperties[] = [
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'PO Date',
+				displayName: 'PO date',
 				name: 'PO_Date',
 				type: 'dateTime',
 				default: '',
 				description: 'Date on which the purchase order was issued',
 			},
 			{
-				displayName: 'PO Number',
+				displayName: 'PO number',
 				name: 'PO_Number',
 				type: 'string',
 				default: '',
 				description: 'ID of the purchase order after creating a case',
 			},
 			{
-				displayName: 'Sales Commission',
+				displayName: 'Sales commission',
 				name: 'Sales_Commission',
 				type: 'number',
 				default: 0,
@@ -291,7 +291,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
@@ -302,7 +302,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 					'Status of the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sub Total',
+				displayName: 'Sub total',
 				name: 'Sub_Total',
 				type: 'number',
 				default: 0,
@@ -322,14 +322,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
-				displayName: 'Terms and Conditions',
+				displayName: 'Terms and conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
 				description: 'Terms and conditions associated with the purchase order',
 			},
 			{
-				displayName: 'Tracking Number',
+				displayName: 'Tracking number',
 				name: 'Tracking_Number',
 				type: 'string',
 				default: '',
@@ -341,7 +341,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 	//          purchaseOrder: delete
 	// ----------------------------------------
 	{
-		displayName: 'Purchase Order ID',
+		displayName: 'Purchase order ID',
 		name: 'purchaseOrderId',
 		description: 'ID of the purchase order to delete',
 		type: 'string',
@@ -359,7 +359,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 	//            purchaseOrder: get
 	// ----------------------------------------
 	{
-		displayName: 'Purchase Order ID',
+		displayName: 'Purchase order ID',
 		name: 'purchaseOrderId',
 		description: 'ID of the purchase order to retrieve',
 		type: 'string',
@@ -382,7 +382,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 	//          purchaseOrder: update
 	// ----------------------------------------
 	{
-		displayName: 'Purchase Order ID',
+		displayName: 'Purchase order ID',
 		name: 'purchaseOrderId',
 		description: 'ID of the purchase order to update',
 		type: 'string',
@@ -396,10 +396,10 @@ export const purchaseOrderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -451,13 +451,13 @@ export const purchaseOrderFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'Due_Date',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Exchange Rate',
+				displayName: 'Exchange rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: 0,
@@ -467,7 +467,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
-				displayName: 'Grand Total',
+				displayName: 'Grand total',
 				name: 'Grand_Total',
 				type: 'number',
 				default: 0,
@@ -477,14 +477,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'PO Date',
+				displayName: 'PO date',
 				name: 'PO_Date',
 				type: 'dateTime',
 				default: '',
 				description: 'Date on which the purchase order was issued',
 			},
 			{
-				displayName: 'PO Number',
+				displayName: 'PO number',
 				name: 'PO_Number',
 				type: 'string',
 				default: '',
@@ -492,7 +492,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 			// productDetails('purchaseOrder', 'update'),
 			{
-				displayName: 'Sales Commission',
+				displayName: 'Sales commission',
 				name: 'Sales_Commission',
 				type: 'number',
 				default: 0,
@@ -504,7 +504,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
@@ -515,7 +515,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 					'Status of the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sub Total',
+				displayName: 'Sub total',
 				name: 'Sub_Total',
 				type: 'number',
 				default: 0,
@@ -542,14 +542,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
-				displayName: 'Terms and Conditions',
+				displayName: 'Terms and conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
 				description: 'Terms and conditions associated with the purchase order',
 			},
 			{
-				displayName: 'Tracking Number',
+				displayName: 'Tracking number',
 				name: 'Tracking_Number',
 				type: 'string',
 				default: '',

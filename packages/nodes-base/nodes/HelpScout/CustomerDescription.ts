@@ -25,7 +25,7 @@ export const customerOperations: INodeProperties[] = [
 				action: 'Get a customer',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many customers',
 				action: 'Get many customers',
@@ -52,7 +52,7 @@ export const customerFields: INodeProperties[] = [
 	/*                                customer:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Resolve Data',
+		displayName: 'Resolve data',
 		name: 'resolveData',
 		type: 'boolean',
 		default: true,
@@ -67,10 +67,10 @@ export const customerFields: INodeProperties[] = [
 			'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -90,7 +90,7 @@ export const customerFields: INodeProperties[] = [
 				description: 'Customer’s age',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
@@ -119,14 +119,14 @@ export const customerFields: INodeProperties[] = [
 				description: 'Gender of this customer',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
 				description: 'Job title. Max length 60 characters.',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -152,7 +152,7 @@ export const customerFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Photo Url',
+				displayName: 'Photo URL',
 				name: 'photoUrl',
 				type: 'string',
 				default: '',
@@ -163,7 +163,7 @@ export const customerFields: INodeProperties[] = [
 	{
 		displayName: 'Address',
 		name: 'addressUi',
-		placeholder: 'Add Address',
+		placeholder: 'Add address',
 		type: 'fixedCollection',
 		displayOptions: {
 			show: {
@@ -202,7 +202,7 @@ export const customerFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Name or ID',
+						displayName: 'Country name or ID',
 						name: 'country',
 						type: 'options',
 						description:
@@ -213,7 +213,7 @@ export const customerFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
@@ -223,9 +223,9 @@ export const customerFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Chat Handles',
+		displayName: 'Chat handles',
 		name: 'chatsUi',
-		placeholder: 'Add Chat Handle',
+		placeholder: 'Add chat handle',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -239,7 +239,7 @@ export const customerFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Chat Handle',
+				displayName: 'Chat handle',
 				name: 'chatsValues',
 				values: [
 					{
@@ -301,7 +301,7 @@ export const customerFields: INodeProperties[] = [
 	{
 		displayName: 'Emails',
 		name: 'emailsUi',
-		placeholder: 'Add Email',
+		placeholder: 'Add email',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -353,7 +353,7 @@ export const customerFields: INodeProperties[] = [
 	{
 		displayName: 'Phones',
 		name: 'phonesUi',
-		placeholder: 'Add Phone',
+		placeholder: 'Add phone',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -411,9 +411,9 @@ export const customerFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Social Profiles',
+		displayName: 'Social profiles',
 		name: 'socialProfilesUi',
-		placeholder: 'Add Social Profile',
+		placeholder: 'Add social profile',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -427,7 +427,7 @@ export const customerFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Social Profile',
+				displayName: 'Social profile',
 				name: 'socialProfilesValues',
 				values: [
 					{
@@ -436,7 +436,7 @@ export const customerFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'About Me',
+								name: 'About me',
 								value: 'aboutMe',
 							},
 							{
@@ -501,7 +501,7 @@ export const customerFields: INodeProperties[] = [
 	{
 		displayName: 'Websites',
 		name: 'websitesUi',
-		placeholder: 'Add Website',
+		placeholder: 'Add website',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -533,7 +533,7 @@ export const customerFields: INodeProperties[] = [
 	/*                                customer:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -576,14 +576,14 @@ export const customerFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'Filters customers by first name',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -597,14 +597,14 @@ export const customerFields: INodeProperties[] = [
 				description: 'Filters customers from a specific mailbox',
 			},
 			{
-				displayName: 'Modified Since',
+				displayName: 'Modified since',
 				name: 'modifiedSince',
 				type: 'dateTime',
 				default: '',
 				description: 'Returns only customers that were modified after this date',
 			},
 			{
-				displayName: 'Sort Field',
+				displayName: 'Sort field',
 				name: 'sortField',
 				type: 'options',
 				options: [
@@ -613,15 +613,15 @@ export const customerFields: INodeProperties[] = [
 						value: 'score',
 					},
 					{
-						name: 'First Name',
+						name: 'First name',
 						value: 'firstName',
 					},
 					{
-						name: 'Last Name',
+						name: 'Last name',
 						value: 'lastName',
 					},
 					{
-						name: 'Modified At',
+						name: 'Modified at',
 						value: 'modifiedAt',
 					},
 				],
@@ -629,7 +629,7 @@ export const customerFields: INodeProperties[] = [
 				description: 'Sorts the result by specified field',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sortOrder',
 				type: 'options',
 				options: [
@@ -686,10 +686,10 @@ export const customerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -709,7 +709,7 @@ export const customerFields: INodeProperties[] = [
 				description: 'Customer’s age',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
@@ -738,14 +738,14 @@ export const customerFields: INodeProperties[] = [
 				description: 'Gender of this customer',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
 				description: 'Job title. Max length 60 characters.',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -771,7 +771,7 @@ export const customerFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Photo Url',
+				displayName: 'Photo URL',
 				name: 'photoUrl',
 				type: 'string',
 				default: '',

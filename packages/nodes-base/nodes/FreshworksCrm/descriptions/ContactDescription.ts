@@ -31,7 +31,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many contacts',
 				action: 'Get many contacts',
@@ -52,7 +52,7 @@ export const contactFields: INodeProperties[] = [
 	//             contact: create
 	// ----------------------------------------
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		description: 'First name of the contact',
 		type: 'string',
@@ -66,7 +66,7 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		description: 'Last name of the contact',
 		type: 'string',
@@ -80,7 +80,7 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Email Address',
+		displayName: 'Email address',
 		name: 'emails',
 		type: 'string',
 		default: '',
@@ -94,10 +94,10 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -114,7 +114,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Address of the contact',
 			},
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign name or ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
@@ -132,7 +132,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'City that the contact belongs to',
 			},
 			{
-				displayName: 'Contact Status Name or ID',
+				displayName: 'Contact status name or ID',
 				name: 'contact_status_id',
 				type: 'options',
 				default: '',
@@ -164,7 +164,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Facebook username of the contact',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
@@ -178,14 +178,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Keywords that the contact used to reach your website/web app',
 			},
 			{
-				displayName: 'Lead Source ID',
+				displayName: 'Lead source ID',
 				name: 'lead_source_id',
 				type: 'string', // not obtainable from API
 				default: '',
 				description: 'ID of the source where contact came from',
 			},
 			{
-				displayName: 'Lifecycle Stage Name or ID',
+				displayName: 'Lifecycle stage name or ID',
 				name: 'lifecycle_stage_id',
 				type: 'options',
 				default: '',
@@ -210,14 +210,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Medium that led your contact to your website/webapp',
 			},
 			{
-				displayName: 'Mobile Number',
+				displayName: 'Mobile number',
 				name: 'mobile_number',
 				type: 'string',
 				default: '',
 				description: 'Mobile phone number of the contact',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -228,7 +228,7 @@ export const contactFields: INodeProperties[] = [
 					'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sales Account Names or IDs',
+				displayName: 'Sales account names or IDs',
 				name: 'sales_accounts',
 				type: 'multiOptions',
 				default: [],
@@ -246,21 +246,21 @@ export const contactFields: INodeProperties[] = [
 				description: 'State that the contact belongs to',
 			},
 			{
-				displayName: 'Subscription Status',
+				displayName: 'Subscription status',
 				name: 'subscription_status',
 				type: 'string', // not obtainable from API
 				default: '',
 				description: 'Status of subscription that the contact is in',
 			},
 			{
-				displayName: 'Subscription Types',
+				displayName: 'Subscription types',
 				name: 'subscription_types',
 				type: 'string', // not obtainable from API
 				default: '',
 				description: 'Type of subscription that the contact is in',
 			},
 			{
-				displayName: 'Territory Name or ID',
+				displayName: 'Territory name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',
@@ -271,7 +271,7 @@ export const contactFields: INodeProperties[] = [
 					'ID of the territory that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Time Zone',
+				displayName: 'Time zone',
 				name: 'time_zone',
 				type: 'string',
 				default: '',
@@ -285,7 +285,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Twitter username of the contact',
 			},
 			{
-				displayName: 'Work Number',
+				displayName: 'Work number',
 				name: 'work_number',
 				type: 'string',
 				default: '',
@@ -341,7 +341,7 @@ export const contactFields: INodeProperties[] = [
 	//             contact: getAll
 	// ----------------------------------------
 	{
-		displayName: 'View Name or ID',
+		displayName: 'View name or ID',
 		name: 'view',
 		type: 'options',
 		description:
@@ -358,7 +358,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -406,10 +406,10 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -426,7 +426,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Address of the contact',
 			},
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign name or ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
@@ -444,7 +444,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'City that the contact belongs to',
 			},
 			{
-				displayName: 'Contact Status Name or ID',
+				displayName: 'Contact status name or ID',
 				name: 'contact_status_id',
 				type: 'options',
 				default: '',
@@ -476,14 +476,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Facebook username of the contact',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
 				description: 'First name of the contact',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
@@ -497,14 +497,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Keywords that the contact used to reach your website/web app',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 				description: 'Last name of the contact',
 			},
 			{
-				displayName: 'Lead Source Name or ID',
+				displayName: 'Lead source name or ID',
 				name: 'lead_source_id',
 				type: 'options',
 				default: '',
@@ -512,7 +512,7 @@ export const contactFields: INodeProperties[] = [
 					'ID of the source where contact came from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Lifecycle Stage Name or ID',
+				displayName: 'Lifecycle stage name or ID',
 				name: 'lifecycle_stage_id',
 				type: 'options',
 				default: '',
@@ -537,14 +537,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Medium that led your contact to your website/webapp',
 			},
 			{
-				displayName: 'Mobile Number',
+				displayName: 'Mobile number',
 				name: 'mobile_number',
 				type: 'string',
 				default: '',
 				description: 'Mobile phone number of the contact',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -555,7 +555,7 @@ export const contactFields: INodeProperties[] = [
 					'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sales Account Names or IDs',
+				displayName: 'Sales account names or IDs',
 				name: 'sales_accounts',
 				type: 'multiOptions',
 				default: [],
@@ -573,7 +573,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'State that the contact belongs to',
 			},
 			{
-				displayName: 'Subscription Status Name or ID',
+				displayName: 'Subscription status name or ID',
 				name: 'subscription_status',
 				type: 'options',
 				default: '',
@@ -581,7 +581,7 @@ export const contactFields: INodeProperties[] = [
 					'Status of subscription that the contact is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Subscription Types Name or ID',
+				displayName: 'Subscription types name or ID',
 				name: 'subscription_types',
 				type: 'options',
 				default: '',
@@ -589,7 +589,7 @@ export const contactFields: INodeProperties[] = [
 					'Type of subscription that the contact is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Territory Name or ID',
+				displayName: 'Territory name or ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',
@@ -600,7 +600,7 @@ export const contactFields: INodeProperties[] = [
 					'ID of the territory that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Time Zone',
+				displayName: 'Time zone',
 				name: 'time_zone',
 				type: 'string',
 				default: '',
@@ -614,7 +614,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Twitter username of the contact',
 			},
 			{
-				displayName: 'Work Number',
+				displayName: 'Work number',
 				name: 'work_number',
 				type: 'string',
 				default: '',

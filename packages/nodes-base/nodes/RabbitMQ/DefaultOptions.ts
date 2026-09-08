@@ -6,7 +6,7 @@ export const rabbitDefaultOptions: Array<
 	{
 		displayName: 'Arguments',
 		name: 'arguments',
-		placeholder: 'Add Argument',
+		placeholder: 'Add argument',
 		description: 'Arguments to add',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -37,7 +37,7 @@ export const rabbitDefaultOptions: Array<
 	{
 		displayName: 'Headers',
 		name: 'headers',
-		placeholder: 'Add Header',
+		placeholder: 'Add header',
 		description: 'Headers to add',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -66,21 +66,21 @@ export const rabbitDefaultOptions: Array<
 		],
 	},
 	{
-		displayName: 'Auto Delete Queue',
+		displayName: 'Auto delete queue',
 		name: 'autoDelete',
 		type: 'boolean',
 		default: false,
 		description: 'Whether the queue will be deleted when the number of consumers drops to zero',
 	},
 	{
-		displayName: 'Assert Exchange',
+		displayName: 'Assert exchange',
 		name: 'assertExchange',
 		type: 'boolean',
 		default: true,
 		description: 'Whether to assert the exchange exists before sending',
 	},
 	{
-		displayName: 'Assert Queue',
+		displayName: 'Assert queue',
 		name: 'assertQueue',
 		type: 'boolean',
 		default: true,

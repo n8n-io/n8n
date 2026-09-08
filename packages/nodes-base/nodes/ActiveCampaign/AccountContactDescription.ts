@@ -66,10 +66,10 @@ export const accountContactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -79,7 +79,7 @@ export const accountContactFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
@@ -91,7 +91,7 @@ export const accountContactFields: INodeProperties[] = [
 	//         accountContact:delete
 	// ----------------------------------
 	{
-		displayName: 'Account Contact ID',
+		displayName: 'Account contact ID',
 		name: 'accountContactId',
 		type: 'number',
 		displayOptions: {
@@ -108,7 +108,7 @@ export const accountContactFields: INodeProperties[] = [
 	//         accountContact:update
 	// ----------------------------------
 	{
-		displayName: 'Account Contact ID',
+		displayName: 'Account contact ID',
 		name: 'accountContactId',
 		type: 'number',
 		default: '',
@@ -123,11 +123,11 @@ export const accountContactFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		description: 'The fields to update',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -137,7 +137,7 @@ export const accountContactFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',

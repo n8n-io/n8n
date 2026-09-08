@@ -16,7 +16,7 @@ const properties: INodeProperties[] = [
 		description: 'The shared drive to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'options',
 		type: 'collection',
 		placeholder: 'Add option',
@@ -46,11 +46,11 @@ const properties: INodeProperties[] = [
 				displayName: 'Restrictions',
 				name: 'restrictions',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
-						displayName: 'Admin Managed Restrictions',
+						displayName: 'Admin managed restrictions',
 						name: 'adminManagedRestrictions',
 						type: 'boolean',
 						default: false,
@@ -58,7 +58,7 @@ const properties: INodeProperties[] = [
 							'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 					},
 					{
-						displayName: 'Copy Requires Writer Permission',
+						displayName: 'Copy requires writer permission',
 						name: 'copyRequiresWriterPermission',
 						type: 'boolean',
 						default: false,
@@ -66,7 +66,7 @@ const properties: INodeProperties[] = [
 							'Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters. When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.',
 					},
 					{
-						displayName: 'Domain Users Only',
+						displayName: 'Domain users only',
 						name: 'domainUsersOnly',
 						type: 'boolean',
 						default: false,
@@ -74,7 +74,7 @@ const properties: INodeProperties[] = [
 							'Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs. This restriction may be overridden by other sharing policies controlled outside of this shared drive.',
 					},
 					{
-						displayName: 'Drive Members Only',
+						displayName: 'Drive members only',
 						name: 'driveMembersOnly',
 						type: 'boolean',
 						default: false,

@@ -53,7 +53,7 @@ export class Reddit implements INodeType {
 						value: 'post',
 					},
 					{
-						name: 'Post Comment',
+						name: 'Post comment',
 						value: 'postComment',
 					},
 					{

@@ -136,12 +136,12 @@ return items.map(item => ({
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Run Once for All Items',
+						name: 'Run once for all items',
 						value: 'runOnceForAllItems',
 						description: 'Run this code only once, no matter how many input items there are',
 					},
 					{
-						name: 'Run Once for Each Item',
+						name: 'Run once for each item',
 						value: 'runOnceForEachItem',
 						description: 'Run this code as many times as there are input items',
 					},

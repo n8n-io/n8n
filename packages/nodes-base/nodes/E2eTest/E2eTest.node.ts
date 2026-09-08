@@ -35,15 +35,15 @@ export class E2eTest implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Remote Options',
+						name: 'Remote options',
 						value: 'remoteOptions',
 					},
 					{
-						name: 'Resource Locator',
+						name: 'Resource locator',
 						value: 'resourceLocator',
 					},
 					{
-						name: 'Resource Mapping Component',
+						name: 'Resource mapping component',
 						value: 'resourceMapper',
 					},
 				],
@@ -56,7 +56,7 @@ export class E2eTest implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Remote Options Name or ID',
+				displayName: 'Remote options name or ID',
 				name: 'remoteOptions',
 				description:
 					'Remote options to load. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -74,7 +74,7 @@ export class E2eTest implements INodeType {
 				},
 			},
 			{
-				displayName: 'Resource Locator',
+				displayName: 'Resource locator',
 				name: 'rlc',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
@@ -86,7 +86,7 @@ export class E2eTest implements INodeType {
 				},
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						typeOptions: {
@@ -133,7 +133,7 @@ export class E2eTest implements INodeType {
 				],
 			},
 			{
-				displayName: 'Resource Mapping Component',
+				displayName: 'Resource mapping component',
 				name: 'resourceMapper',
 				type: 'resourceMapper',
 				noDataExpression: true,
@@ -162,7 +162,7 @@ export class E2eTest implements INodeType {
 				},
 			},
 			{
-				displayName: 'Other Non Important Field',
+				displayName: 'Other non important field',
 				name: 'otherField',
 				type: 'string',
 				default: '',

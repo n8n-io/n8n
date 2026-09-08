@@ -31,7 +31,7 @@ export const descriptions: INodeProperties[] = [
 				action: 'Delete a reaction',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many reactions to one or more posts',
 				action: 'Get many reactions',

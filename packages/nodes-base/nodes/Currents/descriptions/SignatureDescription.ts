@@ -62,7 +62,7 @@ export const signatureFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Spec File Path',
+		displayName: 'Spec file path',
 		name: 'specFilePath',
 		type: 'string',
 		required: true,
@@ -83,7 +83,7 @@ export const signatureFields: INodeProperties[] = [
 		description: 'The complete path to the spec file',
 	},
 	{
-		displayName: 'Test Title',
+		displayName: 'Test title',
 		name: 'testTitle',
 		type: 'string',
 		required: true,

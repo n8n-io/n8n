@@ -15,19 +15,19 @@ export const description: SheetProperties = [
 		type: 'options',
 		options: [
 			{
-				name: 'Whole Sheet',
+				name: 'Whole sheet',
 				value: 'wholeSheet',
 			},
 			{
-				name: 'Specific Rows',
+				name: 'Specific rows',
 				value: 'specificRows',
 			},
 			{
-				name: 'Specific Columns',
+				name: 'Specific columns',
 				value: 'specificColumns',
 			},
 			{
-				name: 'Specific Range',
+				name: 'Specific range',
 				value: 'specificRange',
 			},
 		],
@@ -44,7 +44,7 @@ export const description: SheetProperties = [
 		description: 'What to clear',
 	},
 	{
-		displayName: 'Keep First Row',
+		displayName: 'Keep first row',
 		name: 'keepFirstRow',
 		type: 'boolean',
 		displayOptions: {
@@ -60,7 +60,7 @@ export const description: SheetProperties = [
 		default: false,
 	},
 	{
-		displayName: 'Start Row Number',
+		displayName: 'Start row number',
 		name: 'startIndex',
 		type: 'number',
 		typeOptions: {
@@ -80,7 +80,7 @@ export const description: SheetProperties = [
 		},
 	},
 	{
-		displayName: 'Number of Rows to Delete',
+		displayName: 'Number of rows to delete',
 		name: 'rowsToDelete',
 		type: 'number',
 		typeOptions: {
@@ -100,7 +100,7 @@ export const description: SheetProperties = [
 	},
 
 	{
-		displayName: 'Start Column',
+		displayName: 'Start column',
 		name: 'startIndex',
 		type: 'string',
 		default: 'A',
@@ -118,7 +118,7 @@ export const description: SheetProperties = [
 	},
 	{
 		// Could this be better as "end column"?
-		displayName: 'Number of Columns to Delete',
+		displayName: 'Number of columns to delete',
 		name: 'columnsToDelete',
 		type: 'number',
 		typeOptions: {

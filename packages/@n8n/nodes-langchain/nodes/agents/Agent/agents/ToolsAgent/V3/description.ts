@@ -6,7 +6,7 @@ import { getBatchingOptionFields } from '@n8n/ai-utilities';
 import { commonOptions } from '../options';
 
 const enableStreaminOption: INodeProperties = {
-	displayName: 'Enable Streaming',
+	displayName: 'Enable streaming',
 	name: 'enableStreaming',
 	type: 'boolean',
 	default: true,
@@ -14,7 +14,7 @@ const enableStreaminOption: INodeProperties = {
 };
 
 const maxTokensFromMemoryOption: INodeProperties = {
-	displayName: 'Max Tokens To Read From Memory',
+	displayName: 'Max tokens to read from memory',
 	name: 'maxTokensFromMemory',
 	type: 'hidden',
 	default: 0,
@@ -27,7 +27,7 @@ export const toolsAgentProperties: INodeProperties = {
 	name: 'options',
 	type: 'collection',
 	default: {},
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	options: [
 		...commonOptions,
 		autoSaveHighlightedDataProperty,

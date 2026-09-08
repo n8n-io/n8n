@@ -31,7 +31,7 @@ export const changeOperations: INodeProperties[] = [
 				action: 'Get a change',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many changes',
 				action: 'Get many changes',
@@ -52,7 +52,7 @@ export const changeFields: INodeProperties[] = [
 	//              change: create
 	// ----------------------------------------
 	{
-		displayName: 'Requester Name or ID',
+		displayName: 'Requester name or ID',
 		name: 'requesterId',
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
@@ -84,7 +84,7 @@ export const changeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Planned Start Date',
+		displayName: 'Planned start date',
 		name: 'plannedStartDate',
 		type: 'dateTime',
 		required: true,
@@ -97,7 +97,7 @@ export const changeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Planned End Date',
+		displayName: 'Planned end date',
 		name: 'plannedEndDate',
 		type: 'dateTime',
 		required: true,
@@ -110,10 +110,10 @@ export const changeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -123,7 +123,7 @@ export const changeFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name or ID',
+				displayName: 'Agent name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -134,7 +134,7 @@ export const changeFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Change Type',
+				displayName: 'Change type',
 				name: 'change_type',
 				type: 'options',
 				default: 1,
@@ -158,7 +158,7 @@ export const changeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -176,7 +176,7 @@ export const changeFields: INodeProperties[] = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -249,7 +249,7 @@ export const changeFields: INodeProperties[] = [
 						value: 3,
 					},
 					{
-						name: 'Very High',
+						name: 'Very high',
 						value: 4,
 					},
 				],
@@ -274,11 +274,11 @@ export const changeFields: INodeProperties[] = [
 						value: 3,
 					},
 					{
-						name: 'Pending Release',
+						name: 'Pending release',
 						value: 4,
 					},
 					{
-						name: 'Pending Review',
+						name: 'Pending review',
 						value: 5,
 					},
 					{
@@ -336,7 +336,7 @@ export const changeFields: INodeProperties[] = [
 	//              change: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -369,7 +369,7 @@ export const changeFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -379,7 +379,7 @@ export const changeFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Predefined Filters',
+				displayName: 'Predefined filters',
 				name: 'filter',
 				type: 'options',
 				default: 'my_open',
@@ -389,11 +389,11 @@ export const changeFields: INodeProperties[] = [
 						value: 'closed',
 					},
 					{
-						name: 'My Open',
+						name: 'My open',
 						value: 'my_open',
 					},
 					{
-						name: 'Release Requested',
+						name: 'Release requested',
 						value: 'release_requested',
 					},
 					{
@@ -407,7 +407,7 @@ export const changeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sort_by',
 				type: 'options',
 				options: [
@@ -423,7 +423,7 @@ export const changeFields: INodeProperties[] = [
 				default: 'asc',
 			},
 			{
-				displayName: 'Updated Since',
+				displayName: 'Updated since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
@@ -449,10 +449,10 @@ export const changeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -462,7 +462,7 @@ export const changeFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name or ID',
+				displayName: 'Agent name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -473,7 +473,7 @@ export const changeFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Change Type',
+				displayName: 'Change type',
 				name: 'change_type',
 				type: 'options',
 				default: 1,
@@ -497,7 +497,7 @@ export const changeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -515,7 +515,7 @@ export const changeFields: INodeProperties[] = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -571,7 +571,7 @@ export const changeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Requester Name or ID',
+				displayName: 'Requester name or ID',
 				name: 'requester_id',
 				type: 'options',
 				default: '',
@@ -600,7 +600,7 @@ export const changeFields: INodeProperties[] = [
 						value: 3,
 					},
 					{
-						name: 'Very High',
+						name: 'Very high',
 						value: 4,
 					},
 				],
@@ -625,11 +625,11 @@ export const changeFields: INodeProperties[] = [
 						value: 3,
 					},
 					{
-						name: 'Pending Release',
+						name: 'Pending release',
 						value: 4,
 					},
 					{
-						name: 'Pending Review',
+						name: 'Pending review',
 						value: 5,
 					},
 					{

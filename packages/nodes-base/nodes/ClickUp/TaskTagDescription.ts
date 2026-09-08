@@ -47,7 +47,7 @@ export const taskTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Tag Name',
+		displayName: 'Tag name',
 		name: 'tagName',
 		type: 'string',
 		default: '',
@@ -60,10 +60,10 @@ export const taskTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -73,14 +73,14 @@ export const taskTagFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Task IDs',
+				displayName: 'Custom task IDs',
 				name: 'custom_task_ids',
 				type: 'boolean',
 				default: false,
 				description: "Whether to reference a task by it's custom task ID",
 			},
 			{
-				displayName: 'Team Name or ID',
+				displayName: 'Team name or ID',
 				name: 'team_id',
 				type: 'options',
 				typeOptions: {

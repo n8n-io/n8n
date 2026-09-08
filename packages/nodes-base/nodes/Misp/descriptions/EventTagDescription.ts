@@ -46,7 +46,7 @@ export const eventTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tag Name or ID',
+		displayName: 'Tag name or ID',
 		name: 'tagId',
 		description:
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
@@ -82,7 +82,7 @@ export const eventTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tag Name or ID',
+		displayName: 'Tag name or ID',
 		name: 'tagId',
 		description:
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',

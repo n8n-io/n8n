@@ -15,7 +15,7 @@ export const couponOperations: INodeProperties[] = [
 				action: 'Create a coupon',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many coupons',
 				action: 'Get many coupons',
@@ -58,7 +58,7 @@ export const couponFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Discount Type',
+		displayName: 'Discount type',
 		name: 'type',
 		type: 'options',
 		required: true,
@@ -66,7 +66,7 @@ export const couponFields: INodeProperties[] = [
 		description: 'Whether the coupon discount is a percentage or a fixed amount',
 		options: [
 			{
-				name: 'Fixed Amount (in Cents)',
+				name: 'Fixed amount (in cents)',
 				value: 'fixedAmount',
 			},
 			{
@@ -82,7 +82,7 @@ export const couponFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Amount Off',
+		displayName: 'Amount off',
 		name: 'amountOff',
 		type: 'number',
 		required: true,
@@ -102,7 +102,7 @@ export const couponFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Currency Name or ID',
+		displayName: 'Currency name or ID',
 		name: 'currency',
 		type: 'options',
 		typeOptions: {
@@ -121,7 +121,7 @@ export const couponFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Percent Off',
+		displayName: 'Percent off',
 		name: 'percentOff',
 		type: 'number',
 		required: true,
@@ -144,7 +144,7 @@ export const couponFields: INodeProperties[] = [
 	//       coupon: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

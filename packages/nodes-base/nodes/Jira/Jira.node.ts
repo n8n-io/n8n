@@ -99,7 +99,7 @@ export class Jira implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Jira Version',
+				displayName: 'Jira version',
 				name: 'jiraVersion',
 				type: 'options',
 				options: [
@@ -112,15 +112,15 @@ export class Jira implements INodeType {
 						value: 'cloudOAuth2',
 					},
 					{
-						name: 'Cloud (Service Account)',
+						name: 'Cloud (service account)',
 						value: 'cloudServiceAccount',
 					},
 					{
-						name: 'Server (Self Hosted)',
+						name: 'Server (self hosted)',
 						value: 'server',
 					},
 					{
-						name: 'Server Pat (Self Hosted)',
+						name: 'Server PAT (self hosted)',
 						value: 'serverPat',
 					},
 				],
@@ -140,7 +140,7 @@ export class Jira implements INodeType {
 				},
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						typeOptions: {
@@ -169,12 +169,12 @@ export class Jira implements INodeType {
 							'Creates an issue or, where the option to create subtasks is enabled in Jira, a subtask',
 					},
 					{
-						name: 'Issue Attachment',
+						name: 'Issue attachment',
 						value: 'issueAttachment',
 						description: 'Add, remove, and get an attachment from an issue',
 					},
 					{
-						name: 'Issue Comment',
+						name: 'Issue comment',
 						value: 'issueComment',
 						description: 'Get, create, update, and delete a comment from an issue',
 					},

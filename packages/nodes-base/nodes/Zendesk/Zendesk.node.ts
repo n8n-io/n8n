@@ -59,7 +59,7 @@ export class Zendesk implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Token',
+						name: 'API token',
 						value: 'apiToken',
 					},
 					{
@@ -82,7 +82,7 @@ export class Zendesk implements INodeType {
 							'Tickets are the means through which your end users (customers) communicate with agents in Zendesk Support',
 					},
 					{
-						name: 'Ticket Field',
+						name: 'Ticket field',
 						value: 'ticketField',
 						description: 'Manage system and custom ticket fields',
 					},

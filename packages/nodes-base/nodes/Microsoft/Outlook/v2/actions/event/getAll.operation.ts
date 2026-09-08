@@ -8,7 +8,7 @@ import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transpor
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'From All Calendars',
+		displayName: 'From all calendars',
 		name: 'fromAllCalendars',
 		type: 'boolean',
 		default: true,
@@ -22,7 +22,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include Recurring Event Instances',
+		displayName: 'Include recurring event instances',
 		name: 'includeRecurringInstances',
 		type: 'boolean',
 		default: false,
@@ -30,7 +30,7 @@ export const properties: INodeProperties[] = [
 			'Whether to expand recurring events into individual instances within the specified date range. When disabled, recurring events are returned as a single series master event.',
 	},
 	{
-		displayName: 'Start Date',
+		displayName: 'Start date',
 		name: 'startDateTime',
 		type: 'dateTime',
 		default: '',
@@ -43,7 +43,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'End Date',
+		displayName: 'End date',
 		name: 'endDateTime',
 		type: 'dateTime',
 		default: '',
@@ -71,7 +71,7 @@ export const properties: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Select Included Fields',
+				name: 'Select included fields',
 				value: 'fields',
 			},
 		],
@@ -93,7 +93,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -102,7 +102,7 @@ export const properties: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Filter Query',
+				displayName: 'Filter query',
 				name: 'custom',
 				type: 'string',
 				default: '',

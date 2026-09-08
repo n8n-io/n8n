@@ -18,7 +18,7 @@ const hideOnReply: IDisplayOptions['hide'] = { parentCommentId: [{ _cnd: { regex
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Parent Comment ID',
+		displayName: 'Parent comment ID',
 		name: 'parentCommentId',
 		type: 'string',
 		default: '',

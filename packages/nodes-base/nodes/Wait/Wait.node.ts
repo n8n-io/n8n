@@ -39,7 +39,7 @@ import {
 import { Webhook } from '../Webhook/Webhook.node';
 
 const toWaitAmount: INodeProperties = {
-	displayName: 'Wait Amount',
+	displayName: 'Wait amount',
 	name: 'amount',
 	type: 'number',
 	typeOptions: {
@@ -52,7 +52,7 @@ const toWaitAmount: INodeProperties = {
 };
 
 const unitSelector: INodeProperties = {
-	displayName: 'Wait Unit',
+	displayName: 'Wait unit',
 	name: 'unit',
 	type: 'options',
 	options: [
@@ -79,7 +79,7 @@ const unitSelector: INodeProperties = {
 
 const waitTimeProperties: INodeProperties[] = [
 	{
-		displayName: 'Limit Wait Time',
+		displayName: 'Limit wait time',
 		name: 'limitWaitTime',
 		type: 'boolean',
 		default: false,
@@ -92,7 +92,7 @@ const waitTimeProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Limit Type',
+		displayName: 'Limit type',
 		name: 'limitType',
 		type: 'options',
 		default: 'afterTimeInterval',
@@ -106,12 +106,12 @@ const waitTimeProperties: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'After Time Interval',
+				name: 'After time interval',
 				description: 'Waits for a certain amount of time',
 				value: 'afterTimeInterval',
 			},
 			{
-				name: 'At Specified Time',
+				name: 'At specified time',
 				description: 'Waits until the set date and time to continue',
 				value: 'atSpecifiedTime',
 			},
@@ -168,7 +168,7 @@ const waitTimeProperties: INodeProperties[] = [
 		description: 'Unit of the interval value',
 	},
 	{
-		displayName: 'Max Date and Time',
+		displayName: 'Max date and time',
 		name: 'maxDateAndTime',
 		type: 'dateTime',
 		displayOptions: {
@@ -184,7 +184,7 @@ const waitTimeProperties: INodeProperties[] = [
 ];
 
 const webhookSuffix: INodeProperties = {
-	displayName: 'Webhook Suffix',
+	displayName: 'Webhook suffix',
 	name: 'webhookSuffix',
 	type: 'string',
 	default: '',
@@ -320,22 +320,22 @@ export class Wait extends Webhook {
 				},
 				options: [
 					{
-						name: 'After Time Interval',
+						name: 'After time interval',
 						value: 'timeInterval',
 						description: 'Waits for a certain amount of time',
 					},
 					{
-						name: 'At Specified Time',
+						name: 'At specified time',
 						value: 'specificTime',
 						description: 'Waits until a specific date and time to continue',
 					},
 					{
-						name: 'On Webhook Call',
+						name: 'On webhook call',
 						value: 'webhook',
 						description: 'Waits for a webhook call before continuing',
 					},
 					{
-						name: 'On Form Submitted',
+						name: 'On form submitted',
 						value: 'form',
 						description: 'Waits for a form submission before continuing',
 					},
@@ -349,7 +349,7 @@ export class Wait extends Webhook {
 				type: 'options',
 				options: [
 					{
-						name: 'Basic Auth',
+						name: 'Basic auth',
 						value: 'basicAuth',
 					},
 					{
@@ -377,7 +377,7 @@ export class Wait extends Webhook {
 			//         resume:specificTime
 			// ----------------------------------
 			{
-				displayName: 'Date and Time',
+				displayName: 'Date and time',
 				name: 'dateTime',
 				type: 'dateTime',
 				displayOptions: {

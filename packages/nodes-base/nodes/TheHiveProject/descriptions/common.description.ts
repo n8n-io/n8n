@@ -4,7 +4,7 @@ import { TLPs } from '../helpers/interfaces';
 
 export const returnAllAndLimit: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -28,7 +28,7 @@ export const returnAllAndLimit: INodeProperties[] = [
 ];
 
 export const responderOptions: INodeProperties = {
-	displayName: 'Responder Name or ID',
+	displayName: 'Responder name or ID',
 	name: 'responder',
 	type: 'options',
 	description:
@@ -47,7 +47,7 @@ export const responderOptions: INodeProperties = {
 };
 
 export const tlpOptions: INodeProperties = {
-	displayName: 'Traffict Light Protocol (TLP)',
+	displayName: 'Traffict light protocol (TLP)',
 	name: 'tlp',
 	type: 'options',
 	default: 2,
@@ -99,7 +99,7 @@ export const severityOptions: INodeProperties = {
 
 export const observableTypeOptions: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-	displayName: 'Data Type',
+	displayName: 'Data type',
 	name: 'dataType',
 	type: 'options',
 	default: '',
@@ -209,7 +209,7 @@ export const searchOptions: INodeProperties = {
 	default: {},
 	options: [
 		{
-			displayName: 'Return Count',
+			displayName: 'Return count',
 			name: 'returnCount',
 			type: 'boolean',
 			description: 'Whether to return only the count of results',
@@ -221,7 +221,7 @@ export const searchOptions: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Extra Data',
+			displayName: 'Extra data',
 			name: 'extraData',
 			type: 'multiOptions',
 			description: 'Additional data to include in the response',
@@ -266,7 +266,7 @@ export const searchOptions: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Extra Data',
+			displayName: 'Extra data',
 			name: 'extraData',
 			type: 'multiOptions',
 			description: 'Additional data to include in the response',
@@ -312,7 +312,7 @@ export const searchOptions: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Extra Data',
+			displayName: 'Extra data',
 			name: 'extraData',
 			type: 'multiOptions',
 			description: 'Additional data to include in the response',
@@ -346,7 +346,7 @@ export const searchOptions: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Extra Data',
+			displayName: 'Extra data',
 			name: 'extraData',
 			type: 'multiOptions',
 			description: 'Additional data to include in the response',
@@ -439,7 +439,7 @@ export const searchOptions: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Extra Data',
+			displayName: 'Extra data',
 			name: 'extraData',
 			type: 'multiOptions',
 			description: 'Additional data to include in the response',
@@ -461,7 +461,7 @@ export const searchOptions: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Extra Data',
+			displayName: 'Extra data',
 			name: 'extraData',
 			type: 'multiOptions',
 			description: 'Additional data to include in the response',
@@ -496,7 +496,7 @@ export const searchOptions: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Extra Data',
+			displayName: 'Extra data',
 			name: 'extraData',
 			type: 'string',
 			description: 'Additional data to include in the response',
@@ -517,7 +517,7 @@ export const searchOptions: INodeProperties = {
 export const attachmentsUi: INodeProperties = {
 	displayName: 'Attachments',
 	name: 'attachmentsUi',
-	placeholder: 'Add Attachment',
+	placeholder: 'Add attachment',
 	type: 'fixedCollection',
 	typeOptions: {
 		multipleValues: true,
@@ -528,7 +528,7 @@ export const attachmentsUi: INodeProperties = {
 			displayName: 'Values',
 			values: [
 				{
-					displayName: 'Attachment Field Name',
+					displayName: 'Attachment field name',
 					name: 'field',
 					type: 'string',
 					default: 'data',

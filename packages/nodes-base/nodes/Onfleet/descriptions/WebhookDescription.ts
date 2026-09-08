@@ -27,7 +27,7 @@ export const webhookOperations: INodeProperties[] = [
 				action: 'Delete a webhook',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many Onfleet webhooks',
 				action: 'Get many webhooks',
@@ -123,10 +123,10 @@ export const webhookFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

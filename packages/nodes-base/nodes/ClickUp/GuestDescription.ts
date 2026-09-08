@@ -46,7 +46,7 @@ export const guestFields: INodeProperties[] = [
 	/*                                guest:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -77,10 +77,10 @@ export const guestFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -90,19 +90,19 @@ export const guestFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Can Edit Tags',
+				displayName: 'Can edit tags',
 				name: 'can_edit_tags',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Can See Time Spend',
+				displayName: 'Can see time spend',
 				name: 'can_see_time_spend',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Can See Time Estimated',
+				displayName: 'Can see time estimated',
 				name: 'can_see_time_estimated',
 				type: 'boolean',
 				default: false,
@@ -114,7 +114,7 @@ export const guestFields: INodeProperties[] = [
 	/*                                guest:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -149,7 +149,7 @@ export const guestFields: INodeProperties[] = [
 	/*                                guest:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -184,7 +184,7 @@ export const guestFields: INodeProperties[] = [
 	/*                                guest:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -215,10 +215,10 @@ export const guestFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -228,19 +228,19 @@ export const guestFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Can Edit Tags',
+				displayName: 'Can edit tags',
 				name: 'can_edit_tags',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Can See Time Spend',
+				displayName: 'Can see time spend',
 				name: 'can_see_time_spend',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Can See Time Estimated',
+				displayName: 'Can see time estimated',
 				name: 'can_see_time_estimated',
 				type: 'boolean',
 				default: false,

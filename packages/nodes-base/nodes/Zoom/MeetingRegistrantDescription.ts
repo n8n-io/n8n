@@ -25,7 +25,7 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 				action: 'Update a meeting registrant',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many Meeting Registrants',
 				action: 'Get many meeting registrants',
@@ -68,7 +68,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		description: 'Valid Email-ID',
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		required: true,
 		type: 'string',
@@ -81,10 +81,10 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -122,14 +122,14 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				description: 'Valid country of registrant',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
 				description: 'Job title of registrant',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -149,36 +149,36 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				description: 'Organization of registrant',
 			},
 			{
-				displayName: 'Phone Number',
+				displayName: 'Phone number',
 				name: 'phone',
 				type: 'string',
 				default: '',
 				description: 'Valid phone number of registrant',
 			},
 			{
-				displayName: 'Purchasing Time Frame',
+				displayName: 'Purchasing time frame',
 				name: 'purchasingTimeFrame',
 				type: 'options',
 				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Within a Month',
+						name: 'Within a month',
 						value: 'Within a month',
 					},
 					{
-						name: '1-3 Months',
+						name: '1-3 months',
 						value: '1-3 months',
 					},
 					{
-						name: '4-6 Months',
+						name: '4-6 months',
 						value: '4-6 months',
 					},
 					{
-						name: 'More than 6 Months',
+						name: 'More than 6 months',
 						value: 'More than 6 months',
 					},
 					{
-						name: 'No Timeframe',
+						name: 'No timeframe',
 						value: 'No timeframe',
 					},
 				],
@@ -186,16 +186,16 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				description: 'Meeting type',
 			},
 			{
-				displayName: 'Role in Purchase Process',
+				displayName: 'Role in purchase process',
 				name: 'roleInPurchaseProcess',
 				type: 'options',
 				options: [
 					{
-						name: 'Decision Maker',
+						name: 'Decision maker',
 						value: 'Decision Maker',
 					},
 					{
-						name: 'Evaluator/Recommender',
+						name: 'Evaluator/recommender',
 						value: 'Evaluator/Recommender',
 					},
 					{
@@ -203,7 +203,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 						value: 'Influencer',
 					},
 					{
-						name: 'Not Involved',
+						name: 'Not involved',
 						value: 'Not Involved',
 					},
 				],
@@ -217,7 +217,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				description: 'Valid state of registrant',
 			},
 			{
-				displayName: 'Zip Code',
+				displayName: 'Zip code',
 				name: 'zip',
 				type: 'string',
 				default: '',
@@ -242,7 +242,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -273,10 +273,10 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -362,10 +362,10 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		description: 'Registrant Status',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

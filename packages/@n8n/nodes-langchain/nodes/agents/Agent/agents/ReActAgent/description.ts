@@ -52,10 +52,10 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Human Message Template',
+				displayName: 'Human message template',
 				name: 'humanMessageTemplate',
 				type: 'string',
 				default: HUMAN_MESSAGE_TEMPLATE,
@@ -65,7 +65,7 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Prefix Message',
+				displayName: 'Prefix message',
 				name: 'prefix',
 				type: 'string',
 				default: PREFIX,
@@ -75,7 +75,7 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Suffix Message for Chat Model',
+				displayName: 'Suffix message for chat model',
 				name: 'suffixChat',
 				type: 'string',
 				default: SUFFIX_CHAT,
@@ -86,7 +86,7 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Suffix Message for Regular Model',
+				displayName: 'Suffix message for regular model',
 				name: 'suffix',
 				type: 'string',
 				default: SUFFIX,
@@ -97,28 +97,28 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Iterations',
+				displayName: 'Max iterations',
 				name: 'maxIterations',
 				type: 'number',
 				default: 10,
 				description: 'The maximum number of iterations the agent will run before stopping',
 			},
 			{
-				displayName: 'Return Intermediate Steps',
+				displayName: 'Return intermediate steps',
 				name: 'returnIntermediateSteps',
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not the output should include intermediate steps the agent took',
 			},
 			{
-				displayName: 'Tracing Metadata',
+				displayName: 'Tracing metadata',
 				name: 'tracingMetadata',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
 				},
 				default: {},
-				placeholder: 'Add Metadata',
+				placeholder: 'Add metadata',
 				description: 'Custom metadata added to tracing events',
 				options: [
 					{

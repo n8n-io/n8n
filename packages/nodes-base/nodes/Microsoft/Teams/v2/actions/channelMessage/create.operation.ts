@@ -11,7 +11,7 @@ const properties: INodeProperties[] = [
 	teamRLC,
 	channelRLC,
 	{
-		displayName: 'Content Type',
+		displayName: 'Content type',
 		name: 'contentType',
 		required: true,
 		type: 'options',

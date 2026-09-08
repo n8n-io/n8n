@@ -11,7 +11,7 @@ import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -49,7 +49,7 @@ const properties: INodeProperties[] = [
 					'Query string for searching shared drives. See the <a href="https://developers.google.com/drive/api/v3/search-shareddrives">"Search for shared drives"</a> guide for supported syntax.',
 			},
 			{
-				displayName: 'Use Domain Admin Access',
+				displayName: 'Use domain admin access',
 				name: 'useDomainAdminAccess',
 				type: 'boolean',
 				default: false,

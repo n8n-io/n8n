@@ -13,7 +13,7 @@ export const formOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Fields',
+				name: 'Get fields',
 				value: 'getFields',
 				description: 'Get all fields from a form',
 				action: 'Get all fields from a form',
@@ -34,7 +34,7 @@ export const formFields: INodeProperties[] = [
 	/*                                form:submit                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name or ID',
+		displayName: 'Form name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -52,10 +52,10 @@ export const formFields: INodeProperties[] = [
 			'The ID of the form you\'re sending data to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -65,14 +65,14 @@ export const formFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Skip Validation',
+				displayName: 'Skip validation',
 				name: 'skipValidation',
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not to skip validation based on the form settings',
 			},
 			{
-				displayName: 'Submitted At',
+				displayName: 'Submitted at',
 				name: 'submittedAt',
 				type: 'dateTime',
 				default: '',
@@ -83,7 +83,7 @@ export const formFields: INodeProperties[] = [
 	{
 		displayName: 'Context',
 		name: 'contextUi',
-		placeholder: 'Add Context',
+		placeholder: 'Add context',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
@@ -101,7 +101,7 @@ export const formFields: INodeProperties[] = [
 				name: 'contextValue',
 				values: [
 					{
-						displayName: 'HubSpot Usertoken',
+						displayName: 'HubSpot usertoken',
 						name: 'hutk',
 						type: 'string',
 						default: '',
@@ -109,7 +109,7 @@ export const formFields: INodeProperties[] = [
 							'Include this parameter and set it to the hubspotutk cookie value to enable cookie tracking on your submission',
 					},
 					{
-						displayName: 'IP Address',
+						displayName: 'IP address',
 						name: 'ipAddress',
 						type: 'string',
 						default: '',
@@ -123,7 +123,7 @@ export const formFields: INodeProperties[] = [
 						description: 'The URI of the page the submission happened on',
 					},
 					{
-						displayName: 'Page Name',
+						displayName: 'Page name',
 						name: 'pageName',
 						type: 'string',
 						default: '',
@@ -137,7 +137,7 @@ export const formFields: INodeProperties[] = [
 						description: 'The ID of a page created on the HubSpot CMS',
 					},
 					{
-						displayName: 'SFDC Campaign ID',
+						displayName: 'SFDC campaign ID',
 						name: 'sfdcCampaignId',
 						type: 'string',
 						default: '',
@@ -145,7 +145,7 @@ export const formFields: INodeProperties[] = [
 							'If the form is for an account using the HubSpot Salesforce Integration, you can include the ID of a Salesforce campaign to add the contact to the specified campaign',
 					},
 					{
-						displayName: 'Go to Webinar Webinar ID',
+						displayName: 'Go to Webinar webinar ID',
 						name: 'goToWebinarWebinarKey',
 						type: 'string',
 						default: '',
@@ -157,9 +157,9 @@ export const formFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Legal Consent',
+		displayName: 'Legal consent',
 		name: 'lengalConsentUi',
-		placeholder: 'Add Legal Consent',
+		placeholder: 'Add legal consent',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
@@ -177,7 +177,7 @@ export const formFields: INodeProperties[] = [
 				name: 'lengalConsentValues',
 				values: [
 					{
-						displayName: 'Consent To Process',
+						displayName: 'Consent to process',
 						name: 'consentToProcess',
 						type: 'boolean',
 						default: false,
@@ -193,7 +193,7 @@ export const formFields: INodeProperties[] = [
 					{
 						displayName: 'Communications',
 						name: 'communicationsUi',
-						placeholder: 'Add Communication',
+						placeholder: 'Add communication',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -205,7 +205,7 @@ export const formFields: INodeProperties[] = [
 								name: 'communicationValues',
 								values: [
 									{
-										displayName: 'Subcription Type Name or ID',
+										displayName: 'Subcription type name or ID',
 										name: 'subscriptionTypeId',
 										type: 'options',
 										typeOptions: {
@@ -238,11 +238,11 @@ export const formFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Legitimate Interest',
+				displayName: 'Legitimate interest',
 				name: 'legitimateInterestValues',
 				values: [
 					{
-						displayName: 'Subcription Type Name or ID',
+						displayName: 'Subcription type name or ID',
 						name: 'subscriptionTypeId',
 						type: 'options',
 						typeOptions: {
@@ -262,7 +262,7 @@ export const formFields: INodeProperties[] = [
 							"This must be true when using the 'legitimateInterest' option, as it reflects the consent indicated by the visitor when submitting the form",
 					},
 					{
-						displayName: 'Legal Basis',
+						displayName: 'Legal basis',
 						name: 'legalBasis',
 						type: 'options',
 						options: [
@@ -294,7 +294,7 @@ export const formFields: INodeProperties[] = [
 	/*                                  form:getFields                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name or ID',
+		displayName: 'Form name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {

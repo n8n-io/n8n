@@ -56,10 +56,10 @@ export const aliasFields: INodeProperties[] = [
 		description: "The user's distinct ID",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['alias'],
@@ -72,7 +72,7 @@ export const aliasFields: INodeProperties[] = [
 				displayName: 'Context',
 				name: 'contextUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Property',
+				placeholder: 'Add property',
 				default: {},
 				typeOptions: {
 					multipleValues: true,

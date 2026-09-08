@@ -31,7 +31,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many contacts',
 				action: 'Get many contacts',
@@ -52,7 +52,7 @@ export const contactFields: INodeProperties[] = [
 	//             contact: create
 	// ----------------------------------------
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		required: true,
@@ -65,7 +65,7 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Gender Name or ID',
+		displayName: 'Gender name or ID',
 		name: 'genderId',
 		type: 'options',
 		description:
@@ -83,10 +83,10 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -102,20 +102,20 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Deceased Date',
+				displayName: 'Deceased date',
 				name: 'deceasedDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Is Deceased',
+				displayName: 'Is deceased',
 				name: 'isDeceased',
 				description: 'Whether the contact has passed away',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
@@ -187,7 +187,7 @@ export const contactFields: INodeProperties[] = [
 	//             contact: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -220,11 +220,11 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Search Term',
+				displayName: 'Search term',
 				name: 'query',
 				type: 'string',
 				default: '',
@@ -236,19 +236,19 @@ export const contactFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Ascended Created At',
+						name: 'Ascended created at',
 						value: 'created_at',
 					},
 					{
-						name: 'Descended Created At',
+						name: 'Descended created at',
 						value: '-created_at',
 					},
 					{
-						name: 'Ascended Updated At',
+						name: 'Ascended updated at',
 						value: 'updated_at',
 					},
 					{
-						name: 'Descended Updated At',
+						name: 'Descended updated at',
 						value: '-updated_at',
 					},
 				],
@@ -281,10 +281,10 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -300,19 +300,19 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Deceased Date',
+				displayName: 'Deceased date',
 				name: 'deceased_date',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Gender Name or ID',
+				displayName: 'Gender name or ID',
 				name: 'gender_id',
 				type: 'options',
 				description:
@@ -323,14 +323,14 @@ export const contactFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Is Deceased',
+				displayName: 'Is deceased',
 				name: 'is_deceased',
 				description: 'Whether the contact has passed away',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',

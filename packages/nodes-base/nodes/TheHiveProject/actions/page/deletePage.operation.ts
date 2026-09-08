@@ -7,7 +7,7 @@ import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Delete From ...',
+		displayName: 'Delete from ...',
 		name: 'location',
 		type: 'options',
 		options: [
@@ -16,7 +16,7 @@ const properties: INodeProperties[] = [
 				value: 'case',
 			},
 			{
-				name: 'Knowledge Base',
+				name: 'Knowledge base',
 				value: 'knowledgeBase',
 			},
 		],

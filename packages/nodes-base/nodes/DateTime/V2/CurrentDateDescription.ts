@@ -16,7 +16,7 @@ export const CurrentDateDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include Current Time',
+		displayName: 'Include current time',
 		name: 'includeTime',
 		type: 'boolean',
 		default: true,
@@ -29,7 +29,7 @@ export const CurrentDateDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Output Field Name',
+		displayName: 'Output field name',
 		name: 'outputFieldName',
 		type: 'string',
 		default: 'currentDate',

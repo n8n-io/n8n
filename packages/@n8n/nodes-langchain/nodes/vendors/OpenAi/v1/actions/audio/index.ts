@@ -14,19 +14,19 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Generate Audio',
+				name: 'Generate audio',
 				value: 'generate',
 				action: 'Generate audio',
 				description: 'Creates audio from a text prompt',
 			},
 			{
-				name: 'Transcribe a Recording',
+				name: 'Transcribe a recording',
 				value: 'transcribe',
 				action: 'Transcribe a recording',
 				description: 'Transcribes audio into text',
 			},
 			{
-				name: 'Translate a Recording',
+				name: 'Translate a recording',
 				value: 'translate',
 				action: 'Translate a recording',
 				description: 'Translates audio into text in English',

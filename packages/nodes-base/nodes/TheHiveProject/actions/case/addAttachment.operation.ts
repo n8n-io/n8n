@@ -21,7 +21,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Rename Files',
+				displayName: 'Rename files',
 				name: 'canRename',
 				type: 'boolean',
 				description: 'Whether to rename the file in case a file with the same name already exists',

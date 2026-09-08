@@ -27,7 +27,7 @@ export class MessageAnAgentV1 implements INodeType {
 					description: 'The agent to send the message to',
 					modes: [
 						{
-							displayName: 'From List',
+							displayName: 'From list',
 							name: 'list',
 							type: 'list',
 							typeOptions: {

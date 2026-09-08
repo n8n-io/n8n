@@ -33,7 +33,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get data of a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many users',
 				action: 'Get data of all users',
@@ -62,7 +62,7 @@ export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -96,7 +96,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -106,14 +106,14 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to only return active users and false to return inactive users',
 			},
 			{
-				displayName: 'Updated Since',
+				displayName: 'Updated since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
@@ -172,7 +172,7 @@ export const userFields: INodeProperties[] = [
 	/*                                user:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		displayOptions: {
@@ -186,7 +186,7 @@ export const userFields: INodeProperties[] = [
 		description: 'The first name of the user',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		displayOptions: {
@@ -215,10 +215,10 @@ export const userFields: INodeProperties[] = [
 		description: 'The email of the user',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -228,21 +228,21 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Can Create Invoices',
+				displayName: 'Can create invoices',
 				name: 'can_create_invoices',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user can create invoices. Only applicable to Project Managers.',
 			},
 			{
-				displayName: 'Can Create Projects',
+				displayName: 'Can create projects',
 				name: 'can_create_projects',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user can create projects. Only applicable to Project Managers.',
 			},
 			{
-				displayName: 'Can See Rates',
+				displayName: 'Can see rates',
 				name: 'can_see_rates',
 				type: 'boolean',
 				default: false,
@@ -250,7 +250,7 @@ export const userFields: INodeProperties[] = [
 					'Whether the user can see billable rates on projects. Only applicable to Project Managers.',
 			},
 			{
-				displayName: 'Cost Rate',
+				displayName: 'Cost rate',
 				name: 'cost_rate',
 				type: 'number',
 				typeOptions: {
@@ -261,42 +261,42 @@ export const userFields: INodeProperties[] = [
 					'The cost rate to use for this user when calculating a project’s costs vs billable amount',
 			},
 			{
-				displayName: 'Default Hourly Rate',
+				displayName: 'Default hourly rate',
 				name: 'default_hourly_rate',
 				type: 'string',
 				default: '0',
 				description: 'The billable rate to use for this user when they are added to a project',
 			},
 			{
-				displayName: 'Has Access To All Future Projects',
+				displayName: 'Has access to all future projects',
 				name: 'has_access_to_all_future_projects',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user should be automatically added to future projects',
 			},
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
 				description: 'Whether the user is active or archived',
 			},
 			{
-				displayName: 'Is Admin',
+				displayName: 'Is admin',
 				name: 'is_admin',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user has Admin permissions',
 			},
 			{
-				displayName: 'Is Contractor',
+				displayName: 'Is contractor',
 				name: 'is_contractor',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user is a contractor or an employee',
 			},
 			{
-				displayName: 'Is Project Manager',
+				displayName: 'Is project manager',
 				name: 'is_project_manager',
 				type: 'boolean',
 				default: false,
@@ -319,7 +319,7 @@ export const userFields: INodeProperties[] = [
 					'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
 			},
 			{
-				displayName: 'Weekly Capacity',
+				displayName: 'Weekly capacity',
 				name: 'weekly_capacity',
 				type: 'number',
 				typeOptions: {
@@ -336,7 +336,7 @@ export const userFields: INodeProperties[] = [
 	/*                                user:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry ID',
+		displayName: 'Time entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -350,10 +350,10 @@ export const userFields: INodeProperties[] = [
 		description: 'The ID of the time entry to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -363,21 +363,21 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Can Create Invoices',
+				displayName: 'Can create invoices',
 				name: 'can_create_invoices',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user can create invoices. Only applicable to Project Managers.',
 			},
 			{
-				displayName: 'Can Create Projects',
+				displayName: 'Can create projects',
 				name: 'can_create_projects',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user can create projects. Only applicable to Project Managers.',
 			},
 			{
-				displayName: 'Can See Rates',
+				displayName: 'Can see rates',
 				name: 'can_see_rates',
 				type: 'boolean',
 				default: false,
@@ -385,7 +385,7 @@ export const userFields: INodeProperties[] = [
 					'Whether the user can see billable rates on projects. Only applicable to Project Managers.',
 			},
 			{
-				displayName: 'Cost Rate',
+				displayName: 'Cost rate',
 				name: 'cost_rate',
 				type: 'number',
 				typeOptions: {
@@ -396,7 +396,7 @@ export const userFields: INodeProperties[] = [
 					'The cost rate to use for this user when calculating a project’s costs vs billable amount',
 			},
 			{
-				displayName: 'Default Hourly Rate',
+				displayName: 'Default hourly rate',
 				name: 'default_hourly_rate',
 				type: 'string',
 				default: '0',
@@ -411,49 +411,49 @@ export const userFields: INodeProperties[] = [
 				description: 'The user email',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
 				description: 'The user first name',
 			},
 			{
-				displayName: 'Has Access To All Future Projects',
+				displayName: 'Has access to all future projects',
 				name: 'has_access_to_all_future_projects',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user should be automatically added to future projects',
 			},
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
 				description: 'Whether the user is active or archived',
 			},
 			{
-				displayName: 'Is Admin',
+				displayName: 'Is admin',
 				name: 'is_admin',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user has Admin permissions',
 			},
 			{
-				displayName: 'Is Contractor',
+				displayName: 'Is contractor',
 				name: 'is_contractor',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user is a contractor or an employee',
 			},
 			{
-				displayName: 'Is Project Manager',
+				displayName: 'Is project manager',
 				name: 'is_project_manager',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user has Project Manager permissions',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
@@ -476,7 +476,7 @@ export const userFields: INodeProperties[] = [
 					'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
 			},
 			{
-				displayName: 'Weekly Capacity',
+				displayName: 'Weekly capacity',
 				name: 'weekly_capacity',
 				type: 'number',
 				typeOptions: {

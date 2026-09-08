@@ -38,16 +38,16 @@ export class ReadWriteFile implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Read File(s) From Disk',
+						name: 'Read file(s) from disk',
 						value: 'read',
 						description: 'Retrieve one or more files from the computer that runs n8n',
-						action: 'Read File(s) From Disk',
+						action: 'Read file(s) from disk',
 					},
 					{
-						name: 'Write File to Disk',
+						name: 'Write file to disk',
 						value: 'write',
 						description: 'Create a binary file on the computer that runs n8n',
-						action: 'Write File to Disk',
+						action: 'Write file to disk',
 					},
 				],
 				default: 'read',

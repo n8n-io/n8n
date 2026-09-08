@@ -16,7 +16,7 @@ import { rawCustomFieldOutputOption } from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -43,11 +43,11 @@ const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
-				displayName: 'Predefined Filter Name or ID',
+				displayName: 'Predefined filter name or ID',
 				name: 'filter_id',
 				type: 'options',
 				typeOptions: {
@@ -58,7 +58,7 @@ const properties: INodeProperties[] = [
 					'Predefined filter to apply to the deals to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage name or ID',
 				name: 'stage_id',
 				type: 'options',
 				typeOptions: {
@@ -74,7 +74,7 @@ const properties: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'All Not Deleted',
+						name: 'All not deleted',
 						value: 'all_not_deleted',
 					},
 					{
@@ -98,7 +98,7 @@ const properties: INodeProperties[] = [
 				description: 'Status to filter deals by. Defaults to <code>all_not_deleted</code>',
 			},
 			{
-				displayName: 'User Name or ID',
+				displayName: 'User name or ID',
 				name: 'user_id',
 				type: 'options',
 				typeOptions: {

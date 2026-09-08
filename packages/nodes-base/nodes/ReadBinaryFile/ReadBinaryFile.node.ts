@@ -23,7 +23,7 @@ export class ReadBinaryFile implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				displayName: 'File Path',
+				displayName: 'File path',
 				name: 'filePath',
 				type: 'string',
 				default: '',
@@ -32,7 +32,7 @@ export class ReadBinaryFile implements INodeType {
 				description: 'Path of the file to read',
 			},
 			{
-				displayName: 'Property Name',
+				displayName: 'Property name',
 				name: 'dataPropertyName',
 				type: 'string',
 				default: 'data',

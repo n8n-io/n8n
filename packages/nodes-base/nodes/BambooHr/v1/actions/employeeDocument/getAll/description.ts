@@ -15,7 +15,7 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

@@ -19,7 +19,7 @@ export const tagOperations: INodeProperties[] = [
 				action: 'Create a tag',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many tags',
 				action: 'Get many tags',
@@ -45,7 +45,7 @@ export const tagFields: INodeProperties[] = [
 		description: 'Tag name, multiple can be added separated by comma',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

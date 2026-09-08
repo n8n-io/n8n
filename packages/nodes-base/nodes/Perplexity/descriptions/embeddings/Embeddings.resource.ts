@@ -17,7 +17,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create Embedding',
+				name: 'Create embedding',
 				value: 'createEmbedding',
 				action: 'Create an embedding',
 				description: 'Generate vector embeddings for text input',
@@ -32,7 +32,7 @@ export const description: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Create Contextualized Embedding',
+				name: 'Create contextualized embedding',
 				value: 'createContextualized',
 				action: 'Create a contextualized embedding',
 				description: 'Generate context-aware embeddings for document chunks',

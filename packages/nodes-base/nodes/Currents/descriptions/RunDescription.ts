@@ -110,7 +110,7 @@ export const runOperations: INodeProperties[] = [
 				action: 'Get a run',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many runs for a project',
 				routing: {
@@ -195,7 +195,7 @@ export const runFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'resetOptions',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -205,7 +205,7 @@ export const runFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Batched Orchestration',
+				displayName: 'Batched orchestration',
 				name: 'isBatchedOr8n',
 				type: 'boolean',
 				default: false,
@@ -224,7 +224,7 @@ export const runFields: INodeProperties[] = [
 	//         run:cancelGithub
 	// ----------------------------------
 	{
-		displayName: 'GitHub Run ID',
+		displayName: 'GitHub run ID',
 		name: 'githubRunId',
 		type: 'string',
 		required: true,
@@ -244,7 +244,7 @@ export const runFields: INodeProperties[] = [
 		description: 'The GitHub Actions workflow run ID',
 	},
 	{
-		displayName: 'GitHub Run Attempt',
+		displayName: 'GitHub run attempt',
 		name: 'githubRunAttempt',
 		type: 'number',
 		required: true,
@@ -267,7 +267,7 @@ export const runFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'cancelGithubOptions',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -290,7 +290,7 @@ export const runFields: INodeProperties[] = [
 				description: 'Limit cancellation to a specific project',
 			},
 			{
-				displayName: 'CI Build ID',
+				displayName: 'CI build ID',
 				name: 'ciBuildId',
 				type: 'string',
 				default: '',
@@ -328,7 +328,7 @@ export const runFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -351,7 +351,7 @@ export const runFields: INodeProperties[] = [
 				description: 'Filter by git branch name',
 			},
 			{
-				displayName: 'CI Build ID',
+				displayName: 'CI build ID',
 				name: 'ciBuildId',
 				type: 'string',
 				default: '',
@@ -397,7 +397,7 @@ export const runFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -409,13 +409,13 @@ export const runFields: INodeProperties[] = [
 			filterAuthorsOption,
 			filterBranchesOption,
 			{
-				displayName: 'Completion State',
+				displayName: 'Completion state',
 				name: 'completionState',
 				type: 'multiOptions',
 				options: [
 					{ name: 'Canceled', value: 'CANCELED' },
 					{ name: 'Complete', value: 'COMPLETE' },
-					{ name: 'In Progress', value: 'IN_PROGRESS' },
+					{ name: 'In progress', value: 'IN_PROGRESS' },
 					{ name: 'Timeout', value: 'TIMEOUT' },
 				],
 				default: [],
@@ -428,7 +428,7 @@ export const runFields: INodeProperties[] = [
 				description: 'Filter by completion state',
 			},
 			{
-				displayName: 'Date End',
+				displayName: 'Date end',
 				name: 'dateEnd',
 				type: 'dateTime',
 				default: '',
@@ -441,7 +441,7 @@ export const runFields: INodeProperties[] = [
 				description: 'Filter runs created before this date',
 			},
 			{
-				displayName: 'Date Start',
+				displayName: 'Date start',
 				name: 'dateStart',
 				type: 'dateTime',
 				default: '',
@@ -487,7 +487,7 @@ export const runFields: INodeProperties[] = [
 			},
 			filterTagsOption,
 			{
-				displayName: 'Tag Operator',
+				displayName: 'Tag operator',
 				name: 'tagOperator',
 				type: 'options',
 				options: [
@@ -509,7 +509,7 @@ export const runFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -519,7 +519,7 @@ export const runFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Starting After',
+				displayName: 'Starting after',
 				name: 'startingAfter',
 				type: 'string',
 				default: '',
@@ -532,7 +532,7 @@ export const runFields: INodeProperties[] = [
 				description: 'Cursor for forward pagination (use cursor from previous response)',
 			},
 			{
-				displayName: 'Ending Before',
+				displayName: 'Ending before',
 				name: 'endingBefore',
 				type: 'string',
 				default: '',

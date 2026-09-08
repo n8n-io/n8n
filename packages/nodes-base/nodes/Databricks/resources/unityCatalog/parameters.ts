@@ -30,7 +30,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -39,7 +39,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'string',
 				type: 'string',
 				placeholder: 'main',
@@ -62,7 +62,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -71,7 +71,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'string',
 				type: 'string',
 				placeholder: 'main',
@@ -105,7 +105,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -114,7 +114,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'string',
 				type: 'string',
 				placeholder: 'default',
@@ -137,7 +137,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -146,7 +146,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'string',
 				type: 'string',
 				placeholder: 'schema',
@@ -169,7 +169,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -178,7 +178,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'string',
 				type: 'string',
 				placeholder: 'catalog.schema.table',
@@ -209,7 +209,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -218,7 +218,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'string',
 				type: 'string',
 				placeholder: 'catalog.schema.function',
@@ -239,7 +239,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 
 	// Volume Name - for create/get/delete volume
 	{
-		displayName: 'Volume Name',
+		displayName: 'Volume name',
 		name: 'volumeName',
 		type: 'string',
 		required: true,
@@ -255,7 +255,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 
 	// Volume Type - for create volume
 	{
-		displayName: 'Volume Type',
+		displayName: 'Volume type',
 		name: 'volumeType',
 		type: 'options',
 		required: true,
@@ -282,7 +282,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 
 	// Function Name - for create function
 	{
-		displayName: 'Function Name',
+		displayName: 'Function name',
 		name: 'functionName',
 		type: 'string',
 		required: true,
@@ -298,7 +298,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 
 	// Input Parameters - for create function
 	{
-		displayName: 'Input Parameters',
+		displayName: 'Input parameters',
 		name: 'inputParams',
 		type: 'json',
 		required: true,
@@ -315,7 +315,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 
 	// Return Type - for create function
 	{
-		displayName: 'Return Type',
+		displayName: 'Return type',
 		name: 'returnType',
 		type: 'string',
 		required: true,
@@ -331,7 +331,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 
 	// Routine Body - for create function
 	{
-		displayName: 'Routine Body',
+		displayName: 'Routine body',
 		name: 'routineBody',
 		type: 'string',
 		required: true,
@@ -346,7 +346,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 
 	// Routine Definition - for create function
 	{
-		displayName: 'Routine Definition',
+		displayName: 'Routine definition',
 		name: 'routineDefinition',
 		type: 'string',
 		required: true,
@@ -380,10 +380,10 @@ export const unityCatalogParameters: INodeProperties[] = [
 
 	// Additional Fields for volume operations
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -399,7 +399,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 				description: 'Optional comment or description for the volume',
 			},
 			{
-				displayName: 'Storage Location',
+				displayName: 'Storage location',
 				name: 'storage_location',
 				type: 'string',
 				default: '',
@@ -410,7 +410,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 
 	// Table Name - for createTable
 	{
-		displayName: 'Table Name',
+		displayName: 'Table name',
 		name: 'tableName',
 		type: 'string',
 		required: true,
@@ -426,7 +426,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 
 	// Storage Location - for createTable (required; API only supports EXTERNAL tables)
 	{
-		displayName: 'Storage Location',
+		displayName: 'Storage location',
 		name: 'storageLocation',
 		type: 'string',
 		required: true,
@@ -443,10 +443,10 @@ export const unityCatalogParameters: INodeProperties[] = [
 
 	// Additional Fields for createTable
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'tableAdditionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

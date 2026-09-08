@@ -11,11 +11,11 @@ export const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
-				displayName: 'Filter Query',
+				displayName: 'Filter query',
 				name: 'filter',
 				type: 'string',
 				default: '',
@@ -28,7 +28,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -40,7 +40,7 @@ export const properties: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Include Child Folders',
+				displayName: 'Include child folders',
 				name: 'includeChildFolders',
 				type: 'boolean',
 				default: false,

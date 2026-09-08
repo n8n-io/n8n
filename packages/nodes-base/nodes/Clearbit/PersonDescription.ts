@@ -43,10 +43,10 @@ export const personFields: INodeProperties[] = [
 		description: 'The email address to look up',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -63,7 +63,7 @@ export const personFields: INodeProperties[] = [
 				description: 'The name of the person’s employer',
 			},
 			{
-				displayName: 'Company Domain',
+				displayName: 'Company domain',
 				name: 'companyDomain',
 				type: 'string',
 				default: '',
@@ -77,7 +77,7 @@ export const personFields: INodeProperties[] = [
 				description: 'The Facebook URL for the person',
 			},
 			{
-				displayName: 'Family Name',
+				displayName: 'Family name',
 				name: 'familyName',
 				type: 'string',
 				default: '',
@@ -85,14 +85,14 @@ export const personFields: INodeProperties[] = [
 					'Last name of person. If you have this, passing this is strongly recommended to improve match rates.',
 			},
 			{
-				displayName: 'Given Name',
+				displayName: 'Given name',
 				name: 'givenName',
 				type: 'string',
 				default: '',
 				description: 'First name of person',
 			},
 			{
-				displayName: 'IP Address',
+				displayName: 'IP address',
 				name: 'ipAddress',
 				type: 'string',
 				default: '',

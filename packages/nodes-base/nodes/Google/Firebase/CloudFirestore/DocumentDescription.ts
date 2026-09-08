@@ -19,7 +19,7 @@ export const documentOperations: INodeProperties[] = [
 				action: 'Create a document',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description:
 					'Create a new document, or update the current one if it already exists (upsert)',
@@ -38,7 +38,7 @@ export const documentOperations: INodeProperties[] = [
 				action: 'Get a document',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many documents from a collection',
 				action: 'Get many documents',
@@ -64,7 +64,7 @@ export const documentFields: INodeProperties[] = [
 	/*                                document:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -122,7 +122,7 @@ export const documentFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Columns / Attributes',
+		displayName: 'Columns / attributes',
 		name: 'columns',
 		type: 'string',
 		default: '',
@@ -154,7 +154,7 @@ export const documentFields: INodeProperties[] = [
 	/*                                document:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -230,7 +230,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -276,7 +276,7 @@ export const documentFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -325,7 +325,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -502,7 +502,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:upsert                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -548,7 +548,7 @@ export const documentFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Key',
+		displayName: 'Update key',
 		name: 'updateKey',
 		type: 'string',
 		displayOptions: {
@@ -563,7 +563,7 @@ export const documentFields: INodeProperties[] = [
 		placeholder: 'documentId',
 	},
 	{
-		displayName: 'Columns /Attributes',
+		displayName: 'Columns /attributes',
 		name: 'columns',
 		type: 'string',
 		default: '',
@@ -581,7 +581,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:query                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -631,7 +631,7 @@ export const documentFields: INodeProperties[] = [
 			'{"structuredQuery": {"where": {"fieldFilter": {"field": {"fieldPath": "age"},"op": "EQUAL", "value": {"integerValue": "$1"}}}, "from": [{"collectionId": "users-collection"}]}}',
 	},
 	{
-		displayName: 'Query Parameters',
+		displayName: 'Query parameters',
 		name: 'queryParameters',
 		type: 'json',
 		typeOptions: {

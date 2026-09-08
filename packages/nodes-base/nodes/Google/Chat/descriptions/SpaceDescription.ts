@@ -21,7 +21,7 @@ export const spaceOperations: INodeProperties[] = [
 				action: 'Get a space',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many spaces the caller is a member of',
 				action: 'Get many spaces',

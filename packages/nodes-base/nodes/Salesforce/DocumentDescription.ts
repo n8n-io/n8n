@@ -42,7 +42,7 @@ export const documentFields: INodeProperties[] = [
 		description: 'Name of the file',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -57,10 +57,10 @@ export const documentFields: INodeProperties[] = [
 		hint: 'The name of the input binary field containing the file to be uploaded',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -70,7 +70,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'File Extension',
+				displayName: 'File extension',
 				name: 'fileExtension',
 				type: 'string',
 				default: '',
@@ -79,7 +79,7 @@ export const documentFields: INodeProperties[] = [
 					'File extension to use. If none is set, the value from the binary data will be used.',
 			},
 			{
-				displayName: 'Link To Object ID',
+				displayName: 'Link to object ID',
 				name: 'linkToObjectId',
 				type: 'string',
 				default: '',
@@ -92,7 +92,7 @@ export const documentFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',

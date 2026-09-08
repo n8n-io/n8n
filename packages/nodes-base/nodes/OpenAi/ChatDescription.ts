@@ -17,7 +17,7 @@ export const chatOperations: INodeProperties[] = [
 			{
 				name: 'Complete',
 				value: 'complete',
-				action: 'Create a Completion',
+				action: 'Create a completion',
 				description: 'Create one or more completions for a given text',
 				routing: {
 					request: {
@@ -169,7 +169,7 @@ const completeOperations: INodeProperties[] = [
 				operation: ['complete'],
 			},
 		},
-		placeholder: 'Add Message',
+		placeholder: 'Add message',
 		default: {},
 		options: [
 			{
@@ -278,7 +278,7 @@ const sharedOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Echo Prompt',
+				displayName: 'Echo prompt',
 				name: 'echo',
 				type: 'boolean',
 				description: 'Whether the prompt should be echo back in addition to the completion',
@@ -296,7 +296,7 @@ const sharedOperations: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Frequency Penalty',
+				displayName: 'Frequency penalty',
 				name: 'frequency_penalty',
 				default: 0,
 				typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -311,7 +311,7 @@ const sharedOperations: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Maximum Number of Tokens',
+				displayName: 'Maximum number of tokens',
 				name: 'maxTokens',
 				default: 16,
 				description:
@@ -333,7 +333,7 @@ const sharedOperations: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Number of Completions',
+				displayName: 'Number of completions',
 				name: 'n',
 				default: 1,
 				description:
@@ -347,7 +347,7 @@ const sharedOperations: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Presence Penalty',
+				displayName: 'Presence penalty',
 				name: 'presence_penalty',
 				default: 0,
 				typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -362,7 +362,7 @@ const sharedOperations: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Sampling Temperature',
+				displayName: 'Sampling temperature',
 				name: 'temperature',
 				default: 1,
 				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },

@@ -26,7 +26,7 @@ export class ReadBinaryFiles implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				displayName: 'File Selector',
+				displayName: 'File selector',
 				name: 'fileSelector',
 				type: 'string',
 				default: '',
@@ -35,7 +35,7 @@ export class ReadBinaryFiles implements INodeType {
 				description: 'Pattern for files to read',
 			},
 			{
-				displayName: 'Property Name',
+				displayName: 'Property name',
 				name: 'dataPropertyName',
 				type: 'string',
 				default: 'data',

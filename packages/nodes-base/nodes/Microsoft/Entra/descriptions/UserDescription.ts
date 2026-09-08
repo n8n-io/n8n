@@ -31,7 +31,7 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add to Group',
+				name: 'Add to group',
 				value: 'addGroup',
 				description: 'Add user to group',
 				routing: {
@@ -111,7 +111,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of users',
 				routing: {
@@ -136,7 +136,7 @@ export const userOperations: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				name: 'Remove from Group',
+				name: 'Remove from group',
 				value: 'removeGroup',
 				description: 'Remove user from group',
 				routing: {
@@ -204,7 +204,7 @@ const addGroupFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -228,7 +228,7 @@ const addGroupFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'User to Add',
+		displayName: 'User to add',
 		name: 'user',
 		default: {
 			mode: 'list',
@@ -242,7 +242,7 @@ const addGroupFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -274,7 +274,7 @@ const addGroupFields: INodeProperties[] = [
 
 const createFields: INodeProperties[] = [
 	{
-		displayName: 'Account Enabled',
+		displayName: 'Account enabled',
 		name: 'accountEnabled',
 		default: true,
 		description: 'Whether the account is enabled',
@@ -295,7 +295,7 @@ const createFields: INodeProperties[] = [
 		validateType: 'boolean',
 	},
 	{
-		displayName: 'Display Name',
+		displayName: 'Display name',
 		name: 'displayName',
 		default: '',
 		description: 'The name to display in the address book for the user',
@@ -317,7 +317,7 @@ const createFields: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
-		displayName: 'User Principal Name',
+		displayName: 'User principal name',
 		name: 'userPrincipalName',
 		default: '',
 		description: 'The user principal name (UPN)',
@@ -354,7 +354,7 @@ const createFields: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
-		displayName: 'Mail Nickname',
+		displayName: 'Mail nickname',
 		name: 'mailNickname',
 		default: '',
 		description: 'The mail alias for the user',
@@ -400,7 +400,7 @@ const createFields: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		default: {},
 		displayOptions: {
@@ -411,7 +411,7 @@ const createFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'About Me',
+				displayName: 'About me',
 				name: 'aboutMe',
 				default: '',
 				description: 'A freeform text entry field for the user to describe themselves',
@@ -419,7 +419,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Age Group',
+				displayName: 'Age group',
 				name: 'ageGroup',
 				default: 'Adult',
 				description: 'Sets the age group of the user',
@@ -433,7 +433,7 @@ const createFields: INodeProperties[] = [
 						value: 'Minor',
 					},
 					{
-						name: 'Not Adult',
+						name: 'Not adult',
 						value: 'NotAdult',
 					},
 				],
@@ -449,7 +449,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'dateTime',
 			},
 			{
-				displayName: 'Business Phone',
+				displayName: 'Business phone',
 				name: 'businessPhones',
 				default: '',
 				description: 'The telephone number for the user',
@@ -465,7 +465,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Company Name',
+				displayName: 'Company name',
 				name: 'companyName',
 				default: '',
 				description: 'The name of the company associated with the user',
@@ -492,7 +492,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Consent Provided',
+				displayName: 'Consent provided',
 				name: 'consentProvidedForMinor',
 				default: 'Denied',
 				description: 'Specifies if consent is provided for minors',
@@ -506,7 +506,7 @@ const createFields: INodeProperties[] = [
 						value: 'Granted',
 					},
 					{
-						name: 'Not Required',
+						name: 'Not required',
 						value: 'NotRequired',
 					},
 				],
@@ -558,7 +558,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Employee Type',
+				displayName: 'Employee type',
 				name: 'employeeType',
 				default: '',
 				description: 'Defines enterprise worker type',
@@ -567,7 +567,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Employee Hire Date',
+				displayName: 'Employee hire date',
 				name: 'employeeHireDate',
 				default: '',
 				description: 'The hire date of the user',
@@ -576,7 +576,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'dateTime',
 			},
 			{
-				displayName: 'Employee Leave Date',
+				displayName: 'Employee leave date',
 				name: 'employeeLeaveDateTime',
 				default: '',
 				description: 'The date and time when the user left or will leave the organization',
@@ -585,18 +585,18 @@ const createFields: INodeProperties[] = [
 				validateType: 'dateTime',
 			},
 			{
-				displayName: 'Employee Organization Data',
+				displayName: 'Employee organization data',
 				name: 'employeeOrgData',
 				default: {},
 				description:
 					'Represents organization data (for example, division and costCenter) associated with a user',
 				options: [
 					{
-						displayName: 'Employee Organization Data',
+						displayName: 'Employee organization data',
 						name: 'employeeOrgValues',
 						values: [
 							{
-								displayName: 'Cost Center',
+								displayName: 'Cost center',
 								name: 'costCenter',
 								description: 'The cost center associated with the user',
 								type: 'string',
@@ -616,7 +616,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'givenName',
 				default: '',
 				description: 'The given name (first name) of the user',
@@ -624,17 +624,17 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Force Change Password',
+				displayName: 'Force change password',
 				name: 'forceChangePassword',
 				default: 'forceChangePasswordNextSignIn',
 				description: 'Whether the user must change their password on the next sign-in',
 				options: [
 					{
-						name: 'Next Sign In',
+						name: 'Next sign in',
 						value: 'forceChangePasswordNextSignIn',
 					},
 					{
-						name: 'Next Sign In with MFA',
+						name: 'Next sign in with MFA',
 						value: 'forceChangePasswordNextSignInWithMfa',
 					},
 				],
@@ -653,7 +653,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'array',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				default: '',
 				description: "The user's job title",
@@ -661,7 +661,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'surname',
 				default: '',
 				description: "The user's last name (family name)",
@@ -678,7 +678,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobilePhone',
 				default: '',
 				description: 'The primary cellular telephone number for the user',
@@ -686,7 +686,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'My Site',
+				displayName: 'My site',
 				name: 'mySite',
 				default: '',
 				description: "The URL for the user's personal site",
@@ -694,7 +694,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Office Location',
+				displayName: 'Office location',
 				name: 'officeLocation',
 				default: '',
 				description: 'The office location for the user',
@@ -702,7 +702,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'On Premises Immutable ID',
+				displayName: 'On premises immutable ID',
 				name: 'onPremisesImmutableId',
 				default: '',
 				description:
@@ -711,7 +711,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Other Emails',
+				displayName: 'Other emails',
 				name: 'otherMails',
 				default: [],
 				description: 'Additional email addresses for the user',
@@ -722,24 +722,24 @@ const createFields: INodeProperties[] = [
 				validateType: 'array',
 			},
 			{
-				displayName: 'Password Policies',
+				displayName: 'Password policies',
 				name: 'passwordPolicies',
 				default: [],
 				description: 'Specifies password policies',
 				options: [
 					{
-						name: 'Disable Password Expiration',
+						name: 'Disable password expiration',
 						value: 'DisablePasswordExpiration',
 					},
 					{
-						name: 'Disable Strong Password',
+						name: 'Disable strong password',
 						value: 'DisableStrongPassword',
 					},
 				],
 				type: 'multiOptions',
 			},
 			{
-				displayName: 'Past Projects',
+				displayName: 'Past projects',
 				name: 'pastProjects',
 				default: [],
 				description: 'A list of past projects the user has worked on',
@@ -750,7 +750,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'array',
 			},
 			{
-				displayName: 'Postal Code',
+				displayName: 'Postal code',
 				name: 'postalCode',
 				default: '',
 				description: "The postal code for the user's address",
@@ -758,7 +758,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Preferred Language',
+				displayName: 'Preferred language',
 				name: 'preferredLanguage',
 				default: '',
 				description: "User's preferred language in ISO 639-1 code",
@@ -778,7 +778,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'array',
 			},
 			{
-				displayName: 'Schools Attended',
+				displayName: 'Schools attended',
 				name: 'schools',
 				default: [],
 				description: 'A list of schools the user attended',
@@ -808,7 +808,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Street Address',
+				displayName: 'Street address',
 				name: 'streetAddress',
 				default: '',
 				description: "The street address of the user's place of business",
@@ -816,7 +816,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Usage Location',
+				displayName: 'Usage location',
 				name: 'usageLocation',
 				default: '',
 				description: 'Two-letter country code where the user is located',
@@ -825,7 +825,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'User Type',
+				displayName: 'User type',
 				name: 'userType',
 				default: 'Guest',
 				description: 'Classifies the user type',
@@ -843,7 +843,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'options',
 			},
 		],
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		routing: {
 			output: {
 				postReceive: [
@@ -954,7 +954,7 @@ const createFields: INodeProperties[] = [
 
 const deleteFields: INodeProperties[] = [
 	{
-		displayName: 'User to Delete',
+		displayName: 'User to delete',
 		name: 'user',
 		default: {
 			mode: 'list',
@@ -968,7 +968,7 @@ const deleteFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -995,7 +995,7 @@ const deleteFields: INodeProperties[] = [
 
 const getFields: INodeProperties[] = [
 	{
-		displayName: 'User to Get',
+		displayName: 'User to get',
 		name: 'user',
 		default: {
 			mode: 'list',
@@ -1009,7 +1009,7 @@ const getFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -1068,7 +1068,7 @@ const getFields: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Selected Fields',
+				name: 'Selected fields',
 				value: 'fields',
 			},
 		],
@@ -1104,7 +1104,7 @@ const getFields: INodeProperties[] = [
 
 const getAllFields: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
@@ -1222,7 +1222,7 @@ const getAllFields: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Selected Fields',
+				name: 'Selected fields',
 				value: 'fields',
 			},
 		],
@@ -1272,7 +1272,7 @@ const removeGroupFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -1296,7 +1296,7 @@ const removeGroupFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'User to Remove',
+		displayName: 'User to remove',
 		name: 'user',
 		default: {
 			mode: 'list',
@@ -1310,7 +1310,7 @@ const removeGroupFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -1337,7 +1337,7 @@ const removeGroupFields: INodeProperties[] = [
 
 const updateFields: INodeProperties[] = [
 	{
-		displayName: 'User to Update',
+		displayName: 'User to update',
 		name: 'user',
 		default: {
 			mode: 'list',
@@ -1351,7 +1351,7 @@ const updateFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -1375,7 +1375,7 @@ const updateFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		default: {},
 		displayOptions: {
@@ -1386,7 +1386,7 @@ const updateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'About Me',
+				displayName: 'About me',
 				name: 'aboutMe',
 				default: '',
 				description: 'A freeform text entry field for the user to describe themselves',
@@ -1394,7 +1394,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Account Enabled',
+				displayName: 'Account enabled',
 				name: 'accountEnabled',
 				default: true,
 				description: 'Whether the account is enabled',
@@ -1408,7 +1408,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'boolean',
 			},
 			{
-				displayName: 'Age Group',
+				displayName: 'Age group',
 				name: 'ageGroup',
 				default: 'Adult',
 				description: 'Sets the age group of the user',
@@ -1422,7 +1422,7 @@ const updateFields: INodeProperties[] = [
 						value: 'Minor',
 					},
 					{
-						name: 'Not Adult',
+						name: 'Not adult',
 						value: 'NotAdult',
 					},
 				],
@@ -1444,7 +1444,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'dateTime',
 			},
 			{
-				displayName: 'Business Phone',
+				displayName: 'Business phone',
 				name: 'businessPhones',
 				default: '',
 				description: 'The telephone number for the user',
@@ -1473,7 +1473,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Company Name',
+				displayName: 'Company name',
 				name: 'companyName',
 				default: '',
 				description: 'The name of the company associated with the user',
@@ -1502,7 +1502,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Consent Provided',
+				displayName: 'Consent provided',
 				name: 'consentProvidedForMinor',
 				default: 'Denied',
 				description: 'Specifies if consent is provided for minors',
@@ -1516,7 +1516,7 @@ const updateFields: INodeProperties[] = [
 						value: 'Granted',
 					},
 					{
-						name: 'Not Required',
+						name: 'Not required',
 						value: 'NotRequired',
 					},
 				],
@@ -1559,7 +1559,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Display Name',
+				displayName: 'Display name',
 				name: 'displayName',
 				default: '',
 				description: 'The name to display in the address book for the user',
@@ -1603,7 +1603,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Employee Type',
+				displayName: 'Employee type',
 				name: 'employeeType',
 				default: '',
 				description: 'Defines enterprise worker type',
@@ -1618,7 +1618,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'givenName',
 				default: '',
 				description: 'The given name (first name) of the user',
@@ -1632,7 +1632,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Employee Hire Date',
+				displayName: 'Employee hire date',
 				name: 'employeeHireDate',
 				default: '',
 				description: 'The hire date of the user',
@@ -1648,7 +1648,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'dateTime',
 			},
 			{
-				displayName: 'Employee Leave Date',
+				displayName: 'Employee leave date',
 				name: 'employeeLeaveDateTime',
 				default: '',
 				description: 'The date and time when the user left or will leave the organization',
@@ -1664,18 +1664,18 @@ const updateFields: INodeProperties[] = [
 				validateType: 'dateTime',
 			},
 			{
-				displayName: 'Employee Organization Data',
+				displayName: 'Employee organization data',
 				name: 'employeeOrgData',
 				default: {},
 				description:
 					'Represents organization data (for example, division and costCenter) associated with a user',
 				options: [
 					{
-						displayName: 'Employee Organization Data',
+						displayName: 'Employee organization data',
 						name: 'employeeOrgValues',
 						values: [
 							{
-								displayName: 'Cost Center',
+								displayName: 'Cost center',
 								name: 'costCenter',
 								description: 'The cost center associated with the user',
 								routing: {
@@ -1707,17 +1707,17 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Force Change Password',
+				displayName: 'Force change password',
 				name: 'forceChangePassword',
 				default: 'forceChangePasswordNextSignIn',
 				description: 'Whether the user must change their password on the next sign-in',
 				options: [
 					{
-						name: 'Next Sign In',
+						name: 'Next sign in',
 						value: 'forceChangePasswordNextSignIn',
 					},
 					{
-						name: 'Next Sign In with MFA',
+						name: 'Next sign in with MFA',
 						value: 'forceChangePasswordNextSignInWithMfa',
 					},
 				],
@@ -1761,7 +1761,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'array',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				default: '',
 				description: "The user's job title",
@@ -1775,7 +1775,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'surname',
 				default: '',
 				description: "The user's last name (family name)",
@@ -1804,7 +1804,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Mail Nickname',
+				displayName: 'Mail nickname',
 				name: 'mailNickname',
 				default: '',
 				description: 'The mail alias for the user',
@@ -1818,7 +1818,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobilePhone',
 				default: '',
 				description: 'The primary cellular telephone number for the user',
@@ -1832,7 +1832,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'My Site',
+				displayName: 'My site',
 				name: 'mySite',
 				default: '',
 				description: "The URL for the user's personal site",
@@ -1840,7 +1840,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Office Location',
+				displayName: 'Office location',
 				name: 'officeLocation',
 				default: '',
 				description: 'The office location for the user',
@@ -1854,7 +1854,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'On Premises Immutable ID',
+				displayName: 'On premises immutable ID',
 				name: 'onPremisesImmutableId',
 				default: '',
 				description:
@@ -1869,7 +1869,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Other Emails',
+				displayName: 'Other emails',
 				name: 'otherMails',
 				default: [],
 				description: 'Additional email addresses for the user',
@@ -1904,17 +1904,17 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Password Policies',
+				displayName: 'Password policies',
 				name: 'passwordPolicies',
 				default: [],
 				description: 'Specifies password policies',
 				options: [
 					{
-						name: 'Disable Password Expiration',
+						name: 'Disable password expiration',
 						value: 'DisablePasswordExpiration',
 					},
 					{
-						name: 'Disable Strong Password',
+						name: 'Disable strong password',
 						value: 'DisableStrongPassword',
 					},
 				],
@@ -1928,7 +1928,7 @@ const updateFields: INodeProperties[] = [
 				type: 'multiOptions',
 			},
 			{
-				displayName: 'Past Projects',
+				displayName: 'Past projects',
 				name: 'pastProjects',
 				default: [],
 				description: 'A list of past projects the user has worked on',
@@ -1939,7 +1939,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'array',
 			},
 			{
-				displayName: 'Postal Code',
+				displayName: 'Postal code',
 				name: 'postalCode',
 				default: '',
 				description: "The postal code for the user's address",
@@ -1953,7 +1953,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Preferred Language',
+				displayName: 'Preferred language',
 				name: 'preferredLanguage',
 				default: '',
 				description: "User's preferred language in ISO 639-1 code",
@@ -1979,7 +1979,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'array',
 			},
 			{
-				displayName: 'Schools Attended',
+				displayName: 'Schools attended',
 				name: 'schools',
 				default: [],
 				description: 'A list of schools the user attended',
@@ -2015,7 +2015,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Street Address',
+				displayName: 'Street address',
 				name: 'streetAddress',
 				default: '',
 				description: "The street address of the user's place of business",
@@ -2029,7 +2029,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Usage Location',
+				displayName: 'Usage location',
 				name: 'usageLocation',
 				default: '',
 				description: 'Two-letter country code where the user is located',
@@ -2044,7 +2044,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'User Principal Name',
+				displayName: 'User principal name',
 				name: 'userPrincipalName',
 				default: '',
 				description: 'The user principal name (UPN)',
@@ -2076,7 +2076,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'User Type',
+				displayName: 'User type',
 				name: 'userType',
 				default: 'Guest',
 				description: 'Classifies the user type',
@@ -2100,7 +2100,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'options',
 			},
 		],
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		routing: {
 			output: {
 				postReceive: [

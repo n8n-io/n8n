@@ -19,31 +19,31 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get information about a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get a list of many users',
 				action: 'Get many users',
 			},
 			{
-				name: "Get User's Profile",
+				name: "Get user's profile",
 				value: 'getProfile',
 				description: "Get a user's profile",
 				action: "Get a user's profile",
 			},
 			{
-				name: "Get User's Status",
+				name: "Get user's status",
 				value: 'getPresence',
 				description: 'Get online status of a user',
 				action: "Get a user's presence status",
 			},
 			{
-				name: 'Look Up by Email',
+				name: 'Look up by email',
 				value: 'lookupByEmail',
 				description: 'Find a user by their email address',
 				action: 'Look up a user by email',
 			},
 			{
-				name: "Update User's Profile",
+				name: "Update user's profile",
 				value: 'updateProfile',
 				description: "Update a user's profile",
 				action: "Update a user's profile",
@@ -72,7 +72,7 @@ export const userFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select a user...',
@@ -120,7 +120,7 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -169,7 +169,7 @@ export const userFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select a user...',
@@ -202,7 +202,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -212,9 +212,9 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldUi',
-				placeholder: 'Add Custom Fields',
+				placeholder: 'Add custom fields',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -223,10 +223,10 @@ export const userFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'id',
 								type: 'options',
 								typeOptions: {
@@ -237,7 +237,7 @@ export const userFields: INodeProperties[] = [
 									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -262,19 +262,19 @@ export const userFields: INodeProperties[] = [
 				description: 'This field can only be changed by admins for users on paid teams',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Set Status',
+				displayName: 'Set status',
 				name: 'status',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -284,11 +284,11 @@ export const userFields: INodeProperties[] = [
 				placeholder: 'Set Status',
 				options: [
 					{
-						displayName: 'Set Status',
+						displayName: 'Set status',
 						name: 'set_status',
 						values: [
 							{
-								displayName: 'Status Emoji',
+								displayName: 'Status emoji',
 								name: 'status_emoji',
 								type: 'string',
 								default: '',
@@ -296,7 +296,7 @@ export const userFields: INodeProperties[] = [
 									'Is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:',
 							},
 							{
-								displayName: 'Status Expiration',
+								displayName: 'Status expiration',
 								name: 'status_expiration',
 								type: 'dateTime',
 								default: '',
@@ -304,7 +304,7 @@ export const userFields: INodeProperties[] = [
 									'The number of minutes to wait until this status expires and is cleared. Optional.',
 							},
 							{
-								displayName: 'Status Text',
+								displayName: 'Status text',
 								name: 'status_text',
 								type: 'string',
 								default: '',

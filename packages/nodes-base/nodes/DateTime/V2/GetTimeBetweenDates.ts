@@ -4,7 +4,7 @@ import { includeInputFields } from './common.descriptions';
 
 export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 	{
-		displayName: 'Start Date',
+		displayName: 'Start date',
 		name: 'startDate',
 		type: 'string',
 		default: '',
@@ -15,7 +15,7 @@ export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'End Date',
+		displayName: 'End date',
 		name: 'endDate',
 		type: 'string',
 		default: '',
@@ -72,7 +72,7 @@ export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 		default: ['day'],
 	},
 	{
-		displayName: 'Output Field Name',
+		displayName: 'Output field name',
 		name: 'outputFieldName',
 		type: 'string',
 		default: 'timeDifference',
@@ -97,7 +97,7 @@ export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 		options: [
 			includeInputFields,
 			{
-				displayName: 'Output as ISO String',
+				displayName: 'Output as ISO string',
 				name: 'isoString',
 				type: 'boolean',
 				default: false,

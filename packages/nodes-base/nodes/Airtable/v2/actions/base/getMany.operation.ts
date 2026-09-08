@@ -14,7 +14,7 @@ import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: true,
@@ -44,7 +44,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Permission Level',
+				displayName: 'Permission level',
 				name: 'permissionLevel',
 				type: 'multiOptions',
 				options: [

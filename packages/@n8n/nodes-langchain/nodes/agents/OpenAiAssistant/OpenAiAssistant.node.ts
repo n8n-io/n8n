@@ -76,11 +76,11 @@ export class OpenAiAssistant implements INodeType {
 				default: 'existing',
 				options: [
 					{
-						name: 'Use New Assistant',
+						name: 'Use new assistant',
 						value: 'new',
 					},
 					{
-						name: 'Use Existing Assistant',
+						name: 'Use existing assistant',
 						value: 'existing',
 					},
 				],
@@ -255,17 +255,17 @@ export class OpenAiAssistant implements INodeType {
 				},
 			},
 			{
-				displayName: 'OpenAI Tools',
+				displayName: 'OpenAI tools',
 				name: 'nativeTools',
 				type: 'multiOptions',
 				default: [],
 				options: [
 					{
-						name: 'Code Interpreter',
+						name: 'Code interpreter',
 						value: 'code_interpreter',
 					},
 					{
-						name: 'Knowledge Retrieval',
+						name: 'Knowledge retrieval',
 						value: 'retrieval',
 					},
 				],
@@ -290,7 +290,7 @@ export class OpenAiAssistant implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
@@ -303,7 +303,7 @@ export class OpenAiAssistant implements INodeType {
 						type: 'string',
 					},
 					{
-						displayName: 'Max Retries',
+						displayName: 'Max retries',
 						name: 'maxRetries',
 						default: 2,
 						description: 'Maximum number of retries to attempt',

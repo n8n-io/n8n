@@ -12,7 +12,7 @@ import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Linked Document Model',
+		displayName: 'Linked document model',
 		name: 'res_model',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -20,13 +20,13 @@ const properties: INodeProperties[] = [
 		description: 'The Odoo model of the document to attach the activity to',
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: { searchListMethod: 'searchModels', searchable: true },
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'id',
 				type: 'string',
 				placeholder: 'e.g. res.partner',
@@ -55,7 +55,7 @@ const properties: INodeProperties[] = [
 		'Type of activity to schedule',
 	),
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'resourceMapper',
 		default: { mappingMode: 'defineBelow', value: null },

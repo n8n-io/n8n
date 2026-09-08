@@ -30,7 +30,7 @@ export const destinationOperations: INodeProperties[] = [
 ];
 
 const unparsedField = {
-	displayName: 'Unparsed Address',
+	displayName: 'Unparsed address',
 	name: 'unparsed',
 	type: 'boolean',
 	description: 'Whether or not the address is specified in a single unparsed string',
@@ -38,7 +38,7 @@ const unparsedField = {
 } as INodeProperties;
 
 const unparsedAddressField = {
-	displayName: 'Destination Address',
+	displayName: 'Destination address',
 	name: 'address',
 	type: 'string',
 	description: "The destination's street address details",
@@ -85,7 +85,7 @@ const unparsedAddressStateField = {
 } as INodeProperties;
 
 const addressNameField = {
-	displayName: 'Address Name',
+	displayName: 'Address name',
 	name: 'addressName',
 	type: 'string',
 	default: '',
@@ -101,7 +101,7 @@ const addressApartmentField = {
 } as INodeProperties;
 
 const addressNoteField = {
-	displayName: 'Address Notes',
+	displayName: 'Address notes',
 	name: 'addressNotes',
 	type: 'string',
 	default: '',
@@ -109,7 +109,7 @@ const addressNoteField = {
 } as INodeProperties;
 
 const addressPostalCodeField = {
-	displayName: 'Postal Code',
+	displayName: 'Postal code',
 	name: 'addressPostalCode',
 	type: 'string',
 	default: '',
@@ -120,11 +120,11 @@ export const destinationExternalField = {
 	displayName: 'Destination',
 	name: 'destination',
 	type: 'fixedCollection',
-	placeholder: 'Add Destination',
+	placeholder: 'Add destination',
 	default: {},
 	options: [
 		{
-			displayName: 'Destination Properties',
+			displayName: 'Destination properties',
 			name: 'destinationProperties',
 			default: {},
 			values: [
@@ -295,10 +295,10 @@ export const destinationFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -310,10 +310,10 @@ export const destinationFields: INodeProperties[] = [
 		options: [addressApartmentField, addressNameField, addressNoteField],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

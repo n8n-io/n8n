@@ -36,13 +36,13 @@ export const description: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve the latest messages in a channel',
 				action: 'Get many messages',
 			},
 			{
-				name: 'React with Emoji',
+				name: 'React with emoji',
 				value: 'react',
 				description: 'React to a message with an emoji',
 				action: 'React with an emoji to a message',
@@ -54,7 +54,7 @@ export const description: INodeProperties[] = [
 				action: 'Send a message',
 			},
 			{
-				name: 'Send and Wait for Response',
+				name: 'Send and wait for response',
 				value: SEND_AND_WAIT_OPERATION,
 				description: 'Send a message and wait for response',
 				action: 'Send message and wait for response',

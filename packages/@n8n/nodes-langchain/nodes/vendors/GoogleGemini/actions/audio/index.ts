@@ -13,13 +13,13 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Analyze Audio',
+				name: 'Analyze audio',
 				value: 'analyze',
 				action: 'Analyze audio',
 				description: 'Take in audio and answer questions about it',
 			},
 			{
-				name: 'Transcribe a Recording',
+				name: 'Transcribe a recording',
 				value: 'transcribe',
 				action: 'Transcribe a recording',
 				description: 'Transcribes audio into the text',

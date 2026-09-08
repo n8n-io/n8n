@@ -120,13 +120,13 @@ export class LmChatMistralCloud implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Maximum Number of Tokens',
+						displayName: 'Maximum number of tokens',
 						name: 'maxTokens',
 						default: -1,
 						description:
@@ -137,7 +137,7 @@ export class LmChatMistralCloud implements INodeType {
 						},
 					},
 					{
-						displayName: 'Sampling Temperature',
+						displayName: 'Sampling temperature',
 						name: 'temperature',
 						default: 0.7,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -146,7 +146,7 @@ export class LmChatMistralCloud implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Max Retries',
+						displayName: 'Max retries',
 						name: 'maxRetries',
 						default: 2,
 						description: 'Maximum number of retries to attempt',
@@ -162,14 +162,14 @@ export class LmChatMistralCloud implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Enable Safe Mode',
+						displayName: 'Enable safe mode',
 						name: 'safeMode',
 						default: false,
 						type: 'boolean',
 						description: 'Whether to inject a safety prompt before all conversations',
 					},
 					{
-						displayName: 'Random Seed',
+						displayName: 'Random seed',
 						name: 'randomSeed',
 						default: undefined,
 						type: 'number',

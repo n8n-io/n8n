@@ -13,7 +13,7 @@ export const customerOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description:
 					'Create a new customer, or update the current one if it already exists (upsert)',
@@ -67,7 +67,7 @@ export const customerFields: INodeProperties[] = [
 		description: 'The unique identifier for the customer',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -79,7 +79,7 @@ export const customerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -97,10 +97,10 @@ export const customerFields: INodeProperties[] = [
 			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -111,7 +111,7 @@ export const customerFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Properties',
+				displayName: 'Custom properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
 				default: {},
@@ -155,7 +155,7 @@ export const customerFields: INodeProperties[] = [
 				description: 'The email address of the user',
 			},
 			{
-				displayName: 'Created At',
+				displayName: 'Created at',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',

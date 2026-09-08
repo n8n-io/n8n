@@ -63,13 +63,13 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiDocument]),
 			{
-				displayName: 'Chunk Size',
+				displayName: 'Chunk size',
 				name: 'chunkSize',
 				type: 'number',
 				default: 1000,
 			},
 			{
-				displayName: 'Chunk Overlap',
+				displayName: 'Chunk overlap',
 				name: 'chunkOverlap',
 				type: 'number',
 				default: 0,
@@ -77,13 +77,13 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Split Code',
+						displayName: 'Split code',
 						name: 'splitCode',
 						default: 'markdown',
 						type: 'options',

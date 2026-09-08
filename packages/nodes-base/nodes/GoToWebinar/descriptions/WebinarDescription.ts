@@ -23,7 +23,7 @@ export const webinarOperations: INodeProperties[] = [
 				action: 'Get a webinar',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many webinars',
 			},
@@ -59,11 +59,11 @@ export const webinarFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Time Range',
+		displayName: 'Time range',
 		name: 'times',
 		type: 'fixedCollection',
 		required: true,
-		placeholder: 'Add Time Range',
+		placeholder: 'Add time range',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -76,18 +76,18 @@ export const webinarFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Times Properties',
+				displayName: 'Times properties',
 				name: 'timesProperties',
 				values: [
 					{
-						displayName: 'Start Time',
+						displayName: 'Start time',
 						name: 'startTime',
 						type: 'dateTime',
 						required: true,
 						default: '',
 					},
 					{
-						displayName: 'End Time',
+						displayName: 'End time',
 						name: 'endTime',
 						type: 'dateTime',
 						required: true,
@@ -98,10 +98,10 @@ export const webinarFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['webinar'],
@@ -117,7 +117,7 @@ export const webinarFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Experience Type',
+				displayName: 'Experience type',
 				name: 'experienceType',
 				type: 'options',
 				default: 'CLASSIC',
@@ -137,20 +137,20 @@ export const webinarFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Is On-Demand',
+				displayName: 'Is on-demand',
 				name: 'isOnDemand',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Is Password Protected',
+				displayName: 'Is password protected',
 				name: 'isPasswordProtected',
 
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone name or ID',
 				name: 'timezone',
 				type: 'options',
 				description:
@@ -163,13 +163,13 @@ export const webinarFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Webinar Type',
+				displayName: 'Webinar type',
 				name: 'type',
 				type: 'options',
 				default: 'single_session',
 				options: [
 					{
-						name: 'Single Session',
+						name: 'Single session',
 						value: 'single_session',
 						description: 'Webinar with one single meeting',
 					},
@@ -194,7 +194,7 @@ export const webinarFields: INodeProperties[] = [
 	//         webinar: delete
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar key',
 		name: 'webinarKey',
 		type: 'string',
 		required: true,
@@ -208,10 +208,10 @@ export const webinarFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['webinar'],
@@ -221,7 +221,7 @@ export const webinarFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Send Cancellation E-Mails',
+				displayName: 'Send cancellation E-mails',
 				name: 'sendCancellationEmails',
 				type: 'boolean',
 				default: false,
@@ -233,7 +233,7 @@ export const webinarFields: INodeProperties[] = [
 	//         webinar: get
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar key',
 		name: 'webinarKey',
 		type: 'string',
 		required: true,
@@ -251,7 +251,7 @@ export const webinarFields: INodeProperties[] = [
 	//         webinar: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -282,10 +282,10 @@ export const webinarFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['webinar'],
@@ -295,26 +295,26 @@ export const webinarFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Time Range',
+				displayName: 'Time range',
 				name: 'times',
 				type: 'fixedCollection',
-				placeholder: 'Add Time Range',
+				placeholder: 'Add time range',
 				required: true,
 				default: {},
 				options: [
 					{
-						displayName: 'Times Properties',
+						displayName: 'Times properties',
 						name: 'timesProperties',
 						values: [
 							{
-								displayName: 'Start Time',
+								displayName: 'Start time',
 								name: 'fromTime',
 								type: 'dateTime',
 								description: 'Start of the datetime range for the webinar',
 								default: '',
 							},
 							{
-								displayName: 'End Time',
+								displayName: 'End time',
 								name: 'toTime',
 								type: 'dateTime',
 								description: 'End of the datetime range for the webinar',
@@ -331,7 +331,7 @@ export const webinarFields: INodeProperties[] = [
 	//         webinar: update
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar key',
 		name: 'webinarKey',
 		type: 'string',
 		required: true,
@@ -345,7 +345,7 @@ export const webinarFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Notify Participants',
+		displayName: 'Notify participants',
 		name: 'notifyParticipants',
 		type: 'boolean',
 		required: true,
@@ -358,10 +358,10 @@ export const webinarFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['webinar'],
@@ -377,7 +377,7 @@ export const webinarFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Experience Type',
+				displayName: 'Experience type',
 				name: 'experienceType',
 				type: 'options',
 				default: 'CLASSIC',
@@ -397,14 +397,14 @@ export const webinarFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Is On-Demand',
+				displayName: 'Is on-demand',
 				name: 'isOnDemand',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the webinar may be watched anytime',
 			},
 			{
-				displayName: 'Is Password Protected',
+				displayName: 'Is password protected',
 				name: 'isPasswordProtected',
 
 				type: 'boolean',
@@ -421,18 +421,18 @@ export const webinarFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Times Properties',
+						displayName: 'Times properties',
 						name: 'timesProperties',
 						values: [
 							{
-								displayName: 'Start Time',
+								displayName: 'Start time',
 								name: 'startTime',
 								type: 'dateTime',
 								required: true,
 								default: '',
 							},
 							{
-								displayName: 'End Time',
+								displayName: 'End time',
 								name: 'endTime',
 								type: 'dateTime',
 								required: true,
@@ -450,7 +450,7 @@ export const webinarFields: INodeProperties[] = [
 				description: 'Name or topic of the webinar',
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone name or ID',
 				name: 'timezone',
 				type: 'options',
 				default: '',
@@ -463,13 +463,13 @@ export const webinarFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Webinar Type',
+				displayName: 'Webinar type',
 				name: 'type',
 				type: 'options',
 				default: 'single_session',
 				options: [
 					{
-						name: 'Single Session',
+						name: 'Single session',
 						value: 'single_session',
 						description: 'Webinar with one single meeting',
 					},

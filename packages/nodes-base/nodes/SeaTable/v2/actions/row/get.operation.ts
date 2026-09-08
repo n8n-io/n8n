@@ -21,7 +21,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -33,7 +33,7 @@ export const properties: INodeProperties[] = [
 					'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
-				displayName: 'Return Column Names',
+				displayName: 'Return column names',
 				name: 'convert',
 				type: 'boolean',
 				default: true,

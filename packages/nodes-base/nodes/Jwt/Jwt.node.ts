@@ -88,7 +88,7 @@ export class Jwt implements INodeType {
 				default: 'sign',
 			},
 			{
-				displayName: 'Use JSON to Build Payload',
+				displayName: 'Use JSON to build payload',
 				name: 'useJson',
 				type: 'boolean',
 				default: false,
@@ -100,10 +100,10 @@ export class Jwt implements INodeType {
 				},
 			},
 			{
-				displayName: 'Payload Claims',
+				displayName: 'Payload claims',
 				name: 'claims',
 				type: 'collection',
-				placeholder: 'Add Claim',
+				placeholder: 'Add claim',
 				default: {},
 				options: [
 					{
@@ -115,7 +115,7 @@ export class Jwt implements INodeType {
 						description: 'Identifies the recipients that the JWT is intended for',
 					},
 					{
-						displayName: 'Expires In',
+						displayName: 'Expires in',
 						name: 'expiresIn',
 						type: 'number',
 						placeholder: 'e.g. 3600',
@@ -142,7 +142,7 @@ export class Jwt implements INodeType {
 						description: 'Unique identifier for the JWT',
 					},
 					{
-						displayName: 'Not Before',
+						displayName: 'Not before',
 						name: 'notBefore',
 						type: 'number',
 						default: 0,
@@ -167,7 +167,7 @@ export class Jwt implements INodeType {
 				},
 			},
 			{
-				displayName: 'Payload Claims (JSON)',
+				displayName: 'Payload claims (JSON)',
 				name: 'claimsJson',
 				type: 'json',
 				description: 'Claims to add to the token in JSON format',
@@ -185,7 +185,7 @@ export class Jwt implements INodeType {
 				},
 			},
 			{
-				displayName: 'Header Claims (JSON)',
+				displayName: 'Header claims (JSON)',
 				name: 'headerClaims',
 				type: 'json',
 				default: '{}',
@@ -226,7 +226,7 @@ export class Jwt implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Return Additional Info',
+						displayName: 'Return additional info',
 						name: 'complete',
 						type: 'boolean',
 						default: false,
@@ -239,7 +239,7 @@ export class Jwt implements INodeType {
 						},
 					},
 					{
-						displayName: 'Ignore Expiration',
+						displayName: 'Ignore expiration',
 						name: 'ignoreExpiration',
 						type: 'boolean',
 						default: false,
@@ -251,7 +251,7 @@ export class Jwt implements INodeType {
 						},
 					},
 					{
-						displayName: 'Ignore Not Before Claim',
+						displayName: 'Ignore not before claim',
 						name: 'ignoreNotBefore',
 						type: 'boolean',
 						default: false,
@@ -263,7 +263,7 @@ export class Jwt implements INodeType {
 						},
 					},
 					{
-						displayName: 'Clock Tolerance',
+						displayName: 'Clock tolerance',
 						name: 'clockTolerance',
 						type: 'number',
 						default: 0,
@@ -293,7 +293,7 @@ export class Jwt implements INodeType {
 						},
 					},
 					{
-						displayName: 'Override Algorithm',
+						displayName: 'Override algorithm',
 						name: 'algorithm',
 						type: 'options',
 						options: [

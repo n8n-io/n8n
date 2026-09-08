@@ -41,7 +41,7 @@ export class QuestDb implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Execute Query',
+						name: 'Execute query',
 						value: 'executeQuery',
 						description: 'Executes a SQL query',
 						action: 'Execute a SQL query',
@@ -123,7 +123,7 @@ export class QuestDb implements INodeType {
 					'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 			{
-				displayName: 'Return Fields',
+				displayName: 'Return fields',
 				name: 'returnFields',
 				type: 'string',
 				displayOptions: {
@@ -138,10 +138,10 @@ export class QuestDb implements INodeType {
 			//         additional fields
 			// ----------------------------------
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -170,7 +170,7 @@ export class QuestDb implements INodeType {
 							'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.questdb/">the docs</a> for more examples.',
 					},
 					{
-						displayName: 'Query Parameters',
+						displayName: 'Query parameters',
 						name: 'queryParams',
 						type: 'string',
 						displayOptions: {
@@ -186,7 +186,7 @@ export class QuestDb implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'hidden',
 				default: {},

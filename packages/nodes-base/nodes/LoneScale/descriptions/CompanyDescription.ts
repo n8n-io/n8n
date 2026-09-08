@@ -25,7 +25,7 @@ export const companyOperations: INodeProperties[] = [
 
 export const companyFields: INodeProperties[] = [
 	{
-		displayName: 'Company Domain',
+		displayName: 'Company domain',
 		name: 'searchDomain',
 		type: 'string',
 		placeholder: 'stripe.com',
@@ -66,7 +66,7 @@ export const companyFields: INodeProperties[] = [
 		description: 'Linkedin universal name / slug (the trailing segment of the company URL)',
 	},
 	{
-		displayName: 'Company Name',
+		displayName: 'Company name',
 		name: 'searchName',
 		type: 'string',
 		displayOptions: {

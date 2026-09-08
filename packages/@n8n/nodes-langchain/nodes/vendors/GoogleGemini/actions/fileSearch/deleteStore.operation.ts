@@ -5,7 +5,7 @@ import { deleteFileSearchStore } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'File Search Store Name',
+		displayName: 'File search store name',
 		name: 'fileSearchStoreName',
 		type: 'string',
 		placeholder: 'e.g. fileSearchStores/abc123',
@@ -14,7 +14,7 @@ export const properties: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Force Delete',
+		displayName: 'Force delete',
 		name: 'force',
 		type: 'boolean',
 		description:

@@ -25,7 +25,7 @@ export const personOperations: INodeProperties[] = [
 				action: 'Get a person',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many people',
 			},
@@ -45,11 +45,11 @@ export const personFields: INodeProperties[] = [
 	// ----------------------------------------
 	makeSimpleField('person', 'create'),
 	{
-		displayName: 'Email Address', // on create, only _one_ must be passed in
+		displayName: 'Email address', // on create, only _one_ must be passed in
 		name: 'email_addresses',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Email Address Field',
+		placeholder: 'Add email address field',
 		description: 'Person’s email addresses',
 		displayOptions: {
 			show: {
@@ -59,7 +59,7 @@ export const personFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Email Addresses Fields',
+				displayName: 'Email addresses fields',
 				name: 'email_addresses_fields',
 				values: [
 					{
@@ -88,15 +88,15 @@ export const personFields: INodeProperties[] = [
 								value: 'bouncing',
 							},
 							{
-								name: 'Previous Bounce',
+								name: 'Previous bounce',
 								value: 'previous bounce',
 							},
 							{
-								name: 'Previous Spam Complaint',
+								name: 'Previous spam complaint',
 								value: 'previous spam complaint',
 							},
 							{
-								name: 'Spam Complaint',
+								name: 'Spam complaint',
 								value: 'spam complaint',
 							},
 							{
@@ -114,10 +114,10 @@ export const personFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -151,7 +151,7 @@ export const personFields: INodeProperties[] = [
 	//              person: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -202,10 +202,10 @@ export const personFields: INodeProperties[] = [
 	},
 	makeSimpleField('person', 'update'),
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

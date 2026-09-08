@@ -77,7 +77,7 @@ export class Taiga implements INodeType {
 						value: 'task',
 					},
 					{
-						name: 'User Story',
+						name: 'User story',
 						value: 'userStory',
 					},
 				],

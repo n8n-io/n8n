@@ -95,11 +95,11 @@ export class HubspotV2 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'API Key',
+							name: 'API key',
 							value: 'apiKey',
 						},
 						{
-							name: 'Service Key',
+							name: 'Service key',
 							value: 'appToken',
 						},
 						{
@@ -124,7 +124,7 @@ export class HubspotV2 implements INodeType {
 							value: 'contact',
 						},
 						{
-							name: 'Contact List',
+							name: 'Contact list',
 							value: 'contactList',
 						},
 						{

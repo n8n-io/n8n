@@ -73,7 +73,7 @@ const versionDescription: INodeTypeDescription = {
 					value: 'oAuth2',
 				},
 				{
-					name: 'Service Account',
+					name: 'Service account',
 					value: 'serviceAccount',
 				},
 			],
@@ -98,7 +98,7 @@ const versionDescription: INodeTypeDescription = {
 					value: 'message',
 				},
 				{
-					name: 'Message Label',
+					name: 'Message label',
 					value: 'messageLabel',
 				},
 			],

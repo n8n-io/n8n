@@ -68,7 +68,7 @@ export class MemoryPostgresChat implements INodeType {
 			scopedSessionHint(1.4),
 			sessionKeyProperty,
 			{
-				displayName: 'Table Name',
+				displayName: 'Table name',
 				name: 'tableName',
 				type: 'string',
 				default: 'n8n_chat_histories',

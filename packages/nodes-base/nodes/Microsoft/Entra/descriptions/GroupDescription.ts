@@ -85,7 +85,7 @@ export const groupOperations: INodeProperties[] = [
 				action: 'Get group',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of groups',
 				routing: {
@@ -139,7 +139,7 @@ export const groupOperations: INodeProperties[] = [
 
 const createFields: INodeProperties[] = [
 	{
-		displayName: 'Group Type',
+		displayName: 'Group type',
 		name: 'groupType',
 		default: '',
 		displayOptions: {
@@ -183,7 +183,7 @@ const createFields: INodeProperties[] = [
 		type: 'options',
 	},
 	{
-		displayName: 'Group Name',
+		displayName: 'Group name',
 		name: 'displayName',
 		default: '',
 		description: 'The name to display in the address book for the group',
@@ -219,7 +219,7 @@ const createFields: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
-		displayName: 'Group Email Address',
+		displayName: 'Group email address',
 		name: 'mailNickname',
 		default: '',
 		description: 'The mail alias for the group. Only enter the local-part without the domain.',
@@ -268,7 +268,7 @@ const createFields: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
-		displayName: 'Mail Enabled',
+		displayName: 'Mail enabled',
 		name: 'mailEnabled',
 		default: false,
 		description: 'Whether the group is mail-enabled',
@@ -290,7 +290,7 @@ const createFields: INodeProperties[] = [
 		validateType: 'boolean',
 	},
 	{
-		displayName: 'Membership Type',
+		displayName: 'Membership type',
 		name: 'membershipType',
 		default: '',
 		displayOptions: {
@@ -333,7 +333,7 @@ const createFields: INodeProperties[] = [
 		type: 'options',
 	},
 	{
-		displayName: 'Security Enabled',
+		displayName: 'Security enabled',
 		name: 'securityEnabled',
 		default: true,
 		description: 'Whether the group is a security group',
@@ -354,7 +354,7 @@ const createFields: INodeProperties[] = [
 		validateType: 'boolean',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		default: {},
 		displayOptions: {
@@ -365,7 +365,7 @@ const createFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignable to Role',
+				displayName: 'Assignable to role',
 				name: 'isAssignableToRole',
 				default: false,
 				description: 'Whether Microsoft Entra roles can be assigned to the group',
@@ -430,7 +430,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Membership Rule',
+				displayName: 'Membership rule',
 				name: 'membershipRule',
 				default: '',
 				description:
@@ -451,7 +451,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Membership Rule Processing State',
+				displayName: 'Membership rule processing state',
 				name: 'membershipRuleProcessingState',
 				default: 'On',
 				description: 'Indicates whether the dynamic membership processing is on or paused',
@@ -480,7 +480,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'options',
 			},
 			{
-				displayName: 'Preferred Data Location',
+				displayName: 'Preferred data location',
 				name: 'preferredDataLocation',
 				default: '',
 				description:
@@ -494,7 +494,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Unique Name',
+				displayName: 'Unique name',
 				name: 'uniqueName',
 				default: '',
 				description:
@@ -521,7 +521,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'options',
 			},
 		],
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		routing: {
 			output: {
 				postReceive: [
@@ -575,7 +575,7 @@ const createFields: INodeProperties[] = [
 
 const deleteFields: INodeProperties[] = [
 	{
-		displayName: 'Group to Delete',
+		displayName: 'Group to delete',
 		name: 'group',
 		default: {
 			mode: 'list',
@@ -589,7 +589,7 @@ const deleteFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -616,7 +616,7 @@ const deleteFields: INodeProperties[] = [
 
 const getFields: INodeProperties[] = [
 	{
-		displayName: 'Group to Get',
+		displayName: 'Group to get',
 		name: 'group',
 		default: {
 			mode: 'list',
@@ -630,7 +630,7 @@ const getFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -681,7 +681,7 @@ const getFields: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Selected Fields',
+				name: 'Selected fields',
 				value: 'fields',
 			},
 		],
@@ -725,7 +725,7 @@ const getFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Members',
+				displayName: 'Include members',
 				name: 'includeMembers',
 				default: false,
 				routing: {
@@ -740,14 +740,14 @@ const getFields: INodeProperties[] = [
 				validateType: 'boolean',
 			},
 		],
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];
 
 const getAllFields: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
@@ -858,7 +858,7 @@ const getAllFields: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Selected Fields',
+				name: 'Selected fields',
 				value: 'fields',
 			},
 		],
@@ -894,7 +894,7 @@ const getAllFields: INodeProperties[] = [
 
 const updateFields: INodeProperties[] = [
 	{
-		displayName: 'Group to Update',
+		displayName: 'Group to update',
 		name: 'group',
 		default: {
 			mode: 'list',
@@ -908,7 +908,7 @@ const updateFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -932,7 +932,7 @@ const updateFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		default: {},
 		displayOptions: {
@@ -943,7 +943,7 @@ const updateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Allow External Senders',
+				displayName: 'Allow external senders',
 				name: 'allowExternalSenders',
 				default: false,
 				description:
@@ -952,7 +952,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'boolean',
 			},
 			{
-				displayName: 'Auto Subscribe New Members',
+				displayName: 'Auto subscribe new members',
 				name: 'autoSubscribeNewMembers',
 				default: false,
 				description:
@@ -975,7 +975,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Group Name',
+				displayName: 'Group name',
 				name: 'displayName',
 				default: '',
 				description: 'The name to display in the address book for the group',
@@ -1004,7 +1004,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Group Email Address',
+				displayName: 'Group email address',
 				name: 'mailNickname',
 				default: '',
 				description: 'The mail alias for the group. Only enter the local-part without the domain.',
@@ -1046,7 +1046,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Membership Rule',
+				displayName: 'Membership rule',
 				name: 'membershipRule',
 				default: '',
 				description:
@@ -1062,7 +1062,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Membership Rule Processing State',
+				displayName: 'Membership rule processing state',
 				name: 'membershipRuleProcessingState',
 				default: 'On',
 				description: 'Indicates whether the dynamic membership processing is on or paused',
@@ -1086,7 +1086,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'options',
 			},
 			{
-				displayName: 'Preferred Data Location',
+				displayName: 'Preferred data location',
 				name: 'preferredDataLocation',
 				default: '',
 				description:
@@ -1101,7 +1101,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Security Enabled',
+				displayName: 'Security enabled',
 				name: 'securityEnabled',
 				default: true,
 				description: 'Whether the group is a security group',
@@ -1115,7 +1115,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'boolean',
 			},
 			{
-				displayName: 'Unique Name',
+				displayName: 'Unique name',
 				name: 'uniqueName',
 				default: '',
 				description:
@@ -1154,7 +1154,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'options',
 			},
 		],
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		routing: {
 			output: {
 				postReceive: [

@@ -31,7 +31,7 @@ export const deployOperations: INodeProperties[] = [
 				action: 'Get a deployment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many deployments',
 				action: 'Get many deployments',
@@ -43,7 +43,7 @@ export const deployOperations: INodeProperties[] = [
 
 export const deployFields: INodeProperties[] = [
 	{
-		displayName: 'Site Name or ID',
+		displayName: 'Site name or ID',
 		name: 'siteId',
 		required: true,
 		type: 'options',
@@ -75,7 +75,7 @@ export const deployFields: INodeProperties[] = [
 	},
 	// ----- Get All Deploys ------ //
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -107,10 +107,10 @@ export const deployFields: INodeProperties[] = [
 	},
 	// ---- Create Site Deploy ---- //
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Fields',
+		placeholder: 'Add fields',
 		default: {},
 		displayOptions: {
 			show: {

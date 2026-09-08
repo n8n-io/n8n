@@ -86,7 +86,7 @@ export const itemResourceLocator: INodeProperties = {
 
 export const paginationParameters: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',

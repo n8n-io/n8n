@@ -14,7 +14,7 @@ export const description: SpreadSheetProperties = [
 		required: true,
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {

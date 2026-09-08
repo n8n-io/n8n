@@ -23,7 +23,7 @@ export const pushFields: INodeProperties[] = [
 					'The branch to switch to before pushing. If empty or not set, will push current branch.',
 			},
 			{
-				displayName: 'Target Repository',
+				displayName: 'Target repository',
 				name: 'targetRepository',
 				type: 'string',
 				default: '',

@@ -37,13 +37,13 @@ export const organizationOperations: INodeProperties[] = [
 				action: 'Get an organization',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many organizations',
 				action: 'Get many organizations',
 			},
 			{
-				name: 'Get Related Data',
+				name: 'Get related data',
 				value: 'getRelatedData',
 				description: 'Get data related to the organization',
 				action: 'Get data related to an organization',
@@ -77,10 +77,10 @@ export const organizationFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -97,7 +97,7 @@ export const organizationFields: INodeProperties[] = [
 				description: 'Details about the organization, such as the address',
 			},
 			{
-				displayName: 'Domain Names',
+				displayName: 'Domain names',
 				name: 'domain_names',
 				type: 'string',
 				default: '',
@@ -110,9 +110,9 @@ export const organizationFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Organization Fields',
+				displayName: 'Organization fields',
 				name: 'organizationFieldsUi',
-				placeholder: 'Add Organization Field',
+				placeholder: 'Add organization field',
 				description: "Values of custom fields in the organization's profile",
 				type: 'fixedCollection',
 				typeOptions: {
@@ -125,7 +125,7 @@ export const organizationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								description:
@@ -146,7 +146,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -175,10 +175,10 @@ export const organizationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -195,7 +195,7 @@ export const organizationFields: INodeProperties[] = [
 				description: 'Details about the organization, such as the address',
 			},
 			{
-				displayName: 'Domain Names',
+				displayName: 'Domain names',
 				name: 'domain_names',
 				type: 'string',
 				default: '',
@@ -214,9 +214,9 @@ export const organizationFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Organization Fields',
+				displayName: 'Organization fields',
 				name: 'organizationFieldsUi',
-				placeholder: 'Add Organization Field',
+				placeholder: 'Add organization field',
 				description: "Values of custom fields in the organization's profile",
 				type: 'fixedCollection',
 				typeOptions: {
@@ -229,7 +229,7 @@ export const organizationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								description:
@@ -250,7 +250,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -282,7 +282,7 @@ export const organizationFields: INodeProperties[] = [
 	/*                                   organization:getAll                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

@@ -31,7 +31,7 @@ export const storyManagementOperations: INodeProperties[] = [
 				action: 'Get a story',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many stories',
 				action: 'Get many stories',
@@ -311,7 +311,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -349,7 +349,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -387,7 +387,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -406,7 +406,7 @@ export const storyManagementFields: INodeProperties[] = [
 			'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -442,7 +442,7 @@ export const storyManagementFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -453,7 +453,7 @@ export const storyManagementFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Starts With',
+				displayName: 'Starts with',
 				name: 'starts_with',
 				type: 'string',
 				default: '',
@@ -466,7 +466,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:publish                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -535,7 +535,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:unpublish                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {

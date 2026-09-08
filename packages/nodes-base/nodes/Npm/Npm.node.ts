@@ -40,7 +40,7 @@ export class Npm implements INodeType {
 						value: 'package',
 					},
 					{
-						name: 'Distribution Tag',
+						name: 'Distribution tag',
 						value: 'distTag',
 					},
 				],

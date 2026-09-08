@@ -31,7 +31,7 @@ export const productOperations: INodeProperties[] = [
 				action: 'Get a product',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many products',
 				action: 'Get many products',
@@ -52,7 +52,7 @@ export const productFields: INodeProperties[] = [
 	//             product: create
 	// ----------------------------------------
 	{
-		displayName: 'Asset Type Name or ID',
+		displayName: 'Asset type name or ID',
 		name: 'assetTypeId',
 		type: 'options',
 		description:
@@ -83,10 +83,10 @@ export const productFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -109,7 +109,7 @@ export const productFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Mode of Procurement',
+				displayName: 'Mode of procurement',
 				name: 'mode_of_procurement',
 				type: 'options',
 				default: 'Buy',
@@ -135,11 +135,11 @@ export const productFields: INodeProperties[] = [
 				default: 'In Production',
 				options: [
 					{
-						name: 'In Production',
+						name: 'In production',
 						value: 'In Production',
 					},
 					{
-						name: 'In Pipeline',
+						name: 'In pipeline',
 						value: 'In Pipeline',
 					},
 					{
@@ -191,7 +191,7 @@ export const productFields: INodeProperties[] = [
 	//             product: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -239,10 +239,10 @@ export const productFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -252,7 +252,7 @@ export const productFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Asset Type Name or ID',
+				displayName: 'Asset type name or ID',
 				name: 'asset_type_id',
 				type: 'options',
 				description:
@@ -276,7 +276,7 @@ export const productFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Mode of Procurement',
+				displayName: 'Mode of procurement',
 				name: 'mode_of_procurement',
 				type: 'options',
 				default: 'Buy',
@@ -308,11 +308,11 @@ export const productFields: INodeProperties[] = [
 				default: 'In Production',
 				options: [
 					{
-						name: 'In Production',
+						name: 'In production',
 						value: 'In Production',
 					},
 					{
-						name: 'In Pipeline',
+						name: 'In pipeline',
 						value: 'In Pipeline',
 					},
 					{

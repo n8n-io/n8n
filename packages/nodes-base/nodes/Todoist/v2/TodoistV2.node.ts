@@ -25,17 +25,17 @@ import {
 import { todoistApiGetAllRequest } from '../GenericFunctions';
 
 const TODOIST_COLOR_OPTIONS: INodePropertyOptions[] = [
-	{ name: 'Berry Red', value: 'berry_red' },
+	{ name: 'Berry red', value: 'berry_red' },
 	{ name: 'Red', value: 'red' },
 	{ name: 'Orange', value: 'orange' },
 	{ name: 'Yellow', value: 'yellow' },
-	{ name: 'Olive Green', value: 'olive_green' },
-	{ name: 'Lime Green', value: 'lime_green' },
+	{ name: 'Olive green', value: 'olive_green' },
+	{ name: 'Lime green', value: 'lime_green' },
 	{ name: 'Green', value: 'green' },
-	{ name: 'Mint Green', value: 'mint_green' },
+	{ name: 'Mint green', value: 'mint_green' },
 	{ name: 'Teal', value: 'teal' },
-	{ name: 'Sky Blue', value: 'sky_blue' },
-	{ name: 'Light Blue', value: 'light_blue' },
+	{ name: 'Sky blue', value: 'sky_blue' },
+	{ name: 'Light blue', value: 'light_blue' },
 	{ name: 'Blue', value: 'blue' },
 	{ name: 'Grape', value: 'grape' },
 	{ name: 'Violet', value: 'violet' },
@@ -88,7 +88,7 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'API Key',
+					name: 'API key',
 					value: 'apiKey',
 				},
 				{
@@ -176,7 +176,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get a task',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get many tasks',
 					action: 'Get many tasks',
@@ -188,7 +188,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Move a task',
 				},
 				{
-					name: 'Quick Add',
+					name: 'Quick add',
 					value: 'quickAdd',
 					description: 'Quick add a task using natural language',
 					action: 'Quick add a task',
@@ -246,13 +246,13 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get a project',
 				},
 				{
-					name: 'Get Collaborators',
+					name: 'Get collaborators',
 					value: 'getCollaborators',
 					description: 'Get project collaborators',
 					action: 'Get project collaborators',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get many projects',
 					action: 'Get many projects',
@@ -304,7 +304,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get a section',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get many sections',
 					action: 'Get many sections',
@@ -350,7 +350,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get a comment',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get many comments',
 					action: 'Get many comments',
@@ -396,7 +396,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get a label',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get many labels',
 					action: 'Get many labels',
@@ -436,7 +436,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Delete a reminder',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get many reminders',
 					action: 'Get many reminders',
@@ -464,14 +464,14 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Project Name or ID',
+			displayName: 'Project name or ID',
 			name: 'project',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
 			required: true,
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					placeholder: 'Select a project...',
@@ -496,7 +496,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The destination project. Choose from the list, or specify an ID.',
 		},
 		{
-			displayName: 'Section Name or ID',
+			displayName: 'Section name or ID',
 			name: 'section',
 			type: 'options',
 			typeOptions: {
@@ -517,7 +517,7 @@ const versionDescription: INodeTypeDescription = {
 				'Section to which you want move the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'options',
 			type: 'collection',
 			placeholder: 'Add option',
@@ -531,7 +531,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'Section Name or ID',
+					displayName: 'Section name or ID',
 					name: 'section',
 					type: 'options',
 					typeOptions: {
@@ -543,7 +543,7 @@ const versionDescription: INodeTypeDescription = {
 						'The destination section. The task becomes the last root task of the section. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Parent Name or ID',
+					displayName: 'Parent name or ID',
 					name: 'parent',
 					type: 'options',
 					typeOptions: {
@@ -558,7 +558,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-			displayName: 'Label Names',
+			displayName: 'Label names',
 			name: 'labels',
 			type: 'multiOptions',
 			typeOptions: {
@@ -610,10 +610,10 @@ const versionDescription: INodeTypeDescription = {
 				'Natural language text for quick adding task (e.g., "Buy milk @Grocery #shopping tomorrow"). It can include a due date in free form text, a project name starting with the "#" character (without spaces), a label starting with the "@" character, an assignee starting with the "+" character, a priority (e.g., p1), a deadline between "{}" (e.g. {in 3 days}), or a description starting from "//" until the end of the text.',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -637,7 +637,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'The date of the reminder, added in free form text',
 				},
 				{
-					displayName: 'Auto Reminder',
+					displayName: 'Auto reminder',
 					name: 'auto_reminder',
 					type: 'boolean',
 					default: false,
@@ -648,7 +648,7 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'options',
 			type: 'collection',
 			placeholder: 'Add option',
@@ -668,14 +668,14 @@ const versionDescription: INodeTypeDescription = {
 					description: 'A description for the task',
 				},
 				{
-					displayName: 'Due Date Time',
+					displayName: 'Due date time',
 					name: 'dueDateTime',
 					type: 'dateTime',
 					default: '',
 					description: 'Specific date and time in RFC3339 format in UTC',
 				},
 				{
-					displayName: 'Due String Locale',
+					displayName: 'Due string locale',
 					name: 'dueLang',
 					type: 'string',
 					default: '',
@@ -683,7 +683,7 @@ const versionDescription: INodeTypeDescription = {
 						'2-letter code specifying language in case due_string is not written in English',
 				},
 				{
-					displayName: 'Due String',
+					displayName: 'Due string',
 					name: 'dueString',
 					type: 'string',
 					default: '',
@@ -691,7 +691,7 @@ const versionDescription: INodeTypeDescription = {
 						'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 				},
 				{
-					displayName: 'Parent Name or ID',
+					displayName: 'Parent name or ID',
 					name: 'parentId',
 					type: 'options',
 					typeOptions: {
@@ -714,7 +714,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Task priority from 1 (normal) to 4 (urgent)',
 				},
 				{
-					displayName: 'Section Name or ID',
+					displayName: 'Section name or ID',
 					name: 'section',
 					type: 'options',
 					typeOptions: {
@@ -733,7 +733,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Non-zero integer used to sort tasks under the same parent',
 				},
 				{
-					displayName: 'Due Date',
+					displayName: 'Due date',
 					name: 'dueDate',
 					type: 'string',
 					default: '',
@@ -755,7 +755,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Positive integer for task duration (must be used with Duration Unit)',
 				},
 				{
-					displayName: 'Duration Unit',
+					displayName: 'Duration unit',
 					name: 'durationUnit',
 					type: 'options',
 					options: [
@@ -772,7 +772,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Unit of time for duration (must be used with Duration)',
 				},
 				{
-					displayName: 'Deadline Date',
+					displayName: 'Deadline date',
 					name: 'deadlineDate',
 					type: 'string',
 					default: '',
@@ -782,7 +782,7 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Return All',
+			displayName: 'Return all',
 			name: 'returnAll',
 			type: 'boolean',
 			displayOptions: {
@@ -841,7 +841,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'A list of the task IDs to retrieve, this should be a comma-separated list',
 				},
 				{
-					displayName: 'Label Name or ID',
+					displayName: 'Label name or ID',
 					name: 'labelId',
 					type: 'options',
 					typeOptions: {
@@ -860,7 +860,7 @@ const versionDescription: INodeTypeDescription = {
 						'IETF language tag defining what language filter is written in, if differs from default English',
 				},
 				{
-					displayName: 'Parent Name or ID',
+					displayName: 'Parent name or ID',
 					name: 'parentId',
 					type: 'options',
 					typeOptions: {
@@ -872,7 +872,7 @@ const versionDescription: INodeTypeDescription = {
 						'Filter tasks by parent task ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Project Name or ID',
+					displayName: 'Project name or ID',
 					name: 'projectId',
 					type: 'options',
 					typeOptions: {
@@ -883,7 +883,7 @@ const versionDescription: INodeTypeDescription = {
 						'Filter tasks by project ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Section Name or ID',
+					displayName: 'Section name or ID',
 					name: 'sectionId',
 					type: 'options',
 					typeOptions: {
@@ -897,10 +897,10 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'updateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -924,14 +924,14 @@ const versionDescription: INodeTypeDescription = {
 					description: 'A description for the task',
 				},
 				{
-					displayName: 'Due Date Time',
+					displayName: 'Due date time',
 					name: 'dueDateTime',
 					type: 'dateTime',
 					default: '',
 					description: 'Specific date and time in RFC3339 format in UTC',
 				},
 				{
-					displayName: 'Due String Locale',
+					displayName: 'Due string locale',
 					name: 'dueLang',
 					type: 'string',
 					default: '',
@@ -939,7 +939,7 @@ const versionDescription: INodeTypeDescription = {
 						'2-letter code specifying language in case due_string is not written in English',
 				},
 				{
-					displayName: 'Due String',
+					displayName: 'Due string',
 					name: 'dueString',
 					type: 'string',
 					default: '',
@@ -947,7 +947,7 @@ const versionDescription: INodeTypeDescription = {
 						'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 				},
 				{
-					displayName: 'Due String Locale',
+					displayName: 'Due string locale',
 					name: 'dueLang',
 					type: 'string',
 					default: '',
@@ -956,7 +956,7 @@ const versionDescription: INodeTypeDescription = {
 				},
 				{
 					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-					displayName: 'Label Names',
+					displayName: 'Label names',
 					name: 'labels',
 					type: 'multiOptions',
 					description:
@@ -985,7 +985,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Non-zero integer used to sort tasks under the same parent',
 				},
 				{
-					displayName: 'Due Date',
+					displayName: 'Due date',
 					name: 'dueDate',
 					type: 'string',
 					default: '',
@@ -1007,7 +1007,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Positive integer for task duration (must be used with Duration Unit)',
 				},
 				{
-					displayName: 'Duration Unit',
+					displayName: 'Duration unit',
 					name: 'durationUnit',
 					type: 'options',
 					options: [
@@ -1024,7 +1024,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Unit of time for duration (must be used with Duration)',
 				},
 				{
-					displayName: 'Deadline Date',
+					displayName: 'Deadline date',
 					name: 'deadlineDate',
 					type: 'string',
 					default: '',
@@ -1063,10 +1063,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Name of the project',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'projectOptions',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1084,7 +1084,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'The color of the project',
 				},
 				{
-					displayName: 'Is Favorite',
+					displayName: 'Is favorite',
 					name: 'is_favorite',
 					type: 'boolean',
 					default: false,
@@ -1098,7 +1098,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Parent project ID',
 				},
 				{
-					displayName: 'View Style',
+					displayName: 'View style',
 					name: 'view_style',
 					type: 'options',
 					options: [
@@ -1117,10 +1117,10 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'projectUpdateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1145,14 +1145,14 @@ const versionDescription: INodeTypeDescription = {
 					description: 'The color of the project',
 				},
 				{
-					displayName: 'Is Favorite',
+					displayName: 'Is favorite',
 					name: 'is_favorite',
 					type: 'boolean',
 					default: false,
 					description: 'Whether the project is a favorite',
 				},
 				{
-					displayName: 'View Style',
+					displayName: 'View style',
 					name: 'view_style',
 					type: 'options',
 					options: [
@@ -1185,14 +1185,14 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Project Name or ID',
+			displayName: 'Project name or ID',
 			name: 'sectionProject',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
 			required: true,
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					placeholder: 'Select a project...',
@@ -1231,10 +1231,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Name of the section',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'sectionOptions',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1253,10 +1253,10 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'sectionUpdateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1278,7 +1278,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Filters',
 			name: 'sectionFilters',
 			type: 'collection',
-			placeholder: 'Add Filter',
+			placeholder: 'Add filter',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1288,7 +1288,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'Project Name or ID',
+					displayName: 'Project name or ID',
 					name: 'project_id',
 					type: 'options',
 					typeOptions: {
@@ -1346,10 +1346,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Comment content',
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'commentUpdateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1374,7 +1374,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Filters',
 			name: 'commentFilters',
 			type: 'collection',
-			placeholder: 'Add Filter',
+			placeholder: 'Add filter',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1428,10 +1428,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Name of the label',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'labelOptions',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1456,7 +1456,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Label order',
 				},
 				{
-					displayName: 'Is Favorite',
+					displayName: 'Is favorite',
 					name: 'is_favorite',
 					type: 'boolean',
 					default: false,
@@ -1465,10 +1465,10 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'labelUpdateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1500,7 +1500,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Label order',
 				},
 				{
-					displayName: 'Is Favorite',
+					displayName: 'Is favorite',
 					name: 'is_favorite',
 					type: 'boolean',
 					default: false,
@@ -1537,27 +1537,27 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The ID of the task to attach reminder to',
 		},
 		{
-			displayName: 'Due Date Type',
+			displayName: 'Due date type',
 			name: 'dueDateType',
 			type: 'options',
 			options: [
 				{
-					name: 'Natural Language',
+					name: 'Natural language',
 					value: 'natural_language',
 					description: 'Human-readable date and time (e.g., "tomorrow 2pm")',
 				},
 				{
-					name: 'Full-Day Date',
+					name: 'Full-day date',
 					value: 'full_day',
 					description: 'Date without specific time (floating)',
 				},
 				{
-					name: 'Floating Date with Time',
+					name: 'Floating date with time',
 					value: 'floating_time',
 					description: 'Date and time without timezone',
 				},
 				{
-					name: 'Fixed Timezone Date with Time',
+					name: 'Fixed timezone date with time',
 					value: 'fixed_timezone',
 					description: 'Date and time with specific timezone',
 				},
@@ -1573,7 +1573,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'How to specify when the reminder should trigger',
 		},
 		{
-			displayName: 'Natural Language Representation',
+			displayName: 'Natural language representation',
 			name: 'natural_language_representation',
 			type: 'string',
 			default: '',
@@ -1605,7 +1605,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Full-day date in YYYY-MM-DD format',
 		},
 		{
-			displayName: 'Date Time',
+			displayName: 'Date time',
 			name: 'datetime',
 			type: 'dateTime',
 			default: '',
@@ -1620,7 +1620,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Floating date and time (no timezone)',
 		},
 		{
-			displayName: 'Date Time',
+			displayName: 'Date time',
 			name: 'datetime',
 			type: 'dateTime',
 			default: '',
@@ -1651,10 +1651,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Timezone for the fixed timezone date',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'reminderOptions',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1681,14 +1681,14 @@ const versionDescription: INodeTypeDescription = {
 					description: 'The reminder type',
 				},
 				{
-					displayName: 'Minute Offset',
+					displayName: 'Minute offset',
 					name: 'minute_offset',
 					type: 'number',
 					default: 0,
 					description: 'Minutes before the task due date',
 				},
 				{
-					displayName: 'Notify User ID',
+					displayName: 'Notify user ID',
 					name: 'notify_uid',
 					type: 'string',
 					default: '',
@@ -1697,10 +1697,10 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'reminderUpdateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -1713,11 +1713,11 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Due',
 					name: 'due',
 					type: 'collection',
-					placeholder: 'Add Due Date Option',
+					placeholder: 'Add due date option',
 					default: {},
 					options: [
 						{
-							displayName: 'Natural Language',
+							displayName: 'Natural language',
 							name: 'string',
 							type: 'string',
 							default: '',
@@ -1733,7 +1733,7 @@ const versionDescription: INodeTypeDescription = {
 							description: 'Specific date in YYYY-MM-DD format',
 						},
 						{
-							displayName: 'Date Time',
+							displayName: 'Date time',
 							name: 'datetime',
 							type: 'dateTime',
 							default: '',
@@ -1768,14 +1768,14 @@ const versionDescription: INodeTypeDescription = {
 					description: 'The reminder type',
 				},
 				{
-					displayName: 'Minute Offset',
+					displayName: 'Minute offset',
 					name: 'minute_offset',
 					type: 'number',
 					default: 0,
 					description: 'Minutes before the task due date',
 				},
 				{
-					displayName: 'Notify User ID',
+					displayName: 'Notify user ID',
 					name: 'notify_uid',
 					type: 'string',
 					default: '',

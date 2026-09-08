@@ -101,10 +101,10 @@ export const goalKeyResultFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -126,7 +126,7 @@ export const goalKeyResultFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Steps Start',
+				displayName: 'Steps start',
 				name: 'stepsStart',
 				type: 'number',
 				typeOptions: {
@@ -136,7 +136,7 @@ export const goalKeyResultFields: INodeProperties[] = [
 				description: 'Required for Percentage, Automatic, Number and Currency',
 			},
 			{
-				displayName: 'Steps End',
+				displayName: 'Steps end',
 				name: 'stepsEnd',
 				type: 'number',
 				typeOptions: {
@@ -166,7 +166,7 @@ export const goalKeyResultFields: INodeProperties[] = [
 	/*                                goalKeyResult:delete                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Key Result ID',
+		displayName: 'Key result ID',
 		name: 'keyResult',
 		type: 'string',
 		default: '',
@@ -183,7 +183,7 @@ export const goalKeyResultFields: INodeProperties[] = [
 	/*                                goalKeyResult:update                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Key Result ID',
+		displayName: 'Key result ID',
 		name: 'keyResult',
 		type: 'string',
 		default: '',
@@ -196,10 +196,10 @@ export const goalKeyResultFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -221,7 +221,7 @@ export const goalKeyResultFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Steps Current',
+				displayName: 'Steps current',
 				name: 'stepsCurrent',
 				type: 'number',
 				typeOptions: {
@@ -230,7 +230,7 @@ export const goalKeyResultFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Steps End',
+				displayName: 'Steps end',
 				name: 'stepsEnd',
 				type: 'number',
 				typeOptions: {
@@ -239,7 +239,7 @@ export const goalKeyResultFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Steps Start',
+				displayName: 'Steps start',
 				name: 'stepsStart',
 				type: 'number',
 				typeOptions: {

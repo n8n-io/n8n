@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const vendorAdditionalFieldsOptions: INodeProperties[] = [
 	{
-		displayName: 'Account Number',
+		displayName: 'Account number',
 		name: 'AcctNum',
 		type: 'string',
 		default: '',
@@ -22,9 +22,9 @@ export const vendorAdditionalFieldsOptions: INodeProperties[] = [
 		default: 0,
 	},
 	{
-		displayName: 'Billing Address',
+		displayName: 'Billing address',
 		name: 'BillAddr',
-		placeholder: 'Add Billing Address Fields',
+		placeholder: 'Add billing address fields',
 		type: 'fixedCollection',
 		default: {},
 		options: [
@@ -45,7 +45,7 @@ export const vendorAdditionalFieldsOptions: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'PostalCode',
 						type: 'string',
 						default: '',
@@ -63,7 +63,7 @@ export const vendorAdditionalFieldsOptions: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Subdivision Code',
+						displayName: 'Country subdivision code',
 						name: 'CountrySubDivisionCode',
 						type: 'string',
 						default: '',
@@ -73,37 +73,37 @@ export const vendorAdditionalFieldsOptions: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Company Name',
+		displayName: 'Company name',
 		name: 'CompanyName',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Family Name',
+		displayName: 'Family name',
 		name: 'FamilyName',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Given Name',
+		displayName: 'Given name',
 		name: 'GivenName',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Primary Email Address',
+		displayName: 'Primary email address',
 		name: 'PrimaryEmailAddr',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Primary Phone',
+		displayName: 'Primary phone',
 		name: 'PrimaryPhone',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Print-On-Check Name',
+		displayName: 'Print-on-check name',
 		name: 'PrintOnCheckName',
 		description: 'Name of the vendor as printed on a check',
 		type: 'string',

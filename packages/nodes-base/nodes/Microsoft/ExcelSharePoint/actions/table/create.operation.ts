@@ -17,7 +17,7 @@ const properties: INodeProperties[] = [
 	workbookRLC,
 	worksheetRLC,
 	{
-		displayName: 'Select Range',
+		displayName: 'Select range',
 		name: 'selectRange',
 		type: 'options',
 		options: [
@@ -48,7 +48,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Has Headers',
+		displayName: 'Has headers',
 		name: 'hasHeaders',
 		type: 'boolean',
 		default: true,

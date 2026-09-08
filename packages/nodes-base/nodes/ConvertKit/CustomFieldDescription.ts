@@ -25,7 +25,7 @@ export const customFieldOperations: INodeProperties[] = [
 				action: 'Delete a custom field',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many fields',
 				action: 'Get many custom fields',
@@ -71,7 +71,7 @@ export const customFieldFields: INodeProperties[] = [
 		description: 'The label of the custom field',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

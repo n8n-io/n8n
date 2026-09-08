@@ -8,7 +8,7 @@ export const reportRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a report...',
@@ -27,14 +27,14 @@ export const reportRLC: INodeProperties = {
 };
 
 export const searchJobRLC: INodeProperties = {
-	displayName: 'Search Job',
+	displayName: 'Search job',
 	name: 'searchJobId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a search job...',
@@ -60,7 +60,7 @@ export const userRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a user...',

@@ -1,7 +1,7 @@
 import type { INodeInputConfiguration, INodeParameters, INodeProperties } from 'n8n-workflow';
 
 export const numberInputsProperty: INodeProperties = {
-	displayName: 'Number of Inputs',
+	displayName: 'Number of inputs',
 	name: 'numberInputs',
 	type: 'options',
 	noDataExpression: true,

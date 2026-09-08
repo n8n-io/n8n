@@ -87,7 +87,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'database',
 				},
 				{
-					name: 'Database Page',
+					name: 'Database page',
 					value: 'databasePage',
 				},
 				{

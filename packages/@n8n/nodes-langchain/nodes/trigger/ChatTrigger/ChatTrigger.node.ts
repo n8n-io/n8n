@@ -90,14 +90,14 @@ function withAuthenticatedUser(
 }
 
 const allowFileUploadsOption: INodeProperties = {
-	displayName: 'Allow File Uploads',
+	displayName: 'Allow file uploads',
 	name: 'allowFileUploads',
 	type: 'boolean',
 	default: false,
 	description: 'Whether to allow file uploads in the chat',
 };
 const includeUserInOutputOption: INodeProperties = {
-	displayName: 'Include User in Output',
+	displayName: 'Include user in output',
 	name: 'includeUserInOutput',
 	type: 'boolean',
 	default: true,
@@ -110,7 +110,7 @@ const includeUserInOutputOption: INodeProperties = {
 };
 
 const allowedFileMimeTypeOption: INodeProperties = {
-	displayName: 'Allowed File Mime Types',
+	displayName: 'Allowed file MIME types',
 	name: 'allowedFilesMimeTypes',
 	type: 'string',
 	default: '*',
@@ -149,7 +149,7 @@ const responseModeBuilderHint =
 const commonOptionsFields: INodeProperties[] = [
 	// CORS parameters are only valid for when chat is used in hosted or webhook mode
 	{
-		displayName: 'Allowed Origins (CORS)',
+		displayName: 'Allowed origins (CORS)',
 		name: 'allowedOrigins',
 		type: 'string',
 		default: '*',
@@ -178,7 +178,7 @@ const commonOptionsFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Placeholder',
+		displayName: 'Input placeholder',
 		name: 'inputPlaceholder',
 		type: 'string',
 		displayOptions: {
@@ -191,7 +191,7 @@ const commonOptionsFields: INodeProperties[] = [
 		description: 'Shown as placeholder text in the chat input field',
 	},
 	{
-		displayName: 'Load Previous Session',
+		displayName: 'Load previous session',
 		name: 'loadPreviousSession',
 		type: 'options',
 		options: [
@@ -201,7 +201,7 @@ const commonOptionsFields: INodeProperties[] = [
 				description: 'Loading messages of previous session is turned off',
 			},
 			{
-				name: 'From Memory',
+				name: 'From memory',
 				value: 'memory',
 				description: 'Load session messages from memory',
 			},
@@ -219,7 +219,7 @@ const commonOptionsFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Require Button Click to Start Chat',
+		displayName: 'Require button click to start chat',
 		name: 'showWelcomeScreen',
 		type: 'boolean',
 		displayOptions: {
@@ -231,7 +231,7 @@ const commonOptionsFields: INodeProperties[] = [
 		description: 'Whether to show the welcome screen at the start of the chat',
 	},
 	{
-		displayName: 'Start Conversation Button Text',
+		displayName: 'Start conversation button text',
 		name: 'getStarted',
 		type: 'string',
 		displayOptions: {
@@ -271,7 +271,7 @@ const commonOptionsFields: INodeProperties[] = [
 		description: 'Shown at the top of the chat',
 	},
 	{
-		displayName: 'Custom Chat Styling',
+		displayName: 'Custom chat styling',
 		name: 'customCss',
 		type: 'string',
 		typeOptions: {
@@ -409,7 +409,7 @@ export class ChatTrigger extends Node {
 			 * @note If we change this property, also update it in ChatEmbedModal.vue
 			 */
 			{
-				displayName: 'Make Chat Publicly Available',
+				displayName: 'Make chat publicly available',
 				name: 'public',
 				type: 'boolean',
 				default: false,
@@ -422,12 +422,12 @@ export class ChatTrigger extends Node {
 				type: 'options',
 				options: [
 					{
-						name: 'Hosted Chat',
+						name: 'Hosted chat',
 						value: 'hostedChat',
 						description: 'Chat on a page served by n8n',
 					},
 					{
-						name: 'Embedded Chat',
+						name: 'Embedded chat',
 						value: 'webhook',
 						description: 'Chat through a widget embedded in another page, or by calling a webhook',
 					},
@@ -476,13 +476,13 @@ export class ChatTrigger extends Node {
 				},
 				options: [
 					{
-						name: 'Basic Auth',
+						name: 'Basic auth',
 						value: 'basicAuth',
 						description: 'Simple username and password (the same one for all users)',
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'n8n User Auth',
+						name: 'n8n user auth',
 						value: 'n8nUserAuth',
 						description: 'Require user to be logged in with their n8n account',
 					},
@@ -499,7 +499,7 @@ export class ChatTrigger extends Node {
 				},
 			},
 			{
-				displayName: 'Require Workflow Execute Permission',
+				displayName: 'Require workflow execute permission',
 				name: 'requireExecuteAccess',
 				type: 'boolean',
 				default: false,
@@ -538,7 +538,7 @@ export class ChatTrigger extends Node {
 				},
 			},
 			{
-				displayName: 'Initial Message(s)',
+				displayName: 'Initial message(s)',
 				name: 'initialMessages',
 				type: 'string',
 				displayOptions: {
@@ -555,7 +555,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Make Available in n8n Chat Hub',
+				displayName: 'Make available in n8n Chat Hub',
 				name: 'availableInChat',
 				type: 'boolean',
 				default: false,
@@ -590,7 +590,7 @@ export class ChatTrigger extends Node {
 				default: '',
 			},
 			{
-				displayName: 'Agent Icon',
+				displayName: 'Agent icon',
 				name: 'agentIcon',
 				type: 'icon',
 				default: { type: 'icon', value: 'bot' },
@@ -604,7 +604,7 @@ export class ChatTrigger extends Node {
 				},
 			},
 			{
-				displayName: 'Agent Name',
+				displayName: 'Agent name',
 				name: 'agentName',
 				type: 'string',
 				default: '',
@@ -619,7 +619,7 @@ export class ChatTrigger extends Node {
 				},
 			},
 			{
-				displayName: 'Agent Description',
+				displayName: 'Agent description',
 				name: 'agentDescription',
 				type: 'string',
 				typeOptions: {
@@ -642,7 +642,7 @@ export class ChatTrigger extends Node {
 				typeOptions: { multipleValues: true, fixedCollection: { layout: 'inline' } },
 				default: {},
 				noDataExpression: true,
-				placeholder: 'Add Prompt',
+				placeholder: 'Add prompt',
 				description:
 					'Suggested prompts shown to users in n8n Chat Hub to start a conversation with the agent',
 				displayOptions: {
@@ -664,7 +664,7 @@ export class ChatTrigger extends Node {
 								default: { type: 'icon', value: 'comment' },
 							},
 							{
-								displayName: 'Prompt Text',
+								displayName: 'Prompt text',
 								name: 'text',
 								type: 'string',
 								default: '',
@@ -685,7 +685,7 @@ export class ChatTrigger extends Node {
 						'@version': [1, 1.1],
 					},
 				},
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [allowFileUploadsOption, allowedFileMimeTypeOption],
 			},
@@ -701,12 +701,12 @@ export class ChatTrigger extends Node {
 						'@version': [1, 1.1],
 					},
 				},
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					...commonOptionsFields,
 					{
-						displayName: 'Response Mode',
+						displayName: 'Response mode',
 						name: 'responseMode',
 						type: 'options',
 						options: [lastNodeResponseMode, respondToWebhookResponseMode],
@@ -729,12 +729,12 @@ export class ChatTrigger extends Node {
 						'@version': [1.2],
 					},
 				},
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					...commonOptionsFields,
 					{
-						displayName: 'Response Mode',
+						displayName: 'Response mode',
 						name: 'responseMode',
 						type: 'options',
 						options: [lastNodeResponseMode, respondToWebhookResponseMode, streamingResponseMode],
@@ -744,7 +744,7 @@ export class ChatTrigger extends Node {
 						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
-						displayName: 'Response Mode',
+						displayName: 'Response mode',
 						name: 'responseMode',
 						type: 'options',
 						options: [streamingResponseMode, lastNodeResponseMode],
@@ -766,13 +766,13 @@ export class ChatTrigger extends Node {
 						'@version': [{ _cnd: { gte: 1.3 } }],
 					},
 				},
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					allowFileUploadsOption,
 					allowedFileMimeTypeOption,
 					{
-						displayName: 'Response Mode',
+						displayName: 'Response mode',
 						name: 'responseMode',
 						type: 'options',
 						options: [lastNodeResponseMode, respondNodesResponseMode, streamingResponseMode],
@@ -782,7 +782,7 @@ export class ChatTrigger extends Node {
 						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
-						displayName: 'Response Mode',
+						displayName: 'Response mode',
 						name: 'responseMode',
 						type: 'options',
 						options: [streamingResponseMode, lastNodeResponseMode, respondNodesResponseMode],
@@ -805,12 +805,12 @@ export class ChatTrigger extends Node {
 						'@version': [{ _cnd: { gte: 1.3 } }],
 					},
 				},
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					...commonOptionsFields,
 					{
-						displayName: 'Response Mode',
+						displayName: 'Response mode',
 						name: 'responseMode',
 						type: 'options',
 						options: [lastNodeResponseMode, streamingResponseMode, respondToWebhookResponseMode],
@@ -820,7 +820,7 @@ export class ChatTrigger extends Node {
 						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
-						displayName: 'Response Mode',
+						displayName: 'Response mode',
 						name: 'responseMode',
 						type: 'options',
 						options: [streamingResponseMode, lastNodeResponseMode],
@@ -830,7 +830,7 @@ export class ChatTrigger extends Node {
 						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
-						displayName: 'Response Mode',
+						displayName: 'Response mode',
 						name: 'responseMode',
 						type: 'options',
 						options: [lastNodeResponseMode, streamingResponseMode, respondNodesResponseMode],
@@ -840,7 +840,7 @@ export class ChatTrigger extends Node {
 						builderHint: { propertyHint: responseModeBuilderHint },
 					},
 					{
-						displayName: 'Response Mode',
+						displayName: 'Response mode',
 						name: 'responseMode',
 						type: 'options',
 						options: [streamingResponseMode, lastNodeResponseMode, respondNodesResponseMode],

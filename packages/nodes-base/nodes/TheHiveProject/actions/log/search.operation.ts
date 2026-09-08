@@ -19,7 +19,7 @@ import { theHiveApiQuery } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Search in All Tasks',
+		displayName: 'Search in all tasks',
 		name: 'allTasks',
 		type: 'boolean',
 		default: true,

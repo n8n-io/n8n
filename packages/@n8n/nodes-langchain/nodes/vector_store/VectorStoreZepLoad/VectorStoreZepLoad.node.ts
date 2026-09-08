@@ -62,7 +62,7 @@ export class VectorStoreZepLoad implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Collection Name',
+				displayName: 'Collection name',
 				name: 'collectionName',
 				type: 'string',
 				default: '',
@@ -72,11 +72,11 @@ export class VectorStoreZepLoad implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
-						displayName: 'Embedding Dimensions',
+						displayName: 'Embedding dimensions',
 						name: 'embeddingDimensions',
 						type: 'number',
 						default: 1536,

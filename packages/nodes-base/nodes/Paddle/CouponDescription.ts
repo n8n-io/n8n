@@ -19,7 +19,7 @@ export const couponOperations: INodeProperties[] = [
 				action: 'Create a coupon',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many coupons',
 				action: 'Get many coupons',
@@ -40,7 +40,7 @@ export const couponFields: INodeProperties[] = [
 	/*                                 coupon:create	                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Coupon Type',
+		displayName: 'Coupon type',
 		name: 'couponType',
 		type: 'options',
 		displayOptions: {
@@ -65,7 +65,7 @@ export const couponFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Product Names or IDs',
+		displayName: 'Product names or IDs',
 		name: 'productIds',
 		type: 'multiOptions',
 		typeOptions: {
@@ -85,7 +85,7 @@ export const couponFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Discount Type',
+		displayName: 'Discount type',
 		name: 'discountType',
 		type: 'options',
 		displayOptions: {
@@ -109,7 +109,7 @@ export const couponFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Discount Amount Currency',
+		displayName: 'Discount amount currency',
 		name: 'discountAmount',
 		type: 'number',
 		default: 1,
@@ -127,7 +127,7 @@ export const couponFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Discount Amount %',
+		displayName: 'Discount amount %',
 		name: 'discountAmount',
 		type: 'number',
 		default: 1,
@@ -267,7 +267,7 @@ export const couponFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -279,7 +279,7 @@ export const couponFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -296,10 +296,10 @@ export const couponFields: INodeProperties[] = [
 		description: 'Attributes in JSON form',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['coupon'],
@@ -310,7 +310,7 @@ export const couponFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Allowed Uses',
+				displayName: 'Allowed uses',
 				name: 'allowedUses',
 				type: 'number',
 				default: 1,
@@ -318,14 +318,14 @@ export const couponFields: INodeProperties[] = [
 					'Number of times a coupon can be used in a checkout. This will be set to 999,999 by default, if not specified.',
 			},
 			{
-				displayName: 'Coupon Code',
+				displayName: 'Coupon code',
 				name: 'couponCode',
 				type: 'string',
 				default: '',
 				description: 'Will be randomly generated if not specified',
 			},
 			{
-				displayName: 'Coupon Prefix',
+				displayName: 'Coupon prefix',
 				name: 'couponPrefix',
 				type: 'string',
 				default: '',
@@ -357,7 +357,7 @@ export const couponFields: INodeProperties[] = [
 				description: 'The name of the coupon group this coupon should be assigned to',
 			},
 			{
-				displayName: 'Number of Coupons',
+				displayName: 'Number of coupons',
 				name: 'numberOfCoupons',
 				type: 'number',
 				default: 1,
@@ -392,7 +392,7 @@ export const couponFields: INodeProperties[] = [
 		description: 'The specific product/subscription ID',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -426,7 +426,7 @@ export const couponFields: INodeProperties[] = [
 	/*                                 coupon:update	                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Update By',
+		displayName: 'Update by',
 		name: 'updateBy',
 		type: 'options',
 		displayOptions: {
@@ -440,7 +440,7 @@ export const couponFields: INodeProperties[] = [
 		description: 'Either flat or percentage',
 		options: [
 			{
-				name: 'Coupon Code',
+				name: 'Coupon code',
 				value: 'couponCode',
 			},
 			{
@@ -450,7 +450,7 @@ export const couponFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Coupon Code',
+		displayName: 'Coupon code',
 		name: 'couponCode',
 		type: 'string',
 		displayOptions: {
@@ -480,7 +480,7 @@ export const couponFields: INodeProperties[] = [
 		description: 'The name of the group of coupons you want to update',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -492,7 +492,7 @@ export const couponFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -509,10 +509,10 @@ export const couponFields: INodeProperties[] = [
 		description: 'Attributes in JSON form',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['coupon'],
@@ -523,7 +523,7 @@ export const couponFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Allowed Uses',
+				displayName: 'Allowed uses',
 				name: 'allowedUses',
 				type: 'number',
 				default: 1,
@@ -537,7 +537,7 @@ export const couponFields: INodeProperties[] = [
 				default: {},
 				options: [
 					{
-						displayName: 'Discount Properties',
+						displayName: 'Discount properties',
 						name: 'discountProperties',
 						values: [
 							{
@@ -660,7 +660,7 @@ export const couponFields: INodeProperties[] = [
 								],
 							},
 							{
-								displayName: 'Discount Amount Currency',
+								displayName: 'Discount amount currency',
 								name: 'discountAmount',
 								type: 'number',
 								default: '',
@@ -675,7 +675,7 @@ export const couponFields: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'Discount Amount Percentage',
+								displayName: 'Discount amount percentage',
 								name: 'discountAmount',
 								type: 'number',
 								default: '',
@@ -691,7 +691,7 @@ export const couponFields: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'Discount Type',
+								displayName: 'Discount type',
 								name: 'discountType',
 								type: 'options',
 								default: 'flat',
@@ -719,14 +719,14 @@ export const couponFields: INodeProperties[] = [
 				description: 'The coupon will expire on the date at 00:00:00 UTC',
 			},
 			{
-				displayName: 'New Coupon Code',
+				displayName: 'New coupon code',
 				name: 'newCouponCode',
 				type: 'string',
 				default: '',
 				description: 'New code to rename the coupon to',
 			},
 			{
-				displayName: 'New Group Name',
+				displayName: 'New group name',
 				name: 'newGroup',
 				type: 'string',
 				typeOptions: {

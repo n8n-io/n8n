@@ -15,7 +15,7 @@ export const opportunityOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Note',
+				name: 'Add note',
 				value: 'addNote',
 				description: 'Add note to an opportunity',
 				action: 'Add a note to an opportunity',
@@ -27,7 +27,7 @@ export const opportunityOperations: INodeProperties[] = [
 				action: 'Create an opportunity',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description:
 					'Create a new opportunity, or update the current one if it already exists (upsert)',
@@ -46,13 +46,13 @@ export const opportunityOperations: INodeProperties[] = [
 				action: 'Get an opportunity',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many opportunities',
 				action: 'Get many opportunities',
 			},
 			{
-				name: 'Get Summary',
+				name: 'Get summary',
 				value: 'getSummary',
 				description: "Returns an overview of opportunity's metadata",
 				action: 'Get an opportunity summary',
@@ -74,7 +74,7 @@ export const opportunityFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Match Against',
+		displayName: 'Match against',
 		name: 'externalId',
 		type: 'options',
 		typeOptions: {
@@ -93,7 +93,7 @@ export const opportunityFields: INodeProperties[] = [
 			'The field to check to see if the opportunity already exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Value to Match',
+		displayName: 'Value to match',
 		name: 'externalIdValue',
 		type: 'string',
 		required: true,
@@ -122,7 +122,7 @@ export const opportunityFields: INodeProperties[] = [
 		description: 'Required. Last name of the opportunity. Limited to 80 characters.',
 	},
 	{
-		displayName: 'Close Date',
+		displayName: 'Close date',
 		name: 'closeDate',
 		type: 'dateTime',
 		required: true,
@@ -136,7 +136,7 @@ export const opportunityFields: INodeProperties[] = [
 		description: 'Required. Date when the opportunity is expected to close.',
 	},
 	{
-		displayName: 'Stage Name or ID',
+		displayName: 'Stage name or ID',
 		name: 'stageName',
 		type: 'options',
 		typeOptions: {
@@ -154,10 +154,10 @@ export const opportunityFields: INodeProperties[] = [
 			'Required. Date when the opportunity is expected to close. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -178,7 +178,7 @@ export const opportunityFields: INodeProperties[] = [
 				description: 'Estimated total sale amount',
 			},
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign name or ID',
 				name: 'campaignId',
 				type: 'options',
 				typeOptions: {
@@ -189,9 +189,9 @@ export const opportunityFields: INodeProperties[] = [
 					'ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -201,10 +201,10 @@ export const opportunityFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -234,14 +234,14 @@ export const opportunityFields: INodeProperties[] = [
 					'A description of the opportunity. Label is Contact Description. Limit: 32 KB.',
 			},
 			{
-				displayName: 'Forecast Category Name',
+				displayName: 'Forecast category name',
 				name: 'forecastCategoryName',
 				type: 'string',
 				default: '',
 				description: 'It is implied, but not directly controlled, by the StageName field',
 			},
 			{
-				displayName: 'Lead Source Name or ID',
+				displayName: 'Lead source name or ID',
 				name: 'leadSource',
 				type: 'options',
 				typeOptions: {
@@ -252,7 +252,7 @@ export const opportunityFields: INodeProperties[] = [
 					'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Next Step',
+				displayName: 'Next step',
 				name: 'nextStep',
 				type: 'string',
 				default: '',
@@ -265,7 +265,7 @@ export const opportunityFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',
@@ -327,7 +327,7 @@ export const opportunityFields: INodeProperties[] = [
 						value: 'Business',
 					},
 					{
-						name: 'New Business',
+						name: 'New business',
 						value: 'New Business',
 					},
 				],
@@ -355,10 +355,10 @@ export const opportunityFields: INodeProperties[] = [
 		description: 'ID of opportunity that needs to be fetched',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -379,7 +379,7 @@ export const opportunityFields: INodeProperties[] = [
 				description: 'Estimated total sale amount',
 			},
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign name or ID',
 				name: 'campaignId',
 				type: 'options',
 				typeOptions: {
@@ -390,16 +390,16 @@ export const opportunityFields: INodeProperties[] = [
 					'ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Close Date',
+				displayName: 'Close date',
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
 				description: 'Required. Date when the opportunity is expected to close.',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -409,10 +409,10 @@ export const opportunityFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -442,14 +442,14 @@ export const opportunityFields: INodeProperties[] = [
 					'A description of the opportunity. Label is Contact Description. Limit: 32 KB.',
 			},
 			{
-				displayName: 'Forecast Category Name',
+				displayName: 'Forecast category name',
 				name: 'forecastCategoryName',
 				type: 'string',
 				default: '',
 				description: 'It is implied, but not directly controlled, by the StageName field',
 			},
 			{
-				displayName: 'Lead Source Name or ID',
+				displayName: 'Lead source name or ID',
 				name: 'leadSource',
 				type: 'options',
 				typeOptions: {
@@ -467,7 +467,7 @@ export const opportunityFields: INodeProperties[] = [
 				description: 'Required. Last name of the opportunity. Limited to 80 characters.',
 			},
 			{
-				displayName: 'Next Step',
+				displayName: 'Next step',
 				name: 'nextStep',
 				type: 'string',
 				default: '',
@@ -480,7 +480,7 @@ export const opportunityFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',
@@ -532,7 +532,7 @@ export const opportunityFields: INodeProperties[] = [
 				description: 'Percentage of estimated confidence in closing the opportunity',
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage name or ID',
 				name: 'stageName',
 				type: 'options',
 				typeOptions: {
@@ -553,7 +553,7 @@ export const opportunityFields: INodeProperties[] = [
 						value: 'Business',
 					},
 					{
-						name: 'New Business',
+						name: 'New business',
 						value: 'New Business',
 					},
 				],
@@ -603,7 +603,7 @@ export const opportunityFields: INodeProperties[] = [
 	/*                                 opportunity:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -637,7 +637,7 @@ export const opportunityFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -649,7 +649,7 @@ export const opportunityFields: INodeProperties[] = [
 			{
 				displayName: 'Conditions',
 				name: 'conditionsUi',
-				placeholder: 'Add Condition',
+				placeholder: 'Add condition',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -662,7 +662,7 @@ export const opportunityFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -756,7 +756,7 @@ export const opportunityFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -773,7 +773,7 @@ export const opportunityFields: INodeProperties[] = [
 				description: 'Body of the note. Limited to 32 KB.',
 			},
 			{
-				displayName: 'Is Private',
+				displayName: 'Is private',
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
@@ -787,7 +787,7 @@ export const opportunityFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',

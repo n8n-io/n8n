@@ -35,7 +35,7 @@ export const payoutFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Sender Batch ID',
+		displayName: 'Sender batch ID',
 		name: 'senderBatchId',
 		type: 'string',
 		required: true,
@@ -49,7 +49,7 @@ export const payoutFields: INodeProperties[] = [
 		description: 'A sender-specified ID number. Tracks the payout in an accounting system.',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -63,7 +63,7 @@ export const payoutFields: INodeProperties[] = [
 	{
 		displayName: 'Items',
 		name: 'itemsUi',
-		placeholder: 'Add Item',
+		placeholder: 'Add item',
 		type: 'fixedCollection',
 		displayOptions: {
 			show: {
@@ -82,7 +82,7 @@ export const payoutFields: INodeProperties[] = [
 				displayName: 'Item',
 				values: [
 					{
-						displayName: 'Recipient Type',
+						displayName: 'Recipient type',
 						name: 'recipientType',
 						type: 'options',
 						options: [
@@ -106,7 +106,7 @@ export const payoutFields: INodeProperties[] = [
 						description: 'The ID type that identifies the recipient of the payment',
 					},
 					{
-						displayName: 'Receiver Value',
+						displayName: 'Receiver value',
 						name: 'receiverValue',
 						type: 'string',
 						required: true,
@@ -167,7 +167,7 @@ export const payoutFields: INodeProperties[] = [
 							'The sender-specified note for notifications. Supports up to 4000 ASCII characters and 1000 non-ASCII characters.',
 					},
 					{
-						displayName: 'Sender Item ID',
+						displayName: 'Sender item ID',
 						name: 'senderItemId',
 						type: 'string',
 						default: '',
@@ -175,7 +175,7 @@ export const payoutFields: INodeProperties[] = [
 							'The sender-specified ID number. Tracks the payout in an accounting system.',
 					},
 					{
-						displayName: 'Recipient Wallet',
+						displayName: 'Recipient wallet',
 						name: 'recipientWallet',
 						type: 'options',
 						options: [
@@ -214,10 +214,10 @@ export const payoutFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -227,7 +227,7 @@ export const payoutFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Email Subject',
+				displayName: 'Email subject',
 				name: 'emailSubject',
 				type: 'string',
 				default: '',
@@ -235,7 +235,7 @@ export const payoutFields: INodeProperties[] = [
 					'The subject line for the email that PayPal sends when payment for a payout item completes. The subject line is the same for all recipients. Max length: 255 characters.',
 			},
 			{
-				displayName: 'Email Message',
+				displayName: 'Email message',
 				name: 'emailMessage',
 				type: 'string',
 				default: '',
@@ -258,7 +258,7 @@ export const payoutFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Payout Batch ID',
+		displayName: 'Payout batch ID',
 		name: 'payoutBatchId',
 		type: 'string',
 		default: '',
@@ -272,7 +272,7 @@ export const payoutFields: INodeProperties[] = [
 		description: 'The ID of the payout for which to show details',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -338,7 +338,7 @@ export const payoutItemFields: INodeProperties[] = [
 	/*                                 payoutItem:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Payout Item ID',
+		displayName: 'Payout item ID',
 		name: 'payoutItemId',
 		type: 'string',
 		default: '',
@@ -357,7 +357,7 @@ export const payoutItemFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Payout Item ID',
+		displayName: 'Payout item ID',
 		name: 'payoutItemId',
 		type: 'string',
 		default: '',

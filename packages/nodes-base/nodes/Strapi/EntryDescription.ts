@@ -31,7 +31,7 @@ export const entryOperations: INodeProperties[] = [
 				action: 'Get an entry',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many entries',
 				action: 'Get many entries',
@@ -52,7 +52,7 @@ export const entryFields: INodeProperties[] = [
 	/*                                entry:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Content Type',
+		displayName: 'Content type',
 		name: 'contentType',
 		type: 'string',
 		default: '',
@@ -85,7 +85,7 @@ export const entryFields: INodeProperties[] = [
 	/*                                entry:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Content Type',
+		displayName: 'Content type',
 		name: 'contentType',
 		type: 'string',
 		default: '',
@@ -117,7 +117,7 @@ export const entryFields: INodeProperties[] = [
 	/*                                entry:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Content Type',
+		displayName: 'Content type',
 		name: 'contentType',
 		type: 'string',
 		default: '',
@@ -149,7 +149,7 @@ export const entryFields: INodeProperties[] = [
 	/*                                entry:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Content Type',
+		displayName: 'Content type',
 		name: 'contentType',
 		type: 'string',
 		default: '',
@@ -163,7 +163,7 @@ export const entryFields: INodeProperties[] = [
 		description: 'Name of the content type',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -197,7 +197,7 @@ export const entryFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -207,7 +207,7 @@ export const entryFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Publication State',
+				displayName: 'Publication state',
 				name: 'publicationState',
 				type: 'options',
 				options: [
@@ -224,7 +224,7 @@ export const entryFields: INodeProperties[] = [
 				description: 'Only select entries matching the publication state provided',
 			},
 			{
-				displayName: 'Sort Fields',
+				displayName: 'Sort fields',
 				name: 'sort',
 				type: 'string',
 				typeOptions: {
@@ -251,7 +251,7 @@ export const entryFields: INodeProperties[] = [
 	/*                                entry:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Content Type',
+		displayName: 'Content type',
 		name: 'contentType',
 		type: 'string',
 		default: '',
@@ -265,7 +265,7 @@ export const entryFields: INodeProperties[] = [
 		description: 'Name of the content type',
 	},
 	{
-		displayName: 'Update Key',
+		displayName: 'Update key',
 		name: 'updateKey',
 		type: 'string',
 		displayOptions: {

@@ -27,7 +27,7 @@ export const description: INodeProperties[] = [
 		default: 'get',
 	},
 	{
-		displayName: 'Property Type',
+		displayName: 'Property type',
 		name: 'propertyType',
 		type: 'options',
 		noDataExpression: true,

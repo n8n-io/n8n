@@ -49,7 +49,7 @@ export const eventAttendeesField: INodeProperties = {
 		multipleValues: true,
 	},
 	default: {},
-	placeholder: 'Add Attendee',
+	placeholder: 'Add attendee',
 	options: [attendeeValues],
 };
 
@@ -63,7 +63,7 @@ export const eventLocationField: INodeProperties = {
 
 export const returnAllOrLimit: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -115,7 +115,7 @@ export const folderFields = [
 
 export const contactFields: INodeProperties[] = [
 	{
-		displayName: 'Assistant Name',
+		displayName: 'Assistant name',
 		name: 'assistantName',
 		type: 'string',
 		default: '',
@@ -128,10 +128,10 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Business Address',
+		displayName: 'Business address',
 		name: 'businessAddress',
 		type: 'fixedCollection',
-		placeholder: 'Add Address',
+		placeholder: 'Add address',
 		default: {
 			values: { sity: '', street: '', postalCode: '', countryOrRegion: '', state: '' },
 		},
@@ -147,13 +147,13 @@ export const contactFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country/Region',
+						displayName: 'Country/region',
 						name: 'countryOrRegion',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
@@ -175,13 +175,13 @@ export const contactFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Business Home Page',
+		displayName: 'Business home page',
 		name: 'businessHomePage',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Business Phones',
+		displayName: 'Business phones',
 		name: 'businessPhones',
 		type: 'string',
 		description: 'Comma-separated list of business phone numbers',
@@ -202,7 +202,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Company Name',
+		displayName: 'Company name',
 		name: 'companyName',
 		type: 'string',
 		default: '',
@@ -214,16 +214,16 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Display Name',
+		displayName: 'Display name',
 		name: 'displayName',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Email Address',
+		displayName: 'Email address',
 		name: 'emailAddresses',
 		type: 'fixedCollection',
-		placeholder: 'Add Email',
+		placeholder: 'Add email',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -250,17 +250,17 @@ export const contactFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'File As',
+		displayName: 'File as',
 		name: 'fileAs',
 		type: 'string',
 		default: '',
 		description: 'The name the contact is filed under',
 	},
 	{
-		displayName: 'Home Address',
+		displayName: 'Home address',
 		name: 'homeAddress',
 		type: 'fixedCollection',
-		placeholder: 'Add Address',
+		placeholder: 'Add address',
 		default: {
 			values: { sity: '', street: '', postalCode: '', countryOrRegion: '', state: '' },
 		},
@@ -276,13 +276,13 @@ export const contactFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country/Region',
+						displayName: 'Country/region',
 						name: 'countryOrRegion',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
@@ -304,14 +304,14 @@ export const contactFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Home Phones',
+		displayName: 'Home phones',
 		name: 'homePhones',
 		type: 'string',
 		default: '',
 		hint: 'Multiple phones can be added separated by ,',
 	},
 	{
-		displayName: 'Instant Messaging Addresses',
+		displayName: 'Instant messaging addresses',
 		name: 'imAddresses',
 		description: "The contact's instant messaging (IM) addresses",
 		type: 'string',
@@ -325,7 +325,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Job Title',
+		displayName: 'Job title',
 		name: 'jobTitle',
 		type: 'string',
 		default: '',
@@ -338,13 +338,13 @@ export const contactFields: INodeProperties[] = [
 		description: "The name of the contact's manager",
 	},
 	{
-		displayName: 'Middle Name',
+		displayName: 'Middle name',
 		name: 'middleName',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Mobile Phone',
+		displayName: 'Mobile phone',
 		name: 'mobilePhone',
 		type: 'string',
 		default: '',
@@ -367,16 +367,16 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Office Location',
+		displayName: 'Office location',
 		name: 'officeLocation',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Other Address',
+		displayName: 'Other address',
 		name: 'otherAddress',
 		type: 'fixedCollection',
-		placeholder: 'Add Address',
+		placeholder: 'Add address',
 		default: {
 			values: { sity: '', street: '', postalCode: '', countryOrRegion: '', state: '' },
 		},
@@ -392,13 +392,13 @@ export const contactFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country/Region',
+						displayName: 'Country/region',
 						name: 'countryOrRegion',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
@@ -420,7 +420,7 @@ export const contactFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Personal Notes',
+		displayName: 'Personal notes',
 		name: 'personalNotes',
 		type: 'string',
 		default: '',
@@ -435,7 +435,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Spouse Name',
+		displayName: 'Spouse name',
 		name: 'spouseName',
 		type: 'string',
 		default: '',

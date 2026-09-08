@@ -33,7 +33,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many contacts',
 				action: 'Get many contacts',
@@ -69,7 +69,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'The email of the contact to create',
 	},
 	{
-		displayName: 'Update if Exists',
+		displayName: 'Update if exists',
 		name: 'updateIfExists',
 		type: 'boolean',
 		displayOptions: {
@@ -83,10 +83,10 @@ export const contactFields: INodeProperties[] = [
 			'Whether to update user if it exists already. If not set and user exists it will error instead.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -96,9 +96,9 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'fieldValues',
-				placeholder: 'Add Custom Fields',
+				placeholder: 'Add custom fields',
 				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -108,10 +108,10 @@ export const contactFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'property',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -122,7 +122,7 @@ export const contactFields: INodeProperties[] = [
 									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -133,14 +133,14 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'The first name of the contact to create',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -174,11 +174,11 @@ export const contactFields: INodeProperties[] = [
 		description: 'ID of the contact to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		description: 'The fields to update',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -188,9 +188,9 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'fieldValues',
-				placeholder: 'Add Custom Fields',
+				placeholder: 'Add custom fields',
 				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -200,10 +200,10 @@ export const contactFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'property',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -214,7 +214,7 @@ export const contactFields: INodeProperties[] = [
 									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -233,14 +233,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Email of the contact',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'First name of the contact',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -297,10 +297,10 @@ export const contactFields: INodeProperties[] = [
 	// ----------------------------------
 	...activeCampaignDefaultGetAllProperties('contact', 'getAll'),
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -325,7 +325,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Email address of the contact you want to get',
 			},
 			{
-				displayName: 'Email Like',
+				displayName: 'Email like',
 				name: 'email_like',
 				type: 'string',
 				default: '',
@@ -410,28 +410,28 @@ export const contactFields: INodeProperties[] = [
 				description: 'Filter contacts associated with the given tag',
 			},
 			{
-				displayName: 'Created Before',
+				displayName: 'Created before',
 				name: 'filters[created_before]',
 				type: 'dateTime',
 				default: '',
 				description: 'Filter contacts that were created prior to this date',
 			},
 			{
-				displayName: 'Created After',
+				displayName: 'Created after',
 				name: 'filters[created_after]',
 				type: 'dateTime',
 				default: '',
 				description: 'Filter contacts that were created after this date',
 			},
 			{
-				displayName: 'Updated Before',
+				displayName: 'Updated before',
 				name: 'filters[updated_before]',
 				type: 'dateTime',
 				default: '',
 				description: 'Filter contacts that were updated before this date',
 			},
 			{
-				displayName: 'Updated After',
+				displayName: 'Updated after',
 				name: 'filters[updated_after]',
 				type: 'dateTime',
 				default: '',
@@ -445,12 +445,12 @@ export const contactFields: INodeProperties[] = [
 				description: 'Filter by contacts in the wait queue of an automation block',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'options',
 				options: [
 					{
-						name: 'Creation Date',
+						name: 'Creation date',
 						value: 'orders[cdate]',
 						description: 'Order contacts by creation date',
 					},
@@ -460,12 +460,12 @@ export const contactFields: INodeProperties[] = [
 						description: 'Order contacts by email',
 					},
 					{
-						name: 'First Name',
+						name: 'First name',
 						value: 'orders[first_name]',
 						description: 'Order contacts by first name',
 					},
 					{
-						name: 'Last Name',
+						name: 'Last name',
 						value: 'orders[last_name]',
 						description: 'Order contacts by last name',
 					},

@@ -99,7 +99,7 @@ export class EvaluationTrigger implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						typeOptions: {
@@ -117,7 +117,7 @@ export class EvaluationTrigger implements INodeType {
 				displayOptions: { show: { source: ['dataTable'] } },
 			},
 			{
-				displayName: 'Limit Rows',
+				displayName: 'Limit rows',
 				name: 'limitRows',
 				type: 'boolean',
 				default: false,
@@ -125,7 +125,7 @@ export class EvaluationTrigger implements INodeType {
 				description: 'Whether to limit number of rows to process',
 			},
 			{
-				displayName: 'Max Rows to Process',
+				displayName: 'Max rows to process',
 				name: 'maxRows',
 				type: 'number',
 				default: 10,
@@ -135,7 +135,7 @@ export class EvaluationTrigger implements INodeType {
 			},
 			{ ...googleSheetFilters, displayOptions: { hide: { source: ['dataTable'] } } },
 			{
-				displayName: 'Filter Rows',
+				displayName: 'Filter rows',
 				name: 'filterRows',
 				type: 'boolean',
 				default: false,

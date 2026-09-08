@@ -40,7 +40,7 @@ export const description: INodeProperties[] = [
 				action: 'Get an organization',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many organizations',
 				action: 'Get many organizations',

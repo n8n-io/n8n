@@ -18,7 +18,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 	},
 	[
 		{
-			displayName: 'Row ID Value',
+			displayName: 'Row ID value',
 			name: 'id',
 			type: 'string',
 			default: '',
@@ -26,7 +26,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description: 'The ID of record in table',
 		},
 		{
-			displayName: 'Link Field Name or ID',
+			displayName: 'Link field name or ID',
 			name: 'linkFieldName',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -35,7 +35,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			},
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					typeOptions: {
@@ -55,7 +55,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 				'Name of the fields of type \'link\' that will be uploaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Linked Row ID Value',
+			displayName: 'Linked row ID value',
 			name: 'linkId',
 			type: 'string',
 			typeOptions: {

@@ -65,7 +65,7 @@ export class Harvest implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -115,7 +115,7 @@ export class Harvest implements INodeType {
 						value: 'task',
 					},
 					{
-						name: 'Time Entry',
+						name: 'Time entry',
 						value: 'timeEntry',
 					},
 					{
@@ -139,7 +139,7 @@ export class Harvest implements INodeType {
 			...userOperations,
 
 			{
-				displayName: 'Account Name or ID',
+				displayName: 'Account name or ID',
 				name: 'accountId',
 				type: 'options',
 				description:

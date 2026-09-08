@@ -42,10 +42,10 @@ export const policyFields: INodeProperties[] = [
 		description: 'The Distinguished Name (DN) of the policy folder',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

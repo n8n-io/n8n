@@ -24,7 +24,7 @@ export const description: INodeProperties[] = [
 				action: 'Create a record',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 				action: 'Create or update a record',

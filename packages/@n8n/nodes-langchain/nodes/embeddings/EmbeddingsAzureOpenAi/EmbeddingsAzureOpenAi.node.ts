@@ -48,7 +48,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
-				displayName: 'Model (Deployment) Name',
+				displayName: 'Model (deployment) name',
 				name: 'model',
 				type: 'string',
 				description: 'The name of the model(deployment) to use',
@@ -57,13 +57,13 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Batch Size',
+						displayName: 'Batch size',
 						name: 'batchSize',
 						default: 512,
 						typeOptions: { maxValue: 2048 },
@@ -71,7 +71,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Strip New Lines',
+						displayName: 'Strip new lines',
 						name: 'stripNewLines',
 						default: true,
 						description: 'Whether to strip new lines from the input text',

@@ -8,7 +8,7 @@ import { buildTeamsPath, microsoftApiRequest } from '../../transport';
 const properties: INodeProperties[] = [
 	teamRLC,
 	{
-		displayName: 'New Channel Name',
+		displayName: 'New channel name',
 		name: 'name',
 		required: true,
 		type: 'string',

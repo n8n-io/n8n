@@ -31,7 +31,7 @@ export const noteOperations: INodeProperties[] = [
 				action: 'Get a note',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many notes',
 				action: 'Get many notes',
@@ -80,10 +80,10 @@ export const noteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -93,7 +93,7 @@ export const noteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Is Favorited',
+				displayName: 'Is favorited',
 				name: 'isFavorited',
 				description: 'Whether the note has been favorited',
 				type: 'boolean',
@@ -142,7 +142,7 @@ export const noteFields: INodeProperties[] = [
 	//               note: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -190,10 +190,10 @@ export const noteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -217,7 +217,7 @@ export const noteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Favorited',
+				displayName: 'Is favorited',
 				name: 'is_favorited',
 				description: 'Whether the note has been favorited',
 				type: 'boolean',

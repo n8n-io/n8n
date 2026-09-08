@@ -13,18 +13,18 @@ export const properties: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'All Items to One File',
+				name: 'All items to one file',
 				value: 'once',
 			},
 			{
-				name: 'Each Item to Separate File',
+				name: 'Each item to separate file',
 				value: 'each',
 			},
 		],
 		default: 'once',
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -40,7 +40,7 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Add Byte Order Mark (BOM)',
+				displayName: 'Add byte order mark (BOM)',
 				name: 'addBOM',
 				type: 'boolean',
 				default: false,
@@ -68,7 +68,7 @@ export const properties: INodeProperties[] = [
 				description: 'Choose the character set to use to encode the data',
 			},
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',

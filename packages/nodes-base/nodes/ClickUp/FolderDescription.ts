@@ -31,7 +31,7 @@ export const folderOperations: INodeProperties[] = [
 				action: 'Get a folder',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many folders',
 				action: 'Get many folders',
@@ -52,7 +52,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -70,7 +70,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -106,7 +106,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -124,7 +124,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -143,7 +143,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folder',
 		type: 'options',
 		description:
@@ -166,7 +166,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -184,7 +184,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -203,7 +203,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folder',
 		type: 'options',
 		description:
@@ -226,7 +226,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -244,7 +244,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -283,7 +283,7 @@ export const folderFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -305,7 +305,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -323,7 +323,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -342,7 +342,7 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folder',
 		type: 'options',
 		description:
@@ -361,10 +361,10 @@ export const folderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

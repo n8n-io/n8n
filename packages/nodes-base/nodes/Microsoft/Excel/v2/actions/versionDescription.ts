@@ -64,10 +64,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'microsoftOAuth2Api',
 				},
 				{
-					name: 'Microsoft Entra Service Principal (App-Only)',
+					name: 'Microsoft Entra service principal (app-only)',
 					value: 'microsoftEntraServicePrincipalApi',
 					description:
-						'App-only access via a Microsoft Entra app registration. Choose which user or drive to act on under "Access As".',
+						'App-only access via a Microsoft Entra app registration. Choose which user or drive to act on under "Access as".',
 				},
 			],
 			default: 'microsoftExcelOAuth2Api',

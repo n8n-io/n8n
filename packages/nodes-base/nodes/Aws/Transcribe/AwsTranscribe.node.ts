@@ -36,7 +36,7 @@ export class AwsTranscribe implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Transcription Job',
+						name: 'Transcription job',
 						value: 'transcriptionJob',
 					},
 				],
@@ -67,7 +67,7 @@ export class AwsTranscribe implements INodeType {
 						action: 'Get a transcription job',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many transcription jobs',
 						action: 'Get many transcription jobs',
@@ -76,7 +76,7 @@ export class AwsTranscribe implements INodeType {
 				default: 'create',
 			},
 			{
-				displayName: 'Job Name',
+				displayName: 'Job name',
 				name: 'transcriptionJobName',
 				type: 'string',
 				default: '',
@@ -89,7 +89,7 @@ export class AwsTranscribe implements INodeType {
 				description: 'The name of the job',
 			},
 			{
-				displayName: 'Media File URI',
+				displayName: 'Media file URI',
 				name: 'mediaFileUri',
 				type: 'string',
 				default: '',
@@ -102,7 +102,7 @@ export class AwsTranscribe implements INodeType {
 				description: 'The S3 object location of the input media file',
 			},
 			{
-				displayName: 'Detect Language',
+				displayName: 'Detect language',
 				name: 'detectLanguage',
 				type: 'boolean',
 				displayOptions: {
@@ -175,7 +175,7 @@ export class AwsTranscribe implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Channel Identification',
+						displayName: 'Channel identification',
 						name: 'channelIdentification',
 						type: 'boolean',
 						default: false,
@@ -184,7 +184,7 @@ export class AwsTranscribe implements INodeType {
 							"Instructs Amazon Transcribe to process each audiochannel separately and then merge the transcription output of each channel into a single transcription. You can't set both Max Speaker Labels and Channel Identification in the same request. If you set both, your request returns a BadRequestException.",
 					},
 					{
-						displayName: 'Max Alternatives',
+						displayName: 'Max alternatives',
 						name: 'maxAlternatives',
 						type: 'number',
 						default: 2,
@@ -195,7 +195,7 @@ export class AwsTranscribe implements INodeType {
 						description: 'The number of alternative transcriptions that the service should return',
 					},
 					{
-						displayName: 'Max Speaker Labels',
+						displayName: 'Max speaker labels',
 						name: 'maxSpeakerLabels',
 						type: 'number',
 						default: 2,
@@ -207,14 +207,14 @@ export class AwsTranscribe implements INodeType {
 							'The maximum number of speakers to identify in the input audio. If there are more speakers in the audio than this number, multiple speakers are identified as a single speaker.',
 					},
 					{
-						displayName: 'Vocabulary Name',
+						displayName: 'Vocabulary name',
 						name: 'vocabularyName',
 						type: 'string',
 						default: '',
 						description: 'Name of vocabulary to use when processing the transcription job',
 					},
 					{
-						displayName: 'Vocabulary Filter Name',
+						displayName: 'Vocabulary filter name',
 						name: 'vocabularyFilterName',
 						type: 'string',
 						default: '',
@@ -222,7 +222,7 @@ export class AwsTranscribe implements INodeType {
 							'The name of the vocabulary filter to use when transcribing the audio. The filter that you specify must have the same language code as the transcription job.',
 					},
 					{
-						displayName: 'Vocabulary Filter Method',
+						displayName: 'Vocabulary filter method',
 						name: 'vocabularyFilterMethod',
 						type: 'options',
 						options: [
@@ -246,7 +246,7 @@ export class AwsTranscribe implements INodeType {
 				],
 			},
 			{
-				displayName: 'Return Transcript',
+				displayName: 'Return transcript',
 				name: 'returnTranscript',
 				type: 'boolean',
 				default: true,
@@ -276,7 +276,7 @@ export class AwsTranscribe implements INodeType {
 					'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -309,7 +309,7 @@ export class AwsTranscribe implements INodeType {
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				default: {},
 				displayOptions: {
 					show: {
@@ -319,7 +319,7 @@ export class AwsTranscribe implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Job Name Contains',
+						displayName: 'Job name contains',
 						name: 'jobNameContains',
 						type: 'string',
 						description: 'Return only transcription jobs whose name contains the specified string',
@@ -339,7 +339,7 @@ export class AwsTranscribe implements INodeType {
 								value: 'FAILED',
 							},
 							{
-								name: 'In Progress',
+								name: 'In progress',
 								value: 'IN_PROGRESS',
 							},
 							{

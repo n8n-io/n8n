@@ -18,7 +18,7 @@ export const noticelistOperations: INodeProperties[] = [
 				action: 'Get a noticelist',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many noticelists',
 			},
@@ -46,7 +46,7 @@ export const noticelistFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

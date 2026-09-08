@@ -55,13 +55,13 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			],
 		},
 		{
-			displayName: 'Date of Birth',
+			displayName: 'Date of birth',
 			name: 'dateOfBirth',
 			type: 'dateTime',
 			default: '',
 		},
 		{
-			displayName: 'Department Name or ID',
+			displayName: 'Department name or ID',
 			name: 'department',
 			type: 'options',
 			description:
@@ -72,7 +72,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Division Name or ID',
+			displayName: 'Division name or ID',
 			name: 'division',
 			type: 'options',
 			description:
@@ -83,13 +83,13 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Employee Number',
+			displayName: 'Employee number',
 			name: 'employeeNumber',
 			type: 'string',
 			default: '',
 		},
 		{
-			displayName: 'First Name',
+			displayName: 'First name',
 			name: 'firstName',
 			type: 'string',
 			displayOptions: {
@@ -100,7 +100,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Last Name',
+			displayName: 'Last name',
 			name: 'lastName',
 			type: 'string',
 			displayOptions: {
@@ -111,7 +111,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'FLSA Overtime Status',
+			displayName: 'FLSA overtime status',
 			name: 'exempt',
 			type: 'options',
 			options: [
@@ -120,7 +120,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'exempt',
 				},
 				{
-					name: 'Non-Exempt',
+					name: 'Non-exempt',
 					value: 'non-exempt',
 				},
 			],
@@ -143,13 +143,13 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Hire Date',
+			displayName: 'Hire date',
 			name: 'hireDate',
 			type: 'dateTime',
 			default: '',
 		},
 		{
-			displayName: 'Location Name or ID',
+			displayName: 'Location name or ID',
 			name: 'location',
 			type: 'options',
 			description:
@@ -160,7 +160,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Marital Status',
+			displayName: 'Marital status',
 			name: 'maritalStatus',
 			type: 'options',
 			options: [
@@ -173,20 +173,20 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'married',
 				},
 				{
-					name: 'Domestic Partnership',
+					name: 'Domestic partnership',
 					value: 'domesticPartnership',
 				},
 			],
 			default: '',
 		},
 		{
-			displayName: 'Mobile Phone',
+			displayName: 'Mobile phone',
 			name: 'mobilePhone',
 			type: 'string',
 			default: '',
 		},
 		{
-			displayName: 'Pay Per',
+			displayName: 'Pay per',
 			name: 'paidPer',
 			type: 'options',
 
@@ -220,9 +220,9 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Pay Rate',
+			displayName: 'Pay rate',
 			name: 'payRate',
-			placeholder: 'Add Pay Rate',
+			placeholder: 'Add pay rate',
 			type: 'fixedCollection',
 			typeOptions: {
 				multipleValues: false,
@@ -231,7 +231,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			options: [
 				{
 					name: 'value',
-					displayName: 'Pay Rate',
+					displayName: 'Pay rate',
 					values: [
 						{
 							displayName: 'Value',
@@ -252,7 +252,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			],
 		},
 		{
-			displayName: 'Pay Type',
+			displayName: 'Pay type',
 			name: 'payType',
 			type: 'options',
 			options: [
@@ -269,7 +269,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'daily',
 				},
 				{
-					name: 'Exception Hourly',
+					name: 'Exception hourly',
 					value: 'exceptionHourly',
 				},
 				{
@@ -281,11 +281,11 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'monthly',
 				},
 				{
-					name: 'Piece Rate',
+					name: 'Piece rate',
 					value: 'pieceRate',
 				},
 				{
-					name: 'Pro Rata',
+					name: 'Pro rata',
 					value: 'proRata',
 				},
 				{
@@ -300,13 +300,13 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 			default: '',
 		},
 		{
-			displayName: 'Preferred Name',
+			displayName: 'Preferred name',
 			name: 'preferredName',
 			type: 'string',
 			default: '',
 		},
 		{
-			displayName: 'Social Security Number',
+			displayName: 'Social security number',
 			name: 'ssn',
 			type: 'string',
 			default: '',

@@ -65,7 +65,7 @@ export class SecurityScorecard implements INodeType {
 						value: 'portfolio',
 					},
 					{
-						name: 'Portfolio Company',
+						name: 'Portfolio company',
 						value: 'portfolioCompany',
 					},
 					{

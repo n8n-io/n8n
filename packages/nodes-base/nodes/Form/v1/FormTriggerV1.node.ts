@@ -74,7 +74,7 @@ const descriptionV1: INodeTypeDescription = {
 			options: [
 				ipAllowlist,
 				{
-					displayName: 'Form Submitted Text',
+					displayName: 'Form submitted text',
 					name: 'formSubmittedText',
 					description: 'The text displayed to users after they filled the form',
 					type: 'string',

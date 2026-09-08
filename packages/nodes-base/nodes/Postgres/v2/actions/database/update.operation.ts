@@ -30,17 +30,17 @@ import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Data Mode',
+		displayName: 'Data mode',
 		name: 'dataMode',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties names exactly match the table column names',
 			},
 			{
-				name: 'Map Each Column Manually',
+				name: 'Map each column manually',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column manually',
 			},
@@ -70,7 +70,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Column to Match On',
+		displayName: 'Column to match on',
 		name: 'columnToMatchOn',
 		type: 'options',
 		required: true,
@@ -90,12 +90,12 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Value of Column to Match On',
+		displayName: 'Value of column to match on',
 		name: 'valueToMatchOn',
 		type: 'string',
 		default: '',
 		description:
-			'Rows with a value in the specified "Column to Match On" that corresponds to the value in this field will be updated',
+			'Rows with a value in the specified "Column to match on" that corresponds to the value in this field will be updated',
 		displayOptions: {
 			show: {
 				dataMode: ['defineBelow'],
@@ -104,9 +104,9 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Values to Send',
+		displayName: 'Values to send',
 		name: 'valuesToSend',
-		placeholder: 'Add Value',
+		placeholder: 'Add value',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Value',

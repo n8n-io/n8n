@@ -25,7 +25,7 @@ export const organizationOperations: INodeProperties[] = [
 				action: 'Get an organization',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many organizations',
 				action: 'Get many organizations',
@@ -46,7 +46,7 @@ export const organizationFields: INodeProperties[] = [
 	/*                                organization:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -77,10 +77,10 @@ export const organizationFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -110,7 +110,7 @@ export const organizationFields: INodeProperties[] = [
 	/*                                organization:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -146,7 +146,7 @@ export const organizationFields: INodeProperties[] = [
 		description: 'The slug of the organization the team should be created for',
 	},
 	{
-		displayName: 'Agree to Terms',
+		displayName: 'Agree to terms',
 		name: 'agreeTerms',
 		type: 'boolean',
 		default: false,
@@ -160,10 +160,10 @@ export const organizationFields: INodeProperties[] = [
 			'Whether you agree to the applicable terms of service and privacy policy of Sentry.io',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -187,7 +187,7 @@ export const organizationFields: INodeProperties[] = [
 	/*                                organization:update                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Slug Name or ID',
+		displayName: 'Slug name or ID',
 		name: 'organization_slug',
 		type: 'options',
 		typeOptions: {
@@ -205,10 +205,10 @@ export const organizationFields: INodeProperties[] = [
 			'The slug of the organization to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

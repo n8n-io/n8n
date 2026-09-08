@@ -28,10 +28,10 @@ export const invoiceOperations: INodeProperties[] = [
 				action: 'Create an invoice',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
-				action: 'Create or Update an invoice',
+				action: 'Create or update an invoice',
 			},
 			{
 				name: 'Delete',
@@ -46,7 +46,7 @@ export const invoiceOperations: INodeProperties[] = [
 				action: 'Get an invoice',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many invoices',
 				action: 'Get many invoices',
@@ -112,7 +112,7 @@ export const invoiceFields: INodeProperties[] = [
 			multipleValueButtonText: 'Add Product',
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: productDetailsOptions,
 		displayOptions: {
 			show: {
@@ -122,10 +122,10 @@ export const invoiceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -135,7 +135,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Name or ID',
+				displayName: 'Account name or ID',
 				name: 'accountId',
 				type: 'options',
 				default: [],
@@ -169,39 +169,39 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'Due_Date',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Exchange Rate',
+				displayName: 'Exchange rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: '',
 				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
-				displayName: 'Grand Total',
+				displayName: 'Grand total',
 				name: 'Grand_Total',
 				type: 'number',
 				default: '',
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Invoice Date',
+				displayName: 'Invoice date',
 				name: 'Invoice_Date',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Invoice Number',
+				displayName: 'Invoice number',
 				name: 'Invoice_Number',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Sales Commission',
+				displayName: 'Sales commission',
 				name: 'Sales_Commission',
 				type: 'number',
 				default: '',
@@ -216,7 +216,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Sub Total',
+				displayName: 'Sub total',
 				name: 'Sub_Total',
 				type: 'number',
 				default: '',
@@ -230,7 +230,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
-				displayName: 'Terms and Conditions',
+				displayName: 'Terms and conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
@@ -298,10 +298,10 @@ export const invoiceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -311,7 +311,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Name or ID',
+				displayName: 'Account name or ID',
 				name: 'accountId',
 				type: 'options',
 				default: [],
@@ -345,33 +345,33 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'Due_Date',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Exchange Rate',
+				displayName: 'Exchange rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: '',
 				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
-				displayName: 'Grand Total',
+				displayName: 'Grand total',
 				name: 'Grand_Total',
 				type: 'number',
 				default: '',
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Invoice Date',
+				displayName: 'Invoice date',
 				name: 'Invoice_Date',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Invoice Number',
+				displayName: 'Invoice number',
 				name: 'Invoice_Number',
 				type: 'string',
 				default: '',
@@ -385,11 +385,11 @@ export const invoiceFields: INodeProperties[] = [
 					multipleValueButtonText: 'Add Product',
 				},
 				default: {},
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				options: productDetailsOptions,
 			},
 			{
-				displayName: 'Sales Commission',
+				displayName: 'Sales commission',
 				name: 'Sales_Commission',
 				type: 'number',
 				default: '',
@@ -404,7 +404,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Sub Total',
+				displayName: 'Sub total',
 				name: 'Sub_Total',
 				type: 'number',
 				default: '',
@@ -425,7 +425,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
-				displayName: 'Terms and Conditions',
+				displayName: 'Terms and conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',

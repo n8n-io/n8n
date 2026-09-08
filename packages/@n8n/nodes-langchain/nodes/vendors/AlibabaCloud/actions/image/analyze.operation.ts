@@ -34,7 +34,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Type',
+		displayName: 'Input type',
 		name: 'inputType',
 		type: 'options',
 		options: [
@@ -43,7 +43,7 @@ const properties: INodeProperties[] = [
 				value: 'url',
 			},
 			{
-				name: 'Binary Data',
+				name: 'Binary data',
 				value: 'binary',
 			},
 		],
@@ -65,7 +65,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -91,7 +91,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'What is in this image?',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
@@ -101,7 +101,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'visionOptions',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -118,7 +118,7 @@ const properties: INodeProperties[] = [
 					'Controls randomness in the output. Lower values make output more focused and deterministic.',
 			},
 			{
-				displayName: 'Max Tokens',
+				displayName: 'Max tokens',
 				name: 'maxTokens',
 				type: 'number',
 				typeOptions: {

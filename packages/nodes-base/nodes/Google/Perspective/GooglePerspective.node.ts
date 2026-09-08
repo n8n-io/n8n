@@ -47,7 +47,7 @@ export class GooglePerspective implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Analyze Comment',
+						name: 'Analyze comment',
 						value: 'analyzeComment',
 					},
 				],
@@ -66,14 +66,14 @@ export class GooglePerspective implements INodeType {
 				},
 			},
 			{
-				displayName: 'Attributes to Analyze',
+				displayName: 'Attributes to analyze',
 				name: 'requestedAttributesUi',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Atrribute',
+				placeholder: 'Add atrribute',
 				required: true,
 				displayOptions: {
 					show: {
@@ -86,7 +86,7 @@ export class GooglePerspective implements INodeType {
 						name: 'requestedAttributesValues',
 						values: [
 							{
-								displayName: 'Attribute Name',
+								displayName: 'Attribute name',
 								name: 'attributeName',
 								type: 'options',
 								options: [
@@ -95,7 +95,7 @@ export class GooglePerspective implements INodeType {
 										value: 'flirtation',
 									},
 									{
-										name: 'Identity Attack',
+										name: 'Identity attack',
 										value: 'identity_attack',
 									},
 									{
@@ -107,11 +107,11 @@ export class GooglePerspective implements INodeType {
 										value: 'profanity',
 									},
 									{
-										name: 'Severe Toxicity',
+										name: 'Severe toxicity',
 										value: 'severe_toxicity',
 									},
 									{
-										name: 'Sexually Explicit',
+										name: 'Sexually explicit',
 										value: 'sexually_explicit',
 									},
 									{
@@ -128,7 +128,7 @@ export class GooglePerspective implements INodeType {
 								default: 'flirtation',
 							},
 							{
-								displayName: 'Score Threshold',
+								displayName: 'Score threshold',
 								name: 'scoreThreshold',
 								type: 'number',
 								typeOptions: {
@@ -157,7 +157,7 @@ export class GooglePerspective implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Language Name or ID',
+						displayName: 'Language name or ID',
 						name: 'languages',
 						type: 'options',
 						typeOptions: {

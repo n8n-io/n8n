@@ -34,7 +34,7 @@ const versionDescription: INodeTypeDescription = {
 	properties: [
 		// TODO: Add choice for text as text or html  (maybe also from name)
 		{
-			displayName: 'From Email',
+			displayName: 'From email',
 			name: 'fromEmail',
 			type: 'string',
 			default: '',
@@ -43,7 +43,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Email address of the sender optional with name',
 		},
 		{
-			displayName: 'To Email',
+			displayName: 'To email',
 			name: 'toEmail',
 			type: 'string',
 			default: '',
@@ -52,7 +52,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Email address of the recipient',
 		},
 		{
-			displayName: 'CC Email',
+			displayName: 'CC email',
 			name: 'ccEmail',
 			type: 'string',
 			default: '',
@@ -60,7 +60,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Email address of CC recipient',
 		},
 		{
-			displayName: 'BCC Email',
+			displayName: 'BCC email',
 			name: 'bccEmail',
 			type: 'string',
 			default: '',
@@ -111,14 +111,14 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Ignore SSL Issues (Insecure)',
+					displayName: 'Ignore SSL issues (insecure)',
 					name: 'allowUnauthorizedCerts',
 					type: 'boolean',
 					default: false,
 					description: 'Whether to connect even if SSL certificate validation is not possible',
 				},
 				{
-					displayName: 'Reply To',
+					displayName: 'Reply to',
 					name: 'replyTo',
 					type: 'string',
 					default: '',

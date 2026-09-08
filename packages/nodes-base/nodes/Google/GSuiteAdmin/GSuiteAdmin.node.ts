@@ -45,7 +45,7 @@ export class GSuiteAdmin implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'ChromeOS Device',
+						name: 'ChromeOS device',
 						value: 'device',
 					},
 					{

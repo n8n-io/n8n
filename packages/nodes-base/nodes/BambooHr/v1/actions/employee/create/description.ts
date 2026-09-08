@@ -18,7 +18,7 @@ export const employeeCreateDescription: EmployeeProperties = [
 			'Whether the employee to create was added to a pay schedule synced with Trax Payroll',
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		required: true,
@@ -31,7 +31,7 @@ export const employeeCreateDescription: EmployeeProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		required: true,
@@ -45,10 +45,10 @@ export const employeeCreateDescription: EmployeeProperties = [
 	},
 	...(createEmployeeSharedDescription(true) as EmployeeProperties),
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -59,13 +59,13 @@ export const employeeCreateDescription: EmployeeProperties = [
 		options: [
 			...createEmployeeSharedDescription(false),
 			{
-				displayName: 'Work Email',
+				displayName: 'Work email',
 				name: 'workEmail',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Work Phone',
+				displayName: 'Work phone',
 				name: 'workPhone',
 				type: 'string',
 				default: '',

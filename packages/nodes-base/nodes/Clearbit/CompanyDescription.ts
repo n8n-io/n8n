@@ -48,10 +48,10 @@ export const companyFields: INodeProperties[] = [
 		description: 'The domain to look up',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -61,7 +61,7 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company Name',
+				displayName: 'Company name',
 				name: 'companyName',
 				type: 'string',
 				default: '',

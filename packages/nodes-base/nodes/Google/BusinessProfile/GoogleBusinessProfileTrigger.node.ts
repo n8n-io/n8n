@@ -42,7 +42,7 @@ export class GoogleBusinessProfileTrigger implements INodeType {
 				default: 'reviewAdded',
 				options: [
 					{
-						name: 'Review Added',
+						name: 'Review added',
 						value: 'reviewAdded',
 					},
 				],

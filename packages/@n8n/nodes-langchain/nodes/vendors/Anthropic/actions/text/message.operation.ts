@@ -37,7 +37,7 @@ const properties: INodeProperties[] = [
 			sortable: true,
 			multipleValues: true,
 		},
-		placeholder: 'Add Message',
+		placeholder: 'Add message',
 		default: { values: [{ content: '', role: 'user' }] },
 		options: [
 			{
@@ -80,14 +80,14 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Add Attachments',
+		displayName: 'Add attachments',
 		name: 'addAttachments',
 		type: 'boolean',
 		default: false,
 		description: 'Whether to add attachments to the message',
 	},
 	{
-		displayName: 'Attachments Input Type',
+		displayName: 'Attachments input type',
 		name: 'attachmentsInputType',
 		type: 'options',
 		default: 'url',
@@ -98,7 +98,7 @@ const properties: INodeProperties[] = [
 				value: 'url',
 			},
 			{
-				name: 'Binary File(s)',
+				name: 'Binary file(s)',
 				value: 'binary',
 			},
 		],
@@ -123,7 +123,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Attachment Input Data Field Name(s)',
+		displayName: 'Attachment input data field name(s)',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -138,7 +138,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
@@ -147,12 +147,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Include Merged Response',
+				displayName: 'Include merged response',
 				name: 'includeMergedResponse',
 				type: 'boolean',
 				default: false,
@@ -160,28 +160,28 @@ const properties: INodeProperties[] = [
 					'Whether to include a single output string merging all text parts of the response',
 			},
 			{
-				displayName: 'System Message',
+				displayName: 'System message',
 				name: 'system',
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. You are a helpful assistant',
 			},
 			{
-				displayName: 'Code Execution',
+				displayName: 'Code execution',
 				name: 'codeExecution',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to enable code execution. Not supported by all models.',
 			},
 			{
-				displayName: 'Web Search',
+				displayName: 'Web search',
 				name: 'webSearch',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to enable web search',
 			},
 			{
-				displayName: 'Web Search Max Uses',
+				displayName: 'Web search max uses',
 				name: 'maxUses',
 				type: 'number',
 				default: 5,
@@ -192,25 +192,25 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Web Search Allowed Domains',
+				displayName: 'Web search allowed domains',
 				name: 'allowedDomains',
 				type: 'string',
 				default: '',
 				description:
-					'Comma-separated list of domains to search. Only domains in this list will be searched. Conflicts with "Web Search Blocked Domains".',
+					'Comma-separated list of domains to search. Only domains in this list will be searched. Conflicts with "Web search blocked domains".',
 				placeholder: 'e.g. google.com, wikipedia.org',
 			},
 			{
-				displayName: 'Web Search Blocked Domains',
+				displayName: 'Web search blocked domains',
 				name: 'blockedDomains',
 				type: 'string',
 				default: '',
 				description:
-					'Comma-separated list of domains to block from search. Conflicts with "Web Search Allowed Domains".',
+					'Comma-separated list of domains to block from search. Conflicts with "Web search allowed domains".',
 				placeholder: 'e.g. google.com, wikipedia.org',
 			},
 			{
-				displayName: 'Maximum Number of Tokens',
+				displayName: 'Maximum number of tokens',
 				name: 'maxTokens',
 				default: 1024,
 				description: 'The maximum number of tokens to generate in the completion',
@@ -221,7 +221,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Temperature)',
+				displayName: 'Output randomness (temperature)',
 				name: 'temperature',
 				default: 1,
 				description:
@@ -234,7 +234,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Top P)',
+				displayName: 'Output randomness (top P)',
 				name: 'topP',
 				default: 0.7,
 				description: 'The maximum cumulative probability of tokens to consider when sampling',
@@ -246,7 +246,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Top K)',
+				displayName: 'Output randomness (top K)',
 				name: 'topK',
 				default: 5,
 				description: 'The maximum number of tokens to consider when sampling',
@@ -257,7 +257,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Tool Calls Iterations',
+				displayName: 'Max tool calls iterations',
 				name: 'maxToolsIterations',
 				type: 'number',
 				default: 15,

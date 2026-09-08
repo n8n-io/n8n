@@ -13,7 +13,7 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Tags',
+				name: 'Add tags',
 				value: 'addTags',
 				description: 'Adds a tag to a users profile',
 				action: 'Add tags to a user',
@@ -25,7 +25,7 @@ export const userOperations: INodeProperties[] = [
 				action: "Change a user's alias",
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'create',
 				description: 'Create or update a user profile',
 				action: 'Create or update a user',
@@ -37,13 +37,13 @@ export const userOperations: INodeProperties[] = [
 				action: 'Delete a user',
 			},
 			{
-				name: 'Re-Subscribe',
+				name: 'Re-subscribe',
 				value: 'resubscribe',
 				description: 'Resubscribe a user',
 				action: 'Resubscribe a user',
 			},
 			{
-				name: 'Remove Tags',
+				name: 'Remove tags',
 				value: 'removeTags',
 				description: 'Removes a tag from a users profile',
 				action: 'Remove tags from a user',
@@ -79,7 +79,7 @@ export const userFields: INodeProperties[] = [
 		description: 'The unique identifier of the customer',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -91,10 +91,10 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -116,7 +116,7 @@ export const userFields: INodeProperties[] = [
 	{
 		displayName: 'Data',
 		name: 'dataAttributesUi',
-		placeholder: 'Add Data',
+		placeholder: 'Add data',
 		description: 'Key value pairs that represent the custom user properties you want to update',
 		type: 'fixedCollection',
 		typeOptions: {

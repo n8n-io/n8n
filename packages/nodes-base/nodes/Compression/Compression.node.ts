@@ -111,7 +111,7 @@ export class Compression implements INodeType {
 				default: 'decompress',
 			},
 			{
-				displayName: 'Input Binary Field(s)',
+				displayName: 'Input binary field(s)',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -127,7 +127,7 @@ export class Compression implements INodeType {
 					'To process more than one file, use a comma-separated list of the binary fields names',
 			},
 			{
-				displayName: 'Input Binary Field(s)',
+				displayName: 'Input binary field(s)',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -143,7 +143,7 @@ export class Compression implements INodeType {
 					'To process more than one file, use a comma-separated list of the binary fields names',
 			},
 			{
-				displayName: 'Output Format',
+				displayName: 'Output format',
 				name: 'outputFormat',
 				type: 'options',
 				default: '',
@@ -174,7 +174,7 @@ export class Compression implements INodeType {
 				description: 'Format of the output',
 			},
 			{
-				displayName: 'Output Format',
+				displayName: 'Output format',
 				name: 'outputFormat',
 				type: 'options',
 				default: 'zip',
@@ -207,7 +207,7 @@ export class Compression implements INodeType {
 				description: 'Format of the output',
 			},
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
@@ -222,7 +222,7 @@ export class Compression implements INodeType {
 				description: 'Name of the output file',
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'data',
@@ -235,7 +235,7 @@ export class Compression implements INodeType {
 				hint: 'The name of the output binary field to put the file in',
 			},
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
@@ -252,7 +252,7 @@ export class Compression implements INodeType {
 				description: 'Name of the output file',
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'data',
@@ -268,7 +268,7 @@ export class Compression implements INodeType {
 				hint: 'The name of the output binary field to put the file in',
 			},
 			{
-				displayName: 'Output File Prefix',
+				displayName: 'Output file prefix',
 				name: 'outputPrefix',
 				type: 'string',
 				default: 'data',
@@ -283,7 +283,7 @@ export class Compression implements INodeType {
 				description: 'Prefix to add to the gzip file',
 			},
 			{
-				displayName: 'Output Prefix',
+				displayName: 'Output prefix',
 				name: 'outputPrefix',
 				type: 'string',
 				default: 'file_',

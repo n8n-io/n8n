@@ -7,16 +7,16 @@ export const transportSelect = ({
 	defaultOption: 'sse' | 'httpStreamable';
 	displayOptions?: IDisplayOptions;
 }): INodeProperties => ({
-	displayName: 'Server Transport',
+	displayName: 'Server transport',
 	name: 'serverTransport',
 	type: 'options',
 	options: [
 		{
-			name: 'HTTP Streamable',
+			name: 'HTTP streamable',
 			value: 'httpStreamable',
 		},
 		{
-			name: 'Server Sent Events (Deprecated)',
+			name: 'Server sent events (deprecated)',
 			value: 'sse',
 		},
 	],

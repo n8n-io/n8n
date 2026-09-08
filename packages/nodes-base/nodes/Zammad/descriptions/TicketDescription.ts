@@ -34,7 +34,7 @@ export const ticketDescription: INodeProperties[] = [
 				action: 'Get a ticket',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many tickets',
 				action: 'Get many tickets',
@@ -67,7 +67,7 @@ export const ticketDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group Name or ID',
+		displayName: 'Group name or ID',
 		name: 'group',
 		type: 'options',
 		typeOptions: {
@@ -86,7 +86,7 @@ export const ticketDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Customer Email Name or ID',
+		displayName: 'Customer email name or ID',
 		name: 'customer',
 		type: 'options',
 		typeOptions: {
@@ -153,7 +153,7 @@ export const ticketDescription: INodeProperties[] = [
 		displayName: 'Article',
 		name: 'article',
 		type: 'fixedCollection',
-		placeholder: 'Add Article',
+		placeholder: 'Add article',
 		required: true,
 		default: {},
 		displayOptions: {
@@ -164,7 +164,7 @@ export const ticketDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Article Details',
+				displayName: 'Article details',
 				name: 'articleDetails',
 				values: [
 					{
@@ -220,7 +220,7 @@ export const ticketDescription: INodeProperties[] = [
 						default: 'Agent',
 					},
 					{
-						displayName: 'Article Type',
+						displayName: 'Article type',
 						name: 'type',
 						type: 'options',
 						// https://docs.zammad.org/en/latest/api/ticket/articles.html
@@ -280,7 +280,7 @@ export const ticketDescription: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Reply To',
+						displayName: 'Reply to',
 						name: 'reply_to',
 						type: 'string',
 						default: '',
@@ -290,7 +290,7 @@ export const ticketDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
@@ -300,25 +300,25 @@ export const ticketDescription: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				/* eslint-disable n8n-nodes-base/node-param-description-wrong-for-dynamic-options, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldPairs',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field name',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -342,7 +342,7 @@ export const ticketDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		displayOptions: {
@@ -352,7 +352,7 @@ export const ticketDescription: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Title',
@@ -384,7 +384,7 @@ export const ticketDescription: INodeProperties[] = [
 					'State of the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Pending Time',
+				displayName: 'Pending time',
 				name: 'pending_time',
 				type: 'dateTime',
 				default: '',
@@ -434,21 +434,21 @@ export const ticketDescription: INodeProperties[] = [
 			},
 			{
 				/* eslint-disable n8n-nodes-base/node-param-description-wrong-for-dynamic-options, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldPairs',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field name',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -472,7 +472,7 @@ export const ticketDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

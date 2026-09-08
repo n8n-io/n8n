@@ -58,10 +58,10 @@ export const workflowIdLocator: INodeProperties = {
 	description: 'Workflow to filter the executions by',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Workflow...',
+			placeholder: 'Select a workflow...',
 			initType: 'workflow',
 			typeOptions: {
 				searchListMethod: 'searchWorkflows',

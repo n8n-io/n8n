@@ -21,19 +21,19 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Click an Element',
+				name: 'Click an element',
 				value: 'click',
 				description: 'Execute a click on an element given a description',
 				action: 'Click an element',
 			},
 			{
-				name: 'Fill Form',
+				name: 'Fill form',
 				value: 'fill',
 				description: 'Fill a form with the provided information',
 				action: 'Fill form',
 			},
 			{
-				name: 'Hover on an Element',
+				name: 'Hover on an element',
 				value: 'hover',
 				description: 'Execute a hover action on an element given a description',
 				action: 'Hover on an element',
@@ -75,10 +75,10 @@ export const description: INodeProperties[] = [
 	...scroll.description,
 	...type.description,
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -88,7 +88,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Visual Scope',
+				displayName: 'Visual scope',
 				name: 'visualScope',
 				type: 'options',
 				default: 'auto',
@@ -118,27 +118,27 @@ export const description: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Wait Until Event After Navigation',
+				displayName: 'Wait until event after navigation',
 				name: 'waitForNavigation',
 				type: 'options',
 				default: 'load',
 				description:
-					"The condition to wait for the navigation to complete after an interaction (click, type or hover). Defaults to 'Fully Loaded'.",
+					"The condition to wait for the navigation to complete after an interaction (click, type or hover). Defaults to 'Fully loaded'.",
 				options: [
 					{
-						name: 'Fully Loaded (Slower)',
+						name: 'Fully loaded (slower)',
 						value: 'load',
 					},
 					{
-						name: 'DOM Only Loaded (Faster)',
+						name: 'DOM only loaded (faster)',
 						value: 'domcontentloaded',
 					},
 					{
-						name: 'All Network Activity Has Stopped',
+						name: 'All network activity has stopped',
 						value: 'networkidle0',
 					},
 					{
-						name: 'Most Network Activity Has Stopped',
+						name: 'Most network activity has stopped',
 						value: 'networkidle2',
 					},
 				],

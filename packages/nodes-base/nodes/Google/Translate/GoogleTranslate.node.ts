@@ -60,7 +60,7 @@ export class GoogleTranslate implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 					{
@@ -86,7 +86,7 @@ export class GoogleTranslate implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 				],
@@ -148,7 +148,7 @@ export class GoogleTranslate implements INodeType {
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Translate To',
+				displayName: 'Translate to',
 				name: 'translateTo',
 				type: 'options',
 				typeOptions: {

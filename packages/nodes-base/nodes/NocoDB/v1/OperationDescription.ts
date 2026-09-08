@@ -5,7 +5,7 @@ export const operationFields: INodeProperties[] = [
 	//         Shared
 	// ----------------------------------
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		default: 'none',
@@ -21,7 +21,7 @@ export const operationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Base Name or ID',
+		displayName: 'Base name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -52,7 +52,7 @@ export const operationFields: INodeProperties[] = [
 		description: 'The ID of the project',
 	},
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -69,7 +69,7 @@ export const operationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'table',
 		type: 'options',
 		default: '',
@@ -100,7 +100,7 @@ export const operationFields: INodeProperties[] = [
 		description: 'The name of the table',
 	},
 	{
-		displayName: 'Primary Key Type',
+		displayName: 'Primary key type',
 		name: 'primaryKey',
 		type: 'options',
 		default: 'id',
@@ -112,7 +112,7 @@ export const operationFields: INodeProperties[] = [
 					'Default, added when table was created from UI by those options: Create new table / Import from Excel / Import from CSV',
 			},
 			{
-				name: 'Imported From Airtable',
+				name: 'Imported from Airtable',
 				value: 'ncRecordId',
 				description: 'Select if table was imported from Airtable',
 			},
@@ -131,7 +131,7 @@ export const operationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Primary Key Type',
+		displayName: 'Primary key type',
 		name: 'primaryKey',
 		type: 'options',
 		default: 'id',
@@ -143,7 +143,7 @@ export const operationFields: INodeProperties[] = [
 					'Default, added when table was created from UI by those options: Create new table / Import from Excel / Import from CSV',
 			},
 			{
-				name: 'Imported From Airtable',
+				name: 'Imported from Airtable',
 				value: 'ncRecordId',
 				description: 'Select if table was imported from Airtable',
 			},
@@ -162,7 +162,7 @@ export const operationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Field Name',
+		displayName: 'Field name',
 		name: 'customPrimaryKey',
 		type: 'string',
 		default: '',
@@ -175,7 +175,7 @@ export const operationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Field Name',
+		displayName: 'Field name',
 		name: 'customPrimaryKey',
 		type: 'string',
 		default: '',
@@ -188,7 +188,7 @@ export const operationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Row ID Value',
+		displayName: 'Row ID value',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -202,7 +202,7 @@ export const operationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Row ID Value',
+		displayName: 'Row ID value',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -223,7 +223,7 @@ export const operationFields: INodeProperties[] = [
 	//         getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -252,7 +252,7 @@ export const operationFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Download Attachments',
+		displayName: 'Download attachments',
 		name: 'downloadAttachments',
 		type: 'boolean',
 		displayOptions: {
@@ -261,10 +261,10 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
+		description: "Whether the attachment fields define in 'Download fields' will be downloaded",
 	},
 	{
-		displayName: 'Download Fields',
+		displayName: 'Download fields',
 		name: 'downloadFieldNames',
 		type: 'string',
 		required: true,
@@ -316,7 +316,7 @@ export const operationFields: INodeProperties[] = [
 			{
 				displayName: 'Sort',
 				name: 'sort',
-				placeholder: 'Add Sort Rule',
+				placeholder: 'Add sort rule',
 				description: 'The sorting rules for the returned rows',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -359,7 +359,7 @@ export const operationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Filter By Formula',
+				displayName: 'Filter by formula',
 				name: 'where',
 				type: 'string',
 				default: '',
@@ -372,7 +372,7 @@ export const operationFields: INodeProperties[] = [
 	//         get
 	// ----------------------------------
 	{
-		displayName: 'Download Attachments',
+		displayName: 'Download attachments',
 		name: 'downloadAttachments',
 		type: 'boolean',
 		displayOptions: {
@@ -381,10 +381,10 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
+		description: "Whether the attachment fields define in 'Download fields' will be downloaded",
 	},
 	{
-		displayName: 'Download Fields',
+		displayName: 'Download fields',
 		name: 'downloadFieldNames',
 		type: 'string',
 		required: true,
@@ -405,17 +405,17 @@ export const operationFields: INodeProperties[] = [
 	//         Shared
 	// ----------------------------------
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'dataToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
@@ -453,7 +453,7 @@ export const operationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
@@ -468,9 +468,9 @@ export const operationFields: INodeProperties[] = [
 		placeholder: 'Enter properties...',
 	},
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Field to Send',
@@ -489,13 +489,13 @@ export const operationFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field name',
 						name: 'fieldName',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Is Binary File',
+						displayName: 'Is binary file',
 						name: 'binaryData',
 						type: 'boolean',
 						default: false,
@@ -503,7 +503,7 @@ export const operationFields: INodeProperties[] = [
 							'Whether the field data to set is binary and should be taken from a binary property',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -514,7 +514,7 @@ export const operationFields: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Take Input From Field',
+						displayName: 'Take input from field',
 						name: 'binaryProperty',
 						type: 'string',
 						description: 'The field containing the binary file data to be uploaded',

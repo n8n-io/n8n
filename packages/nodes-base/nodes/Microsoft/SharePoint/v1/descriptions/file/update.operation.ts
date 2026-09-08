@@ -40,7 +40,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Updated File Name',
+		displayName: 'Updated file name',
 		name: 'fileName',
 		default: '',
 		description: 'If not specified, the original file name will be used',
@@ -55,7 +55,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 	},
 	{
-		displayName: 'Change File Content',
+		displayName: 'Change file content',
 		name: 'changeFileContent',
 		default: false,
 		description: 'Whether to update the file contents',
@@ -64,7 +64,7 @@ const properties: INodeProperties[] = [
 		type: 'boolean',
 	},
 	{
-		displayName: 'Updated File Contents',
+		displayName: 'Updated file contents',
 		name: 'fileContents',
 		default: '',
 		description:

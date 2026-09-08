@@ -31,7 +31,7 @@ export const messageAttachmentOperations: INodeProperties[] = [
 				action: 'Get a message attachment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: "Get many message's attachments",
 				action: 'Get many message attachments',
@@ -71,7 +71,7 @@ export const messageAttachmentFields: INodeProperties[] = [
 
 	// messageAttachment:getAll, messageAttachment:listAttachments
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -106,7 +106,7 @@ export const messageAttachmentFields: INodeProperties[] = [
 
 	// File operations
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		hint: 'The name of the output binary field to put the file in',
 		type: 'string',
@@ -122,10 +122,10 @@ export const messageAttachmentFields: INodeProperties[] = [
 
 	// messageAttachment:add
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -135,7 +135,7 @@ export const messageAttachmentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				description:
 					'Filename of the attachment. If not set will the file-name of the binary property be used, if it exists.',
@@ -147,10 +147,10 @@ export const messageAttachmentFields: INodeProperties[] = [
 
 	// Get & Get All operations
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

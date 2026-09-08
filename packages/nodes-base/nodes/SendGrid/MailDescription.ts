@@ -28,7 +28,7 @@ export const mailFields: INodeProperties[] = [
 	/*                                 mail:send                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Sender Email',
+		displayName: 'Sender email',
 		name: 'fromEmail',
 		type: 'string',
 		default: '',
@@ -42,7 +42,7 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Sender Name',
+		displayName: 'Sender name',
 		name: 'fromName',
 		type: 'string',
 		default: '',
@@ -56,7 +56,7 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Recipient Email',
+		displayName: 'Recipient email',
 		name: 'toEmail',
 		type: 'string',
 		default: '',
@@ -84,7 +84,7 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Dynamic Template',
+		displayName: 'Dynamic template',
 		name: 'dynamicTemplate',
 		type: 'boolean',
 		required: true,
@@ -98,14 +98,14 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'MIME Type',
+		displayName: 'MIME type',
 		name: 'contentType',
 		type: 'options',
 		default: 'text/plain',
 		description: 'MIME type of the email to send',
 		options: [
 			{
-				name: 'Plain Text',
+				name: 'Plain text',
 				value: 'text/plain',
 			},
 			{
@@ -122,7 +122,7 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Message Body',
+		displayName: 'Message body',
 		name: 'contentValue',
 		type: 'string',
 		default: '',
@@ -137,7 +137,7 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Template Name or ID',
+		displayName: 'Template name or ID',
 		name: 'templateId',
 		type: 'options',
 		description:
@@ -155,9 +155,9 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Dynamic Template Fields',
+		displayName: 'Dynamic template fields',
 		name: 'dynamicTemplateFields',
-		placeholder: 'Add Dynamic Template Fields',
+		placeholder: 'Add dynamic template fields',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -194,10 +194,10 @@ export const mailFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -214,7 +214,7 @@ export const mailFields: INodeProperties[] = [
 				description: 'Comma-separated list of binary properties',
 			},
 			{
-				displayName: 'BCC Email',
+				displayName: 'BCC email',
 				name: 'bccEmail',
 				type: 'string',
 				default: '',
@@ -230,7 +230,7 @@ export const mailFields: INodeProperties[] = [
 					'Comma-separated list of categories. Each category name may not exceed 255 characters.',
 			},
 			{
-				displayName: 'CC Email',
+				displayName: 'CC email',
 				name: 'ccEmail',
 				type: 'string',
 				default: '',
@@ -238,21 +238,21 @@ export const mailFields: INodeProperties[] = [
 					'Comma-separated list of emails of the recipients of a carbon copy of the email',
 			},
 			{
-				displayName: 'Enable Sandbox',
+				displayName: 'Enable sandbox',
 				name: 'enableSandbox',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to use to the sandbox for testing out email-sending functionality',
 			},
 			{
-				displayName: 'IP Pool Name',
+				displayName: 'IP pool name',
 				name: 'ipPoolName',
 				type: 'string',
 				default: '',
 				description: 'The IP Pool that you would like to send this email from',
 			},
 			{
-				displayName: 'Reply-To Email',
+				displayName: 'Reply-to email',
 				name: 'replyToEmail',
 				type: 'string',
 				default: '',
@@ -263,7 +263,7 @@ export const mailFields: INodeProperties[] = [
 			{
 				displayName: 'Headers',
 				name: 'headers',
-				placeholder: 'Add Header',
+				placeholder: 'Add header',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -293,7 +293,7 @@ export const mailFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Send At',
+				displayName: 'Send at',
 				name: 'sendAt',
 				type: 'dateTime',
 				default: '',

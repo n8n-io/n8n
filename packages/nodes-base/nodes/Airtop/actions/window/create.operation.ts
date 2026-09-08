@@ -29,7 +29,7 @@ export const description: INodeProperties[] = [
 	},
 	// Live View Options
 	{
-		displayName: 'Get Live View',
+		displayName: 'Get live view',
 		name: 'getLiveView',
 		type: 'boolean',
 		default: false,
@@ -43,7 +43,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include Navigation Bar',
+		displayName: 'Include navigation bar',
 		name: 'includeNavigationBar',
 		type: 'boolean',
 		default: false,
@@ -58,7 +58,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Screen Resolution',
+		displayName: 'Screen resolution',
 		name: 'screenResolution',
 		type: 'string',
 		default: '',
@@ -74,7 +74,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Disable Resize',
+		displayName: 'Disable resize',
 		name: 'disableResize',
 		type: 'boolean',
 		default: false,
@@ -88,10 +88,10 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -101,7 +101,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Wait Until',
+				displayName: 'Wait until',
 				name: 'waitUntil',
 				type: 'options',
 				description: 'Wait until the specified loading event occurs',
@@ -113,7 +113,7 @@ export const description: INodeProperties[] = [
 						description: 'Wait until the page dom and its assets have loaded',
 					},
 					{
-						name: 'DOM Content Loaded',
+						name: 'DOM content loaded',
 						value: 'domContentLoaded',
 						description: 'Wait until the page DOM has loaded',
 					},
@@ -123,7 +123,7 @@ export const description: INodeProperties[] = [
 						description: 'Wait until all iframes in the page have loaded',
 					},
 					{
-						name: 'No Wait',
+						name: 'No wait',
 						value: 'noWait',
 						description: 'Do not wait for any loading event and it will return immediately',
 					},

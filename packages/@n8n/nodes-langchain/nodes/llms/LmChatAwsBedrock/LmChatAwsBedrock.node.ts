@@ -63,7 +63,7 @@ export class LmChatAwsBedrock implements INodeType {
 			awsNodeAuthOptions,
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
 			{
-				displayName: 'Model Source',
+				displayName: 'Model source',
 				name: 'modelSource',
 				type: 'options',
 				// From 1.2 the Model dropdown lists on-demand models and inference profiles together
@@ -216,20 +216,20 @@ export class LmChatAwsBedrock implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Maximum Number of Tokens',
+						displayName: 'Maximum number of tokens',
 						name: 'maxTokensToSample',
 						default: 2000,
 						description: 'The maximum number of tokens to generate in the completion',
 						type: 'number',
 					},
 					{
-						displayName: 'Sampling Temperature',
+						displayName: 'Sampling temperature',
 						name: 'temperature',
 						default: 0.7,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -247,7 +247,7 @@ export class LmChatAwsBedrock implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Max Retries',
+						displayName: 'Max retries',
 						name: 'maxRetries',
 						default: 2,
 						description: 'Maximum number of retries to attempt when a request fails',
@@ -262,7 +262,7 @@ export class LmChatAwsBedrock implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Additional Model Request Fields',
+						displayName: 'Additional model request fields',
 						name: 'additionalModelRequestFields',
 						default: '{}',
 						description:
@@ -271,7 +271,7 @@ export class LmChatAwsBedrock implements INodeType {
 						typeOptions: { rows: 4 },
 					},
 					{
-						displayName: 'Latency Optimization',
+						displayName: 'Latency optimization',
 						name: 'latency',
 						default: 'standard',
 						description:
@@ -294,14 +294,14 @@ export class LmChatAwsBedrock implements INodeType {
 								name: 'values',
 								values: [
 									{
-										displayName: 'Guardrail Identifier',
+										displayName: 'Guardrail identifier',
 										name: 'guardrailIdentifier',
 										type: 'string',
 										default: '',
 										description: 'The identifier (ID or ARN) of the guardrail to apply',
 									},
 									{
-										displayName: 'Guardrail Version',
+										displayName: 'Guardrail version',
 										name: 'guardrailVersion',
 										type: 'string',
 										default: 'DRAFT',
@@ -317,7 +317,7 @@ export class LmChatAwsBedrock implements INodeType {
 										options: [
 											{ name: 'Disabled', value: 'disabled' },
 											{ name: 'Enabled', value: 'enabled' },
-											{ name: 'Enabled (Full)', value: 'enabled_full' },
+											{ name: 'Enabled (full)', value: 'enabled_full' },
 										],
 									},
 								],

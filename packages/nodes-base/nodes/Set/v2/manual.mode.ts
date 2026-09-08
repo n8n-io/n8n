@@ -22,9 +22,9 @@ import { updateDisplayOptions } from '../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Fields to Set',
+		displayName: 'Fields to set',
 		name: 'fields',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		description: 'Edit existing fields or add new ones to modify the output data',
 		displayOptions: {
@@ -166,7 +166,7 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Fields to Set',
+		displayName: 'Fields to set',
 		name: 'assignments',
 		type: 'assignmentCollection',
 		displayOptions: {

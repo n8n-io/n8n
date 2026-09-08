@@ -115,9 +115,9 @@ export function extractActivityInfo(activity: Activity): ActivityInfo {
 
 export const microsoftMcpServers: INodePropertyOptions[] = [
 	{ name: 'Admin 365', value: 'mcp_Admin365_GraphTools' },
-	{ name: 'Admin Tools', value: 'mcp_AdminTools' },
+	{ name: 'Admin tools', value: 'mcp_AdminTools' },
 	{ name: 'Calendar', value: 'mcp_CalendarTools' },
-	{ name: 'DA Search', value: 'mcp_DASearch' },
+	{ name: 'DA search', value: 'mcp_DASearch' },
 	{ name: 'Excel', value: 'mcp_ExcelServer' },
 	{ name: 'Knowledge', value: 'mcp_KnowledgeTools' },
 	{ name: 'M365 Copilot', value: 'mcp_M365Copilot' },
@@ -126,12 +126,12 @@ export const microsoftMcpServers: INodePropertyOptions[] = [
 	{ name: 'OneDrive & SharePoint', value: 'mcp_ODSPRemoteServer' },
 	{ name: 'Planner', value: 'mcp_PlannerServer' },
 	{ name: 'SharePoint', value: 'mcp_SharePointRemoteServer' },
-	{ name: 'SharePoint Lists', value: 'mcp_SharePointListsTools' },
-	{ name: 'Task Personalization', value: 'mcp_TaskPersonalizationServer' },
+	{ name: 'SharePoint lists', value: 'mcp_SharePointListsTools' },
+	{ name: 'Task personalization', value: 'mcp_TaskPersonalizationServer' },
 	{ name: 'Teams', value: 'mcp_TeamsServer' },
 	{ name: 'Teams Canary', value: 'mcp_TeamsCanaryServer' },
 	{ name: 'Teams V1', value: 'mcp_TeamsServerV1' },
-	{ name: 'Web Search', value: 'mcp_WebSearchTools' },
+	{ name: 'Web search', value: 'mcp_WebSearchTools' },
 	{ name: 'Windows 365 Computer Use', value: 'mcp_W365ComputerUse' },
 	{ name: 'Word', value: 'mcp_WordServer' },
 ];

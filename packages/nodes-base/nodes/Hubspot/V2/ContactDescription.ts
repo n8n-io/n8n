@@ -13,7 +13,7 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description:
 					'Create a new contact, or update the current one if it already exists (upsert)',
@@ -32,13 +32,13 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many contacts',
 				action: 'Get many contacts',
 			},
 			{
-				name: 'Get Recently Created/Updated',
+				name: 'Get recently created/updated',
 				value: 'getRecentlyCreatedUpdated',
 				description: 'Get recently created/updated contacts',
 				action: 'Get recently created/updated contacts',
@@ -73,10 +73,10 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Contact Properties',
+		displayName: 'Contact properties',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Property',
+		placeholder: 'Add property',
 		default: {},
 		displayOptions: {
 			show: {
@@ -86,7 +86,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'annualRevenue',
 				type: 'number',
 				typeOptions: {
@@ -95,7 +95,7 @@ export const contactFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Associated Company Name or ID',
+				displayName: 'Associated company name or ID',
 				name: 'associatedCompanyId',
 				type: 'options',
 				typeOptions: {
@@ -106,7 +106,7 @@ export const contactFields: INodeProperties[] = [
 					'Companies associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Buying Role',
+				displayName: 'Buying role',
 				name: 'buyingRole',
 				description:
 					'Role the contact plays during the sales process. Contacts can have multiple roles, and can share roles with others.',
@@ -118,7 +118,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'BLOCKER',
 					},
 					{
-						name: 'Budget Holder',
+						name: 'Budget holder',
 						value: 'BUDGET_HOLDER',
 					},
 					{
@@ -126,15 +126,15 @@ export const contactFields: INodeProperties[] = [
 						value: 'CHAMPION',
 					},
 					{
-						name: 'Decision Maker',
+						name: 'Decision maker',
 						value: 'DECISION_MAKER',
 					},
 					{
-						name: 'End User',
+						name: 'End user',
 						value: 'END_USER',
 					},
 					{
-						name: 'Executive Sponsor',
+						name: 'Executive sponsor',
 						value: 'EXECUTIVE_SPONSOR',
 					},
 					{
@@ -142,7 +142,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'INFLUENCER',
 					},
 					{
-						name: 'Legal & Compliance',
+						name: 'Legal & compliance',
 						value: 'LEGAL_AND_COMPLIANCE',
 					},
 					{
@@ -158,13 +158,13 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Clicked Facebook Ad',
+				displayName: 'Clicked Facebook ad',
 				name: 'clickedFacebookAd',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Close Date',
+				displayName: 'Close date',
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
@@ -172,19 +172,19 @@ export const contactFields: INodeProperties[] = [
 					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
-				displayName: 'Company Name',
+				displayName: 'Company name',
 				name: 'companyName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Company Size',
+				displayName: 'Company size',
 				name: 'companySize',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Contact Owner Name or ID',
+				displayName: 'Contact owner name or ID',
 				name: 'contactOwner',
 				type: 'options',
 				description:
@@ -195,7 +195,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Contact Properties to Include',
+				displayName: 'Contact properties to include',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -211,22 +211,22 @@ export const contactFields: INodeProperties[] = [
 					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Country/Region',
+				displayName: 'Country/region',
 				name: 'country',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Country/Region Code',
+				displayName: 'Country/region code',
 				name: 'countryRegionCode',
 				description: "The contact's two-letter country code",
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Properties',
+				displayName: 'Custom properties',
 				name: 'customPropertiesUi',
-				placeholder: 'Add Custom Property',
+				placeholder: 'Add custom property',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -235,10 +235,10 @@ export const contactFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customPropertiesValues',
-						displayName: 'Custom Property',
+						displayName: 'Custom property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -261,7 +261,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Date of Birth',
+				displayName: 'Date of birth',
 				name: 'dateOfBirth',
 				type: 'dateTime',
 				default: '',
@@ -275,28 +275,28 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Email Address Quarantine Reason',
+				displayName: 'Email address quarantine reason',
 				name: 'emailCustomerQuarantinedReason',
 				description: 'The reason why the email address has been quarantined',
 				type: 'options',
 				default: '',
 				options: [
 					{
-						name: 'Suspension Remediation',
+						name: 'Suspension remediation',
 						value: 'SUSPENSION_REMEDIATION',
 					},
 					{
-						name: 'Blocklist Remediation',
+						name: 'Blocklist remediation',
 						value: 'BLOCKLIST_REMEDIATION',
 					},
 					{
-						name: 'Trust & Safety Remediation',
+						name: 'Trust & safety remediation',
 						value: 'TRUST_SAFETY_REMEDIATION',
 					},
 				],
 			},
 			{
-				displayName: 'Employment Role',
+				displayName: 'Employment role',
 				name: 'employmentRole',
 				description: 'Job role',
 				type: 'options',
@@ -311,7 +311,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'administrative',
 					},
 					{
-						name: 'Business Development',
+						name: 'Business development',
 						value: 'business_development',
 					},
 					{
@@ -323,7 +323,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'consulting',
 					},
 					{
-						name: 'Customer Service',
+						name: 'Customer service',
 						value: 'customer_service',
 					},
 					{
@@ -347,15 +347,15 @@ export const contactFields: INodeProperties[] = [
 						value: 'finance',
 					},
 					{
-						name: 'Health Professional',
+						name: 'Health professional',
 						value: 'health_professional',
 					},
 					{
-						name: 'Human Resources',
+						name: 'Human resources',
 						value: 'human_resources',
 					},
 					{
-						name: 'Information Technology',
+						name: 'Information technology',
 						value: 'information_technology',
 					},
 					{
@@ -375,19 +375,19 @@ export const contactFields: INodeProperties[] = [
 						value: 'product',
 					},
 					{
-						name: 'Project Management',
+						name: 'Project management',
 						value: 'project_management',
 					},
 					{
-						name: 'Public Relations',
+						name: 'Public relations',
 						value: 'public_relations',
 					},
 					{
-						name: 'Quality Assurance',
+						name: 'Quality assurance',
 						value: 'quality_assurance',
 					},
 					{
-						name: 'Real Estate',
+						name: 'Real estate',
 						value: 'real_estate',
 					},
 					{
@@ -413,7 +413,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Employment Seniority',
+				displayName: 'Employment seniority',
 				name: 'employmentSeniority',
 				description: 'Job Seniority',
 				type: 'options',
@@ -458,18 +458,18 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Employment Sub Role',
+				displayName: 'Employment sub role',
 				name: 'employmentSubRole',
 				description: 'Job sub role',
 				type: 'options',
 				default: '',
 				options: [
 					{
-						name: 'Account Executive',
+						name: 'Account executive',
 						value: 'account_executive',
 					},
 					{
-						name: 'Account Manager',
+						name: 'Account manager',
 						value: 'account_manager',
 					},
 					{
@@ -477,11 +477,11 @@ export const contactFields: INodeProperties[] = [
 						value: 'accountant',
 					},
 					{
-						name: 'Accounting Manager',
+						name: 'Accounting manager',
 						value: 'accounting_manager',
 					},
 					{
-						name: 'Administrative Assistant',
+						name: 'Administrative assistant',
 						value: 'administrative_assistant',
 					},
 					{
@@ -505,91 +505,91 @@ export const contactFields: INodeProperties[] = [
 						value: 'auditor',
 					},
 					{
-						name: 'Brand Marketing',
+						name: 'Brand marketing',
 						value: 'brand_marketing',
 					},
 					{
-						name: 'Business Analyst',
+						name: 'Business analyst',
 						value: 'business_analyst',
 					},
 					{
-						name: 'Business Consultant',
+						name: 'Business consultant',
 						value: 'business_consultant',
 					},
 					{
-						name: 'Business Manager',
+						name: 'Business manager',
 						value: 'business_manager',
 					},
 					{
-						name: 'Chief Compliance Officer',
+						name: 'Chief compliance officer',
 						value: 'chief_compliance_officer',
 					},
 					{
-						name: 'Chief Data Officer',
+						name: 'Chief data officer',
 						value: 'chief_data_officer',
 					},
 					{
-						name: 'Chief Executive Officer',
+						name: 'Chief executive officer',
 						value: 'chief_executive_officer',
 					},
 					{
-						name: 'Chief Experience Officer',
+						name: 'Chief experience officer',
 						value: 'chief_experience_officer',
 					},
 					{
-						name: 'Chief Financial Officer',
+						name: 'Chief financial officer',
 						value: 'chief_financial_officer',
 					},
 					{
-						name: 'Chief Human Resources Officer',
+						name: 'Chief human resources officer',
 						value: 'chief_human_resources_officer',
 					},
 					{
-						name: 'Chief Information Officer',
+						name: 'Chief information officer',
 						value: 'chief_information_officer',
 					},
 					{
-						name: 'Chief Innovation Officer',
+						name: 'Chief innovation officer',
 						value: 'chief_innovation_officer',
 					},
 					{
-						name: 'Chief Legal Officer',
+						name: 'Chief legal officer',
 						value: 'chief_legal_officer',
 					},
 					{
-						name: 'Chief Marketing Officer',
+						name: 'Chief marketing officer',
 						value: 'chief_marketing_officer',
 					},
 					{
-						name: 'Chief Operating Officer',
+						name: 'Chief operating officer',
 						value: 'chief_operating_officer',
 					},
 					{
-						name: 'Chief Product Officer',
+						name: 'Chief product officer',
 						value: 'chief_product_officer',
 					},
 					{
-						name: 'Chief Revenue Officer',
+						name: 'Chief revenue officer',
 						value: 'chief_revenue_officer',
 					},
 					{
-						name: 'Chief Risk Officer',
+						name: 'Chief risk officer',
 						value: 'chief_risk_officer',
 					},
 					{
-						name: 'Chief Security Officer',
+						name: 'Chief security officer',
 						value: 'chief_security_officer',
 					},
 					{
-						name: 'Chief Sustainability Officer',
+						name: 'Chief sustainability officer',
 						value: 'chief_sustainability_officer',
 					},
 					{
-						name: 'Chief Technology Officer',
+						name: 'Chief technology officer',
 						value: 'chief_technology_officer',
 					},
 					{
-						name: 'Communications Manager',
+						name: 'Communications manager',
 						value: 'communications_manager',
 					},
 					{
@@ -597,7 +597,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'community',
 					},
 					{
-						name: 'Content Marketing',
+						name: 'Content marketing',
 						value: 'content_marketing',
 					},
 					{
@@ -609,11 +609,11 @@ export const contactFields: INodeProperties[] = [
 						value: 'creative',
 					},
 					{
-						name: 'Customer Service Specialist',
+						name: 'Customer service specialist',
 						value: 'customer_service_specialist',
 					},
 					{
-						name: 'Customer Success',
+						name: 'Customer success',
 						value: 'customer_success',
 					},
 					{
@@ -621,31 +621,31 @@ export const contactFields: INodeProperties[] = [
 						value: 'data_it',
 					},
 					{
-						name: 'Data Science Engineer',
+						name: 'Data science engineer',
 						value: 'data_science_engineer',
 					},
 					{
-						name: 'Database Administrator',
+						name: 'Database administrator',
 						value: 'database_administrator',
 					},
 					{
-						name: 'Design Engineer',
+						name: 'Design engineer',
 						value: 'design_engineer',
 					},
 					{
-						name: 'Development Specialist',
+						name: 'Development specialist',
 						value: 'development_specialist',
 					},
 					{
-						name: 'Devops Engineer',
+						name: 'Devops engineer',
 						value: 'devops_engineer',
 					},
 					{
-						name: 'Digital Marketing',
+						name: 'Digital marketing',
 						value: 'digital_marketing',
 					},
 					{
-						name: 'Director of Development',
+						name: 'Director of development',
 						value: 'director_of_development',
 					},
 					{
@@ -653,11 +653,11 @@ export const contactFields: INodeProperties[] = [
 						value: 'editorial',
 					},
 					{
-						name: 'Electrical Engineer',
+						name: 'Electrical engineer',
 						value: 'electrical_engineer',
 					},
 					{
-						name: 'Engineering Manager',
+						name: 'Engineering manager',
 						value: 'engineering_manager',
 					},
 					{
@@ -665,7 +665,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'events',
 					},
 					{
-						name: 'Executive Assistant',
+						name: 'Executive assistant',
 						value: 'executive_assistant',
 					},
 					{
@@ -673,19 +673,19 @@ export const contactFields: INodeProperties[] = [
 						value: 'facilities',
 					},
 					{
-						name: 'Fashion Design',
+						name: 'Fashion design',
 						value: 'fashion_design',
 					},
 					{
-						name: 'Field Marketing',
+						name: 'Field marketing',
 						value: 'field_marketing',
 					},
 					{
-						name: 'Financial Analyst',
+						name: 'Financial analyst',
 						value: 'financial_analyst',
 					},
 					{
-						name: 'Financial Controller',
+						name: 'Financial controller',
 						value: 'financial_controller',
 					},
 					{
@@ -697,27 +697,27 @@ export const contactFields: INodeProperties[] = [
 						value: 'founder',
 					},
 					{
-						name: 'General Counsel',
+						name: 'General counsel',
 						value: 'general_counsel',
 					},
 					{
-						name: 'General Manager',
+						name: 'General manager',
 						value: 'general_manager',
 					},
 					{
-						name: 'General Partner',
+						name: 'General partner',
 						value: 'general_partner',
 					},
 					{
-						name: 'Graphic Design',
+						name: 'Graphic design',
 						value: 'graphic_design',
 					},
 					{
-						name: 'Human Resources Specialist',
+						name: 'Human resources specialist',
 						value: 'human_resources_specialist',
 					},
 					{
-						name: 'Information Technology Specialist',
+						name: 'Information technology specialist',
 						value: 'information_technology_specialist',
 					},
 					{
@@ -725,7 +725,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'investment',
 					},
 					{
-						name: 'Investment Banker',
+						name: 'Investment banker',
 						value: 'investment_banker',
 					},
 					{
@@ -733,11 +733,11 @@ export const contactFields: INodeProperties[] = [
 						value: 'journalist',
 					},
 					{
-						name: 'Key Account Manager',
+						name: 'Key account manager',
 						value: 'key_account_manager',
 					},
 					{
-						name: 'Law Enforcement',
+						name: 'Law enforcement',
 						value: 'law_enforcement',
 					},
 					{
@@ -745,7 +745,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'lawyer',
 					},
 					{
-						name: 'Logistics Manager',
+						name: 'Logistics manager',
 						value: 'logistics_manager',
 					},
 					{
@@ -753,19 +753,19 @@ export const contactFields: INodeProperties[] = [
 						value: 'management',
 					},
 					{
-						name: 'Marketing Specialist',
+						name: 'Marketing specialist',
 						value: 'marketing_specialist',
 					},
 					{
-						name: 'Mechanical Engineer',
+						name: 'Mechanical engineer',
 						value: 'mechanical_engineer',
 					},
 					{
-						name: 'Medical Doctor',
+						name: 'Medical doctor',
 						value: 'medical_doctor',
 					},
 					{
-						name: 'Network Engineer',
+						name: 'Network engineer',
 						value: 'network_engineer',
 					},
 					{
@@ -773,15 +773,15 @@ export const contactFields: INodeProperties[] = [
 						value: 'nurse',
 					},
 					{
-						name: 'Office Management',
+						name: 'Office management',
 						value: 'office_management',
 					},
 					{
-						name: 'Office Manager',
+						name: 'Office manager',
 						value: 'office_manager',
 					},
 					{
-						name: 'Operational Specialist',
+						name: 'Operational specialist',
 						value: 'operational_specialist',
 					},
 					{
@@ -797,19 +797,19 @@ export const contactFields: INodeProperties[] = [
 						value: 'principal',
 					},
 					{
-						name: 'Product Design',
+						name: 'Product design',
 						value: 'product_design',
 					},
 					{
-						name: 'Product Manager',
+						name: 'Product manager',
 						value: 'product_manager',
 					},
 					{
-						name: 'Product Marketing',
+						name: 'Product marketing',
 						value: 'product_marketing',
 					},
 					{
-						name: 'Production Manager',
+						name: 'Production manager',
 						value: 'production_manager',
 					},
 					{
@@ -817,27 +817,27 @@ export const contactFields: INodeProperties[] = [
 						value: 'professor',
 					},
 					{
-						name: 'Program Coordinator',
+						name: 'Program coordinator',
 						value: 'program_coordinator',
 					},
 					{
-						name: 'Program Manager',
+						name: 'Program manager',
 						value: 'program_manager',
 					},
 					{
-						name: 'Project Engineer',
+						name: 'Project engineer',
 						value: 'project_engineer',
 					},
 					{
-						name: 'Project Manager',
+						name: 'Project manager',
 						value: 'project_manager',
 					},
 					{
-						name: 'Property Manager',
+						name: 'Property manager',
 						value: 'property_manager',
 					},
 					{
-						name: 'QA Engineer',
+						name: 'QA engineer',
 						value: 'qa_engineer',
 					},
 					{
@@ -845,11 +845,11 @@ export const contactFields: INodeProperties[] = [
 						value: 'qa_it',
 					},
 					{
-						name: 'Quality Assurance Manager',
+						name: 'Quality assurance manager',
 						value: 'quality_assurance_manager',
 					},
 					{
-						name: 'Quality Assurance Specialist',
+						name: 'Quality assurance specialist',
 						value: 'quality_assurance_specialist',
 					},
 					{
@@ -861,11 +861,11 @@ export const contactFields: INodeProperties[] = [
 						value: 'recruiter',
 					},
 					{
-						name: 'Relationship Manager',
+						name: 'Relationship manager',
 						value: 'relationship_manager',
 					},
 					{
-						name: 'Research Analyst',
+						name: 'Research analyst',
 						value: 'research_analyst',
 					},
 					{
@@ -877,19 +877,19 @@ export const contactFields: INodeProperties[] = [
 						value: 'retired',
 					},
 					{
-						name: 'Risk Compliance',
+						name: 'Risk compliance',
 						value: 'risk_compliance',
 					},
 					{
-						name: 'Sales Executive',
+						name: 'Sales executive',
 						value: 'sales_executive',
 					},
 					{
-						name: 'Sales Operations',
+						name: 'Sales operations',
 						value: 'sales_operations',
 					},
 					{
-						name: 'Sales Specialist',
+						name: 'Sales specialist',
 						value: 'sales_specialist',
 					},
 					{
@@ -901,11 +901,11 @@ export const contactFields: INodeProperties[] = [
 						value: 'secretary',
 					},
 					{
-						name: 'Social Marketing',
+						name: 'Social marketing',
 						value: 'social_marketing',
 					},
 					{
-						name: 'Software Engineer',
+						name: 'Software engineer',
 						value: 'software_engineer',
 					},
 					{
@@ -921,19 +921,19 @@ export const contactFields: INodeProperties[] = [
 						value: 'support',
 					},
 					{
-						name: 'Support Specialist',
+						name: 'Support specialist',
 						value: 'support_specialist',
 					},
 					{
-						name: 'System Administrator',
+						name: 'System administrator',
 						value: 'system_administrator',
 					},
 					{
-						name: 'System Analyst',
+						name: 'System analyst',
 						value: 'system_analyst',
 					},
 					{
-						name: 'Systems Engineer',
+						name: 'Systems engineer',
 						value: 'systems_engineer',
 					},
 					{
@@ -941,7 +941,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'talent',
 					},
 					{
-						name: 'Tax Audit',
+						name: 'Tax audit',
 						value: 'tax_audit',
 					},
 					{
@@ -949,11 +949,11 @@ export const contactFields: INodeProperties[] = [
 						value: 'teacher',
 					},
 					{
-						name: 'Technical Manager',
+						name: 'Technical manager',
 						value: 'technical_manager',
 					},
 					{
-						name: 'Technical Support Specialist',
+						name: 'Technical support specialist',
 						value: 'technical_support_specialist',
 					},
 					{
@@ -969,7 +969,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'video',
 					},
 					{
-						name: 'Web Developer',
+						name: 'Web developer',
 						value: 'web_developer',
 					},
 					{
@@ -979,25 +979,25 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Enriched Email Bounce Detected',
+				displayName: 'Enriched email bounce detected',
 				name: 'enrichedEmailBounceDetected',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Facebook Click ID',
+				displayName: 'Facebook click ID',
 				name: 'facebookClickId',
 				type: 'number',
 				default: '',
 			},
 			{
-				displayName: 'Fax Number',
+				displayName: 'Fax number',
 				name: 'faxNumber',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Field Of Study',
+				displayName: 'Field of study',
 				name: 'fieldOfStudy',
 				type: 'string',
 				default: '',
@@ -1005,7 +1005,7 @@ export const contactFields: INodeProperties[] = [
 					"A contact's field of study. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
@@ -1018,13 +1018,13 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Google Ad Click ID',
+				displayName: 'Google ad click ID',
 				name: 'googleAdClickId',
 				type: 'number',
 				default: '',
 			},
 			{
-				displayName: 'Graduation Date',
+				displayName: 'Graduation date',
 				name: 'graduationDate',
 				type: 'dateTime',
 				default: '',
@@ -1039,7 +1039,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'The industry a contact is in',
 			},
 			{
-				displayName: 'Inferred Language Codes',
+				displayName: 'Inferred language codes',
 				name: 'inferredLanguageCodes',
 				description: 'Inferred languages based on location. ISO 639-1.',
 				type: 'options',
@@ -1780,7 +1780,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Job Function',
+				displayName: 'Job function',
 				name: 'jobFunction',
 				type: 'string',
 				default: '',
@@ -1788,56 +1788,56 @@ export const contactFields: INodeProperties[] = [
 					"A contact's job function. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
 				description: "A contact's job title",
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
 				description: "A contact's last name",
 			},
 			{
-				displayName: 'Latest Traffic Source',
+				displayName: 'Latest traffic source',
 				name: 'latestTrafficSource',
 				description: 'The source of the latest session for a contact',
 				type: 'options',
 				default: '',
 				options: [
 					{
-						name: 'Direct Traffic',
+						name: 'Direct traffic',
 						value: 'DIRECT_TRAFFIC',
 					},
 					{
-						name: 'Email Marketing',
+						name: 'Email marketing',
 						value: 'EMAIL_MARKETING',
 					},
 					{
-						name: 'Offline Sources',
+						name: 'Offline sources',
 						value: 'OFFLINE',
 					},
 					{
-						name: 'Organic Search',
+						name: 'Organic search',
 						value: 'ORGANIC_SEARCH',
 					},
 					{
-						name: 'Organic Social',
+						name: 'Organic social',
 						value: 'SOCIAL_MEDIA',
 					},
 					{
-						name: 'Other Campaigns',
+						name: 'Other campaigns',
 						value: 'OTHER_CAMPAIGNS',
 					},
 					{
-						name: 'Paid Search',
+						name: 'Paid search',
 						value: 'PAID_SEARCH',
 					},
 					{
-						name: 'Paid Social',
+						name: 'Paid social',
 						value: 'PAID_SOCIAL',
 					},
 					{
@@ -1847,14 +1847,14 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Latest Traffic Source Date',
+				displayName: 'Latest traffic source date',
 				name: 'latestTrafficSourceDate',
 				description: 'The time of the latest session for a contact',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Lead Status Name or ID',
+				displayName: 'Lead status name or ID',
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
@@ -1865,7 +1865,7 @@ export const contactFields: INodeProperties[] = [
 					'The contact\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Legal Basic For Processing Contact Data Name or ID',
+				displayName: 'Legal basic for processing contact data name or ID',
 				name: 'processingContactData',
 				type: 'options',
 				typeOptions: {
@@ -1876,7 +1876,7 @@ export const contactFields: INodeProperties[] = [
 					"Legal basis for processing contact's data; 'Not applicable' will exempt the contact from GDPR protections. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
 			},
 			{
-				displayName: 'Lifecycle Stage Name or ID',
+				displayName: 'Lifecycle stage name or ID',
 				name: 'lifeCycleStage',
 				type: 'options',
 				typeOptions: {
@@ -1894,7 +1894,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Marital Status',
+				displayName: 'Marital status',
 				name: 'maritalStatus',
 				type: 'string',
 				default: '',
@@ -1902,14 +1902,14 @@ export const contactFields: INodeProperties[] = [
 					"A contact's marital status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
-				displayName: 'Member Email',
+				displayName: 'Member email',
 				name: 'memberEmail',
 				description: 'Email used to send private content information to members',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Membership Note',
+				displayName: 'Membership note',
 				name: 'membershipNote',
 				type: 'string',
 				typeOptions: {
@@ -1930,7 +1930,7 @@ export const contactFields: INodeProperties[] = [
 					'A default property to be used for any message or comments a contact may want to leave on a form',
 			},
 			{
-				displayName: 'Military Status',
+				displayName: 'Military status',
 				name: 'militaryStatus',
 				description:
 					"Contact's military status. Required for the Facebook Ads Integration. Automatically synced from the Lead Ads tool.",
@@ -1938,7 +1938,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Mobile Phone Number',
+				displayName: 'Mobile phone number',
 				name: 'mobilePhoneNumber',
 				type: 'string',
 				default: '',
@@ -1946,7 +1946,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Number Of Employees',
+				displayName: 'Number of employees',
 				name: 'numberOfEmployees',
 				type: 'options',
 				typeOptions: {
@@ -1957,7 +1957,7 @@ export const contactFields: INodeProperties[] = [
 					'The number of company employees. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Original Source Name or ID',
+				displayName: 'Original source name or ID',
 				name: 'originalSource',
 				type: 'options',
 				typeOptions: {
@@ -1975,21 +1975,21 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Phone Number',
+				displayName: 'Phone number',
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
 				description: "A contact's primary phone number",
 			},
 			{
-				displayName: 'Postal Code',
+				displayName: 'Postal code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
 				description: "The contact's zip code. This might be set via import, form, or integration.",
 			},
 			{
-				displayName: 'Preffered Language Name or ID',
+				displayName: 'Preffered language name or ID',
 				name: 'prefferedLanguage',
 				type: 'options',
 				typeOptions: {
@@ -2000,20 +2000,20 @@ export const contactFields: INodeProperties[] = [
 					'Set your contact\'s preferred language for communications. This property can be changed from an import, form, or integration. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Prospecting Agent Last Enrolled',
+				displayName: 'Prospecting agent last enrolled',
 				name: 'prospectingAgentLastEnrolled',
 				description: 'The last time the Prospecting Agent enrolled this contact',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Prospecting Agent Total Enrolled Count',
+				displayName: 'Prospecting agent total enrolled count',
 				name: 'prospectingAgentTotalEnrolledCount',
 				type: 'number',
 				default: '',
 			},
 			{
-				displayName: 'Relationship Status',
+				displayName: 'Relationship status',
 				name: 'relationshipStatus',
 				type: 'string',
 				default: '',
@@ -2044,7 +2044,7 @@ export const contactFields: INodeProperties[] = [
 					"A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
@@ -2052,7 +2052,7 @@ export const contactFields: INodeProperties[] = [
 					"A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format",
 			},
 			{
-				displayName: 'State/Region',
+				displayName: 'State/region',
 				name: 'stateRegion',
 				type: 'string',
 				default: '',
@@ -2060,14 +2060,14 @@ export const contactFields: INodeProperties[] = [
 					"The contact's state of residence. This might be set via import, form, or integration.",
 			},
 			{
-				displayName: 'State/Region Code',
+				displayName: 'State/region code',
 				name: 'stateRegionCode',
 				description: "The contact's state or region code",
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -2078,14 +2078,14 @@ export const contactFields: INodeProperties[] = [
 					'The status of the contact\'s content membership. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Street Address',
+				displayName: 'Street address',
 				name: 'streetAddress',
 				type: 'string',
 				default: '',
 				description: "A contact's street address, including apartment or unit #",
 			},
 			{
-				displayName: 'Time Zone',
+				displayName: 'Time zone',
 				name: 'timeZone',
 				description:
 					'The contact’s time zone. This can be set automatically by HubSpot based on other contact properties. It can also be set manually for each contact.',
@@ -4195,7 +4195,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Twitter Username',
+				displayName: 'Twitter username',
 				name: 'twitterUsername',
 				type: 'string',
 				default: '',
@@ -4210,14 +4210,14 @@ export const contactFields: INodeProperties[] = [
 				description: "The contact's company website",
 			},
 			{
-				displayName: 'WhatsApp Phone Number',
+				displayName: 'WhatsApp phone number',
 				name: 'whatsappPhoneNumber',
 				description: 'The phone number associated with the contact’s WhatsApp account',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Work Email',
+				displayName: 'Work email',
 				name: 'workEmail',
 				type: 'string',
 				default: '',
@@ -4240,7 +4240,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Simplify Output',
+				displayName: 'Simplify output',
 				name: 'resolveData',
 				type: 'boolean',
 				default: false,
@@ -4255,7 +4255,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                  contact:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Contact to Get',
+		displayName: 'Contact to get',
 		name: 'contactId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -4269,7 +4269,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select from the list',
@@ -4279,7 +4279,7 @@ export const contactFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Id',
+				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
 				placeholder: '58539222',
@@ -4310,7 +4310,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Form Submission Mode',
+				displayName: 'Form submission mode',
 				name: 'formSubmissionMode',
 				type: 'options',
 				options: [
@@ -4335,24 +4335,24 @@ export const contactFields: INodeProperties[] = [
 				description: 'Specify which form submissions should be fetched',
 			},
 			{
-				displayName: 'Include List Memberships',
+				displayName: 'Include list memberships',
 				name: 'listMemberships',
 				type: 'boolean',
 				default: true,
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Contact Properties to Include',
+				displayName: 'Contact properties to include',
 				name: 'propertiesCollection',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
 						name: 'propertiesValues',
-						displayName: 'Contact Properties to Include',
+						displayName: 'Contact properties to include',
 						values: [
 							{
-								displayName: 'Contact Properties to Include',
+								displayName: 'Contact properties to include',
 								name: 'properties',
 								type: 'multiOptions',
 								typeOptions: {
@@ -4369,11 +4369,11 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Value And History',
+										name: 'Value and history',
 										value: 'valueAndHistory',
 									},
 									{
-										name: 'Value Only',
+										name: 'Value only',
 										value: 'valueOnly',
 									},
 								],
@@ -4394,7 +4394,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -4438,7 +4438,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Form Submission Mode',
+				displayName: 'Form submission mode',
 				name: 'formSubmissionMode',
 				type: 'options',
 				options: [
@@ -4463,24 +4463,24 @@ export const contactFields: INodeProperties[] = [
 				description: 'Specify which form submissions should be fetched',
 			},
 			{
-				displayName: 'Include List Memberships',
+				displayName: 'Include list memberships',
 				name: 'listMemberships',
 				type: 'boolean',
 				default: true,
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Contact Properties to Include',
+				displayName: 'Contact properties to include',
 				name: 'propertiesCollection',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
 						name: 'propertiesValues',
-						displayName: 'Contact Properties to Include',
+						displayName: 'Contact properties to include',
 						values: [
 							{
-								displayName: 'Contact Properties to Include',
+								displayName: 'Contact properties to include',
 								name: 'properties',
 								type: 'multiOptions',
 								typeOptions: {
@@ -4496,11 +4496,11 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Value And History',
+										name: 'Value and history',
 										value: 'valueAndHistory',
 									},
 									{
-										name: 'Value Only',
+										name: 'Value only',
 										value: 'valueOnly',
 									},
 								],
@@ -4521,7 +4521,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Contact to Delete',
+		displayName: 'Contact to delete',
 		name: 'contactId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -4535,7 +4535,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select from the list',
@@ -4545,7 +4545,7 @@ export const contactFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Id',
+				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
 				placeholder: '58539222',
@@ -4567,7 +4567,7 @@ export const contactFields: INodeProperties[] = [
 	/*               contact:getRecentlyCreatedUpdated                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -4611,7 +4611,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Form Submission Mode',
+				displayName: 'Form submission mode',
 				name: 'formSubmissionMode',
 				type: 'options',
 				options: [
@@ -4636,24 +4636,24 @@ export const contactFields: INodeProperties[] = [
 				description: 'Specify which form submissions should be fetched',
 			},
 			{
-				displayName: 'Include List Memberships',
+				displayName: 'Include list memberships',
 				name: 'listMemberships',
 				type: 'boolean',
 				default: true,
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Contact Properties to Include',
+				displayName: 'Contact properties to include',
 				name: 'propertiesCollection',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
 						name: 'propertiesValues',
-						displayName: 'Contact Properties to Include',
+						displayName: 'Contact properties to include',
 						values: [
 							{
-								displayName: 'Contact Properties to Include',
+								displayName: 'Contact properties to include',
 								name: 'properties',
 								type: 'multiOptions',
 								typeOptions: {
@@ -4669,11 +4669,11 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Value And History',
+										name: 'Value and history',
 										value: 'valueAndHistory',
 									},
 									{
-										name: 'Value Only',
+										name: 'Value only',
 										value: 'valueOnly',
 									},
 								],
@@ -4694,7 +4694,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:search                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -4725,11 +4725,11 @@ export const contactFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Filter Groups',
+		displayName: 'Filter groups',
 		name: 'filterGroupsUi',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Filter Group',
+		placeholder: 'Add filter group',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -4742,14 +4742,14 @@ export const contactFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'filterGroupsValues',
-				displayName: 'Filter Group',
+				displayName: 'Filter group',
 				values: [
 					{
 						displayName: 'Filters',
 						name: 'filtersUi',
 						type: 'fixedCollection',
 						default: {},
-						placeholder: 'Add Filter',
+						placeholder: 'Add filter',
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -4759,7 +4759,7 @@ export const contactFields: INodeProperties[] = [
 								displayName: 'Filter',
 								values: [
 									{
-										displayName: 'Property Name or ID',
+										displayName: 'Property name or ID',
 										name: 'propertyName',
 										type: 'options',
 										description:
@@ -4786,7 +4786,7 @@ export const contactFields: INodeProperties[] = [
 										},
 										options: [
 											{
-												name: 'Contains Exactly',
+												name: 'Contains exactly',
 												value: 'CONTAINS_TOKEN',
 											},
 											{
@@ -4794,15 +4794,15 @@ export const contactFields: INodeProperties[] = [
 												value: 'EQ',
 											},
 											{
-												name: 'Is Known',
+												name: 'Is known',
 												value: 'HAS_PROPERTY',
 											},
 											{
-												name: 'Is Unknown',
+												name: 'Is unknown',
 												value: 'NOT_HAS_PROPERTY',
 											},
 											{
-												name: 'Not Equal',
+												name: 'Not equal',
 												value: 'NEQ',
 											},
 										],
@@ -4819,7 +4819,7 @@ export const contactFields: INodeProperties[] = [
 										},
 										options: [
 											{
-												name: 'Contains Exactly',
+												name: 'Contains exactly',
 												value: 'CONTAINS_TOKEN',
 											},
 											{
@@ -4827,31 +4827,31 @@ export const contactFields: INodeProperties[] = [
 												value: 'EQ',
 											},
 											{
-												name: 'Greater Than',
+												name: 'Greater than',
 												value: 'GT',
 											},
 											{
-												name: 'Greater Than Or Equal',
+												name: 'Greater than or equal',
 												value: 'GTE',
 											},
 											{
-												name: 'Is Known',
+												name: 'Is known',
 												value: 'HAS_PROPERTY',
 											},
 											{
-												name: 'Is Unknown',
+												name: 'Is unknown',
 												value: 'NOT_HAS_PROPERTY',
 											},
 											{
-												name: 'Less Than',
+												name: 'Less than',
 												value: 'LT',
 											},
 											{
-												name: 'Less Than Or Equal',
+												name: 'Less than or equal',
 												value: 'LTE',
 											},
 											{
-												name: 'Not Equal',
+												name: 'Not equal',
 												value: 'NEQ',
 											},
 										],
@@ -4895,7 +4895,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'direction',
 				type: 'options',
 				options: [
@@ -4913,7 +4913,7 @@ export const contactFields: INodeProperties[] = [
 					'Defines the direction in which search results are ordered. Default value is Descending.',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -4932,7 +4932,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortBy',
 				type: 'options',
 				description:

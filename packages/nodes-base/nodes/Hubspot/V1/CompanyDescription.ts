@@ -31,28 +31,28 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Get a company',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many companies',
 				action: 'Get many companies',
 			},
 			{
-				name: 'Get Recently Created',
+				name: 'Get recently created',
 				value: 'getRecentlyCreated',
 				description: 'Get recently created companies',
 				action: 'Get a recently created company',
 			},
 			{
-				name: 'Get Recently Modified',
+				name: 'Get recently modified',
 				value: 'getRecentlyModified',
 				description: 'Get recently modified companies',
 				action: 'Get a recently modified company',
 			},
 			{
-				name: 'Search By Domain',
+				name: 'Search by domain',
 				value: 'searchByDomain',
 				description: 'Search companies by domain',
-				action: 'Search for a company by Domain',
+				action: 'Search for a company by domain',
 			},
 			{
 				name: 'Update',
@@ -83,10 +83,10 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -96,13 +96,13 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'About Us',
+				displayName: 'About us',
 				name: 'aboutUs',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'annualRevenue',
 				type: 'number',
 				typeOptions: {
@@ -119,21 +119,21 @@ export const companyFields: INodeProperties[] = [
 				description: 'The city where the company is located',
 			},
 			{
-				displayName: 'Close Date',
+				displayName: 'Close date',
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
 				description: 'The date the company or organization was closed as a customer',
 			},
 			{
-				displayName: 'Company Domain Name',
+				displayName: 'Company domain name',
 				name: 'companyDomainName',
 				type: 'string',
 				default: '',
 				description: 'The domain name of the company or organization',
 			},
 			{
-				displayName: 'Company Owner Name or ID',
+				displayName: 'Company owner name or ID',
 				name: 'companyOwner',
 				type: 'options',
 				typeOptions: {
@@ -144,16 +144,16 @@ export const companyFields: INodeProperties[] = [
 					'The owner of the company. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Country/Region',
+				displayName: 'Country/region',
 				name: 'countryRegion',
 				type: 'string',
 				default: '',
 				description: 'The country/region in which the company or organization is located',
 			},
 			{
-				displayName: 'Custom Properties',
+				displayName: 'Custom properties',
 				name: 'customPropertiesUi',
-				placeholder: 'Add Custom Property',
+				placeholder: 'Add custom property',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -162,10 +162,10 @@ export const companyFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customPropertiesValues',
-						displayName: 'Custom Property',
+						displayName: 'Custom property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -194,7 +194,7 @@ export const companyFields: INodeProperties[] = [
 				description: "A short statement about the company's mission and goals",
 			},
 			{
-				displayName: 'Facebook Fans',
+				displayName: 'Facebook fans',
 				name: 'facebookFans',
 				type: 'number',
 				typeOptions: {
@@ -204,14 +204,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'Number of facebook fans',
 			},
 			{
-				displayName: 'Google Plus Page',
+				displayName: 'Google Plus page',
 				name: 'googlePlusPage',
 				type: 'string',
 				default: '',
 				description: 'The URL of the Google Plus page for the company or organization',
 			},
 			{
-				displayName: 'Industry Name or ID',
+				displayName: 'Industry name or ID',
 				name: 'industry',
 				type: 'options',
 				typeOptions: {
@@ -222,14 +222,14 @@ export const companyFields: INodeProperties[] = [
 					'The type of business the company performs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Is Public',
+				displayName: 'Is public',
 				name: 'isPublic',
 				type: 'boolean',
 				default: false,
 				description: 'Whether that the company is publicly traded',
 			},
 			{
-				displayName: 'Lead Status Name or ID',
+				displayName: 'Lead status name or ID',
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
@@ -240,7 +240,7 @@ export const companyFields: INodeProperties[] = [
 					'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Lifecycle Stage Name or ID',
+				displayName: 'Lifecycle stage name or ID',
 				name: 'lifecycleStatus',
 				type: 'options',
 				typeOptions: {
@@ -251,21 +251,21 @@ export const companyFields: INodeProperties[] = [
 					'The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'LinkedIn Bio',
+				displayName: 'LinkedIn bio',
 				name: 'linkedinBio',
 				type: 'string',
 				default: '',
 				description: 'The LinkedIn bio for the company or organization',
 			},
 			{
-				displayName: 'LinkedIn Company Page',
+				displayName: 'LinkedIn company page',
 				name: 'linkedInCompanyPage',
 				type: 'string',
 				default: '',
 				description: 'The URL of the LinkedIn company page for the company or organization',
 			},
 			{
-				displayName: 'Number Of Employees',
+				displayName: 'Number of employees',
 				name: 'numberOfEmployees',
 				type: 'number',
 				typeOptions: {
@@ -275,7 +275,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The total number of employees who work for the company or organization',
 			},
 			{
-				displayName: 'Original Source Type Name or ID',
+				displayName: 'Original source type name or ID',
 				name: 'originalSourceType',
 				type: 'options',
 				typeOptions: {
@@ -286,14 +286,14 @@ export const companyFields: INodeProperties[] = [
 					'Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Phone Number',
+				displayName: 'Phone number',
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
 				description: "A company's primary phone number. Powered by HubSpot Insights.",
 			},
 			{
-				displayName: 'Postal Code',
+				displayName: 'Postal code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
@@ -301,7 +301,7 @@ export const companyFields: INodeProperties[] = [
 					'The postal or zip code of the company or organization. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'State/Region',
+				displayName: 'State/region',
 				name: 'stateRegion',
 				type: 'string',
 				default: '',
@@ -309,7 +309,7 @@ export const companyFields: INodeProperties[] = [
 					'The state or region in which the company or organization is located. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'Street Address',
+				displayName: 'Street address',
 				name: 'streetAddress',
 				type: 'string',
 				default: '',
@@ -317,7 +317,7 @@ export const companyFields: INodeProperties[] = [
 					'The street address of the company or organization, including unit number. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'Street Address 2',
+				displayName: 'Street address 2',
 				name: 'streetAddress2',
 				type: 'string',
 				default: '',
@@ -326,7 +326,7 @@ export const companyFields: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Target Account Name or ID',
+				displayName: 'Target account name or ID',
 				name: 'targetAccount',
 				type: 'options',
 				typeOptions: {
@@ -345,7 +345,7 @@ export const companyFields: INodeProperties[] = [
 					'The time zone where the company or organization is located. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'Total Money Raised',
+				displayName: 'Total money raised',
 				name: 'totalMoneyRaised',
 				type: 'number',
 				typeOptions: {
@@ -356,14 +356,14 @@ export const companyFields: INodeProperties[] = [
 					'The total amount of money raised by the company. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'Twitter Bio',
+				displayName: 'Twitter bio',
 				name: 'twitterBio',
 				type: 'string',
 				default: '',
 				description: 'The Twitter bio of the company or organization',
 			},
 			{
-				displayName: 'Twitter Followers',
+				displayName: 'Twitter followers',
 				name: 'twitterFollowers',
 				type: 'number',
 				typeOptions: {
@@ -373,14 +373,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'The number of Twitter followers of the company or organization',
 			},
 			{
-				displayName: 'Twitter Handle',
+				displayName: 'Twitter handle',
 				name: 'twitterHandle',
 				type: 'string',
 				default: '',
 				description: 'The main twitter account of the company or organization',
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type name or ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
@@ -391,7 +391,7 @@ export const companyFields: INodeProperties[] = [
 					'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Web Technologies Name or ID',
+				displayName: 'Web technologies name or ID',
 				name: 'webTechnologies',
 				type: 'options',
 				typeOptions: {
@@ -410,7 +410,7 @@ export const companyFields: INodeProperties[] = [
 					'The main website of the company or organization. This property is used to identify unique companies. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'Year Founded',
+				displayName: 'Year founded',
 				name: 'yearFounded',
 				type: 'string',
 				default: '',
@@ -437,10 +437,10 @@ export const companyFields: INodeProperties[] = [
 		description: 'Unique identifier for a particular company',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -450,13 +450,13 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'About Us',
+				displayName: 'About us',
 				name: 'aboutUs',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'annualRevenue',
 				type: 'number',
 				typeOptions: {
@@ -473,21 +473,21 @@ export const companyFields: INodeProperties[] = [
 				description: 'The city where the company is located',
 			},
 			{
-				displayName: 'Close Date',
+				displayName: 'Close date',
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
 				description: 'The date the company or organization was closed as a customer',
 			},
 			{
-				displayName: 'Company Domain Name',
+				displayName: 'Company domain name',
 				name: 'companyDomainName',
 				type: 'string',
 				default: '',
 				description: 'The domain name of the company or organization',
 			},
 			{
-				displayName: 'Company Owmer Name or ID',
+				displayName: 'Company owmer name or ID',
 				name: 'companyOwner',
 				type: 'options',
 				typeOptions: {
@@ -498,16 +498,16 @@ export const companyFields: INodeProperties[] = [
 					'The owner of the company. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Country/Region',
+				displayName: 'Country/region',
 				name: 'countryRegion',
 				type: 'string',
 				default: '',
 				description: 'The country/region in which the company or organization is located',
 			},
 			{
-				displayName: 'Custom Properties',
+				displayName: 'Custom properties',
 				name: 'customPropertiesUi',
-				placeholder: 'Add Custom Property',
+				placeholder: 'Add custom property',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -516,10 +516,10 @@ export const companyFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customPropertiesValues',
-						displayName: 'Custom Property',
+						displayName: 'Custom property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -548,7 +548,7 @@ export const companyFields: INodeProperties[] = [
 				description: "A short statement about the company's mission and goals",
 			},
 			{
-				displayName: 'Facebook Fans',
+				displayName: 'Facebook fans',
 				name: 'facebookFans',
 				type: 'number',
 				typeOptions: {
@@ -558,14 +558,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'Number of facebook fans',
 			},
 			{
-				displayName: 'Google Plus Page',
+				displayName: 'Google Plus page',
 				name: 'googlePlusPage',
 				type: 'string',
 				default: '',
 				description: 'The URL of the Google Plus page for the company or organization',
 			},
 			{
-				displayName: 'Industry Name or ID',
+				displayName: 'Industry name or ID',
 				name: 'industry',
 				type: 'options',
 				typeOptions: {
@@ -576,14 +576,14 @@ export const companyFields: INodeProperties[] = [
 					'The type of business the company performs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Is Public',
+				displayName: 'Is public',
 				name: 'isPublic',
 				type: 'boolean',
 				default: false,
 				description: 'Whether that the company is publicly traded',
 			},
 			{
-				displayName: 'Lead Status Name or ID',
+				displayName: 'Lead status name or ID',
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
@@ -594,7 +594,7 @@ export const companyFields: INodeProperties[] = [
 					'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Lifecycle Stage Name or ID',
+				displayName: 'Lifecycle stage name or ID',
 				name: 'lifecycleStatus',
 				type: 'options',
 				typeOptions: {
@@ -605,14 +605,14 @@ export const companyFields: INodeProperties[] = [
 					'The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Linkedin Bio',
+				displayName: 'Linkedin bio',
 				name: 'linkedinBio',
 				type: 'string',
 				default: '',
 				description: 'The LinkedIn bio for the company or organization',
 			},
 			{
-				displayName: 'LinkedIn Company Page',
+				displayName: 'LinkedIn company page',
 				name: 'linkedInCompanyPage',
 				type: 'string',
 				default: '',
@@ -625,7 +625,7 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Number Of Employees',
+				displayName: 'Number of employees',
 				name: 'numberOfEmployees',
 				type: 'number',
 				typeOptions: {
@@ -635,7 +635,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The total number of employees who work for the company or organization',
 			},
 			{
-				displayName: 'Original Source Type Name or ID',
+				displayName: 'Original source type name or ID',
 				name: 'originalSourceType',
 				type: 'options',
 				typeOptions: {
@@ -646,14 +646,14 @@ export const companyFields: INodeProperties[] = [
 					'Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Phone Number',
+				displayName: 'Phone number',
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
 				description: "A company's primary phone number. Powered by HubSpot Insights.",
 			},
 			{
-				displayName: 'Postal Code',
+				displayName: 'Postal code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
@@ -661,7 +661,7 @@ export const companyFields: INodeProperties[] = [
 					'The postal or zip code of the company or organization. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'State/Region',
+				displayName: 'State/region',
 				name: 'stateRegion',
 				type: 'string',
 				default: '',
@@ -669,7 +669,7 @@ export const companyFields: INodeProperties[] = [
 					'The state or region in which the company or organization is located. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'Street Address',
+				displayName: 'Street address',
 				name: 'streetAddress',
 				type: 'string',
 				default: '',
@@ -677,7 +677,7 @@ export const companyFields: INodeProperties[] = [
 					'The street address of the company or organization, including unit number. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'Street Address 2',
+				displayName: 'Street address 2',
 				name: 'streetAddress2',
 				type: 'string',
 				default: '',
@@ -686,7 +686,7 @@ export const companyFields: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Target Account Name or ID',
+				displayName: 'Target account name or ID',
 				name: 'targetAccount',
 				type: 'options',
 				typeOptions: {
@@ -705,7 +705,7 @@ export const companyFields: INodeProperties[] = [
 					'The time zone where the company or organization is located. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'Total Money Raised',
+				displayName: 'Total money raised',
 				name: 'totalMoneyRaised',
 				type: 'number',
 				typeOptions: {
@@ -716,14 +716,14 @@ export const companyFields: INodeProperties[] = [
 					'The total amount of money raised by the company. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'Twitter Bio',
+				displayName: 'Twitter bio',
 				name: 'twitterBio',
 				type: 'string',
 				default: '',
 				description: 'The Twitter bio of the company or organization',
 			},
 			{
-				displayName: 'Twitter Followers',
+				displayName: 'Twitter followers',
 				name: 'twitterFollowers',
 				type: 'number',
 				typeOptions: {
@@ -733,14 +733,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'The number of Twitter followers of the company or organization',
 			},
 			{
-				displayName: 'Twitter Handle',
+				displayName: 'Twitter handle',
 				name: 'twitterHandle',
 				type: 'string',
 				default: '',
 				description: 'The main twitter account of the company or organization',
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type name or ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
@@ -751,7 +751,7 @@ export const companyFields: INodeProperties[] = [
 					'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Web Technologies Name or ID',
+				displayName: 'Web technologies name or ID',
 				name: 'webTechnologies',
 				type: 'options',
 				typeOptions: {
@@ -770,7 +770,7 @@ export const companyFields: INodeProperties[] = [
 					'The main website of the company or organization. This property is used to identify unique companies. Powered by HubSpot Insights.',
 			},
 			{
-				displayName: 'Year Founded',
+				displayName: 'Year founded',
 				name: 'yearFounded',
 				type: 'string',
 				default: '',
@@ -797,10 +797,10 @@ export const companyFields: INodeProperties[] = [
 		description: 'Unique identifier for a particular company',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -810,7 +810,7 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Merge Audits',
+				displayName: 'Include merge audits',
 				name: 'includeMergeAudits',
 				type: 'boolean',
 				default: false,
@@ -824,7 +824,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                 company:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -858,7 +858,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -868,7 +868,7 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Merge Audits',
+				displayName: 'Include merge audits',
 				name: 'includeMergeAudits',
 				type: 'boolean',
 				default: false,
@@ -876,7 +876,7 @@ export const companyFields: INodeProperties[] = [
 					'Whether to return any merge history if a company has been previously merged with another company record. Defaults to false.',
 			},
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Property names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -887,7 +887,7 @@ export const companyFields: INodeProperties[] = [
 					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companies.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Properties With History',
+				displayName: 'Properties with history',
 				name: 'propertiesWithHistory',
 				type: 'string',
 				default: '',
@@ -919,7 +919,7 @@ export const companyFields: INodeProperties[] = [
 	/*               company:getRecentlyCreated company:getRecentlyModifie        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -953,7 +953,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -970,7 +970,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'Only return companys created after timestamp x',
 			},
 			{
-				displayName: 'Include Property Versions',
+				displayName: 'Include property versions',
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
@@ -999,7 +999,7 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -1033,7 +1033,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1043,7 +1043,7 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Property names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {

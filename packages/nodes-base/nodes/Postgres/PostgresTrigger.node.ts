@@ -50,12 +50,12 @@ export class PostgresTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Listen For',
+				displayName: 'Listen for',
 				name: 'triggerMode',
 				type: 'options',
 				options: [
 					{
-						name: 'Table Row Change Events',
+						name: 'Table row change events',
 						value: 'createTrigger',
 						description: 'Insert, update or delete',
 					},
@@ -68,7 +68,7 @@ export class PostgresTrigger implements INodeType {
 				default: 'createTrigger',
 			},
 			{
-				displayName: 'Schema Name',
+				displayName: 'Schema name',
 				name: 'schema',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: 'public' },
@@ -80,7 +80,7 @@ export class PostgresTrigger implements INodeType {
 				},
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a schema',
@@ -98,7 +98,7 @@ export class PostgresTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Table Name',
+				displayName: 'Table name',
 				name: 'tableName',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
@@ -110,7 +110,7 @@ export class PostgresTrigger implements INodeType {
 				},
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a table',
@@ -128,7 +128,7 @@ export class PostgresTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Channel Name',
+				displayName: 'Channel name',
 				name: 'channelName',
 				type: 'string',
 				default: '',
@@ -167,10 +167,10 @@ export class PostgresTrigger implements INodeType {
 				default: 'INSERT',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -179,7 +179,7 @@ export class PostgresTrigger implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Channel Name',
+						displayName: 'Channel name',
 						name: 'channelName',
 						type: 'string',
 						placeholder: 'e.g. n8n_channel',
@@ -188,7 +188,7 @@ export class PostgresTrigger implements INodeType {
 					},
 
 					{
-						displayName: 'Function Name',
+						displayName: 'Function name',
 						name: 'functionName',
 						type: 'string',
 						description: 'Name of the function to create',
@@ -196,14 +196,14 @@ export class PostgresTrigger implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Replace if Exists',
+						displayName: 'Replace if exists',
 						name: 'replaceIfExists',
 						type: 'boolean',
 						description: 'Whether to replace an existing function and trigger with the same name',
 						default: false,
 					},
 					{
-						displayName: 'Trigger Name',
+						displayName: 'Trigger name',
 						name: 'triggerName',
 						type: 'string',
 						description: 'Name of the trigger to create',
@@ -220,14 +220,14 @@ export class PostgresTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Connection Timeout',
+						displayName: 'Connection timeout',
 						name: 'connectionTimeout',
 						type: 'number',
 						default: 30,
 						description: 'Number of seconds reserved for connecting to the database',
 					},
 					{
-						displayName: 'Delay Closing Idle Connection',
+						displayName: 'Delay closing idle connection',
 						name: 'delayClosingIdleConnection',
 						type: 'number',
 						default: 0,

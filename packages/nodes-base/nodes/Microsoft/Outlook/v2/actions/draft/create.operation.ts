@@ -29,17 +29,17 @@ export const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
 				displayName: 'Attachments',
 				name: 'attachments',
 				type: 'fixedCollection',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
@@ -50,7 +50,7 @@ export const properties: INodeProperties[] = [
 						displayName: 'Attachment',
 						values: [
 							{
-								displayName: 'Input Data Field Name',
+								displayName: 'Input data field name',
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
@@ -62,7 +62,7 @@ export const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'BCC Recipients',
+				displayName: 'BCC recipients',
 				name: 'bccRecipients',
 				description: 'Comma-separated list of email addresses of BCC recipients',
 				type: 'string',
@@ -70,7 +70,7 @@ export const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Category Names or IDs',
+				displayName: 'Category names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				description:
@@ -81,7 +81,7 @@ export const properties: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'CC Recipients',
+				displayName: 'CC recipients',
 				name: 'ccRecipients',
 				description: 'Comma-separated list of email addresses of CC recipients',
 				type: 'string',
@@ -89,9 +89,9 @@ export const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Custom Headers',
+				displayName: 'Custom headers',
 				name: 'internetMessageHeaders',
-				placeholder: 'Add Header',
+				placeholder: 'Add header',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -151,7 +151,7 @@ export const properties: INodeProperties[] = [
 				default: 'Normal',
 			},
 			{
-				displayName: 'Message Type',
+				displayName: 'Message type',
 				name: 'bodyContentType',
 				description: 'Message body content type',
 				type: 'options',
@@ -168,14 +168,14 @@ export const properties: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Read Receipt Requested',
+				displayName: 'Read receipt requested',
 				name: 'isReadReceiptRequested',
 				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Reply To',
+				displayName: 'Reply to',
 				name: 'replyTo',
 				description: 'Email address to use when replying',
 				type: 'string',

@@ -19,7 +19,7 @@ export const agentRoleOperations: INodeProperties[] = [
 				action: 'Get an agent role',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many agent roles',
 				action: 'Get many agent roles',
@@ -34,7 +34,7 @@ export const agentRoleFields: INodeProperties[] = [
 	//              agentRole: get
 	// ----------------------------------------
 	{
-		displayName: 'Agent Role ID',
+		displayName: 'Agent role ID',
 		name: 'agentRoleId',
 		description: 'ID of the agent role to retrieve',
 		type: 'string',
@@ -52,7 +52,7 @@ export const agentRoleFields: INodeProperties[] = [
 	//            agentRole: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

@@ -46,7 +46,7 @@ export class RabbitMQTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Queue / Topic',
+				displayName: 'Queue / topic',
 				name: 'queue',
 				type: 'string',
 				default: '',
@@ -61,25 +61,25 @@ export class RabbitMQTrigger implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Content Is Binary',
+						displayName: 'Content is binary',
 						name: 'contentIsBinary',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to save the content as binary',
 					},
 					{
-						displayName: 'Delete From Queue When',
+						displayName: 'Delete from queue when',
 						name: 'acknowledge',
 						type: 'options',
 						options: [
 							{
-								name: 'Execution Finishes',
+								name: 'Execution finishes',
 								value: 'executionFinishes',
 								description:
 									'After the workflow execution finished. No matter if the execution was successful or not.',
 							},
 							{
-								name: 'Execution Finishes Successfully',
+								name: 'Execution finishes successfully',
 								value: 'executionFinishesSuccessfully',
 								description: 'After the workflow execution finished successfully',
 							},
@@ -89,7 +89,7 @@ export class RabbitMQTrigger implements INodeType {
 								description: 'As soon as the message got received',
 							},
 							{
-								name: 'Specified Later in Workflow',
+								name: 'Specified later in workflow',
 								value: 'laterMessageNode',
 								description: 'Using a RabbitMQ node to remove the item from the queue',
 							},
@@ -98,7 +98,7 @@ export class RabbitMQTrigger implements INodeType {
 						description: 'When to acknowledge the message',
 					},
 					{
-						displayName: 'JSON Parse Body',
+						displayName: 'JSON parse body',
 						name: 'jsonParseBody',
 						type: 'boolean',
 						displayOptions: {
@@ -110,7 +110,7 @@ export class RabbitMQTrigger implements INodeType {
 						description: 'Whether to parse the body to an object',
 					},
 					{
-						displayName: 'Only Content',
+						displayName: 'Only content',
 						name: 'onlyContent',
 						type: 'boolean',
 						displayOptions: {
@@ -123,7 +123,7 @@ export class RabbitMQTrigger implements INodeType {
 					},
 
 					{
-						displayName: 'Parallel Message Processing Limit',
+						displayName: 'Parallel message processing limit',
 						name: 'parallelMessages',
 						type: 'number',
 						default: -1,
@@ -137,7 +137,7 @@ export class RabbitMQTrigger implements INodeType {
 					{
 						displayName: 'Binding',
 						name: 'binding',
-						placeholder: 'Add Binding',
+						placeholder: 'Add binding',
 						description: 'Add binding to queu',
 						type: 'fixedCollection',
 						typeOptions: {

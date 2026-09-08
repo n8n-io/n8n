@@ -18,7 +18,7 @@ export const scanOperations: INodeProperties[] = [
 				action: 'Get a scan',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many scans',
 			},
@@ -54,7 +54,7 @@ export const scanFields: INodeProperties[] = [
 	//             scan: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -87,7 +87,7 @@ export const scanFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -126,10 +126,10 @@ export const scanFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -139,7 +139,7 @@ export const scanFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Agent',
+				displayName: 'Custom agent',
 				name: 'customAgent',
 				description:
 					'<code>User-Agent</code> header to set for this scan. Defaults to n8n standard outbound User-Agent.',
@@ -147,7 +147,7 @@ export const scanFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Override Safety',
+				displayName: 'Override safety',
 				name: 'overrideSafety',
 				description: 'Disable reclassification of URLs with potential PII in them',
 				type: 'string',

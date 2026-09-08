@@ -60,7 +60,7 @@ export class GumroadTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -91,7 +91,7 @@ export class GumroadTrigger implements INodeType {
 							"When subscribed to this resource, you will be notified of the disputes raised against user's sales",
 					},
 					{
-						name: 'Dispute Won',
+						name: 'Dispute won',
 						value: 'dispute_won',
 						description:
 							'When subscribed to this resource, you will be notified of the sale disputes won',

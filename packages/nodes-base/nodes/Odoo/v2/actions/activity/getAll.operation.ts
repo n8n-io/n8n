@@ -10,7 +10,7 @@ import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -30,10 +30,10 @@ const properties: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		options: [
 			{
-				displayName: 'Linked Document Model',
+				displayName: 'Linked document model',
 				name: 'res_model',
 				type: 'string',
 				default: '',
@@ -41,7 +41,7 @@ const properties: INodeProperties[] = [
 				description: 'Filter activities linked to this model',
 			},
 			{
-				displayName: 'Linked Document ID',
+				displayName: 'Linked document ID',
 				name: 'res_id',
 				type: 'number',
 				default: 0,
@@ -54,10 +54,10 @@ const properties: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Fields to Include',
+				displayName: 'Fields to include',
 				name: 'fieldsList',
 				type: 'multiOptions',
 				description:

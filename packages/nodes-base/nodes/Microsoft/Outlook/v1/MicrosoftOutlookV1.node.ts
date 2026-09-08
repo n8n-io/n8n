@@ -68,7 +68,7 @@ const versionDescription: INodeTypeDescription = {
 					value: 'folder',
 				},
 				{
-					name: 'Folder Message',
+					name: 'Folder message',
 					value: 'folderMessage',
 				},
 				{
@@ -76,7 +76,7 @@ const versionDescription: INodeTypeDescription = {
 					value: 'message',
 				},
 				{
-					name: 'Message Attachment',
+					name: 'Message attachment',
 					value: 'messageAttachment',
 				},
 			],

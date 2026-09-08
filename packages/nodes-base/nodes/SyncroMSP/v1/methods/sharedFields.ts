@@ -3,12 +3,12 @@ import type { INodeProperties } from 'n8n-workflow';
 export const addressFixedCollection: INodeProperties = {
 	displayName: 'Address',
 	name: 'address',
-	placeholder: 'Add Address Fields',
+	placeholder: 'Add address fields',
 	type: 'fixedCollection',
 	default: {},
 	options: [
 		{
-			displayName: 'Address Fields',
+			displayName: 'Address fields',
 			name: 'addressFields',
 			values: [
 				{

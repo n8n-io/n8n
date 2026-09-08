@@ -19,7 +19,7 @@ export const fileOperations: INodeProperties[] = [
 				action: 'Get a file',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get & filters team files',
 				action: 'Get many files',
@@ -40,7 +40,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                file:upload                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Binary File',
+		displayName: 'Binary file',
 		name: 'binaryData',
 		type: 'boolean',
 		default: false,
@@ -53,7 +53,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
-		displayName: 'File Content',
+		displayName: 'File content',
 		name: 'fileContent',
 		type: 'string',
 		default: '',
@@ -68,7 +68,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The text content of the file to upload',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -98,7 +98,7 @@ export const fileFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Channel Names or IDs',
+				displayName: 'Channel names or IDs',
 				name: 'channelIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -109,14 +109,14 @@ export const fileFields: INodeProperties[] = [
 					'The channels to send the file to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
 				description: 'Filename of file',
 			},
 			{
-				displayName: 'Initial Comment',
+				displayName: 'Initial comment',
 				name: 'initialComment',
 				type: 'string',
 				default: '',
@@ -144,7 +144,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                 file:getAll                             */
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -185,10 +185,10 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
-				displayName: 'Channel Name or ID',
+				displayName: 'Channel name or ID',
 				name: 'channelId',
 				type: 'options',
 				default: '',
@@ -199,7 +199,7 @@ export const fileFields: INodeProperties[] = [
 					'Channel containing the file to be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Show Files Hidden By Limit',
+				displayName: 'Show files hidden by limit',
 				name: 'showFilesHidden',
 				type: 'boolean',
 				default: false,
@@ -207,14 +207,14 @@ export const fileFields: INodeProperties[] = [
 					'Whether to show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit',
 			},
 			{
-				displayName: 'Timestamp From',
+				displayName: 'Timestamp from',
 				name: 'tsFrom',
 				type: 'string',
 				default: '',
 				description: 'Filter files created after this timestamp (inclusive)',
 			},
 			{
-				displayName: 'Timestamp To',
+				displayName: 'Timestamp to',
 				name: 'tsTo',
 				type: 'string',
 				default: '',
@@ -259,7 +259,7 @@ export const fileFields: INodeProperties[] = [
 				description: 'Filter files by type',
 			},
 			{
-				displayName: 'User Name or ID',
+				displayName: 'User name or ID',
 				name: 'userId',
 				type: 'options',
 				default: '',

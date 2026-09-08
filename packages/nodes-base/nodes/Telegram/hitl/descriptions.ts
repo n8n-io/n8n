@@ -23,7 +23,7 @@ export const telegramHitlProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Approve Within Chat',
+		displayName: 'Approve within chat',
 		name: 'chatApproval',
 		type: 'boolean',
 		default: false,
@@ -36,7 +36,7 @@ export const telegramHitlProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Restrict Who Can Approve',
+		displayName: 'Restrict who can approve',
 		name: 'approverIds',
 		type: 'string',
 		default: '',
@@ -50,7 +50,7 @@ export const telegramHitlProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Unauthorized Reply',
+		displayName: 'Unauthorized reply',
 		name: 'unauthorizedReplyText',
 		type: 'string',
 		default: 'You are not authorized to respond to this request.',
@@ -64,14 +64,14 @@ export const telegramHitlProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'After Decision',
+		displayName: 'After decision',
 		name: 'postDecisionBehavior',
 		type: 'options',
 		default: 'showOutcome',
 		options: [
-			{ name: 'Show Outcome and Remove Buttons', value: 'showOutcome' },
-			{ name: 'Remove Buttons Only', value: 'removeButtons' },
-			{ name: 'Keep Message Unchanged', value: 'keepMessage' },
+			{ name: 'Show outcome and remove buttons', value: 'showOutcome' },
+			{ name: 'Remove buttons only', value: 'removeButtons' },
+			{ name: 'Keep message unchanged', value: 'keepMessage' },
 		],
 		displayOptions: {
 			show: {

@@ -41,7 +41,7 @@ export class Function implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'JavaScript Code',
+				displayName: 'JavaScript code',
 				name: 'functionCode',
 				typeOptions: {
 					alwaysOpenEditWindow: true,

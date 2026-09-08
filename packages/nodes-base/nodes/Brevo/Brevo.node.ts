@@ -44,7 +44,7 @@ export class Brevo implements INodeType {
 						value: 'contact',
 					},
 					{
-						name: 'Contact Attribute',
+						name: 'Contact attribute',
 						value: 'attribute',
 					},
 					{

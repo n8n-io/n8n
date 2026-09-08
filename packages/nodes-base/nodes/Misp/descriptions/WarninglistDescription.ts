@@ -18,7 +18,7 @@ export const warninglistOperations: INodeProperties[] = [
 				action: 'Get a warninglist',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many warninglists',
 			},
@@ -50,7 +50,7 @@ export const warninglistFields: INodeProperties[] = [
 	//           warninglist: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

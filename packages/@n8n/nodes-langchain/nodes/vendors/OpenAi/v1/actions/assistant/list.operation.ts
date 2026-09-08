@@ -5,7 +5,7 @@ import { apiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,

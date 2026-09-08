@@ -13,7 +13,7 @@ const sort = (a: { name: string }, b: { name: string }) => {
 };
 
 export const eventDisplay: INodeProperties = {
-	displayName: 'Trigger On',
+	displayName: 'Trigger on',
 	name: 'triggerOn',
 	type: 'options',
 	options: Object.keys(webhookMapping)
@@ -27,10 +27,10 @@ export const eventDisplay: INodeProperties = {
 };
 
 export const eventNameField = {
-	displayName: 'Additional Fields',
+	displayName: 'Additional fields',
 	name: 'additionalFields',
 	type: 'collection',
-	placeholder: 'Add Field',
+	placeholder: 'Add field',
 	default: {},
 	options: [
 		{

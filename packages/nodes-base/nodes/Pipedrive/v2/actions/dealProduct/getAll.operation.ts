@@ -18,7 +18,7 @@ const properties: INodeProperties[] = [
 		description: 'ID of the deal whose products to retrieve',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

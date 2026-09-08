@@ -40,7 +40,7 @@ export class TimescaleDb implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Execute Query',
+						name: 'Execute query',
 						value: 'executeQuery',
 						description: 'Execute an SQL query',
 						action: 'Execute a SQL query',
@@ -159,7 +159,7 @@ export class TimescaleDb implements INodeType {
 				description: 'Name of the table in which to update data in',
 			},
 			{
-				displayName: 'Update Key',
+				displayName: 'Update key',
 				name: 'updateKey',
 				type: 'string',
 				displayOptions: {
@@ -191,7 +191,7 @@ export class TimescaleDb implements INodeType {
 			//         insert,update
 			// ----------------------------------
 			{
-				displayName: 'Return Fields',
+				displayName: 'Return fields',
 				name: 'returnFields',
 				type: 'string',
 				displayOptions: {
@@ -206,10 +206,10 @@ export class TimescaleDb implements INodeType {
 			//         additional fields
 			// ----------------------------------
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
@@ -223,7 +223,7 @@ export class TimescaleDb implements INodeType {
 								description: 'Execute each query independently',
 							},
 							{
-								name: 'Multiple Queries',
+								name: 'Multiple queries',
 								value: 'multiple',
 								description: '<b>Default</b>. Sends multiple queries at once to database.',
 							},
@@ -238,7 +238,7 @@ export class TimescaleDb implements INodeType {
 							'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.timescaledb/">the docs</a> for more examples',
 					},
 					{
-						displayName: 'Query Parameters',
+						displayName: 'Query parameters',
 						name: 'queryParams',
 						type: 'string',
 						displayOptions: {

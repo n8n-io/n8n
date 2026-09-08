@@ -9,7 +9,7 @@ import type oracledb from 'oracledb';
 
 const sharedFields: INodeProperties[] = [
 	{
-		displayName: 'Table Name',
+		displayName: 'Table name',
 		name: 'tableName',
 		type: 'string',
 		default: 'n8n_vectors',
@@ -63,7 +63,7 @@ const mergeFilters = (base?: OracleFilter, override?: OracleFilter): OracleFilte
 
 // eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 const distanceStrategyField: INodeProperties = {
-	displayName: 'Distance Strategy',
+	displayName: 'Distance strategy',
 	name: 'distanceStrategy',
 	type: 'options',
 	default: DistanceStrategy.COSINE,
@@ -74,7 +74,7 @@ const distanceStrategyField: INodeProperties = {
 			value: DistanceStrategy.COSINE,
 		},
 		{
-			name: 'Inner Product',
+			name: 'Inner product',
 			value: DistanceStrategy.DOT_PRODUCT,
 		},
 		{
@@ -86,7 +86,7 @@ const distanceStrategyField: INodeProperties = {
 			value: DistanceStrategy.MANHATTAN,
 		},
 		{
-			name: 'Euclidean Squared',
+			name: 'Euclidean squared',
 			value: DistanceStrategy.EUCLIDEAN_SQUARED,
 		},
 		{
@@ -101,7 +101,7 @@ const retrieveFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [distanceStrategyField, metadataFilterField],
 	},
@@ -112,7 +112,7 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [],
 	},

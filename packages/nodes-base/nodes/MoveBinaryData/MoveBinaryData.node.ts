@@ -72,7 +72,7 @@ export class MoveBinaryData implements INodeType {
 						description: 'Move data from Binary to JSON',
 					},
 					{
-						name: 'JSON to Binary',
+						name: 'JSON to binary',
 						value: 'jsonToBinary',
 						description: 'Move data from JSON to Binary',
 					},
@@ -85,7 +85,7 @@ export class MoveBinaryData implements INodeType {
 			//         binaryToJson
 			// ----------------------------------
 			{
-				displayName: 'Set All Data',
+				displayName: 'Set all data',
 				name: 'setAllData',
 				type: 'boolean',
 				displayOptions: {
@@ -98,7 +98,7 @@ export class MoveBinaryData implements INodeType {
 					'Whether all JSON data should be replaced with the data retrieved from binary key. Else the data will be written to a single key.',
 			},
 			{
-				displayName: 'Source Key',
+				displayName: 'Source key',
 				name: 'sourceKey',
 				type: 'string',
 				displayOptions: {
@@ -113,7 +113,7 @@ export class MoveBinaryData implements INodeType {
 					'The name of the binary key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
 			},
 			{
-				displayName: 'Destination Key',
+				displayName: 'Destination key',
 				name: 'destinationKey',
 				type: 'string',
 				displayOptions: {
@@ -133,7 +133,7 @@ export class MoveBinaryData implements INodeType {
 			//         jsonToBinary
 			// ----------------------------------
 			{
-				displayName: 'Convert All Data',
+				displayName: 'Convert all data',
 				name: 'convertAllData',
 				type: 'boolean',
 				displayOptions: {
@@ -146,7 +146,7 @@ export class MoveBinaryData implements INodeType {
 					'Whether all JSON data should be converted to binary. Else only the data of one key will be converted.',
 			},
 			{
-				displayName: 'Source Key',
+				displayName: 'Source key',
 				name: 'sourceKey',
 				type: 'string',
 				displayOptions: {
@@ -162,7 +162,7 @@ export class MoveBinaryData implements INodeType {
 					'The name of the JSON key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
 			},
 			{
-				displayName: 'Destination Key',
+				displayName: 'Destination key',
 				name: 'destinationKey',
 				type: 'string',
 				displayOptions: {
@@ -185,7 +185,7 @@ export class MoveBinaryData implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Add Byte Order Mark (BOM)',
+						displayName: 'Add byte order mark (BOM)',
 						name: 'addBOM',
 						description:
 							'Whether to add special marker at the start of your text file. This marker helps some programs understand how to read the file correctly.',
@@ -199,7 +199,7 @@ export class MoveBinaryData implements INodeType {
 						default: false,
 					},
 					{
-						displayName: 'Data Is Base64',
+						displayName: 'Data is Base64',
 						name: 'dataIsBase64',
 						type: 'boolean',
 						displayOptions: {
@@ -240,7 +240,7 @@ export class MoveBinaryData implements INodeType {
 						default: true,
 					},
 					{
-						displayName: 'File Name',
+						displayName: 'File name',
 						name: 'fileName',
 						type: 'string',
 						displayOptions: {
@@ -253,7 +253,7 @@ export class MoveBinaryData implements INodeType {
 						description: 'The file name to set',
 					},
 					{
-						displayName: 'JSON Parse',
+						displayName: 'JSON parse',
 						name: 'jsonParse',
 						type: 'boolean',
 						displayOptions: {
@@ -269,14 +269,14 @@ export class MoveBinaryData implements INodeType {
 						description: 'Whether to run JSON parse on the data to get proper object data',
 					},
 					{
-						displayName: 'Keep Source',
+						displayName: 'Keep source',
 						name: 'keepSource',
 						type: 'boolean',
 						default: false,
 						description: 'Whether the source key should be kept. By default it will be deleted.',
 					},
 					{
-						displayName: 'Keep As Base64',
+						displayName: 'Keep as Base64',
 						name: 'keepAsBase64',
 						type: 'boolean',
 						displayOptions: {
@@ -292,7 +292,7 @@ export class MoveBinaryData implements INodeType {
 						description: 'Whether to keep the binary data as base64 string',
 					},
 					{
-						displayName: 'MIME Type',
+						displayName: 'MIME type',
 						name: 'mimeType',
 						type: 'string',
 						displayOptions: {
@@ -305,7 +305,7 @@ export class MoveBinaryData implements INodeType {
 						description: 'The mime-type to set. By default will the mime-type for JSON be set.',
 					},
 					{
-						displayName: 'Use Raw Data',
+						displayName: 'Use raw data',
 						name: 'useRawData',
 						type: 'boolean',
 						displayOptions: {

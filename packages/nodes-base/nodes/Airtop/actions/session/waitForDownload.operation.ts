@@ -22,10 +22,10 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions,
 		options: [

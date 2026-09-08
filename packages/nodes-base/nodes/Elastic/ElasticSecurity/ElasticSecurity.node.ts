@@ -64,11 +64,11 @@ export class ElasticSecurity implements INodeType {
 						value: 'case',
 					},
 					{
-						name: 'Case Comment',
+						name: 'Case comment',
 						value: 'caseComment',
 					},
 					{
-						name: 'Case Tag',
+						name: 'Case tag',
 						value: 'caseTag',
 					},
 					{

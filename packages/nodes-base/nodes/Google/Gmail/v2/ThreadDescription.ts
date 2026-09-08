@@ -15,7 +15,7 @@ export const threadOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Label',
+				name: 'Add label',
 				value: 'addLabels',
 				action: 'Add label to thread',
 			},
@@ -30,12 +30,12 @@ export const threadOperations: INodeProperties[] = [
 				action: 'Get a thread',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many threads',
 			},
 			{
-				name: 'Remove Label',
+				name: 'Remove label',
 				value: 'removeLabels',
 				action: 'Remove label from thread',
 			},
@@ -80,7 +80,7 @@ export const threadFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Message Snippet or ID',
+		displayName: 'Message snippet or ID',
 		name: 'messageId',
 		type: 'options',
 		typeOptions: {
@@ -98,7 +98,7 @@ export const threadFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Email Type',
+		displayName: 'Email type',
 		name: 'emailType',
 		type: 'options',
 		default: 'text',
@@ -151,7 +151,7 @@ export const threadFields: INodeProperties[] = [
 			{
 				displayName: 'Attachments',
 				name: 'attachmentsUi',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -159,10 +159,10 @@ export const threadFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'attachmentsBinary',
-						displayName: 'Attachment Binary',
+						displayName: 'Attachment binary',
 						values: [
 							{
-								displayName: 'Attachment Field Name',
+								displayName: 'Attachment field name',
 								name: 'property',
 								type: 'string',
 								default: '',
@@ -194,7 +194,7 @@ export const threadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Sender Name',
+				displayName: 'Sender name',
 				name: 'senderName',
 				type: 'string',
 				placeholder: 'e.g. Nathan',
@@ -202,7 +202,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'The name displayed in your contacts inboxes',
 			},
 			{
-				displayName: 'Reply to Sender Only',
+				displayName: 'Reply to sender only',
 				name: 'replyToSenderOnly',
 				type: 'boolean',
 				default: false,
@@ -214,7 +214,7 @@ export const threadFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Reply to Recipients Only',
+				displayName: 'Reply to recipients only',
 				name: 'replyToRecipientsOnly',
 				type: 'boolean',
 				default: false,
@@ -254,7 +254,7 @@ export const threadFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['thread'],
@@ -264,7 +264,7 @@ export const threadFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Return Only Messages',
+				displayName: 'Return only messages',
 				name: 'returnOnlyMessages',
 				type: 'boolean',
 				default: true,
@@ -277,7 +277,7 @@ export const threadFields: INodeProperties[] = [
 	/*                                 thread:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -325,7 +325,7 @@ export const threadFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -335,14 +335,14 @@ export const threadFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Spam and Trash',
+				displayName: 'Include spam and trash',
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to include threads from SPAM and TRASH in the results',
 			},
 			{
-				displayName: 'Label ID Names or IDs',
+				displayName: 'Label ID names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -362,7 +362,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'Only return messages matching the specified query',
 			},
 			{
-				displayName: 'Read Status',
+				displayName: 'Read status',
 				name: 'readStatus',
 				type: 'options',
 				default: 'unread',
@@ -386,7 +386,7 @@ export const threadFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Received After',
+				displayName: 'Received after',
 				name: 'receivedAfter',
 				type: 'dateTime',
 				default: '',
@@ -394,7 +394,7 @@ export const threadFields: INodeProperties[] = [
 					'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 			},
 			{
-				displayName: 'Received Before',
+				displayName: 'Received before',
 				name: 'receivedBefore',
 				type: 'dateTime',
 				default: '',
@@ -421,7 +421,7 @@ export const threadFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Label Names or IDs',
+		displayName: 'Label names or IDs',
 		name: 'labelIds',
 		type: 'multiOptions',
 		typeOptions: {

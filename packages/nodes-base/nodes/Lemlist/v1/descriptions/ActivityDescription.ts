@@ -9,7 +9,7 @@ export const activityOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many activities',
 			},
@@ -27,7 +27,7 @@ export const activityFields: INodeProperties[] = [
 	//        activity: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -61,7 +61,7 @@ export const activityFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -71,7 +71,7 @@ export const activityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign name or ID',
 				name: 'campaignId',
 				type: 'options',
 				default: '',
@@ -89,31 +89,31 @@ export const activityFields: INodeProperties[] = [
 				description: 'Type of activity to retrieve',
 				options: [
 					{
-						name: 'Emails Bounced',
+						name: 'Emails bounced',
 						value: 'emailsBounced',
 					},
 					{
-						name: 'Emails Clicked',
+						name: 'Emails clicked',
 						value: 'emailsClicked',
 					},
 					{
-						name: 'Emails Opened',
+						name: 'Emails opened',
 						value: 'emailsOpened',
 					},
 					{
-						name: 'Emails Replied',
+						name: 'Emails replied',
 						value: 'emailsReplied',
 					},
 					{
-						name: 'Emails Send Failed',
+						name: 'Emails send failed',
 						value: 'emailsSendFailed',
 					},
 					{
-						name: 'Emails Sent',
+						name: 'Emails sent',
 						value: 'emailsSent',
 					},
 					{
-						name: 'Emails Unsubscribed',
+						name: 'Emails unsubscribed',
 						value: 'emailsUnsubscribed',
 					},
 				],

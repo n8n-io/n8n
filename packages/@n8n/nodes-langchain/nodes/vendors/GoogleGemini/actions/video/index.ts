@@ -14,19 +14,19 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Analyze Video',
+				name: 'Analyze video',
 				value: 'analyze',
 				action: 'Analyze video',
 				description: 'Take in videos and answer questions about them',
 			},
 			{
-				name: 'Generate a Video',
+				name: 'Generate a video',
 				value: 'generate',
 				action: 'Generate a video',
 				description: 'Creates a video from a text prompt',
 			},
 			{
-				name: 'Download Video',
+				name: 'Download video',
 				value: 'download',
 				action: 'Download a video',
 				description: 'Download a generated video from the Google Gemini API using a URL',

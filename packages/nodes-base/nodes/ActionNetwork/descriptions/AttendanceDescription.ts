@@ -25,7 +25,7 @@ export const attendanceOperations: INodeProperties[] = [
 				action: 'Get an attendance',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many attendances',
 			},
@@ -119,7 +119,7 @@ export const attendanceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

@@ -9,20 +9,20 @@ export function getAdditionalOptions({
 	const baseOptions: INodeProperties = {
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		description: 'Additional options to add',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Maximum Number of Tokens',
+				displayName: 'Maximum number of tokens',
 				name: 'maxOutputTokens',
 				default: 2048,
 				description: 'The maximum number of tokens to generate in the completion',
 				type: 'number',
 			},
 			{
-				displayName: 'Sampling Temperature',
+				displayName: 'Sampling temperature',
 				name: 'temperature',
 				default: 0.4,
 				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -50,7 +50,7 @@ export function getAdditionalOptions({
 			},
 			// Safety Settings
 			{
-				displayName: 'Safety Settings',
+				displayName: 'Safety settings',
 				name: 'safetySettings',
 				type: 'fixedCollection',
 				typeOptions: { multipleValues: true },
@@ -60,14 +60,14 @@ export function getAdditionalOptions({
 						threshold: harmThresholds[0].name as HarmBlockThreshold,
 					},
 				},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						name: 'values',
 						displayName: 'Values',
 						values: [
 							{
-								displayName: 'Safety Category',
+								displayName: 'Safety category',
 								name: 'category',
 								type: 'options',
 								description: 'The category of harmful content to block',
@@ -75,7 +75,7 @@ export function getAdditionalOptions({
 								options: harmCategories,
 							},
 							{
-								displayName: 'Safety Threshold',
+								displayName: 'Safety threshold',
 								name: 'threshold',
 								type: 'options',
 								description: 'The threshold of harmful content to block',
@@ -91,7 +91,7 @@ export function getAdditionalOptions({
 	// only supported in the new google genai SDK
 	if (supportsThinkingBudget) {
 		baseOptions.options?.push({
-			displayName: 'Thinking Budget',
+			displayName: 'Thinking budget',
 			name: 'thinkingBudget',
 			default: -1,
 			description:

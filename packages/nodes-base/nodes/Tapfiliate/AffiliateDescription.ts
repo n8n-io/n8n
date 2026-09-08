@@ -31,7 +31,7 @@ export const affiliateOperations: INodeProperties[] = [
 				action: 'Get an affiliate',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many affiliates',
 				action: 'Get many affiliates',
@@ -61,7 +61,7 @@ export const affiliateFields: INodeProperties[] = [
 		description: 'The affiliate’s email',
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstname',
 		type: 'string',
 		required: true,
@@ -75,7 +75,7 @@ export const affiliateFields: INodeProperties[] = [
 		description: 'The affiliate’s firstname',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastname',
 		type: 'string',
 		required: true,
@@ -89,10 +89,10 @@ export const affiliateFields: INodeProperties[] = [
 		description: 'The affiliate’s lastname',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -128,7 +128,7 @@ export const affiliateFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Postal Code',
+								displayName: 'Postal code',
 								name: 'postal_code',
 								type: 'string',
 								default: '',
@@ -146,7 +146,7 @@ export const affiliateFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Country Code',
+								displayName: 'Country code',
 								name: 'country',
 								type: 'string',
 								default: '',
@@ -158,7 +158,7 @@ export const affiliateFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Company Name',
+				displayName: 'Company name',
 				name: 'companyName',
 				type: 'string',
 				default: '',
@@ -207,7 +207,7 @@ export const affiliateFields: INodeProperties[] = [
 	/*                                 affiliate:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -241,7 +241,7 @@ export const affiliateFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -251,7 +251,7 @@ export const affiliateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Affiliate Group ID',
+				displayName: 'Affiliate group ID',
 				name: 'affiliate_group_id',
 				type: 'string',
 				default: '',
@@ -279,7 +279,7 @@ export const affiliateFields: INodeProperties[] = [
 				description: 'Retrieves children for a certain parent affiliate',
 			},
 			{
-				displayName: 'Referral Code',
+				displayName: 'Referral code',
 				name: 'referral_code',
 				type: 'string',
 				default: '',

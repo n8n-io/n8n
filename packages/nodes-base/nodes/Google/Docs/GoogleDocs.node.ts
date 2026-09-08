@@ -63,7 +63,7 @@ export class GoogleDocs implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 					{
@@ -89,7 +89,7 @@ export class GoogleDocs implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 				],
@@ -129,7 +129,7 @@ export class GoogleDocs implements INodeType {
 						value: 'myDrive',
 					},
 					{
-						name: 'Shared with Me',
+						name: 'Shared with me',
 						value: 'sharedWithMe',
 					},
 				];

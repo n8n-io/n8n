@@ -24,7 +24,7 @@ export const objectOperations: INodeProperties[] = [
 				action: 'Get an object',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many objects',
 			},
@@ -47,7 +47,7 @@ export const objectFields: INodeProperties[] = [
 	//         object: create
 	// ----------------------------------
 	{
-		displayName: 'Type Name',
+		displayName: 'Type name',
 		name: 'typeName',
 		type: 'string',
 		required: true,
@@ -63,7 +63,7 @@ export const objectFields: INodeProperties[] = [
 	{
 		displayName: 'Properties',
 		name: 'properties',
-		placeholder: 'Add Property',
+		placeholder: 'Add property',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -103,7 +103,7 @@ export const objectFields: INodeProperties[] = [
 	//         object: get
 	// ----------------------------------
 	{
-		displayName: 'Type Name',
+		displayName: 'Type name',
 		name: 'typeName',
 		type: 'string',
 		required: true,
@@ -135,7 +135,7 @@ export const objectFields: INodeProperties[] = [
 	//         object: update
 	// ----------------------------------
 	{
-		displayName: 'Type Name',
+		displayName: 'Type name',
 		name: 'typeName',
 		type: 'string',
 		required: true,
@@ -165,7 +165,7 @@ export const objectFields: INodeProperties[] = [
 	{
 		displayName: 'Properties',
 		name: 'properties',
-		placeholder: 'Add Property',
+		placeholder: 'Add property',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -205,7 +205,7 @@ export const objectFields: INodeProperties[] = [
 	//         object:getAll
 	// ----------------------------------
 	{
-		displayName: 'Type Name',
+		displayName: 'Type name',
 		name: 'typeName',
 		type: 'string',
 		required: true,
@@ -219,7 +219,7 @@ export const objectFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -250,7 +250,7 @@ export const objectFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -272,12 +272,12 @@ export const objectFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Filters',
 				name: 'filters',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -312,42 +312,42 @@ export const objectFields: INodeProperties[] = [
 										description: 'Use to test strict equality, for all field types',
 									},
 									{
-										name: 'Not Equal',
+										name: 'Not equal',
 										value: 'not equal',
 										description: 'Use to test strict equality, for all field types',
 									},
 									{
-										name: 'Is Empty',
+										name: 'Is empty',
 										value: 'is_empty',
 										description:
 											"Use to test whether a thing's given field is empty, for all field types",
 									},
 									{
-										name: 'Is Not Empty',
+										name: 'Is not empty',
 										value: 'is_not_empty',
 										description:
 											"Use to test whether a thing's given field is not empty, for all field types",
 									},
 									{
-										name: 'Text Contains',
+										name: 'Text contains',
 										value: 'text contains',
 										description:
 											'Use to test if a text field contains a string, for text fields only',
 									},
 									{
-										name: 'Not Text Contains',
+										name: 'Not text contains',
 										value: 'not text contains',
 										description:
 											'Use to test if a text field does not contain a string, for text fields only',
 									},
 									{
-										name: 'Greater Than',
+										name: 'Greater than',
 										value: 'greater than',
 										description:
 											"Use to compare a thing's field value relative to a string or number, for text, number, and date fields",
 									},
 									{
-										name: 'Less Than',
+										name: 'Less than',
 										value: 'less than',
 										description:
 											"Use to compare a thing's field value relative to a string or number, for text, number, and date fields",
@@ -359,7 +359,7 @@ export const objectFields: INodeProperties[] = [
 											"Use to test whether a thing's field is in a list, for all field types",
 									},
 									{
-										name: 'Not In',
+										name: 'Not in',
 										value: 'not in',
 										description:
 											"Use to test whether a thing's field is not in a list, for all field types",
@@ -371,7 +371,7 @@ export const objectFields: INodeProperties[] = [
 											'Use to test whether a list field contains an entry, for list fields only',
 									},
 									{
-										name: 'Not Contains',
+										name: 'Not contains',
 										value: 'not contains',
 										description:
 											'Use to test whether a list field does not contains an entry, for list fields only',
@@ -382,13 +382,13 @@ export const objectFields: INodeProperties[] = [
 										description: 'Use to test whether a list field is empty, for list fields only',
 									},
 									{
-										name: 'Not Empty',
+										name: 'Not empty',
 										value: 'not empty',
 										description:
 											'Use to test whether a list field is not empty, for list fields only',
 									},
 									{
-										name: 'Geographic Search',
+										name: 'Geographic search',
 										value: 'geographic_search',
 										description:
 											'Use to test if the current thing is within a radius from a central address. To use this, the value sent with the constraint must have an address and a range. See <a href="https://manual.bubble.io/core-resources/api/data-api">link</a>.',
@@ -430,7 +430,7 @@ export const objectFields: INodeProperties[] = [
 			{
 				displayName: 'Sort',
 				name: 'sort',
-				placeholder: 'Add Sort',
+				placeholder: 'Add sort',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -442,7 +442,7 @@ export const objectFields: INodeProperties[] = [
 						name: 'sortValue',
 						values: [
 							{
-								displayName: 'Sort Field',
+								displayName: 'Sort field',
 								name: 'sort_field',
 								type: 'string',
 								default: '',
@@ -456,7 +456,7 @@ export const objectFields: INodeProperties[] = [
 								default: false,
 							},
 							{
-								displayName: 'Geo Reference',
+								displayName: 'Geo reference',
 								name: 'geo_reference',
 								type: 'string',
 								default: '',

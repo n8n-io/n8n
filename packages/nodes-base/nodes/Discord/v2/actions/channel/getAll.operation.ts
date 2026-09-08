@@ -20,21 +20,21 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Filter by Type',
+				displayName: 'Filter by type',
 				name: 'filter',
 				type: 'multiOptions',
 				default: [],
 				options: [
 					{
-						name: 'Guild Text',
+						name: 'Guild text',
 						value: 0,
 					},
 					{
-						name: 'Guild Voice',
+						name: 'Guild voice',
 						value: 2,
 					},
 					{
-						name: 'Guild Category',
+						name: 'Guild category',
 						value: 4,
 					},
 				],

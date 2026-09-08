@@ -45,51 +45,51 @@ export class HelpScoutTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Conversation - Assigned',
+						name: 'Conversation - assigned',
 						value: 'convo.assigned',
 					},
 					{
-						name: 'Conversation - Created',
+						name: 'Conversation - created',
 						value: 'convo.created',
 					},
 					{
-						name: 'Conversation - Deleted',
+						name: 'Conversation - deleted',
 						value: 'convo.deleted',
 					},
 					{
-						name: 'Conversation - Merged',
+						name: 'Conversation - merged',
 						value: 'convo.merged',
 					},
 					{
-						name: 'Conversation - Moved',
+						name: 'Conversation - moved',
 						value: 'convo.moved',
 					},
 					{
-						name: 'Conversation - Status',
+						name: 'Conversation - status',
 						value: 'convo.status',
 					},
 					{
-						name: 'Conversation - Tags',
+						name: 'Conversation - tags',
 						value: 'convo.tags',
 					},
 					{
-						name: 'Conversation Agent Reply - Created',
+						name: 'Conversation agent reply - created',
 						value: 'convo.agent.reply.created',
 					},
 					{
-						name: 'Conversation Customer Reply - Created',
+						name: 'Conversation customer reply - created',
 						value: 'convo.customer.reply.created',
 					},
 					{
-						name: 'Conversation Note - Created',
+						name: 'Conversation note - created',
 						value: 'convo.note.created',
 					},
 					{
-						name: 'Customer - Created',
+						name: 'Customer - created',
 						value: 'customer.created',
 					},
 					{
-						name: 'Rating - Received',
+						name: 'Rating - received',
 						value: 'satisfaction.ratings',
 					},
 				],

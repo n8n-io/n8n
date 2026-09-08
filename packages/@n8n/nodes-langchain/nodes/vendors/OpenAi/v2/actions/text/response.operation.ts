@@ -42,19 +42,19 @@ const properties: INodeProperties[] = [
 			sortable: true,
 			multipleValues: true,
 		},
-		placeholder: 'Add Message',
+		placeholder: 'Add message',
 		default: { values: [{ type: 'text' }] },
 		options: messageOptions,
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Hide Tools',
+		displayName: 'Hide tools',
 		name: 'hideTools',
 		type: 'hidden',
 		default: 'hide',
@@ -76,20 +76,20 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Built-in Tools',
+		displayName: 'Built-in tools',
 		name: 'builtInTools',
-		placeholder: 'Add Built-in Tool',
+		placeholder: 'Add built-in tool',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Web Search',
+				displayName: 'Web search',
 				name: 'webSearch',
 				type: 'collection',
 				default: { searchContextSize: 'medium' },
 				options: [
 					{
-						displayName: 'Search Context Size',
+						displayName: 'Search context size',
 						description:
 							'High level guidance for the amount of context window space to use for the search',
 						name: 'searchContextSize',
@@ -102,7 +102,7 @@ const properties: INodeProperties[] = [
 						],
 					},
 					{
-						displayName: 'Web Search Allowed Domains',
+						displayName: 'Web search allowed domains',
 						name: 'allowedDomains',
 						type: 'string',
 						default: '',
@@ -134,13 +134,13 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'File Search',
+				displayName: 'File search',
 				name: 'fileSearch',
 				type: 'collection',
 				default: { vectorStoreIds: '[]' },
 				options: [
 					{
-						displayName: 'Vector Store IDs',
+						displayName: 'Vector store IDs',
 						name: 'vectorStoreIds',
 						description:
 							'The vector store IDs to use for the file search. Vector stores are managed via OpenAI Dashboard.',
@@ -155,7 +155,7 @@ const properties: INodeProperties[] = [
 						default: '{}',
 					},
 					{
-						displayName: 'Max Results',
+						displayName: 'Max results',
 						name: 'maxResults',
 						type: 'number',
 						default: 1,
@@ -164,7 +164,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Code Interpreter',
+				displayName: 'Code interpreter',
 				name: 'codeInterpreter',
 				type: 'boolean',
 				default: true,
@@ -175,7 +175,7 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
@@ -188,38 +188,38 @@ const properties: INodeProperties[] = [
 				type: 'string',
 			},
 			{
-				displayName: 'Include Additional Data',
+				displayName: 'Include additional data',
 				name: 'include',
 				default: [],
 				type: 'multiOptions',
 				description: 'Specify additional output data to include in the model response',
 				options: [
 					{
-						name: 'Code Interpreter Call Outputs',
+						name: 'Code interpreter call outputs',
 						value: 'code_interpreter_call.outputs',
 					},
 					{
-						name: 'Computer Call Output Image URL',
+						name: 'Computer call output image URL',
 						value: 'computer_call_output.output.image_url',
 					},
 					{
-						name: 'File Search Call Results',
+						name: 'File search call results',
 						value: 'file_search_call.results',
 					},
 					{
-						name: 'Message Input Image URL',
+						name: 'Message input image URL',
 						value: 'message.input_image.image_url',
 					},
 					{
-						name: 'Message Output Text Logprobs',
+						name: 'Message output text logprobs',
 						value: 'message.output_text.logprobs',
 					},
 					{
-						name: 'Reasoning Encrypted Content',
+						name: 'Reasoning encrypted content',
 						value: 'reasoning.encrypted_content',
 					},
 					{
-						name: 'Web Search Tool Call Sources',
+						name: 'Web search tool call sources',
 						value: 'web_search_call.action.sources',
 					},
 				],
@@ -235,7 +235,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Maximum Number of Tokens',
+				displayName: 'Maximum number of tokens',
 				name: 'maxTokens',
 				default: 16,
 				description:
@@ -246,7 +246,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Max Tool Calls Iterations',
+				displayName: 'Max tool calls iterations',
 				name: 'maxToolsIterations',
 				type: 'number',
 				default: 15,
@@ -254,7 +254,7 @@ const properties: INodeProperties[] = [
 					'The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit.',
 			},
 			{
-				displayName: 'Max Built-in Tool Calls',
+				displayName: 'Max built-in tool calls',
 				name: 'maxToolCalls',
 				type: 'number',
 				default: 15,
@@ -263,7 +263,7 @@ const properties: INodeProperties[] = [
 			},
 			metadataProperty,
 			{
-				displayName: 'Parallel Tool Calls',
+				displayName: 'Parallel tool calls',
 				name: 'parallelToolCalls',
 				type: 'boolean',
 				default: false,
@@ -271,7 +271,7 @@ const properties: INodeProperties[] = [
 					'Whether to allow parallel tool calls. If true, the model can call multiple tools at once.',
 			},
 			{
-				displayName: 'Previous Response ID',
+				displayName: 'Previous response ID',
 				name: 'previousResponseId',
 				type: 'string',
 				default: '',
@@ -317,7 +317,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Prompt Cache Key',
+				displayName: 'Prompt cache key',
 				name: 'promptCacheKey',
 				type: 'string',
 				default: '',
@@ -365,7 +365,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Safety Identifier',
+				displayName: 'Safety identifier',
 				name: 'safetyIdentifier',
 				type: 'string',
 				default: '',
@@ -373,7 +373,7 @@ const properties: INodeProperties[] = [
 					"A stable identifier used to help detect users of your application that may be violating OpenAI's usage policies. The IDs should be a string that uniquely identifies each user.",
 			},
 			{
-				displayName: 'Service Tier',
+				displayName: 'Service tier',
 				name: 'serviceTier',
 				type: 'options',
 				default: 'auto',
@@ -393,7 +393,7 @@ const properties: INodeProperties[] = [
 				description: 'Whether to store the generated model response for later retrieval via API',
 			},
 			{
-				displayName: 'Output Format',
+				displayName: 'Output format',
 				name: 'textFormat',
 				type: 'fixedCollection',
 				default: { textOptions: [{ type: 'text' }] },
@@ -411,7 +411,7 @@ const properties: INodeProperties[] = [
 									{ name: 'Text', value: 'text' },
 									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									{ name: 'JSON Schema (recommended)', value: 'json_schema' },
-									{ name: 'JSON Object', value: 'json_object' },
+									{ name: 'JSON object', value: 'json_object' },
 								],
 							},
 							{
@@ -492,7 +492,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Top Logprobs',
+				displayName: 'Top logprobs',
 				name: 'topLogprobs',
 				type: 'number',
 				default: 0,
@@ -504,7 +504,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Temperature)',
+				displayName: 'Output randomness (temperature)',
 				name: 'temperature',
 				type: 'number',
 				default: 1,
@@ -517,7 +517,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Top P)',
+				displayName: 'Output randomness (top P)',
 				name: 'topP',
 				default: 1,
 				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -534,7 +534,7 @@ const properties: INodeProperties[] = [
 					"Whether to truncate the input to the model's context window size. When disabled will throw a 400 error instead.",
 			},
 			{
-				displayName: 'Background Mode',
+				displayName: 'Background mode',
 				name: 'backgroundMode',
 				type: 'fixedCollection',
 				default: { values: [{ backgroundMode: true }] },
@@ -544,7 +544,7 @@ const properties: INodeProperties[] = [
 						name: 'values',
 						values: [
 							{
-								displayName: 'Background Mode',
+								displayName: 'Background mode',
 								name: 'enabled',
 								type: 'boolean',
 								default: false,

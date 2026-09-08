@@ -27,7 +27,7 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get a post',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many posts',
 				action: 'Get many posts',
@@ -75,10 +75,10 @@ export const postFields: INodeProperties[] = [
 		description: 'Content of the post',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -88,7 +88,7 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
@@ -99,7 +99,7 @@ export const postFields: INodeProperties[] = [
 					'ID of the category. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Reply To Post Number',
+				displayName: 'Reply to post number',
 				name: 'reply_to_post_number',
 				type: 'string',
 				default: '',
@@ -137,7 +137,7 @@ export const postFields: INodeProperties[] = [
 	/*                                post:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -199,10 +199,10 @@ export const postFields: INodeProperties[] = [
 		description: 'Content of the post. HTML is supported.',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -212,7 +212,7 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Edit Reason',
+				displayName: 'Edit reason',
 				name: 'edit_reason',
 				type: 'string',
 				default: '',

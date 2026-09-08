@@ -8,32 +8,32 @@ export const operationFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 				action: 'Insert or update rows in a table',
 			},
 			{
-				name: 'Create Row',
+				name: 'Create row',
 				value: 'create',
 				description: 'Create rows in a table',
 				action: 'Create rows in a table',
 			},
 			{
-				name: 'Delete Row',
+				name: 'Delete row',
 				value: 'delete',
 				description: 'Delete rows from a table',
 				action: 'Delete rows from a table',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-many
-				name: 'Get Many Rows',
+				name: 'Get many rows',
 				value: 'getAll',
 				description: 'Read rows from a table',
 				action: 'Read rows from a table',
 			},
 			{
-				name: 'Update Row',
+				name: 'Update row',
 				value: 'update',
 				description: 'Update rows in a table',
 				action: 'Update rows in a table',
@@ -84,7 +84,7 @@ export const operationFields: INodeProperties[] = [
 	//              getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -112,7 +112,7 @@ export const operationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Options',
+		displayName: 'Additional options',
 		name: 'additionalOptions',
 		type: 'collection',
 		displayOptions: {
@@ -126,7 +126,7 @@ export const operationFields: INodeProperties[] = [
 			{
 				displayName: 'Filter',
 				name: 'filter',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				description:
 					'Only return rows matching all of the given filters. For complex filters, create a formula column and filter for the value "true".',
 				type: 'fixedCollection',
@@ -136,11 +136,11 @@ export const operationFields: INodeProperties[] = [
 				default: {},
 				options: [
 					{
-						displayName: 'Filter Properties',
+						displayName: 'Filter properties',
 						name: 'filterProperties',
 						values: [
 							{
-								displayName: 'Column Name or ID',
+								displayName: 'Column name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -164,9 +164,9 @@ export const operationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sort',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -174,11 +174,11 @@ export const operationFields: INodeProperties[] = [
 				default: {},
 				options: [
 					{
-						displayName: 'Sort Properties',
+						displayName: 'Sort properties',
 						name: 'sortProperties',
 						values: [
 							{
-								displayName: 'Column Name or ID',
+								displayName: 'Column name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -235,9 +235,9 @@ export const operationFields: INodeProperties[] = [
 	//              upsert
 	// ----------------------------------
 	{
-		displayName: 'Upsert Criteria',
+		displayName: 'Upsert criteria',
 		name: 'upsertCriteria',
-		placeholder: 'Add Criteria Field',
+		placeholder: 'Add criteria field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Criteria Field',
@@ -256,7 +256,7 @@ export const operationFields: INodeProperties[] = [
 				name: 'properties',
 				values: [
 					{
-						displayName: 'Column Name or ID',
+						displayName: 'Column name or ID',
 						name: 'fieldId',
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
@@ -268,7 +268,7 @@ export const operationFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -278,7 +278,7 @@ export const operationFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'On Multiple Matches',
+		displayName: 'On multiple matches',
 		name: 'onMany',
 		type: 'options',
 		displayOptions: {
@@ -288,17 +288,17 @@ export const operationFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Update First Match',
+				name: 'Update first match',
 				value: 'first',
 				description: 'Update the first matching record (default)',
 			},
 			{
-				name: 'Do Not Update',
+				name: 'Do not update',
 				value: 'none',
 				description: 'Do not update anything if multiple matches found',
 			},
 			{
-				name: 'Update All Matches',
+				name: 'Update all matches',
 				value: 'all',
 				description: 'Update all matching records',
 			},
@@ -311,17 +311,17 @@ export const operationFields: INodeProperties[] = [
 	//         create + update
 	// ----------------------------------
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'dataToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputs',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'defineInNode',
 				description: 'Set the value for each destination column',
 			},
@@ -335,7 +335,7 @@ export const operationFields: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
@@ -350,9 +350,9 @@ export const operationFields: INodeProperties[] = [
 		placeholder: 'Enter properties...',
 	},
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsToSend',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Field to Send',
@@ -371,7 +371,7 @@ export const operationFields: INodeProperties[] = [
 				name: 'properties',
 				values: [
 					{
-						displayName: 'Column Name or ID',
+						displayName: 'Column name or ID',
 						name: 'fieldId',
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
@@ -383,7 +383,7 @@ export const operationFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',

@@ -2,7 +2,7 @@ import type { FileProperties } from '../../Interfaces';
 
 export const fileGetAllDescription: FileProperties = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

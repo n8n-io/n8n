@@ -16,7 +16,7 @@ export const databricksSqlParameters: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -72,7 +72,7 @@ export const databricksSqlParameters: INodeProperties[] = [
 		description: 'SQL query to execute',
 	},
 	{
-		displayName: 'Query Parameters',
+		displayName: 'Query parameters',
 		name: 'queryParameters',
 		type: 'fixedCollection',
 		typeOptions: { multipleValues: true },
@@ -82,7 +82,7 @@ export const databricksSqlParameters: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Parameter',
+		placeholder: 'Add parameter',
 		description:
 			'Named parameters for the query. Reference them in your SQL as <code>:name</code>, e.g. <code>WHERE ID = :user_id</code>.',
 		options: [

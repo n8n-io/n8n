@@ -25,13 +25,13 @@ export const descriptions: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Append or Update Row',
+				name: 'Append or update row',
 				value: 'appendOrUpdate',
 				description: 'Append a new row or update an existing one (upsert)',
 				action: 'Append or update row in sheet',
 			},
 			{
-				name: 'Append Row',
+				name: 'Append row',
 				value: 'append',
 				description: 'Create a new row in a sheet',
 				action: 'Append row in sheet',
@@ -55,19 +55,19 @@ export const descriptions: INodeProperties[] = [
 				action: 'Delete sheet',
 			},
 			{
-				name: 'Delete Rows or Columns',
+				name: 'Delete rows or columns',
 				value: 'delete',
 				description: 'Delete columns or rows from a sheet',
 				action: 'Delete rows or columns from sheet',
 			},
 			{
-				name: 'Get Row(s)',
+				name: 'Get row(s)',
 				value: 'read',
 				description: 'Retrieve one or more rows from a sheet',
 				action: 'Get row(s) in sheet',
 			},
 			{
-				name: 'Update Row',
+				name: 'Update row',
 				value: 'update',
 				description: 'Update an existing row in a sheet',
 				action: 'Update row in sheet',
@@ -87,7 +87,7 @@ export const descriptions: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -151,7 +151,7 @@ export const descriptions: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -192,7 +192,7 @@ export const descriptions: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				placeholder: 'Sheet1',

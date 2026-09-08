@@ -70,7 +70,7 @@ export class Egoi implements INodeType {
 						action: 'Get a member',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many members',
 						action: 'Get many members',
@@ -85,7 +85,7 @@ export class Egoi implements INodeType {
 				default: 'create',
 			},
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -127,7 +127,7 @@ export class Egoi implements INodeType {
 				description: 'Contact ID of the subscriber',
 			},
 			{
-				displayName: 'Resolve Data',
+				displayName: 'Resolve data',
 				name: 'resolveData',
 				type: 'boolean',
 				displayOptions: {
@@ -141,10 +141,10 @@ export class Egoi implements INodeType {
 					'By default the response just includes the contact ID. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['create'],
@@ -154,7 +154,7 @@ export class Egoi implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Birth Date',
+						displayName: 'Birth date',
 						name: 'birth_date',
 						type: 'dateTime',
 						default: '',
@@ -168,24 +168,24 @@ export class Egoi implements INodeType {
 						description: 'Cellphone of a subscriber',
 					},
 					{
-						displayName: 'Extra Fields',
+						displayName: 'Extra fields',
 						name: 'extraFieldsUi',
 						type: 'fixedCollection',
-						placeholder: 'Add Field',
+						placeholder: 'Add field',
 						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
 						options: [
 							{
-								displayName: 'Extra Field',
+								displayName: 'Extra field',
 								name: 'extraFieldValues',
 								typeOptions: {
 									multipleValueButtonText: 'Add Field',
 								},
 								values: [
 									{
-										displayName: 'Field Name or ID',
+										displayName: 'Field name or ID',
 										name: 'field_id',
 										type: 'options',
 										description:
@@ -207,14 +207,14 @@ export class Egoi implements INodeType {
 						],
 					},
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'first_name',
 						type: 'string',
 						default: '',
 						description: 'Name of a subscriber',
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'last_name',
 						type: 'string',
 						default: '',
@@ -246,7 +246,7 @@ export class Egoi implements INodeType {
 						description: "Subscriber's current status",
 					},
 					{
-						displayName: 'Tag Names or IDs',
+						displayName: 'Tag names or IDs',
 						name: 'tagIds',
 						type: 'multiOptions',
 						typeOptions: {
@@ -262,10 +262,10 @@ export class Egoi implements INodeType {
 			//----UPDATE MEMBER---
 			//--------------------
 			{
-				displayName: 'Update Fields',
+				displayName: 'Update fields',
 				name: 'updateFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -274,7 +274,7 @@ export class Egoi implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Birth Date',
+						displayName: 'Birth date',
 						name: 'birth_date',
 						type: 'dateTime',
 						default: '',
@@ -296,24 +296,24 @@ export class Egoi implements INodeType {
 						description: 'Email address for subscriber',
 					},
 					{
-						displayName: 'Extra Fields',
+						displayName: 'Extra fields',
 						name: 'extraFieldsUi',
 						type: 'fixedCollection',
-						placeholder: 'Add Field',
+						placeholder: 'Add field',
 						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
 						options: [
 							{
-								displayName: 'Extra Field',
+								displayName: 'Extra field',
 								name: 'extraFieldValues',
 								typeOptions: {
 									multipleValueButtonText: 'Add Field',
 								},
 								values: [
 									{
-										displayName: 'Field Name or ID',
+										displayName: 'Field name or ID',
 										name: 'field_id',
 										type: 'options',
 										description:
@@ -335,14 +335,14 @@ export class Egoi implements INodeType {
 						],
 					},
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'first_name',
 						type: 'string',
 						default: '',
 						description: 'Name of subscriber',
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'last_name',
 						type: 'string',
 						default: '',
@@ -374,7 +374,7 @@ export class Egoi implements INodeType {
 						description: "Subscriber's current status",
 					},
 					{
-						displayName: 'Tag Names or IDs',
+						displayName: 'Tag names or IDs',
 						name: 'tagIds',
 						type: 'multiOptions',
 						typeOptions: {
@@ -439,7 +439,7 @@ export class Egoi implements INodeType {
 				description: 'Email address for subscriber',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {

@@ -19,7 +19,7 @@ export const eventOperations: INodeProperties[] = [
 				action: 'Get an event',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many events',
 				action: 'Get many events',
@@ -40,7 +40,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                   event:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -74,7 +74,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -123,10 +123,10 @@ export const eventFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -156,7 +156,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                   event:register                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Event Name or ID',
+		displayName: 'Event name or ID',
 		name: 'eventId',
 		type: 'options',
 		description:
@@ -173,7 +173,7 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		default: '',
@@ -202,10 +202,10 @@ export const eventFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -222,9 +222,9 @@ export const eventFields: INodeProperties[] = [
 				description: 'The value for the predefined Company field',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -233,7 +233,7 @@ export const eventFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
 								displayName: 'Field ID',
@@ -255,7 +255,7 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Event Registration URL',
+				displayName: 'Event registration URL',
 				name: 'ref_url',
 				type: 'string',
 				default: '',
@@ -270,21 +270,21 @@ export const eventFields: INodeProperties[] = [
 				description: 'The value for the predefined GDPR field',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 				description: 'The value for the predefined Last Name field',
 			},
 			{
-				displayName: 'Phone Number',
+				displayName: 'Phone number',
 				name: 'phone_number',
 				type: 'string',
 				default: '',
 				description: 'The value for the predefined Phone Number field',
 			},
 			{
-				displayName: 'Session Name or ID',
+				displayName: 'Session name or ID',
 				name: 'date_id',
 				type: 'options',
 				typeOptions: {

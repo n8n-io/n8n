@@ -12,7 +12,7 @@ export const databricksSqlOperations: INodeProperties = {
 	},
 	options: [
 		{
-			name: 'Execute Query',
+			name: 'Execute query',
 			value: 'executeQuery',
 			description: 'Execute a SQL query and wait for results',
 			action: 'Execute a SQL query',

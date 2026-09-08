@@ -37,7 +37,7 @@ export const description: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
-				name: 'Insert or Update',
+				name: 'Insert or update',
 				value: 'upsert',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-upsert
 				description: 'Insert or update rows in a table',

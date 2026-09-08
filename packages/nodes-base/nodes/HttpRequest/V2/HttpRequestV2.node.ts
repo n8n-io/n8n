@@ -126,13 +126,13 @@ export class HttpRequestV2 implements INodeType {
 							value: 'none',
 						},
 						{
-							name: 'Predefined Credential Type',
+							name: 'Predefined credential type',
 							value: 'predefinedCredentialType',
 							description:
 								"We've already implemented auth for many services so that you don't have to set it up manually",
 						},
 						{
-							name: 'Generic Credential Type',
+							name: 'Generic credential type',
 							value: 'genericCredentialType',
 							description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
 						},
@@ -140,7 +140,7 @@ export class HttpRequestV2 implements INodeType {
 					default: 'none',
 				},
 				{
-					displayName: 'Credential Type',
+					displayName: 'Credential type',
 					name: 'nodeCredentialType',
 					type: 'credentialsSelect',
 					noDataExpression: true,
@@ -154,7 +154,7 @@ export class HttpRequestV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Generic Auth Type',
+					displayName: 'Generic auth type',
 					name: 'genericAuthType',
 					type: 'credentialsSelect',
 					required: true,
@@ -170,7 +170,7 @@ export class HttpRequestV2 implements INodeType {
 				//        versionless params
 				// ----------------------------------
 				{
-					displayName: 'Request Method',
+					displayName: 'Request method',
 					name: 'requestMethod',
 					type: 'options',
 					options: [
@@ -216,7 +216,7 @@ export class HttpRequestV2 implements INodeType {
 					required: true,
 				},
 				{
-					displayName: 'Ignore SSL Issues (Insecure)',
+					displayName: 'Ignore SSL issues (insecure)',
 					name: 'allowUnauthorizedCerts',
 					type: 'boolean',
 					default: false,
@@ -225,7 +225,7 @@ export class HttpRequestV2 implements INodeType {
 						'Whether to download the response even if SSL certificate validation is not possible',
 				},
 				{
-					displayName: 'Response Format',
+					displayName: 'Response format',
 					name: 'responseFormat',
 					type: 'options',
 					options: [
@@ -246,7 +246,7 @@ export class HttpRequestV2 implements INodeType {
 					description: 'The format in which the data gets returned from the URL',
 				},
 				{
-					displayName: 'Property Name',
+					displayName: 'Property name',
 					name: 'dataPropertyName',
 					type: 'string',
 					default: 'data',
@@ -259,7 +259,7 @@ export class HttpRequestV2 implements INodeType {
 					description: 'Name of the property to which to write the response data',
 				},
 				{
-					displayName: 'Put Output File in Field',
+					displayName: 'Put output file in field',
 					name: 'dataPropertyName',
 					type: 'string',
 					default: 'data',
@@ -273,7 +273,7 @@ export class HttpRequestV2 implements INodeType {
 				},
 
 				{
-					displayName: 'JSON/RAW Parameters',
+					displayName: 'JSON/RAW parameters',
 					name: 'jsonParameters',
 					type: 'boolean',
 					default: false,
@@ -289,7 +289,7 @@ export class HttpRequestV2 implements INodeType {
 					default: {},
 					options: [
 						{
-							displayName: 'Batch Interval',
+							displayName: 'Batch interval',
 							name: 'batchInterval',
 							type: 'number',
 							typeOptions: {
@@ -299,7 +299,7 @@ export class HttpRequestV2 implements INodeType {
 							description: 'Time (in milliseconds) between each batch of requests. 0 for disabled.',
 						},
 						{
-							displayName: 'Batch Size',
+							displayName: 'Batch size',
 							name: 'batchSize',
 							type: 'number',
 							typeOptions: {
@@ -310,7 +310,7 @@ export class HttpRequestV2 implements INodeType {
 								'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
 						},
 						{
-							displayName: 'Body Content Type',
+							displayName: 'Body content type',
 							name: 'bodyContentType',
 							type: 'options',
 							displayOptions: {
@@ -324,15 +324,15 @@ export class HttpRequestV2 implements INodeType {
 									value: 'json',
 								},
 								{
-									name: 'RAW/Custom',
+									name: 'RAW/custom',
 									value: 'raw',
 								},
 								{
-									name: 'Form-Data Multipart',
+									name: 'Form-data multipart',
 									value: 'multipart-form-data',
 								},
 								{
-									name: 'Form Urlencoded',
+									name: 'Form urlencoded',
 									value: 'form-urlencoded',
 								},
 							],
@@ -340,35 +340,35 @@ export class HttpRequestV2 implements INodeType {
 							description: 'Content-Type to use to send body parameters',
 						},
 						{
-							displayName: 'Full Response',
+							displayName: 'Full response',
 							name: 'fullResponse',
 							type: 'boolean',
 							default: false,
 							description: 'Whether to return the full response data instead of only the body',
 						},
 						{
-							displayName: 'Follow All Redirects',
+							displayName: 'Follow all redirects',
 							name: 'followAllRedirects',
 							type: 'boolean',
 							default: false,
 							description: 'Whether to follow All HTTP 3xx redirects',
 						},
 						{
-							displayName: 'Follow GET/HEAD Redirect',
+							displayName: 'Follow GET/HEAD redirect',
 							name: 'followRedirect',
 							type: 'boolean',
 							default: true,
 							description: 'Whether to follow GET or HEAD HTTP 3xx redirects',
 						},
 						{
-							displayName: 'Ignore Response Code',
+							displayName: 'Ignore response code',
 							name: 'ignoreResponseCode',
 							type: 'boolean',
 							default: false,
 							description: 'Whether to succeeds also when status code is not 2xx',
 						},
 						{
-							displayName: 'MIME Type',
+							displayName: 'MIME type',
 							name: 'bodyContentCustomMimeType',
 							type: 'string',
 							default: '',
@@ -389,7 +389,7 @@ export class HttpRequestV2 implements INodeType {
 							description: 'HTTP proxy to use',
 						},
 						{
-							displayName: 'Split Into Items',
+							displayName: 'Split into items',
 							name: 'splitIntoItems',
 							type: 'boolean',
 							default: false,
@@ -412,7 +412,7 @@ export class HttpRequestV2 implements INodeType {
 								'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
 						},
 						{
-							displayName: 'Use Querystring',
+							displayName: 'Use querystring',
 							name: 'useQueryString',
 							type: 'boolean',
 							default: false,
@@ -424,7 +424,7 @@ export class HttpRequestV2 implements INodeType {
 
 				// Body Parameter
 				{
-					displayName: 'Send Binary File',
+					displayName: 'Send binary file',
 					name: 'sendBinaryData',
 					type: 'boolean',
 					displayOptions: {
@@ -441,7 +441,7 @@ export class HttpRequestV2 implements INodeType {
 					description: 'Whether binary data should be send as body',
 				},
 				{
-					displayName: 'Input Binary Field',
+					displayName: 'Input binary field',
 					name: 'binaryPropertyName',
 					type: 'string',
 					required: true,
@@ -460,7 +460,7 @@ export class HttpRequestV2 implements INodeType {
 						'For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
 				},
 				{
-					displayName: 'Body Parameters',
+					displayName: 'Body parameters',
 					name: 'bodyParametersJson',
 					type: 'json',
 					displayOptions: {
@@ -476,9 +476,9 @@ export class HttpRequestV2 implements INodeType {
 					description: 'Body parameters as JSON or RAW',
 				},
 				{
-					displayName: 'Body Parameters',
+					displayName: 'Body parameters',
 					name: 'bodyParametersUi',
-					placeholder: 'Add Parameter',
+					placeholder: 'Add parameter',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
@@ -531,7 +531,7 @@ export class HttpRequestV2 implements INodeType {
 				{
 					displayName: 'Headers',
 					name: 'headerParametersUi',
-					placeholder: 'Add Header',
+					placeholder: 'Add header',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
@@ -569,7 +569,7 @@ export class HttpRequestV2 implements INodeType {
 
 				// Query Parameter
 				{
-					displayName: 'Query Parameters',
+					displayName: 'Query parameters',
 					name: 'queryParametersJson',
 					type: 'json',
 					displayOptions: {
@@ -581,9 +581,9 @@ export class HttpRequestV2 implements INodeType {
 					description: 'Query parameters as JSON (flat object)',
 				},
 				{
-					displayName: 'Query Parameters',
+					displayName: 'Query parameters',
 					name: 'queryParametersUi',
-					placeholder: 'Add Parameter',
+					placeholder: 'Add parameter',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,

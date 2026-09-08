@@ -10,7 +10,7 @@ import { pipedriveApiRequest, pipedriveApiRequestAllItemsOffset } from '../../tr
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -36,7 +36,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
@@ -47,7 +47,7 @@ const properties: INodeProperties[] = [
 				description: 'Filter notes by deal ID',
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'end_date',
 				type: 'dateTime',
 				default: '',
@@ -61,7 +61,7 @@ const properties: INodeProperties[] = [
 				description: 'Filter notes by lead ID',
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'org_id',
 				type: 'options',
 				typeOptions: {
@@ -79,21 +79,21 @@ const properties: INodeProperties[] = [
 				description: 'Filter notes by person ID',
 			},
 			{
-				displayName: 'Pinned to Deal',
+				displayName: 'Pinned to deal',
 				name: 'pinned_to_deal_flag',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to filter by notes pinned to a deal',
 			},
 			{
-				displayName: 'Pinned to Organization',
+				displayName: 'Pinned to organization',
 				name: 'pinned_to_organization_flag',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to filter by notes pinned to an organization',
 			},
 			{
-				displayName: 'Pinned to Person',
+				displayName: 'Pinned to person',
 				name: 'pinned_to_person_flag',
 				type: 'boolean',
 				default: false,
@@ -109,7 +109,7 @@ const properties: INodeProperties[] = [
 						value: 'id',
 					},
 					{
-						name: 'Update Time',
+						name: 'Update time',
 						value: 'update_time',
 					},
 					{
@@ -121,7 +121,7 @@ const properties: INodeProperties[] = [
 				description: 'The field to sort by',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'start_date',
 				type: 'dateTime',
 				default: '',

@@ -24,16 +24,16 @@ const versionDescription: INodeTypeDescription = {
 	outputs: [NodeConnectionTypes.Main],
 	properties: [
 		{
-			displayName: 'Keep Only Set',
+			displayName: 'Keep only set',
 			name: 'keepOnlySet',
 			type: 'boolean',
 			default: false,
 			description: 'Whether only the values set on this node should be kept and all others removed',
 		},
 		{
-			displayName: 'Values to Set',
+			displayName: 'Values to set',
 			name: 'values',
-			placeholder: 'Add Value',
+			placeholder: 'Add value',
 			type: 'fixedCollection',
 			typeOptions: {
 				multipleValues: true,
@@ -120,7 +120,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Dot Notation',
+					displayName: 'Dot notation',
 					name: 'dotNotation',
 					type: 'boolean',
 					default: true,

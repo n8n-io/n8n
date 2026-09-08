@@ -34,13 +34,13 @@ export const userDescription: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many users',
 				action: 'Get many users',
 			},
 			{
-				name: 'Get Self',
+				name: 'Get self',
 				value: 'getSelf',
 				description: 'Retrieve currently logged-in user',
 				action: 'Get currently logged-in user',
@@ -59,7 +59,7 @@ export const userDescription: INodeProperties[] = [
 	//             fields
 	// ----------------------------------
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstname',
 		type: 'string',
 		default: '',
@@ -73,7 +73,7 @@ export const userDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastname',
 		type: 'string',
 		default: '',
@@ -132,7 +132,7 @@ export const userDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
@@ -142,7 +142,7 @@ export const userDescription: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Active',
@@ -154,11 +154,11 @@ export const userDescription: INodeProperties[] = [
 				displayName: 'Address',
 				name: 'addressUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Address',
+				placeholder: 'Add address',
 				default: {},
 				options: [
 					{
-						displayName: 'Address Details',
+						displayName: 'Address details',
 						name: 'addressDetails',
 						values: [
 							{
@@ -176,14 +176,14 @@ export const userDescription: INodeProperties[] = [
 								placeholder: 'Germany',
 							},
 							{
-								displayName: 'Street & Number',
+								displayName: 'Street & number',
 								name: 'address',
 								type: 'string',
 								default: '',
 								placeholder: 'Borsigstr. 27',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zip',
 								type: 'string',
 								default: '',
@@ -194,21 +194,21 @@ export const userDescription: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldPairs',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -219,7 +219,7 @@ export const userDescription: INodeProperties[] = [
 									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -237,7 +237,7 @@ export const userDescription: INodeProperties[] = [
 				placeholder: 'Finance',
 			},
 			{
-				displayName: 'Email Address',
+				displayName: 'Email address',
 				name: 'email',
 				type: 'string',
 				placeholder: 'name@email.com',
@@ -257,7 +257,7 @@ export const userDescription: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'organization',
 				type: 'options',
 				description:
@@ -268,14 +268,14 @@ export const userDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Phone (Landline)',
+				displayName: 'Phone (landline)',
 				name: 'phone',
 				type: 'string',
 				default: '',
 				placeholder: '+49 30 901820',
 			},
 			{
-				displayName: 'Phone (Mobile)',
+				displayName: 'Phone (mobile)',
 				name: 'mobile',
 				type: 'string',
 				default: '',
@@ -305,7 +305,7 @@ export const userDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		displayOptions: {
@@ -315,7 +315,7 @@ export const userDescription: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Active',
@@ -327,11 +327,11 @@ export const userDescription: INodeProperties[] = [
 				displayName: 'Address',
 				name: 'addressUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Address',
+				placeholder: 'Add address',
 				default: {},
 				options: [
 					{
-						displayName: 'Address Details',
+						displayName: 'Address details',
 						name: 'addressDetails',
 						values: [
 							{
@@ -349,14 +349,14 @@ export const userDescription: INodeProperties[] = [
 								placeholder: 'Germany',
 							},
 							{
-								displayName: 'Street & Number',
+								displayName: 'Street & number',
 								name: 'address',
 								type: 'string',
 								default: '',
 								placeholder: 'Borsigstr. 27',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zip',
 								type: 'string',
 								default: '',
@@ -367,21 +367,21 @@ export const userDescription: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldPairs',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -392,7 +392,7 @@ export const userDescription: INodeProperties[] = [
 									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -410,7 +410,7 @@ export const userDescription: INodeProperties[] = [
 				placeholder: 'Finance',
 			},
 			{
-				displayName: 'Email Address',
+				displayName: 'Email address',
 				name: 'email',
 				type: 'string',
 				default: '',
@@ -424,14 +424,14 @@ export const userDescription: INodeProperties[] = [
 				placeholder: '+49 30 901820',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstname',
 				type: 'string',
 				default: '',
 				placeholder: 'John',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastname',
 				type: 'string',
 				default: '',
@@ -444,7 +444,7 @@ export const userDescription: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'organization',
 				type: 'options',
 				description:
@@ -455,14 +455,14 @@ export const userDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Phone (Landline)',
+				displayName: 'Phone (landline)',
 				name: 'phone',
 				type: 'string',
 				default: '',
 				placeholder: '+49 30 901820',
 			},
 			{
-				displayName: 'Phone (Mobile)',
+				displayName: 'Phone (mobile)',
 				name: 'mobile',
 				type: 'string',
 				default: '',
@@ -521,7 +521,7 @@ export const userDescription: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -561,7 +561,7 @@ export const userDescription: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		options: [
 			{
 				displayName: 'Query',
@@ -575,15 +575,15 @@ export const userDescription: INodeProperties[] = [
 				displayName: 'Sort',
 				name: 'sortUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Sort Options',
+				placeholder: 'Add sort options',
 				default: {},
 				options: [
 					{
-						displayName: 'Sort Options',
+						displayName: 'Sort options',
 						name: 'sortDetails',
 						values: [
 							{
-								displayName: 'Sort Key Name or ID',
+								displayName: 'Sort key name or ID',
 								name: 'sort_by',
 								type: 'options',
 								description:
@@ -594,7 +594,7 @@ export const userDescription: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Sort Order',
+								displayName: 'Sort order',
 								name: 'order_by',
 								type: 'options',
 								options: [

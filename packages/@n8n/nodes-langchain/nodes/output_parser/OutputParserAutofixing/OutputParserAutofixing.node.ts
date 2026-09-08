@@ -79,11 +79,11 @@ export class OutputParserAutofixing implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
-						displayName: 'Retry Prompt',
+						displayName: 'Retry prompt',
 						name: 'prompt',
 						type: 'string',
 						default: NAIVE_FIX_PROMPT,

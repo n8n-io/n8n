@@ -18,7 +18,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 	},
 	[
 		{
-			displayName: 'Row ID Value',
+			displayName: 'Row ID value',
 			name: 'id',
 			type: 'string',
 			default: '',
@@ -26,14 +26,14 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description: 'The value of the ID field',
 		},
 		{
-			displayName: 'Download Attachments',
+			displayName: 'Download attachments',
 			name: 'downloadAttachments',
 			type: 'boolean',
 			default: false,
-			description: "Whether the attachment fields defined in 'Download Fields' will be downloaded",
+			description: "Whether the attachment fields defined in 'Download fields' will be downloaded",
 		},
 		{
-			displayName: 'Download Field Names or IDs',
+			displayName: 'Download field names or IDs',
 			name: 'downloadFieldNames',
 			type: 'multiOptions',
 			typeOptions: {

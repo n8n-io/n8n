@@ -71,7 +71,7 @@ export const versionDescription: INodeTypeDescription = {
 					description: 'Load the workflow from the database by ID',
 				},
 				{
-					name: 'Define Below',
+					name: 'Define below',
 					value: 'parameter',
 					description: 'Pass the JSON code of a workflow',
 				},
@@ -99,7 +99,7 @@ export const versionDescription: INodeTypeDescription = {
 		//         Resource mapper for workflow inputs
 		// -----------------------------------------------
 		{
-			displayName: 'Workflow Inputs',
+			displayName: 'Workflow inputs',
 			name: 'workflowInputs',
 			type: 'resourceMapper',
 			noDataExpression: true,

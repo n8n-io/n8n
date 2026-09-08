@@ -26,7 +26,7 @@ export const portfolioOperations: INodeProperties[] = [
 				action: 'Delete a portfolio',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many portfolios',
 				action: 'Get many portfolios',
@@ -44,7 +44,7 @@ export const portfolioOperations: INodeProperties[] = [
 
 export const portfolioFields: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -88,7 +88,7 @@ export const portfolioFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Portfolio Name',
+		displayName: 'Portfolio name',
 		name: 'name',
 		type: 'string',
 		required: true,

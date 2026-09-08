@@ -25,7 +25,7 @@ export const coinOperations: INodeProperties[] = [
 				action: 'Get a coin',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many coins',
 				action: 'Get many coins',
@@ -44,7 +44,7 @@ export const coinOperations: INodeProperties[] = [
 				action: 'Get market prices for a coin',
 			},
 			{
-				name: 'Market Chart',
+				name: 'Market chart',
 				value: 'marketChart',
 				description:
 					'Get historical market data include price, market cap, and 24h volume (granularity auto)',
@@ -70,7 +70,7 @@ export const coinOperations: INodeProperties[] = [
 
 export const coinFields: INodeProperties[] = [
 	{
-		displayName: 'Search By',
+		displayName: 'Search by',
 		name: 'searchBy',
 		required: true,
 		type: 'options',
@@ -80,7 +80,7 @@ export const coinFields: INodeProperties[] = [
 				value: 'coinId',
 			},
 			{
-				name: 'Contract Address',
+				name: 'Contract address',
 				value: 'contractAddress',
 			},
 		],
@@ -94,7 +94,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'Search by coin ID or contract address',
 	},
 	{
-		displayName: 'Coin Name or ID',
+		displayName: 'Coin name or ID',
 		name: 'coinId',
 		required: true,
 		type: 'options',
@@ -113,7 +113,7 @@ export const coinFields: INodeProperties[] = [
 		placeholder: 'bitcoin',
 	},
 	{
-		displayName: 'Base Currency Name or ID',
+		displayName: 'Base currency name or ID',
 		name: 'baseCurrency',
 		required: true,
 		type: 'options',
@@ -131,7 +131,7 @@ export const coinFields: INodeProperties[] = [
 			'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Base Currency Name or ID',
+		displayName: 'Base currency name or ID',
 		name: 'baseCurrency',
 		required: true,
 		type: 'options',
@@ -149,7 +149,7 @@ export const coinFields: INodeProperties[] = [
 			'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Coin Name or ID',
+		displayName: 'Coin name or ID',
 		name: 'coinId',
 		required: true,
 		type: 'options',
@@ -168,7 +168,7 @@ export const coinFields: INodeProperties[] = [
 		placeholder: 'bitcoin',
 	},
 	{
-		displayName: 'Base Currency Names or IDs',
+		displayName: 'Base currency names or IDs',
 		name: 'baseCurrencies',
 		required: true,
 		type: 'multiOptions',
@@ -209,7 +209,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The ID of the platform issuing tokens',
 	},
 	{
-		displayName: 'Contract Address',
+		displayName: 'Contract address',
 		name: 'contractAddress',
 		required: true,
 		type: 'string',
@@ -224,7 +224,7 @@ export const coinFields: INodeProperties[] = [
 		description: "Token's contract address",
 	},
 	{
-		displayName: 'Contract Addresses',
+		displayName: 'Contract addresses',
 		name: 'contractAddresses',
 		required: true,
 		type: 'string',
@@ -239,7 +239,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The contract address of tokens, comma-separated',
 	},
 	{
-		displayName: 'Base Currency Name or ID',
+		displayName: 'Base currency name or ID',
 		name: 'baseCurrency',
 		required: true,
 		type: 'options',
@@ -261,7 +261,7 @@ export const coinFields: INodeProperties[] = [
 			'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Quote Currency Name or ID',
+		displayName: 'Quote currency name or ID',
 		name: 'quoteCurrency',
 		required: true,
 		type: 'options',
@@ -279,7 +279,7 @@ export const coinFields: INodeProperties[] = [
 			'The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Quote Currency Names or IDs',
+		displayName: 'Quote currency names or IDs',
 		name: 'quoteCurrencies',
 		type: 'multiOptions',
 		typeOptions: {
@@ -297,7 +297,7 @@ export const coinFields: INodeProperties[] = [
 			'The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Range (Days)',
+		displayName: 'Range (days)',
 		name: 'days',
 		required: true,
 		type: 'options',
@@ -360,7 +360,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The date of data snapshot',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -417,7 +417,7 @@ export const coinFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Decentralized Finance Defi',
+						name: 'Decentralized finance DeFi',
 						value: 'decentralized_finance_defi',
 					},
 				],
@@ -430,35 +430,35 @@ export const coinFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Gecko Asc',
+						name: 'Gecko asc',
 						value: 'gecko_asc',
 					},
 					{
-						name: 'Gecko Desc',
+						name: 'Gecko desc',
 						value: 'gecko_desc',
 					},
 					{
-						name: 'ID Asc',
+						name: 'ID asc',
 						value: 'id_asc',
 					},
 					{
-						name: 'ID Desc',
+						name: 'ID desc',
 						value: 'id_desc',
 					},
 					{
-						name: 'Market Cap Asc',
+						name: 'Market cap asc',
 						value: 'market_cap_asc',
 					},
 					{
-						name: 'Market Cap Desc',
+						name: 'Market cap desc',
 						value: 'market_cap_desc',
 					},
 					{
-						name: 'Volume Asc',
+						name: 'Volume asc',
 						value: 'volume_asc',
 					},
 					{
-						name: 'Volume Desc',
+						name: 'Volume desc',
 						value: 'volume_desc',
 					},
 				],
@@ -473,7 +473,7 @@ export const coinFields: INodeProperties[] = [
 				description: 'Whether to include sparkline 7 days data',
 			},
 			{
-				displayName: 'Price Change Percentage',
+				displayName: 'Price change percentage',
 				name: 'price_change_percentage',
 				type: 'multiOptions',
 				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
@@ -516,7 +516,7 @@ export const coinFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -526,25 +526,25 @@ export const coinFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include 24hr Change',
+				displayName: 'Include 24hr change',
 				name: 'include_24hr_change',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Include 24hr Vol',
+				displayName: 'Include 24hr vol',
 				name: 'include_24hr_vol',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Include Last Updated At',
+				displayName: 'Include last updated at',
 				name: 'include_last_updated_at',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Include Market Cap',
+				displayName: 'Include market cap',
 				name: 'include_market_cap',
 				type: 'boolean',
 				default: false,
@@ -565,7 +565,7 @@ export const coinFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Exchange Names or IDs',
+				displayName: 'Exchange names or IDs',
 				name: 'exchange_ids',
 				type: 'multiOptions',
 				typeOptions: {
@@ -576,7 +576,7 @@ export const coinFields: INodeProperties[] = [
 					'Filter results by exchange IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Include Exchange Logo',
+				displayName: 'Include exchange logo',
 				name: 'include_exchange_logo',
 				type: 'boolean',
 				default: false,
@@ -587,15 +587,15 @@ export const coinFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Trust Score Desc',
+						name: 'Trust score desc',
 						value: 'trust_score_desc',
 					},
 					{
-						name: 'Trust Score Asc',
+						name: 'Trust score asc',
 						value: 'trust_score_asc',
 					},
 					{
-						name: 'Volume Desc',
+						name: 'Volume desc',
 						value: 'volume_desc',
 					},
 				],
@@ -630,7 +630,7 @@ export const coinFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -640,14 +640,14 @@ export const coinFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Community Data',
+				displayName: 'Community data',
 				name: 'community_data',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to include community data',
 			},
 			{
-				displayName: 'Developer Data',
+				displayName: 'Developer data',
 				name: 'developer_data',
 				type: 'boolean',
 				default: false,
@@ -661,7 +661,7 @@ export const coinFields: INodeProperties[] = [
 				description: 'Whether to include all localized languages in response',
 			},
 			{
-				displayName: 'Market Data',
+				displayName: 'Market data',
 				name: 'market_data',
 				type: 'boolean',
 				default: false,

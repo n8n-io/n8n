@@ -9,7 +9,7 @@ export const activityOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many activities',
 			},
@@ -27,7 +27,7 @@ export const activityFields: INodeProperties[] = [
 	//        activity: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -61,7 +61,7 @@ export const activityFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -71,7 +71,7 @@ export const activityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign name or ID',
 				name: 'campaignId',
 				type: 'options',
 				default: '',
@@ -82,7 +82,7 @@ export const activityFields: INodeProperties[] = [
 					'ID of the campaign to retrieve activity for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Is First',
+				displayName: 'Is first',
 				name: 'isFirst',
 				type: 'boolean',
 				default: false,
@@ -101,39 +101,39 @@ export const activityFields: INodeProperties[] = [
 				description: 'Type of activity to retrieve',
 				options: [
 					{
-						name: 'Aircall Created',
+						name: 'Aircall created',
 						value: 'aircallCreated',
 					},
 					{
-						name: 'Aircall Done',
+						name: 'Aircall done',
 						value: 'aircallDone',
 					},
 					{
-						name: 'Aircall Ended',
+						name: 'Aircall ended',
 						value: 'aircallEnded',
 					},
 					{
-						name: 'Aircall Interested',
+						name: 'Aircall interested',
 						value: 'aircallInterested',
 					},
 					{
-						name: 'Aircall Not Interested',
+						name: 'Aircall not interested',
 						value: 'aircallNotInterested',
 					},
 					{
-						name: 'Api Done',
+						name: 'API done',
 						value: 'apiDone',
 					},
 					{
-						name: 'Api Failed',
+						name: 'API failed',
 						value: 'apiFailed',
 					},
 					{
-						name: 'Api Interested',
+						name: 'API interested',
 						value: 'apiInterested',
 					},
 					{
-						name: 'Api Not Interested',
+						name: 'API not interested',
 						value: 'apiNotInterested',
 					},
 					{
@@ -141,7 +141,7 @@ export const activityFields: INodeProperties[] = [
 						value: 'attracted',
 					},
 					{
-						name: 'Connection Issue',
+						name: 'Connection issue',
 						value: 'connectionIssue',
 					},
 					{
@@ -149,47 +149,47 @@ export const activityFields: INodeProperties[] = [
 						value: 'contacted',
 					},
 					{
-						name: 'Custom Domain Errors',
+						name: 'Custom domain errors',
 						value: 'customDomainErrors',
 					},
 					{
-						name: 'Emails Bounced',
+						name: 'Emails bounced',
 						value: 'emailsBounced',
 					},
 					{
-						name: 'Emails Clicked',
+						name: 'Emails clicked',
 						value: 'emailsClicked',
 					},
 					{
-						name: 'Emails Failed',
+						name: 'Emails failed',
 						value: 'emailsFailed',
 					},
 					{
-						name: 'Emails Interested',
+						name: 'Emails interested',
 						value: 'emailsInterested',
 					},
 					{
-						name: 'Emails Not Interested',
+						name: 'Emails not interested',
 						value: 'emailsNotInterested',
 					},
 					{
-						name: 'Emails Opened',
+						name: 'Emails opened',
 						value: 'emailsOpened',
 					},
 					{
-						name: 'Emails Replied',
+						name: 'Emails replied',
 						value: 'emailsReplied',
 					},
 					{
-						name: 'Emails Send Failed',
+						name: 'Emails send failed',
 						value: 'emailsSendFailed',
 					},
 					{
-						name: 'Emails Sent',
+						name: 'Emails sent',
 						value: 'emailsSent',
 					},
 					{
-						name: 'Emails Unsubscribed',
+						name: 'Emails unsubscribed',
 						value: 'emailsUnsubscribed',
 					},
 					{
@@ -201,71 +201,71 @@ export const activityFields: INodeProperties[] = [
 						value: 'interested',
 					},
 					{
-						name: 'Lemwarm Paused',
+						name: 'Lemwarm paused',
 						value: 'lemwarmPaused',
 					},
 					{
-						name: 'LinkedIn Interested',
+						name: 'LinkedIn interested',
 						value: 'linkedinInterested',
 					},
 					{
-						name: 'LinkedIn Invite Accepted',
+						name: 'LinkedIn invite accepted',
 						value: 'linkedinInviteAccepted',
 					},
 					{
-						name: 'LinkedIn Invite Done',
+						name: 'LinkedIn invite done',
 						value: 'linkedinInviteDone',
 					},
 					{
-						name: 'LinkedIn Invite Failed',
+						name: 'LinkedIn invite failed',
 						value: 'linkedinInviteFailed',
 					},
 					{
-						name: 'LinkedIn Not Interested',
+						name: 'LinkedIn not interested',
 						value: 'linkedinNotInterested',
 					},
 					{
-						name: 'LinkedIn Replied',
+						name: 'LinkedIn replied',
 						value: 'linkedinReplied',
 					},
 					{
-						name: 'LinkedIn Send Failed',
+						name: 'LinkedIn send failed',
 						value: 'linkedinSendFailed',
 					},
 					{
-						name: 'LinkedIn Sent',
+						name: 'LinkedIn sent',
 						value: 'linkedinSent',
 					},
 					{
-						name: 'LinkedIn Visit Done',
+						name: 'LinkedIn visit done',
 						value: 'linkedinVisitDone',
 					},
 					{
-						name: 'LinkedIn Visit Failed',
+						name: 'LinkedIn visit failed',
 						value: 'linkedinVisitFailed',
 					},
 					{
-						name: 'LinkedIn Voice Note Done',
+						name: 'LinkedIn voice note done',
 						value: 'linkedinVoiceNoteDone',
 					},
 					{
-						name: 'LinkedIn Voice Note Failed',
+						name: 'LinkedIn voice note failed',
 						value: 'linkedinVoiceNoteFailed',
 					},
 					{
-						name: 'Manual Interested',
+						name: 'Manual interested',
 						value: 'manualInterested',
 					},
 					{
-						name: 'Manual Not Interested',
+						name: 'Manual not interested',
 						value: 'manualNotInterested',
 					},
 					{
-						name: 'Not Interested',
+						name: 'Not interested',
 						value: 'notInterested',
 					},
 					{
-						name: 'Opportunities Done',
+						name: 'Opportunities done',
 						value: 'opportunitiesDone',
 					},
 					{
@@ -277,7 +277,7 @@ export const activityFields: INodeProperties[] = [
 						value: 'resumed',
 					},
 					{
-						name: 'Send Limit Reached',
+						name: 'Send limit reached',
 						value: 'sendLimitReached',
 					},
 					{

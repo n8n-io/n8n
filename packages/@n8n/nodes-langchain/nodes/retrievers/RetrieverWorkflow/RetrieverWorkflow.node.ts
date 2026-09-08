@@ -150,9 +150,9 @@ export class RetrieverWorkflow implements INodeType {
 			//         For all
 			// ----------------------------------
 			{
-				displayName: 'Workflow Values',
+				displayName: 'Workflow values',
 				name: 'fields',
-				placeholder: 'Add Value',
+				placeholder: 'Add value',
 				type: 'fixedCollection',
 				description: 'Set the values which should be made available in the workflow',
 				typeOptions: {

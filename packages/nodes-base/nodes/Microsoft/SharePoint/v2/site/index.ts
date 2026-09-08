@@ -37,7 +37,7 @@ export const siteRLC: INodeProperties = {
 	description: 'The SharePoint site to operate on',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {

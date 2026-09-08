@@ -31,7 +31,7 @@ export const announcementOperations: INodeProperties[] = [
 				action: 'Get an announcement',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many announcements',
 				action: 'Get many announcements',
@@ -86,11 +86,11 @@ export const announcementFields: INodeProperties[] = [
 		default: 'everyone',
 		options: [
 			{
-				name: 'Agents Only',
+				name: 'Agents only',
 				value: 'agents_only',
 			},
 			{
-				name: 'Agents and Groups',
+				name: 'Agents and groups',
 				value: 'grouped_visibility',
 			},
 			{
@@ -106,7 +106,7 @@ export const announcementFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Visible From',
+		displayName: 'Visible from',
 		name: 'visibleFrom',
 		description: 'Timestamp at which announcement becomes active',
 		type: 'dateTime',
@@ -120,10 +120,10 @@ export const announcementFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -133,7 +133,7 @@ export const announcementFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Additional Emails',
+				displayName: 'Additional emails',
 				name: 'additional_emails',
 				type: 'string',
 				default: '',
@@ -141,7 +141,7 @@ export const announcementFields: INodeProperties[] = [
 					'Comma-separated additional email addresses to which the announcement needs to be sent',
 			},
 			{
-				displayName: 'Department Names or IDs',
+				displayName: 'Department names or IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],
@@ -152,14 +152,14 @@ export const announcementFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Visible From',
+				displayName: 'Visible from',
 				name: 'visible_from',
 				description: 'Timestamp at which announcement is active',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Visible Until',
+				displayName: 'Visible until',
 				name: 'visible_till',
 				description: 'Timestamp until which announcement is active',
 				type: 'dateTime',
@@ -208,7 +208,7 @@ export const announcementFields: INodeProperties[] = [
 	//           announcement: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -256,10 +256,10 @@ export const announcementFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -269,7 +269,7 @@ export const announcementFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Additional Emails',
+				displayName: 'Additional emails',
 				name: 'additional_emails',
 				type: 'string',
 				default: '',
@@ -284,7 +284,7 @@ export const announcementFields: INodeProperties[] = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Department Names or IDs',
+				displayName: 'Department names or IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],
@@ -307,11 +307,11 @@ export const announcementFields: INodeProperties[] = [
 				default: 'everyone',
 				options: [
 					{
-						name: 'Agents Only',
+						name: 'Agents only',
 						value: 'agents_only',
 					},
 					{
-						name: 'Agents and Groups',
+						name: 'Agents and groups',
 						value: 'grouped_visibility',
 					},
 					{

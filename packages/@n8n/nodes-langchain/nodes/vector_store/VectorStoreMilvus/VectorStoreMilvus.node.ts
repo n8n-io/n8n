@@ -13,11 +13,11 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Clear Collection',
+				displayName: 'Clear collection',
 				name: 'clearCollection',
 				type: 'boolean',
 				default: false,

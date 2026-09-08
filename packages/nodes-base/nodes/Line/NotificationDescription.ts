@@ -41,10 +41,10 @@ export const notificationFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -56,7 +56,7 @@ export const notificationFields: INodeProperties[] = [
 			{
 				displayName: 'Image',
 				name: 'imageUi',
-				placeholder: 'Add Image',
+				placeholder: 'Add image',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -68,13 +68,13 @@ export const notificationFields: INodeProperties[] = [
 						displayName: 'Image',
 						values: [
 							{
-								displayName: 'Binary File',
+								displayName: 'Binary file',
 								name: 'binaryData',
 								type: 'boolean',
 								default: false,
 							},
 							{
-								displayName: 'Image Full Size',
+								displayName: 'Image full size',
 								name: 'imageFullsize',
 								type: 'string',
 								default: '',
@@ -86,7 +86,7 @@ export const notificationFields: INodeProperties[] = [
 								description: 'HTTP/HTTPS URL. Maximum size of 2048×2048px JPEG.',
 							},
 							{
-								displayName: 'Image Thumbnail',
+								displayName: 'Image thumbnail',
 								name: 'imageThumbnail',
 								type: 'string',
 								displayOptions: {
@@ -98,7 +98,7 @@ export const notificationFields: INodeProperties[] = [
 								description: 'HTTP/HTTPS URL. Maximum size of 240×240px JPEG.',
 							},
 							{
-								displayName: 'Input Binary Field',
+								displayName: 'Input binary field',
 								name: 'binaryProperty',
 								type: 'string',
 								displayOptions: {
@@ -114,7 +114,7 @@ export const notificationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Notification Disabled',
+				displayName: 'Notification disabled',
 				name: 'notificationDisabled',
 				type: 'boolean',
 				default: false,
@@ -125,7 +125,7 @@ export const notificationFields: INodeProperties[] = [
 			{
 				displayName: 'Sticker',
 				name: 'stickerUi',
-				placeholder: 'Add Sticker',
+				placeholder: 'Add sticker',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -143,7 +143,7 @@ export const notificationFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Sticker Package ID',
+								displayName: 'Sticker package ID',
 								name: 'stickerPackageId',
 								type: 'number',
 								default: '',

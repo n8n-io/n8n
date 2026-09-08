@@ -34,7 +34,7 @@ export const boardOperations: INodeProperties[] = [
 				action: 'Get a board',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many user boards',
 				action: 'Get many boards',
@@ -64,7 +64,7 @@ export const boardFields: INodeProperties[] = [
 		description: 'The title of the board',
 	},
 	{
-		displayName: 'Owner Name or ID',
+		displayName: 'Owner name or ID',
 		name: 'owner',
 		type: 'options',
 		typeOptions: {
@@ -82,10 +82,10 @@ export const boardFields: INodeProperties[] = [
 			'The user ID in Wekan. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -142,14 +142,14 @@ export const boardFields: INodeProperties[] = [
 				description: 'The color of the board',
 			},
 			{
-				displayName: 'Comment Only',
+				displayName: 'Comment only',
 				name: 'isCommentOnly',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to enable comments',
 			},
 			{
-				displayName: 'No Comments',
+				displayName: 'No comments',
 				name: 'isNoComments',
 				type: 'boolean',
 				default: false,
@@ -222,7 +222,7 @@ export const boardFields: INodeProperties[] = [
 	//         board:getAll
 	// ----------------------------------
 	{
-		displayName: 'User Name or ID',
+		displayName: 'User name or ID',
 		name: 'IdUser',
 		type: 'options',
 		typeOptions: {
@@ -240,7 +240,7 @@ export const boardFields: INodeProperties[] = [
 			'The ID of the user that boards are attached. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

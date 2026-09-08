@@ -49,7 +49,7 @@ export class TwitterV1 implements INodeType {
 					noDataExpression: true,
 					options: [
 						{
-							name: 'Direct Message',
+							name: 'Direct message',
 							value: 'directMessage',
 						},
 						{

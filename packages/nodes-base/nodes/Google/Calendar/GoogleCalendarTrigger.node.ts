@@ -49,7 +49,7 @@ export class GoogleCalendarTrigger implements INodeType {
 						displayName: 'Calendar',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Calendar...',
+						placeholder: 'Select a calendar...',
 						typeOptions: {
 							searchListMethod: 'getCalendars',
 							searchable: true,
@@ -79,30 +79,30 @@ export class GoogleCalendarTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'triggerOn',
 				type: 'options',
 				required: true,
 				default: '',
 				options: [
 					{
-						name: 'Event Cancelled',
+						name: 'Event cancelled',
 						value: 'eventCancelled',
 					},
 					{
-						name: 'Event Created',
+						name: 'Event created',
 						value: 'eventCreated',
 					},
 					{
-						name: 'Event Ended',
+						name: 'Event ended',
 						value: 'eventEnded',
 					},
 					{
-						name: 'Event Started',
+						name: 'Event started',
 						value: 'eventStarted',
 					},
 					{
-						name: 'Event Updated',
+						name: 'Event updated',
 						value: 'eventUpdated',
 					},
 				],
@@ -115,7 +115,7 @@ export class GoogleCalendarTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Match Term',
+						displayName: 'Match term',
 						name: 'matchTerm',
 						type: 'string',
 						default: '',

@@ -65,7 +65,7 @@ export class Discourse implements INodeType {
 						value: 'user',
 					},
 					{
-						name: 'User Group',
+						name: 'User group',
 						value: 'userGroup',
 					},
 				],

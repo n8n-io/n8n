@@ -5,7 +5,7 @@ import { uploadToFileSearchStore } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'File Search Store Name',
+		displayName: 'File search store name',
 		name: 'fileSearchStoreName',
 		type: 'string',
 		placeholder: 'e.g. fileSearchStores/abc123',
@@ -15,7 +15,7 @@ export const properties: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'File Display Name',
+		displayName: 'File display name',
 		name: 'displayName',
 		type: 'string',
 		placeholder: 'e.g. My Document',
@@ -24,7 +24,7 @@ export const properties: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Input Type',
+		displayName: 'Input type',
 		name: 'inputType',
 		type: 'options',
 		default: 'url',
@@ -34,7 +34,7 @@ export const properties: INodeProperties[] = [
 				value: 'url',
 			},
 			{
-				name: 'Binary File',
+				name: 'Binary file',
 				value: 'binary',
 			},
 		],
@@ -53,7 +53,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

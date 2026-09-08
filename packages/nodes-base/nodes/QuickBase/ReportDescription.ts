@@ -93,7 +93,7 @@ export const reportFields: INodeProperties[] = [
 		description: 'The identifier of the report, unique to the table',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

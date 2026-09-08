@@ -19,7 +19,7 @@ export const coorganizerOperations: INodeProperties[] = [
 				action: 'Delete a coorganizer',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many coorganizers',
 			},
@@ -42,7 +42,7 @@ export const coorganizerFields: INodeProperties[] = [
 	//         coorganizer: create
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -60,7 +60,7 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Is External',
+		displayName: 'Is external',
 		name: 'isExternal',
 		type: 'boolean',
 		required: true,
@@ -74,7 +74,7 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Organizer Key',
+		displayName: 'Organizer key',
 		name: 'organizerKey',
 		type: 'string',
 		default: '',
@@ -88,7 +88,7 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Given Name',
+		displayName: 'Given name',
 		name: 'givenName',
 		type: 'string',
 		default: '',
@@ -121,7 +121,7 @@ export const coorganizerFields: INodeProperties[] = [
 	//         coorganizer: delete
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -139,7 +139,7 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Co-Organizer Key',
+		displayName: 'Co-organizer key',
 		name: 'coorganizerKey',
 		type: 'string',
 		default: '',
@@ -152,7 +152,7 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Is External',
+		displayName: 'Is external',
 		name: 'isExternal',
 		type: 'boolean',
 		required: true,
@@ -172,7 +172,7 @@ export const coorganizerFields: INodeProperties[] = [
 	//        coorganizer: getAll
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -190,7 +190,7 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -225,7 +225,7 @@ export const coorganizerFields: INodeProperties[] = [
 	//      coorganizer: reinvite
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar key',
 		name: 'webinarKey',
 		type: 'string',
 		required: true,
@@ -240,7 +240,7 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Co-Organizer Key',
+		displayName: 'Co-organizer key',
 		name: 'coorganizerKey',
 		type: 'string',
 		default: '',
@@ -253,7 +253,7 @@ export const coorganizerFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Is External',
+		displayName: 'Is external',
 		name: 'isExternal',
 		type: 'boolean',
 		required: true,

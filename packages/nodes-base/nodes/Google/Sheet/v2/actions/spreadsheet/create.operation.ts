@@ -21,7 +21,7 @@ export const description: SpreadSheetProperties = [
 	{
 		displayName: 'Sheets',
 		name: 'sheetsUi',
-		placeholder: 'Add Sheet',
+		placeholder: 'Add sheet',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -83,7 +83,7 @@ export const description: SpreadSheetProperties = [
 				<ul>`,
 			},
 			{
-				displayName: 'Recalculation Interval',
+				displayName: 'Recalculation interval',
 				name: 'autoRecalc',
 				type: 'options',
 				options: [
@@ -93,7 +93,7 @@ export const description: SpreadSheetProperties = [
 						description: 'Default value',
 					},
 					{
-						name: 'On Change',
+						name: 'On change',
 						value: 'ON_CHANGE',
 						description: 'Volatile functions are updated on every change',
 					},

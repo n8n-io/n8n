@@ -25,7 +25,7 @@ export const pageOperations: INodeProperties[] = [
 				action: 'Get a page',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many pages',
 				action: 'Get many pages',
@@ -60,10 +60,10 @@ export const pageFields: INodeProperties[] = [
 		description: 'The title for the page',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -73,7 +73,7 @@ export const pageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author Name or ID',
+				displayName: 'Author name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
@@ -142,7 +142,7 @@ export const pageFields: INodeProperties[] = [
 				description: 'A named status for the page',
 			},
 			{
-				displayName: 'Comment Status',
+				displayName: 'Comment status',
 				name: 'commentStatus',
 				type: 'options',
 				options: [
@@ -159,7 +159,7 @@ export const pageFields: INodeProperties[] = [
 				description: 'Whether or not comments are open on the page',
 			},
 			{
-				displayName: 'Ping Status',
+				displayName: 'Ping status',
 				name: 'pingStatus',
 				type: 'options',
 				options: [
@@ -189,7 +189,7 @@ export const pageFields: INodeProperties[] = [
 						name: 'values',
 						values: [
 							{
-								displayName: 'Elementor Template',
+								displayName: 'Elementor template',
 								name: 'elementor',
 								type: 'boolean',
 								default: true,
@@ -225,7 +225,7 @@ export const pageFields: INodeProperties[] = [
 										value: 'elementor_header_footer',
 									},
 									{
-										name: 'Elementor Theme',
+										name: 'Elementor theme',
 										value: 'elementor_theme',
 									},
 								],
@@ -242,14 +242,14 @@ export const pageFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Menu Order',
+				displayName: 'Menu order',
 				name: 'menuOrder',
 				type: 'number',
 				default: 0,
 				description: 'The order of the page in relation to other pages',
 			},
 			{
-				displayName: 'Featured Media ID',
+				displayName: 'Featured media ID',
 				name: 'featuredMediaId',
 				type: 'number',
 				default: '',
@@ -275,10 +275,10 @@ export const pageFields: INodeProperties[] = [
 		description: 'Unique identifier for the object',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -288,7 +288,7 @@ export const pageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author Name or ID',
+				displayName: 'Author name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
@@ -364,7 +364,7 @@ export const pageFields: INodeProperties[] = [
 				description: 'A named status for the page',
 			},
 			{
-				displayName: 'Comment Status',
+				displayName: 'Comment status',
 				name: 'commentStatus',
 				type: 'options',
 				options: [
@@ -381,7 +381,7 @@ export const pageFields: INodeProperties[] = [
 				description: 'Whether or not comments are open on the page',
 			},
 			{
-				displayName: 'Ping Status',
+				displayName: 'Ping status',
 				name: 'pingStatus',
 				type: 'options',
 				options: [
@@ -411,7 +411,7 @@ export const pageFields: INodeProperties[] = [
 						name: 'values',
 						values: [
 							{
-								displayName: 'Elementor Template',
+								displayName: 'Elementor template',
 								name: 'elementor',
 								type: 'boolean',
 								default: true,
@@ -447,7 +447,7 @@ export const pageFields: INodeProperties[] = [
 										value: 'elementor_header_footer',
 									},
 									{
-										name: 'Elementor Theme',
+										name: 'Elementor theme',
 										value: 'elementor_theme',
 									},
 								],
@@ -464,14 +464,14 @@ export const pageFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Menu Order',
+				displayName: 'Menu order',
 				name: 'menuOrder',
 				type: 'number',
 				default: 0,
 				description: 'The order of the page in relation to other pages',
 			},
 			{
-				displayName: 'Comment Status',
+				displayName: 'Comment status',
 				name: 'commentStatus',
 				type: 'options',
 				options: [
@@ -488,7 +488,7 @@ export const pageFields: INodeProperties[] = [
 				description: 'Whether or not comments are open on the page',
 			},
 			{
-				displayName: 'Featured Media ID',
+				displayName: 'Featured media ID',
 				name: 'featuredMediaId',
 				type: 'number',
 				default: '',
@@ -561,7 +561,7 @@ export const pageFields: INodeProperties[] = [
 	/*                                   page:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -612,7 +612,7 @@ export const pageFields: INodeProperties[] = [
 				description: 'Limit response to pages published after a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Author Names or IDs',
+				displayName: 'Author names or IDs',
 				name: 'author',
 				type: 'multiOptions',
 				default: [],
@@ -651,7 +651,7 @@ export const pageFields: INodeProperties[] = [
 				description: 'Scope under which the request is made; determines fields present in response',
 			},
 			{
-				displayName: 'Menu Order',
+				displayName: 'Menu order',
 				name: 'menuOrder',
 				type: 'number',
 				default: 0,
@@ -675,7 +675,7 @@ export const pageFields: INodeProperties[] = [
 				description: 'Order sort attribute ascending or descending',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'options',
 				options: [
@@ -696,7 +696,7 @@ export const pageFields: INodeProperties[] = [
 						value: 'include',
 					},
 					{
-						name: 'Include Slugs',
+						name: 'Include slugs',
 						value: 'include_slugs',
 					},
 					{
@@ -731,7 +731,7 @@ export const pageFields: INodeProperties[] = [
 				description: 'Current page of the collection',
 			},
 			{
-				displayName: 'Parent Page ID',
+				displayName: 'Parent page ID',
 				name: 'parent',
 				type: 'number',
 				default: '',

@@ -8,12 +8,12 @@ import { numberInputsProperty } from '../../helpers/descriptions';
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
 	{
-		displayName: 'Output Type',
+		displayName: 'Output type',
 		name: 'chooseBranchMode',
 		type: 'options',
 		options: [
 			{
-				name: 'Wait for All Inputs to Arrive',
+				name: 'Wait for all inputs to arrive',
 				value: 'waitForAll',
 			},
 		],
@@ -25,11 +25,11 @@ export const properties: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Data of Specified Input',
+				name: 'Data of specified input',
 				value: 'specifiedInput',
 			},
 			{
-				name: 'A Single, Empty Item',
+				name: 'A single, empty item',
 				value: 'empty',
 			},
 		],
@@ -42,7 +42,7 @@ export const properties: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Use Data of Input',
+		displayName: 'Use data of input',
 		name: 'useDataOfInput',
 		type: 'options',
 		default: 1,

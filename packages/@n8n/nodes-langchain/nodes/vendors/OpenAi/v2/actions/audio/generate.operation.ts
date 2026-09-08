@@ -26,7 +26,7 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Text Input',
+		displayName: 'Text input',
 		name: 'input',
 		type: 'string',
 		placeholder: 'e.g. The quick brown fox jumped over the lazy dog',
@@ -72,12 +72,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Response Format',
+				displayName: 'Response format',
 				name: 'response_format',
 				type: 'options',
 				default: 'mp3',
@@ -101,7 +101,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Audio Speed',
+				displayName: 'Audio speed',
 				name: 'speed',
 				type: 'number',
 				default: 1,
@@ -112,7 +112,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Put Output in Field',
+				displayName: 'Put output in field',
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'data',

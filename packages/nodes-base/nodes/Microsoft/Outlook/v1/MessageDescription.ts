@@ -25,16 +25,16 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: "Get many messages in the signed-in user's mailbox",
 				action: 'Get many messages',
 			},
 			{
-				name: 'Get MIME Content',
+				name: 'Get MIME content',
 				value: 'getMime',
 				description: 'Get MIME content of a message',
-				action: 'Get MIME Content of a message',
+				action: 'Get MIME content of a message',
 			},
 			{
 				name: 'Move',
@@ -91,7 +91,7 @@ export const messageFields: INodeProperties[] = [
 
 	// message:reply
 	{
-		displayName: 'Reply Type',
+		displayName: 'Reply type',
 		name: 'replyType',
 		type: 'options',
 		options: [
@@ -100,7 +100,7 @@ export const messageFields: INodeProperties[] = [
 				value: 'reply',
 			},
 			{
-				name: 'Reply All',
+				name: 'Reply all',
 				value: 'replyAll',
 			},
 		],
@@ -141,10 +141,10 @@ export const messageFields: INodeProperties[] = [
 		default: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -158,7 +158,7 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Attachments',
 				name: 'attachments',
 				type: 'fixedCollection',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
@@ -169,7 +169,7 @@ export const messageFields: INodeProperties[] = [
 						displayName: 'Attachment',
 						values: [
 							{
-								displayName: 'Binary Property Name',
+								displayName: 'Binary property name',
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
@@ -181,21 +181,21 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'BCC Recipients',
+				displayName: 'BCC recipients',
 				name: 'bccRecipients',
 				description: 'Email addresses of BCC recipients',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Body Content',
+				displayName: 'Body content',
 				name: 'bodyContent',
 				description: 'Message body content',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Body Content Type',
+				displayName: 'Body content type',
 				name: 'bodyContentType',
 				description: 'Message body content type',
 				type: 'options',
@@ -212,16 +212,16 @@ export const messageFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'CC Recipients',
+				displayName: 'CC recipients',
 				name: 'ccRecipients',
 				description: 'Email addresses of CC recipients',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Headers',
+				displayName: 'Custom headers',
 				name: 'internetMessageHeaders',
-				placeholder: 'Add Header',
+				placeholder: 'Add header',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -280,7 +280,7 @@ export const messageFields: INodeProperties[] = [
 				default: 'Low',
 			},
 			{
-				displayName: 'Read Receipt Requested',
+				displayName: 'Read receipt requested',
 				name: 'isReadReceiptRequested',
 				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
@@ -294,7 +294,7 @@ export const messageFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Reply To',
+				displayName: 'Reply to',
 				name: 'replyTo',
 				description: 'Email addresses to use when replying',
 				type: 'string',
@@ -312,7 +312,7 @@ export const messageFields: INodeProperties[] = [
 
 	// message:getAll
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -358,7 +358,7 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Body Content',
+		displayName: 'Body content',
 		name: 'bodyContent',
 		description: 'Message body content',
 		type: 'string',
@@ -385,10 +385,10 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -401,7 +401,7 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Attachments',
 				name: 'attachments',
 				type: 'fixedCollection',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
@@ -412,7 +412,7 @@ export const messageFields: INodeProperties[] = [
 						displayName: 'Attachment',
 						values: [
 							{
-								displayName: 'Binary Property Name',
+								displayName: 'Binary property name',
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
@@ -424,14 +424,14 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'BCC Recipients',
+				displayName: 'BCC recipients',
 				name: 'bccRecipients',
 				description: 'Email addresses of BCC recipients',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Body Content Type',
+				displayName: 'Body content type',
 				name: 'bodyContentType',
 				description: 'Message body content type',
 				type: 'options',
@@ -448,7 +448,7 @@ export const messageFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Category Names or IDs',
+				displayName: 'Category names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				description:
@@ -459,16 +459,16 @@ export const messageFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'CC Recipients',
+				displayName: 'CC recipients',
 				name: 'ccRecipients',
 				description: 'Email addresses of CC recipients',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Headers',
+				displayName: 'Custom headers',
 				name: 'internetMessageHeaders',
-				placeholder: 'Add Header',
+				placeholder: 'Add header',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -527,7 +527,7 @@ export const messageFields: INodeProperties[] = [
 				default: 'Low',
 			},
 			{
-				displayName: 'Read Receipt Requested',
+				displayName: 'Read receipt requested',
 				name: 'isReadReceiptRequested',
 				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
@@ -541,14 +541,14 @@ export const messageFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Reply To',
+				displayName: 'Reply to',
 				name: 'replyTo',
 				description: 'Email addresses to use when replying',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Save To Sent Items',
+				displayName: 'Save to sent items',
 				name: 'saveToSentItems',
 				description: 'Whether to save the message in Sent Items',
 				type: 'boolean',
@@ -559,7 +559,7 @@ export const messageFields: INodeProperties[] = [
 
 	// File operations
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		hint: 'The name of the output binary field to put the file in',
 		type: 'string',

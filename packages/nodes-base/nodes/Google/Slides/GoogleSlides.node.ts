@@ -58,7 +58,7 @@ export class GoogleSlides implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 				],
@@ -80,7 +80,7 @@ export class GoogleSlides implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 				],
@@ -127,13 +127,13 @@ export class GoogleSlides implements INodeType {
 						action: 'Get a presentation',
 					},
 					{
-						name: 'Get Slides',
+						name: 'Get slides',
 						value: 'getSlides',
 						description: 'Get presentation slides',
 						action: 'Get slides from a presentation',
 					},
 					{
-						name: 'Replace Text',
+						name: 'Replace text',
 						value: 'replaceText',
 						description: 'Replace text in a presentation',
 						action: 'Replace text in a presentation',
@@ -159,7 +159,7 @@ export class GoogleSlides implements INodeType {
 						action: 'Get a page',
 					},
 					{
-						name: 'Get Thumbnail',
+						name: 'Get thumbnail',
 						value: 'getThumbnail',
 						description: 'Get a thumbnail',
 						action: 'Get the thumbnail for a page',
@@ -203,7 +203,7 @@ export class GoogleSlides implements INodeType {
 				},
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -234,7 +234,7 @@ export class GoogleSlides implements INodeType {
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Page Object ID',
+				displayName: 'Page object ID',
 				name: 'pageObjectId',
 				description: 'ID of the page object to retrieve',
 				type: 'string',
@@ -248,9 +248,9 @@ export class GoogleSlides implements INodeType {
 				},
 			},
 			{
-				displayName: 'Texts To Replace',
+				displayName: 'Texts to replace',
 				name: 'textUi',
-				placeholder: 'Add Text',
+				placeholder: 'Add text',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -268,7 +268,7 @@ export class GoogleSlides implements INodeType {
 						displayName: 'Text',
 						values: [
 							{
-								displayName: 'Match Case',
+								displayName: 'Match case',
 								name: 'matchCase',
 								type: 'boolean',
 								default: false,
@@ -276,7 +276,7 @@ export class GoogleSlides implements INodeType {
 									'Whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive.',
 							},
 							{
-								displayName: 'Slide Names or IDs',
+								displayName: 'Slide names or IDs',
 								name: 'pageObjectIds',
 								type: 'multiOptions',
 								default: [],
@@ -288,14 +288,14 @@ export class GoogleSlides implements INodeType {
 									'If non-empty, limits the matches to slide elements only on the given slides. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Search For',
+								displayName: 'Search for',
 								name: 'text',
 								type: 'string',
 								default: '',
 								description: 'The text to search for in the slide',
 							},
 							{
-								displayName: 'Replace With',
+								displayName: 'Replace with',
 								name: 'replaceText',
 								type: 'string',
 								default: '',
@@ -344,7 +344,7 @@ export class GoogleSlides implements INodeType {
 				description: 'Name of the binary property to which to write the data of the read page',
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				name: 'binaryProperty',
 				type: 'string',
 				required: true,

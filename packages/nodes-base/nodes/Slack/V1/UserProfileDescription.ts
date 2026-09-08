@@ -34,10 +34,10 @@ export const userProfileFields: INodeProperties[] = [
 	/*                                userProfile:update                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -47,9 +47,9 @@ export const userProfileFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldUi',
-				placeholder: 'Add Custom Fields',
+				placeholder: 'Add custom fields',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -58,10 +58,10 @@ export const userProfileFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'id',
 								type: 'options',
 								typeOptions: {
@@ -72,7 +72,7 @@ export const userProfileFields: INodeProperties[] = [
 									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -97,19 +97,19 @@ export const userProfileFields: INodeProperties[] = [
 				description: 'This field can only be changed by admins for users on paid teams',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Status Emoji',
+				displayName: 'Status emoji',
 				name: 'status_emoji',
 				type: 'string',
 				default: '',
@@ -117,7 +117,7 @@ export const userProfileFields: INodeProperties[] = [
 					'Is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:',
 			},
 			{
-				displayName: 'Status Expiration',
+				displayName: 'Status expiration',
 				name: 'status_expiration',
 				type: 'dateTime',
 				default: '',
@@ -125,7 +125,7 @@ export const userProfileFields: INodeProperties[] = [
 					'Is an integer specifying seconds since the epoch, more commonly known as "UNIX time". Providing 0 or omitting this field results in a custom status that will not expire.',
 			},
 			{
-				displayName: 'Status Text',
+				displayName: 'Status text',
 				name: 'status_text',
 				type: 'string',
 				default: '',
@@ -146,10 +146,10 @@ export const userProfileFields: INodeProperties[] = [
 	/*                                userProfile:get                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -159,7 +159,7 @@ export const userProfileFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Labels',
+				displayName: 'Include labels',
 				name: 'include_labels',
 				type: 'boolean',
 				default: false,

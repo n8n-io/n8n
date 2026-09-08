@@ -28,7 +28,7 @@ export const campaignFields: INodeProperties[] = [
 	/*                                campaign:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'From Name',
+		displayName: 'From name',
 		name: 'fromName',
 		type: 'string',
 		displayOptions: {
@@ -41,7 +41,7 @@ export const campaignFields: INodeProperties[] = [
 		description: "The 'From name' of your campaign",
 	},
 	{
-		displayName: 'From Email',
+		displayName: 'From email',
 		name: 'fromEmail',
 		type: 'string',
 		displayOptions: {
@@ -54,7 +54,7 @@ export const campaignFields: INodeProperties[] = [
 		description: "The 'From email' of your campaign",
 	},
 	{
-		displayName: 'Reply To',
+		displayName: 'Reply to',
 		name: 'replyTo',
 		type: 'string',
 		displayOptions: {
@@ -93,7 +93,7 @@ export const campaignFields: INodeProperties[] = [
 		description: "The 'Subject' of your campaign",
 	},
 	{
-		displayName: 'HTML Text',
+		displayName: 'HTML text',
 		name: 'htmlText',
 		type: 'string',
 		displayOptions: {
@@ -106,7 +106,7 @@ export const campaignFields: INodeProperties[] = [
 		description: "The 'HTML version' of your campaign",
 	},
 	{
-		displayName: 'Send Campaign',
+		displayName: 'Send campaign',
 		name: 'sendCampaign',
 		type: 'boolean',
 		displayOptions: {
@@ -134,10 +134,10 @@ export const campaignFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -147,7 +147,7 @@ export const campaignFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Exclude List IDs',
+				displayName: 'Exclude list IDs',
 				name: 'excludeListIds',
 				type: 'string',
 				default: '',
@@ -155,7 +155,7 @@ export const campaignFields: INodeProperties[] = [
 					'Lists to exclude from your campaign. List IDs should be single or comma-separated.',
 			},
 			{
-				displayName: 'Exclude Segment IDs',
+				displayName: 'Exclude segment IDs',
 				name: 'excludeSegmentIds',
 				type: 'string',
 				default: '',
@@ -170,7 +170,7 @@ export const campaignFields: INodeProperties[] = [
 				description: 'List IDs should be single or comma-separated',
 			},
 			{
-				displayName: 'Plain Text',
+				displayName: 'Plain text',
 				name: 'plainText',
 				type: 'string',
 				default: '',
@@ -191,14 +191,14 @@ export const campaignFields: INodeProperties[] = [
 				description: 'Segment IDs should be single or comma-separated',
 			},
 			{
-				displayName: 'Track Clicks',
+				displayName: 'Track clicks',
 				name: 'trackClicks',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to disable clicks tracking. Default is true.',
 			},
 			{
-				displayName: 'Track Opens',
+				displayName: 'Track opens',
 				name: 'trackOpens',
 				type: 'boolean',
 				default: true,

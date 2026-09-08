@@ -26,7 +26,7 @@ export const sessionIdOption: INodeProperties = {
 };
 
 export const expressionSessionKeyProperty = (fromVersion: number): INodeProperties => ({
-	displayName: 'Session Key From Previous Node',
+	displayName: 'Session key from previous node',
 	name: 'sessionKey',
 	type: 'string',
 	default: '={{ $json.sessionId }}',
@@ -53,7 +53,7 @@ export const sessionKeyProperty: INodeProperties = {
 };
 
 export const contextWindowLengthProperty: INodeProperties = {
-	displayName: 'Context Window Length',
+	displayName: 'Context window length',
 	name: 'contextWindowLength',
 	type: 'number',
 	default: 5,

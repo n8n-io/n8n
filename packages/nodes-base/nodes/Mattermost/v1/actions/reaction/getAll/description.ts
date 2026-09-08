@@ -16,7 +16,7 @@ export const reactionGetAllDescription: ReactionProperties = [
 		description: 'One or more (comma-separated) posts to retrieve reactions from',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

@@ -10,7 +10,7 @@ export const operationFields: INodeProperties[] = [
 	//             shared
 	// ----------------------------------
 	{
-		displayName: 'Database Name or ID',
+		displayName: 'Database name or ID',
 		name: 'databaseId',
 		type: 'options',
 		default: '0',
@@ -27,7 +27,7 @@ export const operationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'tableId',
 		type: 'options',
 		default: '',
@@ -78,17 +78,17 @@ export const operationFields: INodeProperties[] = [
 	//             create/update
 	// ----------------------------------
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'dataToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
@@ -102,7 +102,7 @@ export const operationFields: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
@@ -117,9 +117,9 @@ export const operationFields: INodeProperties[] = [
 		placeholder: 'Enter properties...',
 	},
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Field to Send',
@@ -138,7 +138,7 @@ export const operationFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'fieldId',
 						type: 'options',
 						description:
@@ -150,7 +150,7 @@ export const operationFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -166,7 +166,7 @@ export const operationFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Row',
+		placeholder: 'Add row',
 		displayOptions: {
 			show: {
 				operation: ['batchCreate', 'batchUpdate'],
@@ -207,7 +207,7 @@ export const operationFields: INodeProperties[] = [
 								displayName: 'Field',
 								values: [
 									{
-										displayName: 'Field Name or ID',
+										displayName: 'Field name or ID',
 										name: 'fieldId',
 										type: 'options',
 										description:
@@ -219,7 +219,7 @@ export const operationFields: INodeProperties[] = [
 										default: '',
 									},
 									{
-										displayName: 'Field Value',
+										displayName: 'Field value',
 										name: 'fieldValue',
 										type: 'string',
 										default: '',
@@ -237,17 +237,17 @@ export const operationFields: INodeProperties[] = [
 	//             delete
 	// ----------------------------------
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'dataToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data',
+				name: 'Auto-map input data',
 				value: 'autoMapInputData',
 				description: 'Collect row IDs from input items automatically',
 			},
 			{
-				name: 'Define Below',
+				name: 'Define below',
 				value: 'defineBelow',
 				description: 'Manually specify row IDs',
 			},
@@ -281,7 +281,7 @@ export const operationFields: INodeProperties[] = [
 			multipleValues: true,
 		},
 		default: [],
-		placeholder: 'Add Row ID',
+		placeholder: 'Add row ID',
 		displayOptions: {
 			show: {
 				operation: ['batchDelete'],
@@ -291,7 +291,7 @@ export const operationFields: INodeProperties[] = [
 		description: 'IDs of the rows to delete',
 	},
 	{
-		displayName: 'Property Containing Row ID',
+		displayName: 'Property containing row ID',
 		name: 'rowIdProperty',
 		type: 'string',
 		default: 'id',
@@ -308,7 +308,7 @@ export const operationFields: INodeProperties[] = [
 	//            getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -351,7 +351,7 @@ export const operationFields: INodeProperties[] = [
 			{
 				displayName: 'Filters',
 				name: 'filters',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				description: 'Filter rows based on comparison operators',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -364,7 +364,7 @@ export const operationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								default: '',
@@ -388,7 +388,7 @@ export const operationFields: INodeProperties[] = [
 										description: 'Field value is exactly equal to the given value',
 									},
 									{
-										name: 'Not Equal',
+										name: 'Not equal',
 										value: 'not_equal',
 										description: 'Field value is not equal to the given value',
 									},
@@ -398,314 +398,314 @@ export const operationFields: INodeProperties[] = [
 										description: 'Field value contains the given substring (case-insensitive)',
 									},
 									{
-										name: 'Contains Not',
+										name: 'Contains not',
 										value: 'contains_not',
 										description:
 											'Field value does not contain the given substring (case-insensitive)',
 									},
 									{
-										name: 'Contains Word',
+										name: 'Contains word',
 										value: 'contains_word',
 										description:
 											'Field contains the full word (case-insensitive match on word boundaries)',
 									},
 									{
-										name: 'Does Not Contain Word',
+										name: 'Does not contain word',
 										value: 'doesnt_contain_word',
 										description: 'Field does not contain the full word (case-insensitive)',
 									},
 									{
-										name: 'Length Is Lower Than',
+										name: 'Length is lower than',
 										value: 'length_is_lower_than',
 										description: 'Field value length is shorter than the given number',
 									},
 									{
-										name: 'Higher Than',
+										name: 'Higher than',
 										value: 'higher_than',
 										description: 'Field value is greater than the given number',
 									},
 									{
-										name: 'Higher Than or Equal',
+										name: 'Higher than or equal',
 										value: 'higher_than_or_equal',
 										description: 'Field value is greater than or equal to the given number',
 									},
 									{
-										name: 'Lower Than',
+										name: 'Lower than',
 										value: 'lower_than',
 										description: 'Field value is less than the given number',
 									},
 									{
-										name: 'Lower Than or Equal',
+										name: 'Lower than or equal',
 										value: 'lower_than_or_equal',
 										description: 'Field value is less than or equal to the given number',
 									},
 									{
-										name: 'Is Even And Whole',
+										name: 'Is even and whole',
 										value: 'is_even_and_whole',
 										description: 'Field value is an even whole number (no decimals)',
 									},
 									{
-										name: 'Date Is',
+										name: 'Date is',
 										value: 'date_is',
 										description:
 											'Date matches the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
-										name: 'Date Is Not',
+										name: 'Date is not',
 										value: 'date_is_not',
 										description:
 											'Date does not match the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
-										name: 'Date Is Before',
+										name: 'Date is before',
 										value: 'date_is_before',
 										description:
 											'Date is strictly before the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
-										name: 'Date Is On Or Before',
+										name: 'Date is on or before',
 										value: 'date_is_on_or_before',
 										description:
 											'Date is before or equal to the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
-										name: 'Date Is After',
+										name: 'Date is after',
 										value: 'date_is_after',
 										description:
 											'Date is strictly after the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
-										name: 'Date Is On Or After',
+										name: 'Date is on or after',
 										value: 'date_is_on_or_after',
 										description:
 											'Date is after or equal to the given day. Enter a date as `YYYY-MM-DD` (timezone applied automatically).',
 									},
 									{
-										name: 'Date Is Within',
+										name: 'Date is within',
 										value: 'date_is_within',
 										description:
 											'Date is within the next X days. Enter the number of days (timezone applied automatically).',
 									},
 									{
-										name: 'Date Equals Today',
+										name: 'Date equals today',
 										value: 'date_equals_today',
 										description:
 											'Date is today. Enter a timezone (e.g. `UTC`). Timezone field is used when value is empty. (Deprecated).',
 									},
 									{
-										name: 'Date Equals Month',
+										name: 'Date equals month',
 										value: 'date_equals_month',
 										description:
 											'Date is in the current month. Enter a timezone (e.g. `UTC`). (Deprecated).',
 									},
 									{
-										name: 'Date Equals Year',
+										name: 'Date equals year',
 										value: 'date_equals_year',
 										description:
 											'Date is in the current year. Enter a timezone (e.g. `UTC`). (Deprecated).',
 									},
 									{
-										name: 'Date Equals Day Of Month',
+										name: 'Date equals day of month',
 										value: 'date_equals_day_of_month',
 										description:
 											'Day of month matches the given number (1-31); pass a raw number, not a formatted date',
 									},
 									{
-										name: 'Date Equal (Deprecated)',
+										name: 'Date equal (deprecated)',
 										value: 'date_equal',
 										description:
 											'Field is date. Enter `YYYY-MM-DD`. Prefer using Date Is (date_is).',
 									},
 									{
-										name: 'Date Not Equal (Deprecated)',
+										name: 'Date not equal (deprecated)',
 										value: 'date_not_equal',
 										description:
 											'Field is not date. Enter `YYYY-MM-DD`. Prefer using Date Is Not (date_is_not).',
 									},
 									{
-										name: 'Date Before (Deprecated)',
+										name: 'Date before (deprecated)',
 										value: 'date_before',
 										description:
 											'Field before this date. Enter `YYYY-MM-DD`. Prefer using Date Is Before (date_is_before).',
 									},
 									{
-										name: 'Date Before Or Equal (Deprecated)',
+										name: 'Date before or equal (deprecated)',
 										value: 'date_before_or_equal',
 										description:
 											'Field on or before this date. Enter `YYYY-MM-DD`. Prefer using Date Is On Or Before (date_is_on_or_before).',
 									},
 									{
-										name: 'Date After (Deprecated)',
+										name: 'Date after (deprecated)',
 										value: 'date_after',
 										description:
 											'Field after this date. Enter `YYYY-MM-DD`. Prefer using Date Is After (date_is_after).',
 									},
 									{
-										name: 'Date After Or Equal (Deprecated)',
+										name: 'Date after or equal (deprecated)',
 										value: 'date_after_or_equal',
 										description:
 											'Field after or equal to this date. Enter `YYYY-MM-DD`. Prefer using Date Is On Or After (date_is_on_or_after).',
 									},
 									{
-										name: 'Date After Days Ago (Deprecated)',
+										name: 'Date after days ago (deprecated)',
 										value: 'date_after_days_ago',
 										description:
 											'Date is after X days ago. Enter the number of days (e.g. `20`). (Deprecated).',
 									},
 									{
-										name: 'Date Within Days (Deprecated)',
+										name: 'Date within days (deprecated)',
 										value: 'date_within_days',
 										description:
 											'Date is within N days from today. Enter the number of days; timezone is applied automatically (e.g. `Asia/Calcutta?1`). (Deprecated).',
 									},
 									{
-										name: 'Date Within Weeks (Deprecated)',
+										name: 'Date within weeks (deprecated)',
 										value: 'date_within_weeks',
 										description:
 											'Date is within N weeks from today. Enter the number of weeks; timezone is applied automatically. (Deprecated).',
 									},
 									{
-										name: 'Date Within Months (Deprecated)',
+										name: 'Date within months (deprecated)',
 										value: 'date_within_months',
 										description:
 											'Date is within N months from today. Enter the number of months; timezone is applied automatically. (Deprecated).',
 									},
 									{
-										name: 'Date Equals Days Ago (Deprecated)',
+										name: 'Date equals days ago (deprecated)',
 										value: 'date_equals_days_ago',
 										description:
 											'Date is exactly N days ago. Enter the number of days; timezone is applied automatically. (Deprecated).',
 									},
 									{
-										name: 'Date Equals Months Ago (Deprecated)',
+										name: 'Date equals months ago (deprecated)',
 										value: 'date_equals_months_ago',
 										description:
 											'Date is exactly N months ago. Enter the number of months; timezone is applied automatically. (Deprecated).',
 									},
 									{
-										name: 'Date Equals Years Ago (Deprecated)',
+										name: 'Date equals years ago (deprecated)',
 										value: 'date_equals_years_ago',
 										description:
 											'Date is exactly N years ago. Enter the number of years; timezone is applied automatically. (Deprecated).',
 									},
 									{
-										name: 'Date Before Today (Deprecated)',
+										name: 'Date before today (deprecated)',
 										value: 'date_before_today',
 										description:
 											'Date is before today. Enter a timezone (e.g. `UTC`). (Deprecated).',
 									},
 									{
-										name: 'Date After Today (Deprecated)',
+										name: 'Date after today (deprecated)',
 										value: 'date_after_today',
 										description:
 											'Date is after today. Enter a timezone (e.g. `UTC`). (Deprecated).',
 									},
 									{
-										name: 'Date Equals Current Week (Deprecated)',
+										name: 'Date equals current week (deprecated)',
 										value: 'date_equals_week',
 										description:
 											'Date is within current week. Enter a timezone (e.g. `UTC`). (Deprecated).',
 									},
 									{
-										name: 'Filename Contains',
+										name: 'Filename contains',
 										value: 'filename_contains',
 										description: 'Filename contains the given substring',
 									},
 									{
-										name: 'Has File Type',
+										name: 'Has file type',
 										value: 'has_file_type',
 										description: 'File type is "image" or "document"',
 									},
 									{
-										name: 'Files Lower Than',
+										name: 'Files lower than',
 										value: 'files_lower_than',
 										description: 'Number of attached files is less than the given number',
 									},
 									{
-										name: 'Single Select Equal',
+										name: 'Single select equal',
 										value: 'single_select_equal',
 										description: 'Single select option matches given option ID',
 									},
 									{
-										name: 'Single Select Not Equal',
+										name: 'Single select not equal',
 										value: 'single_select_not_equal',
 										description: 'Single select option does not match given option ID',
 									},
 									{
-										name: 'Single Select Is Any Of',
+										name: 'Single select is any of',
 										value: 'single_select_is_any_of',
 										description:
 											'Single select option is one of the given option IDs. Format: `1,2,3`.',
 									},
 									{
-										name: 'Single Select Is None Of',
+										name: 'Single select is none of',
 										value: 'single_select_is_none_of',
 										description:
 											'Single select option is none of the given option IDs. Format: `1,2,3`.',
 									},
 									{
-										name: 'Multiple Select Has',
+										name: 'Multiple select has',
 										value: 'multiple_select_has',
 										description:
 											'Multiple select has at least one of the given option IDs. Format: `1,2,3`.',
 									},
 									{
-										name: 'Multiple Select Has Not',
+										name: 'Multiple select has not',
 										value: 'multiple_select_has_not',
 										description:
 											'Multiple select has none of the given option IDs. Format: `1,2,3`.',
 									},
 									{
-										name: 'Collaborators Has',
+										name: 'Collaborators has',
 										value: 'multiple_collaborators_has',
 										description: 'Field includes the given user ID',
 									},
 									{
-										name: 'Collaborators Has Not',
+										name: 'Collaborators has not',
 										value: 'multiple_collaborators_has_not',
 										description: 'Field excludes the given user ID',
 									},
 									{
-										name: 'User Is',
+										name: 'User is',
 										value: 'user_is',
 										description: 'Row created by or last modified by the given user ID',
 									},
 									{
-										name: 'User Is Not',
+										name: 'User is not',
 										value: 'user_is_not',
 										description: 'Row was not created or modified by the given user ID',
 									},
 									{
-										name: 'Link Row Has',
+										name: 'Link row has',
 										value: 'link_row_has',
 										description: 'Field links to the given row ID',
 									},
 									{
-										name: 'Link Row Has Not',
+										name: 'Link row has not',
 										value: 'link_row_has_not',
 										description: 'Field does not link to the given row ID',
 									},
 									{
-										name: 'Link Row Contains',
+										name: 'Link row contains',
 										value: 'link_row_contains',
 										description: 'Linked row value contains the given text (case-insensitive)',
 									},
 									{
-										name: 'Link Row Not Contains',
+										name: 'Link row not contains',
 										value: 'link_row_not_contains',
 										description: 'Linked row value does not contain the given text',
 									},
 									{
-										name: 'Is True',
+										name: 'Is true',
 										value: 'boolean',
 										description: 'Boolean field is true (false if not set)',
 									},
 									{
-										name: 'Is Empty',
+										name: 'Is empty',
 										value: 'empty',
 										description: 'Field is empty (null or blank)',
 									},
-									{ name: 'Is Not Empty', value: 'not_empty', description: 'Field is not empty' },
+									{ name: 'Is not empty', value: 'not_empty', description: 'Field is not empty' },
 								],
 								default: 'equal',
 							},
@@ -738,7 +738,7 @@ export const operationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Filter Type',
+				displayName: 'Filter type',
 				name: 'filterType',
 				type: 'options',
 				options: [
@@ -758,7 +758,7 @@ export const operationFields: INodeProperties[] = [
 					'This works only if two or more filters are provided. Defaults to <code>AND</code>',
 			},
 			{
-				displayName: 'Search Term',
+				displayName: 'Search term',
 				name: 'search',
 				type: 'string',
 				default: '',
@@ -767,7 +767,7 @@ export const operationFields: INodeProperties[] = [
 			{
 				displayName: 'Sorting',
 				name: 'order',
-				placeholder: 'Add Sort Order',
+				placeholder: 'Add sort order',
 				description: 'Set the sort order of the result rows',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -780,7 +780,7 @@ export const operationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								default: '',

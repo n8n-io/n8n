@@ -19,7 +19,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Execute Query',
+				name: 'Execute query',
 				value: 'executeQuery',
 				description: 'Execute a SQL query',
 				action: 'Execute a SQL query',

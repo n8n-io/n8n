@@ -33,7 +33,7 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Company Report',
+					name: 'Company report',
 					value: 'companyReport',
 				},
 				{
@@ -41,7 +41,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'employee',
 				},
 				{
-					name: 'Employee Document',
+					name: 'Employee document',
 					value: 'employeeDocument',
 				},
 				{

@@ -31,7 +31,7 @@ export const contactOperations: INodeProperties[] = [
 
 export const contactFields: INodeProperties[] = [
 	{
-		displayName: 'Enrichment Type',
+		displayName: 'Enrichment type',
 		name: 'enrichmentType',
 		type: 'multiOptions',
 		required: true,
@@ -59,7 +59,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'Types of enrichment to perform',
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		required: true,
@@ -73,7 +73,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'Contact first name',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		required: true,
@@ -87,7 +87,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'Contact last name',
 	},
 	{
-		displayName: 'Company Name',
+		displayName: 'Company name',
 		name: 'enrichCompanyName',
 		type: 'string',
 		displayOptions: {
@@ -100,7 +100,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'Contact company name, improves matching accuracy',
 	},
 	{
-		displayName: 'Company Domain',
+		displayName: 'Company domain',
 		name: 'enrichCompanyDomain',
 		type: 'string',
 		placeholder: 'acme.com',
@@ -114,7 +114,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'Contact company domain, improves matching accuracy',
 	},
 	{
-		displayName: 'Detect Job Change',
+		displayName: 'Detect job change',
 		name: 'detectJobChange',
 		type: 'boolean',
 		displayOptions: {
@@ -128,10 +128,10 @@ export const contactFields: INodeProperties[] = [
 			'Whether to flag if the contact changed company since the input data. Only effective when Enrichment Type includes Profile.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'enrichAdditionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -141,7 +141,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Contact Email',
+				displayName: 'Contact email',
 				name: 'email',
 				type: 'string',
 				placeholder: 'name@email.com',
@@ -156,7 +156,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Your CRM record ID, echoed back in the response',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
@@ -172,7 +172,7 @@ export const contactFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Company Domain',
+		displayName: 'Company domain',
 		name: 'sourceCompanyDomain',
 		type: 'string',
 		placeholder: 'acme.com',
@@ -187,7 +187,7 @@ export const contactFields: INodeProperties[] = [
 			'Company domain to source contacts from. Provide at least one of domain, name or Linkedin URL.',
 	},
 	{
-		displayName: 'Company Name',
+		displayName: 'Company name',
 		name: 'sourceCompanyName',
 		type: 'string',
 		displayOptions: {
@@ -227,7 +227,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Persona',
+		placeholder: 'Add persona',
 		options: [
 			{
 				name: 'persona',
@@ -242,7 +242,7 @@ export const contactFields: INodeProperties[] = [
 						required: true,
 					},
 					{
-						displayName: 'Job Titles',
+						displayName: 'Job titles',
 						name: 'jobTitles',
 						type: 'string',
 						default: '',
@@ -251,7 +251,7 @@ export const contactFields: INodeProperties[] = [
 						required: true,
 					},
 					{
-						displayName: 'Exclude Job Titles',
+						displayName: 'Exclude job titles',
 						name: 'excludeJobTitles',
 						type: 'string',
 						default: '',
@@ -263,10 +263,10 @@ export const contactFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'sourceAdditionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -276,7 +276,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Disable Company Info',
+				displayName: 'Disable company info',
 				name: 'disableCompanyInfo',
 				type: 'boolean',
 				default: false,
@@ -284,7 +284,7 @@ export const contactFields: INodeProperties[] = [
 					'Whether to skip enrichment of company information (industry, size, etc.) for each contact',
 			},
 			{
-				displayName: 'Included Locations',
+				displayName: 'Included locations',
 				name: 'includedLocations',
 				type: 'string',
 				default: '',
@@ -292,7 +292,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Comma-separated ISO 3166-1 alpha-2 country codes to include',
 			},
 			{
-				displayName: 'Max Results',
+				displayName: 'Max results',
 				name: 'maxResults',
 				type: 'number',
 				typeOptions: {
@@ -303,12 +303,12 @@ export const contactFields: INodeProperties[] = [
 				description: 'Maximum number of contacts to retrieve (capped at 10)',
 			},
 			{
-				displayName: 'Seniority Levels',
+				displayName: 'Seniority levels',
 				name: 'seniorityLevels',
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'C-Suite',
+						name: 'C-suite',
 						value: 'c-suite',
 					},
 					{

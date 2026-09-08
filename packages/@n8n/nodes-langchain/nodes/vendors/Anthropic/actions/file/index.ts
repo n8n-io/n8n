@@ -15,25 +15,25 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Upload File',
+				name: 'Upload file',
 				value: 'upload',
 				action: 'Upload a file',
 				description: 'Upload a file to the Anthropic API for later use',
 			},
 			{
-				name: 'Get File Metadata',
+				name: 'Get file metadata',
 				value: 'get',
 				action: 'Get file metadata',
 				description: 'Get metadata for a file from the Anthropic API',
 			},
 			{
-				name: 'List Files',
+				name: 'List files',
 				value: 'list',
 				action: 'List files',
 				description: 'List files from the Anthropic API',
 			},
 			{
-				name: 'Delete File',
+				name: 'Delete file',
 				value: 'deleteFile',
 				action: 'Delete a file',
 				description: 'Delete a file from the Anthropic API',

@@ -31,13 +31,13 @@ export const workerOperations: INodeProperties[] = [
 				action: 'Get a worker',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many Onfleet workers',
 				action: 'Get many workers',
 			},
 			{
-				name: 'Get Schedule',
+				name: 'Get schedule',
 				value: 'getSchedule',
 				description: 'Get a specific Onfleet worker schedule',
 				action: 'Get the schedule for a worker',
@@ -59,7 +59,7 @@ export const workerOperations: INodeProperties[] = [
 ];
 
 const byLocationField = {
-	displayName: 'Search by Location',
+	displayName: 'Search by location',
 	name: 'byLocation',
 	type: 'boolean',
 	default: false,
@@ -92,7 +92,7 @@ const capacityField = {
 } as INodeProperties;
 
 const displayNameField = {
-	displayName: 'Display Name',
+	displayName: 'Display name',
 	name: 'displayName',
 	type: 'string',
 	default: '',
@@ -136,7 +136,7 @@ const vehicleDescriptionField = {
 } as INodeProperties;
 
 const vehicleLicensePlateField = {
-	displayName: 'License Plate',
+	displayName: 'License plate',
 	name: 'licensePlate',
 	type: 'string',
 	default: '',
@@ -153,7 +153,7 @@ const vehicleColorField = {
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Team Names or IDs',
+	displayName: 'Team names or IDs',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
@@ -165,7 +165,7 @@ const teamsField = {
 } as INodeProperties;
 
 const teamsFilterField = {
-	displayName: 'Team Names or IDs',
+	displayName: 'Team names or IDs',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
@@ -182,15 +182,15 @@ const statesFilterField = {
 	type: 'multiOptions',
 	options: [
 		{
-			name: 'Active (On-Duty, Active Task)',
+			name: 'Active (on-duty, active task)',
 			value: 2,
 		},
 		{
-			name: 'Idle (On-Duty, No Active Task)',
+			name: 'Idle (on-duty, no active task)',
 			value: 1,
 		},
 		{
-			name: 'Off-Duty',
+			name: 'Off-duty',
 			value: 0,
 		},
 	],
@@ -211,16 +211,16 @@ const phonesFilterField = {
 } as INodeProperties;
 
 const filterField = {
-	displayName: 'Fields to Return',
+	displayName: 'Fields to return',
 	name: 'filter',
 	type: 'multiOptions',
 	options: [
 		{
-			name: 'Account Status',
+			name: 'Account status',
 			value: 'accountStatus',
 		},
 		{
-			name: 'Active Task',
+			name: 'Active task',
 			value: 'activeTask',
 		},
 		{
@@ -228,15 +228,15 @@ const filterField = {
 			value: 'capacity',
 		},
 		{
-			name: 'Delay Time',
+			name: 'Delay time',
 			value: 'delayTime',
 		},
 		{
-			name: 'Display Name',
+			name: 'Display name',
 			value: 'displayName',
 		},
 		{
-			name: 'Image Url',
+			name: 'Image URL',
 			value: 'imageUrl',
 		},
 		{
@@ -252,7 +252,7 @@ const filterField = {
 			value: 'name',
 		},
 		{
-			name: 'On Duty',
+			name: 'On duty',
 			value: 'onDuty',
 		},
 		{
@@ -272,19 +272,19 @@ const filterField = {
 			value: 'teams',
 		},
 		{
-			name: 'Time Created',
+			name: 'Time created',
 			value: 'timeCreated',
 		},
 		{
-			name: 'Time Last Modified',
+			name: 'Time last modified',
 			value: 'timeLastModified',
 		},
 		{
-			name: 'Time Last Seen',
+			name: 'Time last seen',
 			value: 'timeLastSeen',
 		},
 		{
-			name: 'User Data',
+			name: 'User data',
 			value: 'userData',
 		},
 		{
@@ -344,7 +344,7 @@ const scheduleDateField = {
 } as INodeProperties;
 
 const scheduleTimezoneField = {
-	displayName: 'Timezone Name or ID',
+	displayName: 'Timezone name or ID',
 	name: 'timezone',
 	type: 'options',
 	typeOptions: {
@@ -449,7 +449,7 @@ export const workerFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -480,10 +480,10 @@ export const workerFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -498,11 +498,11 @@ export const workerFields: INodeProperties[] = [
 				displayName: 'Vehicle',
 				name: 'vehicle',
 				type: 'fixedCollection',
-				placeholder: 'Add Vehicle',
+				placeholder: 'Add vehicle',
 				default: {},
 				options: [
 					{
-						displayName: 'Vehicle Properties',
+						displayName: 'Vehicle properties',
 						name: 'vehicleProperties',
 						values: [
 							{
@@ -528,10 +528,10 @@ export const workerFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -545,7 +545,7 @@ export const workerFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -560,7 +560,7 @@ export const workerFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -575,7 +575,7 @@ export const workerFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -589,7 +589,7 @@ export const workerFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -616,7 +616,7 @@ export const workerFields: INodeProperties[] = [
 		displayName: 'Schedule',
 		name: 'schedule',
 		type: 'fixedCollection',
-		placeholder: 'Add Schedule',
+		placeholder: 'Add schedule',
 		displayOptions: {
 			show: {
 				resource: ['worker'],
@@ -630,7 +630,7 @@ export const workerFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Schedule Properties',
+				displayName: 'Schedule properties',
 				name: 'scheduleProperties',
 				default: {},
 				values: [
@@ -647,13 +647,13 @@ export const workerFields: INodeProperties[] = [
 						name: 'shifts',
 						type: 'fixedCollection',
 						default: {},
-						placeholder: 'Add Shift',
+						placeholder: 'Add shift',
 						typeOptions: {
 							multipleValues: true,
 						},
 						options: [
 							{
-								displayName: 'Shifts Properties',
+								displayName: 'Shifts properties',
 								name: 'shiftsProperties',
 								default: {},
 								values: [

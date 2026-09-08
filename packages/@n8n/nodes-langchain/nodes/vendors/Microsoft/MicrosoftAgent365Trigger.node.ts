@@ -80,7 +80,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'System Prompt',
+				displayName: 'System prompt',
 				name: 'systemPrompt',
 				type: 'string',
 				placeholder:
@@ -102,7 +102,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Enable Fallback Model',
+				displayName: 'Enable fallback model',
 				name: 'needsFallback',
 				type: 'boolean',
 				default: false,
@@ -126,7 +126,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Enable Microsoft Work IQ Tools for A365',
+				displayName: 'Enable Microsoft Work IQ tools for A365',
 				name: 'useMcpTools',
 				type: 'boolean',
 				default: false,
@@ -134,7 +134,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 					'Whether to allow the agent to use Microsoft MCP tools like Calendar, Email, and OneDrive to assist in completing tasks. Requires appropriate permissions in your Microsoft account.',
 			},
 			{
-				displayName: 'Tools to Include',
+				displayName: 'Tools to include',
 				name: 'include',
 				type: 'options',
 				default: 'all',
@@ -155,7 +155,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Tools to Include',
+				displayName: 'Tools to include',
 				name: 'includeTools',
 				type: 'multiOptions',
 				default: [],
@@ -169,7 +169,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Require Specific Output Format',
+				displayName: 'Require specific output format',
 				name: 'hasOutputParser',
 				type: 'boolean',
 				default: false,
@@ -180,17 +180,17 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Max Iterations',
+						displayName: 'Max iterations',
 						name: 'maxIterations',
 						type: 'number',
 						default: 10,
 						description: 'The maximum number of iterations the agent will run before stopping',
 					},
 					{
-						displayName: 'Welcome Message',
+						displayName: 'Welcome message',
 						name: 'welcomeMessage',
 						type: 'string',
 						placeholder: "e.g. Hello! I'm here to help you!",

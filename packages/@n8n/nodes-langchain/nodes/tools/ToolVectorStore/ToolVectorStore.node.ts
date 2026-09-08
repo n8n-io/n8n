@@ -101,7 +101,7 @@ export class ToolVectorStore implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
-				displayName: 'Data Name',
+				displayName: 'Data name',
 				name: 'name',
 				type: 'string',
 				default: '',
@@ -116,7 +116,7 @@ export class ToolVectorStore implements INodeType {
 				},
 			},
 			{
-				displayName: 'Description of Data',
+				displayName: 'Description of data',
 				name: 'description',
 				type: 'string',
 				default: '',

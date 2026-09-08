@@ -89,7 +89,7 @@ const freeTextResponseTypeOption: INodePropertyOptions = {
 };
 
 const blockUserInput: INodeProperties = {
-	displayName: 'Block User Input',
+	displayName: 'Block user input',
 	name: 'blockUserInput',
 	type: 'boolean',
 	default: false,

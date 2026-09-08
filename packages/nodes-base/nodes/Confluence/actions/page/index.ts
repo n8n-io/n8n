@@ -42,13 +42,13 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Comment',
+				name: 'Add comment',
 				value: 'addComment',
 				description: 'Add a footer comment to a page, or reply to an existing comment',
 				action: 'Add a comment to a page',
 			},
 			{
-				name: 'Add Labels',
+				name: 'Add labels',
 				value: 'addLabels',
 				description: 'Add one or more labels to a page',
 				action: 'Add labels to a page',
@@ -72,7 +72,7 @@ export const description: INodeProperties[] = [
 				action: 'Delete a page',
 			},
 			{
-				name: 'Delete Comment',
+				name: 'Delete comment',
 				value: 'deleteComment',
 				description: 'Permanently delete a footer comment by ID',
 				action: 'Delete a comment',
@@ -84,25 +84,25 @@ export const description: INodeProperties[] = [
 				action: 'Get a page',
 			},
 			{
-				name: 'Get Comments',
+				name: 'Get comments',
 				value: 'getComments',
 				description: 'List the footer comments on a page, one item per comment',
 				action: 'Get comments on a page',
 			},
 			{
-				name: 'Get Labels',
+				name: 'Get labels',
 				value: 'getLabels',
 				description: 'List the labels on a page',
 				action: 'Get page labels',
 			},
 			{
-				name: 'Get Many by Label',
+				name: 'Get many by label',
 				value: 'getManyByLabel',
 				description: 'Retrieve all pages carrying a label',
 				action: 'Get many pages by label',
 			},
 			{
-				name: 'Remove Label',
+				name: 'Remove label',
 				value: 'removeLabel',
 				description: 'Remove a label from a page by name',
 				action: 'Remove a label from a page',

@@ -20,7 +20,7 @@ const displayOptions: IDisplayOptions = {
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: true,
@@ -28,7 +28,7 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'Limit Per Input Row',
+		displayName: 'Limit per input row',
 		name: 'limit',
 		type: 'number',
 		default: ROWS_LIMIT_DEFAULT,
@@ -47,19 +47,19 @@ export const description: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions,
 		options: [
 			{
-				displayName: 'Filter by Name',
+				displayName: 'Filter by name',
 				name: 'filterName',
 				type: 'string',
 				default: '',
 				description: 'Filter data tables by name (case-insensitive)',
 			},
 			{
-				displayName: 'Sort Field',
+				displayName: 'Sort field',
 				name: 'sortField',
 				type: 'options',
 				default: 'name',
@@ -71,7 +71,7 @@ export const description: INodeProperties[] = [
 				description: 'Field to sort by',
 			},
 			{
-				displayName: 'Sort Direction',
+				displayName: 'Sort direction',
 				name: 'sortDirection',
 				type: 'options',
 				default: 'asc',

@@ -37,7 +37,7 @@ export const channelOperations: INodeProperties[] = [
 				action: 'Get a channel',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many channels',
 				action: 'Get many channels',
@@ -64,7 +64,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:create                             */
 	/* ------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -96,10 +96,10 @@ export const channelFields: INodeProperties[] = [
 		description: 'The name of the channel',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -114,7 +114,7 @@ export const channelFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Berry Red',
+						name: 'Berry red',
 						value: 6,
 					},
 					{
@@ -134,7 +134,7 @@ export const channelFields: INodeProperties[] = [
 						value: 7,
 					},
 					{
-						name: 'Mint Green',
+						name: 'Mint green',
 						value: 9,
 					},
 					{
@@ -146,11 +146,11 @@ export const channelFields: INodeProperties[] = [
 						value: 11,
 					},
 					{
-						name: 'Sky Blue',
+						name: 'Sky blue',
 						value: 8,
 					},
 					{
-						name: 'Teal Blue',
+						name: 'Teal blue',
 						value: 3,
 					},
 					{
@@ -188,7 +188,7 @@ export const channelFields: INodeProperties[] = [
 				description: 'The temporary ID of the channel. It needs to be a negative number.',
 			},
 			{
-				displayName: 'User Names or IDs',
+				displayName: 'User names or IDs',
 				name: 'user_ids',
 				type: 'multiOptions',
 				typeOptions: {
@@ -224,7 +224,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -242,7 +242,7 @@ export const channelFields: INodeProperties[] = [
 			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -276,7 +276,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -313,10 +313,10 @@ export const channelFields: INodeProperties[] = [
 		description: 'The ID of the channel',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -331,7 +331,7 @@ export const channelFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Berry Red',
+						name: 'Berry red',
 						value: 6,
 					},
 					{
@@ -351,7 +351,7 @@ export const channelFields: INodeProperties[] = [
 						value: 7,
 					},
 					{
-						name: 'Mint Green',
+						name: 'Mint green',
 						value: 9,
 					},
 					{
@@ -363,11 +363,11 @@ export const channelFields: INodeProperties[] = [
 						value: 11,
 					},
 					{
-						name: 'Sky Blue',
+						name: 'Sky blue',
 						value: 8,
 					},
 					{
-						name: 'Teal Blue',
+						name: 'Teal blue',
 						value: 3,
 					},
 					{

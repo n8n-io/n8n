@@ -13,7 +13,7 @@ export const stateOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 				action: 'Create or update a state',
@@ -25,7 +25,7 @@ export const stateOperations: INodeProperties[] = [
 				action: 'Get a state',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many states',
 				action: 'Get many states',
@@ -40,7 +40,7 @@ export const stateFields: INodeProperties[] = [
 	/*                                state:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Entity Name or ID',
+		displayName: 'Entity name or ID',
 		name: 'entityId',
 		type: 'options',
 		description:
@@ -62,7 +62,7 @@ export const stateFields: INodeProperties[] = [
 	/*                                state:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -97,7 +97,7 @@ export const stateFields: INodeProperties[] = [
 	/*                                state:upsert                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Entity Name or ID',
+		displayName: 'Entity name or ID',
 		name: 'entityId',
 		type: 'options',
 		typeOptions: {
@@ -128,13 +128,13 @@ export const stateFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'State Attributes',
+		displayName: 'State attributes',
 		name: 'stateAttributes',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Attribute',
+		placeholder: 'Add attribute',
 		default: {},
 		displayOptions: {
 			show: {

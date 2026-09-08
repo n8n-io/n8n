@@ -37,7 +37,7 @@ export const programAffiliateOperations: INodeProperties[] = [
 				action: 'Get a program affiliate',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many affiliates in program',
 				action: 'Get many program affiliates',
@@ -52,7 +52,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                                 programAffiliate:add                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program Name or ID',
+		displayName: 'Program name or ID',
 		name: 'programId',
 		type: 'options',
 		required: true,
@@ -84,10 +84,10 @@ export const programAffiliateFields: INodeProperties[] = [
 		description: 'The ID of the affiliate',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -118,7 +118,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                                 programAffiliate:approve                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program Name or ID',
+		displayName: 'Program name or ID',
 		name: 'programId',
 		type: 'options',
 		typeOptions: {
@@ -152,7 +152,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                                 programAffiliate:disapprove                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program Name or ID',
+		displayName: 'Program name or ID',
 		name: 'programId',
 		type: 'options',
 		typeOptions: {
@@ -186,7 +186,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                                 affiliate:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program Name or ID',
+		displayName: 'Program name or ID',
 		name: 'programId',
 		type: 'options',
 		required: true,
@@ -222,7 +222,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                          programAffiliate:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program Name or ID',
+		displayName: 'Program name or ID',
 		name: 'programId',
 		type: 'options',
 		typeOptions: {
@@ -240,7 +240,7 @@ export const programAffiliateFields: INodeProperties[] = [
 			'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -274,7 +274,7 @@ export const programAffiliateFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -284,7 +284,7 @@ export const programAffiliateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Affiliate Group ID',
+				displayName: 'Affiliate group ID',
 				name: 'affiliate_group_id',
 				type: 'string',
 				default: '',

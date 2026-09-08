@@ -41,7 +41,7 @@ export class ItemListsV2 implements INodeType {
 					type: 'hidden',
 					options: [
 						{
-							name: 'Item List',
+							name: 'Item list',
 							value: 'itemList',
 						},
 					],
@@ -54,10 +54,10 @@ export class ItemListsV2 implements INodeType {
 					noDataExpression: true,
 					options: [
 						{
-							name: 'Concatenate Items',
+							name: 'Concatenate items',
 							value: 'aggregateItems',
 							description: 'Combine fields into a list in a single new item',
-							action: 'Concatenate Items',
+							action: 'Concatenate items',
 						},
 						{
 							name: 'Limit',
@@ -78,11 +78,11 @@ export class ItemListsV2 implements INodeType {
 							action: 'Sort',
 						},
 						{
-							name: 'Split Out Items',
+							name: 'Split out items',
 							value: 'splitOutItems',
 							description:
 								"Turn a list or values of object's properties inside item(s) into separate items",
-							action: 'Split Out Items',
+							action: 'Split out items',
 						},
 						{
 							name: 'Summarize',
@@ -95,7 +95,7 @@ export class ItemListsV2 implements INodeType {
 				},
 				// Split out items - Fields
 				{
-					displayName: 'Fields To Split Out',
+					displayName: 'Fields to split out',
 					name: 'fieldToSplitOut',
 					type: 'string',
 					default: '',
@@ -115,15 +115,15 @@ export class ItemListsV2 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'No Other Fields',
+							name: 'No other fields',
 							value: 'noOtherFields',
 						},
 						{
-							name: 'All Other Fields',
+							name: 'All other fields',
 							value: 'allOtherFields',
 						},
 						{
-							name: 'Selected Other Fields',
+							name: 'Selected other fields',
 							value: 'selectedOtherFields',
 						},
 					],
@@ -137,13 +137,13 @@ export class ItemListsV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Fields To Include',
+					displayName: 'Fields to include',
 					name: 'fieldsToInclude',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
 					},
-					placeholder: 'Add Field To Include',
+					placeholder: 'Add field to include',
 					default: {},
 					displayOptions: {
 						show: {
@@ -158,7 +158,7 @@ export class ItemListsV2 implements INodeType {
 							name: 'fields',
 							values: [
 								{
-									displayName: 'Field Name',
+									displayName: 'Field name',
 									name: 'fieldName',
 									type: 'string',
 									default: '',
@@ -180,11 +180,11 @@ export class ItemListsV2 implements INodeType {
 					default: 'aggregateIndividualFields',
 					options: [
 						{
-							name: 'Individual Fields',
+							name: 'Individual fields',
 							value: 'aggregateIndividualFields',
 						},
 						{
-							name: 'All Item Data (Into a Single List)',
+							name: 'All item data (into a single list)',
 							value: 'aggregateAllItemData',
 						},
 					],
@@ -197,13 +197,13 @@ export class ItemListsV2 implements INodeType {
 				},
 				// Aggregate Individual Fields
 				{
-					displayName: 'Fields To Aggregate',
+					displayName: 'Fields to aggregate',
 					name: 'fieldsToAggregate',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
 					},
-					placeholder: 'Add Field To Aggregate',
+					placeholder: 'Add field to aggregate',
 					default: { fieldToAggregate: [{ fieldToAggregate: '', renameField: false }] },
 					displayOptions: {
 						show: {
@@ -218,7 +218,7 @@ export class ItemListsV2 implements INodeType {
 							name: 'fieldToAggregate',
 							values: [
 								{
-									displayName: 'Input Field Name',
+									displayName: 'Input field name',
 									name: 'fieldToAggregate',
 									type: 'string',
 									default: '',
@@ -229,14 +229,14 @@ export class ItemListsV2 implements INodeType {
 									requiresDataPath: 'single',
 								},
 								{
-									displayName: 'Rename Field',
+									displayName: 'Rename field',
 									name: 'renameField',
 									type: 'boolean',
 									default: false,
 									description: 'Whether to give the field a different name in the output',
 								},
 								{
-									displayName: 'Output Field Name',
+									displayName: 'Output field name',
 									name: 'outputFieldName',
 									displayOptions: {
 										show: {
@@ -255,7 +255,7 @@ export class ItemListsV2 implements INodeType {
 				},
 				// Aggregate All Item Data
 				{
-					displayName: 'Put Output in Field',
+					displayName: 'Put output in field',
 					name: 'destinationFieldName',
 					type: 'string',
 					displayOptions: {
@@ -275,15 +275,15 @@ export class ItemListsV2 implements INodeType {
 					default: 'allFields',
 					options: [
 						{
-							name: 'All Fields',
+							name: 'All fields',
 							value: 'allFields',
 						},
 						{
-							name: 'Specified Fields',
+							name: 'Specified fields',
 							value: 'specifiedFields',
 						},
 						{
-							name: 'All Fields Except',
+							name: 'All fields except',
 							value: 'allFieldsExcept',
 						},
 					],
@@ -296,13 +296,13 @@ export class ItemListsV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Fields To Exclude',
+					displayName: 'Fields to exclude',
 					name: 'fieldsToExclude',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
 					},
-					placeholder: 'Add Field To Exclude',
+					placeholder: 'Add field to exclude',
 					default: {},
 					options: [
 						{
@@ -310,7 +310,7 @@ export class ItemListsV2 implements INodeType {
 							name: 'fields',
 							values: [
 								{
-									displayName: 'Field Name',
+									displayName: 'Field name',
 									name: 'fieldName',
 									type: 'string',
 									default: '',
@@ -333,13 +333,13 @@ export class ItemListsV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Fields To Include',
+					displayName: 'Fields to include',
 					name: 'fieldsToInclude',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
 					},
-					placeholder: 'Add Field To Include',
+					placeholder: 'Add field to include',
 					default: {},
 					options: [
 						{
@@ -347,7 +347,7 @@ export class ItemListsV2 implements INodeType {
 							name: 'fields',
 							values: [
 								{
-									displayName: 'Field Name',
+									displayName: 'Field name',
 									name: 'fieldName',
 									type: 'string',
 									default: '',
@@ -376,15 +376,15 @@ export class ItemListsV2 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'All Fields',
+							name: 'All fields',
 							value: 'allFields',
 						},
 						{
-							name: 'All Fields Except',
+							name: 'All fields except',
 							value: 'allFieldsExcept',
 						},
 						{
-							name: 'Selected Fields',
+							name: 'Selected fields',
 							value: 'selectedFields',
 						},
 					],
@@ -398,13 +398,13 @@ export class ItemListsV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Fields To Exclude',
+					displayName: 'Fields to exclude',
 					name: 'fieldsToExclude',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
 					},
-					placeholder: 'Add Field To Exclude',
+					placeholder: 'Add field to exclude',
 					default: {},
 					displayOptions: {
 						show: {
@@ -419,7 +419,7 @@ export class ItemListsV2 implements INodeType {
 							name: 'fields',
 							values: [
 								{
-									displayName: 'Field Name',
+									displayName: 'Field name',
 									name: 'fieldName',
 									type: 'string',
 									default: '',
@@ -434,13 +434,13 @@ export class ItemListsV2 implements INodeType {
 					],
 				},
 				{
-					displayName: 'Fields To Compare',
+					displayName: 'Fields to compare',
 					name: 'fieldsToCompare',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
 					},
-					placeholder: 'Add Field To Compare',
+					placeholder: 'Add field to compare',
 					default: {},
 					displayOptions: {
 						show: {
@@ -455,7 +455,7 @@ export class ItemListsV2 implements INodeType {
 							name: 'fields',
 							values: [
 								{
-									displayName: 'Field Name',
+									displayName: 'Field name',
 									name: 'fieldName',
 									type: 'string',
 									default: '',
@@ -498,20 +498,20 @@ export class ItemListsV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Fields To Sort By',
+					displayName: 'Fields to sort by',
 					name: 'sortFieldsUi',
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
 					},
-					placeholder: 'Add Field To Sort By',
+					placeholder: 'Add field to sort by',
 					options: [
 						{
 							displayName: '',
 							name: 'sortField',
 							values: [
 								{
-									displayName: 'Field Name',
+									displayName: 'Field name',
 									name: 'fieldName',
 									type: 'string',
 									required: true,
@@ -587,7 +587,7 @@ return 0;`,
 				},
 				// Limit - Fields
 				{
-					displayName: 'Max Items',
+					displayName: 'Max items',
 					name: 'maxItems',
 					type: 'number',
 					typeOptions: {
@@ -608,11 +608,11 @@ return 0;`,
 					type: 'options',
 					options: [
 						{
-							name: 'First Items',
+							name: 'First items',
 							value: 'firstItems',
 						},
 						{
-							name: 'Last Items',
+							name: 'Last items',
 							value: 'lastItems',
 						},
 					],
@@ -629,7 +629,7 @@ return 0;`,
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add Field',
+					placeholder: 'Add field',
 					default: {},
 					displayOptions: {
 						show: {
@@ -640,7 +640,7 @@ return 0;`,
 					},
 					options: [
 						{
-							displayName: 'Remove Other Fields',
+							displayName: 'Remove other fields',
 							name: 'removeOtherFields',
 							type: 'boolean',
 							default: false,
@@ -648,7 +648,7 @@ return 0;`,
 								'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates.',
 						},
 						{
-							displayName: 'Disable Dot Notation',
+							displayName: 'Disable dot notation',
 							name: 'disableDotNotation',
 							type: 'boolean',
 							default: false,
@@ -661,7 +661,7 @@ return 0;`,
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add Field',
+					placeholder: 'Add field',
 					default: {},
 					displayOptions: {
 						show: {
@@ -672,7 +672,7 @@ return 0;`,
 					},
 					options: [
 						{
-							displayName: 'Disable Dot Notation',
+							displayName: 'Disable dot notation',
 							name: 'disableDotNotation',
 							type: 'boolean',
 							default: false,
@@ -685,7 +685,7 @@ return 0;`,
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add Field',
+					placeholder: 'Add field',
 					default: {},
 					displayOptions: {
 						show: {
@@ -698,7 +698,7 @@ return 0;`,
 					},
 					options: [
 						{
-							displayName: 'Disable Dot Notation',
+							displayName: 'Disable dot notation',
 							name: 'disableDotNotation',
 							type: 'boolean',
 							displayOptions: {
@@ -711,7 +711,7 @@ return 0;`,
 								'Whether to disallow referencing child fields using `parent.child` in the field name',
 						},
 						{
-							displayName: 'Destination Field Name',
+							displayName: 'Destination field name',
 							name: 'destinationFieldName',
 							type: 'string',
 							requiresDataPath: 'multiple',
@@ -724,7 +724,7 @@ return 0;`,
 							description: 'The field in the output under which to put the split field contents',
 						},
 						{
-							displayName: 'Merge Lists',
+							displayName: 'Merge lists',
 							name: 'mergeLists',
 							type: 'boolean',
 							displayOptions: {
@@ -737,7 +737,7 @@ return 0;`,
 								'Whether to merge the output into a single flat list (rather than a list of lists), if the field to aggregate is a list',
 						},
 						{
-							displayName: 'Keep Missing And Null Values',
+							displayName: 'Keep missing and null values',
 							name: 'keepMissing',
 							type: 'boolean',
 							displayOptions: {

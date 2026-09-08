@@ -67,7 +67,7 @@ export class Gotify implements INodeType {
 						action: 'Delete a message',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						action: 'Get many messages',
 					},
@@ -89,10 +89,10 @@ export class Gotify implements INodeType {
 				description: 'The message to send, If using Markdown add the Content Type option',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						resource: ['message'],
@@ -131,7 +131,7 @@ export class Gotify implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Content Type',
+						displayName: 'Content type',
 						name: 'contentType',
 						type: 'options',
 						default: 'text/plain',
@@ -155,7 +155,7 @@ export class Gotify implements INodeType {
 						description: 'Opens this URL when the notification is clicked',
 					},
 					{
-						displayName: 'Big Image URL',
+						displayName: 'Big image URL',
 						name: 'bigImageUrl',
 						type: 'string',
 						default: '',
@@ -184,7 +184,7 @@ export class Gotify implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {

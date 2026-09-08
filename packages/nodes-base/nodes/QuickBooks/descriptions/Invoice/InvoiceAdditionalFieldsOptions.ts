@@ -9,9 +9,9 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 		default: 0,
 	},
 	{
-		displayName: 'Billing Address',
+		displayName: 'Billing address',
 		name: 'BillAddr',
-		placeholder: 'Add Billing Address Fields',
+		placeholder: 'Add billing address fields',
 		type: 'fixedCollection',
 		default: {},
 		options: [
@@ -32,7 +32,7 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'PostalCode',
 						type: 'string',
 						default: '',
@@ -50,7 +50,7 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Subdivision Code',
+						displayName: 'Country subdivision code',
 						name: 'CountrySubDivisionCode',
 						type: 'string',
 						default: '',
@@ -60,14 +60,14 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Billing Email',
+		displayName: 'Billing email',
 		name: 'BillEmail',
 		description: 'E-mail address to which the invoice will be sent',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Customer Memo',
+		displayName: 'Customer memo',
 		name: 'CustomerMemo',
 		description:
 			'User-entered message to the customer. This message is visible to end user on their transactions.',
@@ -75,9 +75,9 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Custom Fields',
+		displayName: 'Custom fields',
 		name: 'CustomFields',
-		placeholder: 'Add Custom Fields',
+		placeholder: 'Add custom fields',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -89,7 +89,7 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 				name: 'Field',
 				values: [
 					{
-						displayName: 'Field Definition Name or ID',
+						displayName: 'Field definition name or ID',
 						name: 'DefinitionId',
 						type: 'options',
 						typeOptions: {
@@ -100,7 +100,7 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 							'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'StringValue',
 						type: 'string',
 						default: '',
@@ -111,51 +111,51 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Document Number',
+		displayName: 'Document number',
 		name: 'DocNumber',
 		description: 'Reference number for the transaction',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Due Date',
+		displayName: 'Due date',
 		name: 'DueDate',
 		description: 'Date when the payment of the transaction is due',
 		type: 'dateTime',
 		default: '',
 	},
 	{
-		displayName: 'Email Status',
+		displayName: 'Email status',
 		name: 'EmailStatus',
 		type: 'options',
 		default: 'NotSet',
 		options: [
 			{
-				name: 'Not Set',
+				name: 'Not set',
 				value: 'NotSet',
 			},
 			{
-				name: 'Need To Send',
+				name: 'Need to send',
 				value: 'NeedToSend',
 			},
 			{
-				name: 'Email Sent',
+				name: 'Email sent',
 				value: 'EmailSent',
 			},
 		],
 	},
 	{
-		displayName: 'Print Status',
+		displayName: 'Print status',
 		name: 'PrintStatus',
 		type: 'options',
 		default: 'NotSet',
 		options: [
 			{
-				name: 'Not Set',
+				name: 'Not set',
 				value: 'NotSet',
 			},
 			{
-				name: 'Need To Print',
+				name: 'Need to print',
 				value: 'NeedToPrint',
 			},
 			{
@@ -165,20 +165,20 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Shipping Address',
+		displayName: 'Shipping address',
 		name: 'ShipAddr',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Total Amount',
+		displayName: 'Total amount',
 		name: 'TotalAmt',
 		description: 'Total amount of the transaction',
 		type: 'number',
 		default: 0,
 	},
 	{
-		displayName: 'Transaction Date',
+		displayName: 'Transaction date',
 		name: 'TxnDate',
 		description: 'Date when the transaction occurred',
 		type: 'dateTime',

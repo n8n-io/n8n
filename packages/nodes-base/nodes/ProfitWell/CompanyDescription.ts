@@ -13,7 +13,7 @@ export const companyOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Settings',
+				name: 'Get settings',
 				value: 'getSetting',
 				description: "Get your company's ProfitWell account settings",
 				action: 'Get settings for your company',

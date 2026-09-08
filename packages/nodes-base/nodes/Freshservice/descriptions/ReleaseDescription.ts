@@ -31,7 +31,7 @@ export const releaseOperations: INodeProperties[] = [
 				action: 'Get a release',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many releases',
 				action: 'Get many releases',
@@ -65,7 +65,7 @@ export const releaseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Release Type',
+		displayName: 'Release type',
 		name: 'releaseType',
 		type: 'options',
 		default: 1,
@@ -142,11 +142,11 @@ export const releaseFields: INodeProperties[] = [
 				value: 1,
 			},
 			{
-				name: 'On Hold',
+				name: 'On hold',
 				value: 2,
 			},
 			{
-				name: 'In Progress',
+				name: 'In progress',
 				value: 3,
 			},
 			{
@@ -160,7 +160,7 @@ export const releaseFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Planned Start Date',
+		displayName: 'Planned start date',
 		name: 'plannedStartDate',
 		type: 'dateTime',
 		required: true,
@@ -173,7 +173,7 @@ export const releaseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Planned End Date',
+		displayName: 'Planned end date',
 		name: 'plannedEndDate',
 		type: 'dateTime',
 		required: true,
@@ -186,10 +186,10 @@ export const releaseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -199,7 +199,7 @@ export const releaseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -217,7 +217,7 @@ export const releaseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -270,7 +270,7 @@ export const releaseFields: INodeProperties[] = [
 	//             release: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -318,10 +318,10 @@ export const releaseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -331,7 +331,7 @@ export const releaseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -349,7 +349,7 @@ export const releaseFields: INodeProperties[] = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -384,7 +384,7 @@ export const releaseFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Release Type',
+				displayName: 'Release type',
 				name: 'release_type',
 				type: 'options',
 				default: 1,
@@ -419,11 +419,11 @@ export const releaseFields: INodeProperties[] = [
 						value: 1,
 					},
 					{
-						name: 'On Hold',
+						name: 'On hold',
 						value: 2,
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 3,
 					},
 					{

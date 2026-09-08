@@ -28,7 +28,7 @@ interface Options {
 export const description: INodeProperties[] = [
 	binaryProperty,
 	{
-		displayName: 'File Format',
+		displayName: 'File format',
 		name: 'fileFormat',
 		type: 'options',
 		options: [

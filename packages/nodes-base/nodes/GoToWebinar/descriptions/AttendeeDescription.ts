@@ -14,12 +14,12 @@ export const attendeeOperations: INodeProperties[] = [
 				action: 'Get an attendee',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many attendees',
 			},
 			{
-				name: 'Get Details',
+				name: 'Get details',
 				value: 'getDetails',
 				action: 'Get details of an attendee',
 			},
@@ -37,7 +37,7 @@ export const attendeeFields: INodeProperties[] = [
 	//     attendee: shared fields
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -54,7 +54,7 @@ export const attendeeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Session Key Name or ID',
+		displayName: 'Session key name or ID',
 		name: 'sessionKey',
 		type: 'options',
 		required: true,
@@ -76,7 +76,7 @@ export const attendeeFields: INodeProperties[] = [
 	//          attendee: get
 	// ----------------------------------
 	{
-		displayName: 'Registrant Key',
+		displayName: 'Registrant key',
 		name: 'registrantKey',
 		type: 'string',
 		required: true,
@@ -94,7 +94,7 @@ export const attendeeFields: INodeProperties[] = [
 	//       attendee: getDetails
 	// ----------------------------------
 	{
-		displayName: 'Registrant Key',
+		displayName: 'Registrant key',
 		name: 'registrantKey',
 		type: 'string',
 		required: true,
@@ -126,7 +126,7 @@ export const attendeeFields: INodeProperties[] = [
 				description: 'Questions asked by the attendee in a webinar session',
 			},
 			{
-				name: 'Survey Answers',
+				name: 'Survey answers',
 				value: 'surveyAnswers',
 				description: 'Survey answers from the attendee in a webinar session',
 			},
@@ -143,7 +143,7 @@ export const attendeeFields: INodeProperties[] = [
 	//         attendee: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

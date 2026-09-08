@@ -28,7 +28,7 @@ export const listOperations: INodeProperties[] = [
 				action: 'Get a list',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many lists',
 			},
@@ -47,7 +47,7 @@ export const listFields: INodeProperties[] = [
 	/*                                 list:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List Name',
+		displayName: 'List name',
 		name: 'displayName',
 		type: 'string',
 		displayOptions: {
@@ -83,7 +83,7 @@ export const listFields: INodeProperties[] = [
 	/*                                 list:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -118,7 +118,7 @@ export const listFields: INodeProperties[] = [
 	/*                                 list:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'New List Name',
+		displayName: 'New list name',
 		name: 'displayName',
 		type: 'string',
 		displayOptions: {

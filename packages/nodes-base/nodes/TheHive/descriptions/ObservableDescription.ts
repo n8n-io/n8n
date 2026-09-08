@@ -4,7 +4,7 @@ import { TLPs } from '../interfaces/AlertInterface';
 
 export const observableOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation Name or ID',
+		displayName: 'Operation name or ID',
 		name: 'operation',
 		type: 'options',
 		description:
@@ -40,7 +40,7 @@ export const observableFields: INodeProperties[] = [
 		description: 'ID of the case',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -86,7 +86,7 @@ export const observableFields: INodeProperties[] = [
 		description: 'ID of the observable',
 	},
 	{
-		displayName: 'Data Type Name or ID',
+		displayName: 'Data type name or ID',
 		name: 'dataType',
 		type: 'options',
 		required: true,
@@ -120,7 +120,7 @@ export const observableFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
@@ -149,7 +149,7 @@ export const observableFields: INodeProperties[] = [
 		description: 'Description of the observable in the context of the case',
 	},
 	{
-		displayName: 'Start Date',
+		displayName: 'Start date',
 		name: 'startDate',
 		type: 'dateTime',
 		required: true,
@@ -248,7 +248,7 @@ export const observableFields: INodeProperties[] = [
 	},
 	// required for analyzer execution
 	{
-		displayName: 'Analyzer Names or IDs',
+		displayName: 'Analyzer names or IDs',
 		name: 'analyzers',
 		type: 'multiOptions',
 		description:
@@ -272,7 +272,7 @@ export const observableFields: INodeProperties[] = [
 
 	// required for responder execution
 	{
-		displayName: 'Responder Name or ID',
+		displayName: 'Responder name or ID',
 		name: 'responder',
 		type: 'options',
 		description:
@@ -308,7 +308,7 @@ export const observableFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Observable Tags',
+				displayName: 'Observable tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
@@ -318,7 +318,7 @@ export const observableFields: INodeProperties[] = [
 	},
 	// Optional attributes (Update operation)
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		default: {},
@@ -337,7 +337,7 @@ export const observableFields: INodeProperties[] = [
 				description: 'Description of the observable in the context of the case',
 			},
 			{
-				displayName: 'Observable Tags',
+				displayName: 'Observable tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
@@ -431,7 +431,7 @@ export const observableFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['observable'],
@@ -440,7 +440,7 @@ export const observableFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Data Type Names or IDs',
+				displayName: 'Data type names or IDs',
 				name: 'dataType',
 				type: 'multiOptions',
 				default: [],
@@ -451,23 +451,23 @@ export const observableFields: INodeProperties[] = [
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
-				displayName: 'Date Range',
+				displayName: 'Date range',
 				type: 'fixedCollection',
 				name: 'range',
 				default: {},
 				options: [
 					{
-						displayName: 'Add Date Range Inputs',
+						displayName: 'Add date range inputs',
 						name: 'dateRange',
 						values: [
 							{
-								displayName: 'From Date',
+								displayName: 'From date',
 								name: 'fromDate',
 								type: 'dateTime',
 								default: '',
 							},
 							{
-								displayName: 'To Date',
+								displayName: 'To date',
 								name: 'toDate',
 								type: 'dateTime',
 								default: '',
@@ -505,7 +505,7 @@ export const observableFields: INodeProperties[] = [
 				description: 'Description of the observable in the context of the case',
 			},
 			{
-				displayName: 'Observable Tags',
+				displayName: 'Observable tags',
 				name: 'tags',
 				type: 'string',
 				default: '',

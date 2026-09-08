@@ -57,18 +57,18 @@ export class NocoDBV1 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'API Token',
+							name: 'API token',
 							value: 'nocoDbApiToken',
 						},
 						{
-							name: 'User Token',
+							name: 'User token',
 							value: 'nocoDb',
 						},
 					],
 					default: 'nocoDb',
 				},
 				{
-					displayName: 'API Version',
+					displayName: 'API version',
 					name: 'version',
 					type: 'options',
 					isNodeSetting: true,
@@ -78,11 +78,11 @@ export class NocoDBV1 implements INodeType {
 							value: 1,
 						},
 						{
-							name: 'v0.90.0 Onwards',
+							name: 'v0.90.0 onwards',
 							value: 2,
 						},
 						{
-							name: 'v0.200.0 Onwards',
+							name: 'v0.200.0 onwards',
 							value: 3,
 						},
 					],
@@ -94,7 +94,7 @@ export class NocoDBV1 implements INodeType {
 					default: 1,
 				},
 				{
-					displayName: 'API Version',
+					displayName: 'API version',
 					name: 'version',
 					type: 'options',
 					isNodeSetting: true,
@@ -104,11 +104,11 @@ export class NocoDBV1 implements INodeType {
 							value: 1,
 						},
 						{
-							name: 'v0.90.0 Onwards',
+							name: 'v0.90.0 onwards',
 							value: 2,
 						},
 						{
-							name: 'v0.200.0 Onwards',
+							name: 'v0.200.0 onwards',
 							value: 3,
 						},
 					],
@@ -120,7 +120,7 @@ export class NocoDBV1 implements INodeType {
 					default: 2,
 				},
 				{
-					displayName: 'API Version',
+					displayName: 'API version',
 					name: 'version',
 					type: 'options',
 					isNodeSetting: true,
@@ -130,11 +130,11 @@ export class NocoDBV1 implements INodeType {
 							value: 1,
 						},
 						{
-							name: 'v0.90.0 Onwards',
+							name: 'v0.90.0 onwards',
 							value: 2,
 						},
 						{
-							name: 'v0.200.0 Onwards',
+							name: 'v0.200.0 onwards',
 							value: 3,
 						},
 					],
@@ -188,7 +188,7 @@ export class NocoDBV1 implements INodeType {
 							action: 'Get a row',
 						},
 						{
-							name: 'Get Many',
+							name: 'Get many',
 							value: 'getAll',
 							description: 'Retrieve many rows',
 							action: 'Get many rows',

@@ -26,9 +26,9 @@ export const capitalizeHeader = (header: string, capitalize?: boolean) => {
 };
 
 const extractionValuesCollection: INodeProperties = {
-	displayName: 'Extraction Values',
+	displayName: 'Extraction values',
 	name: 'extractionValues',
-	placeholder: 'Add Value',
+	placeholder: 'Add value',
 	type: 'fixedCollection',
 	typeOptions: {
 		multipleValues: true,
@@ -47,7 +47,7 @@ const extractionValuesCollection: INodeProperties = {
 					description: 'The key under which the extracted value should be saved',
 				},
 				{
-					displayName: 'CSS Selector',
+					displayName: 'CSS selector',
 					name: 'cssSelector',
 					type: 'string',
 					default: '',
@@ -55,7 +55,7 @@ const extractionValuesCollection: INodeProperties = {
 					description: 'The CSS selector to use',
 				},
 				{
-					displayName: 'Return Value',
+					displayName: 'Return value',
 					name: 'returnValue',
 					type: 'options',
 					options: [
@@ -97,7 +97,7 @@ const extractionValuesCollection: INodeProperties = {
 					description: 'The name of the attribute to return the value off',
 				},
 				{
-					displayName: 'Skip Selectors',
+					displayName: 'Skip selectors',
 					name: 'skipSelectors',
 					type: 'string',
 					displayOptions: {
@@ -111,7 +111,7 @@ const extractionValuesCollection: INodeProperties = {
 					description: 'Comma-separated list of selectors to skip in the text extraction',
 				},
 				{
-					displayName: 'Return Array',
+					displayName: 'Return array',
 					name: 'returnArray',
 					type: 'boolean',
 					default: false,
@@ -147,25 +147,25 @@ export class Html implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Generate HTML Template',
+						name: 'Generate HTML template',
 						value: 'generateHtmlTemplate',
 						action: 'Generate HTML template',
 					},
 					{
-						name: 'Extract HTML Content',
+						name: 'Extract HTML content',
 						value: 'extractHtmlContent',
-						action: 'Extract HTML Content',
+						action: 'Extract HTML content',
 					},
 					{
-						name: 'Convert to HTML Table',
+						name: 'Convert to HTML table',
 						value: 'convertToHtmlTable',
-						action: 'Convert to HTML Table',
+						action: 'Convert to HTML table',
 					},
 				],
 				default: 'generateHtmlTemplate',
 			},
 			{
-				displayName: 'HTML Template',
+				displayName: 'HTML template',
 				name: 'html',
 				typeOptions: {
 					editor: 'htmlEditor',
@@ -197,7 +197,7 @@ export class Html implements INodeType {
 				},
 			},
 			{
-				displayName: 'Source Data',
+				displayName: 'Source data',
 				name: 'sourceData',
 				type: 'options',
 				options: [
@@ -219,7 +219,7 @@ export class Html implements INodeType {
 				},
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				name: 'dataPropertyName',
 				type: 'string',
 				requiresDataPath: 'single',
@@ -234,7 +234,7 @@ export class Html implements INodeType {
 				hint: 'The name of the input binary field containing the file to be extracted',
 			},
 			{
-				displayName: 'JSON Property',
+				displayName: 'JSON property',
 				name: 'dataPropertyName',
 				type: 'string',
 				requiresDataPath: 'single',
@@ -290,7 +290,7 @@ export class Html implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Trim Values',
+						displayName: 'Trim values',
 						name: 'trimValues',
 						type: 'boolean',
 						default: true,
@@ -298,7 +298,7 @@ export class Html implements INodeType {
 							'Whether to remove automatically all spaces and newlines from the beginning and end of the values',
 					},
 					{
-						displayName: 'Clean Up Text',
+						displayName: 'Clean up text',
 						name: 'cleanUpText',
 						type: 'boolean',
 						default: true,
@@ -323,14 +323,14 @@ export class Html implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Capitalize Headers',
+						displayName: 'Capitalize headers',
 						name: 'capitalize',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to capitalize the headers',
 					},
 					{
-						displayName: 'Custom Styling',
+						displayName: 'Custom styling',
 						name: 'customStyling',
 						type: 'boolean',
 						default: false,
@@ -344,7 +344,7 @@ export class Html implements INodeType {
 						description: 'Caption to add to the table',
 					},
 					{
-						displayName: 'Table Attributes',
+						displayName: 'Table attributes',
 						name: 'tableAttributes',
 						type: 'string',
 						default: '',
@@ -352,7 +352,7 @@ export class Html implements INodeType {
 						placeholder: 'e.g. style="padding:10px"',
 					},
 					{
-						displayName: 'Header Attributes',
+						displayName: 'Header attributes',
 						name: 'headerAttributes',
 						type: 'string',
 						default: '',
@@ -360,7 +360,7 @@ export class Html implements INodeType {
 						placeholder: 'e.g. style="padding:10px"',
 					},
 					{
-						displayName: 'Row Attributes',
+						displayName: 'Row attributes',
 						name: 'rowAttributes',
 						type: 'string',
 						default: '',
@@ -368,7 +368,7 @@ export class Html implements INodeType {
 						placeholder: 'e.g. style="padding:10px"',
 					},
 					{
-						displayName: 'Cell Attributes',
+						displayName: 'Cell attributes',
 						name: 'cellAttributes',
 						type: 'string',
 						default: '',

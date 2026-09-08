@@ -11,7 +11,7 @@ import { seaTableApiRequest } from '../../GenericFunctions';
 export const properties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Table Name (Source)',
+		displayName: 'Table name (source)',
 		name: 'tableName',
 		type: 'options',
 		placeholder: 'Name of table',
@@ -26,7 +26,7 @@ export const properties: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Link Column',
+		displayName: 'Link column',
 		name: 'linkColumn',
 		type: 'options',
 		typeOptions: {
@@ -40,7 +40,7 @@ export const properties: INodeProperties[] = [
 			'Choose from the list of specify the Link Column by using an expression. You have to provide it in the way "column_name:::link_id:::other_table_id".',
 	},
 	{
-		displayName: 'Row ID From the Source Table',
+		displayName: 'Row ID from the source table',
 		name: 'linkColumnSourceId',
 		type: 'string',
 		required: true,
@@ -48,7 +48,7 @@ export const properties: INodeProperties[] = [
 		description: 'Provide the row ID of table you selected',
 	},
 	{
-		displayName: 'Row ID From the Target',
+		displayName: 'Row ID from the target',
 		name: 'linkColumnTargetId',
 		type: 'string',
 		required: true,

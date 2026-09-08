@@ -24,14 +24,14 @@ const properties: INodeProperties[] = [
 		description: 'The name of the organization to create',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Label Names or IDs',
+				displayName: 'Label names or IDs',
 				name: 'label_ids',
 				type: 'multiOptions',
 				description:
@@ -42,7 +42,7 @@ const properties: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				typeOptions: {

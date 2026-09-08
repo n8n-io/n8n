@@ -52,14 +52,14 @@ export class RedisTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'JSON Parse Body',
+						displayName: 'JSON parse body',
 						name: 'jsonParseBody',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to try to parse the message to an object',
 					},
 					{
-						displayName: 'Only Message',
+						displayName: 'Only message',
 						name: 'onlyMessage',
 						type: 'boolean',
 						default: false,

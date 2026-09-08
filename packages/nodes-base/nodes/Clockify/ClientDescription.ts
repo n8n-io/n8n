@@ -31,7 +31,7 @@ export const clientOperations: INodeProperties[] = [
 				action: 'Get a client',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many clients',
 				action: 'Get many clients',
@@ -52,7 +52,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                 client:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Name',
+		displayName: 'Client name',
 		name: 'name',
 		type: 'string',
 		required: true,
@@ -99,7 +99,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                 client:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -130,10 +130,10 @@ export const clientFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['client'],
@@ -156,7 +156,7 @@ export const clientFields: INodeProperties[] = [
 				description: 'If provided, clients will be filtered by name',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sort-order',
 				type: 'options',
 				options: [
@@ -203,10 +203,10 @@ export const clientFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],

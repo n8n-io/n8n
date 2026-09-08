@@ -67,46 +67,46 @@ export class DocumentBinaryInputLoader implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
-				displayName: 'Loader Type',
+				displayName: 'Loader type',
 				name: 'loader',
 				type: 'options',
 				default: 'jsonLoader',
 				required: true,
 				options: [
 					{
-						name: 'CSV Loader',
+						name: 'CSV loader',
 						value: 'csvLoader',
 						description: 'Load CSV files',
 					},
 					{
-						name: 'Docx Loader',
+						name: 'Docx loader',
 						value: 'docxLoader',
 						description: 'Load Docx documents',
 					},
 					{
-						name: 'EPub Loader',
+						name: 'EPub loader',
 						value: 'epubLoader',
 						description: 'Load EPub files',
 					},
 					{
-						name: 'JSON Loader',
+						name: 'JSON loader',
 						value: 'jsonLoader',
 						description: 'Load JSON files',
 					},
 					{
-						name: 'PDF Loader',
+						name: 'PDF loader',
 						value: 'pdfLoader',
 						description: 'Load PDF documents',
 					},
 					{
-						name: 'Text Loader',
+						name: 'Text loader',
 						value: 'textLoader',
 						description: 'Load plain text files',
 					},
 				],
 			},
 			{
-				displayName: 'Binary Data Key',
+				displayName: 'Binary data key',
 				name: 'binaryDataKey',
 				type: 'string',
 				default: 'data',
@@ -115,7 +115,7 @@ export class DocumentBinaryInputLoader implements INodeType {
 			},
 			// PDF Only Fields
 			{
-				displayName: 'Split Pages',
+				displayName: 'Split pages',
 				name: 'splitPages',
 				type: 'boolean',
 				default: true,
@@ -167,7 +167,7 @@ export class DocumentBinaryInputLoader implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

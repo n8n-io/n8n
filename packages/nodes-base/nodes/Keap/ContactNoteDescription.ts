@@ -31,7 +31,7 @@ export const contactNoteOperations: INodeProperties[] = [
 				action: 'Get a contact note',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many notes',
 				action: 'Get many contact notes',
@@ -52,7 +52,7 @@ export const contactNoteFields: INodeProperties[] = [
 	/*                                 contactNote:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Name or ID',
+		displayName: 'User name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -81,10 +81,10 @@ export const contactNoteFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -175,7 +175,7 @@ export const contactNoteFields: INodeProperties[] = [
 	/*                                 contactNote:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -209,7 +209,7 @@ export const contactNoteFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -228,7 +228,7 @@ export const contactNoteFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'User Name or ID',
+				displayName: 'User name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -257,10 +257,10 @@ export const contactNoteFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -323,7 +323,7 @@ export const contactNoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User Name or ID',
+				displayName: 'User name or ID',
 				name: 'userId',
 				type: 'options',
 				typeOptions: {

@@ -25,7 +25,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. SELECT id, name FROM product WHERE id < 40',
 		required: true,
 		description:
-			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
+			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query parameters' set in options below.",
 		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',

@@ -52,7 +52,7 @@ export const roomFields: INodeProperties[] = [
 	/*                                room:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name',
+		displayName: 'Room name',
 		name: 'roomName',
 		type: 'string',
 		displayOptions: {
@@ -77,11 +77,11 @@ export const roomFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Private Chat',
+				name: 'Private chat',
 				value: 'private_chat',
 			},
 			{
-				name: 'Public Chat',
+				name: 'Public chat',
 				value: 'public_chat',
 				description: 'Open and public chat',
 			},
@@ -91,7 +91,7 @@ export const roomFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Room Alias',
+		displayName: 'Room alias',
 		name: 'roomAlias',
 		type: 'string',
 		displayOptions: {
@@ -108,7 +108,7 @@ export const roomFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Room ID or Alias',
+		displayName: 'Room ID or alias',
 		name: 'roomIdOrAlias',
 		type: 'string',
 		displayOptions: {
@@ -125,7 +125,7 @@ export const roomFields: INodeProperties[] = [
 	/*                                  room:leave                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room name or ID',
 		name: 'roomId',
 		type: 'options',
 		description:
@@ -147,7 +147,7 @@ export const roomFields: INodeProperties[] = [
 	/*                                 room:invite                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room name or ID',
 		name: 'roomId',
 		type: 'options',
 		description:
@@ -185,7 +185,7 @@ export const roomFields: INodeProperties[] = [
 	/*                                  room:kick                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room name or ID',
 		name: 'roomId',
 		type: 'options',
 		description:

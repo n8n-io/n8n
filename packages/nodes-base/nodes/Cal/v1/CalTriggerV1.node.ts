@@ -47,22 +47,22 @@ function getDescription(baseDescription: INodeTypeBaseDescription): INodeTypeDes
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Booking Cancelled',
+						name: 'Booking cancelled',
 						value: 'BOOKING_CANCELLED',
 						description: 'Receive notifications when a Cal event is canceled',
 					},
 					{
-						name: 'Booking Created',
+						name: 'Booking created',
 						value: 'BOOKING_CREATED',
 						description: 'Receive notifications when a new Cal event is created',
 					},
 					{
-						name: 'Booking Rescheduled',
+						name: 'Booking rescheduled',
 						value: 'BOOKING_RESCHEDULED',
 						description: 'Receive notifications when a Cal event is rescheduled',
 					},
 					{
-						name: 'Meeting Ended',
+						name: 'Meeting ended',
 						value: 'MEETING_ENDED',
 						description: 'Receive notifications when a Cal event or meeting has ended',
 					},
@@ -71,7 +71,7 @@ function getDescription(baseDescription: INodeTypeBaseDescription): INodeTypeDes
 				required: true,
 			},
 			{
-				displayName: 'API Version',
+				displayName: 'API version',
 				name: 'version',
 				type: 'options',
 				displayOptions: {
@@ -86,14 +86,14 @@ function getDescription(baseDescription: INodeTypeBaseDescription): INodeTypeDes
 						value: 1,
 					},
 					{
-						name: 'v2.0 Onwards',
+						name: 'v2.0 onwards',
 						value: 2,
 					},
 				],
 				default: 1,
 			},
 			{
-				displayName: 'API Version',
+				displayName: 'API version',
 				name: 'version',
 				type: 'options',
 				displayOptions: {
@@ -108,7 +108,7 @@ function getDescription(baseDescription: INodeTypeBaseDescription): INodeTypeDes
 						value: 1,
 					},
 					{
-						name: 'v2.0 Onwards',
+						name: 'v2.0 onwards',
 						value: 2,
 					},
 				],
@@ -118,7 +118,7 @@ function getDescription(baseDescription: INodeTypeBaseDescription): INodeTypeDes
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
@@ -129,7 +129,7 @@ function getDescription(baseDescription: INodeTypeBaseDescription): INodeTypeDes
 						default: '',
 					},
 					{
-						displayName: 'EventType Name or ID',
+						displayName: 'EventType name or ID',
 						name: 'eventTypeId',
 						type: 'options',
 						typeOptions: {
@@ -140,7 +140,7 @@ function getDescription(baseDescription: INodeTypeBaseDescription): INodeTypeDes
 						default: '',
 					},
 					{
-						displayName: 'Payload Template',
+						displayName: 'Payload template',
 						name: 'payloadTemplate',
 						type: 'string',
 						description: 'Template to customize the webhook payload',

@@ -21,7 +21,7 @@ import { driveRLC, folderRLC, updateCommonOptions } from '../common.descriptions
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'inputDataFieldName',
 		type: 'string',
 		placeholder: '“e.g. data',
@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 			'Find the name of input field containing the binary data to update the file in the Input panel on the left, in the Binary tab',
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -58,7 +58,7 @@ const properties: INodeProperties[] = [
 		options: [
 			...updateCommonOptions,
 			{
-				displayName: 'Simplify Output',
+				displayName: 'Simplify output',
 				name: 'simplifyOutput',
 				type: 'boolean',
 				default: true,

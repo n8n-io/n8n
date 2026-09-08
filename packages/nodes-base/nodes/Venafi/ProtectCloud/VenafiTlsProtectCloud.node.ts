@@ -56,7 +56,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						value: 'certificate',
 					},
 					{
-						name: 'Certificate Request',
+						name: 'Certificate request',
 						value: 'certificateRequest',
 					},
 				],

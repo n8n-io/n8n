@@ -31,7 +31,7 @@ export const paymentOperations: INodeProperties[] = [
 				action: 'Get a payment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many payments',
 				action: 'Get many payments',
@@ -46,7 +46,7 @@ export const paymentFields: INodeProperties[] = [
 	/*                                 payment:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice Name or ID',
+		displayName: 'Invoice name or ID',
 		name: 'invoice',
 		type: 'options',
 		description:
@@ -78,10 +78,10 @@ export const paymentFields: INodeProperties[] = [
 		default: 0,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -92,7 +92,7 @@ export const paymentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Payment Type',
+				displayName: 'Payment type',
 				name: 'paymentType',
 				type: 'options',
 				options: [
@@ -109,11 +109,11 @@ export const paymentFields: INodeProperties[] = [
 						value: 8,
 					},
 					{
-						name: 'Apply Credit',
+						name: 'Apply credit',
 						value: 1,
 					},
 					{
-						name: 'Bank Transfer',
+						name: 'Bank transfer',
 						value: 2,
 					},
 					{
@@ -133,7 +133,7 @@ export const paymentFields: INodeProperties[] = [
 						value: 16,
 					},
 					{
-						name: 'Credit Card Other',
+						name: 'Credit card other',
 						value: 13,
 					},
 					{
@@ -141,11 +141,11 @@ export const paymentFields: INodeProperties[] = [
 						value: 4,
 					},
 					{
-						name: 'Diners Card',
+						name: 'Diners card',
 						value: 10,
 					},
 					{
-						name: 'Discover Card',
+						name: 'Discover card',
 						value: 9,
 					},
 					{
@@ -181,7 +181,7 @@ export const paymentFields: INodeProperties[] = [
 						value: 7,
 					},
 					{
-						name: 'Money Order',
+						name: 'Money order',
 						value: 27,
 					},
 					{
@@ -221,20 +221,20 @@ export const paymentFields: INodeProperties[] = [
 						value: 26,
 					},
 					{
-						name: 'Visa Card',
+						name: 'Visa card',
 						value: 6,
 					},
 				],
 				default: 1,
 			},
 			{
-				displayName: 'Transfer Reference',
+				displayName: 'Transfer reference',
 				name: 'transferReference',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Private Notes',
+				displayName: 'Private notes',
 				name: 'privateNotes',
 				type: 'string',
 				default: '',
@@ -242,10 +242,10 @@ export const paymentFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -256,12 +256,12 @@ export const paymentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Payment Type',
+				displayName: 'Payment type',
 				name: 'paymentType',
 				type: 'options',
 				options: [
 					{
-						name: 'Bank Transfer',
+						name: 'Bank transfer',
 						value: 1,
 					},
 					{
@@ -301,7 +301,7 @@ export const paymentFields: INodeProperties[] = [
 						value: 11,
 					},
 					{
-						name: 'Credit Card Other',
+						name: 'Credit card other',
 						value: 12,
 					},
 					{
@@ -373,7 +373,7 @@ export const paymentFields: INodeProperties[] = [
 						value: 33,
 					},
 					{
-						name: 'Mollie Bank Transfer',
+						name: 'Mollie bank transfer',
 						value: 34,
 					},
 					{
@@ -389,7 +389,7 @@ export const paymentFields: INodeProperties[] = [
 						value: 37,
 					},
 					{
-						name: 'Hosted Page',
+						name: 'Hosted page',
 						value: 38,
 					},
 					{
@@ -405,7 +405,7 @@ export const paymentFields: INodeProperties[] = [
 						value: 41,
 					},
 					{
-						name: 'Direct Debit',
+						name: 'Direct debit',
 						value: 42,
 					},
 					{
@@ -417,7 +417,7 @@ export const paymentFields: INodeProperties[] = [
 						value: 44,
 					},
 					{
-						name: 'Instant Bank Pay',
+						name: 'Instant bank pay',
 						value: 45,
 					},
 					{
@@ -437,7 +437,7 @@ export const paymentFields: INodeProperties[] = [
 						value: 49,
 					},
 					{
-						name: 'Stripe Bank Transfer',
+						name: 'Stripe bank transfer',
 						value: 50,
 					},
 					{
@@ -445,20 +445,20 @@ export const paymentFields: INodeProperties[] = [
 						value: 51,
 					},
 					{
-						name: 'Pay Later',
+						name: 'Pay later',
 						value: 52,
 					},
 				],
 				default: 1,
 			},
 			{
-				displayName: 'Transfer Reference',
+				displayName: 'Transfer reference',
 				name: 'transferReference',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Private Notes',
+				displayName: 'Private notes',
 				name: 'privateNotes',
 				type: 'string',
 				default: '',
@@ -502,7 +502,7 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -529,7 +529,7 @@ export const paymentFields: INodeProperties[] = [
 	/*                                  payment:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -563,7 +563,7 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -605,19 +605,19 @@ export const paymentFields: INodeProperties[] = [
 				default: 'active',
 			},
 			{
-				displayName: 'Created At',
+				displayName: 'Created at',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Updated At',
+				displayName: 'Updated at',
 				name: 'updatedAt',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Is Deleted',
+				displayName: 'Is deleted',
 				name: 'isDeleted',
 				type: 'boolean',
 				default: false,

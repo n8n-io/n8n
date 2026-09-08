@@ -17,7 +17,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Generate an Image',
+				name: 'Generate an image',
 				value: 'generate',
 				action: 'Generate an image',
 				description: 'Create an image from a text prompt',

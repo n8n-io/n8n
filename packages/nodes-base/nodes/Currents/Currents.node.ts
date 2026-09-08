@@ -73,7 +73,7 @@ export class Currents implements INodeType {
 						description: 'Generate unique test signatures',
 					},
 					{
-						name: 'Spec File',
+						name: 'Spec file',
 						value: 'specFile',
 						description: 'Spec file performance metrics',
 					},
@@ -83,7 +83,7 @@ export class Currents implements INodeType {
 						description: 'Individual test performance metrics',
 					},
 					{
-						name: 'Test Result',
+						name: 'Test result',
 						value: 'testResult',
 						description: 'Historical test execution results',
 					},

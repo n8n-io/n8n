@@ -25,7 +25,7 @@ export const searchConfigurationOperations: INodeProperties[] = [
 				action: 'Get a search configuration',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many search configurations',
 				action: 'Get many search configurations',
@@ -40,7 +40,7 @@ export const searchConfigurationFields: INodeProperties[] = [
 	//       searchConfiguration: delete
 	// ----------------------------------------
 	{
-		displayName: 'Search Configuration ID',
+		displayName: 'Search configuration ID',
 		name: 'searchConfigurationId',
 		description: 'ID of the search configuration to delete',
 		type: 'string',
@@ -58,7 +58,7 @@ export const searchConfigurationFields: INodeProperties[] = [
 	//         searchConfiguration: get
 	// ----------------------------------------
 	{
-		displayName: 'Search Configuration ID',
+		displayName: 'Search configuration ID',
 		name: 'searchConfigurationId',
 		description: 'ID of the search configuration to retrieve',
 		type: 'string',
@@ -76,7 +76,7 @@ export const searchConfigurationFields: INodeProperties[] = [
 	//       searchConfiguration: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -119,7 +119,7 @@ export const searchConfigurationFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Add Orphan Field',
+				displayName: 'Add orphan field',
 				name: 'add_orphan_field',
 				description:
 					'Whether to include a boolean value for each saved search to show whether the search is orphaned, meaning that it has no valid owner',
@@ -127,7 +127,7 @@ export const searchConfigurationFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'List Default Actions',
+				displayName: 'List default actions',
 				name: 'listDefaultActionArgs',
 				type: 'boolean',
 				default: false,

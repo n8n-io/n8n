@@ -32,7 +32,7 @@ export const profileFields: INodeProperties[] = [
 		description: 'Details of my account to retrieve',
 		options: [
 			{
-				name: 'Blocked Users',
+				name: 'Blocked users',
 				value: 'blockedUsers',
 				description: 'Return the blocked users of the logged-in user',
 			},
@@ -75,7 +75,7 @@ export const profileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

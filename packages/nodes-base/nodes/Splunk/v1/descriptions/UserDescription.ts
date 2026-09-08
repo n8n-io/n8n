@@ -31,7 +31,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many users',
 				action: 'Get many users',
@@ -66,7 +66,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Role Names or IDs',
+		displayName: 'Role names or IDs',
 		name: 'roles',
 		type: 'multiOptions',
 		description:
@@ -98,10 +98,10 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -118,7 +118,7 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'realname',
 				type: 'string',
 				default: '',
@@ -167,7 +167,7 @@ export const userFields: INodeProperties[] = [
 	//               user: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -215,10 +215,10 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -235,7 +235,7 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'realname',
 				type: 'string',
 				default: '',
@@ -249,7 +249,7 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Role Names or IDs',
+				displayName: 'Role names or IDs',
 				name: 'roles',
 				type: 'multiOptions',
 				description:

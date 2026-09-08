@@ -33,7 +33,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get data of a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many tasks',
 				action: 'Get data of all tasks',
@@ -54,7 +54,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                task:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -88,7 +88,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -98,7 +98,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
@@ -115,7 +115,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'The page number to use in pagination',
 			},
 			{
-				displayName: 'Updated Since',
+				displayName: 'Updated since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
@@ -178,10 +178,10 @@ export const taskFields: INodeProperties[] = [
 		description: 'The name of the task',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -191,7 +191,7 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Billable By Default',
+				displayName: 'Billable by default',
 				name: 'billable_by_default',
 				type: 'boolean',
 				default: true,
@@ -199,7 +199,7 @@ export const taskFields: INodeProperties[] = [
 					'Whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
-				displayName: 'Default Hourly Rate',
+				displayName: 'Default hourly rate',
 				name: 'default_hourly_rate',
 				type: 'number',
 				default: 0,
@@ -207,14 +207,14 @@ export const taskFields: INodeProperties[] = [
 					'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
 			},
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
 				description: 'Whether this task is active or archived. Defaults to true.',
 			},
 			{
-				displayName: 'Is Default',
+				displayName: 'Is default',
 				name: 'is_default',
 				type: 'boolean',
 				default: false,
@@ -242,7 +242,7 @@ export const taskFields: INodeProperties[] = [
 		description: 'The ID of the task you want to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Update Field',
@@ -255,7 +255,7 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Billable By Default',
+				displayName: 'Billable by default',
 				name: 'billable_by_default',
 				type: 'boolean',
 				default: false,
@@ -263,7 +263,7 @@ export const taskFields: INodeProperties[] = [
 					'Whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
-				displayName: 'Default Hourly Rate',
+				displayName: 'Default hourly rate',
 				name: 'default_hourly_rate',
 				type: 'number',
 				default: 0,
@@ -271,14 +271,14 @@ export const taskFields: INodeProperties[] = [
 					'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
 			},
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
 				description: 'Whether this task is active or archived. Defaults to true.',
 			},
 			{
-				displayName: 'Is Default',
+				displayName: 'Is default',
 				name: 'is_default',
 				type: 'boolean',
 				default: false,

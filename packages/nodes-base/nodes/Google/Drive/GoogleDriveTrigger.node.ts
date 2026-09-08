@@ -52,7 +52,7 @@ export class GoogleDriveTrigger implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				displayName: 'Credential Type',
+				displayName: 'Credential type',
 				name: 'authentication',
 				type: 'options',
 				options: [
@@ -62,25 +62,25 @@ export class GoogleDriveTrigger implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 				],
 				default: 'oAuth2',
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'triggerOn',
 				type: 'options',
 				required: true,
 				default: '',
 				options: [
 					{
-						name: 'Changes to a Specific File',
+						name: 'Changes to a specific file',
 						value: 'specificFile',
 					},
 					{
-						name: 'Changes Involving a Specific Folder',
+						name: 'Changes involving a specific folder',
 						value: 'specificFolder',
 					},
 					// {
@@ -149,7 +149,7 @@ export class GoogleDriveTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Watch For',
+				displayName: 'Watch for',
 				name: 'event',
 				type: 'options',
 				displayOptions: {
@@ -161,7 +161,7 @@ export class GoogleDriveTrigger implements INodeType {
 				default: 'fileUpdated',
 				options: [
 					{
-						name: 'File Updated',
+						name: 'File updated',
 						value: 'fileUpdated',
 					},
 				],
@@ -227,7 +227,7 @@ export class GoogleDriveTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Watch For',
+				displayName: 'Watch for',
 				name: 'event',
 				type: 'options',
 				displayOptions: {
@@ -239,27 +239,27 @@ export class GoogleDriveTrigger implements INodeType {
 				default: '',
 				options: [
 					{
-						name: 'File Created',
+						name: 'File created',
 						value: 'fileCreated',
 						description: 'When a file is created in the watched folder',
 					},
 					{
-						name: 'File Updated',
+						name: 'File updated',
 						value: 'fileUpdated',
 						description: 'When a file is updated in the watched folder',
 					},
 					{
-						name: 'Folder Created',
+						name: 'Folder created',
 						value: 'folderCreated',
 						description: 'When a folder is created in the watched folder',
 					},
 					{
-						name: 'Folder Updated',
+						name: 'Folder updated',
 						value: 'folderUpdated',
 						description: 'When a folder is updated in the watched folder',
 					},
 					{
-						name: 'Watch Folder Updated',
+						name: 'Watch folder updated',
 						value: 'watchFolderUpdated',
 						description: 'When the watched folder itself is modified',
 					},
@@ -281,7 +281,7 @@ export class GoogleDriveTrigger implements INodeType {
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Drive To Watch',
+				displayName: 'Drive to watch',
 				name: 'driveToWatch',
 				type: 'options',
 				displayOptions: {
@@ -298,7 +298,7 @@ export class GoogleDriveTrigger implements INodeType {
 					'The drive to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Watch For',
+				displayName: 'Watch for',
 				name: 'event',
 				type: 'options',
 				displayOptions: {
@@ -310,22 +310,22 @@ export class GoogleDriveTrigger implements INodeType {
 				default: 'fileCreated',
 				options: [
 					{
-						name: 'File Created',
+						name: 'File created',
 						value: 'fileCreated',
 						description: 'When a file is created in the watched drive',
 					},
 					{
-						name: 'File Updated',
+						name: 'File updated',
 						value: 'fileUpdated',
 						description: 'When a file is updated in the watched drive',
 					},
 					{
-						name: 'Folder Created',
+						name: 'Folder created',
 						value: 'folderCreated',
 						description: 'When a folder is created in the watched drive',
 					},
 					{
-						name: 'Folder Updated',
+						name: 'Folder updated',
 						value: 'folderUpdated',
 						description: 'When a folder is updated in the watched drive',
 					},
@@ -348,7 +348,7 @@ export class GoogleDriveTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'File Type',
+						displayName: 'File type',
 						name: 'fileType',
 						type: 'options',
 						options: [
@@ -377,7 +377,7 @@ export class GoogleDriveTrigger implements INodeType {
 								value: 'application/vnd.google-apps.spreadsheet',
 							},
 							{
-								name: 'Photos and Images',
+								name: 'Photos and images',
 								value: 'application/vnd.google-apps.photo',
 							},
 							{

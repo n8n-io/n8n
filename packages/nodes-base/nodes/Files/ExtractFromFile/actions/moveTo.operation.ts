@@ -23,7 +23,7 @@ import { parseIcsCalendar } from './parseIcsCalendar';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -32,7 +32,7 @@ export const properties: INodeProperties[] = [
 		hint: 'The name of the input field containing the file data to be processed',
 	},
 	{
-		displayName: 'Destination Output Field',
+		displayName: 'Destination output field',
 		name: 'destinationKey',
 		type: 'string',
 		default: 'data',
@@ -48,7 +48,7 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'File Encoding',
+				displayName: 'File encoding',
 				name: 'encoding',
 				type: 'options',
 				options: encodeDecodeOptions,
@@ -69,7 +69,7 @@ export const properties: INodeProperties[] = [
 					'Whether to strip the BOM (Byte Order Mark) from the file, this could help in an environment where the presence of the BOM is causing issues or inconsistencies',
 			},
 			{
-				displayName: 'Keep Source',
+				displayName: 'Keep source',
 				name: 'keepSource',
 				type: 'options',
 				default: 'json',

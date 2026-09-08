@@ -25,10 +25,10 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -38,11 +38,11 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Wait Until',
+				displayName: 'Wait until',
 				name: 'waitUntil',
 				type: 'options',
 				default: 'load',
-				description: "Wait until the specified loading event occurs. Defaults to 'Fully Loaded'.",
+				description: "Wait until the specified loading event occurs. Defaults to 'Fully loaded'.",
 				options: [
 					{
 						name: 'Complete',
@@ -50,17 +50,17 @@ export const description: INodeProperties[] = [
 						description: "Wait until the page and all it's iframes have loaded it's dom and assets",
 					},
 					{
-						name: 'DOM Only Loaded',
+						name: 'DOM only loaded',
 						value: 'domContentLoaded',
 						description: 'Wait until the dom has loaded',
 					},
 					{
-						name: 'Fully Loaded',
+						name: 'Fully loaded',
 						value: 'load',
 						description: "Wait until the page dom and it's assets have loaded",
 					},
 					{
-						name: 'No Wait',
+						name: 'No wait',
 						value: 'noWait',
 						description: 'Do not wait for any loading event and will return immediately',
 					},

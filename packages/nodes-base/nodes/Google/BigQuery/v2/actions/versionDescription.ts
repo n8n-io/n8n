@@ -49,7 +49,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'oAuth2',
 				},
 				{
-					name: 'Service Account',
+					name: 'Service account',
 					value: 'serviceAccount',
 				},
 			],

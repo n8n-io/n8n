@@ -31,7 +31,7 @@ export const fileOperations: INodeProperties[] = [
 				action: 'Download a file',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many files',
 				action: 'Get many files',
@@ -52,7 +52,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                file:copy                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Source Path',
+		displayName: 'Source path',
 		name: 'sourcePath',
 		type: 'string',
 		required: true,
@@ -68,7 +68,7 @@ export const fileFields: INodeProperties[] = [
 			'The name of the source bucket should start with (/) and key name of the source object, separated by a slash (/)',
 	},
 	{
-		displayName: 'Destination Path',
+		displayName: 'Destination path',
 		name: 'destinationPath',
 		type: 'string',
 		required: true,
@@ -84,10 +84,10 @@ export const fileFields: INodeProperties[] = [
 			'The name of the destination bucket and key name of the destination object, separated by a slash (/)',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['file'],
@@ -102,19 +102,19 @@ export const fileFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Authenticated Read',
+						name: 'Authenticated read',
 						value: 'authenticatedRead',
 					},
 					{
-						name: 'AWS Exec Read',
+						name: 'AWS exec read',
 						value: 'awsExecRead',
 					},
 					{
-						name: 'Bucket Owner Full Control',
+						name: 'Bucket owner full control',
 						value: 'bucketOwnerFullControl',
 					},
 					{
-						name: 'Bucket Owner Read',
+						name: 'Bucket owner read',
 						value: 'bucketOwnerRead',
 					},
 					{
@@ -122,11 +122,11 @@ export const fileFields: INodeProperties[] = [
 						value: 'private',
 					},
 					{
-						name: 'Public Read',
+						name: 'Public read',
 						value: 'publicRead',
 					},
 					{
-						name: 'Public Read Write',
+						name: 'Public read write',
 						value: 'publicReadWrite',
 					},
 				],
@@ -134,7 +134,7 @@ export const fileFields: INodeProperties[] = [
 				description: 'The canned ACL to apply to the object',
 			},
 			{
-				displayName: 'Grant Full Control',
+				displayName: 'Grant full control',
 				name: 'grantFullControl',
 				type: 'boolean',
 				default: false,
@@ -142,35 +142,35 @@ export const fileFields: INodeProperties[] = [
 					'Whether to give the grantee READ, READ_ACP, and WRITE_ACP permissions on the object',
 			},
 			{
-				displayName: 'Grant Read',
+				displayName: 'Grant read',
 				name: 'grantRead',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to allow grantee to read the object data and its metadata',
 			},
 			{
-				displayName: 'Grant Read ACP',
+				displayName: 'Grant read ACP',
 				name: 'grantReadAcp',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to allow grantee to read the object ACL',
 			},
 			{
-				displayName: 'Grant Write ACP',
+				displayName: 'Grant write ACP',
 				name: 'grantWriteAcp',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to allow grantee to write the ACL for the applicable object',
 			},
 			{
-				displayName: 'Lock Legal Hold',
+				displayName: 'Lock legal hold',
 				name: 'lockLegalHold',
 				type: 'boolean',
 				default: false,
 				description: 'Whether a legal hold will be applied to this object',
 			},
 			{
-				displayName: 'Lock Mode',
+				displayName: 'Lock mode',
 				name: 'lockMode',
 				type: 'options',
 				options: [
@@ -187,14 +187,14 @@ export const fileFields: INodeProperties[] = [
 				description: 'The Object Lock mode that you want to apply to this object',
 			},
 			{
-				displayName: 'Lock Retain Until Date',
+				displayName: 'Lock retain until date',
 				name: 'lockRetainUntilDate',
 				type: 'dateTime',
 				default: '',
 				description: "The date and time when you want this object's Object Lock to expire",
 			},
 			{
-				displayName: 'Metadata Directive',
+				displayName: 'Metadata directive',
 				name: 'metadataDirective',
 				type: 'options',
 				options: [
@@ -212,7 +212,7 @@ export const fileFields: INodeProperties[] = [
 					'Specifies whether the metadata is copied from the source object or replaced with metadata provided in the request',
 			},
 			{
-				displayName: 'Requester Pays',
+				displayName: 'Requester pays',
 				name: 'requesterPays',
 				type: 'boolean',
 				default: false,
@@ -220,7 +220,7 @@ export const fileFields: INodeProperties[] = [
 					'Whether the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
 			},
 			{
-				displayName: 'Server Side Encryption',
+				displayName: 'Server side encryption',
 				name: 'serverSideEncryption',
 				type: 'options',
 				options: [
@@ -238,21 +238,21 @@ export const fileFields: INodeProperties[] = [
 					'The server-side encryption algorithm used when storing this object in Amazon S3',
 			},
 			{
-				displayName: 'Server Side Encryption Context',
+				displayName: 'Server side encryption context',
 				name: 'serverSideEncryptionContext',
 				type: 'string',
 				default: '',
 				description: 'Specifies the AWS KMS Encryption Context to use for object encryption',
 			},
 			{
-				displayName: 'Server Side Encryption AWS KMS Key ID',
+				displayName: 'Server side encryption AWS KMS key ID',
 				name: 'encryptionAwsKmsKeyId',
 				type: 'string',
 				default: '',
 				description: 'If x-amz-server-side-encryption is present and has the value of aws:kms',
 			},
 			{
-				displayName: 'Server Side Encryption Customer Algorithm',
+				displayName: 'Server side encryption customer algorithm',
 				name: 'serversideEncryptionCustomerAlgorithm',
 				type: 'string',
 				default: '',
@@ -260,7 +260,7 @@ export const fileFields: INodeProperties[] = [
 					'Specifies the algorithm to use to when encrypting the object (for example, AES256)',
 			},
 			{
-				displayName: 'Server Side Encryption Customer Key',
+				displayName: 'Server side encryption customer key',
 				name: 'serversideEncryptionCustomerKey',
 				type: 'string',
 				default: '',
@@ -268,19 +268,19 @@ export const fileFields: INodeProperties[] = [
 					'Specifies the customer-provided encryption key for Amazon S3 to use in encrypting data',
 			},
 			{
-				displayName: 'Server Side Encryption Customer Key MD5',
+				displayName: 'Server side encryption customer key MD5',
 				name: 'serversideEncryptionCustomerKeyMD5',
 				type: 'string',
 				default: '',
 				description: 'Specifies the 128-bit MD5 digest of the encryption key according to RFC 1321',
 			},
 			{
-				displayName: 'Storage Class',
+				displayName: 'Storage class',
 				name: 'storageClass',
 				type: 'options',
 				options: [
 					{
-						name: 'Deep Archive',
+						name: 'Deep archive',
 						value: 'deepArchive',
 					},
 					{
@@ -308,7 +308,7 @@ export const fileFields: INodeProperties[] = [
 				description: 'Amazon S3 storage classes',
 			},
 			{
-				displayName: 'Tagging Directive',
+				displayName: 'Tagging directive',
 				name: 'taggingDirective',
 				type: 'options',
 				options: [
@@ -331,7 +331,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                file:upload                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Bucket Name',
+		displayName: 'Bucket name',
 		name: 'bucketName',
 		type: 'string',
 		required: true,
@@ -344,7 +344,7 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		default: '',
@@ -359,7 +359,7 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		default: '',
@@ -373,7 +373,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'If not set the binary data filename will be used',
 	},
 	{
-		displayName: 'Binary File',
+		displayName: 'Binary file',
 		name: 'binaryData',
 		type: 'boolean',
 		default: true,
@@ -386,7 +386,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
-		displayName: 'File Content',
+		displayName: 'File content',
 		name: 'fileContent',
 		type: 'string',
 		default: '',
@@ -401,7 +401,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The text content of the file to upload',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -417,10 +417,10 @@ export const fileFields: INodeProperties[] = [
 		hint: 'The name of the input binary field containing the file to be uploaded',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['file'],
@@ -435,19 +435,19 @@ export const fileFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Authenticated Read',
+						name: 'Authenticated read',
 						value: 'authenticatedRead',
 					},
 					{
-						name: 'AWS Exec Read',
+						name: 'AWS exec read',
 						value: 'awsExecRead',
 					},
 					{
-						name: 'Bucket Owner Full Control',
+						name: 'Bucket owner full control',
 						value: 'bucketOwnerFullControl',
 					},
 					{
-						name: 'Bucket Owner Read',
+						name: 'Bucket owner read',
 						value: 'bucketOwnerRead',
 					},
 					{
@@ -455,11 +455,11 @@ export const fileFields: INodeProperties[] = [
 						value: 'private',
 					},
 					{
-						name: 'Public Read',
+						name: 'Public read',
 						value: 'publicRead',
 					},
 					{
-						name: 'Public Read Write',
+						name: 'Public read write',
 						value: 'publicReadWrite',
 					},
 				],
@@ -467,7 +467,7 @@ export const fileFields: INodeProperties[] = [
 				description: 'The canned ACL to apply to the object',
 			},
 			{
-				displayName: 'Grant Full Control',
+				displayName: 'Grant full control',
 				name: 'grantFullControl',
 				type: 'boolean',
 				default: false,
@@ -475,35 +475,35 @@ export const fileFields: INodeProperties[] = [
 					'Whether to give the grantee READ, READ_ACP, and WRITE_ACP permissions on the object',
 			},
 			{
-				displayName: 'Grant Read',
+				displayName: 'Grant read',
 				name: 'grantRead',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to allow grantee to read the object data and its metadata',
 			},
 			{
-				displayName: 'Grant Read ACP',
+				displayName: 'Grant read ACP',
 				name: 'grantReadAcp',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to allow grantee to read the object ACL',
 			},
 			{
-				displayName: 'Grant Write ACP',
+				displayName: 'Grant write ACP',
 				name: 'grantWriteAcp',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to allow grantee to write the ACL for the applicable object',
 			},
 			{
-				displayName: 'Lock Legal Hold',
+				displayName: 'Lock legal hold',
 				name: 'lockLegalHold',
 				type: 'boolean',
 				default: false,
 				description: 'Whether a legal hold will be applied to this object',
 			},
 			{
-				displayName: 'Lock Mode',
+				displayName: 'Lock mode',
 				name: 'lockMode',
 				type: 'options',
 				options: [
@@ -520,21 +520,21 @@ export const fileFields: INodeProperties[] = [
 				description: 'The Object Lock mode that you want to apply to this object',
 			},
 			{
-				displayName: 'Lock Retain Until Date',
+				displayName: 'Lock retain until date',
 				name: 'lockRetainUntilDate',
 				type: 'dateTime',
 				default: '',
 				description: "The date and time when you want this object's Object Lock to expire",
 			},
 			{
-				displayName: 'Parent Folder Key',
+				displayName: 'Parent folder key',
 				name: 'parentFolderKey',
 				type: 'string',
 				default: '',
 				description: 'Parent folder you want to create the file in',
 			},
 			{
-				displayName: 'Requester Pays',
+				displayName: 'Requester pays',
 				name: 'requesterPays',
 				type: 'boolean',
 				default: false,
@@ -542,7 +542,7 @@ export const fileFields: INodeProperties[] = [
 					'Whether the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
 			},
 			{
-				displayName: 'Server Side Encryption',
+				displayName: 'Server side encryption',
 				name: 'serverSideEncryption',
 				type: 'options',
 				options: [
@@ -560,21 +560,21 @@ export const fileFields: INodeProperties[] = [
 					'The server-side encryption algorithm used when storing this object in Amazon S3',
 			},
 			{
-				displayName: 'Server Side Encryption Context',
+				displayName: 'Server side encryption context',
 				name: 'serverSideEncryptionContext',
 				type: 'string',
 				default: '',
 				description: 'Specifies the AWS KMS Encryption Context to use for object encryption',
 			},
 			{
-				displayName: 'Server Side Encryption AWS KMS Key ID',
+				displayName: 'Server side encryption AWS KMS key ID',
 				name: 'encryptionAwsKmsKeyId',
 				type: 'string',
 				default: '',
 				description: 'If x-amz-server-side-encryption is present and has the value of aws:kms',
 			},
 			{
-				displayName: 'Server Side Encryption Customer Algorithm',
+				displayName: 'Server side encryption customer algorithm',
 				name: 'serversideEncryptionCustomerAlgorithm',
 				type: 'string',
 				default: '',
@@ -582,7 +582,7 @@ export const fileFields: INodeProperties[] = [
 					'Specifies the algorithm to use to when encrypting the object (for example, AES256)',
 			},
 			{
-				displayName: 'Server Side Encryption Customer Key',
+				displayName: 'Server side encryption customer key',
 				name: 'serversideEncryptionCustomerKey',
 				type: 'string',
 				default: '',
@@ -590,19 +590,19 @@ export const fileFields: INodeProperties[] = [
 					'Specifies the customer-provided encryption key for Amazon S3 to use in encrypting data',
 			},
 			{
-				displayName: 'Server Side Encryption Customer Key MD5',
+				displayName: 'Server side encryption customer key MD5',
 				name: 'serversideEncryptionCustomerKeyMD5',
 				type: 'string',
 				default: '',
 				description: 'Specifies the 128-bit MD5 digest of the encryption key according to RFC 1321',
 			},
 			{
-				displayName: 'Storage Class',
+				displayName: 'Storage class',
 				name: 'storageClass',
 				type: 'options',
 				options: [
 					{
-						name: 'Deep Archive',
+						name: 'Deep archive',
 						value: 'deepArchive',
 					},
 					{
@@ -634,7 +634,7 @@ export const fileFields: INodeProperties[] = [
 	{
 		displayName: 'Tags',
 		name: 'tagsUi',
-		placeholder: 'Add Tag',
+		placeholder: 'Add tag',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -672,7 +672,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                file:download                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Bucket Name',
+		displayName: 'Bucket name',
 		name: 'bucketName',
 		type: 'string',
 		required: true,
@@ -685,7 +685,7 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Key',
+		displayName: 'File key',
 		name: 'fileKey',
 		type: 'string',
 		required: true,
@@ -698,7 +698,7 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,
@@ -715,7 +715,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                file:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Bucket Name',
+		displayName: 'Bucket name',
 		name: 'bucketName',
 		type: 'string',
 		required: true,
@@ -728,7 +728,7 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Key',
+		displayName: 'File key',
 		name: 'fileKey',
 		type: 'string',
 		required: true,
@@ -744,7 +744,7 @@ export const fileFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -765,7 +765,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                 file:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Bucket Name',
+		displayName: 'Bucket name',
 		name: 'bucketName',
 		type: 'string',
 		required: true,
@@ -778,7 +778,7 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -812,7 +812,7 @@ export const fileFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -822,7 +822,7 @@ export const fileFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fetch Owner',
+				displayName: 'Fetch owner',
 				name: 'fetchOwner',
 				type: 'boolean',
 				default: false,
@@ -831,7 +831,7 @@ export const fileFields: INodeProperties[] = [
 					'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true',
 			},
 			{
-				displayName: 'Folder Key',
+				displayName: 'Folder key',
 				name: 'folderKey',
 				type: 'string',
 				default: '',

@@ -84,10 +84,10 @@ export class MicrosoftOneDrive implements INodeType {
 							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Files.ReadWrite.All) on the credential.',
 					},
 					{
-						name: 'Microsoft Entra Service Principal (App-Only)',
+						name: 'Microsoft Entra service principal (app-only)',
 						value: 'microsoftEntraServicePrincipalApi',
 						description:
-							'App-only access via a Microsoft Entra app registration. Choose which user or drive to act on under "Access As".',
+							'App-only access via a Microsoft Entra app registration. Choose which user or drive to act on under "Access as".',
 					},
 				],
 				default: 'microsoftOneDriveOAuth2Api',

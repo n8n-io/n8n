@@ -33,7 +33,7 @@ export const requesterOperations: INodeProperties[] = [
 				action: 'Get a requester',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many requesters',
 				action: 'Get many requesters',
@@ -54,7 +54,7 @@ export const requesterFields: INodeProperties[] = [
 	//            requester: create
 	// ----------------------------------------
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		required: true,
@@ -67,7 +67,7 @@ export const requesterFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Primary Email',
+		displayName: 'Primary email',
 		name: 'primaryEmail',
 		type: 'string',
 		default: '',
@@ -79,10 +79,10 @@ export const requesterFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -98,13 +98,13 @@ export const requesterFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Background Information',
+				displayName: 'Background information',
 				name: 'background_information',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Department Names or IDs',
+				displayName: 'Department names or IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
@@ -115,7 +115,7 @@ export const requesterFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
@@ -128,13 +128,13 @@ export const requesterFields: INodeProperties[] = [
 				options: LANGUAGES,
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location name or ID',
 				name: 'location_id',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
@@ -145,36 +145,36 @@ export const requesterFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Secondary Emails',
+				displayName: 'Secondary emails',
 				name: 'secondary_emails',
 				type: 'string',
 				default: '',
 				description: 'Comma-separated secondary emails associated with the requester',
 			},
 			{
-				displayName: 'Time Format',
+				displayName: 'Time format',
 				name: 'time_format',
 				type: 'options',
 				default: '12h',
 				options: [
 					{
-						name: '12-Hour Format',
+						name: '12-hour format',
 						value: '12h',
 					},
 					{
-						name: '24-Hour Format',
+						name: '24-hour format',
 						value: '24h',
 					},
 				],
 			},
 			{
-				displayName: 'Work Phone',
+				displayName: 'Work phone',
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',
@@ -222,7 +222,7 @@ export const requesterFields: INodeProperties[] = [
 	//            requester: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -255,7 +255,7 @@ export const requesterFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -265,7 +265,7 @@ export const requesterFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department name or ID',
 				name: 'department_id',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
@@ -276,13 +276,13 @@ export const requesterFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
@@ -295,13 +295,13 @@ export const requesterFields: INodeProperties[] = [
 				options: LANGUAGES,
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location name or ID',
 				name: 'location_id',
 				type: 'options',
 				description:
@@ -312,19 +312,19 @@ export const requesterFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Mobile Phone Number',
+				displayName: 'Mobile phone number',
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Primary Email',
+				displayName: 'Primary email',
 				name: 'primary_email',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Work Phone Number',
+				displayName: 'Work phone number',
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',
@@ -350,10 +350,10 @@ export const requesterFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -369,13 +369,13 @@ export const requesterFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Background Information',
+				displayName: 'Background information',
 				name: 'background_information',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Department Names or IDs',
+				displayName: 'Department names or IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
@@ -386,13 +386,13 @@ export const requesterFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
@@ -405,13 +405,13 @@ export const requesterFields: INodeProperties[] = [
 				options: LANGUAGES,
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location name or ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
@@ -422,42 +422,42 @@ export const requesterFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Primary Email',
+				displayName: 'Primary email',
 				name: 'primary_email',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Secondary Emails',
+				displayName: 'Secondary emails',
 				name: 'secondary_emails',
 				type: 'string',
 				default: '',
 				description: 'Comma-separated secondary emails associated with the requester',
 			},
 			{
-				displayName: 'Time Format',
+				displayName: 'Time format',
 				name: 'time_format',
 				type: 'options',
 				default: '12h',
 				options: [
 					{
-						name: '12-Hour Format',
+						name: '12-hour format',
 						value: '12h',
 					},
 					{
-						name: '24-Hour Format',
+						name: '24-hour format',
 						value: '24h',
 					},
 				],
 			},
 			{
-				displayName: 'Work Phone',
+				displayName: 'Work phone',
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',

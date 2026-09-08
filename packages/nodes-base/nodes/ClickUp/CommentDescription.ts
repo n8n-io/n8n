@@ -25,7 +25,7 @@ export const commentOperations: INodeProperties[] = [
 				action: 'Delete a comment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many comments',
 				action: 'Get many comments',
@@ -46,7 +46,7 @@ export const commentFields: INodeProperties[] = [
 	/*                                comment:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Comment On',
+		displayName: 'Comment on',
 		name: 'commentOn',
 		type: 'options',
 		options: [
@@ -85,7 +85,7 @@ export const commentFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Comment Text',
+		displayName: 'Comment text',
 		name: 'commentText',
 		type: 'string',
 		default: '',
@@ -97,10 +97,10 @@ export const commentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -116,7 +116,7 @@ export const commentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Notify All',
+				displayName: 'Notify all',
 				name: 'notifyAll',
 				type: 'boolean',
 				default: false,
@@ -147,7 +147,7 @@ export const commentFields: INodeProperties[] = [
 	/*                                comment:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Comments On',
+		displayName: 'Comments on',
 		name: 'commentsOn',
 		type: 'options',
 		options: [
@@ -220,10 +220,10 @@ export const commentFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -239,7 +239,7 @@ export const commentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Comment Text',
+				displayName: 'Comment text',
 				name: 'commentText',
 				type: 'string',
 				default: '',

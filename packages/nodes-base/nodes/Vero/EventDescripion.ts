@@ -57,7 +57,7 @@ export const eventFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Event Name',
+		displayName: 'Event name',
 		name: 'eventName',
 		type: 'string',
 		default: '',
@@ -71,7 +71,7 @@ export const eventFields: INodeProperties[] = [
 		description: 'The name of the event tracked',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -85,7 +85,7 @@ export const eventFields: INodeProperties[] = [
 	{
 		displayName: 'Data',
 		name: 'dataAttributesUi',
-		placeholder: 'Add Data',
+		placeholder: 'Add data',
 		description: 'Key value pairs that represent any properties you want to track with this event',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -125,7 +125,7 @@ export const eventFields: INodeProperties[] = [
 	{
 		displayName: 'Extra',
 		name: 'extraAttributesUi',
-		placeholder: 'Add Extra',
+		placeholder: 'Add extra',
 		description:
 			'Key value pairs that represent reserved, Vero-specific operators. Refer to the note on “deduplication” below.',
 		type: 'fixedCollection',

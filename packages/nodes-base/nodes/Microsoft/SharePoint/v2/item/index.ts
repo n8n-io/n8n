@@ -35,7 +35,7 @@ export const itemRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {

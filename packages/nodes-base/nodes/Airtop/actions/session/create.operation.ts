@@ -31,7 +31,7 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'Save Profile',
+		displayName: 'Save profile',
 		name: 'saveProfileOnTermination',
 		type: 'boolean',
 		default: false,
@@ -41,7 +41,7 @@ export const description: INodeProperties[] = [
 	},
 	/* Session Recording */
 	{
-		displayName: 'Record Session',
+		displayName: 'Record session',
 		name: 'record',
 		type: 'boolean',
 		default: false,
@@ -50,7 +50,7 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'Idle Timeout',
+		displayName: 'Idle timeout',
 		name: 'timeoutMinutes',
 		type: 'number',
 		default: 10,
@@ -87,12 +87,12 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'Proxy Configuration',
+		displayName: 'Proxy configuration',
 		name: 'proxyConfig',
 		type: 'collection',
 		default: { country: 'US', sticky: true },
 		description: 'The Airtop-provided configuration to use for the proxy',
-		placeholder: 'Add Attribute',
+		placeholder: 'Add attribute',
 		options: [
 			{
 				displayName: 'Country',
@@ -104,7 +104,7 @@ export const description: INodeProperties[] = [
 				options: countryOptions,
 			},
 			{
-				displayName: 'Keep Same IP',
+				displayName: 'Keep same IP',
 				name: 'sticky',
 				type: 'boolean',
 				default: true,
@@ -134,15 +134,15 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions,
 		options: [
 			{
-				displayName: 'Auto Solve Captchas',
+				displayName: 'Auto solve captchas',
 				name: 'solveCaptcha',
 				type: 'boolean',
 				default: false,

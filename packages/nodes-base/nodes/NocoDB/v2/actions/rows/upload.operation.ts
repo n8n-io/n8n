@@ -19,7 +19,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 	},
 	[
 		{
-			displayName: 'Row ID Value',
+			displayName: 'Row ID value',
 			name: 'id',
 			type: 'string',
 			default: '',
@@ -27,7 +27,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description: 'The value of the ID field',
 		},
 		{
-			displayName: 'Upload Mode',
+			displayName: 'Upload mode',
 			name: 'uploadMode',
 			type: 'options',
 			required: true,
@@ -37,7 +37,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					value: 'base64',
 				},
 				{
-					name: 'Url',
+					name: 'URL',
 					value: 'url',
 				},
 			],
@@ -45,7 +45,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description: 'Choose a way to perform the upload',
 		},
 		{
-			displayName: 'Upload Field Name or ID',
+			displayName: 'Upload field name or ID',
 			name: 'uploadFieldName',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -59,7 +59,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			},
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					typeOptions: {
@@ -79,7 +79,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 				'Name of the fields of type \'attachment\' that will be uploaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Upload Field Name or ID',
+			displayName: 'Upload field name or ID',
 			name: 'uploadFieldName',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -93,7 +93,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			},
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					typeOptions: {
@@ -127,7 +127,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description: 'Name of uploaded file',
 		},
 		{
-			displayName: 'Content Type',
+			displayName: 'Content type',
 			name: 'contentType',
 			type: 'string',
 			placeholder: 'image/jpeg',
@@ -141,7 +141,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description: 'Content type of file',
 		},
 		{
-			displayName: 'Base64 Value',
+			displayName: 'Base64 value',
 			name: 'base64value',
 			type: 'string',
 			required: true,
@@ -154,7 +154,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description: 'Base64 value of file that will be upload',
 		},
 		{
-			displayName: 'File Url',
+			displayName: 'File URL',
 			name: 'url',
 			type: 'string',
 			validateType: 'url',

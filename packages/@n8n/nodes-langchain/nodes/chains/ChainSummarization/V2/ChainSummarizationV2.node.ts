@@ -82,7 +82,7 @@ export class ChainSummarizationV2 implements INodeType {
 			properties: [
 				getTemplateNoticeField(1951),
 				{
-					displayName: 'Data to Summarize',
+					displayName: 'Data to summarize',
 					name: 'operationMode',
 					noDataExpression: true,
 					type: 'options',
@@ -90,24 +90,24 @@ export class ChainSummarizationV2 implements INodeType {
 					default: 'nodeInputJson',
 					options: [
 						{
-							name: 'Use Node Input (JSON)',
+							name: 'Use node input (JSON)',
 							value: 'nodeInputJson',
 							description: 'Summarize the JSON data coming into this node from the previous one',
 						},
 						{
-							name: 'Use Node Input (Binary)',
+							name: 'Use node input (binary)',
 							value: 'nodeInputBinary',
 							description: 'Summarize the binary data coming into this node from the previous one',
 						},
 						{
-							name: 'Use Document Loader',
+							name: 'Use document loader',
 							value: 'documentLoader',
 							description: 'Use a loader sub-node with more configuration options',
 						},
 					],
 				},
 				{
-					displayName: 'Chunking Strategy',
+					displayName: 'Chunking strategy',
 					name: 'chunkingMode',
 					noDataExpression: true,
 					type: 'options',
@@ -115,7 +115,7 @@ export class ChainSummarizationV2 implements INodeType {
 					default: 'simple',
 					options: [
 						{
-							name: 'Simple (Define Below)',
+							name: 'Simple (define below)',
 							value: 'simple',
 						},
 						{
@@ -131,7 +131,7 @@ export class ChainSummarizationV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Characters Per Chunk',
+					displayName: 'Characters per chunk',
 					name: 'chunkSize',
 					description:
 						'Controls the max size (in terms of number of characters) of the final document chunk',
@@ -144,7 +144,7 @@ export class ChainSummarizationV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Chunk Overlap (Characters)',
+					displayName: 'Chunk overlap (characters)',
 					name: 'chunkOverlap',
 					type: 'number',
 					description: 'Specifies how much characters overlap there should be between chunks',
@@ -160,10 +160,10 @@ export class ChainSummarizationV2 implements INodeType {
 					name: 'options',
 					type: 'collection',
 					default: {},
-					placeholder: 'Add Option',
+					placeholder: 'Add option',
 					options: [
 						{
-							displayName: 'Input Data Field Name',
+							displayName: 'Input data field name',
 							name: 'binaryDataKey',
 							type: 'string',
 							default: 'data',
@@ -176,7 +176,7 @@ export class ChainSummarizationV2 implements INodeType {
 							},
 						},
 						{
-							displayName: 'Summarization Method and Prompts',
+							displayName: 'Summarization method and prompts',
 							name: 'summarizationMethodAndPrompts',
 							type: 'fixedCollection',
 							default: {
@@ -186,7 +186,7 @@ export class ChainSummarizationV2 implements INodeType {
 									combineMapPrompt: DEFAULT_PROMPT_TEMPLATE,
 								},
 							},
-							placeholder: 'Add Option',
+							placeholder: 'Add option',
 							typeOptions: {},
 							options: [
 								{
@@ -194,14 +194,14 @@ export class ChainSummarizationV2 implements INodeType {
 									displayName: 'Values',
 									values: [
 										{
-											displayName: 'Summarization Method',
+											displayName: 'Summarization method',
 											name: 'summarizationMethod',
 											type: 'options',
 											description: 'The type of summarization to run',
 											default: 'map_reduce',
 											options: [
 												{
-													name: 'Map Reduce (Recommended)',
+													name: 'Map reduce (recommended)',
 													value: 'map_reduce',
 													description:
 														'Summarize each document (or chunk) individually, then summarize those summaries',
@@ -221,7 +221,7 @@ export class ChainSummarizationV2 implements INodeType {
 											],
 										},
 										{
-											displayName: 'Individual Summary Prompt',
+											displayName: 'Individual summary prompt',
 											name: 'combineMapPrompt',
 											type: 'string',
 											hint: 'The prompt to summarize an individual document (or chunk)',
@@ -239,7 +239,7 @@ export class ChainSummarizationV2 implements INodeType {
 											},
 										},
 										{
-											displayName: 'Final Prompt to Combine',
+											displayName: 'Final prompt to combine',
 											name: 'prompt',
 											type: 'string',
 											default: DEFAULT_PROMPT_TEMPLATE,
@@ -274,7 +274,7 @@ export class ChainSummarizationV2 implements INodeType {
 											},
 										},
 										{
-											displayName: 'Subsequent (Refine) Prompt',
+											displayName: 'Subsequent (refine) prompt',
 											name: 'refinePrompt',
 											type: 'string',
 											displayOptions: {
@@ -292,7 +292,7 @@ export class ChainSummarizationV2 implements INodeType {
 											},
 										},
 										{
-											displayName: 'Initial Prompt',
+											displayName: 'Initial prompt',
 											name: 'refineQuestionPrompt',
 											type: 'string',
 											displayOptions: {

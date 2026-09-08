@@ -19,7 +19,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Create a message',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many messages from a room',
 				action: 'Get many messages',
@@ -34,7 +34,7 @@ export const messageFields: INodeProperties[] = [
 	/*                              message:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -67,7 +67,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'The text to send',
 	},
 	{
-		displayName: 'Message Type',
+		displayName: 'Message type',
 		name: 'messageType',
 		displayOptions: {
 			show: {
@@ -97,7 +97,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'The type of message to send',
 	},
 	{
-		displayName: 'Message Format',
+		displayName: 'Message format',
 		name: 'messageFormat',
 		displayOptions: {
 			show: {
@@ -108,7 +108,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Plain Text',
+				name: 'Plain text',
 				value: 'plain',
 				description: 'Text only',
 			},
@@ -122,7 +122,7 @@ export const messageFields: INodeProperties[] = [
 		description: "The format of the message's body",
 	},
 	{
-		displayName: 'Fallback Text',
+		displayName: 'Fallback text',
 		name: 'fallbackText',
 		default: '',
 		displayOptions: {
@@ -141,7 +141,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                message:getAll                           */
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room name or ID',
 		name: 'roomId',
 		type: 'options',
 		default: '',
@@ -159,7 +159,7 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -191,7 +191,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Other Options',
+		displayName: 'Other options',
 		name: 'otherOptions',
 		type: 'collection',
 		displayOptions: {

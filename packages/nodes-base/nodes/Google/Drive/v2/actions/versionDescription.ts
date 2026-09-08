@@ -52,7 +52,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'oAuth2',
 				},
 				{
-					name: 'Service Account',
+					name: 'Service account',
 					value: 'serviceAccount',
 				},
 			],
@@ -69,7 +69,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'file',
 				},
 				{
-					name: 'File/Folder',
+					name: 'File/folder',
 					value: 'fileFolder',
 				},
 				{
@@ -77,7 +77,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'folder',
 				},
 				{
-					name: 'Shared Drive',
+					name: 'Shared drive',
 					value: 'drive',
 				},
 			],

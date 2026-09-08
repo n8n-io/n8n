@@ -22,7 +22,7 @@ const modelOptionsV1: INodePropertyOptions[] = [
 		description: 'Video model supporting higher resolution and longer duration',
 	},
 	{
-		name: 'T2V-01-Director',
+		name: 'T2V-01-director',
 		value: 'T2V-01-Director',
 		description: 'Text-to-video model with camera control commands',
 	},
@@ -89,12 +89,12 @@ const properties: INodeProperties[] = [
 	},
 	...h3VideoProperties,
 	{
-		displayName: 'Duration (Seconds)',
+		displayName: 'Duration (seconds)',
 		name: 'duration',
 		type: 'options',
 		options: [
-			{ name: '6 Seconds', value: 6 },
-			{ name: '10 Seconds', value: 10 },
+			{ name: '6 seconds', value: 6 },
+			{ name: '10 seconds', value: 10 },
 		],
 		default: 6,
 		description: 'Duration of the generated video',
@@ -122,7 +122,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Aspect Ratio',
+		displayName: 'Aspect ratio',
 		name: 'ratio',
 		type: 'options',
 		options: [
@@ -143,7 +143,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Download Video',
+		displayName: 'Download video',
 		name: 'downloadVideo',
 		type: 'boolean',
 		default: true,
@@ -153,7 +153,7 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		displayOptions: {
@@ -163,7 +163,7 @@ const properties: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Prompt Optimizer',
+				displayName: 'Prompt optimizer',
 				name: 'promptOptimizer',
 				type: 'boolean',
 				default: true,

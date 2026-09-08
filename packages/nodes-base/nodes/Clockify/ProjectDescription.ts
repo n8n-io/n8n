@@ -31,7 +31,7 @@ export const projectOperations: INodeProperties[] = [
 				action: 'Get a project',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many projects',
 				action: 'Get many projects',
@@ -52,7 +52,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                 project:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Name',
+		displayName: 'Project name',
 		name: 'name',
 		type: 'string',
 		required: true,
@@ -66,10 +66,10 @@ export const projectFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -91,7 +91,7 @@ export const projectFields: INodeProperties[] = [
 				default: '#0000FF',
 			},
 			{
-				displayName: 'Client Name or ID',
+				displayName: 'Client name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -105,7 +105,7 @@ export const projectFields: INodeProperties[] = [
 			{
 				displayName: 'Estimate',
 				name: 'estimateUi',
-				placeholder: 'Add Estimate',
+				placeholder: 'Add estimate',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -143,7 +143,7 @@ export const projectFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Is Public',
+				displayName: 'Is public',
 				name: 'isPublic',
 				type: 'boolean',
 				default: true,
@@ -193,7 +193,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                 project:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -224,10 +224,10 @@ export const projectFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -249,7 +249,7 @@ export const projectFields: INodeProperties[] = [
 				default: true,
 			},
 			{
-				displayName: 'Client Names or IDs',
+				displayName: 'Client names or IDs',
 				name: 'clients',
 				type: 'multiOptions',
 				description:
@@ -261,14 +261,14 @@ export const projectFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Contains Client',
+				displayName: 'Contains client',
 				name: 'contains-client',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to return only projects having a client',
 			},
 			{
-				displayName: 'Client Status',
+				displayName: 'Client status',
 				name: 'client-status',
 				type: 'options',
 				options: [
@@ -285,14 +285,14 @@ export const projectFields: INodeProperties[] = [
 				description: 'If provided, projects will be filtered by whether they have a client',
 			},
 			{
-				displayName: 'Contains User',
+				displayName: 'Contains user',
 				name: 'contains-user',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to return only projects having users',
 			},
 			{
-				displayName: 'Is Template',
+				displayName: 'Is template',
 				name: 'is-template',
 				type: 'boolean',
 				default: false,
@@ -305,7 +305,7 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Sort Column',
+				displayName: 'Sort column',
 				name: 'sort-column',
 				type: 'options',
 				options: [
@@ -314,7 +314,7 @@ export const projectFields: INodeProperties[] = [
 						value: 'NAME',
 					},
 					{
-						name: 'Client Name',
+						name: 'Client name',
 						value: 'CLIENT_NAME',
 					},
 					{
@@ -325,7 +325,7 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sort-order',
 				type: 'options',
 				options: [
@@ -341,7 +341,7 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User Name or ID',
+				displayName: 'User name or ID',
 				name: 'users',
 				type: 'options',
 				description:
@@ -353,7 +353,7 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User Status',
+				displayName: 'User status',
 				name: 'user-status',
 				type: 'options',
 				options: [
@@ -389,10 +389,10 @@ export const projectFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -414,7 +414,7 @@ export const projectFields: INodeProperties[] = [
 				default: '#0000FF',
 			},
 			{
-				displayName: 'Client Name or ID',
+				displayName: 'Client name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -428,7 +428,7 @@ export const projectFields: INodeProperties[] = [
 			{
 				displayName: 'Estimate',
 				name: 'estimateUi',
-				placeholder: 'Add Estimate',
+				placeholder: 'Add estimate',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -466,7 +466,7 @@ export const projectFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Is Public',
+				displayName: 'Is public',
 				name: 'isPublic',
 				type: 'boolean',
 				default: false,

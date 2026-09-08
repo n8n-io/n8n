@@ -54,10 +54,10 @@ export const linkFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -73,7 +73,7 @@ export const linkFields: INodeProperties[] = [
 				default: 'bit.ly',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group',
 				type: 'options',
 				description:
@@ -84,7 +84,7 @@ export const linkFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -106,7 +106,7 @@ export const linkFields: INodeProperties[] = [
 	{
 		displayName: 'Deeplinks',
 		name: 'deeplink',
-		placeholder: 'Add Deep Link',
+		placeholder: 'Add deep link',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -121,7 +121,7 @@ export const linkFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'deeplinkUi',
-				displayName: 'Deep Link',
+				displayName: 'Deep link',
 				values: [
 					{
 						displayName: 'App ID',
@@ -130,13 +130,13 @@ export const linkFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'App URI Path',
+						displayName: 'App URI path',
 						name: 'appUriPath',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Install Type',
+						displayName: 'Install type',
 						name: 'installType',
 						type: 'string',
 						default: '',
@@ -169,10 +169,10 @@ export const linkFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -188,7 +188,7 @@ export const linkFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group',
 				type: 'options',
 				description:
@@ -205,7 +205,7 @@ export const linkFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -227,7 +227,7 @@ export const linkFields: INodeProperties[] = [
 	{
 		displayName: 'Deeplinks',
 		name: 'deeplink',
-		placeholder: 'Add Deep Link',
+		placeholder: 'Add deep link',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -242,7 +242,7 @@ export const linkFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'deeplinkUi',
-				displayName: 'Deep Link',
+				displayName: 'Deep link',
 				values: [
 					{
 						displayName: 'App ID',
@@ -251,13 +251,13 @@ export const linkFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'App URI Path',
+						displayName: 'App URI path',
 						name: 'appUriPath',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Install Type',
+						displayName: 'Install type',
 						name: 'installType',
 						type: 'string',
 						default: '',

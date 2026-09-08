@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 export const fromEmailProperty: INodeProperties = {
-	displayName: 'From Email',
+	displayName: 'From email',
 	name: 'fromEmail',
 	type: 'string',
 	default: '',
@@ -12,7 +12,7 @@ export const fromEmailProperty: INodeProperties = {
 };
 
 export const toEmailProperty: INodeProperties = {
-	displayName: 'To Email',
+	displayName: 'To email',
 	name: 'toEmail',
 	type: 'string',
 	default: '',

@@ -93,7 +93,7 @@ export class Rocketchat implements INodeType {
 						value: 'subscriptions',
 					},
 					{
-						name: 'Direct Message',
+						name: 'Direct message',
 						value: 'dm',
 					},
 				],
@@ -111,7 +111,7 @@ export class Rocketchat implements INodeType {
 				},
 				options: [
 					{
-						name: 'Post Message',
+						name: 'Post message',
 						value: 'postMessage',
 						description: 'Post a message to a channel or a direct message',
 						action: 'Post a message',
@@ -131,16 +131,16 @@ export class Rocketchat implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'get',
 						description: 'Retrieve a list of subscriptions',
-						action: 'Get Subscriptions',
+						action: 'Get subscriptions',
 					},
 					{
-						name: 'Mark As Read',
+						name: 'Mark as read',
 						value: 'read',
 						description: 'Mark the subscription as read',
-						action: 'Mark As Read',
+						action: 'Mark as read',
 					},
 				],
 				default: 'get',
@@ -157,10 +157,10 @@ export class Rocketchat implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get Messages',
+						name: 'Get messages',
 						value: 'messages',
 						description: 'Retrieve a list of messages',
-						action: 'Get Messages',
+						action: 'Get messages',
 					},
 				],
 				default: 'messages',
@@ -180,7 +180,7 @@ export class Rocketchat implements INodeType {
 				description: 'The room identifier',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -237,7 +237,7 @@ export class Rocketchat implements INodeType {
 				description: 'The text of the message to send, is optional because of attachments',
 			},
 			{
-				displayName: 'JSON Parameters',
+				displayName: 'JSON parameters',
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
@@ -291,7 +291,7 @@ export class Rocketchat implements INodeType {
 				name: 'attachments',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Attachment Item',
+				placeholder: 'Add attachment item',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Attachment',
@@ -336,7 +336,7 @@ export class Rocketchat implements INodeType {
 							'An image that displays to the left of the text, looks better when this is relatively small',
 					},
 					{
-						displayName: 'Message Link',
+						displayName: 'Message link',
 						name: 'messageLink',
 						type: 'string',
 						default: '',
@@ -353,21 +353,21 @@ export class Rocketchat implements INodeType {
 							'Causes the image, audio, and video sections to be hiding when collapsed is true',
 					},
 					{
-						displayName: 'Author Name',
+						displayName: 'Author name',
 						name: 'authorName',
 						type: 'string',
 						default: '',
 						description: 'Name of the author',
 					},
 					{
-						displayName: 'Author Link',
+						displayName: 'Author link',
 						name: 'authorLink',
 						type: 'string',
 						default: '',
 						description: 'Providing this makes the author name clickable and points to this link',
 					},
 					{
-						displayName: 'Author Icon',
+						displayName: 'Author icon',
 						name: 'authorIcon',
 						type: 'string',
 						default: '',
@@ -382,14 +382,14 @@ export class Rocketchat implements INodeType {
 						description: 'Title to display for this attachment, displays under the author',
 					},
 					{
-						displayName: 'Title Link',
+						displayName: 'Title link',
 						name: 'titleLink',
 						type: 'string',
 						default: '',
 						description: 'Providing this makes the title clickable, pointing to this link',
 					},
 					{
-						displayName: 'Title Link Download',
+						displayName: 'Title link download',
 						name: 'titleLinkDownload',
 						type: 'boolean',
 						default: false,
@@ -424,7 +424,7 @@ export class Rocketchat implements INodeType {
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'fixedCollection',
-						placeholder: 'Add Field Item',
+						placeholder: 'Add field item',
 						typeOptions: {
 							multipleValues: true,
 						},

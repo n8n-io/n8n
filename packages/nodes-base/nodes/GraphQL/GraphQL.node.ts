@@ -109,25 +109,25 @@ export class GraphQL implements INodeType {
 				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Predefined Credential Type',
+						name: 'Predefined credential type',
 						value: 'predefinedCredentialType',
 						description:
 							"We've already implemented auth for many services so that you don't have to set it up manually",
 					},
 					{
-						name: 'Basic Auth',
+						name: 'Basic auth',
 						value: 'basicAuth',
 					},
 					{
-						name: 'Custom Auth',
+						name: 'Custom auth',
 						value: 'customAuth',
 					},
 					{
-						name: 'Digest Auth',
+						name: 'Digest auth',
 						value: 'digestAuth',
 					},
 					{
-						name: 'Header Auth',
+						name: 'Header auth',
 						value: 'headerAuth',
 					},
 					{
@@ -143,7 +143,7 @@ export class GraphQL implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'Query Auth',
+						name: 'Query auth',
 						value: 'queryAuth',
 					},
 				],
@@ -151,7 +151,7 @@ export class GraphQL implements INodeType {
 				description: 'The way to authenticate',
 			},
 			{
-				displayName: 'Credential Type',
+				displayName: 'Credential type',
 				name: 'nodeCredentialType',
 				type: 'credentialsSelect',
 				noDataExpression: true,
@@ -165,7 +165,7 @@ export class GraphQL implements INodeType {
 				},
 			},
 			{
-				displayName: 'HTTP Request Method',
+				displayName: 'HTTP request method',
 				name: 'requestMethod',
 				type: 'options',
 				options: [
@@ -191,7 +191,7 @@ export class GraphQL implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Ignore SSL Issues (Insecure)',
+				displayName: 'Ignore SSL issues (insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
@@ -200,13 +200,13 @@ export class GraphQL implements INodeType {
 					'Whether to download the response even if SSL certificate validation is not possible',
 			},
 			{
-				displayName: 'Request Format',
+				displayName: 'Request format',
 				name: 'requestFormat',
 				type: 'options',
 				required: true,
 				options: [
 					{
-						name: 'GraphQL (Raw)',
+						name: 'GraphQL (raw)',
 						value: 'graphql',
 					},
 					{
@@ -224,19 +224,19 @@ export class GraphQL implements INodeType {
 				description: 'The format for the query payload',
 			},
 			{
-				displayName: 'Request Format',
+				displayName: 'Request format',
 				name: 'requestFormat',
 				type: 'options',
 				required: true,
 				options: [
 					{
-						name: 'JSON (Recommended)',
+						name: 'JSON (recommended)',
 						value: 'json',
 						description:
 							'JSON object with query, variables, and operationName properties. The standard and most widely supported format for GraphQL requests.',
 					},
 					{
-						name: 'GraphQL (Raw)',
+						name: 'GraphQL (raw)',
 						value: 'graphql',
 						description:
 							'Raw GraphQL query string. Not all servers support this format. Use JSON for better compatibility.',
@@ -276,7 +276,7 @@ export class GraphQL implements INodeType {
 				},
 			},
 			{
-				displayName: 'Operation Name',
+				displayName: 'Operation name',
 				name: 'operationName',
 				type: 'string',
 				default: '',
@@ -289,7 +289,7 @@ export class GraphQL implements INodeType {
 				},
 			},
 			{
-				displayName: 'Response Format',
+				displayName: 'Response format',
 				name: 'responseFormat',
 				type: 'options',
 				options: [
@@ -306,7 +306,7 @@ export class GraphQL implements INodeType {
 				description: 'The format in which the data gets returned from the URL',
 			},
 			{
-				displayName: 'Response Data Property Name',
+				displayName: 'Response data property name',
 				name: 'dataPropertyName',
 				type: 'string',
 				default: 'data',
@@ -323,7 +323,7 @@ export class GraphQL implements INodeType {
 			{
 				displayName: 'Headers',
 				name: 'headerParametersUi',
-				placeholder: 'Add Header',
+				placeholder: 'Add header',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,

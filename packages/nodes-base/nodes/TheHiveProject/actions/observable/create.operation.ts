@@ -51,7 +51,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Data Type',
+		displayName: 'Data type',
 		name: 'dataType',
 		type: 'options',
 		description:

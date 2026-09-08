@@ -71,21 +71,21 @@ const metagenerationFilters: INodeProperties[] = [
 		default: -1,
 	},
 	{
-		displayName: 'Generation Match',
+		displayName: 'Generation match',
 		name: 'ifGenerationMatch',
 		type: 'number',
 		placeholder: 'Make operation conditional of the object generation matching this value',
 		default: -1,
 	},
 	{
-		displayName: 'Generation Exclude',
+		displayName: 'Generation exclude',
 		name: 'ifGenerationNotMatch',
 		type: 'number',
 		placeholder: 'Make operation conditional of the object generation not matching this value',
 		default: -1,
 	},
 	{
-		displayName: 'Metageneration Match',
+		displayName: 'Metageneration match',
 		name: 'ifMetagenerationMatch',
 		type: 'number',
 		placeholder:
@@ -93,7 +93,7 @@ const metagenerationFilters: INodeProperties[] = [
 		default: -1,
 	},
 	{
-		displayName: 'Metageneration Exclude',
+		displayName: 'Metageneration exclude',
 		name: 'ifMetagenerationNotMatch',
 		type: 'number',
 		placeholder:
@@ -110,15 +110,15 @@ const predefinedAclOptions: INodeProperties = {
 	default: 'authenticatedRead',
 	options: [
 		{
-			name: 'Authenticated Read',
+			name: 'Authenticated read',
 			value: 'authenticatedRead',
 		},
 		{
-			name: 'Bucket Owner Full Control',
+			name: 'Bucket owner full control',
 			value: 'bucketOwnerFullControl',
 		},
 		{
-			name: 'Bucket Owner Read',
+			name: 'Bucket owner read',
 			value: 'bucketOwnerRead',
 		},
 		{
@@ -126,11 +126,11 @@ const predefinedAclOptions: INodeProperties = {
 			value: 'private',
 		},
 		{
-			name: 'Project Private',
+			name: 'Project private',
 			value: 'projectPrivate',
 		},
 		{
-			name: 'Public Read',
+			name: 'Public read',
 			value: 'publicRead',
 		},
 	],
@@ -465,7 +465,7 @@ export const objectOperations: INodeProperties[] = [
 				action: 'Get object data or metadata',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of objects',
 				routing: {
@@ -581,7 +581,7 @@ export const objectOperations: INodeProperties[] = [
 
 export const objectFields: INodeProperties[] = [
 	{
-		displayName: 'Bucket Name',
+		displayName: 'Bucket name',
 		name: 'bucketName',
 		type: 'string',
 		placeholder: 'Bucket Name',
@@ -594,7 +594,7 @@ export const objectFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Object Name',
+		displayName: 'Object name',
 		name: 'objectName',
 		type: 'string',
 		placeholder: 'Object Name',
@@ -614,7 +614,7 @@ export const objectFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'All Properties',
+				name: 'All properties',
 				value: 'full',
 			},
 			{
@@ -645,7 +645,7 @@ export const objectFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'All Properties',
+				name: 'All properties',
 				value: 'full',
 			},
 			{
@@ -669,7 +669,7 @@ export const objectFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return Data',
+		displayName: 'Return data',
 		name: 'alt',
 		type: 'options',
 		placeholder: 'The type of data to return from the request',
@@ -680,7 +680,7 @@ export const objectFields: INodeProperties[] = [
 				value: 'json',
 			},
 			{
-				name: 'Object Data',
+				name: 'Object data',
 				value: 'media',
 			},
 		],
@@ -692,7 +692,7 @@ export const objectFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Use Input Binary Field',
+		displayName: 'Use input binary field',
 		name: 'createFromBinary',
 		type: 'boolean',
 		displayOptions: {
@@ -706,7 +706,7 @@ export const objectFields: INodeProperties[] = [
 		description: 'Whether the data for creating a file should come from a binary field',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'createBinaryPropertyName',
 		type: 'string',
 		hint: 'The name of the input binary field containing the file to be written',
@@ -720,7 +720,7 @@ export const objectFields: INodeProperties[] = [
 		default: 'data',
 	},
 	{
-		displayName: 'File Content',
+		displayName: 'File content',
 		name: 'createContent',
 		type: 'string',
 		displayOptions: {
@@ -734,7 +734,7 @@ export const objectFields: INodeProperties[] = [
 		description: 'Content of the file to be uploaded',
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		hint: 'The name of the output binary field to put the file in',
@@ -748,7 +748,7 @@ export const objectFields: INodeProperties[] = [
 		default: 'data',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -779,10 +779,10 @@ export const objectFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Create Fields',
+		displayName: 'Create fields',
 		name: 'createData',
 		type: 'collection',
-		placeholder: 'Add Create Body Field',
+		placeholder: 'Add create body field',
 		displayOptions: {
 			show: {
 				resource: ['object'],
@@ -792,61 +792,61 @@ export const objectFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Access Control List',
+				displayName: 'Access control list',
 				name: 'acl',
 				type: 'json',
 				default: '[]',
 			},
 			{
-				displayName: 'Cache Control',
+				displayName: 'Cache control',
 				name: 'cacheControl',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Content Disposition',
+				displayName: 'Content disposition',
 				name: 'contentDisposition',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Content Encoding',
+				displayName: 'Content encoding',
 				name: 'contentEncoding',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Content Language',
+				displayName: 'Content language',
 				name: 'contentLanguage',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Content Type',
+				displayName: 'Content type',
 				name: 'contentType',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'CRC32c Checksum',
+				displayName: 'CRC32c checksum',
 				name: 'crc32c',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Time',
+				displayName: 'Custom time',
 				name: 'customTime',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Event Based Hold',
+				displayName: 'Event based hold',
 				name: 'eventBasedHold',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'MD5 Hash',
+				displayName: 'MD5 hash',
 				name: 'md5Hash',
 				type: 'string',
 				default: '',
@@ -858,13 +858,13 @@ export const objectFields: INodeProperties[] = [
 				default: '{}',
 			},
 			{
-				displayName: 'Storage Class',
+				displayName: 'Storage class',
 				name: 'storageClass',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Temporary Hold',
+				displayName: 'Temporary hold',
 				name: 'temporaryHold',
 				type: 'boolean',
 				default: false,
@@ -872,10 +872,10 @@ export const objectFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateData',
 		type: 'collection',
-		placeholder: 'Add Update Body Field',
+		placeholder: 'Add update body field',
 		displayOptions: {
 			show: {
 				resource: ['object'],
@@ -887,49 +887,49 @@ export const objectFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Access Control',
+				displayName: 'Access control',
 				name: 'acl',
 				type: 'json',
 				default: '[]',
 			},
 			{
-				displayName: 'Cache Control',
+				displayName: 'Cache control',
 				name: 'cacheControl',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Content Disposition',
+				displayName: 'Content disposition',
 				name: 'contentDisposition',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Content Encoding',
+				displayName: 'Content encoding',
 				name: 'contentEncoding',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Content Language',
+				displayName: 'Content language',
 				name: 'contentLanguage',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Content Type',
+				displayName: 'Content type',
 				name: 'contentType',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Time',
+				displayName: 'Custom time',
 				name: 'customTime',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Event Based Hold',
+				displayName: 'Event based hold',
 				name: 'eventBasedHold',
 				type: 'boolean',
 				default: false,
@@ -941,7 +941,7 @@ export const objectFields: INodeProperties[] = [
 				default: '{}',
 			},
 			{
-				displayName: 'Temporary Hold',
+				displayName: 'Temporary hold',
 				name: 'temporaryHold',
 				type: 'boolean',
 				default: false,
@@ -949,10 +949,10 @@ export const objectFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Parameters',
+		displayName: 'Additional parameters',
 		name: 'createQuery',
 		type: 'collection',
-		placeholder: 'Add Additional Parameters',
+		placeholder: 'Add additional parameters',
 		displayOptions: {
 			show: {
 				resource: ['object'],
@@ -962,14 +962,14 @@ export const objectFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Content Encoding',
+				displayName: 'Content encoding',
 				name: 'contentEncoding',
 				type: 'string',
 				default: '',
 			},
 			...metagenerationFilters,
 			{
-				displayName: 'KMS Key Name',
+				displayName: 'KMS key name',
 				name: 'kmsKeyName',
 				type: 'string',
 				default: '',
@@ -978,10 +978,10 @@ export const objectFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Parameters',
+		displayName: 'Additional parameters',
 		name: 'getParameters',
 		type: 'collection',
-		placeholder: 'Add Additional Parameters',
+		placeholder: 'Add additional parameters',
 		displayOptions: {
 			show: {
 				resource: ['object'],
@@ -992,10 +992,10 @@ export const objectFields: INodeProperties[] = [
 		options: [...metagenerationFilters],
 	},
 	{
-		displayName: 'Additional Parameters',
+		displayName: 'Additional parameters',
 		name: 'metagenAndAclQuery',
 		type: 'collection',
-		placeholder: 'Add Additional Parameters',
+		placeholder: 'Add additional parameters',
 		displayOptions: {
 			show: {
 				resource: ['object'],
@@ -1006,10 +1006,10 @@ export const objectFields: INodeProperties[] = [
 		options: [...metagenerationFilters, predefinedAclOptions],
 	},
 	{
-		displayName: 'Encryption Headers',
+		displayName: 'Encryption headers',
 		name: 'encryptionHeaders',
 		type: 'collection',
-		placeholder: 'Add Encryption Headers',
+		placeholder: 'Add encryption headers',
 		displayOptions: {
 			show: {
 				resource: ['object'],
@@ -1019,7 +1019,7 @@ export const objectFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Encryption Algorithm',
+				displayName: 'Encryption algorithm',
 				name: 'X-Goog-Encryption-Algorithm',
 				type: 'options',
 				placeholder:
@@ -1033,14 +1033,14 @@ export const objectFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Encryption Key',
+				displayName: 'Encryption key',
 				name: 'X-Goog-Encryption-Key',
 				type: 'string',
 				placeholder: 'Base64 encoded string of your AES256 encryption key',
 				default: '',
 			},
 			{
-				displayName: 'Encryption Key Hash',
+				displayName: 'Encryption key hash',
 				name: 'X-Goog-Encryption-Key-Sha256',
 				type: 'string',
 				placeholder: 'Base64 encoded string of the SHA256 hash of your encryption key',
@@ -1049,10 +1049,10 @@ export const objectFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Parameters',
+		displayName: 'Additional parameters',
 		name: 'listFilters',
 		type: 'collection',
-		placeholder: 'Add Additional Parameters',
+		placeholder: 'Add additional parameters',
 		displayOptions: {
 			show: {
 				resource: ['object'],
@@ -1069,14 +1069,14 @@ export const objectFields: INodeProperties[] = [
 				default: '/',
 			},
 			{
-				displayName: 'End Offset',
+				displayName: 'End offset',
 				name: 'endOffset',
 				type: 'string',
 				placeholder: 'Filter results to names lexicographically before this value',
 				default: '',
 			},
 			{
-				displayName: 'Include Trailing Delimiter',
+				displayName: 'Include trailing delimiter',
 				name: 'includeTrailingDelimiter',
 				type: 'boolean',
 				placeholder:
@@ -1091,7 +1091,7 @@ export const objectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Start Offset',
+				displayName: 'Start offset',
 				name: 'startOffset',
 				type: 'string',
 				placeholder: 'Filter results to names lexicographically equal or after this value',

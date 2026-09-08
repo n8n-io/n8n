@@ -13,7 +13,7 @@ const createEvent = promisify(ics.createEvent);
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Event Title',
+		displayName: 'Event title',
 		name: 'title',
 		type: 'string',
 		default: '',
@@ -39,14 +39,14 @@ export const description: INodeProperties[] = [
 		hint: 'If not set, will be equal to the start date',
 	},
 	{
-		displayName: 'All Day',
+		displayName: 'All day',
 		name: 'allDay',
 		type: 'boolean',
 		default: false,
 		description: 'Whether the event lasts all day or not',
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -68,7 +68,7 @@ export const description: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Attendee',
+				placeholder: 'Add attendee',
 				default: {},
 				options: [
 					{
@@ -102,7 +102,7 @@ export const description: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Busy Status',
+				displayName: 'Busy status',
 				name: 'busyStatus',
 				type: 'options',
 				options: [
@@ -119,7 +119,7 @@ export const description: INodeProperties[] = [
 				description: 'Used to specify busy status for Microsoft applications, like Outlook',
 			},
 			{
-				displayName: 'Calendar Name',
+				displayName: 'Calendar name',
 				name: 'calName',
 				type: 'string',
 				default: '',
@@ -133,7 +133,7 @@ export const description: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
@@ -147,7 +147,7 @@ export const description: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: false,
 				},
-				placeholder: 'Add Geolocation',
+				placeholder: 'Add geolocation',
 				default: {},
 				options: [
 					{
@@ -178,7 +178,7 @@ export const description: INodeProperties[] = [
 				description: 'The intended venue',
 			},
 			{
-				displayName: 'Recurrence Rule',
+				displayName: 'Recurrence rule',
 				name: 'recurrenceRule',
 				type: 'string',
 				default: '',
@@ -192,7 +192,7 @@ export const description: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: false,
 				},
-				placeholder: 'Add Organizer',
+				placeholder: 'Add organizer',
 				default: {},
 				options: [
 					{
@@ -262,7 +262,7 @@ export const description: INodeProperties[] = [
 				description: 'URL associated with event',
 			},
 			{
-				displayName: 'Use Workflow Timezone',
+				displayName: 'Use workflow timezone',
 				name: 'useWorkflowTimezone',
 				type: 'boolean',
 				default: false,

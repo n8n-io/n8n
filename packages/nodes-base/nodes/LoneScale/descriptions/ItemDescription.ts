@@ -51,7 +51,7 @@ export const itemFields: INodeProperties[] = [
 		noDataExpression: true,
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'list',
 		type: 'options',
 		displayOptions: {
@@ -69,7 +69,7 @@ export const itemFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'first_name',
 		type: 'string',
 		displayOptions: {
@@ -84,7 +84,7 @@ export const itemFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'last_name',
 		type: 'string',
 		displayOptions: {
@@ -100,7 +100,7 @@ export const itemFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Company Name',
+		displayName: 'Company name',
 		name: 'company_name',
 		type: 'string',
 		displayOptions: {
@@ -115,10 +115,10 @@ export const itemFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'peopleAdditionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -129,49 +129,49 @@ export const itemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'full_name',
 				type: 'string',
 				default: '',
 				description: 'Contact full name',
 			},
 			{
-				displayName: 'Contact Email',
+				displayName: 'Contact email',
 				name: 'email',
 				type: 'string',
 				placeholder: 'name@email.com',
 				default: '',
 			},
 			{
-				displayName: 'Company Name',
+				displayName: 'Company name',
 				name: 'company_name',
 				type: 'string',
 				default: '',
 				description: 'Contact company name',
 			},
 			{
-				displayName: 'Current Position',
+				displayName: 'Current position',
 				name: 'current_position',
 				type: 'string',
 				default: '',
 				description: 'Contact current position',
 			},
 			{
-				displayName: 'Company Domain',
+				displayName: 'Company domain',
 				name: 'domain',
 				type: 'string',
 				default: '',
 				description: 'Contact company domain',
 			},
 			{
-				displayName: 'Linkedin Url',
+				displayName: 'Linkedin URL',
 				name: 'linkedin_url',
 				type: 'string',
 				default: '',
 				description: 'Contact Linkedin URL',
 			},
 			{
-				displayName: 'Contact Location',
+				displayName: 'Contact location',
 				name: 'location',
 				type: 'string',
 				default: '',
@@ -186,10 +186,10 @@ export const itemFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'companyAdditionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -200,21 +200,21 @@ export const itemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Linkedin Url',
+				displayName: 'Linkedin URL',
 				name: 'linkedin_url',
 				type: 'string',
 				default: '',
 				description: 'Company Linkedin URL',
 			},
 			{
-				displayName: 'Company Domain',
+				displayName: 'Company domain',
 				name: 'domain',
 				type: 'string',
 				default: '',
 				description: 'Company company domain',
 			},
 			{
-				displayName: 'Contact Location',
+				displayName: 'Contact location',
 				name: 'location',
 				type: 'string',
 				default: '',

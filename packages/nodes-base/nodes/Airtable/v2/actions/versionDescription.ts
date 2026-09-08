@@ -44,7 +44,7 @@ export const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Access Token',
+					name: 'Access token',
 					value: 'airtableTokenApi',
 				},
 				{

@@ -270,7 +270,7 @@ export class Code implements INodeType {
 			{
 				displayName: 'Code',
 				name: 'code',
-				placeholder: 'Add Code',
+				placeholder: 'Add code',
 				type: 'fixedCollection',
 				noDataExpression: true,
 				default: {},
@@ -280,7 +280,7 @@ export class Code implements INodeType {
 						displayName: 'Execute',
 						values: [
 							{
-								displayName: 'JavaScript - Execute',
+								displayName: 'JavaScript - execute',
 								name: 'code',
 								type: 'string',
 								typeOptions: {
@@ -294,10 +294,10 @@ export class Code implements INodeType {
 					},
 					{
 						name: 'supplyData',
-						displayName: 'Supply Data',
+						displayName: 'Supply data',
 						values: [
 							{
-								displayName: 'JavaScript - Supply Data',
+								displayName: 'JavaScript - supply data',
 								name: 'code',
 								type: 'string',
 								typeOptions: {
@@ -323,7 +323,7 @@ export class Code implements INodeType {
 			{
 				displayName: 'Inputs',
 				name: 'inputs',
-				placeholder: 'Add Input',
+				placeholder: 'Add input',
 				type: 'fixedCollection',
 				noDataExpression: true,
 				typeOptions: {
@@ -351,7 +351,7 @@ export class Code implements INodeType {
 								description: 'The type of the input',
 							},
 							{
-								displayName: 'Max Connections',
+								displayName: 'Max connections',
 								name: 'maxConnections',
 								type: 'number',
 								noDataExpression: true,
@@ -376,7 +376,7 @@ export class Code implements INodeType {
 			{
 				displayName: 'Outputs',
 				name: 'outputs',
-				placeholder: 'Add Output',
+				placeholder: 'Add output',
 				type: 'fixedCollection',
 				noDataExpression: true,
 				typeOptions: {

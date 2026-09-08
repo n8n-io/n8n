@@ -10,7 +10,7 @@ import { webflowApiRequest } from '../../../GenericFunctions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Site Name or ID',
+		displayName: 'Site name or ID',
 		name: 'siteId',
 		type: 'options',
 		required: true,
@@ -22,7 +22,7 @@ const properties: INodeProperties[] = [
 			'ID of the site containing the collection whose items to add to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Collection Name or ID',
+		displayName: 'Collection name or ID',
 		name: 'collectionId',
 		type: 'options',
 		required: true,
@@ -45,7 +45,7 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Fields',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -57,7 +57,7 @@ const properties: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'fieldId',
 						type: 'options',
 						typeOptions: {
@@ -69,7 +69,7 @@ const properties: INodeProperties[] = [
 							'Field to set for the item to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',

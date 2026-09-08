@@ -138,7 +138,7 @@ export class MessageBird implements INodeType {
 				description: 'The message to be send',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				displayOptions: {
@@ -147,11 +147,11 @@ export class MessageBird implements INodeType {
 						resource: ['sms'],
 					},
 				},
-				placeholder: 'Add Fields',
+				placeholder: 'Add fields',
 				default: {},
 				options: [
 					{
-						displayName: 'Created Date-Time',
+						displayName: 'Created date-time',
 						name: 'createdDatetime',
 						type: 'dateTime',
 						default: '',
@@ -196,7 +196,7 @@ export class MessageBird implements INodeType {
 						description: 'Group IDs separated by commas, If provided recipients can be omitted',
 					},
 					{
-						displayName: 'Message Type',
+						displayName: 'Message type',
 						name: 'mclass',
 						type: 'options',
 						placeholder: 'Permissible values from 0-3',
@@ -221,7 +221,7 @@ export class MessageBird implements INodeType {
 						description: 'A client reference',
 					},
 					{
-						displayName: 'Report Url',
+						displayName: 'Report URL',
 						name: 'reportUrl',
 						type: 'string',
 						default: '',
@@ -229,7 +229,7 @@ export class MessageBird implements INodeType {
 							'The status report URL to be used on a per-message basis. Reference is required for a status report webhook to be sent.',
 					},
 					{
-						displayName: 'Scheduled Date-Time',
+						displayName: 'Scheduled date-time',
 						name: 'scheduledDatetime',
 						type: 'dateTime',
 						default: '',
@@ -258,7 +258,7 @@ export class MessageBird implements INodeType {
 						description: 'The type of message. Values can be: sms, binary, or flash.',
 					},
 					{
-						displayName: 'Type Details',
+						displayName: 'Type details',
 						name: 'typeDetails',
 						type: 'string',
 						default: '',

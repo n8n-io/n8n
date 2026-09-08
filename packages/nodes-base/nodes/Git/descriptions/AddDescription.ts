@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const addFields: INodeProperties[] = [
 	{
-		displayName: 'Paths to Add',
+		displayName: 'Paths to add',
 		name: 'pathsToAdd',
 		type: 'string',
 		displayOptions: {

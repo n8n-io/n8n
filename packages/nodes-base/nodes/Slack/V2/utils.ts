@@ -3,7 +3,7 @@ import type { INodePropertyMode } from 'n8n-workflow';
 
 export const slackChannelModes: INodePropertyMode[] = [
 	{
-		displayName: 'From List',
+		displayName: 'From list',
 		name: 'list',
 		type: 'list',
 		placeholder: 'Select a channel...',

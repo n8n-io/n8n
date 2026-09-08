@@ -30,7 +30,7 @@ export const awsNodeAuthOptions: INodeProperties = {
 			value: 'iam',
 		},
 		{
-			name: 'AWS (Assume Role)',
+			name: 'AWS (assume role)',
 			value: 'assumeRole',
 		},
 	],

@@ -19,7 +19,7 @@ export const stockOnHandOperations: INodeProperties[] = [
 				action: 'Get a stock on hand',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many stocks on hand',
 				action: 'Get many stocks on hand',
@@ -49,7 +49,7 @@ export const stockOnHandFields: INodeProperties[] = [
 	/*                                stockOnHand:getAll                         */
 	/* ------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -83,7 +83,7 @@ export const stockOnHandFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -93,14 +93,14 @@ export const stockOnHandFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'As at Date',
+				displayName: 'As at date',
 				name: 'asAtDate',
 				type: 'dateTime',
 				default: '',
 				description: 'Returns the stock on hand for a specific date',
 			},
 			{
-				displayName: 'Is Assembled',
+				displayName: 'Is assembled',
 				name: 'IsAssembled',
 				type: 'boolean',
 				default: false,
@@ -108,14 +108,14 @@ export const stockOnHandFields: INodeProperties[] = [
 					'Whether the AvailableQty will also include the quantity that can be assembled',
 			},
 			{
-				displayName: 'Modified Since',
+				displayName: 'Modified since',
 				name: 'modifiedSince',
 				type: 'dateTime',
 				default: '',
 				description: 'Returns stock on hand values modified after a specific date',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'string',
 				default: '',
@@ -131,14 +131,14 @@ export const stockOnHandFields: INodeProperties[] = [
 					'Returns products with the specific Product Guid. You can enter multiple product IDs separated by commas.',
 			},
 			{
-				displayName: 'Warehouse Code',
+				displayName: 'Warehouse code',
 				name: 'warehouseCode',
 				type: 'string',
 				default: '',
 				description: 'Returns stock on hand for a specific warehouse code',
 			},
 			{
-				displayName: 'Warehouse Name',
+				displayName: 'Warehouse name',
 				name: 'warehouseName',
 				type: 'string',
 				default: '',

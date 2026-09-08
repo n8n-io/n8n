@@ -36,7 +36,7 @@ export const description: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'List and search messages',
 				action: 'Get many messages',
@@ -60,7 +60,7 @@ export const description: INodeProperties[] = [
 				action: 'Send a message',
 			},
 			{
-				name: 'Send and Wait for Response',
+				name: 'Send and wait for response',
 				value: SEND_AND_WAIT_OPERATION,
 				description: 'Send a message and wait for response',
 				action: 'Send message and wait for response',

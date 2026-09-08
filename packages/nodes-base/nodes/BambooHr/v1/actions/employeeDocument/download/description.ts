@@ -30,7 +30,7 @@ export const employeeDocumentDownloadDescription: EmployeeDocumentProperties = [
 		description: 'ID of the employee file',
 	},
 	{
-		displayName: 'Put Output In Field',
+		displayName: 'Put output in field',
 		name: 'output',
 		type: 'string',
 		default: 'data',

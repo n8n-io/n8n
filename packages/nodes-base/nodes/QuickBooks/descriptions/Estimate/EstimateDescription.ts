@@ -26,7 +26,7 @@ export const estimateOperations: INodeProperties[] = [
 				action: 'Get an estimate',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many estimates',
 			},
@@ -54,7 +54,7 @@ export const estimateFields: INodeProperties[] = [
 	//         estimate: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer Name or ID',
+		displayName: 'For customer name or ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
@@ -75,7 +75,7 @@ export const estimateFields: INodeProperties[] = [
 		displayName: 'Line',
 		name: 'Line',
 		type: 'collection',
-		placeholder: 'Add Line Item Property',
+		placeholder: 'Add line item property',
 		description: 'Individual line item of a transaction',
 		typeOptions: {
 			multipleValues: true,
@@ -103,19 +103,19 @@ export const estimateFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Detail Type',
+				displayName: 'Detail type',
 				name: 'DetailType',
 				type: 'options',
 				default: 'SalesItemLineDetail',
 				options: [
 					{
-						name: 'Sales Item Line Detail',
+						name: 'Sales item line detail',
 						value: 'SalesItemLineDetail',
 					},
 				],
 			},
 			{
-				displayName: 'Item Name or ID',
+				displayName: 'Item name or ID',
 				name: 'itemId',
 				type: 'options',
 				description:
@@ -133,7 +133,7 @@ export const estimateFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Tax Code Ref Name or ID',
+				displayName: 'Tax code ref name or ID',
 				name: 'TaxCodeRef',
 				type: 'options',
 				description:
@@ -146,10 +146,10 @@ export const estimateFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -210,7 +210,7 @@ export const estimateFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
@@ -225,7 +225,7 @@ export const estimateFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		required: true,
@@ -245,7 +245,7 @@ export const estimateFields: INodeProperties[] = [
 	//         estimate: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -279,7 +279,7 @@ export const estimateFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -351,10 +351,10 @@ export const estimateFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		required: true,
 		displayOptions: {

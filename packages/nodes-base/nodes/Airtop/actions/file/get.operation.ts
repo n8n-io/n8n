@@ -23,7 +23,7 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'Output Binary File',
+		displayName: 'Output binary file',
 		name: 'outputBinaryFile',
 		type: 'boolean',
 		default: false,

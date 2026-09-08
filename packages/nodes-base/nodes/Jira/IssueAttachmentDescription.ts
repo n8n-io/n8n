@@ -25,7 +25,7 @@ export const issueAttachmentOperations: INodeProperties[] = [
 				action: 'Get an attachment from an issue',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many attachments',
 				action: 'Get many issue attachments',
@@ -46,7 +46,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 	/*                                issueAttachment:add                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -59,7 +59,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		displayOptions: {
 			show: {
 				resource: ['issueAttachment'],
@@ -104,7 +104,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryProperty',
 		type: 'string',
 		default: 'data',
@@ -122,7 +122,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 	/*                                issueAttachment:getAll                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -135,7 +135,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -179,7 +179,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryProperty',
 		type: 'string',
 		default: 'data',

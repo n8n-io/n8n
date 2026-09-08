@@ -58,7 +58,7 @@ export const description: INodeProperties[] = [
 		description: 'The Notion data source to retrieve',
 	},
 	{
-		displayName: 'Search Text',
+		displayName: 'Search text',
 		name: 'text',
 		type: 'string',
 		default: '',

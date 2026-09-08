@@ -31,7 +31,7 @@ export const commentOperations: INodeProperties[] = [
 				action: 'Get a comment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many comments',
 				action: 'Get many comments',
@@ -80,10 +80,10 @@ export const commentFields: INodeProperties[] = [
 		description: 'The content of the comment',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -97,7 +97,7 @@ export const commentFields: INodeProperties[] = [
 				name: 'actionsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Action',
+				placeholder: 'Add action',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -117,18 +117,18 @@ export const commentFields: INodeProperties[] = [
 										value: 'open_url',
 									},
 									{
-										name: 'Prefill Message',
+										name: 'Prefill message',
 										value: 'prefill_message',
 									},
 									{
-										name: 'Send Reply',
+										name: 'Send reply',
 										value: 'send_reply',
 									},
 								],
 								default: '',
 							},
 							{
-								displayName: 'Button Text',
+								displayName: 'Button text',
 								name: 'button_text',
 								type: 'string',
 								description: 'The text for the action button',
@@ -185,7 +185,7 @@ export const commentFields: INodeProperties[] = [
 					'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
-				displayName: 'Direct Mention Names or IDs',
+				displayName: 'Direct mention names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
@@ -197,14 +197,14 @@ export const commentFields: INodeProperties[] = [
 					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Mark Thread Position',
+				displayName: 'Mark thread position',
 				name: 'mark_thread_position',
 				type: 'boolean',
 				default: true,
 				description: 'Whether the position of the thread is marked',
 			},
 			{
-				displayName: 'Recipient Names or IDs',
+				displayName: 'Recipient names or IDs',
 				name: 'recipients',
 				type: 'multiOptions',
 				typeOptions: {
@@ -223,7 +223,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'The temporary ID of the comment',
 			},
 			{
-				displayName: 'Send as Integration',
+				displayName: 'Send as integration',
 				name: 'send_as_integration',
 				type: 'boolean',
 				default: false,
@@ -268,7 +268,7 @@ export const commentFields: INodeProperties[] = [
 		description: 'The ID of the channel',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -302,7 +302,7 @@ export const commentFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -319,28 +319,28 @@ export const commentFields: INodeProperties[] = [
 				description: 'Whether only the IDs of the comments are returned',
 			},
 			{
-				displayName: 'Ending Object Index',
+				displayName: 'Ending object index',
 				name: 'to_obj_index',
 				type: 'number',
 				default: 50,
 				description: 'Limit comments ending at the specified object index',
 			},
 			{
-				displayName: 'Newer Than',
+				displayName: 'Newer than',
 				name: 'newer_than_ts',
 				type: 'dateTime',
 				default: '',
 				description: 'Limits comments to those newer when the specified Unix time',
 			},
 			{
-				displayName: 'Older Than',
+				displayName: 'Older than',
 				name: 'older_than_ts',
 				type: 'dateTime',
 				default: '',
 				description: 'Limits comments to those older than the specified Unix time',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'order_by',
 				type: 'options',
 				options: [
@@ -357,7 +357,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'The order of the comments returned - one of DESC or ASC',
 			},
 			{
-				displayName: 'Starting Object Index',
+				displayName: 'Starting object index',
 				name: 'from_obj_index',
 				type: 'number',
 				default: 0,
@@ -384,10 +384,10 @@ export const commentFields: INodeProperties[] = [
 		description: 'The ID of the comment',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -401,7 +401,7 @@ export const commentFields: INodeProperties[] = [
 				name: 'actionsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Action',
+				placeholder: 'Add action',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -421,18 +421,18 @@ export const commentFields: INodeProperties[] = [
 										value: 'open_url',
 									},
 									{
-										name: 'Prefill Message',
+										name: 'Prefill message',
 										value: 'prefill_message',
 									},
 									{
-										name: 'Send Reply',
+										name: 'Send reply',
 										value: 'send_reply',
 									},
 								],
 								default: '',
 							},
 							{
-								displayName: 'Button Text',
+								displayName: 'Button text',
 								name: 'button_text',
 								type: 'string',
 								description: 'The text for the action button',
@@ -496,7 +496,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'The content of the comment',
 			},
 			{
-				displayName: 'Direct Mention Names or IDs',
+				displayName: 'Direct mention names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {

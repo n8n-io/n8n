@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 const orgUnitPathField: INodeProperties = {
-	displayName: 'Organizational Unit Name or ID',
+	displayName: 'Organizational unit name or ID',
 	name: 'orgUnitPath',
 	type: 'options',
 	typeOptions: {
@@ -83,7 +83,7 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add to Group',
+				name: 'Add to group',
 				value: 'addToGroup',
 				description: 'Add an existing user to a group',
 				action: 'Add user to group',
@@ -107,13 +107,13 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many users',
 				action: 'Get many users',
 			},
 			{
-				name: 'Remove From Group',
+				name: 'Remove from group',
 				value: 'removeFromGroup',
 				description: 'Remove a user from a group',
 				action: 'Remove user from group',
@@ -159,7 +159,7 @@ export const userFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Email',
+				displayName: 'By email',
 				name: 'userEmail',
 				type: 'string',
 				hint: 'Enter the user email',
@@ -225,7 +225,7 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		placeholder: 'e.g. Nathan',
 		type: 'string',
@@ -239,7 +239,7 @@ export const userFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		required: true,
@@ -286,7 +286,7 @@ export const userFields: INodeProperties[] = [
 			"The username that will be set to the user. Example: If you domain is example.com and you set the username to n.smith then the user's final email address will be n.smith@example.com.",
 	},
 	{
-		displayName: 'Domain Name or ID',
+		displayName: 'Domain name or ID',
 		name: 'domain',
 		type: 'options',
 		description:
@@ -304,10 +304,10 @@ export const userFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -317,7 +317,7 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Change Password at Next Login',
+				displayName: 'Change password at next login',
 				name: 'changePasswordAtNextLogin',
 				type: 'boolean',
 				default: false,
@@ -326,7 +326,7 @@ export const userFields: INodeProperties[] = [
 			{
 				displayName: 'Phones',
 				name: 'phoneUi',
-				placeholder: 'Add Phone',
+				placeholder: 'Add phone',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -355,7 +355,7 @@ export const userFields: INodeProperties[] = [
 										value: 'car',
 									},
 									{
-										name: 'Company Main',
+										name: 'Company main',
 										value: 'company_main',
 									},
 									{
@@ -371,7 +371,7 @@ export const userFields: INodeProperties[] = [
 										value: 'home',
 									},
 									{
-										name: 'Home Fax',
+										name: 'Home fax',
 										value: 'home_fax',
 									},
 									{
@@ -391,7 +391,7 @@ export const userFields: INodeProperties[] = [
 										value: 'other',
 									},
 									{
-										name: 'Other Fax',
+										name: 'Other fax',
 										value: 'other_fax',
 									},
 									{
@@ -415,15 +415,15 @@ export const userFields: INodeProperties[] = [
 										value: 'work',
 									},
 									{
-										name: 'Work Fax',
+										name: 'Work fax',
 										value: 'work_fax',
 									},
 									{
-										name: 'Work Mobile',
+										name: 'Work mobile',
 										value: 'work_mobile',
 									},
 									{
-										name: 'Work Pager',
+										name: 'Work pager',
 										value: 'work_pager',
 									},
 								],
@@ -431,7 +431,7 @@ export const userFields: INodeProperties[] = [
 								description: 'The type of phone number',
 							},
 							{
-								displayName: 'Phone Number',
+								displayName: 'Phone number',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -448,9 +448,9 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Secondary Emails',
+				displayName: 'Secondary emails',
 				name: 'emailUi',
-				placeholder: 'Add Email',
+				placeholder: 'Add email',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -502,9 +502,9 @@ export const userFields: INodeProperties[] = [
 			},
 			orgUnitPathField,
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFields',
-				placeholder: 'Add or Edit Custom Fields',
+				placeholder: 'Add or edit custom fields',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -517,7 +517,7 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Schema Name or ID',
+								displayName: 'Schema name or ID',
 								name: 'schemaName',
 								type: 'options',
 								typeOptions: {
@@ -528,7 +528,7 @@ export const userFields: INodeProperties[] = [
 									'Select the schema to use for custom fields. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldName',
 								type: 'string',
 								default: '',
@@ -578,7 +578,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Return all fields from the API response',
 			},
 			{
-				name: 'Select Included Fields',
+				name: 'Select included fields',
 				value: 'select',
 				description: 'Choose specific fields to include',
 			},
@@ -598,11 +598,11 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Creation Time',
+				name: 'Creation time',
 				value: 'creationTime',
 			},
 			{
-				name: 'Is Admin',
+				name: 'Is admin',
 				value: 'isAdmin',
 			},
 			{
@@ -610,7 +610,7 @@ export const userFields: INodeProperties[] = [
 				value: 'kind',
 			},
 			{
-				name: 'Last Login Time',
+				name: 'Last login time',
 				value: 'lastLoginTime',
 			},
 			{
@@ -618,7 +618,7 @@ export const userFields: INodeProperties[] = [
 				value: 'name',
 			},
 			{
-				name: 'Primary Email',
+				name: 'Primary email',
 				value: 'primaryEmail',
 			},
 			{
@@ -626,16 +626,16 @@ export const userFields: INodeProperties[] = [
 				value: 'suspended',
 			},
 		],
-		description: 'Fields to include in the response when "Select Included Fields" is chosen',
+		description: 'Fields to include in the response when "Select included fields" is chosen',
 	},
 	{
-		displayName: 'Custom Fields',
+		displayName: 'Custom fields',
 		name: 'projection',
 		type: 'options',
 		required: true,
 		options: [
 			{
-				name: "Don't Include",
+				name: "Don't include",
 				value: 'basic',
 				description: 'Do not include any custom fields for the user',
 			},
@@ -645,7 +645,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Include custom fields from schemas requested in Custom Schema Names or IDs',
 			},
 			{
-				name: 'Include All',
+				name: 'Include all',
 				value: 'full',
 				description: 'Include all fields associated with this user',
 			},
@@ -660,7 +660,7 @@ export const userFields: INodeProperties[] = [
 		description: 'What subset of fields to fetch for this user',
 	},
 	{
-		displayName: 'Custom Schema Names or IDs',
+		displayName: 'Custom schema names or IDs',
 		name: 'customFieldMask',
 		type: 'multiOptions',
 		required: true,
@@ -683,7 +683,7 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -738,7 +738,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Return all fields from the API response',
 			},
 			{
-				name: 'Select Included Fields',
+				name: 'Select included fields',
 				value: 'select',
 				description: 'Choose specific fields to include',
 			},
@@ -758,11 +758,11 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Creation Time',
+				name: 'Creation time',
 				value: 'creationTime',
 			},
 			{
-				name: 'Is Admin',
+				name: 'Is admin',
 				value: 'isAdmin',
 			},
 			{
@@ -770,7 +770,7 @@ export const userFields: INodeProperties[] = [
 				value: 'kind',
 			},
 			{
-				name: 'Last Login Time',
+				name: 'Last login time',
 				value: 'lastLoginTime',
 			},
 			{
@@ -778,7 +778,7 @@ export const userFields: INodeProperties[] = [
 				value: 'name',
 			},
 			{
-				name: 'Primary Email',
+				name: 'Primary email',
 				value: 'primaryEmail',
 			},
 			{
@@ -786,10 +786,10 @@ export const userFields: INodeProperties[] = [
 				value: 'suspended',
 			},
 		],
-		description: 'Fields to include in the response when "Select Included Fields" is chosen',
+		description: 'Fields to include in the response when "Select included fields" is chosen',
 	},
 	{
-		displayName: 'Custom Fields',
+		displayName: 'Custom fields',
 		name: 'projection',
 		type: 'options',
 		required: true,
@@ -801,7 +801,7 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: "Don't Include",
+				name: "Don't include",
 				value: 'basic',
 				description: 'Do not include any custom fields for the user',
 			},
@@ -811,7 +811,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Include custom fields from schemas requested in Custom Schema Names or IDs',
 			},
 			{
-				name: 'Include All',
+				name: 'Include all',
 				value: 'full',
 				description: 'Include all fields associated with this user',
 			},
@@ -820,7 +820,7 @@ export const userFields: INodeProperties[] = [
 		description: 'What subset of fields to fetch for this user',
 	},
 	{
-		displayName: 'Custom Schema Names or IDs',
+		displayName: 'Custom schema names or IDs',
 		name: 'customFieldMask',
 		type: 'multiOptions',
 		required: true,
@@ -842,7 +842,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Filter',
 		name: 'filter',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -875,7 +875,7 @@ export const userFields: INodeProperties[] = [
 					'Query string to filter the results. Follow Google Admin SDK documentation. <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users#examples" target="_blank">More info</a>.',
 			},
 			{
-				displayName: 'Show Deleted',
+				displayName: 'Show deleted',
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
@@ -887,7 +887,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Sort',
 		name: 'sort',
 		type: 'fixedCollection',
-		placeholder: 'Add Sort Rule',
+		placeholder: 'Add sort rule',
 		default: {},
 		displayOptions: {
 			show: {
@@ -898,10 +898,10 @@ export const userFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'sortRules',
-				displayName: 'Sort Rules',
+				displayName: 'Sort rules',
 				values: [
 					{
-						displayName: 'Order By',
+						displayName: 'Order by',
 						name: 'orderBy',
 						type: 'options',
 						options: [
@@ -910,11 +910,11 @@ export const userFields: INodeProperties[] = [
 								value: 'email',
 							},
 							{
-								name: 'Family Name',
+								name: 'Family name',
 								value: 'familyName',
 							},
 							{
-								name: 'Given Name',
+								name: 'Given name',
 								value: 'givenName',
 							},
 						],
@@ -922,7 +922,7 @@ export const userFields: INodeProperties[] = [
 						description: 'Field to sort the results by',
 					},
 					{
-						displayName: 'Sort Order',
+						displayName: 'Sort order',
 						name: 'sortOrder',
 						type: 'options',
 						options: [
@@ -948,10 +948,10 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -976,21 +976,21 @@ export const userFields: INodeProperties[] = [
 					'Whether to set the user as suspended. If set to OFF, the user will be reactivated. If not added, the status will remain unchanged.',
 			},
 			{
-				displayName: 'Change Password at Next Login',
+				displayName: 'Change password at next login',
 				name: 'changePasswordAtNextLogin',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user is forced to change their password at next login',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. John',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -1009,7 +1009,7 @@ export const userFields: INodeProperties[] = [
 			{
 				displayName: 'Phones',
 				name: 'phoneUi',
-				placeholder: 'Add Phone',
+				placeholder: 'Add phone',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -1038,7 +1038,7 @@ export const userFields: INodeProperties[] = [
 										value: 'car',
 									},
 									{
-										name: 'Company Main',
+										name: 'Company main',
 										value: 'company_main',
 									},
 									{
@@ -1054,7 +1054,7 @@ export const userFields: INodeProperties[] = [
 										value: 'home',
 									},
 									{
-										name: 'Home Fax',
+										name: 'Home fax',
 										value: 'home_fax',
 									},
 									{
@@ -1074,7 +1074,7 @@ export const userFields: INodeProperties[] = [
 										value: 'other',
 									},
 									{
-										name: 'Other Fax',
+										name: 'Other fax',
 										value: 'other_fax',
 									},
 									{
@@ -1098,15 +1098,15 @@ export const userFields: INodeProperties[] = [
 										value: 'work',
 									},
 									{
-										name: 'Work Fax',
+										name: 'Work fax',
 										value: 'work_fax',
 									},
 									{
-										name: 'Work Mobile',
+										name: 'Work mobile',
 										value: 'work_mobile',
 									},
 									{
-										name: 'Work Pager',
+										name: 'Work pager',
 										value: 'work_pager',
 									},
 								],
@@ -1114,7 +1114,7 @@ export const userFields: INodeProperties[] = [
 								description: 'The type of phone number',
 							},
 							{
-								displayName: 'Phone Number',
+								displayName: 'Phone number',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -1133,7 +1133,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Primary Email',
+				displayName: 'Primary email',
 				name: 'primaryEmail',
 				type: 'string',
 				default: '',
@@ -1142,9 +1142,9 @@ export const userFields: INodeProperties[] = [
 					"The user's primary email address. This property is required in a request to create a user account. The primaryEmail must be unique and cannot be an alias of another user.",
 			},
 			{
-				displayName: 'Secondary Emails',
+				displayName: 'Secondary emails',
 				name: 'emailUi',
-				placeholder: 'Add Email',
+				placeholder: 'Add email',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -1197,9 +1197,9 @@ export const userFields: INodeProperties[] = [
 			},
 			orgUnitPathField,
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFields',
-				placeholder: 'Add or Edit Custom Fields',
+				placeholder: 'Add or edit custom fields',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -1212,7 +1212,7 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Schema Name or ID',
+								displayName: 'Schema name or ID',
 								name: 'schemaName',
 								type: 'options',
 								typeOptions: {
@@ -1223,7 +1223,7 @@ export const userFields: INodeProperties[] = [
 									'Select the schema to use for custom fields. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldName',
 								type: 'string',
 								default: '',

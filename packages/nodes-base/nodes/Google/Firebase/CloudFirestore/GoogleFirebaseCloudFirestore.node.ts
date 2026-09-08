@@ -70,7 +70,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						value: 'googleFirebaseCloudFirestoreOAuth2Api',
 					},
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 				],

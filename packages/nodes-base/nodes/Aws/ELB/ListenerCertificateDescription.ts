@@ -20,7 +20,7 @@ export const listenerCertificateOperations: INodeProperties[] = [
 				action: 'Add a listener certificate',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getMany',
 				description: 'Get many listener certificates',
 				action: 'Get many listener certificates',
@@ -42,7 +42,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 	/*                                listenerCertificate:add                     */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Load Balancer ARN Name or ID',
+		displayName: 'Load balancer ARN name or ID',
 		name: 'loadBalancerId',
 		type: 'options',
 		typeOptions: {
@@ -60,7 +60,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Listener ARN Name or ID',
+		displayName: 'Listener ARN name or ID',
 		name: 'listenerId',
 		type: 'options',
 		required: true,
@@ -98,7 +98,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Load Balancer ARN Name or ID',
+		displayName: 'Load balancer ARN name or ID',
 		name: 'loadBalancerId',
 		type: 'options',
 		typeOptions: {
@@ -116,7 +116,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Listener ARN Name or ID',
+		displayName: 'Listener ARN name or ID',
 		name: 'listenerId',
 		type: 'options',
 		required: true,
@@ -135,7 +135,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -170,7 +170,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 	/*                                listenerCertificate:remove                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Load Balancer ARN Name or ID',
+		displayName: 'Load balancer ARN name or ID',
 		name: 'loadBalancerId',
 		type: 'options',
 		typeOptions: {
@@ -188,7 +188,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Listener ARN Name or ID',
+		displayName: 'Listener ARN name or ID',
 		name: 'listenerId',
 		type: 'options',
 		required: true,

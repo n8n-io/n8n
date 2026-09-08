@@ -72,14 +72,14 @@ export const databaseLocator: INodeProperties = {
 			displayName: 'Database',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Database...',
+			placeholder: 'Select a database...',
 			typeOptions: {
 				searchListMethod: 'getDatabases',
 				searchable: true,
 			},
 		},
 		{
-			displayName: 'Database Link',
+			displayName: 'Database link',
 			name: 'url',
 			type: 'string',
 			placeholder:
@@ -122,17 +122,17 @@ export const databaseLocator: INodeProperties = {
 };
 
 export const dataSourceLocator: INodeProperties = {
-	displayName: 'Data Source',
+	displayName: 'Data source',
 	name: 'dataSourceId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
-			displayName: 'Data Source',
+			displayName: 'Data source',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Data Source...',
+			placeholder: 'Select a data source...',
 			typeOptions: {
 				searchListMethod: 'getDataSources',
 				searchable: true,
@@ -254,13 +254,13 @@ export function searchOptions(resource: string, operation: string): INodePropert
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: { show: { resource: [resource], operation: [operation] } },
 		options: [
 			{
 				displayName: 'Sort',
 				name: 'sort',
-				placeholder: 'Add Sort',
+				placeholder: 'Add sort',
 				type: 'fixedCollection',
 				typeOptions: { multipleValues: false },
 				default: {},
@@ -284,7 +284,7 @@ export function searchOptions(resource: string, operation: string): INodePropert
 								displayName: 'Timestamp',
 								name: 'timestamp',
 								type: 'options',
-								options: [{ name: 'Last Edited Time', value: 'last_edited_time' }],
+								options: [{ name: 'Last edited time', value: 'last_edited_time' }],
 								default: 'last_edited_time',
 								description: 'The name of the timestamp to sort against',
 							},
@@ -298,7 +298,7 @@ export function searchOptions(resource: string, operation: string): INodePropert
 
 export const returnAllOrLimit = (resource: string, operation: string): INodeProperties[] => [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

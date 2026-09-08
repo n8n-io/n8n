@@ -45,7 +45,7 @@ export class WebflowTriggerV2 implements INodeType {
 			],
 			properties: [
 				{
-					displayName: 'Site Name or ID',
+					displayName: 'Site name or ID',
 					name: 'site',
 					type: 'options',
 					required: true,
@@ -63,35 +63,35 @@ export class WebflowTriggerV2 implements INodeType {
 					required: true,
 					options: [
 						{
-							name: 'Collection Item Created',
+							name: 'Collection item created',
 							value: 'collection_item_created',
 						},
 						{
-							name: 'Collection Item Deleted',
+							name: 'Collection item deleted',
 							value: 'collection_item_deleted',
 						},
 						{
-							name: 'Collection Item Updated',
+							name: 'Collection item updated',
 							value: 'collection_item_changed',
 						},
 						{
-							name: 'Ecomm Inventory Changed',
+							name: 'Ecomm inventory changed',
 							value: 'ecomm_inventory_changed',
 						},
 						{
-							name: 'Ecomm New Order',
+							name: 'Ecomm new order',
 							value: 'ecomm_new_order',
 						},
 						{
-							name: 'Ecomm Order Changed',
+							name: 'Ecomm order changed',
 							value: 'ecomm_order_changed',
 						},
 						{
-							name: 'Form Submission',
+							name: 'Form submission',
 							value: 'form_submission',
 						},
 						{
-							name: 'Site Publish',
+							name: 'Site publish',
 							value: 'site_publish',
 						},
 					],

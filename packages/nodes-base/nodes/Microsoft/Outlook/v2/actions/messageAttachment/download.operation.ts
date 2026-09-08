@@ -9,7 +9,7 @@ export const properties: INodeProperties[] = [
 	messageRLC,
 	attachmentRLC,
 	{
-		displayName: 'Put Output in Field',
+		displayName: 'Put output in field',
 		name: 'binaryPropertyName',
 		hint: 'The name of the output field to put the binary file data in',
 		type: 'string',

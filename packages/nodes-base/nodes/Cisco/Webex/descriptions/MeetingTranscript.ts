@@ -18,7 +18,7 @@ export const meetingTranscriptOperations: INodeProperties[] = [
 				action: 'Download a meeting transcript',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many meeting transcripts',
 			},
@@ -112,7 +112,7 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		description: 'Unique identifier for the meeting instance which the transcripts belong to',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -145,7 +145,7 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -155,7 +155,7 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Host Email',
+				displayName: 'Host email',
 				name: 'hostEmail',
 				type: 'string',
 				default: '',

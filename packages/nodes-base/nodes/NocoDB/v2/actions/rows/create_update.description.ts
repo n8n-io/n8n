@@ -2,17 +2,17 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const DataToSendOption: INodeProperties[] = [
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'dataToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'mapWithFields',
 				description: 'Set the value for each destination column',
 			},
@@ -36,7 +36,7 @@ export const RowCreateUpdateOptions: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {

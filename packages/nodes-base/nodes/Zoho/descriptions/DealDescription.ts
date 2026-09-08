@@ -21,10 +21,10 @@ export const dealOperations: INodeProperties[] = [
 				action: 'Create a deal',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
-				action: 'Create or Update a deal',
+				action: 'Create or update a deal',
 			},
 			{
 				name: 'Delete',
@@ -39,7 +39,7 @@ export const dealOperations: INodeProperties[] = [
 				action: 'Get a deal',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many contacts',
 				action: 'Get many deals',
@@ -60,7 +60,7 @@ export const dealFields: INodeProperties[] = [
 	//              deal: create
 	// ----------------------------------------
 	{
-		displayName: 'Deal Name',
+		displayName: 'Deal name',
 		name: 'dealName',
 		type: 'string',
 		required: true,
@@ -77,7 +77,7 @@ export const dealFields: INodeProperties[] = [
 	//             deal: upsert
 	// ----------------------------------------
 	{
-		displayName: 'Deal Name',
+		displayName: 'Deal name',
 		name: 'dealName',
 		description:
 			'Name of the deal. If a record with this deal name exists it will be updated, otherwise a new one will be created.',
@@ -95,7 +95,7 @@ export const dealFields: INodeProperties[] = [
 	//          deal: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Stage Name or ID',
+		displayName: 'Stage name or ID',
 		name: 'stage',
 		type: 'options',
 		description:
@@ -113,10 +113,10 @@ export const dealFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -133,7 +133,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Monetary amount of the deal',
 			},
 			{
-				displayName: 'Closing Date',
+				displayName: 'Closing date',
 				name: 'Closing_Date',
 				type: 'dateTime',
 				default: '',
@@ -154,21 +154,21 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Lead Conversion Time',
+				displayName: 'Lead conversion time',
 				name: 'Lead_Conversion_Time',
 				type: 'number',
 				default: '',
 				description: 'Average number of days to convert the lead into a deal',
 			},
 			{
-				displayName: 'Next Step',
+				displayName: 'Next step',
 				name: 'Next_Step',
 				type: 'string',
 				default: '',
 				description: 'Description of the next step in the sales process',
 			},
 			{
-				displayName: 'Overall Sales Duration',
+				displayName: 'Overall sales duration',
 				name: 'Overall_Sales_Duration',
 				type: 'number',
 				default: '',
@@ -186,7 +186,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Probability of deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			{
-				displayName: 'Sales Cycle Duration',
+				displayName: 'Sales cycle duration',
 				name: 'Sales_Cycle_Duration',
 				type: 'number',
 				default: 0,
@@ -254,10 +254,10 @@ export const dealFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -274,7 +274,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Monetary amount of the deal',
 			},
 			{
-				displayName: 'Closing Date',
+				displayName: 'Closing date',
 				name: 'Closing_Date',
 				type: 'dateTime',
 				default: '',
@@ -288,7 +288,7 @@ export const dealFields: INodeProperties[] = [
 			},
 			makeCustomFieldsFixedCollection('deal'),
 			{
-				displayName: 'Deal Name',
+				displayName: 'Deal name',
 				name: 'Deal_Name',
 				type: 'string',
 				default: '',
@@ -300,21 +300,21 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Lead Conversion Time',
+				displayName: 'Lead conversion time',
 				name: 'Lead_Conversion_Time',
 				type: 'number',
 				default: '',
 				description: 'Average number of days to convert the lead into a deal',
 			},
 			{
-				displayName: 'Next Step',
+				displayName: 'Next step',
 				name: 'Next_Step',
 				type: 'string',
 				default: '',
 				description: 'Description of the next step in the sales process',
 			},
 			{
-				displayName: 'Overall Sales Duration',
+				displayName: 'Overall sales duration',
 				name: 'Overall_Sales_Duration',
 				type: 'number',
 				default: '',
@@ -332,14 +332,14 @@ export const dealFields: INodeProperties[] = [
 				description: 'Probability of deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			{
-				displayName: 'Sales Cycle Duration',
+				displayName: 'Sales cycle duration',
 				name: 'Sales_Cycle_Duration',
 				type: 'number',
 				default: 0,
 				description: 'Average number of days to win the deal',
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage name or ID',
 				name: 'Stage',
 				type: 'options',
 				description:

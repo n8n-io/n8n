@@ -2,7 +2,7 @@ import type { RmmProperties } from '../../Interfaces';
 
 export const rmmMuteDescription: RmmProperties = [
 	{
-		displayName: 'RMM Alert ID',
+		displayName: 'RMM alert ID',
 		name: 'alertId',
 		type: 'string',
 		required: true,
@@ -16,7 +16,7 @@ export const rmmMuteDescription: RmmProperties = [
 		description: 'Mute the RMM alert by ID',
 	},
 	{
-		displayName: 'Mute Period',
+		displayName: 'Mute period',
 		name: 'muteFor',
 		type: 'options',
 		displayOptions: {
@@ -28,27 +28,27 @@ export const rmmMuteDescription: RmmProperties = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
-				name: '1 Hour',
+				name: '1 hour',
 				value: '1-hour',
 			},
 			{
-				name: '1 Day',
+				name: '1 day',
 				value: '1-day',
 			},
 			{
-				name: '2 Days',
+				name: '2 days',
 				value: '2-days',
 			},
 			{
-				name: '1 Week',
+				name: '1 week',
 				value: '1-week',
 			},
 			{
-				name: '2 Weeks',
+				name: '2 weeks',
 				value: '2-weeks',
 			},
 			{
-				name: '1 Month',
+				name: '1 month',
 				value: '1-month',
 			},
 			{

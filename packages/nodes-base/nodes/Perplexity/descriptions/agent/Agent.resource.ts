@@ -16,7 +16,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create Response',
+				name: 'Create response',
 				value: 'createResponse',
 				action: 'Create a response',
 				description:

@@ -65,7 +65,7 @@ export class HtmlExtract implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				displayName: 'Source Data',
+				displayName: 'Source data',
 				name: 'sourceData',
 				type: 'options',
 				options: [
@@ -82,7 +82,7 @@ export class HtmlExtract implements INodeType {
 				description: 'If HTML should be read from binary or JSON data',
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				name: 'dataPropertyName',
 				type: 'string',
 				displayOptions: {
@@ -95,7 +95,7 @@ export class HtmlExtract implements INodeType {
 				hint: 'The name of the input binary field containing the file to be extracted',
 			},
 			{
-				displayName: 'JSON Property',
+				displayName: 'JSON property',
 				name: 'dataPropertyName',
 				type: 'string',
 				displayOptions: {
@@ -109,9 +109,9 @@ export class HtmlExtract implements INodeType {
 					'Name of the JSON property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
 			},
 			{
-				displayName: 'Extraction Values',
+				displayName: 'Extraction values',
 				name: 'extractionValues',
-				placeholder: 'Add Value',
+				placeholder: 'Add value',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -130,7 +130,7 @@ export class HtmlExtract implements INodeType {
 								description: 'The key under which the extracted value should be saved',
 							},
 							{
-								displayName: 'CSS Selector',
+								displayName: 'CSS selector',
 								name: 'cssSelector',
 								type: 'string',
 								default: '',
@@ -138,7 +138,7 @@ export class HtmlExtract implements INodeType {
 								description: 'The CSS selector to use',
 							},
 							{
-								displayName: 'Return Value',
+								displayName: 'Return value',
 								name: 'returnValue',
 								type: 'options',
 								options: [
@@ -180,7 +180,7 @@ export class HtmlExtract implements INodeType {
 								description: 'The name of the attribute to return the value off',
 							},
 							{
-								displayName: 'Return Array',
+								displayName: 'Return array',
 								name: 'returnArray',
 								type: 'boolean',
 								default: false,
@@ -200,7 +200,7 @@ export class HtmlExtract implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Trim Values',
+						displayName: 'Trim values',
 						name: 'trimValues',
 						type: 'boolean',
 						default: true,

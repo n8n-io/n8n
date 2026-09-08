@@ -72,7 +72,7 @@ export const versionDescription: INodeTypeDescription = {
 						'Generic Microsoft Graph credential. Add the Teams Graph scopes (e.g. Chat.ReadWrite, ChannelMessage.Read.All, Group.ReadWrite.All, OnlineMeetings.ReadWrite) and grant admin consent on the credential. See the docs for the full scope string.',
 				},
 				{
-					name: 'Service Principal (App-Only)',
+					name: 'Service principal (app-only)',
 					value: SERVICE_PRINCIPAL_AUTH,
 					description:
 						'App-only access via a Microsoft Entra app registration. App-only Graph cannot act as a signed-in user, so chat actions, chat triggers, and online meetings are unavailable. Grant the relevant application permissions (e.g. Team.ReadBasic.All, Channel.ReadBasic.All, Tasks.ReadWrite.All) and admin consent on the credential.',
@@ -91,15 +91,15 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'channel',
 				},
 				{
-					name: 'Channel Message',
+					name: 'Channel message',
 					value: 'channelMessage',
 				},
 				{
-					name: 'Chat Message',
+					name: 'Chat message',
 					value: 'chatMessage',
 				},
 				{
-					name: 'Online Meeting',
+					name: 'Online meeting',
 					value: 'onlineMeeting',
 				},
 				{

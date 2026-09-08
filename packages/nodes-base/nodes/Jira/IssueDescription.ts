@@ -37,7 +37,7 @@ export const issueOperations: INodeProperties[] = [
 				action: 'Get an issue',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many issues',
 				action: 'Get many issues',
@@ -84,7 +84,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Project',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a Project...',
+				placeholder: 'Select a project...',
 				typeOptions: {
 					searchListMethod: 'getProjects',
 					// missing searchListDependsOn: ['jiraVersion'],
@@ -119,7 +119,7 @@ export const issueFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Issue Type',
+		displayName: 'Issue type',
 		name: 'issueType',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -129,10 +129,10 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		modes: [
 			{
-				displayName: 'Issue Type',
+				displayName: 'Issue type',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select an Issue Type...',
+				placeholder: 'Select an issue type...',
 				typeOptions: {
 					searchListMethod: 'getIssueTypes',
 					// missing searchListDependsOn: ['project'],
@@ -179,10 +179,10 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -204,7 +204,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Assignee',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select an Assignee...',
+						placeholder: 'Select an assignee...',
 						typeOptions: {
 							searchListMethod: 'getUsers',
 							searchable: true,
@@ -238,7 +238,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Component Names or IDs',
+				displayName: 'Component names or IDs',
 				name: 'componentIds',
 				type: 'multiOptions',
 				description:
@@ -250,18 +250,18 @@ export const issueFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
 								displayName: 'Field',
@@ -276,7 +276,7 @@ export const issueFields: INodeProperties[] = [
 										displayName: 'Field',
 										name: 'list',
 										type: 'list',
-										placeholder: 'Select a Field...',
+										placeholder: 'Select a field...',
 										typeOptions: {
 											searchListMethod: 'getCustomFields',
 											// missing searchListDependsOn: ['project'],
@@ -304,7 +304,7 @@ export const issueFields: INodeProperties[] = [
 								],
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'fieldValue',
 								type: 'string',
 								description: 'Value of the field to set',
@@ -315,7 +315,7 @@ export const issueFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Label Names or IDs',
+				displayName: 'Label names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
 				description:
@@ -346,7 +346,7 @@ export const issueFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Parent Issue Key',
+				displayName: 'Parent issue key',
 				name: 'parentIssueKey',
 				type: 'string',
 				default: '',
@@ -364,7 +364,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Priority',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Priority...',
+						placeholder: 'Select a priority...',
 						typeOptions: {
 							searchListMethod: 'getPriorities',
 						},
@@ -403,7 +403,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Reporter',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Reporter...',
+						placeholder: 'Select a reporter...',
 						typeOptions: {
 							searchListMethod: 'getUsers',
 							searchable: true,
@@ -431,7 +431,7 @@ export const issueFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Update History',
+				displayName: 'Update history',
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
@@ -445,7 +445,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                issue:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -458,10 +458,10 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -483,7 +483,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Assignee',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select an Assignee...',
+						placeholder: 'Select an assignee...',
 						typeOptions: {
 							searchListMethod: 'getUsers',
 							searchable: true,
@@ -517,18 +517,18 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
 								displayName: 'Field',
@@ -543,7 +543,7 @@ export const issueFields: INodeProperties[] = [
 										displayName: 'Field',
 										name: 'list',
 										type: 'list',
-										placeholder: 'Select a Field...',
+										placeholder: 'Select a field...',
 										typeOptions: {
 											searchListMethod: 'getCustomFields',
 											// missing searchListDependsOn: ['issueKey'],
@@ -571,7 +571,7 @@ export const issueFields: INodeProperties[] = [
 								],
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'fieldValue',
 								type: 'string',
 								description: 'Value of the field to set',
@@ -582,14 +582,14 @@ export const issueFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Issue Type',
+				displayName: 'Issue type',
 				name: 'issueType',
 				type: 'string',
 				default: '',
 				description: 'Issue Types',
 			},
 			{
-				displayName: 'Label Names or IDs',
+				displayName: 'Label names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
 				description:
@@ -620,7 +620,7 @@ export const issueFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Parent Issue Key',
+				displayName: 'Parent issue key',
 				name: 'parentIssueKey',
 				type: 'string',
 				default: '',
@@ -638,7 +638,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Priority',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Priority...',
+						placeholder: 'Select a priority...',
 						typeOptions: {
 							searchListMethod: 'getPriorities',
 						},
@@ -677,7 +677,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Reporter',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Reporter...',
+						placeholder: 'Select a reporter...',
 						typeOptions: {
 							searchListMethod: 'getUsers',
 							searchable: true,
@@ -723,7 +723,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Status',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Status...',
+						placeholder: 'Select a status...',
 						typeOptions: {
 							searchListMethod: 'getTransitions',
 						},
@@ -756,7 +756,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                issue:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -769,7 +769,7 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Delete Subtasks',
+		displayName: 'Delete subtasks',
 		name: 'deleteSubtasks',
 		type: 'boolean',
 		required: true,
@@ -786,7 +786,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                  issue:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -812,10 +812,10 @@ export const issueFields: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -849,7 +849,7 @@ export const issueFields: INodeProperties[] = [
 					'A list of fields to return for the issue. This parameter accepts a comma-separated list. Use it to retrieve a subset of fields. Allowed values: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.',
 			},
 			{
-				displayName: 'Fields By Key',
+				displayName: 'Fields by key',
 				name: 'fieldsByKey',
 				type: 'boolean',
 				default: false,
@@ -865,7 +865,7 @@ export const issueFields: INodeProperties[] = [
 					'A list of issue properties to return for the issue. This parameter accepts a comma-separated list. Allowed values: <code>*all</code> Returns all issue properties. Any issue property key, prefixed with a minus to exclude. Examples: <code>*all</code> Returns all properties. <code>*all</code>,-prop1 Returns all properties except prop1. <code>prop1,prop2</code> Returns prop1 and prop2 properties. This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3.',
 			},
 			{
-				displayName: 'Update History',
+				displayName: 'Update history',
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
@@ -879,7 +879,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                  issue:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -950,7 +950,7 @@ export const issueFields: INodeProperties[] = [
 						description: 'Returns all possible operations for the issue',
 					},
 					{
-						name: 'Rendered Fields',
+						name: 'Rendered fields',
 						value: 'renderedFields',
 						description: 'Returns field values rendered in HTML format',
 					},
@@ -965,7 +965,7 @@ export const issueFields: INodeProperties[] = [
 						description: 'Returns all possible transitions for the issue',
 					},
 					{
-						name: 'Versioned Representations',
+						name: 'Versioned representations',
 						value: 'versionedRepresentations',
 						description: "JSON array containing each version of a field's value",
 					},
@@ -981,7 +981,7 @@ export const issueFields: INodeProperties[] = [
 					'A list of fields to return for each issue, use it to retrieve a subset of fields. This parameter accepts a comma-separated list. Expand options include: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.',
 			},
 			{
-				displayName: 'Fields By Key',
+				displayName: 'Fields by key',
 				name: 'fieldsByKey',
 				type: 'boolean',
 				default: false,
@@ -1001,7 +1001,7 @@ export const issueFields: INodeProperties[] = [
 	/*                               issue:changelog                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -1014,7 +1014,7 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -1048,7 +1048,7 @@ export const issueFields: INodeProperties[] = [
 	/*                                issue:notify                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -1061,7 +1061,7 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -1073,10 +1073,10 @@ export const issueFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1086,7 +1086,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'HTML Body',
+				displayName: 'HTML body',
 				name: 'htmlBody',
 				type: 'string',
 				default: '',
@@ -1101,7 +1101,7 @@ export const issueFields: INodeProperties[] = [
 					'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',
 			},
 			{
-				displayName: 'Text Body',
+				displayName: 'Text body',
 				name: 'textBody',
 				type: 'string',
 				default: '',
@@ -1111,10 +1111,10 @@ export const issueFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Notification Recipients',
+		displayName: 'Notification recipients',
 		name: 'notificationRecipientsUi',
 		type: 'fixedCollection',
-		placeholder: 'Add Recipients',
+		placeholder: 'Add recipients',
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -1161,7 +1161,7 @@ export const issueFields: INodeProperties[] = [
 						description: "Whether the notification should be sent to the issue's voters",
 					},
 					{
-						displayName: 'User Names or IDs',
+						displayName: 'User names or IDs',
 						name: 'users',
 						type: 'multiOptions',
 						typeOptions: {
@@ -1173,7 +1173,7 @@ export const issueFields: INodeProperties[] = [
 							'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Group Names or IDs',
+						displayName: 'Group names or IDs',
 						name: 'groups',
 						type: 'multiOptions',
 						typeOptions: {
@@ -1189,7 +1189,7 @@ export const issueFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Notification Recipients',
+		displayName: 'Notification recipients',
 		name: 'notificationRecipientsJson',
 		type: 'json',
 		typeOptions: {
@@ -1206,10 +1206,10 @@ export const issueFields: INodeProperties[] = [
 		description: 'The recipients of the email notification for the issue',
 	},
 	{
-		displayName: 'Notification Recipients Restrictions',
+		displayName: 'Notification recipients restrictions',
 		name: 'notificationRecipientsRestrictionsUi',
 		type: 'fixedCollection',
-		placeholder: 'Add Recipients Restriction',
+		placeholder: 'Add recipients restriction',
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -1225,10 +1225,10 @@ export const issueFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'notificationRecipientsRestrictionsValues',
-				displayName: 'Recipients Restrictions',
+				displayName: 'Recipients restrictions',
 				values: [
 					{
-						displayName: 'User Names or IDs',
+						displayName: 'User names or IDs',
 						name: 'users',
 						type: 'multiOptions',
 						typeOptions: {
@@ -1240,7 +1240,7 @@ export const issueFields: INodeProperties[] = [
 							'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Group Names or IDs',
+						displayName: 'Group names or IDs',
 						name: 'groups',
 						type: 'multiOptions',
 						typeOptions: {
@@ -1256,7 +1256,7 @@ export const issueFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Notification Recipients Restrictions',
+		displayName: 'Notification recipients restrictions',
 		name: 'notificationRecipientsRestrictionsJson',
 		type: 'json',
 		typeOptions: {
@@ -1277,7 +1277,7 @@ export const issueFields: INodeProperties[] = [
 	/*                              issue:transitions                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -1290,10 +1290,10 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1318,7 +1318,7 @@ export const issueFields: INodeProperties[] = [
 				description: 'The ID of the transition',
 			},
 			{
-				displayName: 'Skip Remote Only Condition',
+				displayName: 'Skip remote only condition',
 				name: 'skipRemoteOnlyCondition',
 				type: 'boolean',
 				default: false,

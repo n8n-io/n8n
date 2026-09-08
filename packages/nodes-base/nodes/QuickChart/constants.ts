@@ -3,23 +3,23 @@ import type { INodePropertyOptions } from 'n8n-workflow';
 // Disable some charts that use different datasets for now
 export const CHART_TYPE_OPTIONS: INodePropertyOptions[] = [
 	{
-		name: 'Bar Chart',
+		name: 'Bar chart',
 		value: 'bar',
 	},
 	{
-		name: 'Doughnut Chart',
+		name: 'Doughnut chart',
 		value: 'doughnut',
 	},
 	{
-		name: 'Line Chart',
+		name: 'Line chart',
 		value: 'line',
 	},
 	{
-		name: 'Pie Chart',
+		name: 'Pie chart',
 		value: 'pie',
 	},
 	{
-		name: 'Polar Chart',
+		name: 'Polar chart',
 		value: 'polarArea',
 	},
 ];

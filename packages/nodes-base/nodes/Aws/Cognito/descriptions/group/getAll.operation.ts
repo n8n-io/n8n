@@ -9,7 +9,7 @@ const properties: INodeProperties[] = [
 		description: 'Select the user pool to use',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
@@ -54,7 +54,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include Users',
+		displayName: 'Include users',
 		name: 'includeUsers',
 		type: 'boolean',
 		default: false,

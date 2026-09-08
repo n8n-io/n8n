@@ -23,7 +23,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many messages',
 			},
@@ -113,7 +113,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'Whether the message should also be included as HTML',
 	},
 	{
-		displayName: 'HTML Message',
+		displayName: 'HTML message',
 		name: 'htmlMessage',
 		type: 'string',
 		default: '',
@@ -142,7 +142,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'Plain text message body',
 	},
 	{
-		displayName: 'To Email',
+		displayName: 'To email',
 		name: 'toList',
 		type: 'string',
 		default: [],
@@ -161,10 +161,10 @@ export const messageFields: INodeProperties[] = [
 		description: 'The email addresses of the recipients',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -176,7 +176,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Attachment',
 				name: 'attachmentsUi',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -184,10 +184,10 @@ export const messageFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'attachmentsBinary',
-						displayName: 'Attachment Binary',
+						displayName: 'Attachment binary',
 						values: [
 							{
-								displayName: 'Attachment Field Name (in Input)',
+								displayName: 'Attachment field name (in input)',
 								name: 'property',
 								type: 'string',
 								default: '',
@@ -201,7 +201,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Array of supported attachments to add to the message',
 			},
 			{
-				displayName: 'BCC Email',
+				displayName: 'BCC email',
 				name: 'bccList',
 				type: 'string',
 				description: 'The email addresses of the blind copy recipients',
@@ -213,7 +213,7 @@ export const messageFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'CC Email',
+				displayName: 'CC email',
 				name: 'ccList',
 				type: 'string',
 				description: 'The email addresses of the copy recipients',
@@ -225,7 +225,7 @@ export const messageFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Override Sender Name',
+				displayName: 'Override sender name',
 				name: 'senderName',
 				type: 'string',
 				placeholder: 'Name <test@gmail.com>',
@@ -236,10 +236,10 @@ export const messageFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -287,7 +287,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'The format to return the message in',
 			},
 			{
-				displayName: 'Attachment Prefix',
+				displayName: 'Attachment prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
@@ -306,7 +306,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -337,10 +337,10 @@ export const messageFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -350,7 +350,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Attachment Prefix',
+				displayName: 'Attachment prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
@@ -406,14 +406,14 @@ export const messageFields: INodeProperties[] = [
 				description: 'The format to return the message in',
 			},
 			{
-				displayName: 'Include Spam and Trash',
+				displayName: 'Include spam and trash',
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to include messages from SPAM and TRASH in the results',
 			},
 			{
-				displayName: 'Label Names or IDs',
+				displayName: 'Label names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
 				typeOptions: {

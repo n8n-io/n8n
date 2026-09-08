@@ -28,7 +28,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many users',
 			},
@@ -75,10 +75,10 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -88,14 +88,14 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'GPG Key',
+				displayName: 'GPG key',
 				name: 'gpgkey',
 				type: 'string',
 				default: '',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Inviter Email or ID',
+				displayName: 'Inviter email or ID',
 				name: 'invited_by',
 				type: 'options',
 				default: '',
@@ -106,7 +106,7 @@ export const userFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'org_id',
 				type: 'options',
 				description:
@@ -155,7 +155,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -203,10 +203,10 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -223,13 +223,13 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'GPG Key',
+				displayName: 'GPG key',
 				name: 'gpgkey',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Inviter Name or ID',
+				displayName: 'Inviter name or ID',
 				name: 'invited_by',
 				type: 'options',
 				description:
@@ -240,7 +240,7 @@ export const userFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'org_id',
 				type: 'options',
 				description:

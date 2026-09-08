@@ -33,7 +33,7 @@ export const tagOperations: INodeProperties[] = [
 				action: 'Get a tag',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many tags',
 				action: 'Get many tags',
@@ -94,10 +94,10 @@ export const tagFields: INodeProperties[] = [
 		description: 'Name of the new tag',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -133,11 +133,11 @@ export const tagFields: INodeProperties[] = [
 		description: 'ID of the tag to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		description: 'The fields to update',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],

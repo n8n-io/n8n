@@ -58,7 +58,7 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Empty Query Result',
+				displayName: 'Empty query result',
 				name: 'emptyQueryResult',
 				type: 'options',
 				description: 'What to return if the query executed successfully but returned no results',
@@ -68,7 +68,7 @@ export const properties: INodeProperties[] = [
 						value: 'success',
 					},
 					{
-						name: 'Empty Result',
+						name: 'Empty result',
 						value: 'empty',
 					},
 				],
@@ -80,7 +80,7 @@ export const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Query Parameters',
+				displayName: 'Query parameters',
 				name: 'queryParameters',
 				type: 'string',
 				default: '',

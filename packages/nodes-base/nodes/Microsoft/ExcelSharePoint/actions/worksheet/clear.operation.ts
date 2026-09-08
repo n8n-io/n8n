@@ -17,7 +17,7 @@ const properties: INodeProperties[] = [
 	libraryRLC,
 	worksheetRLC,
 	{
-		displayName: 'Apply To',
+		displayName: 'Apply to',
 		name: 'applyTo',
 		type: 'options',
 		// values in capital case as required by the API
@@ -41,7 +41,7 @@ const properties: INodeProperties[] = [
 		default: 'All',
 	},
 	{
-		displayName: 'Select a Range',
+		displayName: 'Select a range',
 		name: 'useRange',
 		type: 'boolean',
 		default: false,

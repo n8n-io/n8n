@@ -11,7 +11,7 @@ import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -31,7 +31,7 @@ const properties: INodeProperties[] = [
 		name: 'filters',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		typeOptions: { multipleValues: true },
 		options: [
 			{
@@ -39,7 +39,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Filter',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'fieldName',
 						type: 'options',
 						description:
@@ -55,15 +55,15 @@ const properties: INodeProperties[] = [
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{ name: 'Equal', value: 'equal' },
-							{ name: 'Not Equal', value: 'notEqual' },
-							{ name: 'Greater Than', value: 'greaterThen' },
-							{ name: 'Less Than', value: 'lesserThen' },
-							{ name: 'Greater or Equal', value: 'greaterOrEqual' },
-							{ name: 'Less or Equal', value: 'lesserOrEqual' },
+							{ name: 'Not equal', value: 'notEqual' },
+							{ name: 'Greater than', value: 'greaterThen' },
+							{ name: 'Less than', value: 'lesserThen' },
+							{ name: 'Greater or equal', value: 'greaterOrEqual' },
+							{ name: 'Less or equal', value: 'lesserOrEqual' },
 							{ name: 'Like', value: 'like' },
 							{ name: 'In', value: 'in' },
-							{ name: 'Not In', value: 'notIn' },
-							{ name: 'Child Of', value: 'childOf' },
+							{ name: 'Not in', value: 'notIn' },
+							{ name: 'Child of', value: 'childOf' },
 						],
 					},
 					{ displayName: 'Value', name: 'value', type: 'string', default: '' },
@@ -76,10 +76,10 @@ const properties: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Fields to Include',
+				displayName: 'Fields to include',
 				name: 'fieldsList',
 				type: 'multiOptions',
 				description:

@@ -18,13 +18,13 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Generate Video From Text',
+				name: 'Generate video from text',
 				value: 'textToVideo',
 				action: 'Generate video from text prompt',
 				description: 'Generate a video from a text prompt',
 			},
 			{
-				name: 'Generate Video From Image',
+				name: 'Generate video from image',
 				value: 'imageToVideo',
 				action: 'Generate video from image',
 				description:

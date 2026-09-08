@@ -17,12 +17,12 @@ const modelOptionsV1: INodePropertyOptions[] = [
 		description: 'Standard image-to-video model',
 	},
 	{
-		name: 'I2V-01-Director',
+		name: 'I2V-01-director',
 		value: 'I2V-01-Director',
 		description: 'Image-to-video with camera control commands',
 	},
 	{
-		name: 'I2V-01-Live',
+		name: 'I2V-01-live',
 		value: 'I2V-01-live',
 		description: 'Image-to-video live model',
 	},
@@ -80,12 +80,12 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Image Input Type',
+		displayName: 'Image input type',
 		name: 'imageInputType',
 		type: 'options',
 		options: [
 			{ name: 'URL', value: 'url' },
-			{ name: 'Binary File', value: 'binary' },
+			{ name: 'Binary file', value: 'binary' },
 		],
 		default: 'url',
 		description: 'How to provide the first frame image',
@@ -105,7 +105,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -140,12 +140,12 @@ const properties: INodeProperties[] = [
 	},
 	...h3VideoProperties,
 	{
-		displayName: 'Duration (Seconds)',
+		displayName: 'Duration (seconds)',
 		name: 'duration',
 		type: 'options',
 		options: [
-			{ name: '6 Seconds', value: 6 },
-			{ name: '10 Seconds', value: 10 },
+			{ name: '6 seconds', value: 6 },
+			{ name: '10 seconds', value: 10 },
 		],
 		default: 6,
 		description: 'Duration of the generated video',
@@ -174,7 +174,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Download Video',
+		displayName: 'Download video',
 		name: 'downloadVideo',
 		type: 'boolean',
 		default: true,
@@ -184,12 +184,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Prompt Optimizer',
+				displayName: 'Prompt optimizer',
 				name: 'promptOptimizer',
 				type: 'boolean',
 				default: true,
@@ -201,20 +201,20 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Last Frame Image Input Type',
+				displayName: 'Last frame image input type',
 				name: 'lastFrameInputType',
 				type: 'options',
 				options: [
 					{ name: 'None', value: 'none' },
 					{ name: 'URL', value: 'url' },
-					{ name: 'Binary File', value: 'binary' },
+					{ name: 'Binary file', value: 'binary' },
 				],
 				default: 'none',
 				description:
 					'Provide a last frame image to generate a first-and-last-frame video. Available only for supported models.',
 			},
 			{
-				displayName: 'Last Frame Image URL',
+				displayName: 'Last frame image URL',
 				name: 'lastFrameImageUrl',
 				type: 'string',
 				default: '',
@@ -226,7 +226,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Last Frame Data Field Name',
+				displayName: 'Last frame data field name',
 				name: 'lastFrameBinaryPropertyName',
 				type: 'string',
 				default: 'lastFrame',
@@ -241,13 +241,13 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Subject Reference Input Type',
+				displayName: 'Subject reference input type',
 				name: 'subjectReferenceInputType',
 				type: 'options',
 				options: [
 					{ name: 'None', value: 'none' },
 					{ name: 'URL', value: 'url' },
-					{ name: 'Binary File', value: 'binary' },
+					{ name: 'Binary file', value: 'binary' },
 				],
 				default: 'none',
 				description:
@@ -259,7 +259,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Subject Reference Image URL',
+				displayName: 'Subject reference image URL',
 				name: 'subjectReferenceImageUrl',
 				type: 'string',
 				default: '',
@@ -274,7 +274,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Subject Reference Data Field Name',
+				displayName: 'Subject reference data field name',
 				name: 'subjectReferenceBinaryPropertyName',
 				type: 'string',
 				default: 'subjectReference',

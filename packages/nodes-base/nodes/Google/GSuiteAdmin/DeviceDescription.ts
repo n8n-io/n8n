@@ -19,7 +19,7 @@ export const deviceOperations: INodeProperties[] = [
 				action: 'Get ChromeOS device',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many ChromeOS devices',
 				action: 'Get many ChromeOS devices',
@@ -31,7 +31,7 @@ export const deviceOperations: INodeProperties[] = [
 				action: 'Update ChromeOS device',
 			},
 			{
-				name: 'Change Status',
+				name: 'Change status',
 				value: 'changeStatus',
 				description: 'Change the status of a ChromeOS device',
 				action: 'Change status of ChromeOS device',
@@ -63,7 +63,7 @@ export const deviceFields: INodeProperties[] = [
 		description: 'Select the device you want to retrieve',
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -88,7 +88,7 @@ export const deviceFields: INodeProperties[] = [
 	/*                               device:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -145,7 +145,7 @@ export const deviceFields: INodeProperties[] = [
 		description: 'What subset of fields to fetch for this device',
 	},
 	{
-		displayName: 'Include Children',
+		displayName: 'Include children',
 		name: 'includeChildOrgunits',
 		type: 'boolean',
 		default: false,
@@ -162,7 +162,7 @@ export const deviceFields: INodeProperties[] = [
 		displayName: 'Filter',
 		name: 'filter',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -172,7 +172,7 @@ export const deviceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Organizational Unit Name or ID',
+				displayName: 'Organizational unit name or ID',
 				name: 'orgUnitPath',
 				type: 'options',
 				typeOptions: {
@@ -196,7 +196,7 @@ export const deviceFields: INodeProperties[] = [
 		displayName: 'Sort',
 		name: 'sort',
 		type: 'fixedCollection',
-		placeholder: 'Add Sort Rule',
+		placeholder: 'Add sort rule',
 		default: {},
 		displayOptions: {
 			show: {
@@ -207,23 +207,23 @@ export const deviceFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'sortRules',
-				displayName: 'Sort Rules',
+				displayName: 'Sort rules',
 				values: [
 					{
-						displayName: 'Order By',
+						displayName: 'Order by',
 						name: 'orderBy',
 						type: 'options',
 						options: [
 							{
-								name: 'Annotated Location',
+								name: 'Annotated location',
 								value: 'annotatedLocation',
 							},
 							{
-								name: 'Annotated User',
+								name: 'Annotated user',
 								value: 'annotatedUser',
 							},
 							{
-								name: 'Last Sync',
+								name: 'Last sync',
 								value: 'lastSync',
 							},
 							{
@@ -231,7 +231,7 @@ export const deviceFields: INodeProperties[] = [
 								value: 'notes',
 							},
 							{
-								name: 'Serial Number',
+								name: 'Serial number',
 								value: 'serialNumber',
 							},
 							{
@@ -243,7 +243,7 @@ export const deviceFields: INodeProperties[] = [
 						description: 'Field to sort the results by',
 					},
 					{
-						displayName: 'Sort Order',
+						displayName: 'Sort order',
 						name: 'sortBy',
 						type: 'options',
 						options: [
@@ -269,10 +269,10 @@ export const deviceFields: INodeProperties[] = [
 	/*                               device:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateOptions',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -282,7 +282,7 @@ export const deviceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Move to Organizational Unit Name or ID',
+				displayName: 'Move to organizational unit name or ID',
 				name: 'orgUnitPath',
 				type: 'options',
 				typeOptions: {
@@ -293,7 +293,7 @@ export const deviceFields: INodeProperties[] = [
 					'The full path to the organizational unit. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Annotated User',
+				displayName: 'Annotated user',
 				name: 'annotatedUser',
 				type: 'string',
 				default: '',
@@ -301,7 +301,7 @@ export const deviceFields: INodeProperties[] = [
 				placeholder: 'e.g. help desk',
 			},
 			{
-				displayName: 'Annotated Location',
+				displayName: 'Annotated location',
 				name: 'annotatedLocation',
 				type: 'string',
 				default: '',
@@ -309,7 +309,7 @@ export const deviceFields: INodeProperties[] = [
 				placeholder: 'e.g. Mountain View help desk Chromebook',
 			},
 			{
-				displayName: 'Annotated Asset ID',
+				displayName: 'Annotated asset ID',
 				name: 'annotatedAssetId',
 				type: 'string',
 				default: '',

@@ -31,7 +31,7 @@ export const siteOperations: INodeProperties[] = [
 				action: 'Get a site',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many sites',
 				action: 'Get many sites',
@@ -66,7 +66,7 @@ export const siteFields: INodeProperties[] = [
 		description: 'Enter site name',
 	},
 	{
-		displayName: 'Select Client by ID',
+		displayName: 'Select client by ID',
 		name: 'selectOption',
 		type: 'boolean',
 		default: false,
@@ -93,7 +93,7 @@ export const siteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Client Name or ID',
+		displayName: 'Client name or ID',
 		name: 'clientId',
 		type: 'options',
 		description:
@@ -112,11 +112,11 @@ export const siteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['site'],
@@ -125,7 +125,7 @@ export const siteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Main Contact',
+				displayName: 'Main contact',
 				name: 'maincontact_name',
 				type: 'string',
 				default: '',
@@ -137,7 +137,7 @@ export const siteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Phone Number',
+				displayName: 'Phone number',
 				name: 'phonenumber',
 				type: 'string',
 				default: '',
@@ -177,7 +177,7 @@ export const siteFields: INodeProperties[] = [
 	/*                                site:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -212,7 +212,7 @@ export const siteFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['site'],
@@ -221,13 +221,13 @@ export const siteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Active Status',
+				displayName: 'Active status',
 				name: 'activeStatus',
 				type: 'options',
 				default: 'all',
 				options: [
 					{
-						name: 'Active Only',
+						name: 'Active only',
 						value: 'active',
 						description: 'Whether to include active sites in the response',
 					},
@@ -237,14 +237,14 @@ export const siteFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive sites in the response',
 					},
 					{
-						name: 'Inactive Only',
+						name: 'Inactive only',
 						value: 'inactive',
 						description: 'Whether to include inactive sites in the response',
 					},
 				],
 			},
 			{
-				displayName: 'Text To Filter By',
+				displayName: 'Text to filter by',
 				name: 'search',
 				type: 'string',
 				default: '',
@@ -268,11 +268,11 @@ export const siteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['site'],
@@ -287,7 +287,7 @@ export const siteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Main Contact',
+				displayName: 'Main contact',
 				name: 'maincontact_name',
 				type: 'string',
 				default: '',
@@ -306,7 +306,7 @@ export const siteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Phone Number',
+				displayName: 'Phone number',
 				name: 'phonenumber',
 				type: 'string',
 				default: '',

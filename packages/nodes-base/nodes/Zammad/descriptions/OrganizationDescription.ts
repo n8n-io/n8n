@@ -34,7 +34,7 @@ export const organizationDescription: INodeProperties[] = [
 				action: 'Get an organization',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many organizations',
 				action: 'Get many organizations',
@@ -53,7 +53,7 @@ export const organizationDescription: INodeProperties[] = [
 	//             fields
 	// ----------------------------------
 	{
-		displayName: 'Organization Name',
+		displayName: 'Organization name',
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -111,7 +111,7 @@ export const organizationDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
@@ -121,7 +121,7 @@ export const organizationDescription: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Shared',
@@ -138,7 +138,7 @@ export const organizationDescription: INodeProperties[] = [
 				description: 'The domain associated with the organization',
 			},
 			{
-				displayName: 'Domain Assignment',
+				displayName: 'Domain assignment',
 				name: 'domain_assignment',
 				type: 'boolean',
 				default: true,
@@ -166,21 +166,21 @@ export const organizationDescription: INodeProperties[] = [
 				description: 'A note about the organization',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldPairs',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -204,7 +204,7 @@ export const organizationDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		displayOptions: {
@@ -214,7 +214,7 @@ export const organizationDescription: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Shared',
@@ -231,7 +231,7 @@ export const organizationDescription: INodeProperties[] = [
 				description: 'The domain associated with the organization',
 			},
 			{
-				displayName: 'Domain Assignment',
+				displayName: 'Domain assignment',
 				name: 'domain_assignment',
 				type: 'boolean',
 				default: true,
@@ -259,21 +259,21 @@ export const organizationDescription: INodeProperties[] = [
 				description: 'A note about the organization',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldPairs',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -297,7 +297,7 @@ export const organizationDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

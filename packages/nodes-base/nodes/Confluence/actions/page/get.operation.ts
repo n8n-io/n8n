@@ -48,7 +48,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include Descendants',
+		displayName: 'Include descendants',
 		name: 'includeDescendants',
 		type: 'boolean',
 		default: false,
@@ -61,7 +61,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Max Pages',
+		displayName: 'Max pages',
 		name: 'maxPages',
 		type: 'number',
 		default: 100,

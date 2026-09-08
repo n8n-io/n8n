@@ -38,7 +38,7 @@ import {
 
 const waitTimeProperties: INodeProperties[] = [
 	{
-		displayName: 'Limit Wait Time',
+		displayName: 'Limit wait time',
 		name: 'limitWaitTime',
 		type: 'boolean',
 		default: false,
@@ -57,13 +57,13 @@ const waitTimeProperties: INodeProperties[] = [
 
 export const formFieldsProperties: INodeProperties[] = [
 	{
-		displayName: 'Define Form',
+		displayName: 'Define form',
 		name: 'defineForm',
 		type: 'options',
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Using Fields Below',
+				name: 'Using fields below',
 				value: 'fields',
 			},
 			{
@@ -74,7 +74,7 @@ export const formFieldsProperties: INodeProperties[] = [
 		default: 'fields',
 	},
 	{
-		displayName: 'Form Fields',
+		displayName: 'Form fields',
 		name: 'jsonOutput',
 		type: 'json',
 		typeOptions: {
@@ -124,13 +124,13 @@ const pageProperties = updateDisplayOptions(
 				{ ...formTitle, required: false },
 				formDescription,
 				{
-					displayName: 'Button Label',
+					displayName: 'Button label',
 					name: 'buttonLabel',
 					type: 'string',
 					default: 'Submit',
 				},
 				{
-					displayName: 'Custom Form Styling',
+					displayName: 'Custom form styling',
 					name: 'customCss',
 					type: 'string',
 					typeOptions: {
@@ -154,13 +154,13 @@ const completionProperties = updateDisplayOptions(
 	[
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-			displayName: 'On n8n Form Submission',
+			displayName: 'On n8n Form submission',
 			name: 'respondWith',
 			type: 'options',
 			default: 'text',
 			options: [
 				{
-					name: 'Show Completion Screen',
+					name: 'Show completion screen',
 					value: 'text',
 					description: 'Show a response text to the user',
 				},
@@ -170,12 +170,12 @@ const completionProperties = updateDisplayOptions(
 					description: 'Redirect the user to a URL',
 				},
 				{
-					name: 'Show Text',
+					name: 'Show text',
 					value: 'showText',
 					description: 'Display simple text or HTML',
 				},
 				{
-					name: 'Return Binary File',
+					name: 'Return binary file',
 					value: 'returnBinary',
 					description: 'Return incoming binary file',
 				},
@@ -195,7 +195,7 @@ const completionProperties = updateDisplayOptions(
 			},
 		},
 		{
-			displayName: 'Completion Title',
+			displayName: 'Completion title',
 			name: 'completionTitle',
 			type: 'string',
 			default: '',
@@ -207,7 +207,7 @@ const completionProperties = updateDisplayOptions(
 			},
 		},
 		{
-			displayName: 'Completion Message',
+			displayName: 'Completion message',
 			name: 'completionMessage',
 			type: 'string',
 			default: '',
@@ -237,7 +237,7 @@ const completionProperties = updateDisplayOptions(
 			description: 'The text to display on the page. Use HTML to show a customized web page.',
 		},
 		{
-			displayName: 'Input Data Field Name(s)',
+			displayName: 'Input data field name(s)',
 			name: 'inputDataFieldName',
 			type: 'string',
 			displayOptions: {
@@ -266,7 +266,7 @@ const completionProperties = updateDisplayOptions(
 						'Whether to include the link “Form automated with n8n” at the bottom of the page. Defaults to the Form Trigger’s setting.',
 				},
 				{
-					displayName: 'Custom Form Styling',
+					displayName: 'Custom form styling',
 					name: 'customCss',
 					type: 'string',
 					typeOptions: {
@@ -342,18 +342,18 @@ export class Form extends Node {
 				default: '',
 			},
 			{
-				displayName: 'Page Type',
+				displayName: 'Page type',
 				name: 'operation',
 				type: 'options',
 				default: 'page',
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Next Form Page',
+						name: 'Next form page',
 						value: 'page',
 					},
 					{
-						name: 'Form Ending',
+						name: 'Form ending',
 						value: 'completion',
 					},
 				],

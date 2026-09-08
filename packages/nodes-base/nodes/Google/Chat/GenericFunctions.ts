@@ -126,7 +126,7 @@ export function validateJSON(json: string | undefined): any {
 export function getPagingParameters(resource: string, operation = 'getAll') {
 	const pagingParameters: INodeProperties[] = [
 		{
-			displayName: 'Return All',
+			displayName: 'Return all',
 			name: 'returnAll',
 			type: 'boolean',
 			displayOptions: {

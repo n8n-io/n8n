@@ -87,7 +87,7 @@ export class FreshworksCrm implements INodeType {
 						value: 'note',
 					},
 					{
-						name: 'Sales Activity',
+						name: 'Sales activity',
 						value: 'salesActivity',
 					},
 					{

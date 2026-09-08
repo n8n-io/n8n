@@ -19,28 +19,28 @@ export const hookOperations: INodeProperties[] = [
 				action: 'Get a hook',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'List many hooks on a form',
-				action: 'Get Many hooks',
+				action: 'Get many hooks',
 			},
 			{
 				name: 'Logs',
 				value: 'getLogs',
 				description: 'Get hook logs',
-				action: 'Get Logs for a hook',
+				action: 'Get logs for a hook',
 			},
 			{
-				name: 'Retry All',
+				name: 'Retry all',
 				value: 'retryAll',
 				description: 'Retry all failed attempts for a given hook',
-				action: 'Retry All hooks',
+				action: 'Retry all hooks',
 			},
 			{
-				name: 'Retry One',
+				name: 'Retry one',
 				value: 'retryOne',
 				description: 'Retry a specific hook',
-				action: 'Retry One hook',
+				action: 'Retry one hook',
 			},
 		],
 		default: 'getAll',
@@ -52,7 +52,7 @@ export const hookFields: INodeProperties[] = [
 	/*                                hook:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name or ID',
+		displayName: 'Form name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -87,7 +87,7 @@ export const hookFields: INodeProperties[] = [
 	/*                                hook:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Hook Log ID',
+		displayName: 'Hook log ID',
 		name: 'logId',
 		type: 'string',
 		required: true,
@@ -101,7 +101,7 @@ export const hookFields: INodeProperties[] = [
 		description: 'Hook log ID (starts with hl, e.g. hlSbGKaUKzTVNoWEVMYbLHe)',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		required: true,
@@ -135,7 +135,7 @@ export const hookFields: INodeProperties[] = [
 	/*                                hook:getLogs                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Log Status',
+		displayName: 'Log status',
 		name: 'status',
 		type: 'options',
 		displayOptions: {
@@ -166,7 +166,7 @@ export const hookFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Start Date',
+		displayName: 'Start date',
 		name: 'startDate',
 		type: 'dateTime',
 		displayOptions: {
@@ -179,7 +179,7 @@ export const hookFields: INodeProperties[] = [
 		description: 'Minimum date for the hook log to retrieve',
 	},
 	{
-		displayName: 'End Date',
+		displayName: 'End date',
 		name: 'endDate',
 		type: 'dateTime',
 		displayOptions: {

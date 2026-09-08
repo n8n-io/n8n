@@ -828,7 +828,7 @@ export function getConditions() {
 	}
 
 	elements.push({
-		displayName: 'Return Type',
+		displayName: 'Return type',
 		name: 'returnType',
 		type: 'options',
 		displayOptions: {
@@ -973,7 +973,7 @@ export function getSearchFilters(resource: string) {
 					value: 'none',
 				},
 				{
-					name: 'Build Manually',
+					name: 'Build manually',
 					value: 'manual',
 				},
 				{
@@ -993,7 +993,7 @@ export function getSearchFilters(resource: string) {
 			default: 'none',
 		},
 		{
-			displayName: 'Must Match',
+			displayName: 'Must match',
 			name: 'matchType',
 			type: 'options',
 			options: [
@@ -1002,7 +1002,7 @@ export function getSearchFilters(resource: string) {
 					value: 'anyFilter',
 				},
 				{
-					name: 'All Filters',
+					name: 'All filters',
 					value: 'allFilters',
 				},
 			],
@@ -1036,7 +1036,7 @@ export function getSearchFilters(resource: string) {
 				},
 			},
 			default: {},
-			placeholder: 'Add Condition',
+			placeholder: 'Add condition',
 			options: [
 				{
 					displayName: 'Conditions',

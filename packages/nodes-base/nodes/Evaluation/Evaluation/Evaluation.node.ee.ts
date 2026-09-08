@@ -73,19 +73,19 @@ export class Evaluation implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Set Inputs',
+						name: 'Set inputs',
 						value: 'setInputs',
 					},
 					{
-						name: 'Set Outputs',
+						name: 'Set outputs',
 						value: 'setOutputs',
 					},
 					{
-						name: 'Set Metrics',
+						name: 'Set metrics',
 						value: 'setMetrics',
 					},
 					{
-						name: 'Check If Evaluating',
+						name: 'Check if evaluating',
 						value: 'checkIfEvaluating',
 					},
 				],

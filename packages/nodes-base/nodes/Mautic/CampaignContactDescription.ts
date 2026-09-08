@@ -47,7 +47,7 @@ export const campaignContactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Campaign Name or ID',
+		displayName: 'Campaign name or ID',
 		name: 'campaignId',
 		type: 'options',
 		description:

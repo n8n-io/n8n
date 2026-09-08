@@ -25,7 +25,7 @@ export const signatureOperations: INodeProperties[] = [
 				action: 'Get a signature',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many signatures',
 			},
@@ -73,10 +73,10 @@ export const signatureFields: INodeProperties[] = [
 	},
 	makeSimpleField('signature', 'create'),
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -146,7 +146,7 @@ export const signatureFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -210,10 +210,10 @@ export const signatureFields: INodeProperties[] = [
 	},
 	makeSimpleField('signature', 'update'),
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

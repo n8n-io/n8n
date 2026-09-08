@@ -33,7 +33,7 @@ export const estimateOperations: INodeProperties[] = [
 				action: 'Get data of an estimate',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many estimates',
 				action: 'Get data of all estimates',
@@ -55,7 +55,7 @@ export const estimateFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -89,7 +89,7 @@ export const estimateFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -128,7 +128,7 @@ export const estimateFields: INodeProperties[] = [
 				description: 'Only return time entries with a spent_date on or before the given date',
 			},
 			{
-				displayName: 'Updated Since',
+				displayName: 'Updated since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
@@ -203,10 +203,10 @@ export const estimateFields: INodeProperties[] = [
 		description: 'The ID of the client this estimate belongs to',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -232,7 +232,7 @@ export const estimateFields: INodeProperties[] = [
 					'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
-				displayName: 'Issue Date',
+				displayName: 'Issue date',
 				name: 'issue_date',
 				type: 'dateTime',
 				default: '',
@@ -253,7 +253,7 @@ export const estimateFields: INodeProperties[] = [
 				description: 'If no value is set, the number will be automatically generated',
 			},
 			{
-				displayName: 'Purchase Order',
+				displayName: 'Purchase order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
@@ -303,10 +303,10 @@ export const estimateFields: INodeProperties[] = [
 		description: 'The ID of the invoice want to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -339,7 +339,7 @@ export const estimateFields: INodeProperties[] = [
 					'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
-				displayName: 'Issue Date',
+				displayName: 'Issue date',
 				name: 'issue_date',
 				type: 'dateTime',
 				default: '',
@@ -360,7 +360,7 @@ export const estimateFields: INodeProperties[] = [
 				description: 'Any additional notes to include on the estimate',
 			},
 			{
-				displayName: 'Purchase Order',
+				displayName: 'Purchase order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',

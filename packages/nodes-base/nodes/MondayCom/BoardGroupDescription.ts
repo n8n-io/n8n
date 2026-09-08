@@ -25,7 +25,7 @@ export const boardGroupOperations: INodeProperties[] = [
 				action: 'Create a board group',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get list of groups in a board',
 				action: 'Get many board groups',
@@ -40,7 +40,7 @@ export const boardGroupFields: INodeProperties[] = [
 	/*                                 boardGroup:create                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		description:
@@ -75,7 +75,7 @@ export const boardGroupFields: INodeProperties[] = [
 	/*                                 boardGroup:delete                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		description:
@@ -93,7 +93,7 @@ export const boardGroupFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group Name or ID',
+		displayName: 'Group name or ID',
 		name: 'groupId',
 		type: 'options',
 		description:
@@ -115,7 +115,7 @@ export const boardGroupFields: INodeProperties[] = [
 	/*                                 boardGroup:getAll                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		description:

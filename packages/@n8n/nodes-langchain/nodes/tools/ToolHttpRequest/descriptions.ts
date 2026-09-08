@@ -1,20 +1,20 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 export const specifyBySelector: INodeProperties = {
-	displayName: 'Specify By',
+	displayName: 'Specify by',
 	name: 'specifyBy',
 	type: 'options',
 	options: [
 		{
-			name: 'Using Fields Below',
+			name: 'Using fields below',
 			value: 'keypair',
 		},
 		{
-			name: 'Using JSON Below',
+			name: 'Using JSON below',
 			value: 'json',
 		},
 		{
-			name: 'Let Model Specify Entire Body',
+			name: 'Let model specify entire body',
 			value: 'model',
 		},
 	],
@@ -28,7 +28,7 @@ export const parametersCollection: INodeProperties = {
 	typeOptions: {
 		multipleValues: true,
 	},
-	placeholder: 'Add Parameter',
+	placeholder: 'Add parameter',
 	default: {
 		values: [
 			{
@@ -48,7 +48,7 @@ export const parametersCollection: INodeProperties = {
 					default: '',
 				},
 				{
-					displayName: 'Value Provided',
+					displayName: 'Value provided',
 					name: 'valueProvider',
 					type: 'options',
 					options: [
@@ -86,13 +86,13 @@ export const parametersCollection: INodeProperties = {
 	],
 };
 export const placeholderDefinitionsCollection: INodeProperties = {
-	displayName: 'Placeholder Definitions',
+	displayName: 'Placeholder definitions',
 	name: 'placeholderDefinitions',
 	type: 'fixedCollection',
 	typeOptions: {
 		multipleValues: true,
 	},
-	placeholder: 'Add Definition',
+	placeholder: 'Add definition',
 	default: [],
 	options: [
 		{
@@ -100,7 +100,7 @@ export const placeholderDefinitionsCollection: INodeProperties = {
 			displayName: 'Values',
 			values: [
 				{
-					displayName: 'Placeholder Name',
+					displayName: 'Placeholder name',
 					name: 'name',
 					type: 'string',
 					default: '',
@@ -118,7 +118,7 @@ export const placeholderDefinitionsCollection: INodeProperties = {
 					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 					options: [
 						{
-							name: 'Not Specified (Default)',
+							name: 'Not specified (default)',
 							value: 'not specified',
 						},
 						{
@@ -170,13 +170,13 @@ export const authenticationProperties: INodeProperties[] = [
 				value: 'none',
 			},
 			{
-				name: 'Predefined Credential Type',
+				name: 'Predefined credential type',
 				value: 'predefinedCredentialType',
 				description:
 					"We've already implemented auth for many services so that you don't have to set it up manually",
 			},
 			{
-				name: 'Generic Credential Type',
+				name: 'Generic credential type',
 				value: 'genericCredentialType',
 				description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
 			},
@@ -184,7 +184,7 @@ export const authenticationProperties: INodeProperties[] = [
 		default: 'none',
 	},
 	{
-		displayName: 'Credential Type',
+		displayName: 'Credential type',
 		name: 'nodeCredentialType',
 		type: 'credentialsSelect',
 		noDataExpression: true,
@@ -210,7 +210,7 @@ export const authenticationProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Generic Auth Type',
+		displayName: 'Generic auth type',
 		name: 'genericAuthType',
 		type: 'credentialsSelect',
 		required: true,
@@ -226,7 +226,7 @@ export const authenticationProperties: INodeProperties[] = [
 
 export const optimizeResponseProperties: INodeProperties[] = [
 	{
-		displayName: 'Optimize Response',
+		displayName: 'Optimize response',
 		name: 'optimizeResponse',
 		type: 'boolean',
 		default: false,
@@ -235,7 +235,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 			'Whether the optimize the tool response to reduce amount of data passed to the LLM that could lead to better result and reduce cost',
 	},
 	{
-		displayName: 'Expected Response Type',
+		displayName: 'Expected response type',
 		name: 'responseType',
 		type: 'options',
 		displayOptions: {
@@ -260,7 +260,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		default: 'json',
 	},
 	{
-		displayName: 'Field Containing Data',
+		displayName: 'Field containing data',
 		name: 'dataField',
 		type: 'string',
 		default: '',
@@ -276,7 +276,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include Fields',
+		displayName: 'Include fields',
 		name: 'fieldsToInclude',
 		type: 'options',
 		description: 'What fields response object should include',
@@ -340,7 +340,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return Only Content',
+		displayName: 'Return only content',
 		name: 'onlyContent',
 		type: 'boolean',
 		default: false,
@@ -355,7 +355,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Elements To Omit',
+		displayName: 'Elements to omit',
 		name: 'elementsToOmit',
 		type: 'string',
 		displayOptions: {
@@ -370,7 +370,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		description: 'Comma-separated list of selectors that would be excluded when extracting content',
 	},
 	{
-		displayName: 'Truncate Response',
+		displayName: 'Truncate response',
 		name: 'truncateResponse',
 		type: 'boolean',
 		default: false,
@@ -383,7 +383,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Max Response Characters',
+		displayName: 'Max response characters',
 		name: 'maxLength',
 		type: 'number',
 		default: 1000,

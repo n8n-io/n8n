@@ -27,7 +27,7 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get a post',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many posts from a subreddit',
 				action: 'Get many posts',
@@ -71,15 +71,15 @@ export const postFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Text Post',
+				name: 'Text post',
 				value: 'self',
 			},
 			{
-				name: 'Link Post',
+				name: 'Link post',
 				value: 'link',
 			},
 			{
-				name: 'Image Post',
+				name: 'Image post',
 				value: 'image',
 			},
 		],
@@ -224,7 +224,7 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -265,7 +265,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Category',
@@ -275,19 +275,19 @@ export const postFields: INodeProperties[] = [
 				description: 'Category of the posts to retrieve',
 				options: [
 					{
-						name: 'Top Posts',
+						name: 'Top posts',
 						value: 'top',
 					},
 					{
-						name: 'Hot Posts',
+						name: 'Hot posts',
 						value: 'hot',
 					},
 					{
-						name: 'New Posts',
+						name: 'New posts',
 						value: 'new',
 					},
 					{
-						name: 'Rising Posts',
+						name: 'Rising posts',
 						value: 'rising',
 					},
 				],
@@ -353,7 +353,7 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -384,10 +384,10 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

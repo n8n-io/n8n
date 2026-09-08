@@ -1,28 +1,28 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 export const customFieldsCollection: INodeProperties = {
-	displayName: 'Custom Fields',
+	displayName: 'Custom fields',
 	name: 'customFields',
 	type: 'fixedCollection',
 	typeOptions: {
 		multipleValues: true,
 	},
 	default: {},
-	placeholder: 'Add Custom Field',
+	placeholder: 'Add custom field',
 	options: [
 		{
 			displayName: 'Property',
 			name: 'property',
 			values: [
 				{
-					displayName: 'Field Name or ID',
+					displayName: 'Field name or ID',
 					name: 'name',
 					type: 'string',
 					default: '',
 					description: 'The name or key of the custom field as it appears in Pipedrive',
 				},
 				{
-					displayName: 'Field Value',
+					displayName: 'Field value',
 					name: 'value',
 					type: 'string',
 					default: '',
@@ -34,7 +34,7 @@ export const customFieldsCollection: INodeProperties = {
 };
 
 export const rawCustomFieldOutputOption: INodeProperties = {
-	displayName: 'Show Raw Field Keys',
+	displayName: 'Show raw field keys',
 	name: 'rawCustomFieldOutput',
 	type: 'boolean',
 	default: false,
@@ -43,16 +43,16 @@ export const rawCustomFieldOutputOption: INodeProperties = {
 };
 
 export const visibleToOption: INodeProperties = {
-	displayName: 'Visible To',
+	displayName: 'Visible to',
 	name: 'visible_to',
 	type: 'options',
 	options: [
 		{
-			name: 'Owner & Followers (Private)',
+			name: 'Owner & followers (private)',
 			value: '1',
 		},
 		{
-			name: 'Entire Company (Shared)',
+			name: 'Entire company (shared)',
 			value: '3',
 		},
 	],
@@ -62,7 +62,7 @@ export const visibleToOption: INodeProperties = {
 };
 
 export const rawCustomFieldKeysOption: INodeProperties = {
-	displayName: 'Use Raw Field Keys',
+	displayName: 'Use raw field keys',
 	name: 'rawCustomFieldKeys',
 	type: 'boolean',
 	default: false,

@@ -33,11 +33,11 @@ export const RoundDateDescription: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Round Down',
+				name: 'Round down',
 				value: 'roundDown',
 			},
 			{
-				name: 'Round Up',
+				name: 'Round up',
 				value: 'roundUp',
 			},
 		],
@@ -49,7 +49,7 @@ export const RoundDateDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'To Nearest',
+		displayName: 'To nearest',
 		name: 'toNearest',
 		type: 'options',
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
@@ -97,7 +97,7 @@ export const RoundDateDescription: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'End of Month',
+				name: 'End of month',
 				value: 'month',
 			},
 		],
@@ -110,7 +110,7 @@ export const RoundDateDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Output Field Name',
+		displayName: 'Output field name',
 		name: 'outputFieldName',
 		type: 'string',
 		default: 'roundedDate',

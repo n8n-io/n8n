@@ -49,7 +49,7 @@ export const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'API Key',
+					name: 'API key',
 					value: 'apiKey',
 				},
 				{
@@ -83,7 +83,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'block',
 				},
 				{
-					name: 'Data Source',
+					name: 'Data source',
 					value: 'dataSource',
 				},
 				{
@@ -91,7 +91,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'database',
 				},
 				{
-					name: 'Database Page',
+					name: 'Database page',
 					value: 'databasePage',
 				},
 				{

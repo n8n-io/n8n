@@ -84,11 +84,11 @@ export class Zammad implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Basic Auth',
+						name: 'Basic auth',
 						value: 'basicAuth',
 					},
 					{
-						name: 'Token Auth',
+						name: 'Token auth',
 						value: 'tokenAuth',
 					},
 				],

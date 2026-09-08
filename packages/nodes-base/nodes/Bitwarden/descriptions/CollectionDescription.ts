@@ -19,7 +19,7 @@ export const collectionOperations: INodeProperties[] = [
 				action: 'Get a collection',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many collections',
 			},
@@ -61,7 +61,7 @@ export const collectionFields: INodeProperties[] = [
 	//       collection: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -95,15 +95,15 @@ export const collectionFields: INodeProperties[] = [
 	//       collection: update
 	// ----------------------------------
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		required: true,
 		options: [
 			{
-				displayName: 'Group Names or IDs',
+				displayName: 'Group names or IDs',
 				name: 'groups',
 				type: 'multiOptions',
 				description:

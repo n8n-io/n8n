@@ -2,7 +2,7 @@ import type { ContactProperties } from '../../Interfaces';
 
 export const contactGetAllDescription: ContactProperties = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

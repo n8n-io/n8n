@@ -19,7 +19,7 @@ export const eventOperations: INodeProperties[] = [
 				action: 'Get an event',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many events',
 				action: 'Get many events',
@@ -34,7 +34,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                event:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -52,7 +52,7 @@ export const eventFields: INodeProperties[] = [
 			'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Project Slug Name or ID',
+		displayName: 'Project slug name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -85,7 +85,7 @@ export const eventFields: INodeProperties[] = [
 			'Whether the event payload will include the full event body, including the stack trace',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -120,7 +120,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                event:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -138,7 +138,7 @@ export const eventFields: INodeProperties[] = [
 			'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Project Slug Name or ID',
+		displayName: 'Project slug name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {

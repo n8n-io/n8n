@@ -19,7 +19,7 @@ export const incidentNoteOperations: INodeProperties[] = [
 				action: 'Create an incident note',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: "Get many incident's notes",
 				action: 'Get many incident notes',
@@ -94,7 +94,7 @@ export const incidentNoteFields: INodeProperties[] = [
 		description: 'Unique identifier for the incident',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

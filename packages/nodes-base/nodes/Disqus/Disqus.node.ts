@@ -67,19 +67,19 @@ export class Disqus implements INodeType {
 						action: 'Get a forum',
 					},
 					{
-						name: 'Get All Categories',
+						name: 'Get all categories',
 						value: 'getCategories',
 						description: 'Return a list of categories within a forum',
 						action: 'Get all categories in a forum',
 					},
 					{
-						name: 'Get All Threads',
+						name: 'Get all threads',
 						value: 'getThreads',
 						description: 'Return a list of threads within a forum',
 						action: 'Get all threads in a forum',
 					},
 					{
-						name: 'Get All Posts',
+						name: 'Get all posts',
 						value: 'getPosts',
 						description: 'Return a list of posts within a forum',
 						action: 'Get all posts in a forum',
@@ -92,7 +92,7 @@ export class Disqus implements INodeType {
 			//         forum:get
 			// ----------------------------------
 			{
-				displayName: 'Forum Name',
+				displayName: 'Forum name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -106,10 +106,10 @@ export class Disqus implements INodeType {
 				description: 'The short name(aka ID) of the forum to get',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['get'],
@@ -182,7 +182,7 @@ export class Disqus implements INodeType {
 			//         forum:getPosts
 			// ----------------------------------
 			{
-				displayName: 'Forum Name',
+				displayName: 'Forum name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -196,7 +196,7 @@ export class Disqus implements INodeType {
 				description: 'The short name(aka ID) of the forum to get',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -227,10 +227,10 @@ export class Disqus implements INodeType {
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['getPosts'],
@@ -356,7 +356,7 @@ export class Disqus implements INodeType {
 			//         forum:getCategories
 			// ----------------------------------
 			{
-				displayName: 'Forum Name',
+				displayName: 'Forum name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -370,7 +370,7 @@ export class Disqus implements INodeType {
 				description: 'The short name(aka ID) of the forum to get Categories',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -401,10 +401,10 @@ export class Disqus implements INodeType {
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['getCategories'],
@@ -437,7 +437,7 @@ export class Disqus implements INodeType {
 			//         forum:getThreads
 			// ----------------------------------
 			{
-				displayName: 'Forum Name',
+				displayName: 'Forum name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -451,7 +451,7 @@ export class Disqus implements INodeType {
 				description: 'The short name(aka ID) of the forum to get Threads',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -482,10 +482,10 @@ export class Disqus implements INodeType {
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['getThreads'],

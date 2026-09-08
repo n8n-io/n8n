@@ -31,7 +31,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many tasks',
 				action: 'Get many tasks',
@@ -52,7 +52,7 @@ export const taskFields: INodeProperties[] = [
 	//               task: create
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		description:
 			'ID of the project to which the task belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -83,10 +83,10 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -96,7 +96,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -108,11 +108,11 @@ export const taskFields: INodeProperties[] = [
 					'ID of the user to whom the task is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Blocked Note',
+				displayName: 'Blocked note',
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the task is blocked. Requires "Is Blocked" toggle to be enabled.',
+				description: 'Reason why the task is blocked. Requires "Is blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',
@@ -121,14 +121,14 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Blocked',
+				displayName: 'Is blocked',
 				name: 'is_blocked',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the task is blocked',
 			},
 			{
-				displayName: 'Milestone (Sprint) Name or ID',
+				displayName: 'Milestone (sprint) name or ID',
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
@@ -140,7 +140,7 @@ export const taskFields: INodeProperties[] = [
 					'ID of the milestone of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -152,7 +152,7 @@ export const taskFields: INodeProperties[] = [
 					'ID of the status of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -164,7 +164,7 @@ export const taskFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Taskboard Order',
+				displayName: 'Taskboard order',
 				name: 'taskboard_order',
 				type: 'number',
 				default: 1,
@@ -174,7 +174,7 @@ export const taskFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'User Story Name or ID',
+				displayName: 'User story name or ID',
 				name: 'user_story',
 				type: 'options',
 				typeOptions: {
@@ -186,7 +186,7 @@ export const taskFields: INodeProperties[] = [
 					'ID of the user story of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'User Story Order',
+				displayName: 'User story order',
 				name: 'us_order',
 				type: 'number',
 				default: 1,
@@ -238,7 +238,7 @@ export const taskFields: INodeProperties[] = [
 	//               task: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		description:
 			'ID of the project to which the task belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -256,7 +256,7 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -289,7 +289,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['task'],
@@ -299,7 +299,7 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -311,14 +311,14 @@ export const taskFields: INodeProperties[] = [
 					'ID of the user whom the task is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Is Closed',
+				displayName: 'Is closed',
 				name: 'statusIsClosed',
 				description: 'Whether the task is closed',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Milestone (Sprint) Name or ID',
+				displayName: 'Milestone (sprint) name or ID',
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
@@ -330,7 +330,7 @@ export const taskFields: INodeProperties[] = [
 					'ID of the milestone of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner',
 				description:
 					'ID of the owner of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -342,7 +342,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Role Name or ID',
+				displayName: 'Role name or ID',
 				name: 'role',
 				type: 'options',
 				description:
@@ -354,7 +354,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				description:
 					'ID of the status of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -366,7 +366,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -378,7 +378,7 @@ export const taskFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'User Story Name or ID',
+				displayName: 'User story name or ID',
 				name: 'userStory',
 				description:
 					'ID of the user story to which the task belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -396,7 +396,7 @@ export const taskFields: INodeProperties[] = [
 	//               task: update
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		description:
 			'ID of the project to set the task to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -427,10 +427,10 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -440,7 +440,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -452,11 +452,11 @@ export const taskFields: INodeProperties[] = [
 					'ID of the user to assign the task to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Blocked Note',
+				displayName: 'Blocked note',
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the task is blocked. Requires "Is Blocked" toggle to be enabled.',
+				description: 'Reason why the task is blocked. Requires "Is blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',
@@ -465,14 +465,14 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Blocked',
+				displayName: 'Is blocked',
 				name: 'is_blocked',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the task is blocked',
 			},
 			{
-				displayName: 'Milestone (Sprint) Name or ID',
+				displayName: 'Milestone (sprint) name or ID',
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
@@ -484,7 +484,7 @@ export const taskFields: INodeProperties[] = [
 					'ID of the milestone of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -502,7 +502,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User Story Name or ID',
+				displayName: 'User story name or ID',
 				name: 'user_story',
 				type: 'options',
 				typeOptions: {
@@ -514,7 +514,7 @@ export const taskFields: INodeProperties[] = [
 					'ID of the user story of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'User Story Order',
+				displayName: 'User story order',
 				name: 'us_order',
 				type: 'number',
 				default: 1,
@@ -524,7 +524,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Order of the task in the user story',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -536,7 +536,7 @@ export const taskFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Taskboard Order',
+				displayName: 'Taskboard order',
 				name: 'taskboard_order',
 				type: 'number',
 				default: 1,

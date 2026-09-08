@@ -31,7 +31,7 @@ export const assetTypeOperations: INodeProperties[] = [
 				action: 'Get an asset type',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many asset types',
 				action: 'Get many asset types',
@@ -65,10 +65,10 @@ export const assetTypeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -84,7 +84,7 @@ export const assetTypeFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Parent Asset Type Name or ID',
+				displayName: 'Parent asset type name or ID',
 				name: 'parent_asset_type_id',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
@@ -101,7 +101,7 @@ export const assetTypeFields: INodeProperties[] = [
 	//            assetType: delete
 	// ----------------------------------------
 	{
-		displayName: 'Asset Type ID',
+		displayName: 'Asset type ID',
 		name: 'assetTypeId',
 		description: 'ID of the asset type to delete',
 		type: 'string',
@@ -119,7 +119,7 @@ export const assetTypeFields: INodeProperties[] = [
 	//              assetType: get
 	// ----------------------------------------
 	{
-		displayName: 'Asset Type ID',
+		displayName: 'Asset type ID',
 		name: 'assetTypeId',
 		description: 'ID of the asset type to retrieve',
 		type: 'string',
@@ -137,7 +137,7 @@ export const assetTypeFields: INodeProperties[] = [
 	//            assetType: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -171,7 +171,7 @@ export const assetTypeFields: INodeProperties[] = [
 	//            assetType: update
 	// ----------------------------------------
 	{
-		displayName: 'Asset Type ID',
+		displayName: 'Asset type ID',
 		name: 'assetTypeId',
 		description: 'ID of the asset type to update',
 		type: 'string',
@@ -185,10 +185,10 @@ export const assetTypeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

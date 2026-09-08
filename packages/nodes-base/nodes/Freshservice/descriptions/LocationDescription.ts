@@ -31,7 +31,7 @@ export const locationOperations: INodeProperties[] = [
 				action: 'Get a location',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many locations',
 				action: 'Get many locations',
@@ -66,10 +66,10 @@ export const locationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -81,12 +81,12 @@ export const locationFields: INodeProperties[] = [
 			{
 				displayName: 'Address',
 				name: 'address',
-				placeholder: 'Add Address Fields',
+				placeholder: 'Add address fields',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
-						displayName: 'Address Details',
+						displayName: 'Address details',
 						name: 'addressFields',
 						values: [
 							{
@@ -120,7 +120,7 @@ export const locationFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zipcode',
 								type: 'string',
 								default: '',
@@ -172,7 +172,7 @@ export const locationFields: INodeProperties[] = [
 	//             location: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -220,10 +220,10 @@ export const locationFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -241,12 +241,12 @@ export const locationFields: INodeProperties[] = [
 			{
 				displayName: 'Address',
 				name: 'address',
-				placeholder: 'Add Address Fields',
+				placeholder: 'Add address fields',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
-						displayName: 'Address Details',
+						displayName: 'Address details',
 						name: 'addressFields',
 						values: [
 							{
@@ -280,7 +280,7 @@ export const locationFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zipcode',
 								type: 'string',
 								default: '',

@@ -20,7 +20,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: showOnUpload },
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -31,7 +31,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: showOnUpload },
 	},
 	{
-		displayName: 'Minor Edit',
+		displayName: 'Minor edit',
 		name: 'minorEdit',
 		type: 'boolean',
 		default: false,

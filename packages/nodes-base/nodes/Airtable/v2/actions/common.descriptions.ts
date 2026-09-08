@@ -9,7 +9,7 @@ export const baseRLC: INodeProperties = {
 	// description: 'The Airtable Base in which to operate on',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -66,7 +66,7 @@ export const tableRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -118,7 +118,7 @@ export const viewRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -180,7 +180,7 @@ export const insertUpdateOptions: INodeProperties[] = [
 					'Whether the Airtable API should attempt mapping of string values for linked records & select options',
 			},
 			{
-				displayName: 'Ignore Fields From Input',
+				displayName: 'Ignore fields from input',
 				name: 'ignoreFields',
 				type: 'string',
 				requiresDataPath: 'multiple',
@@ -193,12 +193,12 @@ export const insertUpdateOptions: INodeProperties[] = [
 				description: 'Comma-separated list of fields in input to ignore when updating',
 			},
 			{
-				displayName: 'Update All Matches',
+				displayName: 'Update all matches',
 				name: 'updateAllMatches',
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to update all records matching the value in the "Column to Match On". If not set, only the first matching record will be updated.',
+					'Whether to update all records matching the value in the "Column to match on". If not set, only the first matching record will be updated.',
 				displayOptions: {
 					show: {
 						'/operation': ['update', 'upsert'],

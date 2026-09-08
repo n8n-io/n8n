@@ -25,7 +25,7 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Get a company',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many companies',
 				action: 'Get many companies',
@@ -52,7 +52,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                company:users                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List By',
+		displayName: 'List by',
 		name: 'listBy',
 		type: 'options',
 		displayOptions: {
@@ -90,7 +90,7 @@ export const companyFields: INodeProperties[] = [
 		description: 'View by value',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -125,7 +125,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                company:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -159,7 +159,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -189,7 +189,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                company:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Select By',
+		displayName: 'Select by',
 		name: 'selectBy',
 		type: 'options',
 		displayOptions: {
@@ -250,7 +250,7 @@ export const companyFields: INodeProperties[] = [
 		description: 'The company ID you have defined for the company',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -262,10 +262,10 @@ export const companyFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -282,7 +282,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'The industry that this company operates in',
 			},
 			{
-				displayName: 'Monthly Spend',
+				displayName: 'Monthly spend',
 				name: 'monthlySpend',
 				type: 'string',
 				default: '',
@@ -322,7 +322,7 @@ export const companyFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Custom Attributes',
+		displayName: 'Custom attributes',
 		name: 'customAttributesJson',
 		type: 'json',
 		typeOptions: {
@@ -340,11 +340,11 @@ export const companyFields: INodeProperties[] = [
 			'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 	{
-		displayName: 'Custom Attributes',
+		displayName: 'Custom attributes',
 		name: 'customAttributesUi',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Attribute',
+		placeholder: 'Add attribute',
 		typeOptions: {
 			multipleValues: true,
 		},

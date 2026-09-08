@@ -44,25 +44,25 @@ export const pullRequestFields: INodeProperties[] = [
 				action: 'Get a pull request',
 			},
 			{
-				name: 'Create Comment',
+				name: 'Create comment',
 				value: 'createComment',
 				description: 'Create a new comment on a pull request',
 				action: 'Create a comment on a pull request',
 			},
 			{
-				name: 'Edit Comment',
+				name: 'Edit comment',
 				value: 'editComment',
 				description: 'Edit a comment on a pull request',
 				action: 'Edit a comment on a pull request',
 			},
 			{
-				name: 'Get Diff',
+				name: 'Get diff',
 				value: 'getDiff',
 				description: 'Get the raw diff of a pull request',
 				action: 'Get a pull request diff',
 			},
 			{
-				name: 'Get Patch',
+				name: 'Get patch',
 				value: 'getPatch',
 				description: 'Get the raw patch of a pull request',
 				action: 'Get a pull request patch',
@@ -81,7 +81,7 @@ export const pullRequestFields: INodeProperties[] = [
 	//         pullRequest:create
 	// ----------------------------------
 	{
-		displayName: 'Base Branch',
+		displayName: 'Base branch',
 		name: 'base',
 		type: 'string',
 		default: '',
@@ -91,7 +91,7 @@ export const pullRequestFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['pullRequest'], operation: ['create'] } },
 	},
 	{
-		displayName: 'Head Branch',
+		displayName: 'Head branch',
 		name: 'head',
 		type: 'string',
 		default: '',
@@ -120,7 +120,7 @@ export const pullRequestFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['pullRequest'], operation: ['create'] } },
 	},
 	{
-		displayName: 'Create a Draft Pull Request',
+		displayName: 'Create a draft pull request',
 		name: 'draft',
 		type: 'boolean',
 		default: false,
@@ -132,7 +132,7 @@ export const pullRequestFields: INodeProperties[] = [
 	// Shared PR Number field (all operations that need it)
 	// ----------------------------------------------------------
 	{
-		displayName: 'PR Number',
+		displayName: 'PR number',
 		name: 'pullRequestNumber',
 		type: 'number',
 		default: 0,
@@ -162,7 +162,7 @@ export const pullRequestFields: INodeProperties[] = [
 		displayName: 'Edit Fields',
 		name: 'editFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: { show: { resource: ['pullRequest'], operation: ['update'] } },
 		options: [
@@ -193,7 +193,7 @@ export const pullRequestFields: INodeProperties[] = [
 				description: 'The state of the pull request',
 			},
 			{
-				displayName: 'Base Branch',
+				displayName: 'Base branch',
 				name: 'base',
 				type: 'string',
 				default: '',
@@ -258,19 +258,19 @@ export const pullRequestFields: INodeProperties[] = [
 	//         pullRequest:merge
 	// ----------------------------------
 	{
-		displayName: 'Merge Method',
+		displayName: 'Merge method',
 		name: 'mergeMethod',
 		type: 'options',
 		options: [
-			{ name: 'Merge Commit', value: 'merge' },
-			{ name: 'Squash and Merge', value: 'squash' },
-			{ name: 'Rebase and Merge', value: 'rebase' },
+			{ name: 'Merge commit', value: 'merge' },
+			{ name: 'Squash and merge', value: 'squash' },
+			{ name: 'Rebase and merge', value: 'rebase' },
 		],
 		default: 'merge',
 		displayOptions: { show: { resource: ['pullRequest'], operation: ['merge'] } },
 	},
 	{
-		displayName: 'Commit Title',
+		displayName: 'Commit title',
 		name: 'commitTitle',
 		type: 'string',
 		default: '',
@@ -278,7 +278,7 @@ export const pullRequestFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['pullRequest'], operation: ['merge'] } },
 	},
 	{
-		displayName: 'Commit Message',
+		displayName: 'Commit message',
 		name: 'commitMessage',
 		type: 'string',
 		typeOptions: { rows: 4 },

@@ -91,7 +91,7 @@ export class Mailchimp implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Key',
+						name: 'API key',
 						value: 'apiKey',
 					},
 					{
@@ -112,7 +112,7 @@ export class Mailchimp implements INodeType {
 						value: 'campaign',
 					},
 					{
-						name: 'List Group',
+						name: 'List group',
 						value: 'listGroup',
 					},
 					{
@@ -120,7 +120,7 @@ export class Mailchimp implements INodeType {
 						value: 'member',
 					},
 					{
-						name: 'Member Tag',
+						name: 'Member tag',
 						value: 'memberTag',
 					},
 				],
@@ -158,7 +158,7 @@ export class Mailchimp implements INodeType {
 						action: 'Get a member',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many members on a list',
 						action: 'Get many members',
@@ -212,7 +212,7 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many groups',
 						action: 'Get many list groups',
@@ -245,7 +245,7 @@ export class Mailchimp implements INodeType {
 						action: 'Get a campaign',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many campaigns',
 						action: 'Get many campaigns',
@@ -275,7 +275,7 @@ export class Mailchimp implements INodeType {
 			/*                                 member:create                              */
 			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -345,7 +345,7 @@ export class Mailchimp implements INodeType {
 				description: "Subscriber's current status",
 			},
 			{
-				displayName: 'JSON Parameters',
+				displayName: 'JSON parameters',
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
@@ -370,7 +370,7 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Email Type',
+						displayName: 'Email type',
 						name: 'emailType',
 						type: 'options',
 						options: [
@@ -408,7 +408,7 @@ export class Mailchimp implements INodeType {
 						description: 'IP address the subscriber signed up from',
 					},
 					{
-						displayName: 'Signup Timestamp',
+						displayName: 'Signup timestamp',
 						name: 'timestampSignup',
 						type: 'dateTime',
 						default: '',
@@ -431,7 +431,7 @@ export class Mailchimp implements INodeType {
 						description: 'Vip status for subscribers',
 					},
 					{
-						displayName: 'Opt-in Timestamp',
+						displayName: 'Opt-in timestamp',
 						name: 'timestampOpt',
 						type: 'dateTime',
 						default: '',
@@ -444,7 +444,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Location',
 				name: 'locationFieldsUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Location',
+				placeholder: 'Add location',
 				default: {},
 				description: 'Subscriber location information.n',
 				displayOptions: {
@@ -480,9 +480,9 @@ export class Mailchimp implements INodeType {
 				],
 			},
 			{
-				displayName: 'Merge Fields',
+				displayName: 'Merge fields',
 				name: 'mergeFieldsUi',
-				placeholder: 'Add Merge Fields',
+				placeholder: 'Add merge fields',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -505,7 +505,7 @@ export class Mailchimp implements INodeType {
 						},
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -518,7 +518,7 @@ export class Mailchimp implements INodeType {
 								default: '',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'value',
 								required: true,
 								type: 'string',
@@ -530,7 +530,7 @@ export class Mailchimp implements INodeType {
 				],
 			},
 			{
-				displayName: 'Merge Fields',
+				displayName: 'Merge fields',
 				name: 'mergeFieldsJson',
 				type: 'json',
 				typeOptions: {
@@ -562,9 +562,9 @@ export class Mailchimp implements INodeType {
 				},
 			},
 			{
-				displayName: 'Interest Groups',
+				displayName: 'Interest groups',
 				name: 'groupsUi',
-				placeholder: 'Add Interest Group',
+				placeholder: 'Add interest group',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -586,7 +586,7 @@ export class Mailchimp implements INodeType {
 						},
 						values: [
 							{
-								displayName: 'Category Name or ID',
+								displayName: 'Category name or ID',
 								name: 'categoryId',
 								type: 'options',
 								description:
@@ -598,7 +598,7 @@ export class Mailchimp implements INodeType {
 								default: '',
 							},
 							{
-								displayName: 'Category Field ID',
+								displayName: 'Category field ID',
 								name: 'categoryFieldId',
 								type: 'string',
 								default: '',
@@ -614,7 +614,7 @@ export class Mailchimp implements INodeType {
 				],
 			},
 			{
-				displayName: 'Interest Groups',
+				displayName: 'Interest groups',
 				name: 'groupJson',
 				type: 'json',
 				typeOptions: {
@@ -633,7 +633,7 @@ export class Mailchimp implements INodeType {
 			/*                                 member:delete                              */
 			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -670,7 +670,7 @@ export class Mailchimp implements INodeType {
 			/*                                 member:get                                 */
 			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -724,7 +724,7 @@ export class Mailchimp implements INodeType {
 						description: 'A comma-separated list of fields to return',
 					},
 					{
-						displayName: 'Exclude Fields',
+						displayName: 'Exclude fields',
 						name: 'excludeFields',
 						type: 'string',
 						default: '',
@@ -736,7 +736,7 @@ export class Mailchimp implements INodeType {
 			/*                                 member:getAll                              */
 			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -755,7 +755,7 @@ export class Mailchimp implements INodeType {
 					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -799,7 +799,7 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Before Last Changed',
+						displayName: 'Before last changed',
 						name: 'beforeLastChanged',
 						type: 'dateTime',
 						default: '',
@@ -807,7 +807,7 @@ export class Mailchimp implements INodeType {
 							'Restrict results to subscribers whose information changed before the set timeframe',
 					},
 					{
-						displayName: 'Before Timestamp Opt',
+						displayName: 'Before timestamp opt',
 						name: 'beforeTimestampOpt',
 						type: 'dateTime',
 						default: '',
@@ -828,7 +828,7 @@ export class Mailchimp implements INodeType {
 					// 	description: 'A comma-separated list of fields to exclude.',
 					// },
 					{
-						displayName: 'Email Type',
+						displayName: 'Email type',
 						name: 'emailType',
 						type: 'options',
 						options: [
@@ -874,7 +874,7 @@ export class Mailchimp implements INodeType {
 						description: "Subscriber's current status",
 					},
 					{
-						displayName: 'Since Last Changed',
+						displayName: 'Since last changed',
 						name: 'sinceLastChanged',
 						type: 'dateTime',
 						default: '',
@@ -887,7 +887,7 @@ export class Mailchimp implements INodeType {
 			/*                                 member:update                              */
 			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -921,7 +921,7 @@ export class Mailchimp implements INodeType {
 				description: 'Email address of the subscriber',
 			},
 			{
-				displayName: 'JSON Parameters',
+				displayName: 'JSON parameters',
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
@@ -933,10 +933,10 @@ export class Mailchimp implements INodeType {
 				},
 			},
 			{
-				displayName: 'Update Fields',
+				displayName: 'Update fields',
 				name: 'updateFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -946,7 +946,7 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Email Type',
+						displayName: 'Email type',
 						name: 'emailType',
 						type: 'options',
 						options: [
@@ -963,9 +963,9 @@ export class Mailchimp implements INodeType {
 						description: 'Type of email this member asked to get',
 					},
 					{
-						displayName: 'Interest Groups',
+						displayName: 'Interest groups',
 						name: 'groupsUi',
-						placeholder: 'Add Interest Group',
+						placeholder: 'Add interest group',
 						type: 'fixedCollection',
 						default: {},
 						typeOptions: {
@@ -987,7 +987,7 @@ export class Mailchimp implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Category Name or ID',
+										displayName: 'Category name or ID',
 										name: 'categoryId',
 										type: 'options',
 										description:
@@ -999,7 +999,7 @@ export class Mailchimp implements INodeType {
 										default: '',
 									},
 									{
-										displayName: 'Category Field ID',
+										displayName: 'Category field ID',
 										name: 'categoryFieldId',
 										type: 'string',
 										default: '',
@@ -1022,9 +1022,9 @@ export class Mailchimp implements INodeType {
 						description: "If set/detected, the subscriber's language",
 					},
 					{
-						displayName: 'Merge Fields',
+						displayName: 'Merge fields',
 						name: 'mergeFieldsUi',
-						placeholder: 'Add Merge Fields',
+						placeholder: 'Add merge fields',
 						type: 'fixedCollection',
 						default: {},
 						typeOptions: {
@@ -1047,7 +1047,7 @@ export class Mailchimp implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field Name or ID',
+										displayName: 'Field name or ID',
 										name: 'name',
 										type: 'options',
 										typeOptions: {
@@ -1060,7 +1060,7 @@ export class Mailchimp implements INodeType {
 										default: '',
 									},
 									{
-										displayName: 'Field Value',
+										displayName: 'Field value',
 										name: 'value',
 										required: true,
 										type: 'string',
@@ -1086,7 +1086,7 @@ export class Mailchimp implements INodeType {
 						description: 'IP address the subscriber signed up from',
 					},
 					{
-						displayName: 'Signup Timestamp',
+						displayName: 'Signup timestamp',
 						name: 'timestampSignup',
 						type: 'dateTime',
 						default: '',
@@ -1094,7 +1094,7 @@ export class Mailchimp implements INodeType {
 							'The date and time the subscriber signed up for the list in ISO 8601 format',
 					},
 					{
-						displayName: 'Skip Merge Validation',
+						displayName: 'Skip merge validation',
 						name: 'skipMergeValidation',
 						type: 'boolean',
 						default: false,
@@ -1142,7 +1142,7 @@ export class Mailchimp implements INodeType {
 						displayName: 'Location',
 						name: 'locationFieldsUi',
 						type: 'fixedCollection',
-						placeholder: 'Add Location',
+						placeholder: 'Add location',
 						default: {},
 						description: 'Subscriber location information.n',
 						displayOptions: {
@@ -1178,7 +1178,7 @@ export class Mailchimp implements INodeType {
 						],
 					},
 					{
-						displayName: 'Opt-in Timestamp',
+						displayName: 'Opt-in timestamp',
 						name: 'timestampOpt',
 						type: 'dateTime',
 						default: '',
@@ -1188,7 +1188,7 @@ export class Mailchimp implements INodeType {
 				],
 			},
 			{
-				displayName: 'Merge Fields',
+				displayName: 'Merge fields',
 				name: 'mergeFieldsJson',
 				type: 'json',
 				typeOptions: {
@@ -1220,7 +1220,7 @@ export class Mailchimp implements INodeType {
 				},
 			},
 			{
-				displayName: 'Interest Groups',
+				displayName: 'Interest groups',
 				name: 'groupJson',
 				type: 'json',
 				typeOptions: {
@@ -1239,7 +1239,7 @@ export class Mailchimp implements INodeType {
 			/*                                 memberTag:create                           */
 			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -1302,7 +1302,7 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Is Syncing',
+						displayName: 'Is syncing',
 						name: 'isSyncing',
 						type: 'boolean',
 						default: false,
@@ -1314,7 +1314,7 @@ export class Mailchimp implements INodeType {
 			/*                                 member:getAll                              */
 			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -1333,7 +1333,7 @@ export class Mailchimp implements INodeType {
 					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Group Category Name or ID',
+				displayName: 'Group category name or ID',
 				name: 'groupCategory',
 				type: 'options',
 				description:
@@ -1353,7 +1353,7 @@ export class Mailchimp implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -1387,7 +1387,7 @@ export class Mailchimp implements INodeType {
 			/*                                 campaign:getAll                            */
 			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -1431,21 +1431,21 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Before Create Time',
+						displayName: 'Before create time',
 						name: 'beforeCreateTime',
 						type: 'dateTime',
 						default: '',
 						description: 'Restrict the response to campaigns created before the set time',
 					},
 					{
-						displayName: 'Before Send Time',
+						displayName: 'Before send time',
 						name: 'beforeSendTime',
 						type: 'dateTime',
 						default: '',
 						description: 'Restrict the response to campaigns sent before the set time',
 					},
 					{
-						displayName: 'Exclude Field Names or IDs',
+						displayName: 'Exclude field names or IDs',
 						name: 'excludeFields',
 						type: 'multiOptions',
 						typeOptions: {
@@ -1456,7 +1456,7 @@ export class Mailchimp implements INodeType {
 							'A comma-separated list of fields to exclude. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Field Names or IDs',
+						displayName: 'Field names or IDs',
 						name: 'fields',
 						type: 'multiOptions',
 						typeOptions: {
@@ -1474,7 +1474,7 @@ export class Mailchimp implements INodeType {
 							'A comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'List Name or ID',
+						displayName: 'List name or ID',
 						name: 'listId',
 						type: 'options',
 						typeOptions: {
@@ -1485,21 +1485,21 @@ export class Mailchimp implements INodeType {
 							'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Since Create Time',
+						displayName: 'Since create time',
 						name: 'sinceCreateTime',
 						type: 'dateTime',
 						default: '',
 						description: 'Restrict the response to campaigns created after the set time',
 					},
 					{
-						displayName: 'Since Send Time',
+						displayName: 'Since send time',
 						name: 'sinceSendTime',
 						type: 'dateTime',
 						default: '',
 						description: 'Restrict the response to campaigns sent after the set time',
 					},
 					{
-						displayName: 'Sort Direction',
+						displayName: 'Sort direction',
 						name: 'sortDirection',
 						type: 'options',
 						options: [
@@ -1516,16 +1516,16 @@ export class Mailchimp implements INodeType {
 						description: 'Determines the order direction for sorted results',
 					},
 					{
-						displayName: 'Sort Field',
+						displayName: 'Sort field',
 						name: 'sortField',
 						type: 'options',
 						options: [
 							{
-								name: 'Create Time',
+								name: 'Create time',
 								value: 'create_time',
 							},
 							{
-								name: 'Send Time',
+								name: 'Send time',
 								value: 'send_time',
 							},
 						],

@@ -34,7 +34,7 @@ export class ICalendar implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Create Event File',
+						name: 'Create event file',
 						value: 'createEventFile',
 					},
 				],

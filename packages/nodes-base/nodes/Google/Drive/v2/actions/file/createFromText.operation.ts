@@ -16,7 +16,7 @@ import FormData from 'form-data';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'File Content',
+		displayName: 'File content',
 		name: 'content',
 		type: 'string',
 		default: '',
@@ -26,7 +26,7 @@ const properties: INodeProperties[] = [
 		description: 'The text to create the file with',
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -55,7 +55,7 @@ const properties: INodeProperties[] = [
 		options: [
 			...updateCommonOptions,
 			{
-				displayName: 'Convert to Google Document',
+				displayName: 'Convert to Google document',
 				name: 'convertToGoogleDocument',
 				type: 'boolean',
 				default: false,

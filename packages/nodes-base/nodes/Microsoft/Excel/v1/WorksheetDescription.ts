@@ -13,13 +13,13 @@ export const worksheetOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many worksheets',
 				action: 'Get many worksheets',
 			},
 			{
-				name: 'Get Content',
+				name: 'Get content',
 				value: 'getContent',
 				description: 'Get worksheet content',
 				action: 'Get a worksheet',
@@ -34,7 +34,7 @@ export const worksheetFields: INodeProperties[] = [
 	/*                                 worksheet:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
+		displayName: 'Workbook name or ID',
 		name: 'workbook',
 		type: 'options',
 		description:
@@ -51,7 +51,7 @@ export const worksheetFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -85,7 +85,7 @@ export const worksheetFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -107,7 +107,7 @@ export const worksheetFields: INodeProperties[] = [
 	/*                                 worksheet:getContent                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
+		displayName: 'Workbook name or ID',
 		name: 'workbook',
 		type: 'options',
 		description:
@@ -125,7 +125,7 @@ export const worksheetFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet Name or ID',
+		displayName: 'Worksheet name or ID',
 		name: 'worksheet',
 		type: 'options',
 		description:
@@ -159,7 +159,7 @@ export const worksheetFields: INodeProperties[] = [
 			'The address or the name of the range. If not specified, the entire worksheet range is returned.',
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -173,7 +173,7 @@ export const worksheetFields: INodeProperties[] = [
 			'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
-		displayName: 'Data Property',
+		displayName: 'Data property',
 		name: 'dataProperty',
 		type: 'string',
 		default: 'data',
@@ -187,7 +187,7 @@ export const worksheetFields: INodeProperties[] = [
 		description: 'The name of the property into which to write the RAW data',
 	},
 	{
-		displayName: 'Data Start Row',
+		displayName: 'Data start row',
 		name: 'dataStartRow',
 		type: 'number',
 		typeOptions: {
@@ -207,7 +207,7 @@ export const worksheetFields: INodeProperties[] = [
 			'Index of the first row which contains the actual data and not the keys. Starts with 0.',
 	},
 	{
-		displayName: 'Key Row',
+		displayName: 'Key row',
 		name: 'keyRow',
 		type: 'number',
 		typeOptions: {
@@ -230,7 +230,7 @@ export const worksheetFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {

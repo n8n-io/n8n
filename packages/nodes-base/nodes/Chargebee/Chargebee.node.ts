@@ -108,7 +108,7 @@ export class Chargebee implements INodeType {
 				},
 				default: {},
 				description: 'Properties to set on the new user',
-				placeholder: 'Add Property',
+				placeholder: 'Add property',
 				options: [
 					{
 						displayName: 'User ID',
@@ -118,14 +118,14 @@ export class Chargebee implements INodeType {
 						description: 'ID for the new customer. If not given, this will be auto-generated.',
 					},
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'first_name',
 						type: 'string',
 						default: '',
 						description: 'The first name of the customer',
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'last_name',
 						type: 'string',
 						default: '',
@@ -154,9 +154,9 @@ export class Chargebee implements INodeType {
 						description: 'The company of the customer',
 					},
 					{
-						displayName: 'Custom Properties',
+						displayName: 'Custom properties',
 						name: 'customProperties',
-						placeholder: 'Add Custom Property',
+						placeholder: 'Add custom property',
 						description: 'Adds a custom property to set also values which have not been predefined',
 						type: 'fixedCollection',
 						typeOptions: {
@@ -169,14 +169,14 @@ export class Chargebee implements INodeType {
 								displayName: 'Property',
 								values: [
 									{
-										displayName: 'Property Name',
+										displayName: 'Property name',
 										name: 'name',
 										type: 'string',
 										default: '',
 										description: 'Name of the property to set',
 									},
 									{
-										displayName: 'Property Value',
+										displayName: 'Property value',
 										name: 'value',
 										type: 'string',
 										default: '',
@@ -211,7 +211,7 @@ export class Chargebee implements INodeType {
 						action: 'List an invoice',
 					},
 					{
-						name: 'PDF Invoice URL',
+						name: 'PDF invoice URL',
 						value: 'pdfUrl',
 						description: 'Get URL for the invoice PDF',
 						action: 'Get URL for the invoice PDF',
@@ -223,7 +223,7 @@ export class Chargebee implements INodeType {
 			//         invoice:list
 			// ----------------------------------
 			{
-				displayName: 'Max Results',
+				displayName: 'Max results',
 				name: 'maxResults',
 				type: 'number',
 				typeOptions: {
@@ -242,7 +242,7 @@ export class Chargebee implements INodeType {
 			{
 				displayName: 'Filters',
 				name: 'filters',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				description: 'Filter for invoices',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -258,7 +258,7 @@ export class Chargebee implements INodeType {
 				options: [
 					{
 						name: 'date',
-						displayName: 'Invoice Date',
+						displayName: 'Invoice date',
 						values: [
 							{
 								displayName: 'Operation',
@@ -271,7 +271,7 @@ export class Chargebee implements INodeType {
 										value: 'is',
 									},
 									{
-										name: 'Is Not',
+										name: 'Is not',
 										value: 'is_not',
 									},
 									{
@@ -297,7 +297,7 @@ export class Chargebee implements INodeType {
 					},
 					{
 						name: 'total',
-						displayName: 'Invoice Amount',
+						displayName: 'Invoice amount',
 						values: [
 							{
 								displayName: 'Operation',
@@ -306,11 +306,11 @@ export class Chargebee implements INodeType {
 								noDataExpression: true,
 								options: [
 									{
-										name: 'Greater Equal Than',
+										name: 'Greater equal than',
 										value: 'gte',
 									},
 									{
-										name: 'Greater Than',
+										name: 'Greater than',
 										value: 'gt',
 									},
 									{
@@ -318,15 +318,15 @@ export class Chargebee implements INodeType {
 										value: 'is',
 									},
 									{
-										name: 'Is Not',
+										name: 'Is not',
 										value: 'is_not',
 									},
 									{
-										name: 'Less Equal Than',
+										name: 'Less equal than',
 										value: 'lte',
 									},
 									{
-										name: 'Less Than',
+										name: 'Less than',
 										value: 'lt',
 									},
 								],
@@ -414,7 +414,7 @@ export class Chargebee implements INodeType {
 				},
 			},
 			{
-				displayName: 'Schedule End of Term',
+				displayName: 'Schedule end of term',
 				name: 'endOfTerm',
 				type: 'boolean',
 				default: false,

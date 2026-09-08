@@ -40,16 +40,16 @@ export class ExecutionData implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Save Highlight Data (for Search/review)',
+						name: 'Save highlight data (for search/review)',
 						value: 'save',
-						action: 'Save Highlight Data (for search/review)',
+						action: 'Save highlight data (for search/review)',
 					},
 				],
 			},
 			{
-				displayName: 'Data to Save',
+				displayName: 'Data to save',
 				name: 'dataToSave',
-				placeholder: 'Add Saved Field',
+				placeholder: 'Add saved field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValueButtonText: 'Add Saved Field',

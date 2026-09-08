@@ -20,7 +20,7 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get a post',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many posts',
 				action: 'Get many posts',
@@ -59,7 +59,7 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get a post',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many posts',
 				action: 'Get many posts',
@@ -95,7 +95,7 @@ export const postFields: INodeProperties[] = [
 		description: "Post's title",
 	},
 	{
-		displayName: 'Content Format',
+		displayName: 'Content format',
 		name: 'contentFormat',
 		type: 'options',
 		displayOptions: {
@@ -111,7 +111,7 @@ export const postFields: INodeProperties[] = [
 				value: 'html',
 			},
 			{
-				name: 'Mobile Doc',
+				name: 'Mobile doc',
 				value: 'mobileDoc',
 			},
 			{
@@ -171,10 +171,10 @@ export const postFields: INodeProperties[] = [
 		description: 'Lexical is the JSON format returned by the Ghost Default editor',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -185,7 +185,7 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author Names or IDs',
+				displayName: 'Author names or IDs',
 				name: 'authors',
 				type: 'multiOptions',
 				description:
@@ -202,14 +202,14 @@ export const postFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Code Injection Foot',
+				displayName: 'Code injection foot',
 				name: 'codeinjection_foot',
 				type: 'string',
 				default: '',
 				description: 'The Code Injection allows you inject a small snippet into your Ghost site',
 			},
 			{
-				displayName: 'Code Injection Head',
+				displayName: 'Code injection head',
 				name: 'codeinjection_head',
 				type: 'string',
 				default: '',
@@ -222,38 +222,38 @@ export const postFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Meta Description',
+				displayName: 'Meta description',
 				name: 'meta_description',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Meta Title',
+				displayName: 'Meta title',
 				name: 'meta_title',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Open Graph Description',
+				displayName: 'Open Graph description',
 				name: 'og_description',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Open Graph Image',
+				displayName: 'Open Graph image',
 				name: 'og_image',
 				type: 'string',
 				default: '',
 				description: 'URL of the image',
 			},
 			{
-				displayName: 'Open Graph Title',
+				displayName: 'Open Graph title',
 				name: 'og_title',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Published At',
+				displayName: 'Published at',
 				name: 'published_at',
 				type: 'dateTime',
 				default: '',
@@ -285,7 +285,7 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -296,20 +296,20 @@ export const postFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Twitter Description',
+				displayName: 'Twitter description',
 				name: 'twitter_description',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Twitter Image',
+				displayName: 'Twitter image',
 				name: 'twitter_image',
 				type: 'string',
 				default: '',
 				description: 'URL of the image',
 			},
 			{
-				displayName: 'Twitter Title',
+				displayName: 'Twitter title',
 				name: 'twitter_title',
 				type: 'string',
 				default: '',
@@ -412,7 +412,7 @@ export const postFields: INodeProperties[] = [
 						value: 'html',
 					},
 					{
-						name: 'Mobile Doc',
+						name: 'Mobile doc',
 						value: 'mobiledoc',
 					},
 					{
@@ -470,7 +470,7 @@ export const postFields: INodeProperties[] = [
 	/*                                post:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -618,7 +618,7 @@ export const postFields: INodeProperties[] = [
 						value: 'html',
 					},
 					{
-						name: 'Mobile Doc',
+						name: 'Mobile doc',
 						value: 'mobiledoc',
 					},
 					{
@@ -649,7 +649,7 @@ export const postFields: INodeProperties[] = [
 		description: 'The ID of the post to update',
 	},
 	{
-		displayName: 'Content Format',
+		displayName: 'Content format',
 		name: 'contentFormat',
 		type: 'options',
 		displayOptions: {
@@ -665,7 +665,7 @@ export const postFields: INodeProperties[] = [
 				value: 'html',
 			},
 			{
-				name: 'Mobile Doc',
+				name: 'Mobile doc',
 				value: 'mobileDoc',
 			},
 			{
@@ -677,10 +677,10 @@ export const postFields: INodeProperties[] = [
 		description: 'The format of the post',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -691,7 +691,7 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author Names or IDs',
+				displayName: 'Author names or IDs',
 				name: 'authors',
 				type: 'multiOptions',
 				description:
@@ -708,13 +708,13 @@ export const postFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Code Injection Foot',
+				displayName: 'Code injection foot',
 				name: 'codeinjection_foot',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Code Injection Head',
+				displayName: 'Code injection head',
 				name: 'codeinjection_head',
 				type: 'string',
 				default: '',
@@ -762,38 +762,38 @@ export const postFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Meta Description',
+				displayName: 'Meta description',
 				name: 'meta_description',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Meta Title',
+				displayName: 'Meta title',
 				name: 'meta_title',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Open Graph Description',
+				displayName: 'Open Graph description',
 				name: 'og_description',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Open Graph Image',
+				displayName: 'Open Graph image',
 				name: 'og_image',
 				type: 'string',
 				default: '',
 				description: 'URL of the image',
 			},
 			{
-				displayName: 'Open Graph Title',
+				displayName: 'Open Graph title',
 				name: 'og_title',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Published At',
+				displayName: 'Published at',
 				name: 'published_at',
 				type: 'dateTime',
 				default: '',
@@ -825,7 +825,7 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -843,20 +843,20 @@ export const postFields: INodeProperties[] = [
 				description: "Post's title",
 			},
 			{
-				displayName: 'Twitter Description',
+				displayName: 'Twitter description',
 				name: 'twitter_description',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Twitter Image',
+				displayName: 'Twitter image',
 				name: 'twitter_image',
 				type: 'string',
 				default: '',
 				description: 'URL of the image',
 			},
 			{
-				displayName: 'Twitter Title',
+				displayName: 'Twitter title',
 				name: 'twitter_title',
 				type: 'string',
 				default: '',

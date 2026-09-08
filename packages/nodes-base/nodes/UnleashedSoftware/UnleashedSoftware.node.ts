@@ -46,11 +46,11 @@ export class UnleashedSoftware implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Sales Order',
+						name: 'Sales order',
 						value: 'salesOrder',
 					},
 					{
-						name: 'Stock On Hand',
+						name: 'Stock on hand',
 						value: 'stockOnHand',
 					},
 				],

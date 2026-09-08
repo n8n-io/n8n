@@ -67,7 +67,7 @@ export const description: INodeTypeDescription = {
 					value: 'task',
 				},
 				{
-					name: 'Task Log',
+					name: 'Task log',
 					value: 'log',
 				},
 			],

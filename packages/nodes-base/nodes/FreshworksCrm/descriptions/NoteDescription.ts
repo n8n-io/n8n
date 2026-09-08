@@ -57,7 +57,7 @@ export const noteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Target Type',
+		displayName: 'Target type',
 		name: 'targetableType',
 		description: 'Type of the entity for which the note is created',
 		type: 'options',
@@ -73,7 +73,7 @@ export const noteFields: INodeProperties[] = [
 				value: 'Deal',
 			},
 			{
-				name: 'Sales Account',
+				name: 'Sales account',
 				value: 'SalesAccount',
 			},
 		],
@@ -88,7 +88,7 @@ export const noteFields: INodeProperties[] = [
 		displayName: 'Target ID',
 		name: 'targetable_id',
 		description:
-			'ID of the entity for which note is created. The type of entity is selected in "Target Type".',
+			'ID of the entity for which note is created. The type of entity is selected in "Target type".',
 		type: 'string',
 		required: true,
 		default: '',
@@ -136,10 +136,10 @@ export const noteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -166,7 +166,7 @@ export const noteFields: INodeProperties[] = [
 				description: 'ID of the entity for which the note is updated',
 			},
 			{
-				displayName: 'Target Type',
+				displayName: 'Target type',
 				name: 'targetable_type',
 				type: 'options',
 				default: 'Contact',
@@ -181,7 +181,7 @@ export const noteFields: INodeProperties[] = [
 						value: 'Deal',
 					},
 					{
-						name: 'Sales Account',
+						name: 'Sales account',
 						value: 'SalesAccount',
 					},
 				],

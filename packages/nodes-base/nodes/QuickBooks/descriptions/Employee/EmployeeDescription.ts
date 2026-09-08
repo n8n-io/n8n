@@ -21,7 +21,7 @@ export const employeeOperations: INodeProperties[] = [
 				action: 'Get an employee',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many employees',
 			},
@@ -44,7 +44,7 @@ export const employeeFields: INodeProperties[] = [
 	//         employee: create
 	// ----------------------------------
 	{
-		displayName: 'Family Name',
+		displayName: 'Family name',
 		name: 'FamilyName',
 		type: 'string',
 		default: '',
@@ -56,7 +56,7 @@ export const employeeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Given Name',
+		displayName: 'Given name',
 		name: 'GivenName',
 		type: 'string',
 		default: '',
@@ -68,10 +68,10 @@ export const employeeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -104,7 +104,7 @@ export const employeeFields: INodeProperties[] = [
 	//         employee: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -138,7 +138,7 @@ export const employeeFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -177,10 +177,10 @@ export const employeeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		required: true,
 		displayOptions: {

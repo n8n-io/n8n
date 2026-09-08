@@ -63,7 +63,7 @@ export const properties: INodeProperties[] = [
 		description: 'Resolution tier of the generated video',
 	},
 	{
-		displayName: 'Duration (Seconds)',
+		displayName: 'Duration (seconds)',
 		name: 'duration',
 		type: 'number',
 		typeOptions: {
@@ -74,7 +74,7 @@ export const properties: INodeProperties[] = [
 		description: 'Duration of the generated video in seconds (2–15)',
 	},
 	{
-		displayName: 'Shot Type',
+		displayName: 'Shot type',
 		name: 'shotType',
 		type: 'options',
 		options: [
@@ -91,7 +91,7 @@ export const properties: INodeProperties[] = [
 		description: 'Whether to generate a single-shot or multi-shot narrative video',
 	},
 	{
-		displayName: 'Download Video',
+		displayName: 'Download video',
 		name: 'downloadVideo',
 		type: 'boolean',
 		default: true,
@@ -99,7 +99,7 @@ export const properties: INodeProperties[] = [
 			'Whether to download the generated video as binary data. When disabled, only the video URL is returned.',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
@@ -109,11 +109,11 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'videoOptions',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Prompt Extend',
+				displayName: 'Prompt extend',
 				name: 'promptExtend',
 				type: 'boolean',
 				default: false,
@@ -127,7 +127,7 @@ export const properties: INodeProperties[] = [
 				description: 'Whether to generate audio for the video',
 			},
 			{
-				displayName: 'Audio Input Type',
+				displayName: 'Audio input type',
 				name: 'audioInputType',
 				type: 'options',
 				options: [
@@ -136,7 +136,7 @@ export const properties: INodeProperties[] = [
 						value: 'url',
 					},
 					{
-						name: 'Binary File',
+						name: 'Binary file',
 						value: 'binary',
 					},
 				],
@@ -156,7 +156,7 @@ export const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Audio Data Field Name',
+				displayName: 'Audio data field name',
 				name: 'audioBinaryPropertyName',
 				type: 'string',
 				default: 'audio',

@@ -41,7 +41,7 @@ export class Cloudflare implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Zone Certificate',
+						name: 'Zone certificate',
 						value: 'zoneCertificate',
 					},
 				],

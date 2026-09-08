@@ -9,7 +9,7 @@ export const campaignOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many campaigns',
 			},
@@ -27,7 +27,7 @@ export const campaignFields: INodeProperties[] = [
 	//        campaign: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

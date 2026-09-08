@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const iconSelector: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-	displayName: 'Icon to Display on Canvas',
+	displayName: 'Icon to display on canvas',
 	name: 'icon',
 	type: 'options',
 	// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
@@ -33,7 +33,7 @@ export const jsonOutputProperty: INodeProperties = {
 };
 
 export const executionDurationProperty: INodeProperties = {
-	displayName: 'Execution Duration (MS)',
+	displayName: 'Execution duration (MS)',
 	name: 'executionDuration',
 	type: 'number',
 	default: 150,

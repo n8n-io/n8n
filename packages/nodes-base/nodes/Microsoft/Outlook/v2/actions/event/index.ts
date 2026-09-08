@@ -39,7 +39,7 @@ export const description: INodeProperties[] = [
 				action: 'Get an event',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'List and search events',
 				action: 'Get many events',

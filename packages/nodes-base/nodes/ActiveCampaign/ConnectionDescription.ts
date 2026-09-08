@@ -33,7 +33,7 @@ export const connectionOperations: INodeProperties[] = [
 				action: 'Get a connection',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many connections',
 				action: 'Get many connections',
@@ -68,7 +68,7 @@ export const connectionFields: INodeProperties[] = [
 		description: 'The name of the service',
 	},
 	{
-		displayName: 'External Account ID',
+		displayName: 'External account ID',
 		name: 'externalid',
 		type: 'string',
 		default: '',
@@ -82,7 +82,7 @@ export const connectionFields: INodeProperties[] = [
 		description: 'The ID of the account in the external service',
 	},
 	{
-		displayName: 'Account Name',
+		displayName: 'Account name',
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -144,11 +144,11 @@ export const connectionFields: INodeProperties[] = [
 		description: 'ID of the connection to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		description: 'The fields to update',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -165,14 +165,14 @@ export const connectionFields: INodeProperties[] = [
 				description: 'The name of the service',
 			},
 			{
-				displayName: 'External Account ID',
+				displayName: 'External account ID',
 				name: 'externalid',
 				type: 'string',
 				default: '',
 				description: 'The ID of the account in the external service',
 			},
 			{
-				displayName: 'Account Name',
+				displayName: 'Account name',
 				name: 'name',
 				type: 'string',
 				default: '',
@@ -202,7 +202,7 @@ export const connectionFields: INodeProperties[] = [
 				description: 'The status of the connection (0 = error; 1 = connected)',
 			},
 			{
-				displayName: 'Syncronisation Status',
+				displayName: 'Syncronisation status',
 				name: 'syncStatus',
 				type: 'number',
 				default: 1,

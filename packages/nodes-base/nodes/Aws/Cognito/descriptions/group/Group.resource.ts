@@ -92,7 +92,7 @@ export const description: INodeProperties[] = [
 				action: 'Get group',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of groups',
 				routing: {

@@ -69,14 +69,14 @@ export const blockOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Append After',
+				name: 'Append after',
 				value: 'append',
 				description: 'Append a block',
 				action: 'Append a block',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-many
-				name: 'Get Child Blocks',
+				name: 'Get child blocks',
 				value: 'getAll',
 				description: 'Get many child blocks',
 				action: 'Get many child blocks',
@@ -231,7 +231,7 @@ export const blockFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -261,7 +261,7 @@ export const blockFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Also Fetch Nested Blocks',
+		displayName: 'Also fetch nested blocks',
 		name: 'fetchNestedBlocks',
 		type: 'boolean',
 		displayOptions: {
@@ -273,7 +273,7 @@ export const blockFields: INodeProperties[] = [
 		default: false,
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplifyOutput',
 		type: 'boolean',
 		displayOptions: {

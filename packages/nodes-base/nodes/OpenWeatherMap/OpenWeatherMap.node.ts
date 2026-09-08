@@ -37,13 +37,13 @@ export class OpenWeatherMap implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Current Weather',
+						name: 'Current weather',
 						value: 'currentWeather',
 						description: 'Returns the current weather data',
 						action: 'Return current weather data',
 					},
 					{
-						name: '5 Day Forecast',
+						name: '5 day forecast',
 						value: '5DayForecast',
 						description: 'Returns the weather data for the next 5 days',
 						action: 'Return weather data for the next 5 days',
@@ -80,12 +80,12 @@ export class OpenWeatherMap implements INodeType {
 			//         Location Information
 			// ----------------------------------
 			{
-				displayName: 'Location Selection',
+				displayName: 'Location selection',
 				name: 'locationSelection',
 				type: 'options',
 				options: [
 					{
-						name: 'City Name',
+						name: 'City name',
 						value: 'cityName',
 					},
 					{
@@ -97,7 +97,7 @@ export class OpenWeatherMap implements INodeType {
 						value: 'coordinates',
 					},
 					{
-						name: 'Zip Code',
+						name: 'Zip code',
 						value: 'zipCode',
 					},
 				],
@@ -166,7 +166,7 @@ export class OpenWeatherMap implements INodeType {
 			},
 
 			{
-				displayName: 'Zip Code',
+				displayName: 'Zip code',
 				name: 'zipCode',
 				type: 'string',
 				default: '',

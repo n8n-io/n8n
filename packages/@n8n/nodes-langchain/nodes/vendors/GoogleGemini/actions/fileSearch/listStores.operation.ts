@@ -5,7 +5,7 @@ import { listFileSearchStores } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Page Size',
+		displayName: 'Page size',
 		name: 'pageSize',
 		type: 'number',
 		description: 'Maximum number of File Search stores to return per page (max 20)',
@@ -16,7 +16,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Page Token',
+		displayName: 'Page token',
 		name: 'pageToken',
 		// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing -- pageToken is a pagination token, not a password
 		type: 'string',

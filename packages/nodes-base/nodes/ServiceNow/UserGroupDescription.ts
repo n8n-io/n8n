@@ -13,7 +13,7 @@ export const userGroupOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many user groups',
 			},
@@ -27,7 +27,7 @@ export const userGroupFields: INodeProperties[] = [
 	/*                                userGroup:getAll                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -61,7 +61,7 @@ export const userGroupFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['userGroup'],
@@ -71,14 +71,14 @@ export const userGroupFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Exclude Reference Link',
+				displayName: 'Exclude reference link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -98,12 +98,12 @@ export const userGroupFields: INodeProperties[] = [
 					'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
-				displayName: 'Return Values',
+				displayName: 'Return values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
 					{
-						name: 'Actual Values',
+						name: 'Actual values',
 						value: 'false',
 					},
 					{
@@ -111,7 +111,7 @@ export const userGroupFields: INodeProperties[] = [
 						value: 'all',
 					},
 					{
-						name: 'Display Values',
+						name: 'Display values',
 						value: 'true',
 					},
 				],

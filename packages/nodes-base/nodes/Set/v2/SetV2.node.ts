@@ -36,7 +36,7 @@ const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Manual Mapping',
+					name: 'Manual mapping',
 					value: 'manual',
 					description: 'Edit item fields one by one',
 					action: 'Edit item fields one by one',
@@ -51,7 +51,7 @@ const versionDescription: INodeTypeDescription = {
 			default: 'manual',
 		},
 		{
-			displayName: 'Duplicate Item',
+			displayName: 'Duplicate item',
 			name: 'duplicateItem',
 			type: 'boolean',
 			default: false,
@@ -59,7 +59,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Whether this item should be duplicated a set number of times',
 		},
 		{
-			displayName: 'Duplicate Item Count',
+			displayName: 'Duplicate item count',
 			name: 'duplicateCount',
 			type: 'number',
 			default: 0,
@@ -90,7 +90,7 @@ const versionDescription: INodeTypeDescription = {
 		...raw.description,
 		...manual.description,
 		{
-			displayName: 'Include in Output',
+			displayName: 'Include in output',
 			name: 'include',
 			type: 'options',
 			description: 'How to select the fields you want to include in your output items',
@@ -102,34 +102,34 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					name: 'All Input Fields',
+					name: 'All input fields',
 					value: INCLUDE.ALL,
 					description: 'Also include all unchanged fields from the input',
 				},
 				{
-					name: 'No Input Fields',
+					name: 'No input fields',
 					value: INCLUDE.NONE,
 					description: 'Include only the fields specified above',
 				},
 				{
-					name: 'Selected Input Fields',
+					name: 'Selected input fields',
 					value: INCLUDE.SELECTED,
-					description: 'Also include the fields listed in the parameter “Fields to Include”',
+					description: 'Also include the fields listed in the parameter “Fields to include”',
 				},
 				{
-					name: 'All Input Fields Except',
+					name: 'All input fields except',
 					value: INCLUDE.EXCEPT,
-					description: 'Exclude the fields listed in the parameter “Fields to Exclude”',
+					description: 'Exclude the fields listed in the parameter “Fields to exclude”',
 				},
 			],
 		},
 		{
-			displayName: 'Include Other Input Fields',
+			displayName: 'Include other input fields',
 			name: 'includeOtherFields',
 			type: 'boolean',
 			default: false,
 			description:
-				"Whether to pass to the output all the input fields (along with the fields set in 'Fields to Set')",
+				"Whether to pass to the output all the input fields (along with the fields set in 'Fields to set')",
 			displayOptions: {
 				hide: {
 					'@version': [3, 3.1, 3.2],
@@ -137,7 +137,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Input Fields to Include',
+			displayName: 'Input fields to include',
 			name: 'include',
 			type: 'options',
 			description: 'How to select the fields you want to include in your output items',
@@ -157,17 +157,17 @@ const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Selected',
 					value: INCLUDE.SELECTED,
-					description: 'Also include the fields listed in the parameter “Fields to Include”',
+					description: 'Also include the fields listed in the parameter “Fields to include”',
 				},
 				{
-					name: 'All Except',
+					name: 'All except',
 					value: INCLUDE.EXCEPT,
-					description: 'Exclude the fields listed in the parameter “Fields to Exclude”',
+					description: 'Exclude the fields listed in the parameter “Fields to exclude”',
 				},
 			],
 		},
 		{
-			displayName: 'Fields to Include',
+			displayName: 'Fields to include',
 			name: 'includeFields',
 			type: 'string',
 			default: '',
@@ -183,7 +183,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Fields to Exclude',
+			displayName: 'Fields to exclude',
 			name: 'excludeFields',
 			type: 'string',
 			default: '',
@@ -199,7 +199,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Fields to Include',
+			displayName: 'Fields to include',
 			name: 'includeFields',
 			type: 'string',
 			default: '',
@@ -218,7 +218,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Fields to Exclude',
+			displayName: 'Fields to exclude',
 			name: 'excludeFields',
 			type: 'string',
 			default: '',
@@ -244,7 +244,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Include Binary File',
+					displayName: 'Include binary file',
 					name: 'includeBinary',
 					type: 'boolean',
 					default: true,
@@ -256,12 +256,12 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Whether binary data should be included if present in the input item',
 				},
 				{
-					displayName: 'Strip Binary Data',
+					displayName: 'Strip binary data',
 					name: 'stripBinary',
 					type: 'boolean',
 					default: true,
 					description:
-						'Whether binary data should be stripped from the input item. Only applies when "Include Other Input Fields" is enabled.',
+						'Whether binary data should be stripped from the input item. Only applies when "Include other input fields" is enabled.',
 					displayOptions: {
 						show: {
 							'@version': [{ _cnd: { gte: 3.4 } }],
@@ -270,7 +270,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'Ignore Type Conversion Errors',
+					displayName: 'Ignore type conversion errors',
 					name: 'ignoreConversionErrors',
 					type: 'boolean',
 					default: false,
@@ -283,7 +283,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'Support Dot Notation',
+					displayName: 'Support dot notation',
 					name: 'dotNotation',
 					type: 'boolean',
 					default: true,

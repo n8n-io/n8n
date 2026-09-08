@@ -13,7 +13,7 @@ export const fieldOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many fields',
 				action: 'Get many fields',
@@ -42,7 +42,7 @@ export const fieldFields: INodeProperties[] = [
 		description: 'The table identifier',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -76,7 +76,7 @@ export const fieldFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -86,7 +86,7 @@ export const fieldFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Field Perms',
+				displayName: 'Include field perms',
 				name: 'includeFieldPerms',
 				type: 'boolean',
 				default: false,

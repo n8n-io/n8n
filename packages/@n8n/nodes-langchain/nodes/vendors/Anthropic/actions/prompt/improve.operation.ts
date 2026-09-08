@@ -14,7 +14,7 @@ const properties: INodeProperties[] = [
 			multipleValues: true,
 		},
 		description: 'Messages that constitute the prompt to be improved',
-		placeholder: 'Add Message',
+		placeholder: 'Add message',
 		default: { values: [{ content: '', role: 'user' }] },
 		options: [
 			{
@@ -57,7 +57,7 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
@@ -66,12 +66,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'System Message',
+				displayName: 'System message',
 				name: 'system',
 				type: 'string',
 				description: 'The existing system prompt to incorporate, if any',

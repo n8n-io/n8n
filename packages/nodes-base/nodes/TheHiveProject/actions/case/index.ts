@@ -34,7 +34,7 @@ export const description: INodeProperties[] = [
 		required: true,
 		options: [
 			{
-				name: 'Add Attachment',
+				name: 'Add attachment',
 				value: 'addAttachment',
 				action: 'Add attachment to a case',
 			},
@@ -44,17 +44,17 @@ export const description: INodeProperties[] = [
 				action: 'Create a case',
 			},
 			{
-				name: 'Delete Attachment',
+				name: 'Delete attachment',
 				value: 'deleteAttachment',
 				action: 'Delete attachment from a case',
 			},
 			{
-				name: 'Delete Case',
+				name: 'Delete case',
 				value: 'deleteCase',
 				action: 'Delete an case',
 			},
 			{
-				name: 'Execute Responder',
+				name: 'Execute responder',
 				value: 'executeResponder',
 				action: 'Execute responder on a case',
 			},
@@ -64,12 +64,12 @@ export const description: INodeProperties[] = [
 				action: 'Get a case',
 			},
 			{
-				name: 'Get Attachment',
+				name: 'Get attachment',
 				value: 'getAttachment',
 				action: 'Get attachment from a case',
 			},
 			{
-				name: 'Get Timeline',
+				name: 'Get timeline',
 				value: 'getTimeline',
 				action: 'Get timeline of a case',
 			},

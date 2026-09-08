@@ -19,7 +19,7 @@ export const serviceOperations: INodeProperties[] = [
 				action: 'Call a service',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many services',
 				action: 'Get many services',
@@ -34,7 +34,7 @@ export const serviceFields: INodeProperties[] = [
 	/*                                service:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -69,7 +69,7 @@ export const serviceFields: INodeProperties[] = [
 	/*                                service:Call                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Domain Name or ID',
+		displayName: 'Domain name or ID',
 		name: 'domain',
 		type: 'options',
 		description:
@@ -87,7 +87,7 @@ export const serviceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Service Name or ID',
+		displayName: 'Service name or ID',
 		name: 'service',
 		type: 'options',
 		description:
@@ -106,13 +106,13 @@ export const serviceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Service Attributes',
+		displayName: 'Service attributes',
 		name: 'serviceAttributes',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Attribute',
+		placeholder: 'Add attribute',
 		default: {},
 		displayOptions: {
 			show: {

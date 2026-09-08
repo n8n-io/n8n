@@ -27,7 +27,7 @@ export const orderOperations: INodeProperties[] = [
 				action: 'Get an order',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many orders',
 				action: 'Get many orders',
@@ -65,7 +65,7 @@ export const orderFields: INodeProperties[] = [
 	/*                                   order:getAll			                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

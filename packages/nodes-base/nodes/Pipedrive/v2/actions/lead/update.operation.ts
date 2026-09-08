@@ -20,28 +20,28 @@ const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Expected Close Date',
+				displayName: 'Expected close date',
 				name: 'expected_close_date',
 				type: 'dateTime',
 				default: '',
 				description: "Expected close date for this lead's deal (YYYY-MM-DD)",
 			},
 			{
-				displayName: 'Is Archived',
+				displayName: 'Is archived',
 				name: 'is_archived',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the lead is archived',
 			},
 			{
-				displayName: 'Label Names or IDs',
+				displayName: 'Label names or IDs',
 				name: 'label_ids',
 				type: 'multiOptions',
 				typeOptions: {
@@ -52,7 +52,7 @@ const properties: INodeProperties[] = [
 					'ID of the labels to attach to the lead to update. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				typeOptions: {
@@ -63,7 +63,7 @@ const properties: INodeProperties[] = [
 					'ID of the user who will own the lead to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Person Name or ID',
+				displayName: 'Person name or ID',
 				name: 'person_id',
 				type: 'options',
 				typeOptions: {
@@ -88,7 +88,7 @@ const properties: INodeProperties[] = [
 				default: {},
 				options: [
 					{
-						displayName: 'Value Properties',
+						displayName: 'Value properties',
 						name: 'valueProperties',
 						values: [
 							{
@@ -110,7 +110,7 @@ const properties: INodeProperties[] = [
 			},
 			visibleToOption,
 			{
-				displayName: 'Was Seen',
+				displayName: 'Was seen',
 				name: 'was_seen',
 				type: 'boolean',
 				default: false,

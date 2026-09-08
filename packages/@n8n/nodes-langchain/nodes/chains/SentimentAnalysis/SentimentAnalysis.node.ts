@@ -73,7 +73,7 @@ export class SentimentAnalysis implements INodeType {
 		},
 		properties: [
 			{
-				displayName: 'Text to Analyze',
+				displayName: 'Text to analyze',
 				name: 'inputText',
 				type: 'string',
 				required: true,
@@ -100,10 +100,10 @@ export class SentimentAnalysis implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Sentiment Categories',
+						displayName: 'Sentiment categories',
 						name: 'categories',
 						type: 'string',
 						default: DEFAULT_CATEGORIES,
@@ -114,7 +114,7 @@ export class SentimentAnalysis implements INodeType {
 						},
 					},
 					{
-						displayName: 'System Prompt Template',
+						displayName: 'System prompt template',
 						name: 'systemPromptTemplate',
 						type: 'string',
 						default: DEFAULT_SYSTEM_PROMPT_TEMPLATE,
@@ -124,7 +124,7 @@ export class SentimentAnalysis implements INodeType {
 						},
 					},
 					{
-						displayName: 'Include Detailed Results',
+						displayName: 'Include detailed results',
 						name: 'includeDetailedResults',
 						type: 'boolean',
 						default: false,
@@ -132,7 +132,7 @@ export class SentimentAnalysis implements INodeType {
 							'Whether to include sentiment strength and confidence scores in the output',
 					},
 					{
-						displayName: 'Enable Auto-Fixing',
+						displayName: 'Enable auto-fixing',
 						name: 'enableAutoFixing',
 						type: 'boolean',
 						default: true,

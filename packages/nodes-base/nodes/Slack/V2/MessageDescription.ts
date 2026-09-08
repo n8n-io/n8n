@@ -19,17 +19,17 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Delete a message',
 			},
 			{
-				name: 'Delete Scheduled',
+				name: 'Delete scheduled',
 				value: 'deleteScheduled',
 				action: 'Delete a scheduled message',
 			},
 			{
-				name: 'Get Many Scheduled',
+				name: 'Get many scheduled',
 				value: 'getManyScheduled',
 				action: 'Get many scheduled messages',
 			},
 			{
-				name: 'Get Permalink',
+				name: 'Get permalink',
 				value: 'getPermalink',
 				action: 'Get a message permalink',
 			},
@@ -49,7 +49,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Send a message',
 			},
 			{
-				name: 'Send and Wait for Response',
+				name: 'Send and wait for response',
 				value: SEND_AND_WAIT_OPERATION,
 				action: 'Send message and wait for response',
 			},
@@ -64,7 +64,7 @@ export const messageOperations: INodeProperties[] = [
 ];
 
 export const sendToSelector: INodeProperties = {
-	displayName: 'Send Message To',
+	displayName: 'Send message to',
 	name: 'select',
 	type: 'options',
 	required: true,
@@ -96,7 +96,7 @@ export const channelRLC: INodeProperties = {
 	placeholder: 'Select a channel...',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a channel...',
@@ -122,7 +122,7 @@ export const channelRLC: INodeProperties = {
 			placeholder: 'C0122KQ70S7E',
 		},
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'name',
 			type: 'string',
 			placeholder: '#general',
@@ -159,7 +159,7 @@ export const userRLC: INodeProperties = {
 	placeholder: 'Select a user...',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a user...',
@@ -210,7 +210,7 @@ export const advancedInteractivityNotice: INodeProperties = {
 };
 
 export const captureResponderField: INodeProperties = {
-	displayName: 'Capture Who Responded',
+	displayName: 'Capture who responded',
 	name: 'captureResponder',
 	type: 'boolean',
 	default: false,
@@ -228,7 +228,7 @@ export const captureResponderField: INodeProperties = {
 };
 
 export const approversField: INodeProperties = {
-	displayName: 'Restrict Who Can Approve',
+	displayName: 'Restrict who can approve',
 	name: 'approvers',
 	type: 'multiOptions',
 	typeOptions: {
@@ -248,7 +248,7 @@ export const approversField: INodeProperties = {
 };
 
 export const unauthorizedReplyField: INodeProperties = {
-	displayName: 'Unauthorized Reply',
+	displayName: 'Unauthorized reply',
 	name: 'unauthorizedReplyText',
 	type: 'string',
 	default: 'You are not authorized to respond to this request.',
@@ -265,14 +265,14 @@ export const unauthorizedReplyField: INodeProperties = {
 };
 
 export const postDecisionBehaviorField: INodeProperties = {
-	displayName: 'After Decision',
+	displayName: 'After decision',
 	name: 'postDecisionBehavior',
 	type: 'options',
 	default: 'showOutcome',
 	options: [
-		{ name: 'Show Outcome and Remove Buttons', value: 'showOutcome' },
-		{ name: 'Remove Buttons Only', value: 'removeButtons' },
-		{ name: 'Keep Message Unchanged', value: 'keepMessage' },
+		{ name: 'Show outcome and remove buttons', value: 'showOutcome' },
+		{ name: 'Remove buttons only', value: 'removeButtons' },
+		{ name: 'Keep message unchanged', value: 'keepMessage' },
 	],
 	displayOptions: {
 		show: {
@@ -285,7 +285,7 @@ export const postDecisionBehaviorField: INodeProperties = {
 };
 
 export const replyToMessageField: INodeProperties = {
-	displayName: 'Reply to a Message',
+	displayName: 'Reply to a message',
 	name: 'thread_ts',
 	type: 'fixedCollection',
 	default: {},
@@ -293,11 +293,11 @@ export const replyToMessageField: INodeProperties = {
 	description: "Provide another message's Timestamp value to make this message a reply",
 	options: [
 		{
-			displayName: 'Reply to a Message',
+			displayName: 'Reply to a message',
 			name: 'replyValues',
 			values: [
 				{
-					displayName: 'Message Timestamp to Reply To',
+					displayName: 'Message timestamp to reply to',
 					name: 'thread_ts',
 					type: 'number',
 					default: undefined,
@@ -306,7 +306,7 @@ export const replyToMessageField: INodeProperties = {
 						'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
 				},
 				{
-					displayName: 'Also Send to Channel',
+					displayName: 'Also send to channel',
 					name: 'reply_broadcast',
 					type: 'boolean',
 					default: false,
@@ -320,7 +320,7 @@ export const replyToMessageField: INodeProperties = {
 
 // Shared between the pre-2.6 (always shown) and 2.6+ (access-token only) variants below.
 const botProfileField: INodeProperties = {
-	displayName: 'Custom Bot Profile Photo',
+	displayName: 'Custom bot profile photo',
 	name: 'botProfile',
 	type: 'fixedCollection',
 	default: {
@@ -335,10 +335,10 @@ const botProfileField: INodeProperties = {
 	options: [
 		{
 			name: 'imageValues',
-			displayName: 'Add Bot Profile Photo',
+			displayName: 'Add bot profile photo',
 			values: [
 				{
-					displayName: 'Profile Photo Type',
+					displayName: 'Profile photo type',
 					name: 'profilePhotoType',
 					type: 'options',
 					options: [
@@ -347,7 +347,7 @@ const botProfileField: INodeProperties = {
 							value: 'image',
 						},
 						{
-							name: 'Emoji Code',
+							name: 'Emoji code',
 							value: 'emoji',
 						},
 					],
@@ -355,7 +355,7 @@ const botProfileField: INodeProperties = {
 					placeholder: 'Select a type…',
 				},
 				{
-					displayName: 'Emoji Code',
+					displayName: 'Emoji code',
 					name: 'icon_emoji',
 					type: 'string',
 					default: '',
@@ -404,7 +404,7 @@ export const messageFields: INodeProperties[] = [
 		modes: slackChannelModes,
 	},
 	{
-		displayName: 'Message Timestamp',
+		displayName: 'Message timestamp',
 		name: 'timestamp',
 		required: true,
 		type: 'number',
@@ -444,7 +444,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Message Type',
+		displayName: 'Message type',
 		name: 'messageType',
 		type: 'options',
 		displayOptions: {
@@ -457,7 +457,7 @@ export const messageFields: INodeProperties[] = [
 			'Whether to send a simple text message, or use Slack’s Blocks UI builder for more sophisticated messages that include form fields, sections and more',
 		options: [
 			{
-				name: 'Simple Text Message',
+				name: 'Simple text message',
 				value: 'text',
 				description: 'Supports basic Markdown',
 			},
@@ -475,7 +475,7 @@ export const messageFields: INodeProperties[] = [
 		default: 'text',
 	},
 	{
-		displayName: 'Message Text',
+		displayName: 'Message text',
 		name: 'text',
 		type: 'string',
 		default: '',
@@ -511,7 +511,7 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Notification Text',
+		displayName: 'Notification text',
 		name: 'text',
 		type: 'string',
 		default: '',
@@ -557,7 +557,7 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add attachment item',
 		options: [
 			{
-				displayName: 'Fallback Text',
+				displayName: 'Fallback text',
 				name: 'fallback',
 				type: 'string',
 				typeOptions: {
@@ -585,7 +585,7 @@ export const messageFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Title Link',
+				displayName: 'Title link',
 				name: 'title_link',
 				type: 'string',
 				typeOptions: {
@@ -611,14 +611,14 @@ export const messageFields: INodeProperties[] = [
 				description: 'Text which appears before the message block',
 			},
 			{
-				displayName: 'Author Name',
+				displayName: 'Author name',
 				name: 'author_name',
 				type: 'string',
 				default: '',
 				description: 'Name that should appear',
 			},
 			{
-				displayName: 'Author Link',
+				displayName: 'Author link',
 				name: 'author_link',
 				type: 'string',
 				typeOptions: {
@@ -627,7 +627,7 @@ export const messageFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Author Icon',
+				displayName: 'Author icon',
 				name: 'author_icon',
 				type: 'string',
 				typeOptions: {
@@ -665,7 +665,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Text of footer to add',
 			},
 			{
-				displayName: 'Footer Icon',
+				displayName: 'Footer icon',
 				name: 'footer_icon',
 				type: 'string',
 				typeOptions: {
@@ -675,7 +675,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Icon which should appear next to footer',
 			},
 			{
-				displayName: 'Message Timestamp',
+				displayName: 'Message timestamp',
 				name: 'ts',
 				type: 'number',
 				default: 0,
@@ -685,7 +685,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				placeholder: 'Add Fields',
+				placeholder: 'Add fields',
 				description: 'Fields to add to message',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -723,7 +723,7 @@ export const messageFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Post At',
+		displayName: 'Post at',
 		name: 'postAt',
 		type: 'dateTime',
 		required: true,
@@ -752,7 +752,7 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Include Link to Workflow',
+				displayName: 'Include link to workflow',
 				name: 'includeLinkToWorkflow',
 				type: 'boolean',
 				default: true,
@@ -781,7 +781,7 @@ export const messageFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Link User and Channel Names',
+				displayName: 'Link user and channel names',
 				name: 'link_names',
 				type: 'boolean',
 				default: false,
@@ -796,21 +796,21 @@ export const messageFields: INodeProperties[] = [
 				description: 'Whether to use Slack Markdown to format the message',
 			},
 			{
-				displayName: 'Unfurl Links',
+				displayName: 'Unfurl links',
 				name: 'unfurl_links',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to unfurl primarily text-based content in the message',
 			},
 			{
-				displayName: 'Unfurl Media',
+				displayName: 'Unfurl media',
 				name: 'unfurl_media',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to unfurl media content in the message',
 			},
 			{
-				displayName: 'Send as Ephemeral Message',
+				displayName: 'Send as ephemeral message',
 				name: 'ephemeral',
 				type: 'fixedCollection',
 				default: {},
@@ -823,18 +823,18 @@ export const messageFields: INodeProperties[] = [
 				description: 'Whether to send a temporary, ephemeral message',
 				options: [
 					{
-						displayName: 'Send as Ephemeral Message',
+						displayName: 'Send as ephemeral message',
 						name: 'ephemeralValues',
 						values: [
 							{
-								displayName: 'User to Send',
+								displayName: 'User to send',
 								name: 'user',
 								type: 'resourceLocator',
 								default: { mode: 'list', value: '' },
 								placeholder: 'Select a user...',
 								modes: [
 									{
-										displayName: 'From List',
+										displayName: 'From list',
 										name: 'list',
 										type: 'list',
 										placeholder: 'Select a user...',
@@ -861,7 +861,7 @@ export const messageFields: INodeProperties[] = [
 								],
 							},
 							{
-								displayName: 'Send as Ephemeral Message',
+								displayName: 'Send as ephemeral message',
 								name: 'ephemeral',
 								type: 'boolean',
 								default: true,
@@ -872,7 +872,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Send as Ephemeral Message',
+				displayName: 'Send as ephemeral message',
 				name: 'ephemeral',
 				type: 'boolean',
 				displayOptions: {
@@ -884,7 +884,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Whether to send a temporary, ephemeral message',
 			},
 			{
-				displayName: 'Send as User',
+				displayName: 'Send as user',
 				name: 'sendAsUser',
 				type: 'string',
 				displayOptions: {
@@ -919,7 +919,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'The channel the scheduled message was sent to',
 	},
 	{
-		displayName: 'Scheduled Message ID',
+		displayName: 'Scheduled message ID',
 		name: 'scheduledMessageId',
 		type: 'string',
 		required: true,
@@ -938,7 +938,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:getManyScheduled                */
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -1027,7 +1027,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'The Slack channel to update the message from',
 	},
 	{
-		displayName: 'Message Timestamp',
+		displayName: 'Message timestamp',
 		name: 'ts',
 		required: true,
 		type: 'number',
@@ -1042,7 +1042,7 @@ export const messageFields: INodeProperties[] = [
 		placeholder: '1663233118.856619',
 	},
 	{
-		displayName: 'Message Type',
+		displayName: 'Message type',
 		name: 'messageType',
 		type: 'options',
 		displayOptions: {
@@ -1055,7 +1055,7 @@ export const messageFields: INodeProperties[] = [
 			'Whether to send a simple text message, or use Slack’s Blocks UI builder for more sophisticated messages that include form fields, sections and more',
 		options: [
 			{
-				name: 'Simple Text Message',
+				name: 'Simple text message',
 				value: 'text',
 				description: 'Supports basic Markdown',
 			},
@@ -1093,7 +1093,7 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Notification Text',
+		displayName: 'Notification text',
 		name: 'text',
 		type: 'string',
 		default: '',
@@ -1108,7 +1108,7 @@ export const messageFields: INodeProperties[] = [
 			'Fallback text to display in slack notifications. Supports <a href="https://api.slack.com/reference/surfaces/formatting">markdown</a> by default - this can be disabled in "Options".',
 	},
 	{
-		displayName: 'Message Text',
+		displayName: 'Message text',
 		name: 'text',
 		type: 'string',
 		default: '',
@@ -1123,7 +1123,7 @@ export const messageFields: INodeProperties[] = [
 			'The message text to update. Supports <a href="https://api.slack.com/reference/surfaces/formatting/">markdown</a> by default - this can be disabled in "Options".',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add option',
@@ -1136,7 +1136,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Link User and Channel Names',
+				displayName: 'Link user and channel names',
 				name: 'link_names',
 				type: 'boolean',
 				default: false,
@@ -1180,7 +1180,7 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Include Link to Workflow',
+				displayName: 'Include link to workflow',
 				name: 'includeLinkToWorkflow',
 				type: 'boolean',
 				default: true,
@@ -1193,7 +1193,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:delete
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Delete Message From',
+		displayName: 'Delete message from',
 		name: 'select',
 		type: 'options',
 		required: true,
@@ -1248,7 +1248,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select a user...',
@@ -1275,7 +1275,7 @@ export const messageFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Message Timestamp',
+		displayName: 'Message timestamp',
 		name: 'timestamp',
 		required: true,
 		type: 'number',
@@ -1294,7 +1294,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:search
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Search Query',
+		displayName: 'Search query',
 		name: 'query',
 		type: 'string',
 		description: 'The text to search for within messages',
@@ -1308,7 +1308,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Sort By',
+		displayName: 'Sort by',
 		name: 'sort',
 		description: 'How search results should be sorted. You can sort by.',
 		type: 'options',
@@ -1328,7 +1328,7 @@ export const messageFields: INodeProperties[] = [
 				value: 'asc',
 			},
 			{
-				name: 'Relevance Score',
+				name: 'Relevance score',
 				value: 'relevance',
 			},
 		],
@@ -1337,7 +1337,7 @@ export const messageFields: INodeProperties[] = [
 	// Dropped from 2.7: the Real-time Search API caps how deep a search can be paged and
 	// warns that paginating past ~10 calls rate limits the whole workspace.
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -1437,7 +1437,7 @@ export const messageFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Channel Types',
+				displayName: 'Channel types',
 				name: 'channelTypes',
 				type: 'multiOptions',
 				default: ['public_channel', 'private_channel', 'mpim', 'im'],
@@ -1449,11 +1449,11 @@ export const messageFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						name: 'Public Channel',
+						name: 'Public channel',
 						value: 'public_channel',
 					},
 					{
-						name: 'Private Channel',
+						name: 'Private channel',
 						value: 'private_channel',
 					},
 					{
@@ -1467,7 +1467,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Include Archived Channels',
+				displayName: 'Include archived channels',
 				name: 'includeArchivedChannels',
 				type: 'boolean',
 				default: false,
@@ -1479,7 +1479,7 @@ export const messageFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Include Bots',
+				displayName: 'Include bots',
 				name: 'includeBots',
 				type: 'boolean',
 				default: false,
@@ -1491,7 +1491,7 @@ export const messageFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Include Message Blocks',
+				displayName: 'Include message blocks',
 				name: 'includeMessageBlocks',
 				type: 'boolean',
 				default: false,
@@ -1503,7 +1503,7 @@ export const messageFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Keyword Search Only',
+				displayName: 'Keyword search only',
 				name: 'keywordSearchOnly',
 				type: 'boolean',
 				default: false,
@@ -1516,7 +1516,7 @@ export const messageFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search in Channel',
+				displayName: 'Search in channel',
 				name: 'searchChannel',
 				type: 'multiOptions',
 				description:

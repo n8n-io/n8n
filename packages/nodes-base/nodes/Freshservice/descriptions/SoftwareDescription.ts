@@ -31,7 +31,7 @@ export const softwareOperations: INodeProperties[] = [
 				action: 'Get a software application',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many software applications',
 				action: 'Get many software applications',
@@ -52,7 +52,7 @@ export const softwareFields: INodeProperties[] = [
 	//             software: create
 	// ----------------------------------------
 	{
-		displayName: 'Application Type',
+		displayName: 'Application type',
 		name: 'applicationType',
 		type: 'options',
 		required: true,
@@ -92,10 +92,10 @@ export const softwareFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -131,7 +131,7 @@ export const softwareFields: INodeProperties[] = [
 						value: 'ignored',
 					},
 					{
-						name: 'Needs Review',
+						name: 'Needs review',
 						value: 'needs review',
 					},
 					{
@@ -183,7 +183,7 @@ export const softwareFields: INodeProperties[] = [
 	//             software: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -231,10 +231,10 @@ export const softwareFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -244,7 +244,7 @@ export const softwareFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Application Type',
+				displayName: 'Application type',
 				name: 'application_type',
 				type: 'options',
 				default: 'desktop',
@@ -297,7 +297,7 @@ export const softwareFields: INodeProperties[] = [
 						value: 'ignored',
 					},
 					{
-						name: 'Needs Review',
+						name: 'Needs review',
 						value: 'needs review',
 					},
 					{

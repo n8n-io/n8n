@@ -19,9 +19,9 @@ const properties: INodeProperties[] = [
 		description: 'Select the group you want to update',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		routing: {

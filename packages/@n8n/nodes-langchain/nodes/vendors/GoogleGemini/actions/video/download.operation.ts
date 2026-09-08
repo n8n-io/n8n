@@ -15,12 +15,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Put Output in Field',
+				displayName: 'Put output in field',
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'data',

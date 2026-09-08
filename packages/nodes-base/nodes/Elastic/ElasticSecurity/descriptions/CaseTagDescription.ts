@@ -47,7 +47,7 @@ export const caseTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tag Name or ID',
+		displayName: 'Tag name or ID',
 		name: 'tag',
 		type: 'options',
 		description:
@@ -82,7 +82,7 @@ export const caseTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tag Name or ID',
+		displayName: 'Tag name or ID',
 		name: 'tag',
 		type: 'options',
 		description:

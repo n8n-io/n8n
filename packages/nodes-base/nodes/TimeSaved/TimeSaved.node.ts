@@ -30,26 +30,26 @@ export class TimeSaved implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Calculation Mode',
+				displayName: 'Calculation mode',
 				name: 'mode',
 				type: 'options',
 				default: 'once',
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Once For All Items',
+						name: 'Once for all items',
 						value: 'once',
 						description: 'Counts minutes saved once for all input items',
 					},
 					{
-						name: 'Per Item',
+						name: 'Per item',
 						value: 'perItem',
 						description: 'Multiply minutes saved by the number of input items',
 					},
 				],
 			},
 			{
-				displayName: 'Minutes Saved',
+				displayName: 'Minutes saved',
 				name: 'minutesSaved',
 				type: 'number',
 				default: 0,

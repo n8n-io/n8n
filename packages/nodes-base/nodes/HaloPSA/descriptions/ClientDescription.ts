@@ -31,7 +31,7 @@ export const clientOperations: INodeProperties[] = [
 				action: 'Get a client',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many clients',
 				action: 'Get many clients',
@@ -66,11 +66,11 @@ export const clientFields: INodeProperties[] = [
 		description: 'Enter client name',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -79,7 +79,7 @@ export const clientFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Status',
+				displayName: 'Account status',
 				name: 'inactive',
 				type: 'options',
 				default: false,
@@ -190,7 +190,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                client:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -225,7 +225,7 @@ export const clientFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['client'],
@@ -234,13 +234,13 @@ export const clientFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Active Status',
+				displayName: 'Active status',
 				name: 'activeStatus',
 				type: 'options',
 				default: 'active',
 				options: [
 					{
-						name: 'Active Only',
+						name: 'Active only',
 						value: 'active',
 						description: 'Whether to include active customers in the response',
 					},
@@ -250,14 +250,14 @@ export const clientFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive customers in the response',
 					},
 					{
-						name: 'Inactive Only',
+						name: 'Inactive only',
 						value: 'inactive',
 						description: 'Whether to include inactive Customers in the response',
 					},
 				],
 			},
 			{
-				displayName: 'Text To Filter By',
+				displayName: 'Text to filter by',
 				name: 'search',
 				type: 'string',
 				default: '',
@@ -282,11 +282,11 @@ export const clientFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['client'],
@@ -295,7 +295,7 @@ export const clientFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Status',
+				displayName: 'Account status',
 				name: 'inactive',
 				type: 'options',
 				default: false,

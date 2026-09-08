@@ -6,7 +6,7 @@ import { splunkApiJsonRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -35,7 +35,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Add Orphan Field',
+				displayName: 'Add orphan field',
 				name: 'add_orphan_field',
 				description:
 					'Whether to include a boolean value for each saved search to show whether the search is orphaned, meaning that it has no valid owner',
@@ -43,7 +43,7 @@ const properties: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'List Default Actions',
+				displayName: 'List default actions',
 				name: 'listDefaultActionArgs',
 				type: 'boolean',
 				default: false,

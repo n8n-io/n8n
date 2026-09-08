@@ -25,7 +25,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many contacts',
 				action: 'Get many contacts',
@@ -46,7 +46,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization name or ID',
 		name: 'organizationId',
 		type: 'options',
 		description:
@@ -78,10 +78,10 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -91,7 +91,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Number',
+				displayName: 'Account number',
 				name: 'accountNumber',
 				type: 'string',
 				default: '',
@@ -105,7 +105,7 @@ export const contactFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				placeholder: 'Add Address',
+				placeholder: 'Add address',
 				options: [
 					{
 						name: 'addressesValues',
@@ -117,7 +117,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'PO Box',
+										name: 'PO box',
 										value: 'POBOX',
 									},
 									{
@@ -152,7 +152,7 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Postal Code',
+								displayName: 'Postal code',
 								name: 'postalCode',
 								type: 'string',
 								default: '',
@@ -164,7 +164,7 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Attention To',
+								displayName: 'Attention to',
 								name: 'attentionTo',
 								type: 'string',
 								default: '',
@@ -174,14 +174,14 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Bank Account Details',
+				displayName: 'Bank account details',
 				name: 'bankAccountDetails',
 				type: 'string',
 				default: '',
 				description: 'Bank account number of contact',
 			},
 			{
-				displayName: 'Contact Number',
+				displayName: 'Contact number',
 				name: 'contactNumber',
 				type: 'string',
 				default: '',
@@ -189,7 +189,7 @@ export const contactFields: INodeProperties[] = [
 					'This field is read only on the Xero contact screen, used to identify contacts in external systems',
 			},
 			{
-				displayName: 'Contact Status',
+				displayName: 'Contact status',
 				name: 'contactStatus',
 				type: 'options',
 				options: [
@@ -204,7 +204,7 @@ export const contactFields: INodeProperties[] = [
 						description: 'The Contact is archived and can no longer be used in transactions',
 					},
 					{
-						name: 'GDPR Request',
+						name: 'GDPR request',
 						value: 'GDPRREQUEST',
 						description: 'The Contact is the subject of a GDPR erasure request',
 					},
@@ -213,7 +213,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Current status of a contact - see contact status types',
 			},
 			{
-				displayName: 'Default Currency',
+				displayName: 'Default currency',
 				name: 'defaultCurrency',
 				type: 'string',
 				default: '',
@@ -227,14 +227,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Email address of contact person (umlauts not supported) (max length = 255)',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'First name of contact person (max length = 255)',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -248,7 +248,7 @@ export const contactFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				placeholder: 'Add Phone',
+				placeholder: 'Add phone',
 				options: [
 					{
 						name: 'phonesValues',
@@ -285,13 +285,13 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Area Code',
+								displayName: 'Area code',
 								name: 'phoneAreaCode',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Country Code',
+								displayName: 'Country code',
 								name: 'phoneCountryCode',
 								type: 'string',
 								default: '',
@@ -301,7 +301,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Purchase Default Account Code Name or ID',
+				displayName: 'Purchase default account code name or ID',
 				name: 'purchasesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
@@ -312,7 +312,7 @@ export const contactFields: INodeProperties[] = [
 					'The default purchases account code for contacts. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sales Default Account Code Name or ID',
+				displayName: 'Sales default account code name or ID',
 				name: 'salesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
@@ -330,14 +330,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Skype user name of contact',
 			},
 			{
-				displayName: 'Tax Number',
+				displayName: 'Tax number',
 				name: 'taxNumber',
 				type: 'string',
 				default: '',
 				description: 'Tax number of contact',
 			},
 			{
-				displayName: 'Xero Network Key',
+				displayName: 'Xero network key',
 				name: 'xeroNetworkKey',
 				type: 'string',
 				default: '',
@@ -349,7 +349,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization name or ID',
 		name: 'organizationId',
 		type: 'options',
 		description:
@@ -383,7 +383,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                   contact:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization name or ID',
 		name: 'organizationId',
 		type: 'options',
 		description:
@@ -401,7 +401,7 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -445,14 +445,14 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Archived',
+				displayName: 'Include archived',
 				name: 'includeArchived',
 				type: 'boolean',
 				default: false,
 				description: 'Whether contacts with a status of ARCHIVED will be included in the response',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'string',
 				placeholder: 'contactID',
@@ -460,7 +460,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Order by any element returned',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sortOrder',
 				type: 'options',
 				options: [
@@ -490,7 +490,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization name or ID',
 		name: 'organizationId',
 		type: 'options',
 		description:
@@ -521,10 +521,10 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -534,7 +534,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Number',
+				displayName: 'Account number',
 				name: 'accountNumber',
 				type: 'string',
 				default: '',
@@ -548,7 +548,7 @@ export const contactFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				placeholder: 'Add Address',
+				placeholder: 'Add address',
 				options: [
 					{
 						name: 'addressesValues',
@@ -560,7 +560,7 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'PO Box',
+										name: 'PO box',
 										value: 'POBOX',
 									},
 									{
@@ -595,7 +595,7 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Postal Code',
+								displayName: 'Postal code',
 								name: 'postalCode',
 								type: 'string',
 								default: '',
@@ -607,7 +607,7 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Attention To',
+								displayName: 'Attention to',
 								name: 'attentionTo',
 								type: 'string',
 								default: '',
@@ -617,14 +617,14 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Bank Account Details',
+				displayName: 'Bank account details',
 				name: 'bankAccountDetails',
 				type: 'string',
 				default: '',
 				description: 'Bank account number of contact',
 			},
 			{
-				displayName: 'Contact Number',
+				displayName: 'Contact number',
 				name: 'contactNumber',
 				type: 'string',
 				default: '',
@@ -632,7 +632,7 @@ export const contactFields: INodeProperties[] = [
 					'This field is read only on the Xero contact screen, used to identify contacts in external systems',
 			},
 			{
-				displayName: 'Contact Status',
+				displayName: 'Contact status',
 				name: 'contactStatus',
 				type: 'options',
 				options: [
@@ -647,7 +647,7 @@ export const contactFields: INodeProperties[] = [
 						description: 'The Contact is archived and can no longer be used in transactions',
 					},
 					{
-						name: 'GDPR Request',
+						name: 'GDPR request',
 						value: 'GDPRREQUEST',
 						description: 'The Contact is the subject of a GDPR erasure request',
 					},
@@ -656,7 +656,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Current status of a contact - see contact status types',
 			},
 			{
-				displayName: 'Default Currency',
+				displayName: 'Default currency',
 				name: 'defaultCurrency',
 				type: 'string',
 				default: '',
@@ -670,14 +670,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Email address of contact person (umlauts not supported) (max length = 255)',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'First name of contact person (max length = 255)',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -698,7 +698,7 @@ export const contactFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				placeholder: 'Add Phone',
+				placeholder: 'Add phone',
 				options: [
 					{
 						name: 'phonesValues',
@@ -735,13 +735,13 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Area Code',
+								displayName: 'Area code',
 								name: 'phoneAreaCode',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Country Code',
+								displayName: 'Country code',
 								name: 'phoneCountryCode',
 								type: 'string',
 								default: '',
@@ -751,7 +751,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Purchase Default Account Code Name or ID',
+				displayName: 'Purchase default account code name or ID',
 				name: 'purchasesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
@@ -762,7 +762,7 @@ export const contactFields: INodeProperties[] = [
 					'The default purchases account code for contacts. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sales Default Account Code Name or ID',
+				displayName: 'Sales default account code name or ID',
 				name: 'salesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
@@ -780,14 +780,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Skype user name of contact',
 			},
 			{
-				displayName: 'Tax Number',
+				displayName: 'Tax number',
 				name: 'taxNumber',
 				type: 'string',
 				default: '',
 				description: 'Tax number of contact',
 			},
 			{
-				displayName: 'Xero Network Key',
+				displayName: 'Xero network key',
 				name: 'xeroNetworkKey',
 				type: 'string',
 				default: '',

@@ -11,7 +11,7 @@ export const guildRLC: INodeProperties = {
 	description: 'Select the server (guild) that your bot is connected to',
 	modes: [
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'list',
 			type: 'list',
 			placeholder: 'e.g. my-server',
@@ -65,7 +65,7 @@ export const channelRLC: INodeProperties = {
 	description: 'Select the channel by name, URL, or ID',
 	modes: [
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'list',
 			type: 'list',
 			placeholder: 'e.g. my-channel',
@@ -119,7 +119,7 @@ export const textChannelRLC: INodeProperties = {
 	description: 'Select the channel by name, URL, or ID',
 	modes: [
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'list',
 			type: 'list',
 			placeholder: 'e.g. my-channel',
@@ -165,14 +165,14 @@ export const textChannelRLC: INodeProperties = {
 };
 
 export const categoryRLC: INodeProperties = {
-	displayName: 'Parent Category',
+	displayName: 'Parent category',
 	name: 'categoryId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	description: 'The parent category where you want the channel to appear',
 	modes: [
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'list',
 			type: 'list',
 			placeholder: 'e.g. my-channel',
@@ -225,7 +225,7 @@ export const userRLC: INodeProperties = {
 	description: 'Select the user you want to assign a role to',
 	modes: [
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'list',
 			type: 'list',
 			placeholder: 'e.g. DiscordUser',
@@ -282,15 +282,15 @@ export const moderationReason: INodeProperties = {
 	description: 'The reason recorded in the server audit log',
 	options: [
 		{
-			name: 'Suspicious or Spam Account',
+			name: 'Suspicious or spam account',
 			value: 'suspicious_spam',
 		},
 		{
-			name: 'Compromised or Hacked Account',
+			name: 'Compromised or hacked account',
 			value: 'compromised',
 		},
 		{
-			name: 'Breaking Server Rules',
+			name: 'Breaking server rules',
 			value: 'rule_break',
 		},
 		{
@@ -302,7 +302,7 @@ export const moderationReason: INodeProperties = {
 };
 
 export const moderationReasonCustom: INodeProperties = {
-	displayName: 'Custom Reason',
+	displayName: 'Custom reason',
 	name: 'reasonCustom',
 	type: 'string',
 	default: '',
@@ -316,18 +316,18 @@ export const moderationReasonCustom: INodeProperties = {
 };
 
 export const banDeleteHistory: INodeProperties = {
-	displayName: 'Delete Message History',
+	displayName: 'Delete message history',
 	name: 'deleteMessageSeconds',
 	type: 'options',
 	description: "How much of the user's recent message history to delete on ban",
 	options: [
-		{ name: 'No Cleanup', value: 0 },
-		{ name: 'Previous Hour', value: 3600 },
-		{ name: 'Previous 6 Hours', value: 21600 },
-		{ name: 'Previous 12 Hours', value: 43200 },
-		{ name: 'Previous 24 Hours', value: 86400 },
-		{ name: 'Previous 3 Days', value: 259200 },
-		{ name: 'Previous 7 Days', value: 604800 },
+		{ name: 'No cleanup', value: 0 },
+		{ name: 'Previous hour', value: 3600 },
+		{ name: 'Previous 6 hours', value: 21600 },
+		{ name: 'Previous 12 hours', value: 43200 },
+		{ name: 'Previous 24 hours', value: 86400 },
+		{ name: 'Previous 3 days', value: 259200 },
+		{ name: 'Previous 7 days', value: 604800 },
 	],
 	default: 0,
 };
@@ -338,19 +338,19 @@ export const timeoutDuration: INodeProperties = {
 	type: 'options',
 	description: 'How long the member is prevented from interacting (Discord max is 28 days)',
 	options: [
-		{ name: '60 Seconds', value: 60 },
-		{ name: '5 Minutes', value: 300 },
-		{ name: '1 Hour', value: 3600 },
-		{ name: '1 Day', value: 86400 },
-		{ name: '1 Week', value: 604800 },
-		{ name: '28 Days (Max)', value: 2419200 },
-		{ name: 'Remove Timeout', value: 'remove' },
+		{ name: '60 seconds', value: 60 },
+		{ name: '5 minutes', value: 300 },
+		{ name: '1 hour', value: 3600 },
+		{ name: '1 day', value: 86400 },
+		{ name: '1 week', value: 604800 },
+		{ name: '28 days (max)', value: 2419200 },
+		{ name: 'Remove timeout', value: 'remove' },
 	],
 	default: 3600,
 };
 
 export const maxResultsNumber: INodeProperties = {
-	displayName: 'Max Results',
+	displayName: 'Max results',
 	name: 'maxResults',
 	type: 'number',
 	typeOptions: {
@@ -433,7 +433,7 @@ const embedFields: INodeProperties[] = [
 		placeholder: 'e.g. https://discord.com/',
 	},
 	{
-		displayName: 'URL Image',
+		displayName: 'URL image',
 		name: 'image',
 		type: 'string',
 		default: '',
@@ -441,7 +441,7 @@ const embedFields: INodeProperties[] = [
 		placeholder: 'e.g. https://example.com/image.png',
 	},
 	{
-		displayName: 'URL Thumbnail',
+		displayName: 'URL thumbnail',
 		name: 'thumbnail',
 		type: 'string',
 		default: '',
@@ -449,7 +449,7 @@ const embedFields: INodeProperties[] = [
 		placeholder: 'e.g. https://example.com/image.png',
 	},
 	{
-		displayName: 'URL Video',
+		displayName: 'URL video',
 		name: 'video',
 		type: 'string',
 		default: '',
@@ -471,7 +471,7 @@ export const embedsFixedCollection: INodeProperties = {
 	displayName: 'Embeds',
 	name: 'embeds',
 	type: 'fixedCollection',
-	placeholder: 'Add Embeds',
+	placeholder: 'Add embeds',
 	typeOptions: {
 		multipleValues: true,
 	},
@@ -482,12 +482,12 @@ export const embedsFixedCollection: INodeProperties = {
 			name: 'values',
 			values: [
 				{
-					displayName: 'Input Method',
+					displayName: 'Input method',
 					name: 'inputMethod',
 					type: 'options',
 					options: [
 						{
-							name: 'Enter Fields',
+							name: 'Enter fields',
 							value: 'fields',
 						},
 						{
@@ -523,7 +523,7 @@ export const filesFixedCollection: INodeProperties = {
 	displayName: 'Files',
 	name: 'files',
 	type: 'fixedCollection',
-	placeholder: 'Add Files',
+	placeholder: 'Add files',
 	typeOptions: {
 		multipleValues: true,
 	},
@@ -534,7 +534,7 @@ export const filesFixedCollection: INodeProperties = {
 			name: 'values',
 			values: [
 				{
-					displayName: 'Input Data Field Name',
+					displayName: 'Input data field name',
 					name: 'inputFieldName',
 					type: 'string',
 					default: 'data',
@@ -549,7 +549,7 @@ export const filesFixedCollection: INodeProperties = {
 
 export const sendToProperties: INodeProperties[] = [
 	{
-		displayName: 'Send To',
+		displayName: 'Send to',
 		name: 'sendTo',
 		type: 'options',
 		options: [

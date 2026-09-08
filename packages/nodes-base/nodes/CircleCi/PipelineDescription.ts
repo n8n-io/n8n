@@ -19,7 +19,7 @@ export const pipelineOperations: INodeProperties[] = [
 				action: 'Get a pipeline',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many pipelines',
 				action: 'Get many pipelines',
@@ -63,7 +63,7 @@ export const pipelineFields: INodeProperties[] = [
 		description: 'Source control system',
 	},
 	{
-		displayName: 'Project Slug',
+		displayName: 'Project slug',
 		name: 'projectSlug',
 		type: 'string',
 		displayOptions: {
@@ -81,7 +81,7 @@ export const pipelineFields: INodeProperties[] = [
 	/*                                 pipeline:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Pipeline Number',
+		displayName: 'Pipeline number',
 		name: 'pipelineNumber',
 		type: 'number',
 		typeOptions: {
@@ -101,7 +101,7 @@ export const pipelineFields: INodeProperties[] = [
 	/*                                 pipeline:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -135,7 +135,7 @@ export const pipelineFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -158,10 +158,10 @@ export const pipelineFields: INodeProperties[] = [
 	/*                                 pipeline:trigger                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

@@ -6,7 +6,7 @@ import { paginationParameters } from '../common';
 const properties: INodeProperties[] = [
 	...paginationParameters,
 	{
-		displayName: 'Include Users',
+		displayName: 'Include users',
 		name: 'includeUsers',
 		type: 'boolean',
 		default: false,

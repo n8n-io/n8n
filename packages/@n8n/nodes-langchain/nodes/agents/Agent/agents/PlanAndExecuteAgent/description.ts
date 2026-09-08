@@ -52,10 +52,10 @@ export const planAndExecuteAgentProperties: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Human Message Template',
+				displayName: 'Human message template',
 				name: 'humanMessageTemplate',
 				type: 'string',
 				default: DEFAULT_STEP_EXECUTOR_HUMAN_CHAT_MESSAGE_TEMPLATE,
@@ -65,14 +65,14 @@ export const planAndExecuteAgentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Tracing Metadata',
+				displayName: 'Tracing metadata',
 				name: 'tracingMetadata',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
 				},
 				default: {},
-				placeholder: 'Add Metadata',
+				placeholder: 'Add metadata',
 				description: 'Custom metadata added to tracing events',
 				options: [
 					{

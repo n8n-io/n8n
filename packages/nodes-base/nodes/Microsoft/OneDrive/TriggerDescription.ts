@@ -99,28 +99,28 @@ export const folderRLC: INodeProperties = {
 
 export const triggerDescription: INodeProperties[] = [
 	{
-		displayName: 'Trigger On',
+		displayName: 'Trigger on',
 		name: 'event',
 		type: 'options',
 		default: 'fileCreated',
 		options: [
 			{
-				name: 'File Created',
+				name: 'File created',
 				value: 'fileCreated',
 				description: 'When a new file is created',
 			},
 			{
-				name: 'File Updated',
+				name: 'File updated',
 				value: 'fileUpdated',
 				description: 'When an existing file is modified',
 			},
 			{
-				name: 'Folder Created',
+				name: 'Folder created',
 				value: 'folderCreated',
 				description: 'When a new folder is created',
 			},
 			{
-				name: 'Folder Updated',
+				name: 'Folder updated',
 				value: 'folderUpdated',
 				description: 'When an existing folder is modified',
 			},
@@ -134,7 +134,7 @@ export const triggerDescription: INodeProperties[] = [
 		default: true,
 	},
 	{
-		displayName: 'Watch Folder',
+		displayName: 'Watch folder',
 		name: 'watchFolder',
 		description:
 			'Whether to watch for the created file in a given folder, rather than the entire OneDrive',
@@ -159,24 +159,24 @@ export const triggerDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Any File',
+				name: 'Any file',
 				value: 'anyFile',
 				description: 'Watch for updated files in the entire OneDrive',
 			},
 			{
-				name: 'Inside a Folder',
+				name: 'Inside a folder',
 				value: 'selectedFolder',
 				description: 'Watch for updated files inside a selected folder',
 			},
 			{
-				name: 'A Selected File',
+				name: 'A selected file',
 				value: 'selectedFile',
 				description: 'Watch a specific file for updates',
 			},
 		],
 	},
 	{
-		displayName: 'Watch Folder',
+		displayName: 'Watch folder',
 		name: 'watchFolder',
 		description:
 			'Whether to watch for the created folder in a given folder, rather than the entire OneDrive',
@@ -201,17 +201,17 @@ export const triggerDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Any Folder',
+				name: 'Any folder',
 				value: 'anyFolder',
 				description: 'Watch for updated folders in the entire OneDrive',
 			},
 			{
-				name: 'Inside a Folder',
+				name: 'Inside a folder',
 				value: 'selectedFolder',
 				description: 'Watch for updated folders inside a selected folder',
 			},
 			{
-				name: 'A Selected Folder',
+				name: 'A selected folder',
 				value: 'oneSelectedFolder',
 				description: 'Watch a specific folder for updates',
 			},
@@ -255,7 +255,7 @@ export const triggerDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Watch Nested Folders',
+				displayName: 'Watch nested folders',
 				name: 'folderChild',
 				type: 'boolean',
 				default: false,
@@ -277,7 +277,7 @@ export const triggerDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Watch Nested Folders',
+				displayName: 'Watch nested folders',
 				name: 'folderChild',
 				type: 'boolean',
 				default: false,

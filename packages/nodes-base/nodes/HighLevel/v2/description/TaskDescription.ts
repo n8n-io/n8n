@@ -68,7 +68,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				routing: {
 					request: {
@@ -114,7 +114,7 @@ export const taskOperations: INodeProperties[] = [
 const createProperties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Contact Email or ID',
+		displayName: 'Contact email or ID',
 		name: 'contactId',
 		type: 'options',
 		typeOptions: {
@@ -151,7 +151,7 @@ const createProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Due Date',
+		displayName: 'Due date',
 		name: 'dueDate',
 		type: 'dateTime',
 		required: true,
@@ -190,10 +190,10 @@ const createProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -204,7 +204,7 @@ const createProperties: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Assigned To',
+				displayName: 'Assigned to',
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
@@ -239,7 +239,7 @@ const createProperties: INodeProperties[] = [
 const deleteProperties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Contact Email or ID',
+		displayName: 'Contact email or ID',
 		name: 'contactId',
 		type: 'options',
 		typeOptions: {
@@ -274,7 +274,7 @@ const deleteProperties: INodeProperties[] = [
 const getProperties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Contact Email or ID',
+		displayName: 'Contact email or ID',
 		name: 'contactId',
 		type: 'options',
 		typeOptions: {
@@ -309,7 +309,7 @@ const getProperties: INodeProperties[] = [
 const getAllProperties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Contact Email or ID',
+		displayName: 'Contact email or ID',
 		name: 'contactId',
 		type: 'options',
 		typeOptions: {
@@ -327,7 +327,7 @@ const getAllProperties: INodeProperties[] = [
 			'Contact the task belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -368,7 +368,7 @@ const getAllProperties: INodeProperties[] = [
 const updateProperties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Contact Email or ID',
+		displayName: 'Contact email or ID',
 		name: 'contactId',
 		type: 'options',
 		typeOptions: {
@@ -399,10 +399,10 @@ const updateProperties: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -413,7 +413,7 @@ const updateProperties: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Assigned To',
+				displayName: 'Assigned to',
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
@@ -454,7 +454,7 @@ const updateProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',

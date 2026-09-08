@@ -12,7 +12,7 @@ import { seaTableApiRequest } from '../../GenericFunctions';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Table Name (Source)',
+		displayName: 'Table name (source)',
 		name: 'tableName',
 		type: 'options',
 		placeholder: 'Name of table',
@@ -25,7 +25,7 @@ export const properties: INodeProperties[] = [
 			'Choose from the list, of specify by using an expression. Provide it in the way "table_name:::table_id".',
 	},
 	{
-		displayName: 'Link Column',
+		displayName: 'Link column',
 		name: 'linkColumn',
 		type: 'options',
 		typeOptions: {
@@ -38,7 +38,7 @@ export const properties: INodeProperties[] = [
 			'Choose from the list of specify the Link Column by using an expression. You have to provide it in the way "column_name:::link_id:::other_table_id".',
 	},
 	{
-		displayName: 'Row ID From the Source Table',
+		displayName: 'Row ID from the source table',
 		name: 'linkColumnSourceId',
 		type: 'string',
 		required: true,
@@ -46,7 +46,7 @@ export const properties: INodeProperties[] = [
 		description: 'Provide the row ID of table you selected',
 	},
 	{
-		displayName: 'Row ID From the Target Table',
+		displayName: 'Row ID from the target table',
 		name: 'linkColumnTargetId',
 		type: 'string',
 		required: true,

@@ -39,7 +39,7 @@ export const FormatDateDescription: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
-				name: 'Custom Format',
+				name: 'Custom format',
 				value: 'custom',
 			},
 			{
@@ -68,12 +68,12 @@ export const FormatDateDescription: INodeProperties[] = [
 				description: 'Example: 1986-04-09',
 			},
 			{
-				name: 'Unix Timestamp',
+				name: 'Unix timestamp',
 				value: 'X',
 				description: 'Example: 1672531200',
 			},
 			{
-				name: 'Unix Ms Timestamp',
+				name: 'Unix ms timestamp',
 				value: 'x',
 				description: 'Example: 1674691200000',
 			},
@@ -82,7 +82,7 @@ export const FormatDateDescription: INodeProperties[] = [
 		description: 'The format to convert the date to',
 	},
 	{
-		displayName: 'Custom Format',
+		displayName: 'Custom format',
 		name: 'customFormat',
 		type: 'string',
 		displayOptions: {
@@ -96,7 +96,7 @@ export const FormatDateDescription: INodeProperties[] = [
 		placeholder: 'yyyy-MM-dd',
 	},
 	{
-		displayName: 'Output Field Name',
+		displayName: 'Output field name',
 		name: 'outputFieldName',
 		type: 'string',
 		default: 'formattedDate',
@@ -121,7 +121,7 @@ export const FormatDateDescription: INodeProperties[] = [
 		options: [
 			includeInputFields,
 			{
-				displayName: 'From Date Format',
+				displayName: 'From date format',
 				name: 'fromFormat',
 				type: 'string',
 				default: 'e.g yyyyMMdd',
@@ -131,7 +131,7 @@ export const FormatDateDescription: INodeProperties[] = [
 					'Format in which the input \'Date\' is, it\'s helpful when the format is not recognized automatically. Use those <a href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens&id=table-of-tokens" target="_blank">tokens</a> to define the format.',
 			},
 			{
-				displayName: 'Use Workflow Timezone',
+				displayName: 'Use workflow timezone',
 				name: 'timezone',
 				type: 'boolean',
 				default: false,

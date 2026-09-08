@@ -33,7 +33,7 @@ export const expenseOperations: INodeProperties[] = [
 				action: 'Get data of an expense',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many expenses',
 				action: 'Get data of all expenses',
@@ -55,7 +55,7 @@ export const expenseFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -89,7 +89,7 @@ export const expenseFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -113,7 +113,7 @@ export const expenseFields: INodeProperties[] = [
 				description: 'Only return time entries with a spent_date on or after the given date',
 			},
 			{
-				displayName: 'Is Billed',
+				displayName: 'Is billed',
 				name: 'is_billed',
 				type: 'boolean',
 				default: false,
@@ -146,7 +146,7 @@ export const expenseFields: INodeProperties[] = [
 				description: 'Only return time entries with a spent_date on or before the given date',
 			},
 			{
-				displayName: 'Updated Since',
+				displayName: 'Updated since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
@@ -217,7 +217,7 @@ export const expenseFields: INodeProperties[] = [
 		description: 'The ID of the project associated with this expense',
 	},
 	{
-		displayName: 'Expense Category ID',
+		displayName: 'Expense category ID',
 		name: 'expenseCategoryId',
 		type: 'string',
 		displayOptions: {
@@ -231,7 +231,7 @@ export const expenseFields: INodeProperties[] = [
 		description: 'The ID of the expense category this expense is being tracked against',
 	},
 	{
-		displayName: 'Spent Date',
+		displayName: 'Spent date',
 		name: 'spentDate',
 		type: 'dateTime',
 		displayOptions: {
@@ -245,10 +245,10 @@ export const expenseFields: INodeProperties[] = [
 		description: 'Date the expense occurred',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -272,7 +272,7 @@ export const expenseFields: INodeProperties[] = [
 				description: 'Notes about the expense',
 			},
 			{
-				displayName: 'Total Cost',
+				displayName: 'Total cost',
 				name: 'total_cost',
 				type: 'string',
 				default: '',
@@ -315,10 +315,10 @@ export const expenseFields: INodeProperties[] = [
 		description: 'The ID of the invoice want to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -335,7 +335,7 @@ export const expenseFields: INodeProperties[] = [
 				description: 'Whether this expense is billable or not. Defaults to true.',
 			},
 			{
-				displayName: 'Expense Category ID',
+				displayName: 'Expense category ID',
 				name: 'expense_category_id',
 				type: 'string',
 				default: '',
@@ -356,14 +356,14 @@ export const expenseFields: INodeProperties[] = [
 				description: 'The ID of the project associated with this expense',
 			},
 			{
-				displayName: 'Spent Date',
+				displayName: 'Spent date',
 				name: 'spent_date',
 				type: 'dateTime',
 				default: '',
 				description: 'Date the expense occurred',
 			},
 			{
-				displayName: 'Total Cost',
+				displayName: 'Total cost',
 				name: 'total_cost',
 				type: 'string',
 				default: '',

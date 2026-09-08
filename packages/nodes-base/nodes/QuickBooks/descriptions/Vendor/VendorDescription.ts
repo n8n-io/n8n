@@ -21,7 +21,7 @@ export const vendorOperations: INodeProperties[] = [
 				action: 'Get a vendor',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many vendors',
 			},
@@ -44,7 +44,7 @@ export const vendorFields: INodeProperties[] = [
 	//         vendor: create
 	// ----------------------------------
 	{
-		displayName: 'Display Name',
+		displayName: 'Display name',
 		name: 'displayName',
 		type: 'string',
 		required: true,
@@ -58,10 +58,10 @@ export const vendorFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -94,7 +94,7 @@ export const vendorFields: INodeProperties[] = [
 	//         vendor: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -128,7 +128,7 @@ export const vendorFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -167,10 +167,10 @@ export const vendorFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		required: true,
 		displayOptions: {

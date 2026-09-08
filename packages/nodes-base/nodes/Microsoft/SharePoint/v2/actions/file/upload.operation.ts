@@ -23,7 +23,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		required: true,
@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 		description: 'Name the file will have in SharePoint',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,

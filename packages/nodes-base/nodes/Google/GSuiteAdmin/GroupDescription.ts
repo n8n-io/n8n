@@ -31,7 +31,7 @@ export const groupOperations: INodeProperties[] = [
 				action: 'Get a group',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many groups',
 				action: 'Get many groups',
@@ -89,7 +89,7 @@ export const groupFields: INodeProperties[] = [
 	/*                                 group:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Group Name',
+		displayName: 'Group name',
 		name: 'name',
 		displayOptions: {
 			show: {
@@ -103,7 +103,7 @@ export const groupFields: INodeProperties[] = [
 		type: 'string',
 	},
 	{
-		displayName: 'Group Email',
+		displayName: 'Group email',
 		name: 'email',
 		type: 'string',
 		placeholder: 'e.g. sales@example.com',
@@ -119,10 +119,10 @@ export const groupFields: INodeProperties[] = [
 			"The group's email address. If your account has multiple domains, select the appropriate domain for the email address. The email must be unique",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -150,7 +150,7 @@ export const groupFields: INodeProperties[] = [
 	/*                                 group:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -184,7 +184,7 @@ export const groupFields: INodeProperties[] = [
 		displayName: 'Filter',
 		name: 'filter',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -229,7 +229,7 @@ export const groupFields: INodeProperties[] = [
 		displayName: 'Sort',
 		name: 'sort',
 		type: 'fixedCollection',
-		placeholder: 'Add Sort Rule',
+		placeholder: 'Add sort rule',
 		default: {},
 		displayOptions: {
 			show: {
@@ -240,10 +240,10 @@ export const groupFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'sortRules',
-				displayName: 'Sort Rules',
+				displayName: 'Sort rules',
 				values: [
 					{
-						displayName: 'Order By',
+						displayName: 'Order by',
 						name: 'orderBy',
 						type: 'options',
 						options: [
@@ -256,7 +256,7 @@ export const groupFields: INodeProperties[] = [
 						description: 'Field to sort the results by',
 					},
 					{
-						displayName: 'Sort Order',
+						displayName: 'Sort order',
 						name: 'sortOrder',
 						type: 'options',
 						options: [
@@ -281,10 +281,10 @@ export const groupFields: INodeProperties[] = [
 	/*                                 group:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

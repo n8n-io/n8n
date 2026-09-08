@@ -55,7 +55,7 @@ export const confluenceNodeDescription: INodeTypeDescription = {
 					value: 'cloudOAuth2',
 				},
 				{
-					name: 'Service Account',
+					name: 'Service account',
 					value: 'serviceAccount',
 					description:
 						"OAuth 2.0 client credentials for an Atlassian service account. The credential's scopes are fixed when it is created, and space permissions apply on top, like for any other user.",

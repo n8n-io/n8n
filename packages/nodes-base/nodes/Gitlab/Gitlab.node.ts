@@ -52,7 +52,7 @@ export class Gitlab implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -113,7 +113,7 @@ export class Gitlab implements INodeType {
 						action: 'Create an issue',
 					},
 					{
-						name: 'Create Comment',
+						name: 'Create comment',
 						value: 'createComment',
 						description: 'Create a new comment on an issue',
 						action: 'Create a comment on an issue',
@@ -158,7 +158,7 @@ export class Gitlab implements INodeType {
 						action: 'Get a repository',
 					},
 					{
-						name: 'Get Issues',
+						name: 'Get issues',
 						value: 'getIssues',
 						description: 'Returns issues of a repository',
 						action: 'Get issues of a repository',
@@ -179,7 +179,7 @@ export class Gitlab implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get Repositories',
+						name: 'Get repositories',
 						value: 'getRepositories',
 						description: 'Returns the repositories of a user',
 						action: "Get a user's repositories",
@@ -218,7 +218,7 @@ export class Gitlab implements INodeType {
 						action: 'Get a release',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many releases',
 						action: 'Get many releases',
@@ -282,7 +282,7 @@ export class Gitlab implements INodeType {
 			//         shared
 			// ----------------------------------
 			{
-				displayName: 'Project Owner',
+				displayName: 'Project owner',
 				name: 'owner',
 				type: 'string',
 				default: '',
@@ -291,7 +291,7 @@ export class Gitlab implements INodeType {
 				description: 'User, group or namespace of the project',
 			},
 			{
-				displayName: 'Project Name',
+				displayName: 'Project name',
 				name: 'repository',
 				type: 'string',
 				default: '',
@@ -344,7 +344,7 @@ export class Gitlab implements INodeType {
 				description: 'The body of the issue',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'due_date',
 				type: 'dateTime',
 				displayOptions: {
@@ -411,7 +411,7 @@ export class Gitlab implements INodeType {
 			//         issue:createComment
 			// ----------------------------------
 			{
-				displayName: 'Issue Number',
+				displayName: 'Issue number',
 				name: 'issueNumber',
 				type: 'number',
 				default: 0,
@@ -445,7 +445,7 @@ export class Gitlab implements INodeType {
 			//         issue:edit
 			// ----------------------------------
 			{
-				displayName: 'Issue Number',
+				displayName: 'Issue number',
 				name: 'issueNumber',
 				type: 'number',
 				default: 0,
@@ -548,7 +548,7 @@ export class Gitlab implements INodeType {
 						],
 					},
 					{
-						displayName: 'Due Date',
+						displayName: 'Due date',
 						name: 'due_date',
 						type: 'dateTime',
 						default: '',
@@ -561,7 +561,7 @@ export class Gitlab implements INodeType {
 			//         issue:get
 			// ----------------------------------
 			{
-				displayName: 'Issue Number',
+				displayName: 'Issue number',
 				name: 'issueNumber',
 				type: 'number',
 				default: 0,
@@ -579,7 +579,7 @@ export class Gitlab implements INodeType {
 			//         issue:lock
 			// ----------------------------------
 			{
-				displayName: 'Issue Number',
+				displayName: 'Issue number',
 				name: 'issueNumber',
 				type: 'number',
 				default: 0,
@@ -593,7 +593,7 @@ export class Gitlab implements INodeType {
 				description: 'The number of the issue to lock',
 			},
 			{
-				displayName: 'Lock Reason',
+				displayName: 'Lock reason',
 				name: 'lockReason',
 				type: 'options',
 				displayOptions: {
@@ -604,12 +604,12 @@ export class Gitlab implements INodeType {
 				},
 				options: [
 					{
-						name: 'Off-Topic',
+						name: 'Off-topic',
 						value: 'off-topic',
 						description: 'The issue is Off-Topic',
 					},
 					{
-						name: 'Too Heated',
+						name: 'Too heated',
 						value: 'too heated',
 						description: 'The discussion is too heated',
 					},
@@ -650,7 +650,7 @@ export class Gitlab implements INodeType {
 				description: 'The tag of the release',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				typeOptions: {
@@ -710,7 +710,7 @@ export class Gitlab implements INodeType {
 				description: 'The ID or URL-encoded path of the project',
 			},
 			{
-				displayName: 'Tag Name',
+				displayName: 'Tag name',
 				name: 'tag_name',
 				type: 'string',
 				default: '',
@@ -742,7 +742,7 @@ export class Gitlab implements INodeType {
 				description: 'The ID or URL-encoded path of the project',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -773,7 +773,7 @@ export class Gitlab implements INodeType {
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				typeOptions: {
@@ -788,16 +788,16 @@ export class Gitlab implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Order By',
+						displayName: 'Order by',
 						name: 'order_by',
 						type: 'options',
 						options: [
 							{
-								name: 'Created At',
+								name: 'Created at',
 								value: 'created_at',
 							},
 							{
-								name: 'Released At',
+								name: 'Released at',
 								value: 'released_at',
 							},
 						],
@@ -842,7 +842,7 @@ export class Gitlab implements INodeType {
 				description: 'The ID or URL-encoded path of the project',
 			},
 			{
-				displayName: 'Tag Name',
+				displayName: 'Tag name',
 				name: 'tag_name',
 				type: 'string',
 				default: '',
@@ -856,7 +856,7 @@ export class Gitlab implements INodeType {
 				description: 'The Git tag the release is associated with',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				typeOptions: {
@@ -893,7 +893,7 @@ export class Gitlab implements INodeType {
 							'The title of each milestone to associate with the release (provide a titles list spearated with comma)',
 					},
 					{
-						displayName: 'Released At',
+						displayName: 'Released at',
 						name: 'released_at',
 						type: 'dateTime',
 						default: '',
@@ -953,7 +953,7 @@ export class Gitlab implements INodeType {
 							'Return only issues with the given labels. Multiple lables can be separated by comma.',
 					},
 					{
-						displayName: 'Updated After',
+						displayName: 'Updated after',
 						name: 'updated_after',
 						type: 'dateTime',
 						default: '',
@@ -989,12 +989,12 @@ export class Gitlab implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Created At',
+								name: 'Created at',
 								value: 'created_at',
 								description: 'Sort by created date',
 							},
 							{
-								name: 'Updated At',
+								name: 'Updated at',
 								value: 'updated_at',
 								description: 'Sort by updated date',
 							},
@@ -1036,7 +1036,7 @@ export class Gitlab implements INodeType {
 			//         file:create/delete/edit/get
 			// ----------------------------------
 			{
-				displayName: 'File Path',
+				displayName: 'File path',
 				name: 'filePath',
 				type: 'string',
 				default: '',
@@ -1090,9 +1090,9 @@ export class Gitlab implements INodeType {
 				description: 'Page of results to display',
 			},
 			{
-				displayName: 'Additional Parameters',
+				displayName: 'Additional parameters',
 				name: 'additionalParameters',
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				description: 'Additional fields to add',
 				type: 'collection',
 				default: {},
@@ -1126,7 +1126,7 @@ export class Gitlab implements INodeType {
 			//         file:get
 			// ----------------------------------
 			{
-				displayName: 'As Binary Property',
+				displayName: 'As binary property',
 				name: 'asBinaryProperty',
 				type: 'boolean',
 				default: true,
@@ -1140,7 +1140,7 @@ export class Gitlab implements INodeType {
 					'Whether to set the data of the file as binary property instead of returning the raw API response',
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -1156,9 +1156,9 @@ export class Gitlab implements INodeType {
 				hint: 'The name of the output binary field to put the file in',
 			},
 			{
-				displayName: 'Additional Parameters',
+				displayName: 'Additional parameters',
 				name: 'additionalParameters',
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				description: 'Additional fields to add',
 				type: 'collection',
 				default: {},
@@ -1185,7 +1185,7 @@ export class Gitlab implements INodeType {
 			//         file:create/edit
 			// ----------------------------------
 			{
-				displayName: 'Binary File',
+				displayName: 'Binary file',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -1199,7 +1199,7 @@ export class Gitlab implements INodeType {
 				description: 'Whether the data to upload should be taken from binary field',
 			},
 			{
-				displayName: 'File Content',
+				displayName: 'File content',
 				name: 'fileContent',
 				type: 'string',
 				default: '',
@@ -1215,7 +1215,7 @@ export class Gitlab implements INodeType {
 				description: 'The text content of the file',
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -1231,7 +1231,7 @@ export class Gitlab implements INodeType {
 				hint: 'The name of the input binary field containing the file to be written',
 			},
 			{
-				displayName: 'Commit Message',
+				displayName: 'Commit message',
 				name: 'commitMessage',
 				type: 'string',
 				default: '',
@@ -1258,9 +1258,9 @@ export class Gitlab implements INodeType {
 				},
 			},
 			{
-				displayName: 'Additional Parameters',
+				displayName: 'Additional parameters',
 				name: 'additionalParameters',
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				description: 'Additional fields to add',
 				type: 'fixedCollection',
 				default: {},
@@ -1272,11 +1272,11 @@ export class Gitlab implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Start Branch',
+						displayName: 'Start branch',
 						name: 'branchStart',
 						values: [
 							{
-								displayName: 'Start Branch',
+								displayName: 'Start branch',
 								name: 'branchStart',
 								type: 'string',
 								default: '',

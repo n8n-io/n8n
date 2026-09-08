@@ -61,7 +61,7 @@ export class ClickUpTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -72,7 +72,7 @@ export class ClickUpTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Team Name or ID',
+				displayName: 'Team name or ID',
 				name: 'team',
 				type: 'options',
 				description:
@@ -208,7 +208,7 @@ export class ClickUpTrigger implements INodeType {
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{

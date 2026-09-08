@@ -29,7 +29,7 @@ export const respondersOperations: INodeProperties[] = [
 
 export const responderFields: INodeProperties[] = [
 	{
-		displayName: 'Responder Type Name or ID',
+		displayName: 'Responder type name or ID',
 		name: 'responder',
 		type: 'options',
 		required: true,
@@ -46,7 +46,7 @@ export const responderFields: INodeProperties[] = [
 			'Choose the responder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Entity Type Name or ID',
+		displayName: 'Entity type name or ID',
 		name: 'entityType',
 		type: 'options',
 		required: true,
@@ -64,7 +64,7 @@ export const responderFields: INodeProperties[] = [
 			'Choose the Data type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonObject',
 		type: 'boolean',
 		default: false,
@@ -77,7 +77,7 @@ export const responderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Entity Object (JSON)',
+		displayName: 'Entity object (JSON)',
 		name: 'objectData',
 		type: 'string',
 		required: true,
@@ -93,10 +93,10 @@ export const responderFields: INodeProperties[] = [
 		displayName: 'Parameters',
 		name: 'parameters',
 		type: 'fixedCollection',
-		placeholder: 'Add Parameter',
+		placeholder: 'Add parameter',
 		options: [
 			{
-				displayName: 'Case Attributes',
+				displayName: 'Case attributes',
 				name: 'values',
 				values: [
 					{
@@ -144,7 +144,7 @@ export const responderFields: INodeProperties[] = [
 						description: 'Severity of the case. Default=Medium.',
 					},
 					{
-						displayName: 'Start Date',
+						displayName: 'Start date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
@@ -211,10 +211,10 @@ export const responderFields: INodeProperties[] = [
 		displayName: 'Parameters',
 		name: 'parameters',
 		type: 'fixedCollection',
-		placeholder: 'Add Parameter',
+		placeholder: 'Add parameter',
 		options: [
 			{
-				displayName: 'Alert Attributes',
+				displayName: 'Alert attributes',
 				name: 'values',
 				values: [
 					{
@@ -233,7 +233,7 @@ export const responderFields: INodeProperties[] = [
 								name: 'artifactValues',
 								values: [
 									{
-										displayName: 'Binary Field',
+										displayName: 'Binary field',
 										name: 'binaryProperty',
 										type: 'string',
 										displayOptions: {
@@ -255,7 +255,7 @@ export const responderFields: INodeProperties[] = [
 										default: '',
 									},
 									{
-										displayName: 'Data Type',
+										displayName: 'Data type',
 										name: 'dataType',
 										type: 'options',
 										default: '',
@@ -289,7 +289,7 @@ export const responderFields: INodeProperties[] = [
 												value: 'mail',
 											},
 											{
-												name: 'Mail Subject',
+												name: 'Mail subject',
 												value: 'mail_subject',
 											},
 											{
@@ -305,7 +305,7 @@ export const responderFields: INodeProperties[] = [
 												value: 'registry',
 											},
 											{
-												name: 'Uri Path',
+												name: 'URI path',
 												value: 'uri_path',
 											},
 											{
@@ -313,7 +313,7 @@ export const responderFields: INodeProperties[] = [
 												value: 'url',
 											},
 											{
-												name: 'User Agent',
+												name: 'User agent',
 												value: 'user-agent',
 											},
 										],
@@ -483,14 +483,14 @@ export const responderFields: INodeProperties[] = [
 		displayName: 'Parameters',
 		name: 'parameters',
 		type: 'fixedCollection',
-		placeholder: 'Add Parameter',
+		placeholder: 'Add parameter',
 		options: [
 			{
-				displayName: 'Observable Attributes',
+				displayName: 'Observable attributes',
 				name: 'values',
 				values: [
 					{
-						displayName: 'Input Binary Field',
+						displayName: 'Input binary field',
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
@@ -547,7 +547,7 @@ export const responderFields: INodeProperties[] = [
 								value: 'mail',
 							},
 							{
-								name: 'Mail Subject',
+								name: 'Mail subject',
 								value: 'mail_subject',
 							},
 							{
@@ -563,7 +563,7 @@ export const responderFields: INodeProperties[] = [
 								value: 'registry',
 							},
 							{
-								name: 'Uri Path',
+								name: 'URI path',
 								value: 'uri_path',
 							},
 							{
@@ -571,7 +571,7 @@ export const responderFields: INodeProperties[] = [
 								value: 'url',
 							},
 							{
-								name: 'User Agent',
+								name: 'User agent',
 								value: 'user-agent',
 							},
 						],
@@ -590,7 +590,7 @@ export const responderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Start Date',
+						displayName: 'Start date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
@@ -661,10 +661,10 @@ export const responderFields: INodeProperties[] = [
 		displayName: 'Parameters',
 		name: 'parameters',
 		type: 'fixedCollection',
-		placeholder: 'Add Parameter',
+		placeholder: 'Add parameter',
 		options: [
 			{
-				displayName: 'Task Attributes',
+				displayName: 'Task attributes',
 				name: 'values',
 				values: [
 					{
@@ -727,10 +727,10 @@ export const responderFields: INodeProperties[] = [
 		displayName: 'Parameters',
 		name: 'parameters',
 		type: 'fixedCollection',
-		placeholder: 'Add Parameter',
+		placeholder: 'Add parameter',
 		options: [
 			{
-				displayName: 'Log Attributes',
+				displayName: 'Log attributes',
 				name: 'values',
 				values: [
 					{
@@ -740,7 +740,7 @@ export const responderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Start Date',
+						displayName: 'Start date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',

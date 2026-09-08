@@ -45,7 +45,7 @@ export const callOperations: INodeProperties[] = [
 				action: 'Get call',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of calls',
 				routing: {
@@ -70,7 +70,7 @@ export const callOperations: INodeProperties[] = [
 
 const getFields: INodeProperties[] = [
 	{
-		displayName: 'Call to Get',
+		displayName: 'Call to get',
 		name: 'call',
 		default: {
 			mode: 'list',
@@ -84,7 +84,7 @@ const getFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -160,7 +160,7 @@ const getFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Call Data to Include',
+				displayName: 'Call data to include',
 				name: 'properties',
 				type: 'multiOptions',
 				default: [],
@@ -168,12 +168,12 @@ const getFields: INodeProperties[] = [
 					'The Call properties to include in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				options: [
 					{
-						name: 'Action Items',
+						name: 'Action items',
 						value: 'pointsOfInterest',
 						description: 'Call points of interest',
 					},
 					{
-						name: 'Audio and Video URLs',
+						name: 'Audio and video URLs',
 						value: 'media',
 						description: 'Audio and video URL of the call. The URLs will be available for 8 hours.',
 					},
@@ -313,14 +313,14 @@ const getFields: INodeProperties[] = [
 				},
 			},
 		],
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];
 
 const getAllFields: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
@@ -497,7 +497,7 @@ const getAllFields: INodeProperties[] = [
 				description: 'Return only the calls hosted by the specified user',
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						typeOptions: {
@@ -532,7 +532,7 @@ const getAllFields: INodeProperties[] = [
 				type: 'resourceLocator',
 			},
 		],
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		type: 'collection',
 	},
 	{
@@ -547,7 +547,7 @@ const getAllFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Call Data to Include',
+				displayName: 'Call data to include',
 				name: 'properties',
 				type: 'multiOptions',
 				default: [],
@@ -595,7 +595,7 @@ const getAllFields: INodeProperties[] = [
 				},
 			},
 		],
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];

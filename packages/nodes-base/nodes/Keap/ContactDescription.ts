@@ -13,7 +13,7 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description:
 					'Create a new contact, or update the current one if it already exists (upsert)',
@@ -32,7 +32,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many contacts',
 				action: 'Get many contacts',
@@ -47,7 +47,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:upsert                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Duplicate Option',
+		displayName: 'Duplicate option',
 		name: 'duplicateOption',
 		required: true,
 		type: 'options',
@@ -57,7 +57,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'email',
 			},
 			{
-				name: 'Email And Name',
+				name: 'Email and name',
 				value: 'emailAndName',
 			},
 		],
@@ -72,10 +72,10 @@ export const contactFields: INodeProperties[] = [
 			'Performs duplicate checking by one of the following options: Email, EmailAndName. If a match is found using the option provided, the existing contact will be updated.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -100,7 +100,7 @@ export const contactFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Contact Type Name or ID',
+				displayName: 'Contact type name or ID',
 				name: 'contactType',
 				type: 'options',
 				description:
@@ -111,49 +111,49 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Family Name',
+				displayName: 'Family name',
 				name: 'familyName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Given Name',
+				displayName: 'Given name',
 				name: 'givenName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'IP Address',
+				displayName: 'IP address',
 				name: 'ipAddress',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Lead Source ID',
+				displayName: 'Lead source ID',
 				name: 'leadSourceId',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Middle Name',
+				displayName: 'Middle name',
 				name: 'middleName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Opt In Reason',
+				displayName: 'Opt in reason',
 				name: 'optInReason',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'ownerId',
 				type: 'options',
 				description:
@@ -164,20 +164,20 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Preferred Locale',
+				displayName: 'Preferred locale',
 				name: 'preferredLocale',
 				type: 'string',
 				placeholder: 'en',
 				default: '',
 			},
 			{
-				displayName: 'Preferred Name',
+				displayName: 'Preferred name',
 				name: 'preferredName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Source Type',
+				displayName: 'Source type',
 				name: 'sourceType',
 				type: 'options',
 				options: [
@@ -190,7 +190,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'IMPORT',
 					},
 					{
-						name: 'Landing Page',
+						name: 'Landing page',
 						value: 'LANDINGPAGE',
 					},
 					{
@@ -209,13 +209,13 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Spouse Name',
+				displayName: 'Spouse name',
 				name: 'spouseName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone name or ID',
 				name: 'timezone',
 				type: 'options',
 				description:
@@ -241,7 +241,7 @@ export const contactFields: INodeProperties[] = [
 			multipleValues: true,
 		},
 		default: {},
-		placeholder: 'Add Address',
+		placeholder: 'Add address',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -274,7 +274,7 @@ export const contactFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country code name or ID',
 						name: 'countryCode',
 						type: 'options',
 						description:
@@ -303,7 +303,7 @@ export const contactFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
@@ -315,13 +315,13 @@ export const contactFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Zip Code',
+						displayName: 'Zip code',
 						name: 'zipCode',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Zip Four',
+						displayName: 'Zip four',
 						name: 'zipFour',
 						type: 'string',
 						default: '',
@@ -338,7 +338,7 @@ export const contactFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Email',
+		placeholder: 'Add email',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -389,7 +389,7 @@ export const contactFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Fax',
+		placeholder: 'Add fax',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -435,7 +435,7 @@ export const contactFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Phone',
+		placeholder: 'Add phone',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -486,14 +486,14 @@ export const contactFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Social Accounts',
+		displayName: 'Social accounts',
 		name: 'socialAccountsUi',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
 		},
 		default: {},
-		placeholder: 'Add Social Account',
+		placeholder: 'Add social account',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -503,7 +503,7 @@ export const contactFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'socialAccountsValues',
-				displayName: 'Social Account',
+				displayName: 'Social account',
 				values: [
 					{
 						displayName: 'Type',
@@ -594,7 +594,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -645,13 +645,13 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Given Name',
+				displayName: 'Given name',
 				name: 'givenName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Family Name',
+				displayName: 'Family name',
 				name: 'familyName',
 				type: 'string',
 				default: '',
@@ -682,7 +682,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Attribute to order items by',
 			},
 			{
-				displayName: 'Order Direction',
+				displayName: 'Order direction',
 				name: 'orderDirection',
 				type: 'options',
 				options: [

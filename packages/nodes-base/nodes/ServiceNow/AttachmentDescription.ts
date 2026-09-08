@@ -31,7 +31,7 @@ export const attachmentOperations: INodeProperties[] = [
 				action: 'Get an attachment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many attachments on a table',
 				action: 'Get many attachments',
@@ -47,7 +47,7 @@ export const attachmentFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'tableName',
 		type: 'options',
 		description:
@@ -69,7 +69,7 @@ export const attachmentFields: INodeProperties[] = [
 	/*                                attachment:upload                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Record ID',
+		displayName: 'Table record ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -84,7 +84,7 @@ export const attachmentFields: INodeProperties[] = [
 			'Sys_id of the record in the table specified in Table Name that you want to attach the file to',
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'inputDataFieldName',
 		type: 'string',
 		default: 'data',
@@ -101,7 +101,7 @@ export const attachmentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['attachment'],
@@ -111,7 +111,7 @@ export const attachmentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'File Name for the Attachment',
+				displayName: 'File name for the attachment',
 				name: 'file_name',
 				type: 'string',
 				default: '',
@@ -157,7 +157,7 @@ export const attachmentFields: INodeProperties[] = [
 	/*                                attachment:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -188,7 +188,7 @@ export const attachmentFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Download Attachments',
+		displayName: 'Download attachments',
 		name: 'download',
 		type: 'boolean',
 		default: false,
@@ -201,7 +201,7 @@ export const attachmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Output Field',
+		displayName: 'Output field',
 		name: 'outputField',
 		type: 'string',
 		default: 'data',
@@ -218,7 +218,7 @@ export const attachmentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['attachment'],

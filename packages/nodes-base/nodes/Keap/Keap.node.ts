@@ -73,19 +73,19 @@ export class Keap implements INodeType {
 						value: 'contact',
 					},
 					{
-						name: 'Contact Note',
+						name: 'Contact note',
 						value: 'contactNote',
 					},
 					{
-						name: 'Contact Tag',
+						name: 'Contact tag',
 						value: 'contactTag',
 					},
 					{
-						name: 'Ecommerce Order',
+						name: 'Ecommerce order',
 						value: 'ecommerceOrder',
 					},
 					{
-						name: 'Ecommerce Product',
+						name: 'Ecommerce product',
 						value: 'ecommerceProduct',
 					},
 					{

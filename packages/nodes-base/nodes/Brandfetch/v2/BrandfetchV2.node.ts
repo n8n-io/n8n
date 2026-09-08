@@ -39,26 +39,26 @@ export class BrandfetchV2 implements INodeType {
 					noDataExpression: true,
 					options: [
 						{
-							name: 'Return Logos, Symbols and Icon',
+							name: 'Return logos, symbols and icon',
 							value: 'logo',
 							description: 'Get all logo variants for a brand, including symbols and icons',
 							action: "Return a brand's logos, symbols and icon",
 						},
 						{
-							name: 'Return Accent and Brand Colors',
+							name: 'Return accent and brand colors',
 							value: 'colors',
 							description: 'Get the accent and brand color palette for a brand',
 							action: "Return a brand's accent and brand colors",
 						},
 						{
-							name: "Return All of a Brand's Data",
+							name: "Return all of a brand's data",
 							value: 'data',
 							description:
 								'Get all available Brandfetch attributes, including name, description, logos, colors, infographics and other data',
 							action: "Return all of a brand's data",
 						},
 						{
-							name: 'Return Brand Context',
+							name: 'Return brand context',
 							value: 'context',
 							description:
 								'Get a structured, narrative-rich brand profile (identity, positioning, voice and visual style) for a domain, suitable for grounding LLMs and generating on-brand content',
@@ -86,12 +86,12 @@ export class BrandfetchV2 implements INodeType {
 							description: 'Look up by domain name (e.g. apple.com)',
 						},
 						{
-							name: 'Stock/ETF Ticker',
+							name: 'Stock/ETF ticker',
 							value: 'ticker',
 							description: 'Look up by stock or ETF ticker (e.g. AAPL)',
 						},
 						{
-							name: 'Crypto Symbol',
+							name: 'Crypto symbol',
 							value: 'crypto',
 							description: 'Look up by crypto symbol (e.g. BTC)',
 						},
@@ -131,7 +131,7 @@ export class BrandfetchV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Output Format',
+					displayName: 'Output format',
 					name: 'outputFormat',
 					type: 'options',
 					default: 'json',
@@ -156,7 +156,7 @@ export class BrandfetchV2 implements INodeType {
 					],
 				},
 				{
-					displayName: 'Cached Only',
+					displayName: 'Cached only',
 					name: 'cachedOnly',
 					type: 'boolean',
 					default: false,

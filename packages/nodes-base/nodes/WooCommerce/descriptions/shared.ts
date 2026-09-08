@@ -2,13 +2,13 @@ import type { INodeProperties } from 'n8n-workflow';
 
 const customerAddressOptions: INodeProperties[] = [
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'first_name',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'last_name',
 		type: 'string',
 		default: '',
@@ -72,21 +72,21 @@ const customerAddressOptions: INodeProperties[] = [
 
 const customerUpdateOptions: INodeProperties[] = [
 	{
-		displayName: 'Billing Address',
+		displayName: 'Billing address',
 		name: 'billing',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: customerAddressOptions,
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'first_name',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'last_name',
 		type: 'string',
 		default: '',
@@ -99,10 +99,10 @@ const customerUpdateOptions: INodeProperties[] = [
 			multipleValues: true,
 		},
 		default: {},
-		placeholder: 'Add Metadata Field',
+		placeholder: 'Add metadata field',
 		options: [
 			{
-				displayName: 'Metadata Fields',
+				displayName: 'Metadata fields',
 				name: 'meta_data_fields',
 				values: [
 					{
@@ -135,11 +135,11 @@ const customerUpdateOptions: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Shipping Address',
+		displayName: 'Shipping address',
 		name: 'shipping',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: customerAddressOptions,
 	},
 ];
@@ -155,10 +155,10 @@ const customerCreateOptions: INodeProperties[] = [
 ];
 
 export const customerCreateFields: INodeProperties = {
-	displayName: 'Additional Fields',
+	displayName: 'Additional fields',
 	name: 'additionalFields',
 	type: 'collection',
-	placeholder: 'Add Field',
+	placeholder: 'Add field',
 	default: {},
 	displayOptions: {
 		show: {
@@ -170,10 +170,10 @@ export const customerCreateFields: INodeProperties = {
 };
 
 export const customerUpdateFields: INodeProperties = {
-	displayName: 'Update Fields',
+	displayName: 'Update fields',
 	name: 'updateFields',
 	type: 'collection',
-	placeholder: 'Add Field',
+	placeholder: 'Add field',
 	default: {},
 	displayOptions: {
 		show: {

@@ -58,15 +58,15 @@ export const conditionFields: INodeProperties[] = [
 				value: 'changed',
 			},
 			{
-				name: 'Changed From',
+				name: 'Changed from',
 				value: 'value_previous',
 			},
 			{
-				name: 'Changed To',
+				name: 'Changed to',
 				value: 'value',
 			},
 			{
-				name: 'Greater Than',
+				name: 'Greater than',
 				value: 'greater_than',
 			},
 			{
@@ -74,23 +74,23 @@ export const conditionFields: INodeProperties[] = [
 				value: 'is',
 			},
 			{
-				name: 'Is Not',
+				name: 'Is not',
 				value: 'is_not',
 			},
 			{
-				name: 'Less Than',
+				name: 'Less than',
 				value: 'less_than',
 			},
 			{
-				name: 'Not Changed',
+				name: 'Not changed',
 				value: 'not_changed',
 			},
 			{
-				name: 'Not Changed From',
+				name: 'Not changed from',
 				value: 'not_value_previous',
 			},
 			{
-				name: 'Not Changed To',
+				name: 'Not changed to',
 				value: 'not_value',
 			},
 		],
@@ -112,11 +112,11 @@ export const conditionFields: INodeProperties[] = [
 				value: 'changed',
 			},
 			{
-				name: 'Changed From',
+				name: 'Changed from',
 				value: 'value_previous',
 			},
 			{
-				name: 'Changed To',
+				name: 'Changed to',
 				value: 'value',
 			},
 			{
@@ -124,19 +124,19 @@ export const conditionFields: INodeProperties[] = [
 				value: 'is',
 			},
 			{
-				name: 'Is Not',
+				name: 'Is not',
 				value: 'is_not',
 			},
 			{
-				name: 'Not Changed',
+				name: 'Not changed',
 				value: 'not_changed',
 			},
 			{
-				name: 'Not Changed From',
+				name: 'Not changed from',
 				value: 'not_value_previous',
 			},
 			{
-				name: 'Not Changed To',
+				name: 'Not changed to',
 				value: 'not_value',
 			},
 		],

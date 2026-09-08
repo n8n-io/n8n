@@ -2,7 +2,7 @@ import type { RmmProperties } from '../../Interfaces';
 
 export const rmmGetAllDescription: RmmProperties = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -36,7 +36,7 @@ export const rmmGetAllDescription: RmmProperties = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['rmm'],

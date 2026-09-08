@@ -34,7 +34,7 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		default: '',
@@ -44,12 +44,12 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'File Type',
+		displayName: 'File type',
 		name: 'fileType',
 		type: 'options',
 		options: [
 			{
-				name: 'Browser Download',
+				name: 'Browser download',
 				value: 'browser_download',
 			},
 			{
@@ -61,12 +61,12 @@ export const description: INodeProperties[] = [
 				value: 'video',
 			},
 			{
-				name: 'Customer Upload',
+				name: 'Customer upload',
 				value: 'customer_upload',
 			},
 		],
 		default: 'customer_upload',
-		description: "Choose the type of file to upload. Defaults to 'Customer Upload'.",
+		description: "Choose the type of file to upload. Defaults to 'Customer upload'.",
 		displayOptions,
 	},
 	{
@@ -88,7 +88,7 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Binary property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -116,7 +116,7 @@ export const description: INodeProperties[] = [
 		description: 'URL from where to fetch the file to upload',
 	},
 	{
-		displayName: 'Trigger File Input',
+		displayName: 'Trigger file input',
 		name: 'triggerFileInputParameter',
 		type: 'boolean',
 		default: true,

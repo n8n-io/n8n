@@ -115,7 +115,7 @@ export class Adalo implements INodeType {
 						action: 'Retrieve a row',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Retrieve many rows',
 						routing: {

@@ -62,14 +62,14 @@ export class VectorStoreInMemoryInsert implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Clear Store',
+				displayName: 'Clear store',
 				name: 'clearStore',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to clear the store before inserting new data',
 			},
 			{
-				displayName: 'Memory Key',
+				displayName: 'Memory key',
 				name: 'memoryKey',
 				type: 'string',
 				default: 'vector_store_key',

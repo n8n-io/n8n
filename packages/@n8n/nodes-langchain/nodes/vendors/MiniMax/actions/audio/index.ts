@@ -17,7 +17,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Text to Speech',
+				name: 'Text to speech',
 				value: 'textToSpeech',
 				action: 'Convert text to speech',
 				description: 'Generate speech audio from text input',

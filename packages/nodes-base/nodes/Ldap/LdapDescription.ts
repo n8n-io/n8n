@@ -162,7 +162,7 @@ export const ldapFields: INodeProperties[] = [
 	{
 		displayName: 'Attributes',
 		name: 'attributes',
-		placeholder: 'Add Attributes',
+		placeholder: 'Add attributes',
 		description: 'Attributes to add to the entry',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -202,7 +202,7 @@ export const ldapFields: INodeProperties[] = [
 	//         Update
 	// ----------------------------------
 	{
-		displayName: 'Update Attributes',
+		displayName: 'Update attributes',
 		name: 'attributes',
 		placeholder: 'Update Attributes',
 		type: 'fixedCollection',
@@ -302,7 +302,7 @@ export const ldapFields: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Search For',
+		displayName: 'Search for',
 		name: 'searchFor',
 		type: 'options',
 		default: [],
@@ -318,7 +318,7 @@ export const ldapFields: INodeProperties[] = [
 		description: 'Directory object class to search for',
 	},
 	{
-		displayName: 'Custom Filter',
+		displayName: 'Custom filter',
 		name: 'customFilter',
 		type: 'string',
 		default: '(objectclass=*)',
@@ -352,7 +352,7 @@ export const ldapFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Search Text',
+		displayName: 'Search text',
 		name: 'searchText',
 		type: 'string',
 		default: '',
@@ -368,7 +368,7 @@ export const ldapFields: INodeProperties[] = [
 		description: 'Text to search for, Use * for a wildcard',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -408,7 +408,7 @@ export const ldapFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Attribute Names or IDs',
+				displayName: 'Attribute names or IDs',
 				name: 'attributes',
 				type: 'multiOptions',
 				typeOptions: {
@@ -419,7 +419,7 @@ export const ldapFields: INodeProperties[] = [
 					'Comma-separated list of attributes to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Page Size',
+				displayName: 'Page size',
 				name: 'pageSize',
 				type: 'number',
 				default: 1000,
@@ -438,15 +438,15 @@ export const ldapFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Base Object',
+						name: 'Base object',
 						value: 'base',
 					},
 					{
-						name: 'Single Level',
+						name: 'Single level',
 						value: 'one',
 					},
 					{
-						name: 'Whole Subtree',
+						name: 'Whole subtree',
 						value: 'sub',
 					},
 				],

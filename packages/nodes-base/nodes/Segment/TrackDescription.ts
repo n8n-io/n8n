@@ -64,7 +64,7 @@ export const trackFields: INodeProperties[] = [
 	{
 		displayName: 'Context',
 		name: 'context',
-		placeholder: 'Add Context',
+		placeholder: 'Add context',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
@@ -121,7 +121,7 @@ export const trackFields: INodeProperties[] = [
 					{
 						displayName: 'App',
 						name: 'app',
-						placeholder: 'Add App',
+						placeholder: 'Add app',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: false,
@@ -205,7 +205,7 @@ export const trackFields: INodeProperties[] = [
 					{
 						displayName: 'Device',
 						name: 'device',
-						placeholder: 'Add Device',
+						placeholder: 'Add device',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: false,
@@ -263,7 +263,7 @@ export const trackFields: INodeProperties[] = [
 	{
 		displayName: 'Integration',
 		name: 'integrations',
-		placeholder: 'Add Integration',
+		placeholder: 'Add integration',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
@@ -299,7 +299,7 @@ export const trackFields: INodeProperties[] = [
 	{
 		displayName: 'Properties',
 		name: 'properties',
-		placeholder: 'Add Properties',
+		placeholder: 'Add properties',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -364,7 +364,7 @@ export const trackFields: INodeProperties[] = [
 	{
 		displayName: 'Context',
 		name: 'context',
-		placeholder: 'Add Context',
+		placeholder: 'Add context',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
@@ -421,7 +421,7 @@ export const trackFields: INodeProperties[] = [
 					{
 						displayName: 'App',
 						name: 'app',
-						placeholder: 'Add App',
+						placeholder: 'Add app',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: false,
@@ -505,7 +505,7 @@ export const trackFields: INodeProperties[] = [
 					{
 						displayName: 'Device',
 						name: 'device',
-						placeholder: 'Add Device',
+						placeholder: 'Add device',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: false,
@@ -563,7 +563,7 @@ export const trackFields: INodeProperties[] = [
 	{
 		displayName: 'Integration',
 		name: 'integrations',
-		placeholder: 'Add Integration',
+		placeholder: 'Add integration',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
@@ -599,7 +599,7 @@ export const trackFields: INodeProperties[] = [
 	{
 		displayName: 'Properties',
 		name: 'properties',
-		placeholder: 'Add Properties',
+		placeholder: 'Add properties',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,

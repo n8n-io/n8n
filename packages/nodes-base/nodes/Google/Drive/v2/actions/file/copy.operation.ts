@@ -18,7 +18,7 @@ const properties: INodeProperties[] = [
 		description: 'The file to copy',
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -27,7 +27,7 @@ const properties: INodeProperties[] = [
 			'The name of the new file. If not set, “Copy of {original file name}” will be used.',
 	},
 	{
-		displayName: 'Copy In The Same Folder',
+		displayName: 'Copy in the same folder',
 		name: 'sameFolder',
 		type: 'boolean',
 		default: true,
@@ -53,7 +53,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Copy Requires Writer Permission',
+				displayName: 'Copy requires writer permission',
 				name: 'copyRequiresWriterPermission',
 				type: 'boolean',
 				default: false,

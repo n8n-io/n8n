@@ -15,7 +15,7 @@ export const postCommentOperations: INodeProperties[] = [
 				action: 'Create a comment in a post',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many comments in a post',
 				action: 'Get many comments in a post',
@@ -62,7 +62,7 @@ export const postCommentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Comment Text',
+		displayName: 'Comment text',
 		name: 'commentText',
 		type: 'string',
 		required: true,
@@ -110,7 +110,7 @@ export const postCommentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -181,7 +181,7 @@ export const postCommentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Reply Text',
+		displayName: 'Reply text',
 		name: 'replyText',
 		type: 'string',
 		required: true,

@@ -31,13 +31,13 @@ export const folderOperations: INodeProperties[] = [
 				action: 'Get a folder',
 			},
 			{
-				name: 'Get Children',
+				name: 'Get children',
 				value: 'getChildren',
 				description: 'Lists all child folders under the folder',
 				action: 'Get items in a folder',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many folders under the root folder of the signed-in user',
 				action: 'Get many folders',
@@ -63,7 +63,7 @@ export const folderFields: INodeProperties[] = [
 	},
 	// folder:list, getChildren, listMessages
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -105,7 +105,7 @@ export const folderFields: INodeProperties[] = [
 				value: 'folder',
 			},
 			{
-				name: 'Search Folder',
+				name: 'Search folder',
 				value: 'searchFolder',
 			},
 		],
@@ -118,7 +118,7 @@ export const folderFields: INodeProperties[] = [
 		default: 'folder',
 	},
 	{
-		displayName: 'Display Name',
+		displayName: 'Display name',
 		name: 'displayName',
 		description: 'Name of the folder',
 		type: 'string',
@@ -132,7 +132,7 @@ export const folderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include Nested Folders',
+		displayName: 'Include nested folders',
 		name: 'includeNestedFolders',
 		description: 'Whether to include child folders in the search',
 		type: 'boolean',
@@ -146,7 +146,7 @@ export const folderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Source Folder IDs',
+		displayName: 'Source folder IDs',
 		name: 'sourceFolderIds',
 		description: 'The mailbox folders that should be mined',
 		type: 'string',
@@ -163,7 +163,7 @@ export const folderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Filter Query',
+		displayName: 'Filter query',
 		name: 'filterQuery',
 		description: 'The OData query to filter the messages',
 		type: 'string',
@@ -178,10 +178,10 @@ export const folderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -210,7 +210,7 @@ export const folderFields: INodeProperties[] = [
 
 	// folder:update
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		description: 'Fields to update',
 		type: 'collection',
@@ -223,28 +223,28 @@ export const folderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Display Name',
+				displayName: 'Display name',
 				name: 'displayName',
 				description: 'Name of the folder',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Filter Query',
+				displayName: 'Filter query',
 				name: 'filterQuery',
 				description: 'The OData query to filter the messages. Only for search folders.',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Include Nested Folders',
+				displayName: 'Include nested folders',
 				name: 'includeNestedFolders',
 				description: 'Whether to include child folders in the search. Only for search folders.',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Source Folder IDs',
+				displayName: 'Source folder IDs',
 				name: 'sourceFolderIds',
 				description: 'The mailbox folders that should be mined. Only for search folders.',
 				type: 'string',

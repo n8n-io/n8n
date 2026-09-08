@@ -23,7 +23,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Use Domain Admin Access',
+				displayName: 'Use domain admin access',
 				name: 'useDomainAdminAccess',
 				type: 'boolean',
 				default: false,

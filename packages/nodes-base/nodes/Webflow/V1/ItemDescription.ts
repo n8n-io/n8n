@@ -24,7 +24,7 @@ export const itemOperations: INodeProperties[] = [
 				action: 'Get an item',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many items',
 			},
@@ -47,7 +47,7 @@ export const itemFields: INodeProperties[] = [
 	//         item: create
 	// ----------------------------------
 	{
-		displayName: 'Site Name or ID',
+		displayName: 'Site name or ID',
 		name: 'siteId',
 		type: 'options',
 		required: true,
@@ -65,7 +65,7 @@ export const itemFields: INodeProperties[] = [
 			'ID of the site containing the collection whose items to add to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Collection Name or ID',
+		displayName: 'Collection name or ID',
 		name: 'collectionId',
 		type: 'options',
 		required: true,
@@ -100,7 +100,7 @@ export const itemFields: INodeProperties[] = [
 	{
 		displayName: 'Fields',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -118,7 +118,7 @@ export const itemFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'fieldId',
 						type: 'options',
 						typeOptions: {
@@ -130,7 +130,7 @@ export const itemFields: INodeProperties[] = [
 							'Field to set for the item to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -145,7 +145,7 @@ export const itemFields: INodeProperties[] = [
 	//         item: get
 	// ----------------------------------
 	{
-		displayName: 'Site Name or ID',
+		displayName: 'Site name or ID',
 		name: 'siteId',
 		type: 'options',
 		required: true,
@@ -163,7 +163,7 @@ export const itemFields: INodeProperties[] = [
 			'ID of the site containing the collection whose items to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Collection Name or ID',
+		displayName: 'Collection name or ID',
 		name: 'collectionId',
 		type: 'options',
 		required: true,
@@ -199,7 +199,7 @@ export const itemFields: INodeProperties[] = [
 	//         item: update
 	// ----------------------------------
 	{
-		displayName: 'Site Name or ID',
+		displayName: 'Site name or ID',
 		name: 'siteId',
 		type: 'options',
 		required: true,
@@ -217,7 +217,7 @@ export const itemFields: INodeProperties[] = [
 			'ID of the site containing the collection whose items to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Collection Name or ID',
+		displayName: 'Collection name or ID',
 		name: 'collectionId',
 		type: 'options',
 		required: true,
@@ -266,7 +266,7 @@ export const itemFields: INodeProperties[] = [
 	{
 		displayName: 'Fields',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -284,7 +284,7 @@ export const itemFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'fieldId',
 						type: 'options',
 						typeOptions: {
@@ -296,7 +296,7 @@ export const itemFields: INodeProperties[] = [
 							'Field to set for the item to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -310,7 +310,7 @@ export const itemFields: INodeProperties[] = [
 	//         item:getAll
 	// ----------------------------------
 	{
-		displayName: 'Site Name or ID',
+		displayName: 'Site name or ID',
 		name: 'siteId',
 		type: 'options',
 		required: true,
@@ -328,7 +328,7 @@ export const itemFields: INodeProperties[] = [
 			'ID of the site containing the collection whose items to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Collection Name or ID',
+		displayName: 'Collection name or ID',
 		name: 'collectionId',
 		type: 'options',
 		required: true,
@@ -347,7 +347,7 @@ export const itemFields: INodeProperties[] = [
 			'ID of the collection whose items to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

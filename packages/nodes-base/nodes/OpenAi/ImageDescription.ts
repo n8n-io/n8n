@@ -17,7 +17,7 @@ export const imageOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				action: 'Create an Image',
+				action: 'Create an image',
 				description: 'Create an image for a given text',
 				routing: {
 					request: {
@@ -187,7 +187,7 @@ const createOperations: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Response Format',
+		displayName: 'Response format',
 		name: 'responseFormat',
 		type: 'options',
 		default: 'binaryData',
@@ -200,11 +200,11 @@ const createOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Binary File',
+				name: 'Binary file',
 				value: 'binaryData',
 			},
 			{
-				name: 'Image Url',
+				name: 'Image URL',
 				value: 'imageUrl',
 			},
 		],
@@ -255,7 +255,7 @@ const createOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Number of Images',
+				displayName: 'Number of images',
 				name: 'n',
 				default: 1,
 				description: 'Number of images to generate',

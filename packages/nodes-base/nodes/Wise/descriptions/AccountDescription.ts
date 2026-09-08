@@ -9,19 +9,19 @@ export const accountOperations: INodeProperties[] = [
 		default: 'getBalances',
 		options: [
 			{
-				name: 'Get Balances',
+				name: 'Get balances',
 				value: 'getBalances',
 				description: 'Retrieve balances for all account currencies of this user',
 				action: 'Get balances',
 			},
 			{
-				name: 'Get Currencies',
+				name: 'Get currencies',
 				value: 'getCurrencies',
 				description: 'Retrieve currencies in the borderless account of this user',
 				action: 'Get currencies',
 			},
 			{
-				name: 'Get Statement',
+				name: 'Get statement',
 				value: 'getStatement',
 				description: 'Retrieve the statement for the borderless account of this user',
 				action: 'Get a statement',
@@ -40,7 +40,7 @@ export const accountFields: INodeProperties[] = [
 	//      account: getBalances
 	// ----------------------------------
 	{
-		displayName: 'Profile Name or ID',
+		displayName: 'Profile name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -62,7 +62,7 @@ export const accountFields: INodeProperties[] = [
 	//      account: getStatement
 	// ----------------------------------
 	{
-		displayName: 'Profile Name or ID',
+		displayName: 'Profile name or ID',
 		name: 'profileId',
 		type: 'options',
 		default: [],
@@ -79,7 +79,7 @@ export const accountFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Borderless Account Name or ID',
+		displayName: 'Borderless account name or ID',
 		name: 'borderlessAccountId',
 		type: 'options',
 		default: [],
@@ -143,7 +143,7 @@ export const accountFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
@@ -158,7 +158,7 @@ export const accountFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		required: true,
@@ -174,10 +174,10 @@ export const accountFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -187,7 +187,7 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Line Style',
+				displayName: 'Line style',
 				name: 'lineStyle',
 				type: 'options',
 				default: 'COMPACT',
@@ -209,21 +209,21 @@ export const accountFields: INodeProperties[] = [
 				displayName: 'Range',
 				name: 'range',
 				type: 'fixedCollection',
-				placeholder: 'Add Range',
+				placeholder: 'Add range',
 				default: {},
 				options: [
 					{
-						displayName: 'Range Properties',
+						displayName: 'Range properties',
 						name: 'rangeProperties',
 						values: [
 							{
-								displayName: 'Range Start',
+								displayName: 'Range start',
 								name: 'intervalStart',
 								type: 'dateTime',
 								default: '',
 							},
 							{
-								displayName: 'Range End',
+								displayName: 'Range end',
 								name: 'intervalEnd',
 								type: 'dateTime',
 								default: '',

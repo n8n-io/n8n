@@ -8,7 +8,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Base64 Input Field',
+		displayName: 'Base64 input field',
 		name: 'sourceProperty',
 		type: 'string',
 		default: '',
@@ -19,7 +19,7 @@ export const properties: INodeProperties[] = [
 			"The name of the input field that contains the base64 string to convert to a file. Use dot-notation for deep fields (e.g. 'level1.level2.currentKey').",
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -35,7 +35,7 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Add Byte Order Mark (BOM)',
+				displayName: 'Add byte order mark (BOM)',
 				description:
 					'Whether to add special marker at the start of your text file. This marker helps some programs understand how to read the file correctly.',
 				name: 'addBOM',
@@ -48,7 +48,7 @@ export const properties: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Data Is Base64',
+				displayName: 'Data is Base64',
 				name: 'dataIsBase64',
 				type: 'boolean',
 				default: true,
@@ -74,7 +74,7 @@ export const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
@@ -82,7 +82,7 @@ export const properties: INodeProperties[] = [
 				description: 'Name of the output file',
 			},
 			{
-				displayName: 'MIME Type',
+				displayName: 'MIME type',
 				name: 'mimeType',
 				type: 'string',
 				default: '',

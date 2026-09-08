@@ -11,7 +11,7 @@ export const nodeProperties: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Search Index',
+				name: 'Search index',
 				value: 'searchIndexes',
 			},
 			{
@@ -51,13 +51,13 @@ export const nodeProperties: INodeProperties[] = [
 				action: 'Find documents',
 			},
 			{
-				name: 'Find And Replace',
+				name: 'Find and replace',
 				value: 'findOneAndReplace',
 				description: 'Find and replace documents',
 				action: 'Find and replace documents',
 			},
 			{
-				name: 'Find And Update',
+				name: 'Find and update',
 				value: 'findOneAndUpdate',
 				description: 'Find and update documents',
 				action: 'Find and update documents',
@@ -91,22 +91,22 @@ export const nodeProperties: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'createSearchIndex',
-				action: 'Create Search Index',
+				action: 'Create search index',
 			},
 			{
 				name: 'Drop',
 				value: 'dropSearchIndex',
-				action: 'Drop Search Index',
+				action: 'Drop search index',
 			},
 			{
 				name: 'List',
 				value: 'listSearchIndexes',
-				action: 'List Search Indexes',
+				action: 'List search indexes',
 			},
 			{
 				name: 'Update',
 				value: 'updateSearchIndex',
-				action: 'Update Search Index',
+				action: 'Update search index',
 			},
 		],
 		default: 'createSearchIndex',
@@ -148,7 +148,7 @@ export const nodeProperties: INodeProperties[] = [
 	//         delete
 	// ----------------------------------
 	{
-		displayName: 'Delete Query (JSON Format)',
+		displayName: 'Delete query (JSON format)',
 		name: 'query',
 		type: 'json',
 		typeOptions: {
@@ -205,7 +205,7 @@ export const nodeProperties: INodeProperties[] = [
 				description: 'The number of documents to skip in the results set',
 			},
 			{
-				displayName: 'Sort (JSON Format)',
+				displayName: 'Sort (JSON format)',
 				name: 'sort',
 				type: 'json',
 				typeOptions: {
@@ -218,7 +218,7 @@ export const nodeProperties: INodeProperties[] = [
 					'A JSON that defines the sort order of the result set. Use $1, $2, and so on as complete field names or values to reference Sort Parameters.',
 			},
 			{
-				displayName: 'Sort Parameters',
+				displayName: 'Sort parameters',
 				name: 'sortParameters',
 				type: 'json',
 				typeOptions: {
@@ -231,7 +231,7 @@ export const nodeProperties: INodeProperties[] = [
 				hint: 'For example, ["name"] replaces $1 with "name", sorting descending by that field',
 			},
 			{
-				displayName: 'Projection (JSON Format)',
+				displayName: 'Projection (JSON format)',
 				name: 'projection',
 				type: 'json',
 				typeOptions: {
@@ -244,7 +244,7 @@ export const nodeProperties: INodeProperties[] = [
 					'A JSON that defines a selection of fields to retrieve or exclude from the result set. Use $1, $2, and so on as complete field names or values to reference Projection Parameters.',
 			},
 			{
-				displayName: 'Projection Parameters',
+				displayName: 'Projection parameters',
 				name: 'projectionParameters',
 				type: 'json',
 				typeOptions: {
@@ -259,7 +259,7 @@ export const nodeProperties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Query (JSON Format)',
+		displayName: 'Query (JSON format)',
 		name: 'query',
 		type: 'json',
 		typeOptions: {
@@ -279,7 +279,7 @@ export const nodeProperties: INodeProperties[] = [
 			'MongoDB find query in JSON format. Use $1, $2, and so on as complete values to reference Query Parameters below.',
 	},
 	{
-		displayName: 'Query Parameters',
+		displayName: 'Query parameters',
 		name: 'queryParameters',
 		type: 'json',
 		typeOptions: {
@@ -320,7 +320,7 @@ export const nodeProperties: INodeProperties[] = [
 	//         update
 	// ----------------------------------
 	{
-		displayName: 'Update Key',
+		displayName: 'Update key',
 		name: 'updateKey',
 		type: 'string',
 		displayOptions: {
@@ -376,14 +376,14 @@ export const nodeProperties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Date Fields',
+				displayName: 'Date fields',
 				name: 'dateFields',
 				type: 'string',
 				default: '',
 				description: 'Comma-separated list of fields that will be parsed as Mongo Date type',
 			},
 			{
-				displayName: 'Use Dot Notation',
+				displayName: 'Use dot notation',
 				name: 'useDotNotation',
 				type: 'boolean',
 				default: false,
@@ -392,7 +392,7 @@ export const nodeProperties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Index Name',
+		displayName: 'Index name',
 		name: 'indexName',
 		type: 'string',
 		displayOptions: {
@@ -405,7 +405,7 @@ export const nodeProperties: INodeProperties[] = [
 		description: 'If provided, only lists indexes with the specified name',
 	},
 	{
-		displayName: 'Index Name',
+		displayName: 'Index name',
 		name: 'indexNameRequired',
 		type: 'string',
 		displayOptions: {
@@ -419,7 +419,7 @@ export const nodeProperties: INodeProperties[] = [
 		description: 'The name of the search index',
 	},
 	{
-		displayName: 'Index Definition',
+		displayName: 'Index definition',
 		name: 'indexDefinition',
 		type: 'json',
 		displayOptions: {
@@ -439,7 +439,7 @@ export const nodeProperties: INodeProperties[] = [
 			'The search index definition. Use $1, $2, and so on as complete field names or values to reference Index Definition Parameters below.',
 	},
 	{
-		displayName: 'Index Definition Parameters',
+		displayName: 'Index definition parameters',
 		name: 'indexDefinitionParameters',
 		type: 'json',
 		typeOptions: {
@@ -458,7 +458,7 @@ export const nodeProperties: INodeProperties[] = [
 		hint: 'For example, ["embedding", 1536] replaces $1 with "embedding" and $2 with 1536',
 	},
 	{
-		displayName: 'Index Type',
+		displayName: 'Index type',
 		name: 'indexType',
 		type: 'options',
 		displayOptions: {
@@ -470,7 +470,7 @@ export const nodeProperties: INodeProperties[] = [
 		options: [
 			{
 				value: 'vectorSearch',
-				name: 'Vector Search',
+				name: 'Vector search',
 			},
 			{
 				name: 'Search',

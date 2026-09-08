@@ -66,11 +66,11 @@ export class BitbucketTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Password (Deprecated)',
+						name: 'Password (deprecated)',
 						value: 'password',
 					},
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 				],
@@ -87,11 +87,11 @@ export class BitbucketTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Password (Deprecated)',
+						name: 'Password (deprecated)',
 						value: 'password',
 					},
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 				],
@@ -121,7 +121,7 @@ export class BitbucketTrigger implements INodeType {
 				default: 'workspace',
 			},
 			{
-				displayName: 'Workspace Name or ID',
+				displayName: 'Workspace name or ID',
 				name: 'workspace',
 				type: 'options',
 				displayOptions: {
@@ -138,7 +138,7 @@ export class BitbucketTrigger implements INodeType {
 					'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Event Names or IDs',
+				displayName: 'Event names or IDs',
 				name: 'events',
 				type: 'multiOptions',
 				displayOptions: {
@@ -156,7 +156,7 @@ export class BitbucketTrigger implements INodeType {
 					'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Repository Name or ID',
+				displayName: 'Repository name or ID',
 				name: 'repository',
 				type: 'options',
 				displayOptions: {
@@ -174,7 +174,7 @@ export class BitbucketTrigger implements INodeType {
 					'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Event Names or IDs',
+				displayName: 'Event names or IDs',
 				name: 'events',
 				type: 'multiOptions',
 				displayOptions: {

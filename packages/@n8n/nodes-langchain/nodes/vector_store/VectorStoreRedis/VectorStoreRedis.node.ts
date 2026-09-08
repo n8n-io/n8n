@@ -26,14 +26,14 @@ const REDIS_EMBEDDING_KEY = 'vectorKey';
 const REDIS_TTL = 'ttl';
 
 const redisIndexRLC: INodeProperties = {
-	displayName: 'Redis Index',
+	displayName: 'Redis index',
 	name: REDIS_INDEX_NAME,
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -49,7 +49,7 @@ const redisIndexRLC: INodeProperties = {
 };
 
 const metadataFilterField: INodeProperties = {
-	displayName: 'Metadata Filter',
+	displayName: 'Metadata filter',
 	name: REDIS_METADATA_FILTER,
 	type: 'string',
 	description:
@@ -59,7 +59,7 @@ const metadataFilterField: INodeProperties = {
 };
 
 const metadataKeyField: INodeProperties = {
-	displayName: 'Metadata Key',
+	displayName: 'Metadata key',
 	name: REDIS_METADATA_KEY,
 	type: 'string',
 	description: 'The hash key to be used to store the metadata of the document',
@@ -68,7 +68,7 @@ const metadataKeyField: INodeProperties = {
 };
 
 const contentKeyField: INodeProperties = {
-	displayName: 'Content Key',
+	displayName: 'Content key',
 	name: REDIS_CONTENT_KEY,
 	type: 'string',
 	description: 'The hash key to be used to store the content of the document',
@@ -77,7 +77,7 @@ const contentKeyField: INodeProperties = {
 };
 
 const embeddingKeyField: INodeProperties = {
-	displayName: 'Embedding Key',
+	displayName: 'Embedding key',
 	name: REDIS_EMBEDDING_KEY,
 	type: 'string',
 	description: 'The hash key to be used to store the embedding of the document',
@@ -86,7 +86,7 @@ const embeddingKeyField: INodeProperties = {
 };
 
 const overwriteDocuments: INodeProperties = {
-	displayName: 'Overwrite Documents',
+	displayName: 'Overwrite documents',
 	name: REDIS_OVERWRITE_DOCUMENTS,
 	type: 'boolean',
 	description: 'Whether existing documents and the index should be overwritten',
@@ -94,7 +94,7 @@ const overwriteDocuments: INodeProperties = {
 };
 
 const keyPrefixField: INodeProperties = {
-	displayName: 'Key Prefix',
+	displayName: 'Key prefix',
 	name: REDIS_KEY_PREFIX,
 	type: 'string',
 	description: 'Prefix for Redis keys storing the documents',
@@ -103,7 +103,7 @@ const keyPrefixField: INodeProperties = {
 };
 
 const ttlField: INodeProperties = {
-	displayName: 'Time-To-Live',
+	displayName: 'Time-to-live',
 	name: REDIS_TTL,
 	description: 'Time-to-live for the documents in seconds',
 	placeholder: '0',
@@ -118,7 +118,7 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			keyPrefixField,
@@ -136,7 +136,7 @@ const retrieveFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			metadataFilterField,

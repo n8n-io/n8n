@@ -60,7 +60,7 @@ export class Trello implements INodeType {
 				name: 'authentication',
 				type: 'options',
 				options: [
-					{ name: 'API Key', value: 'apiKey' },
+					{ name: 'API key', value: 'apiKey' },
 					{ name: 'OAuth1', value: 'oAuth1' },
 				],
 				default: 'apiKey',
@@ -80,7 +80,7 @@ export class Trello implements INodeType {
 						value: 'board',
 					},
 					{
-						name: 'Board Member',
+						name: 'Board member',
 						value: 'boardMember',
 					},
 					{
@@ -88,7 +88,7 @@ export class Trello implements INodeType {
 						value: 'card',
 					},
 					{
-						name: 'Card Comment',
+						name: 'Card comment',
 						value: 'cardComment',
 					},
 					{

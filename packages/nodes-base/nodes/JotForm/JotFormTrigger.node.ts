@@ -47,7 +47,7 @@ export class JotFormTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Form Name or ID',
+				displayName: 'Form name or ID',
 				name: 'form',
 				type: 'options',
 				required: true,
@@ -59,7 +59,7 @@ export class JotFormTrigger implements INodeType {
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
-				displayName: 'Resolve Data',
+				displayName: 'Resolve data',
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
@@ -68,7 +68,7 @@ export class JotFormTrigger implements INodeType {
 					'By default does the webhook-data use internal keys instead of the names. If this option gets activated, it will resolve the keys automatically to the actual names.',
 			},
 			{
-				displayName: 'Only Answers',
+				displayName: 'Only answers',
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,

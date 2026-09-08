@@ -25,14 +25,14 @@ export const PRE_FILTER_NAME = 'preFilter';
 export const POST_FILTER_NAME = 'postFilterPipeline';
 
 const mongoCollectionRLC: INodeProperties = {
-	displayName: 'MongoDB Collection',
+	displayName: 'MongoDB collection',
 	name: MONGODB_COLLECTION_NAME,
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -49,7 +49,7 @@ const mongoCollectionRLC: INodeProperties = {
 };
 
 const vectorIndexName: INodeProperties = {
-	displayName: 'Vector Index Name',
+	displayName: 'Vector index name',
 	name: VECTOR_INDEX_NAME,
 	type: 'string',
 	default: '',
@@ -67,7 +67,7 @@ const embeddingField: INodeProperties = {
 };
 
 const metadataField: INodeProperties = {
-	displayName: 'Metadata Field',
+	displayName: 'Metadata field',
 	name: METADATA_FIELD_NAME,
 	type: 'string',
 	default: 'text',
@@ -91,7 +91,7 @@ const mongoNamespaceField: INodeProperties = {
 };
 
 const preFilterField: INodeProperties = {
-	displayName: 'Pre Filter',
+	displayName: 'Pre filter',
 	name: PRE_FILTER_NAME,
 	type: 'json',
 	typeOptions: {
@@ -105,7 +105,7 @@ const preFilterField: INodeProperties = {
 };
 
 const postFilterField: INodeProperties = {
-	displayName: 'Post Filter Pipeline',
+	displayName: 'Post filter pipeline',
 	name: POST_FILTER_NAME,
 	type: 'json',
 	typeOptions: {
@@ -123,7 +123,7 @@ const retrieveFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [mongoNamespaceField, metadataFilterField, preFilterField, postFilterField],
 	},
@@ -134,11 +134,11 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Clear Namespace',
+				displayName: 'Clear namespace',
 				name: 'clearNamespace',
 				type: 'boolean',
 				default: false,

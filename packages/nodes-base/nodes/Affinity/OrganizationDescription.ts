@@ -31,7 +31,7 @@ export const organizationOperations: INodeProperties[] = [
 				action: 'Get an organization',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many organizations',
 				action: 'Get many organizations',
@@ -80,10 +80,10 @@ export const organizationFields: INodeProperties[] = [
 		description: 'The domain name of the organization',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -93,7 +93,7 @@ export const organizationFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Person Names or IDs',
+				displayName: 'Person names or IDs',
 				name: 'persons',
 				type: 'multiOptions',
 				typeOptions: {
@@ -123,10 +123,10 @@ export const organizationFields: INodeProperties[] = [
 		description: 'Unique identifier for the organization',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -150,7 +150,7 @@ export const organizationFields: INodeProperties[] = [
 				description: 'The name of the organization',
 			},
 			{
-				displayName: 'Person Names or IDs',
+				displayName: 'Person names or IDs',
 				name: 'persons',
 				type: 'multiOptions',
 				typeOptions: {
@@ -193,7 +193,7 @@ export const organizationFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'With Interaction Dates',
+				displayName: 'With interaction dates',
 				name: 'withInteractionDates',
 				type: 'boolean',
 				default: false,
@@ -205,7 +205,7 @@ export const organizationFields: INodeProperties[] = [
 	/*                                 organization:getAll                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -257,7 +257,7 @@ export const organizationFields: INodeProperties[] = [
 					'A string used to search all the organizations in your team’s address book. This could be an email address, a first name or a last name.',
 			},
 			{
-				displayName: 'With Interaction Dates',
+				displayName: 'With interaction dates',
 				name: 'withInteractionDates',
 				type: 'boolean',
 				default: false,

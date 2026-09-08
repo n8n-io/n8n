@@ -32,18 +32,18 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortBy',
 				type: 'options',
 				default: 'created-date',
 				description: 'The field to order the comments by',
 				options: [
-					{ name: 'Created Date', value: 'created-date' },
-					{ name: 'Modified Date', value: 'modified-date' },
+					{ name: 'Created date', value: 'created-date' },
+					{ name: 'Modified date', value: 'modified-date' },
 				],
 			},
 			sortDirectionOption,

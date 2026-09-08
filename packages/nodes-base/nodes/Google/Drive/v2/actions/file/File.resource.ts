@@ -30,7 +30,7 @@ export const description: INodeProperties[] = [
 				action: 'Copy file',
 			},
 			{
-				name: 'Create From Text',
+				name: 'Create from text',
 				value: 'createFromText',
 				description: 'Create a file from a provided text',
 				action: 'Create file from text',

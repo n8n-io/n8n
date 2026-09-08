@@ -43,18 +43,18 @@ export class MergeV1 implements INodeType {
 								'Combines data of both inputs. The output will contain items of input 1 and input 2.',
 						},
 						{
-							name: 'Keep Key Matches',
+							name: 'Keep key matches',
 							value: 'keepKeyMatches',
 							description: 'Keeps data of input 1 if it does find a match with data of input 2',
 						},
 						{
-							name: 'Merge By Index',
+							name: 'Merge by index',
 							value: 'mergeByIndex',
 							description:
 								'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on the index of the items. So first item of input 1 will be merged with first item of input 2 and so on.',
 						},
 						{
-							name: 'Merge By Key',
+							name: 'Merge by key',
 							value: 'mergeByKey',
 							description:
 								'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on a defined key.',
@@ -66,13 +66,13 @@ export class MergeV1 implements INodeType {
 								'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.',
 						},
 						{
-							name: 'Pass-Through',
+							name: 'Pass-through',
 							value: 'passThrough',
 							description:
 								'Passes through data of one input. The output will contain only items of the defined input.',
 						},
 						{
-							name: 'Remove Key Matches',
+							name: 'Remove key matches',
 							value: 'removeKeyMatches',
 							description: 'Keeps data of input 1 if it does NOT find match with data of input 2',
 						},
@@ -97,19 +97,19 @@ export class MergeV1 implements INodeType {
 					},
 					options: [
 						{
-							name: 'Inner Join',
+							name: 'Inner join',
 							value: 'inner',
 							description:
 								'Merges as many items as both inputs contain. (Example: Input1 = 5 items, Input2 = 3 items | Output will contain 3 items).',
 						},
 						{
-							name: 'Left Join',
+							name: 'Left join',
 							value: 'left',
 							description:
 								'Merges as many items as first input contains. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 3 items).',
 						},
 						{
-							name: 'Outer Join',
+							name: 'Outer join',
 							value: 'outer',
 							description:
 								'Merges as many items as input contains with most items. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 5 items).',
@@ -120,7 +120,7 @@ export class MergeV1 implements INodeType {
 						'How many items the output will contain if inputs contain different amount of items',
 				},
 				{
-					displayName: 'Property Input 1',
+					displayName: 'Property input 1',
 					name: 'propertyName1',
 					type: 'string',
 					default: '',
@@ -134,7 +134,7 @@ export class MergeV1 implements INodeType {
 					description: 'Name of property which decides which items to merge of input 1',
 				},
 				{
-					displayName: 'Property Input 2',
+					displayName: 'Property input 2',
 					name: 'propertyName2',
 					type: 'string',
 					default: '',
@@ -148,7 +148,7 @@ export class MergeV1 implements INodeType {
 					description: 'Name of property which decides which items to merge of input 2',
 				},
 				{
-					displayName: 'Output Data',
+					displayName: 'Output data',
 					name: 'output',
 					type: 'options',
 					displayOptions: {
@@ -185,12 +185,12 @@ export class MergeV1 implements INodeType {
 							description: 'Always overwrites everything',
 						},
 						{
-							name: 'If Blank',
+							name: 'If blank',
 							value: 'blank',
 							description: 'Overwrites only values of "null", "undefined" or empty string',
 						},
 						{
-							name: 'If Missing',
+							name: 'If missing',
 							value: 'undefined',
 							description: 'Only adds values which do not exist yet',
 						},

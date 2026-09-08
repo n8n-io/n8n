@@ -82,7 +82,7 @@ workflowInputs: {
 				default: 'call_workflow',
 				options: [
 					{
-						name: 'Execute a Sub-Workflow',
+						name: 'Execute a sub-workflow',
 						value: 'call_workflow',
 					},
 				],
@@ -105,7 +105,7 @@ workflowInputs: {
 						description: 'Load the workflow from the database by ID',
 					},
 					{
-						name: 'Local File',
+						name: 'Local file',
 						value: 'localFile',
 						description: 'Load the workflow from a locally saved file',
 					},
@@ -126,7 +126,7 @@ workflowInputs: {
 			},
 			{
 				displayName:
-					'The "Local File" and "URL" sources are deprecated and will be removed in a future version. Import the workflow into this n8n instance and use the "Database" source, or paste its JSON into the "Parameter" source instead.',
+					'The "Local file" and "URL" sources are deprecated and will be removed in a future version. Import the workflow into this n8n instance and use the "Database" source, or paste its JSON into the "Parameter" source instead.',
 				name: 'sourceDeprecationNotice',
 				type: 'notice',
 				default: '',
@@ -148,7 +148,7 @@ workflowInputs: {
 						description: 'Load the workflow from the database by ID',
 					},
 					{
-						name: 'Define Below',
+						name: 'Define below',
 						value: 'parameter',
 						description: 'Pass the JSON code of a workflow',
 					},
@@ -194,7 +194,7 @@ workflowInputs: {
 			//         source:localFile
 			// ----------------------------------
 			{
-				displayName: 'Workflow Path',
+				displayName: 'Workflow path',
 				name: 'workflowPath',
 				type: 'string',
 				displayOptions: {
@@ -254,7 +254,7 @@ workflowInputs: {
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
 			},
 			{
-				displayName: 'Workflow Inputs',
+				displayName: 'Workflow inputs',
 				name: 'workflowInputs',
 				type: 'resourceMapper',
 				noDataExpression: true,
@@ -335,7 +335,7 @@ workflowInputs: {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Wait For Sub-Workflow Completion',
+						displayName: 'Wait for sub-workflow completion',
 						name: 'waitForSubWorkflow',
 						type: 'boolean',
 						default: true,

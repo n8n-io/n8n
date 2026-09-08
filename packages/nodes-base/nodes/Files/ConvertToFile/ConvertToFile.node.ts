@@ -70,7 +70,7 @@ export class ConvertToFile implements INodeType {
 						description: 'Transform input data into a table in an RTF file',
 					},
 					{
-						name: 'Convert to Text File',
+						name: 'Convert to text file',
 						value: 'toText',
 						action: 'Convert to text file',
 						description: 'Transform input data string into a file',
@@ -88,7 +88,7 @@ export class ConvertToFile implements INodeType {
 						description: 'Transform input data into an Excel file',
 					},
 					{
-						name: 'Move Base64 String to File',
+						name: 'Move Base64 string to file',
 						value: 'toBinary',
 						action: 'Move base64 string to file',
 						description: 'Convert a base64-encoded string into its original file format',

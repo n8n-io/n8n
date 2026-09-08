@@ -16,7 +16,7 @@ import { byIdUnderSp } from './helpers';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Tasks For',
+		displayName: 'Tasks for',
 		name: 'tasksFor',
 		default: 'member',
 		required: true,
@@ -24,7 +24,7 @@ const properties: INodeProperties[] = [
 		description: 'Whether to retrieve the tasks for a user or for a plan',
 		options: [
 			{
-				name: 'Group Member',
+				name: 'Group member',
 				value: 'member',
 				description: 'Tasks assigned to group member',
 			},

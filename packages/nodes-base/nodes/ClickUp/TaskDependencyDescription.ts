@@ -47,7 +47,7 @@ export const taskDependencyFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Depends On Task ID',
+		displayName: 'Depends on task ID',
 		name: 'dependsOnTask',
 		type: 'string',
 		default: '',
@@ -77,7 +77,7 @@ export const taskDependencyFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Depends On Task ID',
+		displayName: 'Depends on task ID',
 		name: 'dependsOnTask',
 		type: 'string',
 		default: '',

@@ -25,7 +25,7 @@ export const contactListOperations: INodeProperties[] = [
 				action: 'Check if a contact list exists',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many contacts from a list',
 				action: 'Get many contact lists',
@@ -46,7 +46,7 @@ export const contactListFields: INodeProperties[] = [
 	/*                                 contactList:add                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		required: true,
 		typeOptions: {
@@ -82,7 +82,7 @@ export const contactListFields: INodeProperties[] = [
 	/*                                 contactList:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

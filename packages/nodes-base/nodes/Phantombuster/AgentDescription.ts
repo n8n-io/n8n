@@ -25,13 +25,13 @@ export const agentOperations: INodeProperties[] = [
 				action: 'Get an agent',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: "Get many agents of the current user's organization",
 				action: 'Get many agents',
 			},
 			{
-				name: 'Get Output',
+				name: 'Get output',
 				value: 'getOutput',
 				description: 'Get the output of the most recent container of an agent',
 				action: 'Get the output of an agent',
@@ -43,7 +43,7 @@ export const agentOperations: INodeProperties[] = [
 				action: 'Add an agent to the launch queue',
 			},
 			{
-				name: 'Launch Sync',
+				name: 'Launch sync',
 				value: 'launchSync',
 				description: 'Launch an agent and stream results',
 				action: 'Launch an agent and stream results',
@@ -58,7 +58,7 @@ export const agentFields: INodeProperties[] = [
 	/*                                 agent:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent Name or ID',
+		displayName: 'Agent name or ID',
 		name: 'agentId',
 		type: 'options',
 		description:
@@ -97,7 +97,7 @@ export const agentFields: INodeProperties[] = [
 	/*                                 agent:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -132,7 +132,7 @@ export const agentFields: INodeProperties[] = [
 	/*                                 agent:getOutput                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent Name or ID',
+		displayName: 'Agent name or ID',
 		name: 'agentId',
 		type: 'options',
 		description:
@@ -150,7 +150,7 @@ export const agentFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Resolve Data',
+		displayName: 'Resolve data',
 		name: 'resolveData',
 		type: 'boolean',
 		default: true,
@@ -165,10 +165,10 @@ export const agentFields: INodeProperties[] = [
 			'By default the outpout is presented as string. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['agent'],
@@ -178,7 +178,7 @@ export const agentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Prev Container ID',
+				displayName: 'Prev container ID',
 				name: 'prevContainerId',
 				type: 'string',
 				default: '',
@@ -186,7 +186,7 @@ export const agentFields: INodeProperties[] = [
 					'If set, the output will be retrieved from the container after the specified previous container ID',
 			},
 			{
-				displayName: 'Prev Status',
+				displayName: 'Prev status',
 				name: 'prevStatus',
 				type: 'options',
 				options: [
@@ -195,11 +195,11 @@ export const agentFields: INodeProperties[] = [
 						value: 'finished',
 					},
 					{
-						name: 'Launch Error',
+						name: 'Launch error',
 						value: 'lauch error',
 					},
 					{
-						name: 'Never Launched',
+						name: 'Never launched',
 						value: 'never launched',
 					},
 					{
@@ -219,7 +219,7 @@ export const agentFields: INodeProperties[] = [
 				description: 'If set, allows to define which status was previously retrieved on user-side',
 			},
 			{
-				displayName: 'Pre Runtime Event Index',
+				displayName: 'Pre runtime event index',
 				name: 'prevRuntimeEventIndex',
 				type: 'number',
 				default: 0,
@@ -233,7 +233,7 @@ export const agentFields: INodeProperties[] = [
 	/*                                 agent:launch / launchSync                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent Name or ID',
+		displayName: 'Agent name or ID',
 		name: 'agentId',
 		type: 'options',
 		description:
@@ -251,7 +251,7 @@ export const agentFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Resolve Data',
+		displayName: 'Resolve data',
 		name: 'resolveData',
 		type: 'boolean',
 		default: true,
@@ -266,7 +266,7 @@ export const agentFields: INodeProperties[] = [
 			'By default the launch just include the container ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -278,10 +278,10 @@ export const agentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['agent'],
@@ -306,7 +306,7 @@ export const agentFields: INodeProperties[] = [
 			{
 				displayName: 'Arguments',
 				name: 'argumentsUi',
-				placeholder: 'Add Argument',
+				placeholder: 'Add argument',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -341,9 +341,9 @@ export const agentFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Bonus Argument',
+				displayName: 'Bonus argument',
 				name: 'bonusArgumentUi',
-				placeholder: 'Add Bonus Argument',
+				placeholder: 'Add bonus argument',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -357,7 +357,7 @@ export const agentFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'bonusArgumentValue',
-						displayName: 'Bonus Argument',
+						displayName: 'Bonus argument',
 						values: [
 							{
 								displayName: 'Key',
@@ -378,7 +378,7 @@ export const agentFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Bonus Argument (JSON)',
+				displayName: 'Bonus argument (JSON)',
 				name: 'bonusArgumentJson',
 				type: 'string',
 				displayOptions: {
@@ -391,14 +391,14 @@ export const agentFields: INodeProperties[] = [
 					'Agent bonus argument. Can either be a JSON string or a plain object. This bonus argument is single-use, it will only be used for the current launch. If present, it will be merged with the original argument, resulting in an effective argument that can be retrieved with buster.argument in the agent’s script.',
 			},
 			{
-				displayName: 'Manual Launch',
+				displayName: 'Manual launch',
 				name: 'manualLaunch',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the agent will be considered as "launched manually"',
 			},
 			{
-				displayName: 'Max Instance Count',
+				displayName: 'Max instance count',
 				name: 'maxInstanceCount',
 				type: 'number',
 				default: 0,
@@ -406,7 +406,7 @@ export const agentFields: INodeProperties[] = [
 					'If set, the agent will only be launched if the number of already running instances is below the specified number',
 			},
 			{
-				displayName: 'Save Argument',
+				displayName: 'Save argument',
 				name: 'saveArgument',
 				type: 'string',
 				default: '',

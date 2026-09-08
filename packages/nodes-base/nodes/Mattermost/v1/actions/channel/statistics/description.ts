@@ -2,7 +2,7 @@ import type { ChannelProperties } from '../../Interfaces';
 
 export const channelStatisticsDescription: ChannelProperties = [
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {

@@ -34,7 +34,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many messages',
 			},
@@ -76,7 +76,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room name or ID',
 		name: 'roomId',
 		type: 'options',
 		description:
@@ -95,7 +95,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Specify Person By',
+		displayName: 'Specify person by',
 		name: 'specifyPersonBy',
 		type: 'options',
 		options: [
@@ -133,7 +133,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Person Email',
+		displayName: 'Person email',
 		name: 'toPersonEmail',
 		type: 'string',
 		required: true,
@@ -161,7 +161,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'The message, in plain text',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
@@ -171,7 +171,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Attachments',
@@ -181,7 +181,7 @@ export const messageFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				options: [
 					{
 						displayName: 'Attachment',
@@ -195,7 +195,7 @@ export const messageFields: INodeProperties[] = [
 									multipleValues: true,
 								},
 								default: {},
-								placeholder: 'Add Element',
+								placeholder: 'Add element',
 								options: [
 									{
 										displayName: 'Element',
@@ -207,11 +207,11 @@ export const messageFields: INodeProperties[] = [
 												type: 'options',
 												options: [
 													{
-														name: 'Text Block',
+														name: 'Text block',
 														value: 'textBlock',
 													},
 													{
-														name: 'Input Text',
+														name: 'Input text',
 														value: 'inputText',
 													},
 												],
@@ -231,7 +231,7 @@ export const messageFields: INodeProperties[] = [
 									multipleValues: true,
 								},
 								default: {},
-								placeholder: 'Add Action',
+								placeholder: 'Add action',
 								options: [
 									{
 										displayName: 'Action',
@@ -306,7 +306,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'File',
 				name: 'fileUi',
-				placeholder: 'Add File',
+				placeholder: 'Add file',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -318,7 +318,7 @@ export const messageFields: INodeProperties[] = [
 						displayName: 'File',
 						values: [
 							{
-								displayName: 'File Location',
+								displayName: 'File location',
 								name: 'fileLocation',
 								type: 'options',
 								options: [
@@ -327,14 +327,14 @@ export const messageFields: INodeProperties[] = [
 										value: 'url',
 									},
 									{
-										name: 'Binary File',
+										name: 'Binary file',
 										value: 'binaryData',
 									},
 								],
 								default: 'url',
 							},
 							{
-								displayName: 'Input Field With File',
+								displayName: 'Input field with file',
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: 'data',
@@ -413,7 +413,7 @@ export const messageFields: INodeProperties[] = [
 	//             message: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room name or ID',
 		name: 'roomId',
 		description:
 			'List messages in a room, by ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -431,7 +431,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -464,7 +464,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -481,21 +481,21 @@ export const messageFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Before Message',
+				displayName: 'Before message',
 				name: 'beforeMessage',
 				description: 'List messages sent before a message, by ID',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Parent Message ID',
+				displayName: 'Parent message ID',
 				name: 'parentId',
 				description: 'List messages with a parent, by ID',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mentioned Person',
+				displayName: 'Mentioned person',
 				name: 'mentionedPeople',
 				type: 'string',
 				default: '',

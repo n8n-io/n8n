@@ -28,7 +28,7 @@ export const postFields: INodeProperties[] = [
 	/*                                 post:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Post As',
+		displayName: 'Post as',
 		name: 'postAs',
 		type: 'options',
 		default: 'person',
@@ -45,7 +45,7 @@ export const postFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Person Name or ID',
+		displayName: 'Person name or ID',
 		name: 'person',
 		type: 'options',
 		typeOptions: {
@@ -92,7 +92,7 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Media Category',
+		displayName: 'Media category',
 		name: 'shareMediaCategory',
 		type: 'options',
 		default: 'NONE',
@@ -121,7 +121,7 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -136,10 +136,10 @@ export const postFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -173,7 +173,7 @@ export const postFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				name: 'thumbnailBinaryPropertyName',
 				type: 'string',
 				default: 'data',

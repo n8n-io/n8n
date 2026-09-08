@@ -17,7 +17,7 @@ import { apiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Scroll Mode',
+		displayName: 'Scroll mode',
 		name: 'scrollingMode',
 		type: 'options',
 		description: 'Choose the mode of scrolling',
@@ -43,7 +43,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Element Description',
+		displayName: 'Element description',
 		default: '',
 		description: 'A natural language description of the element to scroll to',
 		name: 'scrollToElement',
@@ -59,13 +59,13 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Scroll To Edge',
+		displayName: 'Scroll to edge',
 		name: 'scrollToEdge',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Edge Direction',
+		placeholder: 'Add edge direction',
 		description:
-			"The direction to scroll to. When 'Scroll By' is defined, 'Scroll To Edge' action will be executed first, then 'Scroll By' action.",
+			"The direction to scroll to. When 'Scroll by' is defined, 'Scroll to edge' action will be executed first, then 'Scroll by' action.",
 		displayOptions: {
 			show: {
 				resource: ['interaction'],
@@ -75,7 +75,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Page Edges',
+				displayName: 'Page edges',
 				name: 'edgeValues',
 				values: [
 					{
@@ -123,13 +123,13 @@ export const description: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Scroll By',
+		displayName: 'Scroll by',
 		name: 'scrollBy',
 		type: 'fixedCollection',
 		default: {},
 		description:
-			"The amount to scroll by. When 'Scroll To Edge' is defined, 'Scroll By' action will be executed after 'Scroll To Edge'.",
-		placeholder: 'Add Scroll Amount',
+			"The amount to scroll by. When 'Scroll to edge' is defined, 'Scroll by' action will be executed after 'Scroll to edge'.",
+		placeholder: 'Add scroll amount',
 		displayOptions: {
 			show: {
 				resource: ['interaction'],
@@ -140,7 +140,7 @@ export const description: INodeProperties[] = [
 		options: [
 			{
 				name: 'scrollValues',
-				displayName: 'Scroll Values',
+				displayName: 'Scroll values',
 				description: 'The amount in pixels or percentage to scroll by',
 				values: [
 					{
@@ -162,7 +162,7 @@ export const description: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Scrollable Area',
+		displayName: 'Scrollable area',
 		name: 'scrollWithin',
 		type: 'string',
 		default: '',

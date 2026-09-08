@@ -70,7 +70,7 @@ export class ToolSerpApi implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -103,7 +103,7 @@ export class ToolSerpApi implements INodeType {
 						description: 'Device to use to get the results',
 					},
 					{
-						displayName: 'Explicit Array',
+						displayName: 'Explicit array',
 						name: 'no_cache',
 						type: 'boolean',
 						default: false,
@@ -111,7 +111,7 @@ export class ToolSerpApi implements INodeType {
 							'Whether to force SerpApi to fetch the Google results even if a cached version is already present. Cache expires after 1h. Cached searches are free, and are not counted towards your searches per month.',
 					},
 					{
-						displayName: 'Google Domain',
+						displayName: 'Google domain',
 						name: 'google_domain',
 						type: 'string',
 						default: 'google.com',

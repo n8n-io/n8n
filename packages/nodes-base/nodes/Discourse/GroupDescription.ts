@@ -27,7 +27,7 @@ export const groupOperations: INodeProperties[] = [
 				action: 'Get a group',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many groups',
 				action: 'Get many groups',
@@ -66,7 +66,7 @@ export const groupFields: INodeProperties[] = [
 	/*                                group:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

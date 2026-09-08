@@ -10,7 +10,7 @@ import {
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
 
 const dataSourceOptions: INodeProperties = {
-	displayName: 'Data Source',
+	displayName: 'Data source',
 	name: 'dataSource',
 	type: 'options',
 	displayOptions: {
@@ -79,7 +79,7 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -155,10 +155,10 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Ignored Tables',
+				displayName: 'Ignored tables',
 				name: 'ignoredTables',
 				type: 'string',
 				default: '',
@@ -166,7 +166,7 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 					'Comma-separated list of tables to ignore from the database. If empty, no tables are ignored.',
 			},
 			{
-				displayName: 'Include Sample Rows',
+				displayName: 'Include sample rows',
 				name: 'includedSampleRows',
 				type: 'number',
 				description:
@@ -174,7 +174,7 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 				default: 3,
 			},
 			{
-				displayName: 'Included Tables',
+				displayName: 'Included tables',
 				name: 'includedTables',
 				type: 'string',
 				default: '',
@@ -182,7 +182,7 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 					'Comma-separated list of tables to include in the database. If empty, all tables are included.',
 			},
 			{
-				displayName: 'Prefix Prompt',
+				displayName: 'Prefix prompt',
 				name: 'prefixPrompt',
 				type: 'string',
 				default: SQL_PREFIX,
@@ -192,7 +192,7 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Suffix Prompt',
+				displayName: 'Suffix prompt',
 				name: 'suffixPrompt',
 				type: 'string',
 				default: SQL_SUFFIX,
@@ -209,14 +209,14 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 				description: 'The maximum number of results to return',
 			},
 			{
-				displayName: 'Tracing Metadata',
+				displayName: 'Tracing metadata',
 				name: 'tracingMetadata',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
 				},
 				default: {},
-				placeholder: 'Add Metadata',
+				placeholder: 'Add metadata',
 				description: 'Custom metadata added to tracing events',
 				options: [
 					{

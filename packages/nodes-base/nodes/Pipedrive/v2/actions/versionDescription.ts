@@ -63,7 +63,7 @@ export const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'API Token',
+					name: 'API token',
 					value: 'apiToken',
 				},
 				{
@@ -88,7 +88,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'deal',
 				},
 				{
-					name: 'Deal Product',
+					name: 'Deal product',
 					value: 'dealProduct',
 				},
 				{

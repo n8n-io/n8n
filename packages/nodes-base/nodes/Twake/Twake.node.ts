@@ -103,7 +103,7 @@ export class Twake implements INodeType {
 				default: 'send',
 			},
 			{
-				displayName: 'Channel Name or ID',
+				displayName: 'Channel name or ID',
 				name: 'channelId',
 				type: 'options',
 				typeOptions: {
@@ -132,10 +132,10 @@ export class Twake implements INodeType {
 				description: 'Message content',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['send'],
@@ -144,14 +144,14 @@ export class Twake implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Sender Icon',
+						displayName: 'Sender icon',
 						name: 'senderIcon',
 						type: 'string',
 						default: '',
 						description: 'URL of the image/icon',
 					},
 					{
-						displayName: 'Sender Name',
+						displayName: 'Sender name',
 						name: 'senderName',
 						type: 'string',
 						default: '',

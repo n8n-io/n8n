@@ -30,7 +30,7 @@ export const description: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
-				name: 'Append or Update',
+				name: 'Append or update',
 				value: 'upsert',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-upsert
 				description: 'Append a new row or update the current one if it already exists (upsert)',
@@ -49,13 +49,13 @@ export const description: INodeProperties[] = [
 				action: 'Delete sheet',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get a list of sheets',
 				action: 'Get sheets',
 			},
 			{
-				name: 'Get Rows',
+				name: 'Get rows',
 				value: 'readRows',
 				description: 'Retrieve a list of sheet rows',
 				action: 'Get rows from sheet',

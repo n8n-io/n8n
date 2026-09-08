@@ -63,10 +63,10 @@ export const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Send',
 					value: 'send',
-					action: 'Send an Email',
+					action: 'Send an email',
 				},
 				{
-					name: 'Send and Wait for Response',
+					name: 'Send and wait for response',
 					value: SEND_AND_WAIT_OPERATION,
 					action: 'Send message and wait for response',
 				},

@@ -25,12 +25,12 @@ export function bodyProperties(
 			// Same values as the shared selector; write-oriented descriptions
 			options: [
 				{
-					name: 'Atlas Doc Format',
+					name: 'Atlas doc format',
 					value: 'atlas_doc_format',
 					description: 'Raw Atlassian Document Format JSON document',
 				},
 				{
-					name: 'Plain Text',
+					name: 'Plain text',
 					value: 'plainText',
 					description: 'Text is wrapped in paragraph blocks; no markup needed',
 				},
@@ -53,7 +53,7 @@ export function bodyProperties(
 			...hint,
 		},
 		{
-			displayName: 'Body (Storage HTML)',
+			displayName: 'Body (storage HTML)',
 			name: 'bodyStorage',
 			type: 'string',
 			typeOptions: { rows: 4 },

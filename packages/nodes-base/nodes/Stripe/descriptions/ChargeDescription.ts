@@ -21,7 +21,7 @@ export const chargeOperations: INodeProperties[] = [
 				action: 'Get a charge',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many charges',
 				action: 'Get many charges',
@@ -79,7 +79,7 @@ export const chargeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Currency Name or ID',
+		displayName: 'Currency name or ID',
 		name: 'currency',
 		type: 'options',
 		typeOptions: {
@@ -111,10 +111,10 @@ export const chargeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -135,14 +135,14 @@ export const chargeFields: INodeProperties[] = [
 				name: 'metadata',
 				type: 'fixedCollection',
 				default: [],
-				placeholder: 'Add Metadata Item',
+				placeholder: 'Add metadata item',
 				description: 'Set of key-value pairs to attach to the charge to create',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
-						displayName: 'Metadata Properties',
+						displayName: 'Metadata properties',
 						name: 'metadataProperties',
 						values: [
 							{
@@ -162,7 +162,7 @@ export const chargeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Receipt Email',
+				displayName: 'Receipt email',
 				name: 'receipt_email',
 				type: 'string',
 				default: '',
@@ -173,18 +173,18 @@ export const chargeFields: INodeProperties[] = [
 				name: 'shipping',
 				type: 'fixedCollection',
 				description: 'Shipping information for the charge',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				default: [],
 				options: [
 					{
-						displayName: 'Shipping Properties',
+						displayName: 'Shipping properties',
 						name: 'shippingProperties',
 						values: [
 							{
-								displayName: 'Recipient Name',
+								displayName: 'Recipient name',
 								name: 'name',
 								type: 'string',
 								description: 'Name of the person who will receive the shipment',
@@ -195,7 +195,7 @@ export const chargeFields: INodeProperties[] = [
 								name: 'address',
 								type: 'fixedCollection',
 								default: {},
-								placeholder: 'Add Field',
+								placeholder: 'Add field',
 								options: [
 									{
 										displayName: 'Details',
@@ -238,7 +238,7 @@ export const chargeFields: INodeProperties[] = [
 												default: '',
 											},
 											{
-												displayName: 'Postal Code',
+												displayName: 'Postal code',
 												name: 'postal_code',
 												description: 'ZIP or postal code',
 												type: 'string',
@@ -277,7 +277,7 @@ export const chargeFields: INodeProperties[] = [
 	//       charge: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -326,10 +326,10 @@ export const chargeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -350,14 +350,14 @@ export const chargeFields: INodeProperties[] = [
 				name: 'metadata',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Metadata Item',
+				placeholder: 'Add metadata item',
 				description: 'Set of key-value pairs to attach to the charge to update',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
-						displayName: 'Metadata Properties',
+						displayName: 'Metadata properties',
 						name: 'metadataProperties',
 						values: [
 							{
@@ -377,7 +377,7 @@ export const chargeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Receipt Email',
+				displayName: 'Receipt email',
 				name: 'receipt_email',
 				type: 'string',
 				default: '',
@@ -389,28 +389,28 @@ export const chargeFields: INodeProperties[] = [
 				type: 'fixedCollection',
 				default: {},
 				description: 'Shipping information for the charge',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
-						displayName: 'Shipping Properties',
+						displayName: 'Shipping properties',
 						name: 'shippingProperties',
 						default: {},
 						values: [
 							{
-								displayName: 'Recipient Name',
+								displayName: 'Recipient name',
 								name: 'name',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Recipient Address',
+								displayName: 'Recipient address',
 								name: 'address',
 								type: 'fixedCollection',
 								default: {},
-								placeholder: 'Add Address Details',
+								placeholder: 'Add address details',
 								options: [
 									{
 										displayName: 'Details',
@@ -453,7 +453,7 @@ export const chargeFields: INodeProperties[] = [
 												default: '',
 											},
 											{
-												displayName: 'Postal Code',
+												displayName: 'Postal code',
 												name: 'postal_code',
 												description: 'ZIP or postal code',
 												type: 'string',

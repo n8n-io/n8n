@@ -13,7 +13,7 @@ export const eventOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many events',
 				action: 'Get many events',
@@ -25,7 +25,7 @@ export const eventOperations: INodeProperties[] = [
 
 export const eventFields: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -70,7 +70,7 @@ export const eventFields: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Country Code',
+				displayName: 'Country code',
 				name: 'country_code',
 				type: 'options',
 				typeOptions: {
@@ -81,21 +81,21 @@ export const eventFields: INodeProperties[] = [
 					'Country code of event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'From Date',
+				displayName: 'From date',
 				name: 'from_date',
 				type: 'dateTime',
 				default: '',
 				description: 'Lists events after this date',
 			},
 			{
-				displayName: 'To Date',
+				displayName: 'To date',
 				name: 'to_date',
 				type: 'dateTime',
 				default: '',
 				description: 'Lists events before this date',
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type name or ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
@@ -106,7 +106,7 @@ export const eventFields: INodeProperties[] = [
 					'Type of event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Upcoming Events Only',
+				displayName: 'Upcoming events only',
 				name: 'upcoming_events_only',
 				type: 'boolean',
 				default: true,

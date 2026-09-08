@@ -11,7 +11,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. GroupName',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		default: {},
 		options: [
@@ -28,7 +28,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 		],
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];

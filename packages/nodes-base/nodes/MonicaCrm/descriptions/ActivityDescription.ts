@@ -31,7 +31,7 @@ export const activityOperations: INodeProperties[] = [
 				action: 'Get an activity',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many activities',
 				action: 'Get many activities',
@@ -52,7 +52,7 @@ export const activityFields: INodeProperties[] = [
 	//             activity: create
 	// ----------------------------------------
 	{
-		displayName: 'Activity Type Name or ID',
+		displayName: 'Activity type name or ID',
 		name: 'activityTypeId',
 		type: 'options',
 		description:
@@ -84,7 +84,7 @@ export const activityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Happened At',
+		displayName: 'Happened at',
 		name: 'happenedAt',
 		description: 'Date when the activity happened',
 		type: 'dateTime',
@@ -112,10 +112,10 @@ export const activityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -174,7 +174,7 @@ export const activityFields: INodeProperties[] = [
 	//             activity: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -222,10 +222,10 @@ export const activityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -235,7 +235,7 @@ export const activityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Activity Type Name or ID',
+				displayName: 'Activity type name or ID',
 				name: 'activity_type_id',
 				type: 'options',
 				description:
@@ -260,7 +260,7 @@ export const activityFields: INodeProperties[] = [
 				description: 'Description to add more details on the activity - max 100,000 characters',
 			},
 			{
-				displayName: 'Happened At',
+				displayName: 'Happened at',
 				name: 'happened_at',
 				description: 'Date when the activity happened',
 				type: 'dateTime',

@@ -19,7 +19,7 @@ export const channelOperations: INodeProperties[] = [
 				action: 'Get a channel',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many channels',
 				action: 'Get many channels',
@@ -31,7 +31,7 @@ export const channelOperations: INodeProperties[] = [
 				action: 'Update a channel',
 			},
 			{
-				name: 'Upload Banner',
+				name: 'Upload banner',
 				value: 'uploadBanner',
 				description: 'Upload a channel banner',
 				action: 'Upload a channel banner',
@@ -55,15 +55,15 @@ export const channelFields: INodeProperties[] = [
 				value: '*',
 			},
 			{
-				name: 'Branding Settings',
+				name: 'Branding settings',
 				value: 'brandingSettings',
 			},
 			{
-				name: 'Content Details',
+				name: 'Content details',
 				value: 'contentDetails',
 			},
 			{
-				name: 'Content Owner Details',
+				name: 'Content owner details',
 				value: 'contentOwnerDetails',
 			},
 			{
@@ -87,7 +87,7 @@ export const channelFields: INodeProperties[] = [
 				value: 'status',
 			},
 			{
-				name: 'Topic Details',
+				name: 'Topic details',
 				value: 'topicDetails',
 			},
 		],
@@ -103,7 +103,7 @@ export const channelFields: INodeProperties[] = [
 		default: ['*'],
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -155,7 +155,7 @@ export const channelFields: INodeProperties[] = [
 					'The categoryId parameter specifies a YouTube guide category, thereby requesting YouTube channels associated with that category',
 			},
 			{
-				displayName: 'For Username',
+				displayName: 'For username',
 				name: 'forUsername',
 				type: 'string',
 				default: '',
@@ -171,7 +171,7 @@ export const channelFields: INodeProperties[] = [
 					"The ID parameter specifies a comma-separated list of the YouTube channel ID(s) for the resource(s) that are being retrieved. In a channel resource, the ID property specifies the channel's YouTube channel ID.",
 			},
 			{
-				displayName: 'Managed By Me',
+				displayName: 'Managed by me',
 				name: 'managedByMe',
 				type: 'boolean',
 				default: false,
@@ -195,7 +195,7 @@ export const channelFields: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Language Code',
+				displayName: 'Language code',
 				name: 'h1',
 				type: 'options',
 				typeOptions: {
@@ -206,7 +206,7 @@ export const channelFields: INodeProperties[] = [
 					'The hl parameter instructs the API to retrieve localized resource metadata for a specific application language that the YouTube website supports. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -242,15 +242,15 @@ export const channelFields: INodeProperties[] = [
 				value: '*',
 			},
 			{
-				name: 'Branding Settings',
+				name: 'Branding settings',
 				value: 'brandingSettings',
 			},
 			{
-				name: 'Content Details',
+				name: 'Content details',
 				value: 'contentDetails',
 			},
 			{
-				name: 'Content Owner Details',
+				name: 'Content owner details',
 				value: 'contentOwnerDetails',
 			},
 			{
@@ -274,7 +274,7 @@ export const channelFields: INodeProperties[] = [
 				value: 'status',
 			},
 			{
-				name: 'Topic Details',
+				name: 'Topic details',
 				value: 'topicDetails',
 			},
 		],
@@ -306,10 +306,10 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -319,26 +319,26 @@ export const channelFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Branding Settings',
+				displayName: 'Branding settings',
 				name: 'brandingSettingsUi',
 				type: 'fixedCollection',
 				default: {},
 				description: 'Encapsulates information about the branding of the channel',
-				placeholder: 'Add Branding Settings',
+				placeholder: 'Add branding settings',
 				typeOptions: {
 					multipleValues: false,
 				},
 				options: [
 					{
 						name: 'channelSettingsValues',
-						displayName: 'Channel Settings',
+						displayName: 'Channel settings',
 						values: [
 							{
 								displayName: 'Channel',
 								name: 'channel',
 								type: 'collection',
 								default: {},
-								placeholder: 'Add Channel Settings',
+								placeholder: 'Add channel settings',
 								typeOptions: {
 									multipleValues: false,
 								},
@@ -360,7 +360,7 @@ export const channelFields: INodeProperties[] = [
 											"The channel description, which appears in the channel information box on your channel page. The property's value has a maximum length of 1000 characters.",
 									},
 									{
-										displayName: 'Default Language',
+										displayName: 'Default language',
 										name: 'defaultLanguage',
 										type: 'string',
 										default: '',
@@ -368,14 +368,14 @@ export const channelFields: INodeProperties[] = [
 											'The content tab that users should display by default when viewers arrive at your channel page',
 									},
 									{
-										displayName: 'Default Tab',
+										displayName: 'Default tab',
 										name: 'defaultTab',
 										type: 'string',
 										default:
 											'The content tab that users should display by default when viewers arrive at your channel page.',
 									},
 									{
-										displayName: 'Featured Channels Title',
+										displayName: 'Featured channels title',
 										name: 'featuredChannelsTitle',
 										type: 'string',
 										default: '',
@@ -383,7 +383,7 @@ export const channelFields: INodeProperties[] = [
 											'The title that displays above the featured channels module. The title has a maximum length of 30 characters.',
 									},
 									{
-										displayName: 'Featured Channels Urls',
+										displayName: 'Featured channels URLs',
 										name: 'featuredChannelsUrls',
 										type: 'string',
 										typeOptions: {
@@ -403,7 +403,7 @@ export const channelFields: INodeProperties[] = [
 										default: '',
 									},
 									{
-										displayName: 'Moderate Comments',
+										displayName: 'Moderate comments',
 										name: 'moderateComments',
 										type: 'boolean',
 										description:
@@ -411,7 +411,7 @@ export const channelFields: INodeProperties[] = [
 										default: false,
 									},
 									{
-										displayName: 'Profile Color',
+										displayName: 'Profile color',
 										name: 'profileColor',
 										// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
 										type: 'string',
@@ -419,7 +419,7 @@ export const channelFields: INodeProperties[] = [
 										description: "A prominent color that complements the channel's content",
 									},
 									{
-										displayName: 'Show Related Channels',
+										displayName: 'Show related channels',
 										name: 'showRelatedChannels',
 										type: 'boolean',
 										description:
@@ -427,7 +427,7 @@ export const channelFields: INodeProperties[] = [
 										default: false,
 									},
 									{
-										displayName: 'Show Browse View',
+										displayName: 'Show browse view',
 										name: 'showBrowseView',
 										type: 'boolean',
 										description:
@@ -435,7 +435,7 @@ export const channelFields: INodeProperties[] = [
 										default: false,
 									},
 									{
-										displayName: 'Tracking Analytics AccountId',
+										displayName: 'Tracking analytics AccountId',
 										name: 'trackingAnalyticsAccountId',
 										type: 'string',
 										description:
@@ -443,7 +443,7 @@ export const channelFields: INodeProperties[] = [
 										default: '',
 									},
 									{
-										displayName: 'Unsubscribed Trailer',
+										displayName: 'Unsubscribed trailer',
 										name: 'unsubscribedTrailer',
 										type: 'string',
 										description:
@@ -457,14 +457,14 @@ export const channelFields: INodeProperties[] = [
 					},
 					{
 						name: 'imageSettingsValues',
-						displayName: 'Image Settings',
+						displayName: 'Image settings',
 						values: [
 							{
 								displayName: 'Image',
 								name: 'image',
 								type: 'collection',
 								default: {},
-								placeholder: 'Add Channel Settings',
+								placeholder: 'Add channel settings',
 								description:
 									"The image object encapsulates information about images that display on the channel's channel page or video watch pages",
 								typeOptions: {
@@ -472,19 +472,19 @@ export const channelFields: INodeProperties[] = [
 								},
 								options: [
 									{
-										displayName: 'Banner External Url',
+										displayName: 'Banner external URL',
 										name: 'bannerExternalUrl',
 										type: 'string',
 										default: '',
 									},
 									{
-										displayName: 'Tracking Image Url',
+										displayName: 'Tracking image URL',
 										name: 'trackingImageUrl',
 										type: 'string',
 										default: '',
 									},
 									{
-										displayName: 'Watch Icon Image Url',
+										displayName: 'Watch icon image URL',
 										name: 'watchIconImageUrl',
 										type: 'string',
 										default: '',
@@ -502,13 +502,13 @@ export const channelFields: INodeProperties[] = [
 								name: 'status',
 								type: 'collection',
 								default: {},
-								placeholder: 'Add Status',
+								placeholder: 'Add status',
 								typeOptions: {
 									multipleValues: false,
 								},
 								options: [
 									{
-										displayName: 'Self Declared Made For Kids',
+										displayName: 'Self declared made for kids',
 										name: 'selfDeclaredMadeForKids',
 										type: 'boolean',
 										default: false,
@@ -520,7 +520,7 @@ export const channelFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -545,7 +545,7 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,

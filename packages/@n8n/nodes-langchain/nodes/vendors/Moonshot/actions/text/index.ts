@@ -12,7 +12,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Message a Model',
+				name: 'Message a model',
 				value: 'message',
 				action: 'Message a model',
 				description: 'Send a message and get a response from a Moonshot Kimi model',

@@ -61,10 +61,10 @@ export const trackFields: INodeProperties[] = [
 		description: "The user's distinct ID",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['track'],
@@ -83,7 +83,7 @@ export const trackFields: INodeProperties[] = [
 				displayName: 'Context',
 				name: 'contextUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Property',
+				placeholder: 'Add property',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
@@ -119,7 +119,7 @@ export const trackFields: INodeProperties[] = [
 				displayName: 'Properties',
 				name: 'propertiesUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Property',
+				placeholder: 'Add property',
 				default: {},
 				typeOptions: {
 					multipleValues: true,

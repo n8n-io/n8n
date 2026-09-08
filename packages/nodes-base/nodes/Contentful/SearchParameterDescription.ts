@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const fields: INodeProperties[] = [
 	{
-		displayName: 'Search Parameters',
+		displayName: 'Search parameters',
 		name: 'search_parameters',
 		description: 'You can use a variety of query parameters to search and filter items',
 		placeholder: 'Add parameter',
@@ -17,14 +17,14 @@ export const fields: INodeProperties[] = [
 				name: 'parameters',
 				values: [
 					{
-						displayName: 'Parameter Name',
+						displayName: 'Parameter name',
 						name: 'name',
 						type: 'string',
 						default: '',
 						description: 'Name of the search parameter to set',
 					},
 					{
-						displayName: 'Parameter Value',
+						displayName: 'Parameter value',
 						name: 'value',
 						type: 'string',
 						default: '',

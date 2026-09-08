@@ -72,7 +72,7 @@ export class Asana implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -101,15 +101,15 @@ export class Asana implements INodeType {
 						value: 'task',
 					},
 					{
-						name: 'Task Comment',
+						name: 'Task comment',
 						value: 'taskComment',
 					},
 					{
-						name: 'Task Project',
+						name: 'Task project',
 						value: 'taskProject',
 					},
 					{
-						name: 'Task Tag',
+						name: 'Task tag',
 						value: 'taskTag',
 					},
 					{
@@ -140,7 +140,7 @@ export class Asana implements INodeType {
 						action: 'Create a subtask',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many subtasks',
 						action: 'Get many subtasks',
@@ -153,7 +153,7 @@ export class Asana implements INodeType {
 			//         subtask:create
 			// ----------------------------------
 			{
-				displayName: 'Parent Task ID',
+				displayName: 'Parent task ID',
 				name: 'taskId',
 				type: 'string',
 				default: '',
@@ -181,7 +181,7 @@ export class Asana implements INodeType {
 				description: 'The name of the subtask to create',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'otherProperties',
 				type: 'collection',
 				displayOptions: {
@@ -191,10 +191,10 @@ export class Asana implements INodeType {
 					},
 				},
 				default: {},
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				options: [
 					{
-						displayName: 'Assignee Name or ID',
+						displayName: 'Assignee name or ID',
 						name: 'assignee',
 						type: 'options',
 						typeOptions: {
@@ -205,7 +205,7 @@ export class Asana implements INodeType {
 							'Set Assignee on the subtask. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Assignee Status',
+						displayName: 'Assignee status',
 						name: 'assignee_status',
 						type: 'options',
 						options: [
@@ -237,7 +237,7 @@ export class Asana implements INodeType {
 						description: 'Whether the subtask should be marked completed',
 					},
 					{
-						displayName: 'Due On',
+						displayName: 'Due on',
 						name: 'due_on',
 						type: 'dateTime',
 						default: '',
@@ -261,7 +261,7 @@ export class Asana implements INodeType {
 						description: 'The task notes',
 					},
 					{
-						displayName: 'Workspace Name or ID',
+						displayName: 'Workspace name or ID',
 						name: 'workspace',
 						type: 'options',
 						typeOptions: {
@@ -277,7 +277,7 @@ export class Asana implements INodeType {
 			//         subtask:getAll
 			// ----------------------------------
 			{
-				displayName: 'Parent Task ID',
+				displayName: 'Parent task ID',
 				name: 'taskId',
 				type: 'string',
 				default: '',
@@ -291,7 +291,7 @@ export class Asana implements INodeType {
 				description: 'The task to operate on',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -332,10 +332,10 @@ export class Asana implements INodeType {
 					},
 				},
 				default: {},
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				options: [
 					{
-						displayName: 'Field Names or IDs',
+						displayName: 'Field names or IDs',
 						name: 'opt_fields',
 						type: 'multiOptions',
 						typeOptions: {
@@ -387,7 +387,7 @@ export class Asana implements INodeType {
 						action: 'Get a task',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many tasks',
 						action: 'Get many tasks',
@@ -418,7 +418,7 @@ export class Asana implements INodeType {
 			//         task:create
 			// ----------------------------------
 			{
-				displayName: 'Workspace Name or ID',
+				displayName: 'Workspace name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -490,7 +490,7 @@ export class Asana implements INodeType {
 			//         task:getAll
 			// ----------------------------------
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -532,10 +532,10 @@ export class Asana implements INodeType {
 				},
 				default: {},
 				description: 'Properties to search for',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				options: [
 					{
-						displayName: 'Assignee Name or ID',
+						displayName: 'Assignee name or ID',
 						name: 'assignee',
 						type: 'options',
 						typeOptions: {
@@ -546,7 +546,7 @@ export class Asana implements INodeType {
 							'The assignee to filter tasks on. Note: If you specify assignee, you must also specify the workspace to filter on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Field Names or IDs',
+						displayName: 'Field names or IDs',
 						name: 'opt_fields',
 						type: 'multiOptions',
 						typeOptions: {
@@ -564,7 +564,7 @@ export class Asana implements INodeType {
 						description: 'Whether to provide “pretty” output',
 					},
 					{
-						displayName: 'Project Name or ID',
+						displayName: 'Project name or ID',
 						name: 'project',
 						type: 'options',
 						typeOptions: {
@@ -575,7 +575,7 @@ export class Asana implements INodeType {
 							'The project to filter tasks on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Section Name or ID',
+						displayName: 'Section name or ID',
 						name: 'section',
 						type: 'options',
 						typeOptions: {
@@ -586,7 +586,7 @@ export class Asana implements INodeType {
 							'The section to filter tasks on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Workspace Name or ID',
+						displayName: 'Workspace name or ID',
 						name: 'workspace',
 						type: 'options',
 						typeOptions: {
@@ -597,7 +597,7 @@ export class Asana implements INodeType {
 							'The workspace to filter tasks on. Note: If you specify workspace, you must also specify the assignee to filter on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Completed Since',
+						displayName: 'Completed since',
 						name: 'completed_since',
 						type: 'dateTime',
 						default: '',
@@ -605,7 +605,7 @@ export class Asana implements INodeType {
 							'Only return tasks that are either incomplete or that have been completed since this time',
 					},
 					{
-						displayName: 'Modified Since',
+						displayName: 'Modified since',
 						name: 'modified_since',
 						type: 'dateTime',
 						default: '',
@@ -633,7 +633,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the task to be moved',
 			},
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project name or ID',
 				name: 'projectId',
 				type: 'options',
 				typeOptions: {
@@ -652,7 +652,7 @@ export class Asana implements INodeType {
 					'Project to show the sections of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Section Name or ID',
+				displayName: 'Section name or ID',
 				name: 'section',
 				type: 'options',
 				typeOptions: {
@@ -694,7 +694,7 @@ export class Asana implements INodeType {
 			//         task:search
 			// ----------------------------------
 			{
-				displayName: 'Workspace Name or ID',
+				displayName: 'Workspace name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -724,7 +724,7 @@ export class Asana implements INodeType {
 				},
 				default: {},
 				description: 'Properties to search for',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				options: [
 					{
 						displayName: 'Completed',
@@ -750,7 +750,7 @@ export class Asana implements INodeType {
 			//         task:create/update
 			// ----------------------------------
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'otherProperties',
 				type: 'collection',
 				displayOptions: {
@@ -760,10 +760,10 @@ export class Asana implements INodeType {
 					},
 				},
 				default: {},
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				options: [
 					{
-						displayName: 'Assignee Name or ID',
+						displayName: 'Assignee name or ID',
 						name: 'assignee',
 						type: 'options',
 						typeOptions: {
@@ -774,7 +774,7 @@ export class Asana implements INodeType {
 							'Set Assignee on the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Assignee Status',
+						displayName: 'Assignee status',
 						name: 'assignee_status',
 						type: 'options',
 						options: [
@@ -806,7 +806,7 @@ export class Asana implements INodeType {
 						description: 'Whether the task should be marked completed',
 					},
 					{
-						displayName: 'Due On',
+						displayName: 'Due on',
 						name: 'due_on',
 						type: 'dateTime',
 						default: '',
@@ -842,7 +842,7 @@ export class Asana implements INodeType {
 						description: 'The task notes',
 					},
 					{
-						displayName: 'Project Names or IDs',
+						displayName: 'Project names or IDs',
 						name: 'projects',
 						type: 'multiOptions',
 						typeOptions: {
@@ -905,7 +905,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the task to add the comment to',
 			},
 			{
-				displayName: 'Is Text HTML',
+				displayName: 'Is text HTML',
 				name: 'isTextHtml',
 				type: 'boolean',
 				displayOptions: {
@@ -933,7 +933,7 @@ export class Asana implements INodeType {
 				description: 'The plain text of the comment to add',
 			},
 			{
-				displayName: 'HTML Text',
+				displayName: 'HTML text',
 				name: 'text',
 				type: 'string',
 				default: '',
@@ -948,7 +948,7 @@ export class Asana implements INodeType {
 				description: 'Comment as HTML string. Do not use together with plain text.',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				displayOptions: {
@@ -959,7 +959,7 @@ export class Asana implements INodeType {
 				},
 				default: {},
 				description: 'Properties of the task comment',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				options: [
 					{
 						displayName: 'Pinned',
@@ -1037,7 +1037,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the task to add the project to',
 			},
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project name or ID',
 				name: 'project',
 				type: 'options',
 				typeOptions: {
@@ -1055,7 +1055,7 @@ export class Asana implements INodeType {
 					'The project where the task will be added. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				displayOptions: {
@@ -1066,10 +1066,10 @@ export class Asana implements INodeType {
 				},
 				default: {},
 				description: 'Other properties to set',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				options: [
 					{
-						displayName: 'Insert After',
+						displayName: 'Insert after',
 						name: 'insert_after',
 						type: 'string',
 						default: '',
@@ -1077,7 +1077,7 @@ export class Asana implements INodeType {
 							'A task in the project to insert the task after, or null to insert at the beginning of the list',
 					},
 					{
-						displayName: 'Insert Before',
+						displayName: 'Insert before',
 						name: 'insert_before',
 						type: 'string',
 						default: '',
@@ -1113,7 +1113,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the task to add the project to',
 			},
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project name or ID',
 				name: 'project',
 				type: 'options',
 				typeOptions: {
@@ -1180,7 +1180,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the task to add the tag to',
 			},
 			{
-				displayName: 'Tags Name or ID',
+				displayName: 'Tags name or ID',
 				name: 'tag',
 				type: 'options',
 				typeOptions: {
@@ -1218,7 +1218,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the task to add the tag to',
 			},
 			{
-				displayName: 'Tags Name or ID',
+				displayName: 'Tags name or ID',
 				name: 'tag',
 				type: 'options',
 				typeOptions: {
@@ -1258,7 +1258,7 @@ export class Asana implements INodeType {
 						action: 'Get a user',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many users',
 						action: 'Get many users',
@@ -1290,7 +1290,7 @@ export class Asana implements INodeType {
 			//         user:getAll
 			// ----------------------------------
 			{
-				displayName: 'Workspace Name or ID',
+				displayName: 'Workspace name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -1343,7 +1343,7 @@ export class Asana implements INodeType {
 						action: 'Get a project',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many projects',
 						action: 'Get many projects',
@@ -1376,7 +1376,7 @@ export class Asana implements INodeType {
 				description: 'The name of the project to create',
 			},
 			{
-				displayName: 'Workspace Name or ID',
+				displayName: 'Workspace name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -1394,7 +1394,7 @@ export class Asana implements INodeType {
 					'The workspace to create the project in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Team Name or ID',
+				displayName: 'Team name or ID',
 				name: 'team',
 				type: 'options',
 				typeOptions: {
@@ -1412,7 +1412,7 @@ export class Asana implements INodeType {
 					'The team this project will be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				displayOptions: {
@@ -1423,7 +1423,7 @@ export class Asana implements INodeType {
 				},
 				default: {},
 				description: 'Other properties to set',
-				placeholder: 'Add Property',
+				placeholder: 'Add property',
 				options: [
 					{
 						displayName: 'Color',
@@ -1434,7 +1434,7 @@ export class Asana implements INodeType {
 						description: 'Color of the project',
 					},
 					{
-						displayName: 'Due On',
+						displayName: 'Due on',
 						name: 'due_on',
 						type: 'dateTime',
 						default: '',
@@ -1449,7 +1449,7 @@ export class Asana implements INodeType {
 						description: 'Basic description or notes for the project',
 					},
 					{
-						displayName: 'Privacy Setting',
+						displayName: 'Privacy setting',
 						name: 'privacy_setting',
 						type: 'options',
 						options: [
@@ -1458,11 +1458,11 @@ export class Asana implements INodeType {
 								value: 'private',
 							},
 							{
-								name: 'Private to Team',
+								name: 'Private to team',
 								value: 'private_to_team',
 							},
 							{
-								name: 'Public to Workspace',
+								name: 'Public to workspace',
 								value: 'public_to_workspace',
 							},
 						],
@@ -1508,7 +1508,7 @@ export class Asana implements INodeType {
 			//         project:getAll
 			// ----------------------------------
 			{
-				displayName: 'Workspace Name or ID',
+				displayName: 'Workspace name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -1527,7 +1527,7 @@ export class Asana implements INodeType {
 					'The workspace in which to get users. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -1558,7 +1558,7 @@ export class Asana implements INodeType {
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
 				displayOptions: {
@@ -1569,7 +1569,7 @@ export class Asana implements INodeType {
 				},
 				default: {},
 				description: 'Other properties to set',
-				placeholder: 'Add Property',
+				placeholder: 'Add property',
 				options: [
 					{
 						displayName: 'Archived',
@@ -1580,7 +1580,7 @@ export class Asana implements INodeType {
 							'Whether to only return projects whose archived field takes on the value of this parameter',
 					},
 					{
-						displayName: 'Teams Name or ID',
+						displayName: 'Teams name or ID',
 						name: 'team',
 						type: 'options',
 						typeOptions: {
@@ -1597,7 +1597,7 @@ export class Asana implements INodeType {
 			//         project:update
 			// ----------------------------------
 			{
-				displayName: 'Workspace Name or ID',
+				displayName: 'Workspace name or ID',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -1630,7 +1630,7 @@ export class Asana implements INodeType {
 				description: 'The ID of the project to update the data of',
 			},
 			{
-				displayName: 'Update Fields',
+				displayName: 'Update fields',
 				name: 'updateFields',
 				type: 'collection',
 				displayOptions: {
@@ -1641,7 +1641,7 @@ export class Asana implements INodeType {
 				},
 				default: {},
 				description: 'Other properties to set',
-				placeholder: 'Add Property',
+				placeholder: 'Add property',
 				options: [
 					{
 						displayName: 'Color',
@@ -1652,7 +1652,7 @@ export class Asana implements INodeType {
 						description: 'Color of the project',
 					},
 					{
-						displayName: 'Due On',
+						displayName: 'Due on',
 						name: 'due_on',
 						type: 'dateTime',
 						default: '',
@@ -1681,7 +1681,7 @@ export class Asana implements INodeType {
 						description: 'The new assignee/cardinal for this project',
 					},
 					{
-						displayName: 'Privacy Setting',
+						displayName: 'Privacy setting',
 						name: 'privacy_setting',
 						type: 'options',
 						options: [
@@ -1690,11 +1690,11 @@ export class Asana implements INodeType {
 								value: 'private',
 							},
 							{
-								name: 'Private to Team',
+								name: 'Private to team',
 								value: 'private_to_team',
 							},
 							{
-								name: 'Public to Workspace',
+								name: 'Public to workspace',
 								value: 'public_to_workspace',
 							},
 						],
@@ -1702,7 +1702,7 @@ export class Asana implements INodeType {
 						description: 'The privacy setting of the project',
 					},
 					{
-						displayName: 'Team Name or ID',
+						displayName: 'Team name or ID',
 						name: 'team',
 						type: 'options',
 						typeOptions: {

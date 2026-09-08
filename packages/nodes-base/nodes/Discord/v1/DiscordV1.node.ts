@@ -46,14 +46,14 @@ const versionDescription: INodeTypeDescription = {
 			placeholder: 'Hello World!',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'options',
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
 			options: [
 				{
-					displayName: 'Allowed Mentions',
+					displayName: 'Allowed mentions',
 					name: 'allowedMentions',
 					type: 'json',
 					typeOptions: { alwaysOpenEditWindow: true },
@@ -93,7 +93,7 @@ const versionDescription: INodeTypeDescription = {
 					default: '',
 				},
 				{
-					displayName: 'JSON Payload',
+					displayName: 'JSON payload',
 					name: 'payloadJson',
 					type: 'json',
 					typeOptions: { alwaysOpenEditWindow: true },

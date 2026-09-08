@@ -19,7 +19,7 @@ export const recordOperations: INodeProperties[] = [
 				action: 'Create a record',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many records',
 				action: 'Get many records',
@@ -34,7 +34,7 @@ export const recordFields: INodeProperties[] = [
 	//         record: create
 	// ----------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
@@ -52,7 +52,7 @@ export const recordFields: INodeProperties[] = [
 			'ID of the project to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Dataset Name or ID',
+		displayName: 'Dataset name or ID',
 		name: 'datasetId',
 		type: 'options',
 		typeOptions: {
@@ -71,7 +71,7 @@ export const recordFields: INodeProperties[] = [
 			'ID of the dataset to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
@@ -118,21 +118,21 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Ignore Unknown Values',
+				displayName: 'Ignore unknown values',
 				name: 'ignoreUnknownValues',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to ignore row values that do not match the schema',
 			},
 			{
-				displayName: 'Skip Invalid Rows',
+				displayName: 'Skip invalid rows',
 				name: 'skipInvalidRows',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to skip rows with values that do not match the schema',
 			},
 			{
-				displayName: 'Template Suffix',
+				displayName: 'Template suffix',
 				name: 'templateSuffix',
 				type: 'string',
 				default: '',
@@ -154,7 +154,7 @@ export const recordFields: INodeProperties[] = [
 	//         record: getAll
 	// ----------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
@@ -172,7 +172,7 @@ export const recordFields: INodeProperties[] = [
 			'ID of the project to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Dataset Name or ID',
+		displayName: 'Dataset name or ID',
 		name: 'datasetId',
 		type: 'options',
 		typeOptions: {
@@ -191,7 +191,7 @@ export const recordFields: INodeProperties[] = [
 			'ID of the dataset to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
@@ -210,7 +210,7 @@ export const recordFields: INodeProperties[] = [
 			'ID of the table to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

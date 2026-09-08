@@ -41,10 +41,10 @@ export const identityFields: INodeProperties[] = [
 		description: "The identity's distinct ID",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['identity'],
@@ -57,7 +57,7 @@ export const identityFields: INodeProperties[] = [
 				displayName: 'Properties',
 				name: 'propertiesUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Property',
+				placeholder: 'Add property',
 				default: {},
 				typeOptions: {
 					multipleValues: true,

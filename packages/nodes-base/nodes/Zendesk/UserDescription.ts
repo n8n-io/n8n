@@ -31,19 +31,19 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many users',
 				action: 'Get many users',
 			},
 			{
-				name: 'Get Organizations',
+				name: 'Get organizations',
 				value: 'getOrganizations',
 				description: "Get a user's organizations",
 				action: "Get a user's organizations",
 			},
 			{
-				name: 'Get Related Data',
+				name: 'Get related data',
 				value: 'getRelatedData',
 				description: 'Get data related to the user',
 				action: 'Get data related to a user',
@@ -84,10 +84,10 @@ export const userFields: INodeProperties[] = [
 		description: "The user's name",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -104,7 +104,7 @@ export const userFields: INodeProperties[] = [
 				description: 'An alias displayed to end users',
 			},
 			{
-				displayName: 'Custom Role ID',
+				displayName: 'Custom role ID',
 				name: 'custom_role_id',
 				type: 'number',
 				default: 0,
@@ -159,14 +159,14 @@ export const userFields: INodeProperties[] = [
 				description: 'Any notes you want to store about the user',
 			},
 			{
-				displayName: 'Only Private Comments',
+				displayName: 'Only private comments',
 				name: 'only_private_comments',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user can only create private comments',
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'organization_id',
 				typeOptions: {
 					loadOptionsMethod: 'getOrganizations',
@@ -192,7 +192,7 @@ export const userFields: INodeProperties[] = [
 					'Whether or not the user can access the CSV report on the Search tab of the Reporting page in the Support admin interface',
 			},
 			{
-				displayName: 'Restricted Agent',
+				displayName: 'Restricted agent',
 				name: 'restricted_agent',
 				type: 'boolean',
 				default: false,
@@ -205,7 +205,7 @@ export const userFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'End User',
+						name: 'End user',
 						value: 'end-user',
 					},
 					{
@@ -236,7 +236,7 @@ export const userFields: INodeProperties[] = [
 					'Whether the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -247,7 +247,7 @@ export const userFields: INodeProperties[] = [
 					'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Ticket Restriction',
+				displayName: 'Ticket restriction',
 				name: 'ticket_restriction',
 				type: 'options',
 				options: [
@@ -279,9 +279,9 @@ export const userFields: INodeProperties[] = [
 				description: "The user's time zone",
 			},
 			{
-				displayName: 'User Fields',
+				displayName: 'User fields',
 				name: 'userFieldsUi',
-				placeholder: 'Add User Field',
+				placeholder: 'Add user field',
 				description: "Values of custom fields in the user's profile",
 				type: 'fixedCollection',
 				typeOptions: {
@@ -294,7 +294,7 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -341,10 +341,10 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -361,7 +361,7 @@ export const userFields: INodeProperties[] = [
 				description: 'An alias displayed to end users',
 			},
 			{
-				displayName: 'Custom Role ID',
+				displayName: 'Custom role ID',
 				name: 'custom_role_id',
 				type: 'number',
 				default: 0,
@@ -423,14 +423,14 @@ export const userFields: INodeProperties[] = [
 				description: 'Any notes you want to store about the user',
 			},
 			{
-				displayName: 'Only Private Comments',
+				displayName: 'Only private comments',
 				name: 'only_private_comments',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user can only create private comments',
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'organization_id',
 				typeOptions: {
 					loadOptionsMethod: 'getOrganizations',
@@ -456,7 +456,7 @@ export const userFields: INodeProperties[] = [
 					'Whether or not the user can access the CSV report on the Search tab of the Reporting page in the Support admin interface',
 			},
 			{
-				displayName: 'Restricted Agent',
+				displayName: 'Restricted agent',
 				name: 'restricted_agent',
 				type: 'boolean',
 				default: false,
@@ -469,7 +469,7 @@ export const userFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'End User',
+						name: 'End user',
 						value: 'end-user',
 					},
 					{
@@ -500,7 +500,7 @@ export const userFields: INodeProperties[] = [
 					'Whether the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -511,7 +511,7 @@ export const userFields: INodeProperties[] = [
 					'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Ticket Restriction',
+				displayName: 'Ticket restriction',
 				name: 'ticket_restriction',
 				type: 'options',
 				options: [
@@ -543,9 +543,9 @@ export const userFields: INodeProperties[] = [
 				description: "The user's time zone",
 			},
 			{
-				displayName: 'User Fields',
+				displayName: 'User fields',
 				name: 'userFieldsUi',
-				placeholder: 'Add User Field',
+				placeholder: 'Add user field',
 				description: "Values of custom fields in the user's profile",
 				type: 'fixedCollection',
 				typeOptions: {
@@ -558,7 +558,7 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -608,7 +608,7 @@ export const userFields: INodeProperties[] = [
 	/*                                   user:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -642,7 +642,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -657,7 +657,7 @@ export const userFields: INodeProperties[] = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'End User',
+						name: 'End user',
 						value: 'end-user',
 					},
 					{
@@ -677,7 +677,7 @@ export const userFields: INodeProperties[] = [
 	/*                                   user:search                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -711,7 +711,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {

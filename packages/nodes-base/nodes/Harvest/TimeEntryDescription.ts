@@ -15,13 +15,13 @@ export const timeEntryOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create via Duration',
+				name: 'Create via duration',
 				value: 'createByDuration',
 				description: 'Create a time entry via duration',
 				action: 'Create a time entry via duration',
 			},
 			{
-				name: 'Create via Start and End Time',
+				name: 'Create via start and end time',
 				value: 'createByStartEnd',
 				description: 'Create a time entry via start and end time',
 				action: 'Create a time entry via start and end time',
@@ -33,7 +33,7 @@ export const timeEntryOperations: INodeProperties[] = [
 				action: 'Delete a time entry',
 			},
 			{
-				name: 'Delete External Reference',
+				name: 'Delete external reference',
 				value: 'deleteExternal',
 				description: 'Delete a time entry’s external reference',
 				action: 'Delete a time entry’s external reference',
@@ -45,7 +45,7 @@ export const timeEntryOperations: INodeProperties[] = [
 				action: 'Get data of a time entry',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many time entries',
 				action: 'Get data of all time entries',
@@ -79,7 +79,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -113,7 +113,7 @@ export const timeEntryFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -137,7 +137,7 @@ export const timeEntryFields: INodeProperties[] = [
 				description: 'Only return time entries with a spent_date on or after the given date',
 			},
 			{
-				displayName: 'Is Billed',
+				displayName: 'Is billed',
 				name: 'is_billed',
 				type: 'boolean',
 				default: true,
@@ -145,7 +145,7 @@ export const timeEntryFields: INodeProperties[] = [
 					'Whether to only return time entries that have been invoiced and false to return time entries that have not been invoiced',
 			},
 			{
-				displayName: 'Is Running',
+				displayName: 'Is running',
 				name: 'is_running',
 				type: 'boolean',
 				default: true,
@@ -171,7 +171,7 @@ export const timeEntryFields: INodeProperties[] = [
 				description: 'Only return time entries with a spent_date on or before the given date',
 			},
 			{
-				displayName: 'Updated Since',
+				displayName: 'Updated since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
@@ -192,7 +192,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry ID',
+		displayName: 'Time entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -210,7 +210,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:delete                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry ID',
+		displayName: 'Time entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -228,7 +228,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:deleteExternal                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry ID',
+		displayName: 'Time entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -246,7 +246,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:stopTime                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry ID',
+		displayName: 'Time entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -265,7 +265,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:restartTime                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry ID',
+		displayName: 'Time entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -284,7 +284,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry ID',
+		displayName: 'Time entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -298,10 +298,10 @@ export const timeEntryFields: INodeProperties[] = [
 		description: 'The ID of the time entry to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -311,7 +311,7 @@ export const timeEntryFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Ended Time',
+				displayName: 'Ended time',
 				name: 'ended_time',
 				type: 'string',
 				default: '',
@@ -336,7 +336,7 @@ export const timeEntryFields: INodeProperties[] = [
 				description: 'These are notes about the time entry',
 			},
 			{
-				displayName: 'Started Time',
+				displayName: 'Started time',
 				name: 'started_time',
 				type: 'string',
 				default: '',
@@ -378,7 +378,7 @@ export const timeEntryFields: INodeProperties[] = [
 		description: 'The ID of the task to associate with the time entry',
 	},
 	{
-		displayName: 'Spent Date',
+		displayName: 'Spent date',
 		name: 'spentDate',
 		type: 'dateTime',
 		displayOptions: {
@@ -392,10 +392,10 @@ export const timeEntryFields: INodeProperties[] = [
 		description: 'The ISO 8601 formatted date the time entry was spent',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['createByDuration'],
@@ -464,7 +464,7 @@ export const timeEntryFields: INodeProperties[] = [
 		description: 'The ID of the task to associate with the time entry',
 	},
 	{
-		displayName: 'Spent Date',
+		displayName: 'Spent date',
 		name: 'spentDate',
 		type: 'dateTime',
 		displayOptions: {
@@ -478,10 +478,10 @@ export const timeEntryFields: INodeProperties[] = [
 		description: 'The ISO 8601 formatted date the time entry was spent',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['createByStartEnd'],
@@ -491,7 +491,7 @@ export const timeEntryFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Ended Time',
+				displayName: 'Ended time',
 				name: 'ended_time',
 				type: 'string',
 				default: '',
@@ -506,7 +506,7 @@ export const timeEntryFields: INodeProperties[] = [
 				description: 'These are notes about the time entry',
 			},
 			{
-				displayName: 'Started Time',
+				displayName: 'Started time',
 				name: 'started_time',
 				type: 'string',
 				default: '',

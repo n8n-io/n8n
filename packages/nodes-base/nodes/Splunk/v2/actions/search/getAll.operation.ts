@@ -6,7 +6,7 @@ import { splunkApiJsonRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -38,7 +38,7 @@ const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Sort Direction',
+						displayName: 'Sort direction',
 						name: 'sort_dir',
 						type: 'options',
 						options: [
@@ -54,7 +54,7 @@ const properties: INodeProperties[] = [
 						default: 'asc',
 					},
 					{
-						displayName: 'Sort Key',
+						displayName: 'Sort key',
 						name: 'sort_key',
 						description: 'Key name to use for sorting',
 						type: 'string',
@@ -62,7 +62,7 @@ const properties: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Sort Mode',
+						displayName: 'Sort mode',
 						name: 'sort_mode',
 						type: 'options',
 						options: [
@@ -78,7 +78,7 @@ const properties: INodeProperties[] = [
 								description: 'Collate alphabetically, case-insensitive',
 							},
 							{
-								name: 'Alphabetic and Case-Sensitive',
+								name: 'Alphabetic and case-sensitive',
 								value: 'alpha_case',
 								description: 'Collate alphabetically, case-sensitive',
 							},

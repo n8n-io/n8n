@@ -19,17 +19,17 @@ import type { IRowObject } from '../Interfaces';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'fieldsToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
@@ -38,7 +38,7 @@ export const properties: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
@@ -54,9 +54,9 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Enter properties...',
 	},
 	{
-		displayName: 'Columns to Send',
+		displayName: 'Columns to send',
 		name: 'columnsUi',
-		placeholder: 'Add Column',
+		placeholder: 'Add column',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Column to Send',
@@ -68,7 +68,7 @@ export const properties: INodeProperties[] = [
 				name: 'columnValues',
 				values: [
 					{
-						displayName: 'Column Name or ID',
+						displayName: 'Column name or ID',
 						name: 'columnName',
 						type: 'options',
 						description:
@@ -80,7 +80,7 @@ export const properties: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Column Value',
+						displayName: 'Column value',
 						name: 'columnValue',
 						type: 'string',
 						default: '',

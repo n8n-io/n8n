@@ -22,7 +22,7 @@ const properties: INodeProperties[] = [
 				value: 'case',
 			},
 			{
-				name: 'Knowledge Base',
+				name: 'Knowledge base',
 				value: 'knowledgeBase',
 			},
 		],

@@ -91,10 +91,10 @@ export const fileFields: INodeProperties[] = [
 			'The ID of folder to copy the file to. If not defined will be copied to the root folder.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['copy'],
@@ -161,7 +161,7 @@ export const fileFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,
@@ -192,10 +192,10 @@ export const fileFields: INodeProperties[] = [
 		description: 'Field ID',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -233,7 +233,7 @@ export const fileFields: INodeProperties[] = [
 			'The string to search for. This query is matched against item names, descriptions, text content of files, and various other fields of the different item types.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -264,10 +264,10 @@ export const fileFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['search'],
@@ -277,7 +277,7 @@ export const fileFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Content Types',
+				displayName: 'Content types',
 				name: 'contet_types',
 				type: 'string',
 				default: '',
@@ -285,13 +285,13 @@ export const fileFields: INodeProperties[] = [
 					'Limits search results to items with the given content types. Content types are defined as a comma-separated lists of Box recognized content types.',
 			},
 			{
-				displayName: 'Created At Range',
+				displayName: 'Created at range',
 				name: 'createdRangeUi',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
 				},
-				placeholder: 'Add Range',
+				placeholder: 'Add range',
 				default: {},
 				options: [
 					{
@@ -341,7 +341,7 @@ export const fileFields: INodeProperties[] = [
 					'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
 			},
 			{
-				displayName: 'File Extensions',
+				displayName: 'File extensions',
 				name: 'file_extensions',
 				type: 'string',
 				default: '',
@@ -362,11 +362,11 @@ export const fileFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'User Content',
+						name: 'User content',
 						value: 'user_content',
 					},
 					{
-						name: 'Enterprise Content',
+						name: 'Enterprise content',
 						value: 'enterprise_content',
 					},
 				],
@@ -374,7 +374,7 @@ export const fileFields: INodeProperties[] = [
 				description: 'Limits search results to a user scope',
 			},
 			{
-				displayName: 'Size Range',
+				displayName: 'Size range',
 				name: 'size_range',
 				type: 'string',
 				default: '',
@@ -392,7 +392,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'relevance',
 					},
 					{
-						name: 'Modified At',
+						name: 'Modified at',
 						value: 'modified_at',
 					},
 				],
@@ -401,16 +401,16 @@ export const fileFields: INodeProperties[] = [
 					'Returns the results ordered in descending order by date at which the item was last modified',
 			},
 			{
-				displayName: 'Trash Content',
+				displayName: 'Trash content',
 				name: 'trash_content',
 				type: 'options',
 				options: [
 					{
-						name: 'Non Trashed Only',
+						name: 'Non trashed only',
 						value: 'non_trashed_only',
 					},
 					{
-						name: 'Trashed Only',
+						name: 'Trashed only',
 						value: 'trashed_only',
 					},
 				],
@@ -418,13 +418,13 @@ export const fileFields: INodeProperties[] = [
 				description: 'Controls if search results include the trash',
 			},
 			{
-				displayName: 'Update At Range',
+				displayName: 'Update at range',
 				name: 'updatedRangeUi',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
 				},
-				placeholder: 'Add Range',
+				placeholder: 'Add range',
 				default: {},
 				options: [
 					{
@@ -475,7 +475,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The ID of the file to share',
 	},
 	{
-		displayName: 'Accessible By',
+		displayName: 'Accessible by',
 		name: 'accessibleBy',
 		type: 'options',
 		options: [
@@ -498,7 +498,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The type of object the file will be shared with',
 	},
 	{
-		displayName: 'Use Email',
+		displayName: 'Use email',
 		name: 'useEmail',
 		type: 'boolean',
 		displayOptions: {
@@ -562,7 +562,7 @@ export const fileFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Co-Owner',
+				name: 'Co-owner',
 				value: 'coOwner',
 				description: 'A Co-owner has all of functional read/write access that an editor does',
 			},
@@ -577,7 +577,7 @@ export const fileFields: INodeProperties[] = [
 				description: 'A previewer has limited read access',
 			},
 			{
-				name: 'Previewer Uploader',
+				name: 'Previewer uploader',
 				value: 'previewerUploader',
 				description: 'This access level is a combination of Previewer and Uploader',
 			},
@@ -592,7 +592,7 @@ export const fileFields: INodeProperties[] = [
 				description: 'A viewer has read access to a folder or file',
 			},
 			{
-				name: 'Viewer Uploader',
+				name: 'Viewer uploader',
 				value: 'viewerUploader',
 				description: 'This access level is a combination of Viewer and Uploader',
 			},
@@ -620,7 +620,7 @@ export const fileFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Can View Path',
+				displayName: 'Can view path',
 				name: 'can_view_path',
 				type: 'boolean',
 				default: false,
@@ -628,7 +628,7 @@ export const fileFields: INodeProperties[] = [
 					'Whether the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.',
 			},
 			{
-				displayName: 'Expires At',
+				displayName: 'Expires at',
 				name: 'expires_at',
 				type: 'dateTime',
 				default: '',
@@ -657,7 +657,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                 file:upload                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		placeholder: 'photo.png',
@@ -671,7 +671,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The name the file should be saved as',
 	},
 	{
-		displayName: 'Binary File',
+		displayName: 'Binary file',
 		name: 'binaryData',
 		type: 'boolean',
 		default: false,
@@ -685,7 +685,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
-		displayName: 'File Content',
+		displayName: 'File content',
 		name: 'fileContent',
 		type: 'string',
 		default: '',
@@ -700,7 +700,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The text content of the file',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

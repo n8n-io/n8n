@@ -34,7 +34,7 @@ export const attachmentOperations: INodeProperties[] = [
 				action: 'Get an attachment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Returns many attachments for the card',
 				action: 'Get many attachments',
@@ -53,10 +53,10 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a Card...',
+				placeholder: 'Select a card...',
 				typeOptions: {
 					searchListMethod: 'searchCards',
 					searchFilterRequired: true,
@@ -125,10 +125,10 @@ export const attachmentFields: INodeProperties[] = [
 		description: 'The URL of the attachment to add',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -138,7 +138,7 @@ export const attachmentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'MIME Type',
+				displayName: 'MIME type',
 				name: 'mimeType',
 				type: 'string',
 				default: '',
@@ -177,10 +177,10 @@ export const attachmentFields: INodeProperties[] = [
 	//         attachment:getAll
 	// ----------------------------------
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -217,10 +217,10 @@ export const attachmentFields: INodeProperties[] = [
 		description: 'The ID of the attachment to get',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['get'],

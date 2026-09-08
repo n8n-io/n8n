@@ -26,19 +26,19 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Close Window',
+				name: 'Close window',
 				value: 'close',
 				description: 'Close a window inside a session',
 				action: 'Close a window',
 			},
 			{
-				name: 'Create a New Browser Window',
+				name: 'Create a new browser window',
 				value: 'create',
 				description: 'Create a new browser window inside a session. Can load a URL when created.',
 				action: 'Create a window',
 			},
 			{
-				name: 'Get Live View',
+				name: 'Get live view',
 				value: 'getLiveView',
 				description: 'Get information about a browser window, including the live view URL',
 				action: 'Get live view',
@@ -56,7 +56,7 @@ export const description: INodeProperties[] = [
 				action: 'Load a page',
 			},
 			{
-				name: 'Take Screenshot',
+				name: 'Take screenshot',
 				value: 'takeScreenshot',
 				description: 'Take a screenshot of the current window',
 				action: 'Take screenshot',

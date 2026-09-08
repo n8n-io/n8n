@@ -20,7 +20,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return As',
+		displayName: 'Return as',
 		name: 'returnAs',
 		type: 'options',
 		options: [
@@ -40,12 +40,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Number of Videos',
+				displayName: 'Number of videos',
 				name: 'sampleCount',
 				type: 'number',
 				default: 1,
@@ -56,7 +56,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Duration (Seconds)',
+				displayName: 'Duration (seconds)',
 				name: 'durationSeconds',
 				type: 'number',
 				default: 8,
@@ -67,7 +67,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Aspect Ratio',
+				displayName: 'Aspect ratio',
 				name: 'aspectRatio',
 				type: 'options',
 				options: [
@@ -85,22 +85,22 @@ const properties: INodeProperties[] = [
 				default: '16:9',
 			},
 			{
-				displayName: 'Person Generation',
+				displayName: 'Person generation',
 				name: 'personGeneration',
 				type: 'options',
 				options: [
 					{
-						name: "Don't Allow",
+						name: "Don't allow",
 						value: 'dont_allow',
 						description: 'Prevent generation of people in the video',
 					},
 					{
-						name: 'Allow Adult',
+						name: 'Allow adult',
 						value: 'allow_adult',
 						description: 'Allow generation of adult people in the video',
 					},
 					{
-						name: 'Allow All',
+						name: 'Allow all',
 						value: 'allow_all',
 						description: 'Allow generation of all people in the video',
 					},
@@ -108,7 +108,7 @@ const properties: INodeProperties[] = [
 				default: 'dont_allow',
 			},
 			{
-				displayName: 'Put Output in Field',
+				displayName: 'Put output in field',
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'data',

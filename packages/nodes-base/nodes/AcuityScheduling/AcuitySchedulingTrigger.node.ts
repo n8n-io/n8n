@@ -60,7 +60,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Key',
+						name: 'API key',
 						value: 'apiKey',
 					},
 					{
@@ -105,7 +105,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Resolve Data',
+				displayName: 'Resolve data',
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,

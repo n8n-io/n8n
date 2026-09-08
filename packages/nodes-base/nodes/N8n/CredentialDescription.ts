@@ -38,7 +38,7 @@ export const credentialOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get Schema',
+				name: 'Get schema',
 				value: 'getSchema',
 				action: 'Get credential data schema for type',
 				routing: {
@@ -76,7 +76,7 @@ const createOperation: INodeProperties[] = [
 		description: 'Name of the new credential',
 	},
 	{
-		displayName: 'Credential Type',
+		displayName: 'Credential type',
 		name: 'credentialTypeName',
 		type: 'string',
 		placeholder: 'e.g. n8nApi',
@@ -123,7 +123,7 @@ const createOperation: INodeProperties[] = [
 			},
 		},
 		description:
-			"A valid JSON object with properties required for this Credential Type. To see the expected format, you can use 'Get Schema' operation.",
+			"A valid JSON object with properties required for this Credential Type. To see the expected format, you can use 'Get schema' operation.",
 	},
 ];
 
@@ -145,7 +145,7 @@ const deleteOperation: INodeProperties[] = [
 
 const getSchemaOperation: INodeProperties[] = [
 	{
-		displayName: 'Credential Type',
+		displayName: 'Credential type',
 		name: 'credentialTypeName',
 		default: '',
 		placeholder: 'e.g. n8nApi',

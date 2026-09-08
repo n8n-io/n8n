@@ -31,7 +31,7 @@ export const personOperations: INodeProperties[] = [
 				action: 'Get a person',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many persons',
 				action: 'Get many people',
@@ -52,7 +52,7 @@ export const personFields: INodeProperties[] = [
 	/*                                person:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		required: true,
@@ -66,7 +66,7 @@ export const personFields: INodeProperties[] = [
 		description: 'The first name of the person',
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		required: true,
@@ -80,10 +80,10 @@ export const personFields: INodeProperties[] = [
 		description: 'The last name of the person',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -93,7 +93,7 @@ export const personFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Organization Names or IDs',
+				displayName: 'Organization names or IDs',
 				name: 'organizations',
 				type: 'multiOptions',
 				typeOptions: {
@@ -141,10 +141,10 @@ export const personFields: INodeProperties[] = [
 		description: 'Unique identifier for the person',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -154,21 +154,21 @@ export const personFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'The first name of the person',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
 				description: 'The last name of the person',
 			},
 			{
-				displayName: 'Organization Names or IDs',
+				displayName: 'Organization names or IDs',
 				name: 'organizations',
 				type: 'multiOptions',
 				typeOptions: {
@@ -229,7 +229,7 @@ export const personFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'With Interaction Dates',
+				displayName: 'With interaction dates',
 				name: 'withInteractionDates',
 				type: 'boolean',
 				default: false,
@@ -241,7 +241,7 @@ export const personFields: INodeProperties[] = [
 	/*                                 person:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -293,7 +293,7 @@ export const personFields: INodeProperties[] = [
 					'A string used to search all the persons in your team’s address book. This could be an email address, a first name or a last name.',
 			},
 			{
-				displayName: 'With Interaction Dates',
+				displayName: 'With interaction dates',
 				name: 'withInteractionDates',
 				type: 'boolean',
 				default: false,

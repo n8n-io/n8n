@@ -78,7 +78,7 @@ export class OdooV1 implements INodeType {
 							value: 'contact',
 						},
 						{
-							name: 'Custom Resource',
+							name: 'Custom resource',
 							value: 'custom',
 						},
 						{

@@ -19,7 +19,7 @@ export const controlOperations: INodeProperties[] = [
 				action: 'Get a control',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many controls',
 				action: 'Get many controls',
@@ -34,7 +34,7 @@ export const controlFields: INodeProperties[] = [
 	/*                                   control:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc Name or ID',
+		displayName: 'Doc name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -69,7 +69,7 @@ export const controlFields: INodeProperties[] = [
 	/*                                   control:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc Name or ID',
+		displayName: 'Doc name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -87,7 +87,7 @@ export const controlFields: INodeProperties[] = [
 			'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

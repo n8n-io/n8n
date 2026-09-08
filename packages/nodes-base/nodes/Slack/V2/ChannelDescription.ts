@@ -38,7 +38,7 @@ export const channelOperations: INodeProperties[] = [
 				action: 'Get a channel',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many channels in a Slack team',
 				action: 'Get many channels',
@@ -98,13 +98,13 @@ export const channelOperations: INodeProperties[] = [
 				action: 'Get a thread of messages posted to a channel',
 			},
 			{
-				name: 'Set Purpose',
+				name: 'Set purpose',
 				value: 'setPurpose',
 				description: 'Sets the purpose for a conversation',
 				action: 'Set the purpose of a channel',
 			},
 			{
-				name: 'Set Topic',
+				name: 'Set topic',
 				value: 'setTopic',
 				description: 'Sets the topic for a conversation',
 				action: 'Set the topic of a channel',
@@ -177,7 +177,7 @@ export const channelFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Channel Visibility',
+		displayName: 'Channel visibility',
 		name: 'channelVisibility',
 		type: 'options',
 		default: 'public',
@@ -190,11 +190,11 @@ export const channelFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Public Channel',
+				name: 'Public channel',
 				value: 'public',
 			},
 			{
-				name: 'Private Channel',
+				name: 'Private channel',
 				value: 'private',
 			},
 		],
@@ -222,7 +222,7 @@ export const channelFields: INodeProperties[] = [
 		description: 'The Slack channel to invite to',
 	},
 	{
-		displayName: 'User Names or IDs',
+		displayName: 'User names or IDs',
 		name: 'userIds',
 		type: 'multiOptions',
 		typeOptions: {
@@ -263,7 +263,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -273,7 +273,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Num of Members',
+				displayName: 'Include num of members',
 				name: 'includeNumMembers',
 				type: 'boolean',
 				default: false,
@@ -301,7 +301,7 @@ export const channelFields: INodeProperties[] = [
 		description: 'The Slack channel to kick the user from',
 	},
 	{
-		displayName: 'User Name or ID',
+		displayName: 'User name or ID',
 		name: 'userId',
 		type: 'options',
 		description:
@@ -342,7 +342,7 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -376,7 +376,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -386,7 +386,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Exclude Archived',
+				displayName: 'Exclude archived',
 				name: 'excludeArchived',
 				type: 'boolean',
 				default: false,
@@ -398,11 +398,11 @@ export const channelFields: INodeProperties[] = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Public Channel',
+						name: 'Public channel',
 						value: 'public_channel',
 					},
 					{
-						name: 'Private Channel',
+						name: 'Private channel',
 						value: 'private_channel',
 					},
 					{
@@ -442,7 +442,7 @@ export const channelFields: INodeProperties[] = [
 		description: 'The Slack channel to get the history from',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -476,7 +476,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -550,7 +550,7 @@ export const channelFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -581,7 +581,7 @@ export const channelFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Resolve Data',
+		displayName: 'Resolve data',
 		name: 'resolveData',
 		type: 'boolean',
 		default: false,
@@ -602,7 +602,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -627,7 +627,7 @@ export const channelFields: INodeProperties[] = [
 				description: 'Whether you want the full IM channel definition in the response',
 			},
 			{
-				displayName: 'User Names or IDs',
+				displayName: 'User names or IDs',
 				name: 'users',
 				type: 'multiOptions',
 				typeOptions: {
@@ -694,7 +694,7 @@ export const channelFields: INodeProperties[] = [
 		description: 'The Slack channel to replies to',
 	},
 	{
-		displayName: 'Message Timestamp',
+		displayName: 'Message timestamp',
 		name: 'ts',
 		type: 'number',
 		default: undefined,
@@ -709,7 +709,7 @@ export const channelFields: INodeProperties[] = [
 		placeholder: '1663233118.856619',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -743,7 +743,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

@@ -1,6 +1,6 @@
 export const filters = (conditions: any) => [
 	{
-		displayName: 'Property Name or ID',
+		displayName: 'Property name or ID',
 		name: 'key',
 		type: 'options',
 		typeOptions: {
@@ -47,7 +47,7 @@ export const filters = (conditions: any) => [
 		default: '',
 	},
 	{
-		displayName: 'Phone Number',
+		displayName: 'Phone number',
 		name: 'phoneNumberValue',
 		type: 'string',
 		displayOptions: {
@@ -62,7 +62,7 @@ export const filters = (conditions: any) => [
 		description: 'Phone number. No structure is enforced.',
 	},
 	{
-		displayName: 'Option Name or ID',
+		displayName: 'Option name or ID',
 		name: 'multiSelectValue',
 		type: 'options',
 		description:
@@ -81,7 +81,7 @@ export const filters = (conditions: any) => [
 		default: [],
 	},
 	{
-		displayName: 'Option Name or ID',
+		displayName: 'Option name or ID',
 		name: 'selectValue',
 		type: 'options',
 		description:
@@ -100,7 +100,7 @@ export const filters = (conditions: any) => [
 		default: '',
 	},
 	{
-		displayName: 'Status Name or ID',
+		displayName: 'Status name or ID',
 		name: 'statusValue',
 		type: 'options',
 		typeOptions: {
@@ -144,7 +144,7 @@ export const filters = (conditions: any) => [
 		default: '',
 	},
 	{
-		displayName: 'User Name or ID',
+		displayName: 'User name or ID',
 		name: 'peopleValue',
 		type: 'options',
 		typeOptions: {
@@ -163,7 +163,7 @@ export const filters = (conditions: any) => [
 			'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'User Name or ID',
+		displayName: 'User name or ID',
 		name: 'createdByValue',
 		type: 'options',
 		typeOptions: {
@@ -182,7 +182,7 @@ export const filters = (conditions: any) => [
 			'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'User Name or ID',
+		displayName: 'User name or ID',
 		name: 'lastEditedByValue',
 		type: 'options',
 		typeOptions: {
@@ -267,7 +267,7 @@ export const filters = (conditions: any) => [
 		description: 'An ISO 8601 format date, with optional time',
 	},
 	{
-		displayName: 'Created Time',
+		displayName: 'Created time',
 		name: 'createdTimeValue',
 		displayOptions: {
 			show: {
@@ -291,7 +291,7 @@ export const filters = (conditions: any) => [
 		description: 'An ISO 8601 format date, with optional time',
 	},
 	{
-		displayName: 'Last Edited Time',
+		displayName: 'Last edited time',
 		name: 'lastEditedTime',
 		displayOptions: {
 			show: {

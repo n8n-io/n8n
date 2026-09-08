@@ -41,31 +41,31 @@ export class DateTimeV2 implements INodeType {
 					noDataExpression: true,
 					options: [
 						{
-							name: 'Add to a Date',
+							name: 'Add to a date',
 							value: 'addToDate',
 						},
 						{
-							name: 'Extract Part of a Date',
+							name: 'Extract part of a date',
 							value: 'extractDate',
 						},
 						{
-							name: 'Format a Date',
+							name: 'Format a date',
 							value: 'formatDate',
 						},
 						{
-							name: 'Get Current Date',
+							name: 'Get current date',
 							value: 'getCurrentDate',
 						},
 						{
-							name: 'Get Time Between Dates',
+							name: 'Get time between dates',
 							value: 'getTimeBetweenDates',
 						},
 						{
-							name: 'Round a Date',
+							name: 'Round a date',
 							value: 'roundDate',
 						},
 						{
-							name: 'Subtract From a Date',
+							name: 'Subtract from a date',
 							value: 'subtractFromDate',
 						},
 					],

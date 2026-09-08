@@ -42,11 +42,11 @@ export class AwsElb implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Listener Certificate',
+						name: 'Listener certificate',
 						value: 'listenerCertificate',
 					},
 					{
-						name: 'Load Balancer',
+						name: 'Load balancer',
 						value: 'loadBalancer',
 					},
 				],

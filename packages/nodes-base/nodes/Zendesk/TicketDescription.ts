@@ -31,7 +31,7 @@ export const ticketOperations: INodeProperties[] = [
 				action: 'Get a ticket',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many tickets',
 				action: 'Get many tickets',
@@ -72,7 +72,7 @@ export const ticketFields: INodeProperties[] = [
 		description: 'The first comment on the ticket',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -84,10 +84,10 @@ export const ticketFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -98,9 +98,9 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -108,7 +108,7 @@ export const ticketFields: INodeProperties[] = [
 				default: {},
 				options: [
 					{
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						name: 'customFieldsValues',
 						values: [
 							{
@@ -141,7 +141,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'An ID you can use to link Zendesk Support tickets to local records',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group',
 				type: 'options',
 				typeOptions: {
@@ -172,7 +172,7 @@ export const ticketFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'On-Hold',
+						name: 'On-hold',
 						value: 'hold',
 					},
 					{
@@ -199,7 +199,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The value of the subject field for this ticket',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -237,7 +237,7 @@ export const ticketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -272,7 +272,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -284,10 +284,10 @@ export const ticketFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -298,16 +298,16 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Email',
+				displayName: 'Assignee email',
 				name: 'assigneeEmail',
 				type: 'string',
 				default: '',
 				description: 'The e-mail address of the assignee',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -315,7 +315,7 @@ export const ticketFields: INodeProperties[] = [
 				default: {},
 				options: [
 					{
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						name: 'customFieldsValues',
 						values: [
 							{
@@ -348,7 +348,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'An ID you can use to link Zendesk Support tickets to local records',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group',
 				type: 'options',
 				typeOptions: {
@@ -359,14 +359,14 @@ export const ticketFields: INodeProperties[] = [
 					'The group this ticket is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Internal Note',
+				displayName: 'Internal note',
 				name: 'internalNote',
 				type: 'string',
 				default: '',
 				description: 'Internal Ticket Note (Accepts HTML)',
 			},
 			{
-				displayName: 'Public Reply',
+				displayName: 'Public reply',
 				name: 'publicReply',
 				type: 'string',
 				default: '',
@@ -393,7 +393,7 @@ export const ticketFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'On-Hold',
+						name: 'On-hold',
 						value: 'hold',
 					},
 					{
@@ -420,7 +420,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The value of the subject field for this ticket',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -458,7 +458,7 @@ export const ticketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -476,7 +476,7 @@ export const ticketFields: INodeProperties[] = [
 			'Object of values to update as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>',
 	},
 	{
-		displayName: 'Ticket Type',
+		displayName: 'Ticket type',
 		name: 'ticketType',
 		type: 'options',
 		options: [
@@ -516,7 +516,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Suspended Ticket ID',
+		displayName: 'Suspended ticket ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -534,7 +534,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                   ticket:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -578,7 +578,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group',
 				type: 'options',
 				typeOptions: {
@@ -607,12 +607,12 @@ export const ticketFields: INodeProperties[] = [
 					'<a href="https://developer.zendesk.com/api-reference/ticketing/ticket-management/search/#syntax-examples">Query syntax</a> to search tickets',
 			},
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortBy',
 				type: 'options',
 				options: [
 					{
-						name: 'Created At',
+						name: 'Created at',
 						value: 'created_at',
 					},
 					{
@@ -624,11 +624,11 @@ export const ticketFields: INodeProperties[] = [
 						value: 'status',
 					},
 					{
-						name: 'Ticket Type',
+						name: 'Ticket type',
 						value: 'ticket_type',
 					},
 					{
-						name: 'Updated At',
+						name: 'Updated at',
 						value: 'updated_at',
 					},
 				],
@@ -636,7 +636,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Defaults to sorting by relevance',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sortOrder',
 				type: 'options',
 				options: [
@@ -670,7 +670,7 @@ export const ticketFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'On-Hold',
+						name: 'On-hold',
 						value: 'hold',
 					},
 					{
@@ -710,7 +710,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Suspended Ticket ID',
+		displayName: 'Suspended ticket ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -728,7 +728,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                ticket:recover                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Suspended Ticket ID',
+		displayName: 'Suspended ticket ID',
 		name: 'id',
 		type: 'string',
 		default: '',

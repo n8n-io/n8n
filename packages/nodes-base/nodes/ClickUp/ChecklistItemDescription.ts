@@ -66,10 +66,10 @@ export const checklistItemFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -104,7 +104,7 @@ export const checklistItemFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Checklist Item ID',
+		displayName: 'Checklist item ID',
 		name: 'checklistItem',
 		type: 'string',
 		default: '',
@@ -134,7 +134,7 @@ export const checklistItemFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Checklist Item ID',
+		displayName: 'Checklist item ID',
 		name: 'checklistItem',
 		type: 'string',
 		default: '',
@@ -147,10 +147,10 @@ export const checklistItemFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -172,7 +172,7 @@ export const checklistItemFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Parent Checklist Item ID',
+				displayName: 'Parent checklist item ID',
 				name: 'parent',
 				type: 'string',
 				default: '',

@@ -32,7 +32,7 @@ export const opportunityOperations: INodeProperties[] = [
 				action: 'Get an opportunity',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many opportunities',
 				action: 'Get many opportunities',
@@ -66,11 +66,11 @@ export const opportunityDescription: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -91,13 +91,13 @@ export const opportunityDescription: INodeProperties[] = [
 			// 	default: '',
 			// },
 			{
-				displayName: 'Expected Revenue',
+				displayName: 'Expected revenue',
 				name: 'expected_revenue',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Internal Notes',
+				displayName: 'Internal notes',
 				name: 'description',
 				type: 'string',
 				default: '',
@@ -162,7 +162,7 @@ export const opportunityDescription: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -198,7 +198,7 @@ export const opportunityDescription: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['getAll', 'get'],
@@ -207,7 +207,7 @@ export const opportunityDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields to Include',
+				displayName: 'Fields to include',
 				name: 'fieldsList',
 				type: 'multiOptions',
 				description:
@@ -236,11 +236,11 @@ export const opportunityDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -261,13 +261,13 @@ export const opportunityDescription: INodeProperties[] = [
 			// 	default: '',
 			// },
 			{
-				displayName: 'Expected Revenue',
+				displayName: 'Expected revenue',
 				name: 'expected_revenue',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Internal Notes',
+				displayName: 'Internal notes',
 				name: 'description',
 				type: 'string',
 				default: '',

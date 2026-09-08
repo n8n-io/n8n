@@ -32,7 +32,7 @@ export const description: INodeProperties[] = [
 		hint: "If this doesn't work, try changing the 'Property Type' field above",
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select a property...',
@@ -87,18 +87,18 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Date Range',
+		displayName: 'Date range',
 		name: 'dateRange',
 		type: 'options',
 		required: true,
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
-				name: 'Last 7 Days',
+				name: 'Last 7 days',
 				value: 'last7days',
 			},
 			{
-				name: 'Last 30 Days',
+				name: 'Last 30 days',
 				value: 'last30days',
 			},
 			{
@@ -110,11 +110,11 @@ export const description: INodeProperties[] = [
 				value: 'yesterday',
 			},
 			{
-				name: 'Last Complete Calendar Week',
+				name: 'Last complete calendar week',
 				value: 'lastCalendarWeek',
 			},
 			{
-				name: 'Last Complete Calendar Month',
+				name: 'Last complete calendar month',
 				value: 'lastCalendarMonth',
 			},
 			{
@@ -169,7 +169,7 @@ export const description: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Metric',
+		placeholder: 'Add metric',
 		description:
 			'The quantitative measurements of a report. For example, the metric eventCount is the total number of events. Requests are allowed up to 10 metrics.',
 		options: [
@@ -226,7 +226,7 @@ export const description: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Dimension',
+		placeholder: 'Add dimension',
 		description:
 			'Dimensions are attributes of your data. For example, the dimension city indicates the city from which an event originates. Dimension values in report responses are strings; for example, the city could be "Paris" or "New York". Requests are allowed up to 9 dimensions.',
 		options: [
@@ -245,7 +245,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -279,7 +279,7 @@ export const description: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -294,10 +294,10 @@ export const description: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -308,7 +308,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Currency Code',
+				displayName: 'Currency code',
 				name: 'currencyCode',
 				type: 'string',
 				default: '',
@@ -317,7 +317,7 @@ export const description: INodeProperties[] = [
 			},
 			...dimensionFilterField,
 			{
-				displayName: 'Metric Aggregation',
+				displayName: 'Metric aggregation',
 				name: 'metricAggregations',
 				type: 'multiOptions',
 				default: [],
@@ -343,7 +343,7 @@ export const description: INodeProperties[] = [
 			},
 			...metricsFilterField,
 			{
-				displayName: 'Keep Empty Rows',
+				displayName: 'Keep empty rows',
 				name: 'keepEmptyRows',
 				type: 'boolean',
 				default: false,
@@ -351,18 +351,18 @@ export const description: INodeProperties[] = [
 					'Whether false or unspecified, each row with all metrics equal to 0 will not be returned. If true, these rows will be returned if they are not separately removed by a filter.',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderByUI',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Order',
+				placeholder: 'Add order',
 				description: 'Specifies how rows are ordered in the response',
 				options: [
 					{
-						displayName: 'Metric Order By',
+						displayName: 'Metric order by',
 						name: 'metricOrderBy',
 						values: [
 							{
@@ -373,7 +373,7 @@ export const description: INodeProperties[] = [
 								description: 'Whether true, sorts by descending order',
 							},
 							{
-								displayName: 'Metric Name or ID',
+								displayName: 'Metric name or ID',
 								name: 'metricName',
 								type: 'options',
 								typeOptions: {
@@ -387,7 +387,7 @@ export const description: INodeProperties[] = [
 						],
 					},
 					{
-						displayName: 'Dimmension Order By',
+						displayName: 'Dimmension order by',
 						name: 'dimmensionOrderBy',
 						values: [
 							{
@@ -398,7 +398,7 @@ export const description: INodeProperties[] = [
 								description: 'Whether true, sorts by descending order',
 							},
 							{
-								displayName: 'Dimmension Name or ID',
+								displayName: 'Dimmension name or ID',
 								name: 'dimensionName',
 								type: 'options',
 								typeOptions: {
@@ -410,7 +410,7 @@ export const description: INodeProperties[] = [
 									'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Order Type',
+								displayName: 'Order type',
 								name: 'orderType',
 								type: 'options',
 								default: 'ORDER_TYPE_UNSPECIFIED',
@@ -421,7 +421,7 @@ export const description: INodeProperties[] = [
 										description: 'Alphanumeric sort by Unicode code point',
 									},
 									{
-										name: 'Case Insensitive Alphanumeric',
+										name: 'Case insensitive alphanumeric',
 										value: 'CASE_INSENSITIVE_ALPHANUMERIC',
 										description:
 											'Case insensitive alphanumeric sort by lower case Unicode code point',
@@ -442,7 +442,7 @@ export const description: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Return Property Quota',
+				displayName: 'Return property quota',
 				name: 'returnPropertyQuota',
 				type: 'boolean',
 				default: false,

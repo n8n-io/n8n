@@ -56,7 +56,7 @@ export class AzureStorage implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'Shared Key',
+						name: 'Shared key',
 						value: 'sharedKey',
 					},
 				],

@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 		description: 'ID of the deal whose product to update',
 	},
 	{
-		displayName: 'Product Attachment ID',
+		displayName: 'Product attachment ID',
 		name: 'productAttachmentId',
 		type: 'number',
 		default: 0,
@@ -28,10 +28,10 @@ const properties: INodeProperties[] = [
 			'ID of the deal-product (the ID of the product attached to the deal, not the product ID itself)',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -53,7 +53,7 @@ const properties: INodeProperties[] = [
 					'The value of the discount. The discount type can be specified in discount_type.',
 			},
 			{
-				displayName: 'Discount Type',
+				displayName: 'Discount type',
 				name: 'discount_type',
 				type: 'options',
 				default: 'percentage',
@@ -70,7 +70,7 @@ const properties: INodeProperties[] = [
 				description: 'The type of the discount',
 			},
 			{
-				displayName: 'Item Price',
+				displayName: 'Item price',
 				name: 'item_price',
 				type: 'number',
 				typeOptions: {

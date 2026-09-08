@@ -31,7 +31,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Send and Wait for Response',
+				name: 'Send and wait for response',
 				value: SEND_AND_WAIT_OPERATION,
 				description: 'Send a message and wait for response',
 				action: 'Send message and wait for response',
@@ -48,7 +48,7 @@ export const messageOperations: INodeProperties[] = [
 ];
 
 export const spaceIdProperty: INodeProperties = {
-	displayName: 'Space Name or ID',
+	displayName: 'Space name or ID',
 	name: 'spaceId',
 	type: 'options',
 	required: true,
@@ -64,7 +64,7 @@ const messageResourceNameDescription =
 	'Resource name of the message. Format: spaces/{space}/messages/{message}. For system-assigned IDs, use the full message name, such as spaces/AAAAAAAAAAA/messages/BBBBBBBBBBB.BBBBBBBBBBB. For custom IDs, use spaces/AAAAAAAAAAA/messages/client-custom-name.';
 
 const messageResourceNameProperties: INodeProperties = {
-	displayName: 'Message Resource Name',
+	displayName: 'Message resource name',
 	name: 'messageId',
 	type: 'string',
 	required: true,
@@ -87,7 +87,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		displayOptions: {
@@ -104,7 +104,7 @@ export const messageFields: INodeProperties[] = [
 		name: 'messageUi',
 		type: 'collection',
 		required: true,
-		placeholder: 'Add Message',
+		placeholder: 'Add message',
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -202,10 +202,10 @@ export const messageFields: INodeProperties[] = [
 		description: 'Message input as JSON Object or JSON String',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -271,7 +271,7 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		displayOptions: {
@@ -284,7 +284,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'Whether to pass the update fields object as JSON',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFieldsUi',
 		type: 'collection',
 		required: true,
@@ -368,7 +368,7 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields (JSON)',
+		displayName: 'Update fields (JSON)',
 		name: 'updateFieldsJson',
 		type: 'json',
 		required: true,

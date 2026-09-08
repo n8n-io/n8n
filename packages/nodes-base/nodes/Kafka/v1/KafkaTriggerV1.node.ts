@@ -81,7 +81,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'ID of the consumer group',
 		},
 		{
-			displayName: 'Resolve Offset',
+			displayName: 'Resolve offset',
 			name: 'resolveOffset',
 			type: 'options',
 			default: 'onCompletion',
@@ -89,17 +89,17 @@ const versionDescription: INodeTypeDescription = {
 				'Select on which condition the offsets should be resolved. In the manual mode, when execution started by clicking on Execute Workflow or Execute Step button, offsets are always resolved immediately after message received.',
 			options: [
 				{
-					name: 'On Execution Completion',
+					name: 'On execution completion',
 					value: 'onCompletion',
 					description: 'Resolve offset after execution completion regardless of the status',
 				},
 				{
-					name: 'On Execution Success',
+					name: 'On execution success',
 					value: 'onSuccess',
 					description: 'Resolve offset only if execution status equals success',
 				},
 				{
-					name: 'On Allowed Execution Statuses',
+					name: 'On allowed execution statuses',
 					value: 'onStatus',
 					description: 'Resolve offset only if execution status in the list of selected statuses',
 				},
@@ -117,7 +117,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Allowed Statuses',
+			displayName: 'Allowed statuses',
 			name: 'allowedStatuses',
 			type: 'multiOptions',
 			default: ['success'],
@@ -163,14 +163,14 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Use Schema Registry',
+			displayName: 'Use schema registry',
 			name: 'useSchemaRegistry',
 			type: 'boolean',
 			default: false,
 			description: 'Whether to use Confluent Schema Registry',
 		},
 		{
-			displayName: 'Schema Registry URL',
+			displayName: 'Schema registry URL',
 			name: 'schemaRegistryUrl',
 			type: 'string',
 			displayOptions: {
@@ -191,14 +191,14 @@ const versionDescription: INodeTypeDescription = {
 			placeholder: 'Add option',
 			options: [
 				{
-					displayName: 'Allow Topic Creation',
+					displayName: 'Allow topic creation',
 					name: 'allowAutoTopicCreation',
 					type: 'boolean',
 					default: false,
 					description: 'Whether to allow sending message to a previously non-existing topic',
 				},
 				{
-					displayName: 'Auto Commit Threshold',
+					displayName: 'Auto commit threshold',
 					name: 'autoCommitThreshold',
 					type: 'number',
 					default: 0,
@@ -206,7 +206,7 @@ const versionDescription: INodeTypeDescription = {
 						'The consumer will commit offsets after resolving a given number of messages',
 				},
 				{
-					displayName: 'Auto Commit Interval',
+					displayName: 'Auto commit interval',
 					name: 'autoCommitInterval',
 					type: 'number',
 					default: 0,
@@ -215,7 +215,7 @@ const versionDescription: INodeTypeDescription = {
 					hint: 'Value in milliseconds',
 				},
 				{
-					displayName: 'Batch Size',
+					displayName: 'Batch size',
 					name: 'batchSize',
 					type: 'number',
 					default: 1,
@@ -223,7 +223,7 @@ const versionDescription: INodeTypeDescription = {
 						'Number of messages to process in each batch, when set to 1, message-by-message processing is enabled',
 				},
 				{
-					displayName: 'Each Batch Auto Resolve',
+					displayName: 'Each batch auto resolve',
 					name: 'eachBatchAutoResolve',
 					type: 'boolean',
 					default: false,
@@ -235,7 +235,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'Fetch Max Bytes',
+					displayName: 'Fetch max bytes',
 					name: 'fetchMaxBytes',
 					type: 'number',
 					default: 1048576,
@@ -243,7 +243,7 @@ const versionDescription: INodeTypeDescription = {
 						'Maximum amount of data the server should return for a fetch request. In bytes. Default is 1MB. Higher values allow fetching more messages at once.',
 				},
 				{
-					displayName: 'Fetch Min Bytes',
+					displayName: 'Fetch min bytes',
 					name: 'fetchMinBytes',
 					type: 'number',
 					default: 1,
@@ -251,7 +251,7 @@ const versionDescription: INodeTypeDescription = {
 						'Minimum amount of data the server should return for a fetch request. In bytes. Server will wait up to fetchMaxWaitTime for this amount to accumulate.',
 				},
 				{
-					displayName: 'Heartbeat Interval',
+					displayName: 'Heartbeat interval',
 					name: 'heartbeatInterval',
 					type: 'number',
 					default: 10000,
@@ -265,7 +265,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'Heartbeat Interval',
+					displayName: 'Heartbeat interval',
 					name: 'heartbeatInterval',
 					type: 'number',
 					default: 3000,
@@ -278,7 +278,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'Max Number of Requests',
+					displayName: 'Max number of requests',
 					name: 'maxInFlightRequests',
 					type: 'number',
 					default: 1,
@@ -286,21 +286,21 @@ const versionDescription: INodeTypeDescription = {
 						'The maximum number of unacknowledged requests the client will send on a single connection',
 				},
 				{
-					displayName: 'Read Messages From Beginning',
+					displayName: 'Read messages from beginning',
 					name: 'fromBeginning',
 					type: 'boolean',
 					default: true,
 					description: 'Whether to read message from beginning',
 				},
 				{
-					displayName: 'JSON Parse Message',
+					displayName: 'JSON parse message',
 					name: 'jsonParseMessage',
 					type: 'boolean',
 					default: false,
 					description: 'Whether to try to parse the message to an object',
 				},
 				{
-					displayName: 'Keep Message as Binary Data',
+					displayName: 'Keep message as binary data',
 					name: 'keepBinaryData',
 					type: 'boolean',
 					default: false,
@@ -313,7 +313,7 @@ const versionDescription: INodeTypeDescription = {
 						'Whether to keep message value as binary data for downstream processing (e.g., Avro deserialization)',
 				},
 				{
-					displayName: 'Parallel Processing',
+					displayName: 'Parallel processing',
 					name: 'parallelProcessing',
 					type: 'boolean',
 					default: true,
@@ -326,7 +326,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'Partitions Consumed Concurrently',
+					displayName: 'Partitions consumed concurrently',
 					name: 'partitionsConsumedConcurrently',
 					type: 'number',
 					default: 0,
@@ -335,7 +335,7 @@ const versionDescription: INodeTypeDescription = {
 					hint: 'Set to 0 to process all partitions sequentially',
 				},
 				{
-					displayName: 'Only Message',
+					displayName: 'Only message',
 					name: 'onlyMessage',
 					type: 'boolean',
 					displayOptions: {
@@ -347,21 +347,21 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Whether to return only the message property',
 				},
 				{
-					displayName: 'Return Headers',
+					displayName: 'Return headers',
 					name: 'returnHeaders',
 					type: 'boolean',
 					default: false,
 					description: 'Whether to return the headers received from Kafka',
 				},
 				{
-					displayName: 'Rebalance Timeout',
+					displayName: 'Rebalance timeout',
 					name: 'rebalanceTimeout',
 					type: 'number',
 					default: 600000,
 					description: 'The maximum time allowed for a consumer to join the group',
 				},
 				{
-					displayName: 'Retry Delay on Error',
+					displayName: 'Retry delay on error',
 					name: 'errorRetryDelay',
 					type: 'number',
 					default: 5000,
@@ -381,7 +381,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'Session Timeout',
+					displayName: 'Session timeout',
 					name: 'sessionTimeout',
 					type: 'number',
 					default: 30000,

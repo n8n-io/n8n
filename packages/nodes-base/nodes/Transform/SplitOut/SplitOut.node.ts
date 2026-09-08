@@ -38,7 +38,7 @@ export class SplitOut implements INodeType {
 		},
 		properties: [
 			{
-				displayName: 'Fields To Split Out',
+				displayName: 'Fields to split out',
 				name: 'fieldToSplitOut',
 				type: 'string',
 				default: '',
@@ -59,15 +59,15 @@ export class SplitOut implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'No Other Fields',
+						name: 'No other fields',
 						value: 'noOtherFields',
 					},
 					{
-						name: 'All Other Fields',
+						name: 'All other fields',
 						value: 'allOtherFields',
 					},
 					{
-						name: 'Selected Other Fields',
+						name: 'Selected other fields',
 						value: 'selectedOtherFields',
 					},
 				],
@@ -75,7 +75,7 @@ export class SplitOut implements INodeType {
 				description: 'Whether to copy any other fields into the new items',
 			},
 			{
-				displayName: 'Fields To Include',
+				displayName: 'Fields to include',
 				name: 'fieldsToInclude',
 				type: 'string',
 				placeholder: 'e.g. email, name',
@@ -92,11 +92,11 @@ export class SplitOut implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{
-						displayName: 'Disable Dot Notation',
+						displayName: 'Disable dot notation',
 						name: 'disableDotNotation',
 						type: 'boolean',
 						default: false,
@@ -104,7 +104,7 @@ export class SplitOut implements INodeType {
 							'Whether to disallow referencing child fields using `parent.child` in the field name',
 					},
 					{
-						displayName: 'Destination Field Name',
+						displayName: 'Destination field name',
 						name: 'destinationFieldName',
 						type: 'string',
 						requiresDataPath: 'multiple',
@@ -112,7 +112,7 @@ export class SplitOut implements INodeType {
 						description: 'The field in the output under which to put the split field contents',
 					},
 					{
-						displayName: 'Include Binary',
+						displayName: 'Include binary',
 						name: 'includeBinary',
 						type: 'boolean',
 						default: false,

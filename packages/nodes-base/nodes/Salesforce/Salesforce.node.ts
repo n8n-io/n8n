@@ -193,7 +193,7 @@ export class Salesforce implements INodeType {
 						description: 'Represents a contact, which is an individual associated with an account',
 					},
 					{
-						name: 'Custom Object',
+						name: 'Custom object',
 						value: 'customObject',
 						description: 'Represents a custom object',
 					},

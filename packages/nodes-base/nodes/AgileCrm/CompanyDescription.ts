@@ -31,7 +31,7 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Get a company',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many companies',
 				action: 'Get many companies',
@@ -70,7 +70,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                  company:get all                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -110,7 +110,7 @@ export const companyFields: INodeProperties[] = [
 				value: 'none',
 			},
 			{
-				name: 'Build Manually',
+				name: 'Build manually',
 				value: 'manual',
 			},
 			{
@@ -127,16 +127,16 @@ export const companyFields: INodeProperties[] = [
 		default: 'none',
 	},
 	{
-		displayName: 'Must Match',
+		displayName: 'Must match',
 		name: 'matchType',
 		type: 'options',
 		options: [
 			{
-				name: 'Any Filter',
+				name: 'Any filter',
 				value: 'anyFilter',
 			},
 			{
-				name: 'All Filters',
+				name: 'All filters',
 				value: 'allFilters',
 			},
 		],
@@ -178,7 +178,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Condition',
+		placeholder: 'Add condition',
 		options: [
 			{
 				displayName: 'Conditions',
@@ -192,7 +192,7 @@ export const companyFields: INodeProperties[] = [
 						description: 'Any searchable field',
 					},
 					{
-						displayName: 'Condition Type',
+						displayName: 'Condition type',
 						name: 'condition_type',
 						type: 'options',
 						options: [
@@ -217,7 +217,7 @@ export const companyFields: INodeProperties[] = [
 								value: 'LAST',
 							},
 							{
-								name: 'Not Equal',
+								name: 'Not equal',
 								value: 'NOTEQUALS',
 							},
 							{
@@ -292,7 +292,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Sort',
 				name: 'sort',
 				type: 'fixedCollection',
-				placeholder: 'Add Sort',
+				placeholder: 'Add sort',
 				default: [],
 				options: [
 					{
@@ -334,7 +334,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                company:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -346,7 +346,7 @@ export const companyFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -364,10 +364,10 @@ export const companyFields: INodeProperties[] = [
 			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -388,7 +388,7 @@ export const companyFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Address Properties',
+						displayName: 'Address properties',
 						name: 'addressProperties',
 						values: [
 							{
@@ -444,7 +444,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'Company phone',
 			},
 			{
-				displayName: 'Star Value',
+				displayName: 'Star value',
 				name: 'starValue',
 				type: 'options',
 				default: '',
@@ -499,7 +499,7 @@ export const companyFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Website Properties.',
+						displayName: 'Website properties.',
 						name: 'websiteProperties',
 						values: [
 							{
@@ -569,7 +569,7 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Custom Properties',
+				displayName: 'Custom properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
 				default: {},
@@ -590,7 +590,7 @@ export const companyFields: INodeProperties[] = [
 								description: 'Property name',
 							},
 							{
-								displayName: 'Sub Type',
+								displayName: 'Sub type',
 								name: 'subtype',
 								type: 'string',
 								default: '',
@@ -646,7 +646,7 @@ export const companyFields: INodeProperties[] = [
 		description: 'Unique identifier for a particular company',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -658,7 +658,7 @@ export const companyFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -676,10 +676,10 @@ export const companyFields: INodeProperties[] = [
 			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -700,7 +700,7 @@ export const companyFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Address Properties',
+						displayName: 'Address properties',
 						name: 'addressProperties',
 						values: [
 							{
@@ -742,7 +742,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'Company email',
 			},
 			{
-				displayName: 'Star Value',
+				displayName: 'Star value',
 				name: 'starValue',
 				type: 'options',
 				default: '',
@@ -811,7 +811,7 @@ export const companyFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Website Properties.',
+						displayName: 'Website properties.',
 						name: 'websiteProperties',
 						values: [
 							{
@@ -881,7 +881,7 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Custom Properties',
+				displayName: 'Custom properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
 				default: {},
@@ -902,7 +902,7 @@ export const companyFields: INodeProperties[] = [
 								description: 'Property name',
 							},
 							{
-								displayName: 'Sub Type',
+								displayName: 'Sub type',
 								name: 'subtype',
 								type: 'string',
 								default: '',

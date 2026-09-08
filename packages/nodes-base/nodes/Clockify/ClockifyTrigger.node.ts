@@ -38,7 +38,7 @@ export class ClockifyTrigger implements INodeType {
 		polling: true,
 		properties: [
 			{
-				displayName: 'Workspace Name or ID',
+				displayName: 'Workspace name or ID',
 				name: 'workspaceId',
 				type: 'options',
 				description:
@@ -56,7 +56,7 @@ export class ClockifyTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'New Time Entry',
+						name: 'New time entry',
 						value: EntryTypes.NEW_TIME_ENTRY,
 					},
 				],

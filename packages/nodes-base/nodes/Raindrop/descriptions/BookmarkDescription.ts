@@ -24,7 +24,7 @@ export const bookmarkOperations: INodeProperties[] = [
 				action: 'Get a bookmark',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many bookmarks',
 			},
@@ -47,7 +47,7 @@ export const bookmarkFields: INodeProperties[] = [
 	//       bookmark: create
 	// ----------------------------------
 	{
-		displayName: 'Collection Name or ID',
+		displayName: 'Collection name or ID',
 		name: 'collectionId',
 		type: 'options',
 		description:
@@ -78,10 +78,10 @@ export const bookmarkFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -106,7 +106,7 @@ export const bookmarkFields: INodeProperties[] = [
 					'Sort order for the bookmark. For example, to move it to first place, enter 0.',
 			},
 			{
-				displayName: 'Parse Metadata',
+				displayName: 'Parse metadata',
 				name: 'pleaseParse',
 				type: 'boolean',
 				default: false,
@@ -169,7 +169,7 @@ export const bookmarkFields: INodeProperties[] = [
 	//       bookmark: getAll
 	// ----------------------------------
 	{
-		displayName: 'Collection Name or ID',
+		displayName: 'Collection name or ID',
 		name: 'collectionId',
 		type: 'options',
 		typeOptions: {
@@ -187,7 +187,7 @@ export const bookmarkFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -236,10 +236,10 @@ export const bookmarkFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -249,7 +249,7 @@ export const bookmarkFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Collection Name or ID',
+				displayName: 'Collection name or ID',
 				name: 'collectionId',
 				type: 'options',
 				description:
@@ -275,7 +275,7 @@ export const bookmarkFields: INodeProperties[] = [
 					'For example if you want to move bookmark to the first place set this field to 0',
 			},
 			{
-				displayName: 'Parse Metadata',
+				displayName: 'Parse metadata',
 				name: 'pleaseParse',
 				type: 'boolean',
 				default: false,

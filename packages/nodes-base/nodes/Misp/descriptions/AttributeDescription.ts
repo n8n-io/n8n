@@ -40,7 +40,7 @@ export const attributeOperations: INodeProperties[] = [
 				action: 'Get an attribute',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many attributes',
 			},
@@ -118,10 +118,10 @@ export const attributeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -138,33 +138,33 @@ export const attributeFields: INodeProperties[] = [
 				description: 'Who will be able to see this event once published',
 				options: [
 					{
-						name: 'All Communities',
+						name: 'All communities',
 						value: 3,
 					},
 					{
-						name: 'Connected Communities',
+						name: 'Connected communities',
 						value: 2,
 					},
 					{
-						name: 'Inherit Event',
+						name: 'Inherit event',
 						value: 5,
 					},
 					{
-						name: 'Sharing Group',
+						name: 'Sharing group',
 						value: 4,
 					},
 					{
-						name: 'This Community Only',
+						name: 'This community only',
 						value: 1,
 					},
 					{
-						name: 'Your Organization Only',
+						name: 'Your organization only',
 						value: 0,
 					},
 				],
 			},
 			{
-				displayName: 'Sharing Group Name or ID',
+				displayName: 'Sharing group name or ID',
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',
@@ -213,7 +213,7 @@ export const attributeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -266,10 +266,10 @@ export const attributeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -286,33 +286,33 @@ export const attributeFields: INodeProperties[] = [
 				description: 'Who will be able to see this event once published',
 				options: [
 					{
-						name: 'All Communities',
+						name: 'All communities',
 						value: 3,
 					},
 					{
-						name: 'Connected Communities',
+						name: 'Connected communities',
 						value: 2,
 					},
 					{
-						name: 'Inherit Event',
+						name: 'Inherit event',
 						value: 5,
 					},
 					{
-						name: 'Sharing Group',
+						name: 'Sharing group',
 						value: 4,
 					},
 					{
-						name: 'This Community Only',
+						name: 'This community only',
 						value: 1,
 					},
 					{
-						name: 'Your Organization Only',
+						name: 'Your organization only',
 						value: 0,
 					},
 				],
 			},
 			{
-				displayName: 'Sharing Group Name or ID',
+				displayName: 'Sharing group name or ID',
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',

@@ -19,7 +19,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Create a contact',
 			},
 			{
-				name: 'Custom Attributes',
+				name: 'Custom attributes',
 				value: 'getCustomAttributes',
 				description: 'Get custom attributes',
 				action: 'Get custom attributes for a contact',
@@ -67,10 +67,10 @@ export const contactFields: INodeProperties[] = [
 		description: 'The email of the contact',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -113,10 +113,10 @@ export const contactFields: INodeProperties[] = [
 		description: 'Unique identifier for the contact',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

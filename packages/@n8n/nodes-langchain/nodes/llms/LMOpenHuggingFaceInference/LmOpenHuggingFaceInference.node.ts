@@ -62,20 +62,20 @@ export class LmOpenHuggingFaceInference implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Custom Inference Endpoint',
+						displayName: 'Custom inference endpoint',
 						name: 'endpointUrl',
 						default: '',
 						description: 'Custom endpoint URL',
 						type: 'string',
 					},
 					{
-						displayName: 'Frequency Penalty',
+						displayName: 'Frequency penalty',
 						name: 'frequencyPenalty',
 						default: 0,
 						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -84,7 +84,7 @@ export class LmOpenHuggingFaceInference implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Maximum Number of Tokens',
+						displayName: 'Maximum number of tokens',
 						name: 'maxTokens',
 						default: 128,
 						description:
@@ -95,7 +95,7 @@ export class LmOpenHuggingFaceInference implements INodeType {
 						},
 					},
 					{
-						displayName: 'Presence Penalty',
+						displayName: 'Presence penalty',
 						name: 'presencePenalty',
 						default: 0,
 						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -104,7 +104,7 @@ export class LmOpenHuggingFaceInference implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Sampling Temperature',
+						displayName: 'Sampling temperature',
 						name: 'temperature',
 						default: 1,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },

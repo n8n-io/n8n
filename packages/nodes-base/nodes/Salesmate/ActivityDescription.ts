@@ -31,7 +31,7 @@ export const activityOperations: INodeProperties[] = [
 				action: 'Get an activity',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many companies',
 				action: 'Get many activities',
@@ -65,7 +65,7 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Owner Name or ID',
+		displayName: 'Owner name or ID',
 		name: 'owner',
 		type: 'options',
 		description:
@@ -97,7 +97,7 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -110,10 +110,10 @@ export const activityFields: INodeProperties[] = [
 		description: 'Whether the data should include the fields details',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -137,7 +137,7 @@ export const activityFields: INodeProperties[] = [
 				description: 'This field contains tags associated with an activity',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
@@ -151,14 +151,14 @@ export const activityFields: INodeProperties[] = [
 				description: 'Time duration of an activity',
 			},
 			{
-				displayName: 'Is Calendar Invite',
+				displayName: 'Is calendar invite',
 				name: 'isCalendarInvite',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to send calendar invite',
 			},
 			{
-				displayName: 'Is Completed',
+				displayName: 'Is completed',
 				name: 'isCompleted',
 				type: 'boolean',
 				default: false,
@@ -183,7 +183,7 @@ export const activityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -196,10 +196,10 @@ export const activityFields: INodeProperties[] = [
 		description: 'Whether the data should include the fields details',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -241,7 +241,7 @@ export const activityFields: INodeProperties[] = [
 				description: 'This field contains tags associated with an activity',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
@@ -255,14 +255,14 @@ export const activityFields: INodeProperties[] = [
 				description: 'Time duration of an activity',
 			},
 			{
-				displayName: 'Is Calendar Invite',
+				displayName: 'Is calendar invite',
 				name: 'isCalendarInvite',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to send calendar invite',
 			},
 			{
-				displayName: 'Is Completed',
+				displayName: 'Is completed',
 				name: 'isCompleted',
 				type: 'boolean',
 				default: false,
@@ -287,7 +287,7 @@ export const activityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -303,7 +303,7 @@ export const activityFields: INodeProperties[] = [
 	/*                                 activity:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -334,7 +334,7 @@ export const activityFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -366,14 +366,14 @@ export const activityFields: INodeProperties[] = [
 				description: 'Comma-separated list of fields to return',
 			},
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
 				description: 'The field to sort by',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sortOrder',
 				type: 'options',
 				options: [
@@ -446,7 +446,7 @@ export const activityFields: INodeProperties[] = [
 					{
 						displayName: 'Conditions',
 						name: 'conditions',
-						placeholder: 'Add Condition',
+						placeholder: 'Add condition',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -484,7 +484,7 @@ export const activityFields: INodeProperties[] = [
 												value: 'EQUALS',
 											},
 											{
-												name: 'Not Equals',
+												name: 'Not equals',
 												value: 'NOT_EQUALS',
 											},
 											{
@@ -492,7 +492,7 @@ export const activityFields: INodeProperties[] = [
 												value: 'Contains',
 											},
 											{
-												name: 'Does Not Contains',
+												name: 'Does not contains',
 												value: 'DOES_NOT_CONTAINS',
 											},
 											{
@@ -500,15 +500,15 @@ export const activityFields: INodeProperties[] = [
 												value: 'EMPTY',
 											},
 											{
-												name: 'Not Empty',
+												name: 'Not empty',
 												value: 'NOT_EMPTY',
 											},
 											{
-												name: 'Starts With',
+												name: 'Starts with',
 												value: 'STARTS_WITH',
 											},
 											{
-												name: 'Ends With',
+												name: 'Ends with',
 												value: 'ENDS_WITH',
 											},
 										],

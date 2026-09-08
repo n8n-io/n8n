@@ -45,7 +45,7 @@ export class Mindee implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'API Version',
+				displayName: 'API version',
 				name: 'apiVersion',
 				type: 'options',
 				isNodeSetting: true,
@@ -72,7 +72,7 @@ export class Mindee implements INodeType {
 				description: 'Which Mindee API Version to use',
 			},
 			{
-				displayName: 'API Version',
+				displayName: 'API version',
 				name: 'apiVersion',
 				type: 'options',
 				isNodeSetting: true,
@@ -99,7 +99,7 @@ export class Mindee implements INodeType {
 				description: 'Which Mindee API Version to use',
 			},
 			{
-				displayName: 'API Version',
+				displayName: 'API version',
 				name: 'apiVersion',
 				type: 'options',
 				isNodeSetting: true,
@@ -156,7 +156,7 @@ export class Mindee implements INodeType {
 				default: 'predict',
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -170,7 +170,7 @@ export class Mindee implements INodeType {
 				hint: 'The name of the input binary field containing the file to be uploaded',
 			},
 			{
-				displayName: 'RAW Data',
+				displayName: 'RAW data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,

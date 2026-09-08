@@ -229,7 +229,7 @@ export const driveRLC: INodeProperties = {
 };
 
 export const sharedDriveRLC: INodeProperties = {
-	displayName: 'Shared Drive',
+	displayName: 'Shared drive',
 	name: 'driveId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
@@ -293,7 +293,7 @@ export const shareOptions: INodeProperties = {
 	default: {},
 	options: [
 		{
-			displayName: 'Email Message',
+			displayName: 'Email message',
 			name: 'emailMessage',
 			type: 'string',
 			default: '',
@@ -303,7 +303,7 @@ export const shareOptions: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Move To New Owners Root',
+			displayName: 'Move to new owners root',
 			name: 'moveToNewOwnersRoot',
 			type: 'boolean',
 			default: false,
@@ -312,14 +312,14 @@ export const shareOptions: INodeProperties = {
 				"<p>This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.</p><p>When set to true, the item is moved to the new owner's My Drive root folder and all prior parents removed.</p>",
 		},
 		{
-			displayName: 'Send Notification Email',
+			displayName: 'Send notification email',
 			name: 'sendNotificationEmail',
 			type: 'boolean',
 			default: false,
 			description: 'Whether to send a notification email when sharing to users or groups',
 		},
 		{
-			displayName: 'Transfer Ownership',
+			displayName: 'Transfer ownership',
 			name: 'transferOwnership',
 			type: 'boolean',
 			default: false,
@@ -327,7 +327,7 @@ export const shareOptions: INodeProperties = {
 				'Whether to transfer ownership to the specified user and downgrade the current owner to a writer',
 		},
 		{
-			displayName: 'Use Domain Admin Access',
+			displayName: 'Use domain admin access',
 			name: 'useDomainAdminAccess',
 			type: 'boolean',
 			default: false,
@@ -340,7 +340,7 @@ export const shareOptions: INodeProperties = {
 export const permissionsOptions: INodeProperties = {
 	displayName: 'Permissions',
 	name: 'permissionsUi',
-	placeholder: 'Add Permission',
+	placeholder: 'Add permission',
 	type: 'fixedCollection',
 	default: {},
 	typeOptions: {
@@ -362,7 +362,7 @@ export const permissionsOptions: INodeProperties = {
 							value: 'commenter',
 						},
 						{
-							name: 'File Organizer',
+							name: 'File organizer',
 							value: 'fileOrganizer',
 						},
 						{
@@ -411,7 +411,7 @@ export const permissionsOptions: INodeProperties = {
 						'The scope of the permission. A permission with type=user applies to a specific user whereas a permission with type=domain applies to everyone in a specific domain.',
 				},
 				{
-					displayName: 'Email Address',
+					displayName: 'Email address',
 					name: 'emailAddress',
 					type: 'string',
 					displayOptions: {
@@ -437,7 +437,7 @@ export const permissionsOptions: INodeProperties = {
 					description: 'The domain to which this permission refers',
 				},
 				{
-					displayName: 'Allow File Discovery',
+					displayName: 'Allow file discovery',
 					name: 'allowFileDiscovery',
 					type: 'boolean',
 					displayOptions: {
@@ -455,9 +455,9 @@ export const permissionsOptions: INodeProperties = {
 
 export const updateCommonOptions: INodeProperties[] = [
 	{
-		displayName: 'APP Properties',
+		displayName: 'APP properties',
 		name: 'appPropertiesUi',
-		placeholder: 'Add Property',
+		placeholder: 'Add property',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -468,7 +468,7 @@ export const updateCommonOptions: INodeProperties[] = [
 		options: [
 			{
 				name: 'appPropertyValues',
-				displayName: 'APP Property',
+				displayName: 'APP property',
 				values: [
 					{
 						displayName: 'Key',
@@ -491,7 +491,7 @@ export const updateCommonOptions: INodeProperties[] = [
 	{
 		displayName: 'Properties',
 		name: 'propertiesUi',
-		placeholder: 'Add Property',
+		placeholder: 'Add property',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -522,7 +522,7 @@ export const updateCommonOptions: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Keep Revision Forever',
+		displayName: 'Keep revision forever',
 		name: 'keepRevisionForever',
 		type: 'boolean',
 		default: false,
@@ -530,7 +530,7 @@ export const updateCommonOptions: INodeProperties[] = [
 			"Whether to set the 'keepForever' field in the new head revision. This is only applicable to files with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.",
 	},
 	{
-		displayName: 'OCR Language',
+		displayName: 'OCR language',
 		name: 'ocrLanguage',
 		type: 'string',
 		default: '',
@@ -538,7 +538,7 @@ export const updateCommonOptions: INodeProperties[] = [
 		description: 'A language hint for OCR processing during image import (ISO 639-1 code)',
 	},
 	{
-		displayName: 'Use Content As Indexable Text',
+		displayName: 'Use content as indexable text',
 		name: 'useContentAsIndexableText',
 		type: 'boolean',
 		default: false,

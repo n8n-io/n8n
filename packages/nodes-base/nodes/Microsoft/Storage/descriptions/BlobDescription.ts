@@ -177,7 +177,7 @@ export const blobOperations: INodeProperties[] = [
 				action: 'Get blob',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of blobs',
 				routing: {
@@ -249,7 +249,7 @@ const createFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -258,7 +258,7 @@ const createFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'id',
 				placeholder: 'e.g. mycontainer',
 				type: 'string',
@@ -268,7 +268,7 @@ const createFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Blob Name',
+		displayName: 'Blob name',
 		name: 'blobCreate',
 		default: '',
 		description: 'The name of the new or existing blob',
@@ -307,7 +307,7 @@ const createFields: INodeProperties[] = [
 		type: 'options',
 	},
 	{
-		displayName: 'Binary Contents',
+		displayName: 'Binary contents',
 		name: 'binaryPropertyName',
 		default: 'data',
 		description: 'The name of the input binary field containing the file to be written',
@@ -402,7 +402,7 @@ const createFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Access Tier',
+				displayName: 'Access tier',
 				name: 'accessTier',
 				description:
 					'The tier to be set on the blob. For detailed information about block blob tiering, see <a href="https://learn.microsoft.com/en-us/azure/storage/blobs/access-tiers-overview">Hot, cool, and archive storage tiers</a>.',
@@ -436,7 +436,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'options',
 			},
 			{
-				displayName: 'Blob Type',
+				displayName: 'Blob type',
 				name: 'blobType',
 				description: 'Specifies the type of blob to create: block, page, or append blob',
 				default: 'BlockBlob',
@@ -455,22 +455,22 @@ const createFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Block Blob',
+						name: 'Block blob',
 						value: 'BlockBlob',
 					},
 					{
-						name: 'Page Blob',
+						name: 'Page blob',
 						value: 'PageBlob',
 					},
 					{
-						name: 'Append Blob',
+						name: 'Append blob',
 						value: 'AppendBlob',
 					},
 				],
 				validateType: 'string',
 			},
 			{
-				displayName: 'Cache Control',
+				displayName: 'Cache control',
 				name: 'cacheControl',
 				description: "Sets the blob's cache control value",
 				default: '',
@@ -500,7 +500,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Content Encoding',
+				displayName: 'Content encoding',
 				name: 'contentEncoding',
 				description: "Sets the blob's content encoding",
 				default: '',
@@ -515,7 +515,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Content Language',
+				displayName: 'Content language',
 				name: 'contentLanguage',
 				description: "Sets the blob's content language",
 				default: '',
@@ -545,7 +545,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Content Type',
+				displayName: 'Content type',
 				name: 'contentType',
 				description: "Sets the blob's content type",
 				default: '',
@@ -560,7 +560,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Encryption Context',
+				displayName: 'Encryption context',
 				name: 'encryptionContext',
 				description:
 					'If the value is set it will set blob system metadata. Max length-1024. Valid only when Hierarchical Namespace is enabled for the account.',
@@ -581,7 +581,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Encryption Scope',
+				displayName: 'Encryption scope',
 				name: 'encryptionScope',
 				description: 'Indicates the encryption scope for encrypting the request contents',
 				default: '',
@@ -596,7 +596,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Expiry Option',
+				displayName: 'Expiry option',
 				name: 'expiryOption',
 				description:
 					'Specifies the expiration date option for the request. This header is valid for accounts with hierarchical namespace enabled.',
@@ -608,7 +608,7 @@ const createFields: INodeProperties[] = [
 						description: 'Expiry Time must be specified',
 					},
 					{
-						name: 'Never Expire',
+						name: 'Never expire',
 						value: 'NeverExpire',
 						description: 'Sets the blob to never expire or removes the current expiration date',
 					},
@@ -624,7 +624,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'options',
 			},
 			{
-				displayName: 'Expiry Time',
+				displayName: 'Expiry time',
 				name: 'expiryTime',
 				description: 'Specifies the time when the blob is set to expire as an absolute time',
 				default: '',
@@ -660,7 +660,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Immutability Policy Date',
+				displayName: 'Immutability policy date',
 				name: 'immutabilityPolicyUntilDate',
 				description:
 					'Specifies the retention-until date to be set on the blob. This is the date until which the blob can be protected from being modified or deleted.',
@@ -682,7 +682,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'dateTime',
 			},
 			{
-				displayName: 'Immutability Policy Mode',
+				displayName: 'Immutability policy mode',
 				name: 'immutabilityPolicyMode',
 				description: 'Specifies the immutability policy mode to be set on the blob',
 				default: 'unlocked',
@@ -730,7 +730,7 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Legal Hold',
+				displayName: 'Legal hold',
 				name: 'legalHold',
 				description: 'Whether to set a legal hold on the blob',
 				default: false,
@@ -760,7 +760,7 @@ const createFields: INodeProperties[] = [
 						displayName: 'Metadata',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field name',
 								name: 'fieldName',
 								default: '',
 								description:
@@ -768,7 +768,7 @@ const createFields: INodeProperties[] = [
 								type: 'string',
 							},
 							{
-								displayName: 'Field Value',
+								displayName: 'Field value',
 								name: 'fieldValue',
 								default: '',
 								type: 'string',
@@ -828,13 +828,13 @@ const createFields: INodeProperties[] = [
 						displayName: 'Tag',
 						values: [
 							{
-								displayName: 'Tag Name',
+								displayName: 'Tag name',
 								name: 'tagName',
 								default: '',
 								type: 'string',
 							},
 							{
-								displayName: 'Tag Value',
+								displayName: 'Tag value',
 								name: 'tagValue',
 								default: '',
 								type: 'string',
@@ -893,7 +893,7 @@ const deleteFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -902,7 +902,7 @@ const deleteFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'id',
 				placeholder: 'e.g. mycontainer',
 				type: 'string',
@@ -927,7 +927,7 @@ const deleteFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -936,7 +936,7 @@ const deleteFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'id',
 				placeholder: 'e.g. myblob',
 				type: 'string',
@@ -994,7 +994,7 @@ const getFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -1003,7 +1003,7 @@ const getFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'id',
 				placeholder: 'e.g. mycontainer',
 				type: 'string',
@@ -1028,7 +1028,7 @@ const getFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -1037,7 +1037,7 @@ const getFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'id',
 				placeholder: 'e.g. myblob',
 				type: 'string',
@@ -1136,7 +1136,7 @@ const getAllFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -1145,7 +1145,7 @@ const getAllFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'id',
 				placeholder: 'e.g. mycontainer',
 				type: 'string',
@@ -1155,7 +1155,7 @@ const getAllFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
@@ -1258,19 +1258,19 @@ const getAllFields: INodeProperties[] = [
 						description: 'Specifies that soft-deleted blobs should be included in the response',
 					},
 					{
-						name: 'Deleted with Versions',
+						name: 'Deleted with versions',
 						value: 'deletedwithversions',
 						description:
 							'Specifies that deleted blobs with any versions (active or deleted) should be included in the response. Items permanently deleted appear until processed by garbage collection.',
 					},
 					{
-						name: 'Immutability Policy',
+						name: 'Immutability policy',
 						value: 'immutabilitypolicy',
 						description:
 							'Specifies that the enumeration should include the immutability policy until date, and the immutability policy mode of the blobs',
 					},
 					{
-						name: 'Legal Hold',
+						name: 'Legal hold',
 						value: 'legalhold',
 						description: 'Specifies that the enumeration should include the legal hold of blobs',
 					},
@@ -1298,7 +1298,7 @@ const getAllFields: INodeProperties[] = [
 							'Specifies that user-defined, blob index tags should be included in the response',
 					},
 					{
-						name: 'Uncommitted Blobs',
+						name: 'Uncommitted blobs',
 						value: 'uncommittedblobs',
 						description:
 							"Specifies that blobs for which blocks have been uploaded, but which haven't been committed",

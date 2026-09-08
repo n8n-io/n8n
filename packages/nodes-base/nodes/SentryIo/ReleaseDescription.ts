@@ -31,7 +31,7 @@ export const releaseOperations: INodeProperties[] = [
 				action: 'Get a release by version ID',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many releases',
 				action: 'Get many releases',
@@ -52,7 +52,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -70,7 +70,7 @@ export const releaseFields: INodeProperties[] = [
 			'The slug of the organization the releases belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -101,10 +101,10 @@ export const releaseFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -127,7 +127,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:get/delete                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -163,7 +163,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -211,7 +211,7 @@ export const releaseFields: INodeProperties[] = [
 			'A URL that points to the release. This can be the path to an online interface to the sourcecode for instance.',
 	},
 	{
-		displayName: 'Project Names or IDs',
+		displayName: 'Project names or IDs',
 		name: 'projects',
 		type: 'multiOptions',
 		typeOptions: {
@@ -229,10 +229,10 @@ export const releaseFields: INodeProperties[] = [
 			'A list of project slugs that are involved in this release. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -242,7 +242,7 @@ export const releaseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Date Released',
+				displayName: 'Date released',
 				name: 'dateReleased',
 				type: 'dateTime',
 				default: '',
@@ -261,7 +261,7 @@ export const releaseFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'commitProperties',
-						displayName: 'Commit Properties',
+						displayName: 'Commit properties',
 						values: [
 							{
 								displayName: 'ID',
@@ -272,14 +272,14 @@ export const releaseFields: INodeProperties[] = [
 								required: true,
 							},
 							{
-								displayName: 'Author Email',
+								displayName: 'Author email',
 								name: 'authorEmail',
 								type: 'string',
 								default: '',
 								description: 'Authors email',
 							},
 							{
-								displayName: 'Author Name',
+								displayName: 'Author name',
 								name: 'authorName',
 								type: 'string',
 								default: '',
@@ -293,7 +293,7 @@ export const releaseFields: INodeProperties[] = [
 								description: 'Message of commit',
 							},
 							{
-								displayName: 'Patch Set',
+								displayName: 'Patch set',
 								name: 'patchSet',
 								description:
 									'A list of the files that have been changed in the commit. Specifying the patch_set is necessary to power suspect commits and suggested assignees.',
@@ -305,7 +305,7 @@ export const releaseFields: INodeProperties[] = [
 								options: [
 									{
 										name: 'patchSetProperties',
-										displayName: 'Patch Set Properties',
+										displayName: 'Patch set properties',
 										values: [
 											{
 												displayName: 'Path',
@@ -372,7 +372,7 @@ export const releaseFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'refProperties',
-						displayName: 'Ref Properties',
+						displayName: 'Ref properties',
 						values: [
 							{
 								displayName: 'Commit',
@@ -391,7 +391,7 @@ export const releaseFields: INodeProperties[] = [
 								required: true,
 							},
 							{
-								displayName: 'Previous Commit',
+								displayName: 'Previous commit',
 								name: 'previousCommit',
 								type: 'string',
 								default: '',
@@ -408,7 +408,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -441,10 +441,10 @@ export const releaseFields: INodeProperties[] = [
 			'A version identifier for this release. Can be a version number, a commit hash etc.',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -465,7 +465,7 @@ export const releaseFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'commitProperties',
-						displayName: 'Commit Properties',
+						displayName: 'Commit properties',
 						values: [
 							{
 								displayName: 'ID',
@@ -476,14 +476,14 @@ export const releaseFields: INodeProperties[] = [
 								required: true,
 							},
 							{
-								displayName: 'Author Email',
+								displayName: 'Author email',
 								name: 'authorEmail',
 								type: 'string',
 								default: '',
 								description: 'Authors email',
 							},
 							{
-								displayName: 'Author Name',
+								displayName: 'Author name',
 								name: 'authorName',
 								type: 'string',
 								default: '',
@@ -497,7 +497,7 @@ export const releaseFields: INodeProperties[] = [
 								description: 'Message of commit',
 							},
 							{
-								displayName: 'Patch Set',
+								displayName: 'Patch set',
 								name: 'patchSet',
 								description:
 									'A list of the files that have been changed in the commit. Specifying the patch_set is necessary to power suspect commits and suggested assignees.',
@@ -509,7 +509,7 @@ export const releaseFields: INodeProperties[] = [
 								options: [
 									{
 										name: 'patchSetProperties',
-										displayName: 'Patch Set Properties',
+										displayName: 'Patch set properties',
 										values: [
 											{
 												displayName: 'Path',
@@ -564,7 +564,7 @@ export const releaseFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Date Released',
+				displayName: 'Date released',
 				name: 'dateReleased',
 				type: 'dateTime',
 				default: '',
@@ -592,7 +592,7 @@ export const releaseFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'refProperties',
-						displayName: 'Ref Properties',
+						displayName: 'Ref properties',
 						values: [
 							{
 								displayName: 'Commit',
@@ -611,7 +611,7 @@ export const releaseFields: INodeProperties[] = [
 								required: true,
 							},
 							{
-								displayName: 'Previous Commit',
+								displayName: 'Previous commit',
 								name: 'previousCommit',
 								type: 'string',
 								default: '',

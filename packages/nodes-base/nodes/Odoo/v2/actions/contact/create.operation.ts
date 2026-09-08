@@ -10,7 +10,7 @@ import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsToSend',
 		type: 'resourceMapper',
 		default: {

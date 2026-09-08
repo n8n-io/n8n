@@ -39,7 +39,7 @@ export class Hunter implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Domain Search',
+						name: 'Domain search',
 						value: 'domainSearch',
 						description:
 							'Get every email address found on the internet using a given domain name, with sources',
@@ -47,7 +47,7 @@ export class Hunter implements INodeType {
 							'Get every email address found on the internet using a given domain name, with sources',
 					},
 					{
-						name: 'Email Finder',
+						name: 'Email finder',
 						value: 'emailFinder',
 						description:
 							'Generate or retrieve the most likely email address from a domain name, a first name and a last name',
@@ -55,7 +55,7 @@ export class Hunter implements INodeType {
 							'Generate or retrieve the most likely email address from a domain name, a first name and a last name',
 					},
 					{
-						name: 'Email Verifier',
+						name: 'Email verifier',
 						value: 'emailVerifier',
 						description: 'Verify the deliverability of an email address',
 						action: 'Verify the deliverability of an email address',
@@ -79,7 +79,7 @@ export class Hunter implements INodeType {
 					'Domain name from which you want to find the email addresses. For example, "stripe.com".',
 			},
 			{
-				displayName: 'Only Emails',
+				displayName: 'Only emails',
 				name: 'onlyEmails',
 				type: 'boolean',
 				displayOptions: {
@@ -91,7 +91,7 @@ export class Hunter implements INodeType {
 				description: 'Whether to return only the found emails',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -123,7 +123,7 @@ export class Hunter implements INodeType {
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				default: {},
 				displayOptions: {
 					show: {
@@ -232,7 +232,7 @@ export class Hunter implements INodeType {
 					'Domain name from which you want to find the email addresses. For example, "stripe.com".',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstname',
 				type: 'string',
 				displayOptions: {
@@ -245,7 +245,7 @@ export class Hunter implements INodeType {
 				description: "The person's first name. It doesn't need to be in lowercase.",
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastname',
 				type: 'string',
 				displayOptions: {

@@ -30,7 +30,7 @@ export const indexOperations: INodeProperties[] = [
 				action: 'Get an index',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many indices',
 			},
@@ -58,10 +58,10 @@ export const indexFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -83,7 +83,7 @@ export const indexFields: INodeProperties[] = [
 				placeholder: placeholders.aliases,
 			},
 			{
-				displayName: 'Include Type Name',
+				displayName: 'Include type name',
 				name: 'include_type_name',
 				description:
 					'Whether a mapping type is expected in the body of mappings. Defaults to false.',
@@ -103,7 +103,7 @@ export const indexFields: INodeProperties[] = [
 				placeholder: placeholders.mappings,
 			},
 			{
-				displayName: 'Master Timeout',
+				displayName: 'Master timeout',
 				name: 'master_timeout',
 				description:
 					'Period to wait for a connection to the master node. If no response is received before the timeout expires, the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
@@ -131,7 +131,7 @@ export const indexFields: INodeProperties[] = [
 				default: '30s',
 			},
 			{
-				displayName: 'Wait for Active Shards',
+				displayName: 'Wait for active shards',
 				name: 'wait_for_active_shards',
 				description:
 					'The number of shard copies that must be active before proceeding with the operation. Set to <code>all</code> or any positive integer up to the total number of shards in the index. Default: 1, the primary shard',
@@ -177,10 +177,10 @@ export const indexFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -190,7 +190,7 @@ export const indexFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Allow No Indices',
+				displayName: 'Allow no indices',
 				name: 'allow_no_indices',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description:
@@ -199,7 +199,7 @@ export const indexFields: INodeProperties[] = [
 				default: true,
 			},
 			{
-				displayName: 'Expand Wildcards',
+				displayName: 'Expand wildcards',
 				name: 'expand_wildcards',
 				description:
 					'Type of index that wildcard expressions can match. Defaults to <code>open</code>',
@@ -229,14 +229,14 @@ export const indexFields: INodeProperties[] = [
 				default: 'all',
 			},
 			{
-				displayName: 'Flat Settings',
+				displayName: 'Flat settings',
 				name: 'flat_settings',
 				description: 'Whether to return settings in flat format. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Ignore Unavailable',
+				displayName: 'Ignore unavailable',
 				name: 'ignore_unavailable',
 				description:
 					'Whether to request that target a missing index return an error. Defaults to false.',
@@ -244,7 +244,7 @@ export const indexFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Include Defaults',
+				displayName: 'Include defaults',
 				name: 'include_defaults',
 				description: 'Whether to return all default settings in the response. Defaults to false.',
 				type: 'boolean',
@@ -258,7 +258,7 @@ export const indexFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Master Timeout',
+				displayName: 'Master timeout',
 				name: 'master_timeout',
 				description:
 					'Period to wait for a connection to the master node. If no response is received before the timeout expires, the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
@@ -272,7 +272,7 @@ export const indexFields: INodeProperties[] = [
 	//              index: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

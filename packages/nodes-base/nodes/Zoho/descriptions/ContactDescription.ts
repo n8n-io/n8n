@@ -27,10 +27,10 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Create a contact',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
-				action: 'Create or Update a contact',
+				action: 'Create or update a contact',
 			},
 			{
 				name: 'Delete',
@@ -45,7 +45,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many contacts',
 				action: 'Get many contacts',
@@ -66,7 +66,7 @@ export const contactFields: INodeProperties[] = [
 	//             contact: create
 	// ----------------------------------------
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		required: true,
@@ -79,10 +79,10 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -100,7 +100,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			makeCustomFieldsFixedCollection('contact'),
 			{
-				displayName: 'Date of Birth',
+				displayName: 'Date of birth',
 				name: 'Date_of_Birth',
 				type: 'dateTime',
 				default: '',
@@ -119,13 +119,13 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Email (Primary)',
+				displayName: 'Email (primary)',
 				name: 'Email',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Email (Secondary)',
+				displayName: 'Email (secondary)',
 				name: 'Secondary_Email',
 				type: 'string',
 				default: '',
@@ -137,13 +137,13 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'First_Name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'Full_Name',
 				type: 'string',
 				default: '',
@@ -163,20 +163,20 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Phone (Assistant)',
+				displayName: 'Phone (assistant)',
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
 				description: 'Phone number of the contact’s assistant',
 			},
 			{
-				displayName: 'Phone (Home)',
+				displayName: 'Phone (home)',
 				name: 'Home_Phone',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Phone (Other)',
+				displayName: 'Phone (other)',
 				name: 'Other_Phone',
 				type: 'string',
 				default: '',
@@ -213,7 +213,7 @@ export const contactFields: INodeProperties[] = [
 	//           contact: upsert
 	// ----------------------------------------
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		required: true,
@@ -226,10 +226,10 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -247,7 +247,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			makeCustomFieldsFixedCollection('contact'),
 			{
-				displayName: 'Date of Birth',
+				displayName: 'Date of birth',
 				name: 'Date_of_Birth',
 				type: 'dateTime',
 				default: '',
@@ -266,7 +266,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Email (Primary)',
+				displayName: 'Email (primary)',
 				name: 'Email',
 				type: 'string',
 				default: '',
@@ -274,7 +274,7 @@ export const contactFields: INodeProperties[] = [
 					'Email of the contact. If a record with this email exists it will be updated, otherwise a new one will be created.',
 			},
 			{
-				displayName: 'Email (Secondary)',
+				displayName: 'Email (secondary)',
 				name: 'Secondary_Email',
 				type: 'string',
 				default: '',
@@ -286,13 +286,13 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'First_Name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'Full_Name',
 				type: 'string',
 				default: '',
@@ -312,20 +312,20 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Phone (Assistant)',
+				displayName: 'Phone (assistant)',
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
 				description: 'Phone number of the contact’s assistant',
 			},
 			{
-				displayName: 'Phone (Home)',
+				displayName: 'Phone (home)',
 				name: 'Home_Phone',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Phone (Other)',
+				displayName: 'Phone (other)',
 				name: 'Other_Phone',
 				type: 'string',
 				default: '',
@@ -417,10 +417,10 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -436,7 +436,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Assistant’s Phone',
+				displayName: 'Assistant’s phone',
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
@@ -452,7 +452,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			makeCustomFieldsFixedCollection('contact'),
 			{
-				displayName: 'Date of Birth',
+				displayName: 'Date of birth',
 				name: 'Date_of_Birth',
 				type: 'dateTime',
 				default: '',
@@ -470,13 +470,13 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Email (Primary)',
+				displayName: 'Email (primary)',
 				name: 'Email',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Email (Secondary)',
+				displayName: 'Email (secondary)',
 				name: 'Secondary_Email',
 				type: 'string',
 				default: '',
@@ -488,25 +488,25 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'First_Name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'Full_Name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Home Phone',
+				displayName: 'Home phone',
 				name: 'Home_Phone',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'Last_Name',
 				type: 'string',
 				default: '',
@@ -520,7 +520,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			otherAddress,
 			{
-				displayName: 'Other Phone',
+				displayName: 'Other phone',
 				name: 'Other_Phone',
 				type: 'string',
 				default: '',

@@ -10,7 +10,7 @@ export const teamRLC: INodeProperties = {
 		'Select the team from the list, by URL, or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'e.g. My Team',
@@ -73,10 +73,10 @@ export const channelRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Channel...',
+			placeholder: 'Select a channel...',
 			typeOptions: {
 				searchListMethod: 'getChannels',
 				searchable: true,
@@ -102,10 +102,10 @@ export const chatRLC: INodeProperties = {
 		'Select the chat from the list, by URL, or by ID (find the chat ID after "conversations/" in the URL)',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Chat...',
+			placeholder: 'Select a chat...',
 			typeOptions: {
 				searchListMethod: 'getChats',
 				searchable: true,
@@ -134,10 +134,10 @@ export const groupRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Team...',
+			placeholder: 'Select a team...',
 			typeOptions: {
 				searchListMethod: 'getGroups',
 				searchable: true,
@@ -176,10 +176,10 @@ export const planRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Plan...',
+			placeholder: 'Select a plan...',
 			typeOptions: {
 				searchListMethod: 'getPlans',
 				searchable: true,
@@ -207,10 +207,10 @@ export const bucketRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Bucket...',
+			placeholder: 'Select a bucket...',
 			typeOptions: {
 				searchListMethod: 'getBuckets',
 				searchable: true,
@@ -237,10 +237,10 @@ export const memberRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Member...',
+			placeholder: 'Select a member...',
 			typeOptions: {
 				searchListMethod: 'getMembers',
 				searchable: true,

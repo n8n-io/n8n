@@ -10,7 +10,7 @@ const properties: INodeProperties[] = [
 		description: 'Select the user pool to retrieve',
 	},
 	{
-		displayName: 'User Name',
+		displayName: 'User name',
 		name: 'newUserName',
 		default: '',
 		description:
@@ -27,14 +27,14 @@ const properties: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Message Action',
+				displayName: 'Message action',
 				name: 'messageAction',
 				default: 'RESEND',
 				type: 'options',
@@ -59,7 +59,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Force Alias Creation',
+				displayName: 'Force alias creation',
 				name: 'forceAliasCreation',
 				type: 'boolean',
 				validateType: 'boolean',
@@ -74,10 +74,10 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'User Attributes',
+				displayName: 'User attributes',
 				name: 'userAttributes',
 				type: 'fixedCollection',
-				placeholder: 'Add Attribute',
+				placeholder: 'Add attribute',
 				default: {
 					attributes: [],
 				},
@@ -97,23 +97,23 @@ const properties: INodeProperties[] = [
 						name: 'attributes',
 						values: [
 							{
-								displayName: 'Attribute Type',
+								displayName: 'Attribute type',
 								name: 'attributeType',
 								type: 'options',
 								default: 'standard',
 								options: [
 									{
-										name: 'Standard Attribute',
+										name: 'Standard attribute',
 										value: 'standard',
 									},
 									{
-										name: 'Custom Attribute',
+										name: 'Custom attribute',
 										value: 'custom',
 									},
 								],
 							},
 							{
-								displayName: 'Standard Attribute',
+								displayName: 'Standard attribute',
 								name: 'standardName',
 								type: 'options',
 								default: 'address',
@@ -131,11 +131,11 @@ const properties: INodeProperties[] = [
 										value: 'email',
 									},
 									{
-										name: 'Email Verified',
+										name: 'Email verified',
 										value: 'email_verified',
 									},
 									{
-										name: 'Family Name',
+										name: 'Family name',
 										value: 'family_name',
 									},
 									{
@@ -143,7 +143,7 @@ const properties: INodeProperties[] = [
 										value: 'gender',
 									},
 									{
-										name: 'Given Name',
+										name: 'Given name',
 										value: 'given_name',
 									},
 									{
@@ -151,7 +151,7 @@ const properties: INodeProperties[] = [
 										value: 'locale',
 									},
 									{
-										name: 'Middle Name',
+										name: 'Middle name',
 										value: 'middle_name',
 									},
 									{
@@ -163,27 +163,27 @@ const properties: INodeProperties[] = [
 										value: 'nickname',
 									},
 									{
-										name: 'Phone Number',
+										name: 'Phone number',
 										value: 'phone_number',
 									},
 									{
-										name: 'Phone Number Verified',
+										name: 'Phone number verified',
 										value: 'phone_number_verified',
 									},
 									{
-										name: 'Preferred Username',
+										name: 'Preferred username',
 										value: 'preferred_username',
 									},
 									{
-										name: 'Profile Picture',
+										name: 'Profile picture',
 										value: 'profilepicture',
 									},
 									{
-										name: 'Updated At',
+										name: 'Updated at',
 										value: 'updated_at',
 									},
 									{
-										name: 'User Sub',
+										name: 'User sub',
 										value: 'sub',
 									},
 									{
@@ -191,7 +191,7 @@ const properties: INodeProperties[] = [
 										value: 'website',
 									},
 									{
-										name: 'Zone Info',
+										name: 'Zone info',
 										value: 'zoneinfo',
 									},
 								],
@@ -202,7 +202,7 @@ const properties: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'Custom Attribute Name',
+								displayName: 'Custom attribute name',
 								name: 'customName',
 								type: 'string',
 								default: '',
@@ -226,7 +226,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Desired Delivery Mediums',
+				displayName: 'Desired delivery mediums',
 				name: 'desiredDeliveryMediums',
 				default: ['SMS'],
 				description: 'Specify how to send the welcome message',
@@ -250,7 +250,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Temporary Password',
+				displayName: 'Temporary password',
 				name: 'temporaryPasswordOptions',
 				type: 'string',
 				typeOptions: {

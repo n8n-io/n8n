@@ -68,7 +68,7 @@ export class Databricks implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -103,7 +103,7 @@ export class Databricks implements INodeType {
 							'AI-powered data assistant. <a href="https://docs.databricks.com/genie/index.html" target="_blank">Learn more</a>.',
 					},
 					{
-						name: 'Model Serving',
+						name: 'Model serving',
 						value: 'modelServing',
 						description:
 							'Deploy and query ML models. <a href="https://docs.databricks.com/machine-learning/model-serving/index.html" target="_blank">Learn more</a>.',
@@ -115,7 +115,7 @@ export class Databricks implements INodeType {
 							'Unified governance for data and AI. <a href="https://docs.databricks.com/data-governance/unity-catalog/index.html" target="_blank">Learn more</a>.',
 					},
 					{
-						name: 'Vector Search',
+						name: 'Vector search',
 						value: 'vectorSearch',
 						description:
 							'Semantic search with vector embeddings. <a href="https://docs.databricks.com/generative-ai/vector-search.html" target="_blank">Learn more</a>.',

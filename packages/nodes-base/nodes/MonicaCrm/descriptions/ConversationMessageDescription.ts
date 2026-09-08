@@ -62,7 +62,7 @@ export const conversationMessageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Written At',
+		displayName: 'Written at',
 		name: 'writtenAt',
 		description: 'Date when the message was written',
 		type: 'dateTime',
@@ -76,7 +76,7 @@ export const conversationMessageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Written By',
+		displayName: 'Written by',
 		name: 'writtenByMe',
 		description: 'Author of the message',
 		type: 'options',
@@ -132,10 +132,10 @@ export const conversationMessageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -159,14 +159,14 @@ export const conversationMessageFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Written At',
+				displayName: 'Written at',
 				name: 'written_at',
 				description: 'Date when the message was written',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Written By',
+				displayName: 'Written by',
 				name: 'written_by_me',
 				description: 'Author of the message',
 				type: 'options',

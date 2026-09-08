@@ -15,17 +15,17 @@ import { googleBigQueryApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Data Mode',
+		displayName: 'Data mode',
 		name: 'dataMode',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data',
+				name: 'Auto-map input data',
 				value: 'autoMap',
 				description: 'Use when node input properties match destination field names',
 			},
 			{
-				name: 'Map Each Field Below',
+				name: 'Map each field below',
 				value: 'define',
 				description: 'Set the value for each destination field',
 			},
@@ -46,9 +46,9 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Field',
@@ -61,7 +61,7 @@ const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'fieldId',
 						type: 'options',
 						description:
@@ -73,7 +73,7 @@ const properties: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -95,7 +95,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Batch Size',
+				displayName: 'Batch size',
 				name: 'batchSize',
 				type: 'number',
 				default: 100,
@@ -104,21 +104,21 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Ignore Unknown Values',
+				displayName: 'Ignore unknown values',
 				name: 'ignoreUnknownValues',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to gnore row values that do not match the schema',
 			},
 			{
-				displayName: 'Skip Invalid Rows',
+				displayName: 'Skip invalid rows',
 				name: 'skipInvalidRows',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to skip rows with values that do not match the schema',
 			},
 			{
-				displayName: 'Template Suffix',
+				displayName: 'Template suffix',
 				name: 'templateSuffix',
 				type: 'string',
 				default: '',

@@ -315,7 +315,7 @@ export class ToolCode implements INodeType {
 				noDataExpression: true,
 			},
 			{
-				displayName: 'Specify Input Schema',
+				displayName: 'Specify input schema',
 				name: 'specifyInputSchema',
 				type: 'boolean',
 				description:

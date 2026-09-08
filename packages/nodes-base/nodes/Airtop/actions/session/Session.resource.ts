@@ -20,26 +20,26 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create Session',
+				name: 'Create session',
 				value: 'create',
 				description: 'Create an Airtop browser session',
 				action: 'Create a session',
 			},
 			{
-				name: 'Save Profile on Termination',
+				name: 'Save profile on termination',
 				value: 'save',
 				description:
 					'Save in a profile changes made in your browsing session such as cookies and local storage',
 				action: 'Save a profile on session termination',
 			},
 			{
-				name: 'Terminate Session',
+				name: 'Terminate session',
 				value: 'terminate',
 				description: 'Terminate a session',
 				action: 'Terminate a session',
 			},
 			{
-				name: 'Wait for Download',
+				name: 'Wait for download',
 				value: 'waitForDownload',
 				description: 'Wait for a file download to become available',
 				action: 'Wait for a download',

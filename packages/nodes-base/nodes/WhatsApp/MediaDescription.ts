@@ -42,7 +42,7 @@ export const mediaTypeFields: INodeProperties[] = [
 	//         operation: mediaUpload
 	// ----------------------------------
 	{
-		displayName: 'Sender Phone Number (or ID)',
+		displayName: 'Sender phone number (or ID)',
 		name: 'phoneNumberId',
 		type: 'options',
 		typeOptions: {
@@ -96,7 +96,7 @@ export const mediaTypeFields: INodeProperties[] = [
 		description: "The ID of the business account's phone number to store the media",
 	},
 	{
-		displayName: 'Property Name',
+		displayName: 'Property name',
 		name: 'mediaPropertyName',
 		type: 'string',
 		default: 'data',
@@ -161,10 +161,10 @@ export const mediaTypeFields: INodeProperties[] = [
 		description: 'The ID of the media',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

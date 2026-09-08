@@ -25,7 +25,7 @@ export const issueCommentOperations: INodeProperties[] = [
 				action: 'Get a comment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many comments',
 				action: 'Get many comments',
@@ -52,7 +52,7 @@ export const issueCommentFields: INodeProperties[] = [
 	/*                                issueComment:add                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -67,7 +67,7 @@ export const issueCommentFields: INodeProperties[] = [
 		description: 'issueComment Key',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -93,7 +93,7 @@ export const issueCommentFields: INodeProperties[] = [
 		description: "Comment's text",
 	},
 	{
-		displayName: 'Document Format (JSON)',
+		displayName: 'Document format (JSON)',
 		name: 'commentJson',
 		type: 'json',
 		default: '',
@@ -126,7 +126,7 @@ export const issueCommentFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Rendered Body',
+						name: 'Rendered body',
 						value: 'renderedBody',
 					},
 				],
@@ -135,7 +135,7 @@ export const issueCommentFields: INodeProperties[] = [
 					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 			{
-				displayName: 'Use Wiki Markup',
+				displayName: 'Use wiki markup',
 				name: 'wikiMarkup',
 				type: 'boolean',
 				default: false,
@@ -154,7 +154,7 @@ export const issueCommentFields: INodeProperties[] = [
 	/*                                issueComment:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -185,7 +185,7 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -200,7 +200,7 @@ export const issueCommentFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Rendered Body',
+						name: 'Rendered body',
 						value: 'renderedBody',
 					},
 				],
@@ -215,7 +215,7 @@ export const issueCommentFields: INodeProperties[] = [
 	/*                                  issueComment:getAll                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -229,7 +229,7 @@ export const issueCommentFields: INodeProperties[] = [
 		description: 'The ID or key of the issue',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -263,7 +263,7 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -278,7 +278,7 @@ export const issueCommentFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Rendered Body',
+						name: 'Rendered body',
 						value: 'renderedBody',
 					},
 				],
@@ -287,16 +287,16 @@ export const issueCommentFields: INodeProperties[] = [
 					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'options',
 				options: [
 					{
-						name: 'Created Ascending',
+						name: 'Created ascending',
 						value: '+created',
 					},
 					{
-						name: 'Created Descending',
+						name: 'Created descending',
 						value: '-created',
 					},
 				],
@@ -310,7 +310,7 @@ export const issueCommentFields: INodeProperties[] = [
 	/*                                issueComment:remove                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -342,7 +342,7 @@ export const issueCommentFields: INodeProperties[] = [
 	/*                                issueComment:update                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Key',
+		displayName: 'Issue key',
 		name: 'issueKey',
 		type: 'string',
 		required: true,
@@ -370,7 +370,7 @@ export const issueCommentFields: INodeProperties[] = [
 		description: 'The ID of the comment',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -396,7 +396,7 @@ export const issueCommentFields: INodeProperties[] = [
 		description: "Comment's text",
 	},
 	{
-		displayName: 'Document Format (JSON)',
+		displayName: 'Document format (JSON)',
 		name: 'commentJson',
 		type: 'json',
 		default: '',
@@ -429,7 +429,7 @@ export const issueCommentFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Rendered Body',
+						name: 'Rendered body',
 						value: 'renderedBody',
 					},
 				],
@@ -438,7 +438,7 @@ export const issueCommentFields: INodeProperties[] = [
 					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 			{
-				displayName: 'Use Wiki Markup',
+				displayName: 'Use wiki markup',
 				name: 'wikiMarkup',
 				type: 'boolean',
 				default: false,

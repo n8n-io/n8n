@@ -17,7 +17,7 @@ import type { IRow } from '../Interfaces';
 export const properties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'View Name',
+		displayName: 'View name',
 		name: 'viewName',
 		type: 'options',
 		typeOptions: {
@@ -33,7 +33,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -45,7 +45,7 @@ export const properties: INodeProperties[] = [
 					'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
-				displayName: 'Return Column Names',
+				displayName: 'Return column names',
 				name: 'convert',
 				type: 'boolean',
 				default: true,

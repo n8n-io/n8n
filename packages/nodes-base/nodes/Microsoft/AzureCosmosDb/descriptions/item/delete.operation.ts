@@ -7,7 +7,7 @@ const properties: INodeProperties[] = [
 	{ ...containerResourceLocator, description: 'Select the container you want to use' },
 	{ ...itemResourceLocator, description: 'Select the item to be deleted' },
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		default: {},
 		displayOptions: {
@@ -18,14 +18,14 @@ const properties: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Partition Key',
+				displayName: 'Partition key',
 				name: 'partitionKey',
 				default: '',
 				hint: 'Only required if a custom partition key is set for the container',
 				type: 'string',
 			},
 		],
-		placeholder: 'Add Partition Key',
+		placeholder: 'Add partition key',
 		type: 'collection',
 	},
 ];

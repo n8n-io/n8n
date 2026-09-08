@@ -13,7 +13,7 @@ import type { INodeProperties } from 'n8n-workflow';
  * access lives in the Microsoft SharePoint node.)
  */
 export const resourceTargetParam: INodeProperties = {
-	displayName: 'Access As',
+	displayName: 'Access as',
 	name: 'resourceTarget',
 	type: 'options',
 	noDataExpression: true,

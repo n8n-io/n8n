@@ -16,7 +16,7 @@ export const fileDownloadDescription: FileProperties = [
 		description: 'ID of the file',
 	},
 	{
-		displayName: 'Put Output In Field',
+		displayName: 'Put output in field',
 		name: 'output',
 		type: 'string',
 		default: 'data',

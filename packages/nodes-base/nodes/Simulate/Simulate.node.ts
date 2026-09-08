@@ -61,7 +61,7 @@ export class Simulate implements INodeType {
 				],
 			},
 			{
-				displayName: 'Number of Items',
+				displayName: 'Number of items',
 				name: 'numberOfItems',
 				type: 'number',
 				default: 1,

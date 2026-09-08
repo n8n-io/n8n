@@ -13,20 +13,20 @@ export const collectionOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create an Entry',
+				name: 'Create an entry',
 				value: 'create',
 				description: 'Create a collection entry',
 				action: 'Create a collection entry',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-many
-				name: 'Get Many Entries',
+				name: 'Get many entries',
 				value: 'getAll',
 				description: 'Get many collection entries',
 				action: 'Get many collection entries',
 			},
 			{
-				name: 'Update an Entry',
+				name: 'Update an entry',
 				value: 'update',
 				description: 'Update a collection entry',
 				action: 'Update a collection entry',
@@ -38,7 +38,7 @@ export const collectionOperations: INodeProperties[] = [
 
 export const collectionFields: INodeProperties[] = [
 	{
-		displayName: 'Collection Name or ID',
+		displayName: 'Collection name or ID',
 		name: 'collection',
 		type: 'options',
 		default: '',
@@ -57,7 +57,7 @@ export const collectionFields: INodeProperties[] = [
 
 	// Collection:entry:getAll
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -109,7 +109,7 @@ export const collectionFields: INodeProperties[] = [
 				description: 'Comma-separated list of fields to get',
 			},
 			{
-				displayName: 'Filter Query',
+				displayName: 'Filter query',
 				name: 'filter',
 				type: 'json',
 				default: '',
@@ -135,7 +135,7 @@ export const collectionFields: INodeProperties[] = [
 				description: 'Whether to resolve linked collection items',
 			},
 			{
-				displayName: 'RAW Data',
+				displayName: 'RAW data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
@@ -149,7 +149,7 @@ export const collectionFields: INodeProperties[] = [
 				description: 'Skip number of entries',
 			},
 			{
-				displayName: 'Sort Query',
+				displayName: 'Sort query',
 				name: 'sort',
 				type: 'json',
 				default: '',
@@ -178,7 +178,7 @@ export const collectionFields: INodeProperties[] = [
 	// Collection:entry:create
 	// Collection:entry:update
 	{
-		displayName: 'JSON Data Fields',
+		displayName: 'JSON data fields',
 		name: 'jsonDataFields',
 		type: 'boolean',
 		default: false,
@@ -191,7 +191,7 @@ export const collectionFields: INodeProperties[] = [
 		description: 'Whether new entry fields should be set via the value-key pair UI or JSON',
 	},
 	{
-		displayName: 'Entry Data',
+		displayName: 'Entry data',
 		name: 'dataFieldsJson',
 		type: 'json',
 		default: '',
@@ -208,7 +208,7 @@ export const collectionFields: INodeProperties[] = [
 		description: 'Entry data to send as JSON',
 	},
 	{
-		displayName: 'Entry Data',
+		displayName: 'Entry data',
 		name: 'dataFieldsUi',
 		type: 'fixedCollection',
 		typeOptions: {

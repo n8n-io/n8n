@@ -31,7 +31,7 @@ export const ticketOperations: INodeProperties[] = [
 				action: 'Get a ticket',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many tickets',
 				action: 'Get many tickets',
@@ -52,7 +52,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                ticket:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ticket Type Name or ID',
+		displayName: 'Ticket type name or ID',
 		name: 'ticketType',
 		type: 'options',
 		description:
@@ -98,11 +98,11 @@ export const ticketFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['ticket'],
@@ -111,7 +111,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned Agent Name or ID',
+				displayName: 'Assigned agent name or ID',
 				name: 'agent_id',
 				type: 'options',
 				description:
@@ -122,13 +122,13 @@ export const ticketFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startdate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Target Date',
+				displayName: 'Target date',
 				name: 'targetdate',
 				type: 'dateTime',
 				default: '',
@@ -169,7 +169,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                ticket:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -204,7 +204,7 @@ export const ticketFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['ticket'],
@@ -213,13 +213,13 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Active Status',
+				displayName: 'Active status',
 				name: 'activeStatus',
 				type: 'options',
 				default: 'all',
 				options: [
 					{
-						name: 'Active Only',
+						name: 'Active only',
 						value: 'active',
 						description: 'Whether to include active customers in the response',
 					},
@@ -229,14 +229,14 @@ export const ticketFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive customers in the response',
 					},
 					{
-						name: 'Inactive Only',
+						name: 'Inactive only',
 						value: 'inactive',
 						description: 'Whether to include inactive Customers in the responsee',
 					},
 				],
 			},
 			{
-				displayName: 'Text To Filter By',
+				displayName: 'Text to filter by',
 				name: 'search',
 				type: 'string',
 				default: '',
@@ -260,11 +260,11 @@ export const ticketFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['ticket'],
@@ -273,7 +273,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned Agent Name or ID',
+				displayName: 'Assigned agent name or ID',
 				name: 'agent_id',
 				type: 'options',
 				description:
@@ -290,7 +290,7 @@ export const ticketFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startdate',
 				type: 'dateTime',
 				default: '',
@@ -302,7 +302,7 @@ export const ticketFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Target Date',
+				displayName: 'Target date',
 				name: 'targetdate',
 				type: 'dateTime',
 				default: '',

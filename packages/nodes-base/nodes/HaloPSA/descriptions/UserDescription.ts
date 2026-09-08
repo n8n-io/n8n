@@ -31,7 +31,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many users',
 				action: 'Get many users',
@@ -66,7 +66,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Site Name or ID',
+		displayName: 'Site name or ID',
 		name: 'siteId',
 		type: 'options',
 		description:
@@ -84,11 +84,11 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -124,7 +124,7 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User Is Inactive',
+				displayName: 'User is inactive',
 				name: 'inactive',
 				type: 'boolean',
 				default: false,
@@ -164,7 +164,7 @@ export const userFields: INodeProperties[] = [
 	/*                                user:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -199,7 +199,7 @@ export const userFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -208,13 +208,13 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Active Status',
+				displayName: 'Active status',
 				name: 'activeStatus',
 				type: 'options',
 				default: 'all',
 				options: [
 					{
-						name: 'Active Only',
+						name: 'Active only',
 						value: 'active',
 						description: 'Whether to include active customers in the response',
 					},
@@ -224,14 +224,14 @@ export const userFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive customers in the response',
 					},
 					{
-						name: 'Inactive Only',
+						name: 'Inactive only',
 						value: 'inactive',
 						description: 'Whether to include inactive Customers in the response',
 					},
 				],
 			},
 			{
-				displayName: 'Text To Filter By',
+				displayName: 'Text to filter by',
 				name: 'search',
 				type: 'string',
 				default: '',
@@ -255,11 +255,11 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -298,7 +298,7 @@ export const userFields: INodeProperties[] = [
 					'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
 			},
 			{
-				displayName: 'Site Name or ID',
+				displayName: 'Site name or ID',
 				name: 'site_id',
 				type: 'options',
 				description:
@@ -315,7 +315,7 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User Is Inactive',
+				displayName: 'User is inactive',
 				name: 'inactive',
 				type: 'boolean',
 				default: false,

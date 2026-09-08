@@ -61,7 +61,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 		properties: [
 			supabaseTableNameRLC,
 			{
-				displayName: 'Query Name',
+				displayName: 'Query name',
 				name: 'queryName',
 				type: 'string',
 				default: 'match_documents',
@@ -72,7 +72,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [metadataFilterField],
 			},

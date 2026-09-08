@@ -90,7 +90,7 @@ export class StravaTrigger implements INodeType {
 				default: '*',
 			},
 			{
-				displayName: 'Resolve Data',
+				displayName: 'Resolve data',
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
@@ -106,7 +106,7 @@ export class StravaTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Delete If Exist',
+						displayName: 'Delete if exist',
 						name: 'deleteIfExist',
 						type: 'boolean',
 						default: false,

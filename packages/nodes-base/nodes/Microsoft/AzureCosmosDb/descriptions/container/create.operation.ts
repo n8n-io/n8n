@@ -46,7 +46,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 	},
 	{
-		displayName: 'Partition Key',
+		displayName: 'Partition key',
 		name: 'partitionKey',
 		default: '{\n\t"paths": [\n\t\t"/id"\n\t],\n\t"kind": "Hash",\n\t"version": 2\n}',
 		description:
@@ -74,12 +74,12 @@ const properties: INodeProperties[] = [
 		type: 'json',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		default: {},
 		options: [
 			{
-				displayName: 'Indexing Policy',
+				displayName: 'Indexing policy',
 				name: 'indexingPolicy',
 				default:
 					'{\n\t"indexingMode": "consistent",\n\t"automatic": true,\n\t"includedPaths": [\n\t\t{\n\t\t\t"path": "/*"\n\t\t}\n\t],\n\t"excludedPaths": []\n}',
@@ -104,7 +104,7 @@ const properties: INodeProperties[] = [
 				type: 'json',
 			},
 			{
-				displayName: 'Max RU/s (for Autoscale)',
+				displayName: 'Max RU/s (for autoscale)',
 				name: 'maxThroughput',
 				default: 1000,
 				description: 'The user specified autoscale max RU/s',
@@ -126,7 +126,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Manual Throughput RU/s',
+				displayName: 'Manual throughput RU/s',
 				name: 'offerThroughput',
 				default: 400,
 				description:
@@ -149,7 +149,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 		],
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];

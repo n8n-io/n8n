@@ -31,7 +31,7 @@ export const description: INodeProperties[] = [
 				action: 'Ban a member',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve the members of a server',
 				action: 'Get many members',
@@ -43,13 +43,13 @@ export const description: INodeProperties[] = [
 				action: 'Kick a member',
 			},
 			{
-				name: 'Role Add',
+				name: 'Role add',
 				value: 'roleAdd',
 				description: 'Add a role to a member',
 				action: 'Add a role to a member',
 			},
 			{
-				name: 'Role Remove',
+				name: 'Role remove',
 				value: 'roleRemove',
 				description: 'Remove a role from a member',
 				action: 'Remove a role from a member',

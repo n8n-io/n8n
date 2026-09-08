@@ -15,7 +15,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Extract Text',
+				name: 'Extract text',
 				value: 'extractText',
 				description: 'Extract text from document using OCR',
 				action: 'Extract text',

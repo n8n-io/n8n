@@ -16,7 +16,7 @@ const properties: INodeProperties[] = [
 	libraryRLC,
 	worksheetRLC,
 	{
-		displayName: 'Select a Range',
+		displayName: 'Select a range',
 		name: 'useRange',
 		type: 'boolean',
 		default: false,
@@ -37,18 +37,18 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Data Mode',
+		displayName: 'Data mode',
 		name: 'dataMode',
 		type: 'options',
 		default: 'define',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMap',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Map Each Column Below',
+				name: 'Map each column below',
 				value: 'define',
 				description: 'Set the value for each destination column',
 			},
@@ -69,7 +69,7 @@ const properties: INodeProperties[] = [
 		hint: "Used to find the correct row to update. Doesn't get changed.",
 	},
 	{
-		displayName: 'Value of Column to Match On',
+		displayName: 'Value of column to match on',
 		name: 'valueToMatchOn',
 		type: 'string',
 		default: '',
@@ -80,9 +80,9 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Values to Send',
+		displayName: 'Values to send',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -129,7 +129,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Append After Selected Range',
+				displayName: 'Append after selected range',
 				name: 'appendAfterSelectedRange',
 				type: 'boolean',
 				default: false,
@@ -141,7 +141,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'RAW Data',
+				displayName: 'RAW data',
 				name: 'rawData',
 				type: 'boolean',
 				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-boolean
@@ -150,7 +150,7 @@ const properties: INodeProperties[] = [
 					'Whether the data should be returned RAW instead of parsed into keys according to their header',
 			},
 			{
-				displayName: 'Data Property',
+				displayName: 'Data property',
 				name: 'dataProperty',
 				type: 'string',
 				default: 'data',
@@ -163,7 +163,7 @@ const properties: INodeProperties[] = [
 				description: 'The name of the property into which to write the RAW data',
 			},
 			{
-				displayName: 'Update All Matches',
+				displayName: 'Update all matches',
 				name: 'updateAll',
 				type: 'boolean',
 				default: false,

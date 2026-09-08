@@ -14,7 +14,7 @@ import { workbookRLC } from '../common.descriptions';
 const properties: INodeProperties[] = [
 	workbookRLC,
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -40,7 +40,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{

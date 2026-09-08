@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const customResourceOperations: INodeProperties[] = [
 	{
-		displayName: 'Custom Resource Name or ID',
+		displayName: 'Custom resource name or ID',
 		name: 'customResource',
 		type: 'options',
 		description:
@@ -48,7 +48,7 @@ export const customResourceOperations: INodeProperties[] = [
 				action: 'Get an item',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many items',
 				action: 'Get many items',
@@ -76,7 +76,7 @@ export const customResourceDescription: INodeProperties[] = [
 			multipleValueButtonText: 'Add Field',
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -85,11 +85,11 @@ export const customResourceDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Field Record:',
+				displayName: 'Field record:',
 				name: 'fields',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'fieldName',
 						type: 'options',
 						description:
@@ -100,7 +100,7 @@ export const customResourceDescription: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'New Value',
+						displayName: 'New value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -114,7 +114,7 @@ export const customResourceDescription: INodeProperties[] = [
 	/*                                custom:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Resource ID',
+		displayName: 'Custom resource ID',
 		name: 'customResourceId',
 		type: 'string',
 		default: '',
@@ -130,7 +130,7 @@ export const customResourceDescription: INodeProperties[] = [
 	/*                                custom:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -166,7 +166,7 @@ export const customResourceDescription: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['getAll', 'get'],
@@ -175,7 +175,7 @@ export const customResourceDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields to Include',
+				displayName: 'Fields to include',
 				name: 'fieldsList',
 				type: 'multiOptions',
 				description:
@@ -211,7 +211,7 @@ export const customResourceDescription: INodeProperties[] = [
 				displayName: 'Filter',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'fieldName',
 						type: 'options',
 						description:
@@ -254,7 +254,7 @@ export const customResourceDescription: INodeProperties[] = [
 								value: 'greaterOrEqual',
 							},
 							{
-								name: 'Child Of',
+								name: 'Child of',
 								value: 'childOf',
 							},
 							{
@@ -266,7 +266,7 @@ export const customResourceDescription: INodeProperties[] = [
 								value: 'like',
 							},
 							{
-								name: 'Not In',
+								name: 'Not in',
 								value: 'notIn',
 							},
 						],
@@ -286,7 +286,7 @@ export const customResourceDescription: INodeProperties[] = [
 	/*                                custom:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Custom Resource ID',
+		displayName: 'Custom resource ID',
 		name: 'customResourceId',
 		type: 'string',
 		default: '',
@@ -300,7 +300,7 @@ export const customResourceDescription: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'fieldsToCreateOrUpdate',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -308,7 +308,7 @@ export const customResourceDescription: INodeProperties[] = [
 			multipleValueButtonText: 'Add Field',
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -317,11 +317,11 @@ export const customResourceDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Field Record:',
+				displayName: 'Field record:',
 				name: 'fields',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'fieldName',
 						type: 'options',
 						description:
@@ -332,7 +332,7 @@ export const customResourceDescription: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'New Value',
+						displayName: 'New value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',

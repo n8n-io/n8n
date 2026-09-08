@@ -30,10 +30,10 @@ const properties: INodeProperties[] = [
 		description: 'ID of the deal to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -45,14 +45,14 @@ const properties: INodeProperties[] = [
 					'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
 			},
 			{
-				displayName: 'Expected Close Date',
+				displayName: 'Expected close date',
 				name: 'expected_close_date',
 				type: 'dateTime',
 				default: '',
 				description: 'The expected close date of the deal in YYYY-MM-DD format',
 			},
 			{
-				displayName: 'Label Names or IDs',
+				displayName: 'Label names or IDs',
 				name: 'label_ids',
 				type: 'multiOptions',
 				description:
@@ -63,14 +63,14 @@ const properties: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Lost Reason',
+				displayName: 'Lost reason',
 				name: 'lost_reason',
 				type: 'string',
 				default: '',
 				description: 'Reason why the deal was lost',
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'org_id',
 				type: 'options',
 				typeOptions: {
@@ -99,7 +99,7 @@ const properties: INodeProperties[] = [
 				description: 'Deal success probability percentage',
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage name or ID',
 				name: 'stage_id',
 				type: 'options',
 				typeOptions: {
@@ -143,7 +143,7 @@ const properties: INodeProperties[] = [
 				description: 'The title of the deal',
 			},
 			{
-				displayName: 'User Name or ID',
+				displayName: 'User name or ID',
 				name: 'user_id',
 				type: 'options',
 				typeOptions: {

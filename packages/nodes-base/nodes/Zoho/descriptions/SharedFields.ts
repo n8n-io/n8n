@@ -4,14 +4,14 @@ import { capitalizeInitial } from '../GenericFunctions';
 import type { CamelCaseResource } from '../types';
 
 export const billingAddress: INodeProperties = {
-	displayName: 'Billing Address',
+	displayName: 'Billing address',
 	name: 'Billing_Address',
 	type: 'fixedCollection',
 	default: {},
-	placeholder: 'Add Billing Address Field',
+	placeholder: 'Add billing address field',
 	options: [
 		{
-			displayName: 'Billing Address Fields',
+			displayName: 'Billing address fields',
 			name: 'address_fields',
 			values: [
 				{
@@ -39,7 +39,7 @@ export const billingAddress: INodeProperties = {
 					default: '',
 				},
 				{
-					displayName: 'Zip Code',
+					displayName: 'Zip code',
 					name: 'Billing_Code',
 					type: 'string',
 					default: '',
@@ -50,14 +50,14 @@ export const billingAddress: INodeProperties = {
 };
 
 export const shippingAddress: INodeProperties = {
-	displayName: 'Shipping Address',
+	displayName: 'Shipping address',
 	name: 'Shipping_Address',
 	type: 'fixedCollection',
 	default: {},
-	placeholder: 'Add Shipping Address Field',
+	placeholder: 'Add shipping address field',
 	options: [
 		{
-			displayName: 'Shipping Address Fields',
+			displayName: 'Shipping address fields',
 			name: 'address_fields',
 			values: [
 				{
@@ -85,7 +85,7 @@ export const shippingAddress: INodeProperties = {
 					default: '',
 				},
 				{
-					displayName: 'Zip Code',
+					displayName: 'Zip code',
 					name: 'Shipping_Code',
 					type: 'string',
 					default: '',
@@ -96,14 +96,14 @@ export const shippingAddress: INodeProperties = {
 };
 
 export const mailingAddress: INodeProperties = {
-	displayName: 'Mailing Address',
+	displayName: 'Mailing address',
 	name: 'Mailing_Address',
 	type: 'fixedCollection',
 	default: {},
-	placeholder: 'Add Mailing Address Field',
+	placeholder: 'Add mailing address field',
 	options: [
 		{
-			displayName: 'Mailing Address Fields',
+			displayName: 'Mailing address fields',
 			name: 'address_fields',
 			values: [
 				{
@@ -131,7 +131,7 @@ export const mailingAddress: INodeProperties = {
 					default: '',
 				},
 				{
-					displayName: 'Zip Code',
+					displayName: 'Zip code',
 					name: 'Mailing_Zip',
 					type: 'string',
 					default: '',
@@ -142,14 +142,14 @@ export const mailingAddress: INodeProperties = {
 };
 
 export const otherAddress: INodeProperties = {
-	displayName: 'Other Address',
+	displayName: 'Other address',
 	name: 'Other_Address',
 	type: 'fixedCollection',
 	default: {},
-	placeholder: 'Add Other Address Field',
+	placeholder: 'Add other address field',
 	options: [
 		{
-			displayName: 'Other Address Fields',
+			displayName: 'Other address fields',
 			name: 'address_fields',
 			values: [
 				{
@@ -171,7 +171,7 @@ export const otherAddress: INodeProperties = {
 					default: '',
 				},
 				{
-					displayName: 'Zip Code',
+					displayName: 'Zip code',
 					name: 'Other_Zip',
 					type: 'string',
 					default: '',
@@ -186,10 +186,10 @@ export const address: INodeProperties = {
 	name: 'Address',
 	type: 'fixedCollection',
 	default: {},
-	placeholder: 'Add Address Field',
+	placeholder: 'Add address field',
 	options: [
 		{
-			displayName: 'Address Fields',
+			displayName: 'Address fields',
 			name: 'address_fields',
 			values: [
 				{
@@ -217,7 +217,7 @@ export const address: INodeProperties = {
 					default: '',
 				},
 				{
-					displayName: 'Zip Code',
+					displayName: 'Zip code',
 					name: 'Zip_Code',
 					type: 'string',
 					default: '',
@@ -249,13 +249,13 @@ export const address: INodeProperties = {
 
 export const productDetailsOptions: INodeProperties[] = [
 	{
-		displayName: 'List Price',
+		displayName: 'List price',
 		name: 'list_price',
 		type: 'number',
 		default: '',
 	},
 	{
-		displayName: 'Product Name or ID',
+		displayName: 'Product name or ID',
 		name: 'id',
 		type: 'options',
 		description:
@@ -266,7 +266,7 @@ export const productDetailsOptions: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Product Description',
+		displayName: 'Product description',
 		name: 'product_description',
 		type: 'string',
 		default: '',
@@ -278,7 +278,7 @@ export const productDetailsOptions: INodeProperties[] = [
 		default: 1,
 	},
 	{
-		displayName: 'Quantity in Stock',
+		displayName: 'Quantity in stock',
 		name: 'quantity_in_stock',
 		type: 'number',
 		default: 0,
@@ -296,19 +296,19 @@ export const productDetailsOptions: INodeProperties[] = [
 		default: 0,
 	},
 	{
-		displayName: 'Total After Discount',
+		displayName: 'Total after discount',
 		name: 'total_after_discount',
 		type: 'number',
 		default: 0,
 	},
 	{
-		displayName: 'Total (Net)',
+		displayName: 'Total (net)',
 		name: 'net_total',
 		type: 'number',
 		default: 0,
 	},
 	{
-		displayName: 'Unit Price',
+		displayName: 'Unit price',
 		name: 'unit_price',
 		type: 'number',
 		default: 0,
@@ -320,7 +320,7 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 
 	return [
 		{
-			displayName: 'Return All',
+			displayName: 'Return all',
 			name: 'returnAll',
 			type: 'boolean',
 			default: false,
@@ -388,14 +388,14 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 					description: 'Return only these fields',
 				},
 				{
-					displayName: 'Include Child',
+					displayName: 'Include child',
 					name: 'include_child',
 					type: 'boolean',
 					default: false,
 					description: 'Whether to retrieve only records from child territories',
 				},
 				{
-					displayName: 'Sort By',
+					displayName: 'Sort by',
 					name: 'sort_by',
 					type: 'options',
 					typeOptions: {
@@ -405,7 +405,7 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 					description: 'Field to sort records by',
 				},
 				{
-					displayName: 'Sort Order',
+					displayName: 'Sort order',
 					name: 'sort_order',
 					type: 'options',
 					options: [
@@ -437,9 +437,9 @@ export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource): IN
 	const loadOptionsMethod = `getCustom${capitalizeInitial(resource)}Fields`;
 
 	return {
-		displayName: 'Custom Fields',
+		displayName: 'Custom fields',
 		name: 'customFields',
-		placeholder: 'Add Custom Field',
+		placeholder: 'Add custom field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -449,7 +449,7 @@ export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource): IN
 		options: [
 			{
 				name: 'customFields',
-				displayName: 'Custom Field',
+				displayName: 'Custom field',
 				values: [
 					{
 						displayName: 'Field ID',

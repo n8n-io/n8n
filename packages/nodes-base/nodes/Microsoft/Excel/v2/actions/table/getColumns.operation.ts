@@ -16,7 +16,7 @@ const properties: INodeProperties[] = [
 	worksheetRLC,
 	tableRLC,
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -39,7 +39,7 @@ const properties: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		default: false,
@@ -47,7 +47,7 @@ const properties: INodeProperties[] = [
 			'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
-		displayName: 'Data Property',
+		displayName: 'Data property',
 		name: 'dataProperty',
 		type: 'string',
 		default: 'data',
@@ -62,7 +62,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {

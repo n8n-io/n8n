@@ -65,7 +65,7 @@ export const opportunityOperations: INodeProperties[] = [
 				action: 'Get an opportunity',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				routing: {
 					request: {
@@ -96,7 +96,7 @@ export const opportunityOperations: INodeProperties[] = [
 ];
 
 const pipelineId: INodeProperties = {
-	displayName: 'Pipeline Name or ID',
+	displayName: 'Pipeline name or ID',
 	name: 'pipelineId',
 	type: 'options',
 	displayOptions: {
@@ -122,7 +122,7 @@ const pipelineId: INodeProperties = {
 const createProperties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Contact Email or ID',
+		displayName: 'Contact email or ID',
 		name: 'contactId',
 		required: true,
 		type: 'options',
@@ -203,10 +203,10 @@ const createProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -217,7 +217,7 @@ const createProperties: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Assigned To',
+				displayName: 'Assigned to',
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
@@ -234,7 +234,7 @@ const createProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Company Name',
+				displayName: 'Company name',
 				name: 'companyName',
 				type: 'string',
 				default: '',
@@ -246,7 +246,7 @@ const createProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Monetary Value',
+				displayName: 'Monetary value',
 				name: 'monetaryValue',
 				type: 'number',
 				default: '',
@@ -272,7 +272,7 @@ const createProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage name or ID',
 				name: 'stageId',
 				type: 'options',
 				description:
@@ -328,7 +328,7 @@ const getProperties: INodeProperties[] = [
 
 const getAllProperties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -368,7 +368,7 @@ const getAllProperties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -379,7 +379,7 @@ const getAllProperties: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Assigned To',
+				displayName: 'Assigned to',
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
@@ -408,7 +408,7 @@ const getAllProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
@@ -421,7 +421,7 @@ const getAllProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Pipeline Name or ID',
+				displayName: 'Pipeline name or ID',
 				name: 'pipelineId',
 				type: 'options',
 				description:
@@ -438,7 +438,7 @@ const getAllProperties: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage name or ID',
 				name: 'stageId',
 				type: 'options',
 				default: '',
@@ -457,7 +457,7 @@ const getAllProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
@@ -533,10 +533,10 @@ const updateProperties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -547,7 +547,7 @@ const updateProperties: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Assigned To',
+				displayName: 'Assigned to',
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
@@ -564,7 +564,7 @@ const updateProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Monetary Value',
+				displayName: 'Monetary value',
 				name: 'monetaryValue',
 				type: 'number',
 				default: '',
@@ -590,7 +590,7 @@ const updateProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Pipeline Name or ID',
+				displayName: 'Pipeline name or ID',
 				name: 'pipelineId',
 				type: 'options',
 				description:
@@ -607,7 +607,7 @@ const updateProperties: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage name or ID',
 				name: 'stageId',
 				type: 'options',
 				default: '',

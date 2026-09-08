@@ -32,7 +32,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many contacts',
 				action: 'Get many contacts',
@@ -65,11 +65,11 @@ export const contactDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -82,7 +82,7 @@ export const contactDescription: INodeProperties[] = [
 				name: 'address',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Address',
+				placeholder: 'Add address',
 				typeOptions: {
 					multipleValues: false,
 				},
@@ -98,7 +98,7 @@ export const contactDescription: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Country Name or ID',
+								displayName: 'Country name or ID',
 								name: 'country_id',
 								type: 'options',
 								description:
@@ -109,7 +109,7 @@ export const contactDescription: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'State Name or ID',
+								displayName: 'State name or ID',
 								name: 'state_id',
 								type: 'options',
 								description:
@@ -132,7 +132,7 @@ export const contactDescription: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zip',
 								type: 'string',
 								default: '',
@@ -149,13 +149,13 @@ export const contactDescription: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Internal Notes',
+				displayName: 'Internal notes',
 				name: 'comment',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Job Position',
+				displayName: 'Job position',
 				name: 'function',
 				type: 'string',
 				default: '',
@@ -209,7 +209,7 @@ export const contactDescription: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -245,7 +245,7 @@ export const contactDescription: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['getAll', 'get'],
@@ -254,7 +254,7 @@ export const contactDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields to Include',
+				displayName: 'Fields to include',
 				name: 'fieldsList',
 				type: 'multiOptions',
 				description:
@@ -284,11 +284,11 @@ export const contactDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -301,7 +301,7 @@ export const contactDescription: INodeProperties[] = [
 				name: 'address',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Address',
+				placeholder: 'Add address',
 				typeOptions: {
 					multipleValues: false,
 				},
@@ -317,7 +317,7 @@ export const contactDescription: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Country Name or ID',
+								displayName: 'Country name or ID',
 								name: 'country_id',
 								type: 'options',
 								description:
@@ -328,7 +328,7 @@ export const contactDescription: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'State Name or ID',
+								displayName: 'State name or ID',
 								name: 'state_id',
 								type: 'options',
 								description:
@@ -351,7 +351,7 @@ export const contactDescription: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zip',
 								type: 'string',
 								default: '',
@@ -368,13 +368,13 @@ export const contactDescription: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Internal Notes',
+				displayName: 'Internal notes',
 				name: 'comment',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Job Position',
+				displayName: 'Job position',
 				name: 'function',
 				type: 'string',
 				default: '',

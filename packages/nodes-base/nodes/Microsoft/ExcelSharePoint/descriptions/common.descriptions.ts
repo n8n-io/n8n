@@ -30,7 +30,7 @@ export const workbookRLC: INodeProperties = {
 			],
 		},
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -58,7 +58,7 @@ export const siteRLC: INodeProperties = {
 	// is building (ENT-182), so the two can converge later.
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -91,7 +91,7 @@ export const siteRLC: INodeProperties = {
 };
 
 export const libraryRLC: INodeProperties = {
-	displayName: 'Document Library',
+	displayName: 'Document library',
 	name: 'library',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
@@ -103,7 +103,7 @@ export const libraryRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -121,7 +121,7 @@ export const libraryRLC: INodeProperties = {
 
 export const returnAllAndLimit: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -147,7 +147,7 @@ export const returnAllAndLimit: INodeProperties[] = [
 
 export const rawDataOutput: INodeProperties[] = [
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		default: false,
@@ -155,7 +155,7 @@ export const rawDataOutput: INodeProperties[] = [
 			'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
-		displayName: 'Data Property',
+		displayName: 'Data property',
 		name: 'dataProperty',
 		type: 'string',
 		default: 'data',
@@ -201,7 +201,7 @@ export const worksheetRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -210,7 +210,7 @@ export const worksheetRLC: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'By Name or ID',
+			displayName: 'By name or ID',
 			name: 'id',
 			type: 'string',
 			placeholder: 'e.g. Sheet1',
@@ -231,7 +231,7 @@ export const tableRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -240,7 +240,7 @@ export const tableRLC: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'By Name or ID',
+			displayName: 'By name or ID',
 			name: 'id',
 			type: 'string',
 			placeholder: 'e.g. Table1',

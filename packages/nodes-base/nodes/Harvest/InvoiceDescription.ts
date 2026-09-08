@@ -33,7 +33,7 @@ export const invoiceOperations: INodeProperties[] = [
 				action: 'Get data of an invoice',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many invoices',
 				action: 'Get data of all invoices',
@@ -55,7 +55,7 @@ export const invoiceFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -89,7 +89,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -165,7 +165,7 @@ export const invoiceFields: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Updated Since',
+				displayName: 'Updated since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
@@ -229,10 +229,10 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'The ID of the retainer associated with this invoice',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -258,7 +258,7 @@ export const invoiceFields: INodeProperties[] = [
 					'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'ends_on',
 				type: 'dateTime',
 				default: '',
@@ -273,7 +273,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'The ID of the estimate associated with this invoice',
 			},
 			{
-				displayName: 'Issue Date',
+				displayName: 'Issue date',
 				name: 'issue_date',
 				type: 'dateTime',
 				default: '',
@@ -294,7 +294,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'If no value is set, the number will be automatically generated',
 			},
 			{
-				displayName: 'Payment Term',
+				displayName: 'Payment term',
 				name: 'payment_term',
 				type: 'string',
 				default: '',
@@ -302,7 +302,7 @@ export const invoiceFields: INodeProperties[] = [
 					'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.',
 			},
 			{
-				displayName: 'Purchase Order',
+				displayName: 'Purchase order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
@@ -360,10 +360,10 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'The ID of the invoice want to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -396,7 +396,7 @@ export const invoiceFields: INodeProperties[] = [
 					'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'ends_on',
 				type: 'dateTime',
 				default: '',
@@ -411,7 +411,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'The ID of the estimate associated with this invoice',
 			},
 			{
-				displayName: 'Issue Date',
+				displayName: 'Issue date',
 				name: 'issue_date',
 				type: 'dateTime',
 				default: '',
@@ -432,7 +432,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'If no value is set, the number will be automatically generated',
 			},
 			{
-				displayName: 'Payment Term',
+				displayName: 'Payment term',
 				name: 'payment_term',
 				type: 'string',
 				default: '',
@@ -440,7 +440,7 @@ export const invoiceFields: INodeProperties[] = [
 					'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.',
 			},
 			{
-				displayName: 'Purchase Order',
+				displayName: 'Purchase order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',

@@ -2,7 +2,7 @@ import type { ChannelProperties } from '../../Interfaces';
 
 export const channelSearchDescription: ChannelProperties = [
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		type: 'options',
 		typeOptions: {
@@ -21,7 +21,7 @@ export const channelSearchDescription: ChannelProperties = [
 			'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Search Term',
+		displayName: 'Search term',
 		name: 'term',
 		type: 'string',
 		default: '',
@@ -36,7 +36,7 @@ export const channelSearchDescription: ChannelProperties = [
 		description: 'The search term for Channels in a Team',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

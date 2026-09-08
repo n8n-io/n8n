@@ -8,10 +8,10 @@ import { microsoftApiRequest } from '../../transport';
 export const properties: INodeProperties[] = [
 	calendarRLC,
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -21,46 +21,46 @@ export const properties: INodeProperties[] = [
 				default: 'lightBlue',
 				options: [
 					{
-						name: 'Light Blue',
+						name: 'Light blue',
 						value: 'lightBlue',
 					},
 					{
-						name: 'Light Brown',
+						name: 'Light brown',
 						value: 'lightBrown',
 					},
 					{
-						name: 'Light Gray',
+						name: 'Light gray',
 						value: 'lightGray',
 					},
 					{
-						name: 'Light Green',
+						name: 'Light green',
 						value: 'lightGreen',
 					},
 					{
-						name: 'Light Orange',
+						name: 'Light orange',
 						value: 'lightOrange',
 					},
 					{
-						name: 'Light Pink',
+						name: 'Light pink',
 						value: 'lightPink',
 					},
 					{
-						name: 'Light Red',
+						name: 'Light red',
 						value: 'lightRed',
 					},
 					{
-						name: 'Light Teal',
+						name: 'Light teal',
 						value: 'lightTeal',
 					},
 					{
-						name: 'Light Yellow',
+						name: 'Light yellow',
 						value: 'lightYellow',
 					},
 				],
 				description: 'Specify the color to distinguish the calendar from the others',
 			},
 			{
-				displayName: 'Default Calendar',
+				displayName: 'Default calendar',
 				name: 'isDefaultCalendar',
 				type: 'boolean',
 				default: false,

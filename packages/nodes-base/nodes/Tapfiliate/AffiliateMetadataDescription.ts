@@ -56,7 +56,7 @@ export const affiliateMetadataFields: INodeProperties[] = [
 	{
 		displayName: 'Metadata',
 		name: 'metadataUi',
-		placeholder: 'Add Metadata',
+		placeholder: 'Add metadata',
 		type: 'fixedCollection',
 		displayOptions: {
 			show: {

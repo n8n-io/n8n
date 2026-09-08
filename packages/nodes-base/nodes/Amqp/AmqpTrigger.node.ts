@@ -38,7 +38,7 @@ export class AmqpTrigger implements INodeType {
 			// Node properties which the user gets displayed and
 			// can change on the node.
 			{
-				displayName: 'Queue / Topic',
+				displayName: 'Queue / topic',
 				name: 'sink',
 				type: 'string',
 				default: '',
@@ -46,7 +46,7 @@ export class AmqpTrigger implements INodeType {
 				description: 'Name of the queue or topic to listen to',
 			},
 			{
-				displayName: 'Client Name',
+				displayName: 'Client name',
 				name: 'clientname',
 				type: 'string',
 				default: '',
@@ -78,7 +78,7 @@ export class AmqpTrigger implements INodeType {
 						description: 'Will be passed to the RHEA backend as container_id',
 					},
 					{
-						displayName: 'Convert Body To String',
+						displayName: 'Convert body to string',
 						name: 'jsonConvertByteArrayToString',
 						type: 'boolean',
 						default: false,
@@ -86,28 +86,28 @@ export class AmqpTrigger implements INodeType {
 							'Whether to convert JSON body content (["body"]["content"]) from byte array to string. Needed for Azure Service Bus.',
 					},
 					{
-						displayName: 'JSON Parse Body',
+						displayName: 'JSON parse body',
 						name: 'jsonParseBody',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to parse the body to an object',
 					},
 					{
-						displayName: 'Messages per Cycle',
+						displayName: 'Messages per cycle',
 						name: 'pullMessagesNumber',
 						type: 'number',
 						default: 100,
 						description: 'Number of messages to pull from the bus for every cycle',
 					},
 					{
-						displayName: 'Only Body',
+						displayName: 'Only body',
 						name: 'onlyBody',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to return only the body property',
 					},
 					{
-						displayName: 'Parallel Processing',
+						displayName: 'Parallel processing',
 						name: 'parallelProcessing',
 						type: 'boolean',
 						default: true,
@@ -121,14 +121,14 @@ export class AmqpTrigger implements INodeType {
 						description: 'Whether to automatically reconnect if disconnected',
 					},
 					{
-						displayName: 'Reconnect Limit',
+						displayName: 'Reconnect limit',
 						name: 'reconnectLimit',
 						type: 'number',
 						default: 50,
 						description: 'Maximum number of reconnect attempts',
 					},
 					{
-						displayName: 'Sleep Time',
+						displayName: 'Sleep time',
 						name: 'sleepTime',
 						type: 'number',
 						default: 10,

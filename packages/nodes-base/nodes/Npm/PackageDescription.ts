@@ -21,7 +21,7 @@ export const packageOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Metadata',
+				name: 'Get metadata',
 				value: 'getMetadata',
 				action: 'Returns all the metadata for a package at a specific version',
 				description: 'Returns all the metadata for a package at a specific version',
@@ -33,7 +33,7 @@ export const packageOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get Versions',
+				name: 'Get versions',
 				value: 'getVersions',
 				action: 'Returns all the versions for a package',
 				description: 'Returns all the versions for a package',
@@ -106,7 +106,7 @@ export const packageOperations: INodeProperties[] = [
 
 export const packageFields: INodeProperties[] = [
 	{
-		displayName: 'Package Name',
+		displayName: 'Package name',
 		name: 'packageName',
 		type: 'string',
 		required: true,
@@ -119,7 +119,7 @@ export const packageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Package Version',
+		displayName: 'Package version',
 		name: 'packageVersion',
 		type: 'string',
 		required: true,

@@ -25,7 +25,7 @@ export const reportOperations: INodeProperties[] = [
 
 export const reportFields: INodeProperties[] = [
 	{
-		displayName: 'View Name or ID',
+		displayName: 'View name or ID',
 		name: 'viewId',
 		type: 'options',
 		typeOptions: {
@@ -44,7 +44,7 @@ export const reportFields: INodeProperties[] = [
 			'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -88,10 +88,10 @@ export const reportFields: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -101,25 +101,25 @@ export const reportFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Date Ranges',
+				displayName: 'Date ranges',
 				name: 'dateRangesUi',
-				placeholder: 'Add Date Range',
+				placeholder: 'Add date range',
 				type: 'fixedCollection',
 				default: {},
 				description: 'Date ranges in the request',
 				options: [
 					{
-						displayName: 'Date Range',
+						displayName: 'Date range',
 						name: 'dateRanges',
 						values: [
 							{
-								displayName: 'Start Date',
+								displayName: 'Start date',
 								name: 'startDate',
 								type: 'dateTime',
 								default: '',
 							},
 							{
-								displayName: 'End Date',
+								displayName: 'End date',
 								name: 'endDate',
 								type: 'dateTime',
 								default: '',
@@ -136,7 +136,7 @@ export const reportFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Dimension',
+				placeholder: 'Add dimension',
 				description:
 					'Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, "Paris" or "New York", from which a session originates.',
 				options: [
@@ -160,14 +160,14 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Dimension Filters',
+				displayName: 'Dimension filters',
 				name: 'dimensionFiltersUi',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Dimension Filter',
+				placeholder: 'Add dimension filter',
 				description: 'Dimension Filters in the request',
 				options: [
 					{
@@ -175,7 +175,7 @@ export const reportFields: INodeProperties[] = [
 						name: 'filterValues',
 						values: [
 							{
-								displayName: 'Dimension Name or ID',
+								displayName: 'Dimension name or ID',
 								name: 'dimensionName',
 								type: 'options',
 								typeOptions: {
@@ -194,15 +194,15 @@ export const reportFields: INodeProperties[] = [
 								description: 'Operator to use in combination with value',
 								options: [
 									{
-										name: 'Begins With',
+										name: 'Begins with',
 										value: 'BEGINS_WITH',
 									},
 									{
-										name: 'Ends With',
+										name: 'Ends with',
 										value: 'ENDS_WITH',
 									},
 									{
-										name: 'Equal (Number)',
+										name: 'Equal (number)',
 										value: 'NUMERIC_EQUAL',
 									},
 									{
@@ -210,11 +210,11 @@ export const reportFields: INodeProperties[] = [
 										value: 'EXACT',
 									},
 									{
-										name: 'Greater Than (Number)',
+										name: 'Greater than (number)',
 										value: 'NUMERIC_GREATER_THAN',
 									},
 									{
-										name: 'Less Than (Number)',
+										name: 'Less than (number)',
 										value: 'NUMERIC_LESS_THAN',
 									},
 									{
@@ -222,7 +222,7 @@ export const reportFields: INodeProperties[] = [
 										value: 'PARTIAL',
 									},
 									{
-										name: 'Regular Expression',
+										name: 'Regular expression',
 										value: 'REGEXP',
 									},
 								],
@@ -241,7 +241,7 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Hide Totals',
+				displayName: 'Hide totals',
 				name: 'hideTotals',
 				type: 'boolean',
 				default: false,
@@ -249,14 +249,14 @@ export const reportFields: INodeProperties[] = [
 					'Whether to hide the total of all metrics for all the matching rows, for every date range',
 			},
 			{
-				displayName: 'Hide Value Ranges',
+				displayName: 'Hide value ranges',
 				name: 'hideValueRanges',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to hide the minimum and maximum across all matching rows',
 			},
 			{
-				displayName: 'Include Empty Rows',
+				displayName: 'Include empty rows',
 				name: 'includeEmptyRows',
 				type: 'boolean',
 				default: false,
@@ -271,7 +271,7 @@ export const reportFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Metrics',
+				placeholder: 'Add metrics',
 				description: 'Metrics in the request',
 				options: [
 					{
@@ -295,7 +295,7 @@ export const reportFields: INodeProperties[] = [
 									'<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>.',
 							},
 							{
-								displayName: 'Formatting Type',
+								displayName: 'Formatting type',
 								name: 'formattingType',
 								type: 'options',
 								default: 'INTEGER',
@@ -328,7 +328,7 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Use Resource Quotas',
+				displayName: 'Use resource quotas',
 				name: 'useResourceQuotas',
 				type: 'boolean',
 				default: false,

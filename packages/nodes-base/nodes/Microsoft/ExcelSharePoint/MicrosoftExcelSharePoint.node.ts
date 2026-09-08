@@ -75,7 +75,7 @@ export class MicrosoftExcelSharePoint implements INodeType {
 							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Sites.ReadWrite.All) on the credential.',
 					},
 					{
-						name: 'Microsoft Entra Service Principal (App-Only)',
+						name: 'Microsoft Entra service principal (app-only)',
 						value: 'microsoftEntraServicePrincipalApi',
 						description:
 							'App-only access via a Microsoft Entra app registration with admin-consented SharePoint application permissions',
@@ -123,7 +123,7 @@ export class MicrosoftExcelSharePoint implements INodeType {
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
-						name: 'Append or Update',
+						name: 'Append or update',
 						value: 'upsert',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-upsert
 						description: 'Append a new row or update the current one if it already exists (upsert)',
@@ -142,13 +142,13 @@ export class MicrosoftExcelSharePoint implements INodeType {
 						action: 'Delete sheet',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: "Retrieve a list of the workbook's sheets",
 						action: 'Get many sheets',
 					},
 					{
-						name: 'Get Rows',
+						name: 'Get rows',
 						value: 'readRows',
 						description: 'Read rows from a range or the used range of a sheet',
 						action: 'Get rows in sheet',
@@ -180,7 +180,7 @@ export class MicrosoftExcelSharePoint implements INodeType {
 						action: 'Append rows to table',
 					},
 					{
-						name: 'Convert to Range',
+						name: 'Convert to range',
 						value: 'convertToRange',
 						description: 'Convert a table to a plain range of cells',
 						action: 'Convert table to range',
@@ -198,19 +198,19 @@ export class MicrosoftExcelSharePoint implements INodeType {
 						action: 'Delete table',
 					},
 					{
-						name: 'Get Columns',
+						name: 'Get columns',
 						value: 'getColumns',
 						description: "Retrieve a list of the table's columns",
 						action: 'Get columns in table',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: "Retrieve a list of the workbook's tables",
 						action: 'Get many tables',
 					},
 					{
-						name: 'Get Rows',
+						name: 'Get rows',
 						value: 'getRows',
 						description: "Retrieve a list of the table's rows",
 						action: 'Get rows in table',

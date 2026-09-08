@@ -56,7 +56,7 @@ export default workflow('id', 'name')
 				default: '',
 			},
 			{
-				displayName: 'Batch Size',
+				displayName: 'Batch size',
 				name: 'batchSize',
 				type: 'number',
 				typeOptions: {

@@ -42,7 +42,7 @@ export class Peekalink extends Node {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Is Available',
+						name: 'Is available',
 						value: 'isAvailable',
 						description: 'Check whether preview for a given link is available',
 						action: 'Check whether the preview for a given link is available',

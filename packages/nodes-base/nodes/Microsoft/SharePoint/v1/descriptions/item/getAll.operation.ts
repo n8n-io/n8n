@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Filter by Formula',
+		displayName: 'Filter by formula',
 		name: 'filter',
 		default: '',
 		description:
@@ -36,7 +36,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
@@ -102,15 +102,15 @@ const properties: INodeProperties[] = [
 				},
 				options: [
 					{
-						name: 'Content Type',
+						name: 'Content type',
 						value: 'contentType',
 					},
 					{
-						name: 'Created At',
+						name: 'Created at',
 						value: 'createdDateTime',
 					},
 					{
-						name: 'Created By',
+						name: 'Created by',
 						value: 'createdBy',
 					},
 					{
@@ -122,16 +122,16 @@ const properties: INodeProperties[] = [
 						value: 'id',
 					},
 					{
-						name: 'Last Modified At',
+						name: 'Last modified at',
 						value: 'lastModifiedDateTime',
 					},
 					{
-						name: 'Last Modified By',
+						name: 'Last modified by',
 						value: 'lastModifiedBy',
 					},
 
 					{
-						name: 'Parent Reference',
+						name: 'Parent reference',
 						value: 'parentReference',
 					},
 					{

@@ -42,7 +42,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: create
 	// ----------------------------------
 	{
-		displayName: 'Campaign Name or ID',
+		displayName: 'Campaign name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -74,10 +74,10 @@ export const leadFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -87,14 +87,14 @@ export const leadFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company Name',
+				displayName: 'Company name',
 				name: 'companyName',
 				type: 'string',
 				default: '',
 				description: 'Company name of the lead to create',
 			},
 			{
-				displayName: 'Company Domain',
+				displayName: 'Company domain',
 				name: 'companyDomain',
 				type: 'string',
 				default: '',
@@ -109,21 +109,21 @@ export const leadFields: INodeProperties[] = [
 					'Whether to do not insert if this email is already present in another campaign',
 			},
 			{
-				displayName: 'Find Email',
+				displayName: 'Find email',
 				name: 'findEmail',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to find verified email',
 			},
 			{
-				displayName: 'Find Phone',
+				displayName: 'Find phone',
 				name: 'findPhone',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to find phone number',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
@@ -137,21 +137,21 @@ export const leadFields: INodeProperties[] = [
 				description: 'Icebreaker of the lead to create',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
 				description: 'Job title of the lead to create',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
 				description: 'Last name of the lead to create',
 			},
 			{
-				displayName: 'LinkedIn Enrichment',
+				displayName: 'LinkedIn enrichment',
 				name: 'linkedinEnrichment',
 				type: 'boolean',
 				default: false,
@@ -180,7 +180,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Picture URL of the lead to create',
 			},
 			{
-				displayName: 'Verify Email',
+				displayName: 'Verify email',
 				name: 'verifyEmail',
 				type: 'boolean',
 				default: false,
@@ -193,7 +193,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: delete
 	// ----------------------------------
 	{
-		displayName: 'Campaign Name or ID',
+		displayName: 'Campaign name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -247,7 +247,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: unsubscribe
 	// ----------------------------------
 	{
-		displayName: 'Campaign Name or ID',
+		displayName: 'Campaign name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,

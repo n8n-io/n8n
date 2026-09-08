@@ -19,7 +19,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Delete a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many users in the current organization',
 				action: 'Get many users',
@@ -54,10 +54,10 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -112,7 +112,7 @@ export const userFields: INodeProperties[] = [
 	//              user: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

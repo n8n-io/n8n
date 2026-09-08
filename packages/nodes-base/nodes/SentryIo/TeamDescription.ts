@@ -31,7 +31,7 @@ export const teamOperations: INodeProperties[] = [
 				action: 'Get a team',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many teams',
 				action: 'Get many teams',
@@ -52,7 +52,7 @@ export const teamFields: INodeProperties[] = [
 	/*                                team:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -70,7 +70,7 @@ export const teamFields: INodeProperties[] = [
 			'The slug of the organization for which the teams should be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -105,7 +105,7 @@ export const teamFields: INodeProperties[] = [
 	/*                                team:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -123,7 +123,7 @@ export const teamFields: INodeProperties[] = [
 			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Team Slug Name or ID',
+		displayName: 'Team slug name or ID',
 		name: 'teamSlug',
 		type: 'options',
 		typeOptions: {
@@ -146,7 +146,7 @@ export const teamFields: INodeProperties[] = [
 	/*                                team:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -178,10 +178,10 @@ export const teamFields: INodeProperties[] = [
 		description: 'The name of the team',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -205,7 +205,7 @@ export const teamFields: INodeProperties[] = [
 	/*                                team:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -223,7 +223,7 @@ export const teamFields: INodeProperties[] = [
 			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Team Slug Name or ID',
+		displayName: 'Team slug name or ID',
 		name: 'teamSlug',
 		type: 'options',
 		typeOptions: {
@@ -242,10 +242,10 @@ export const teamFields: INodeProperties[] = [
 			'The slug of the team to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -275,7 +275,7 @@ export const teamFields: INodeProperties[] = [
 	/*                                team:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization slug name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -293,7 +293,7 @@ export const teamFields: INodeProperties[] = [
 			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Team Slug Name or ID',
+		displayName: 'Team slug name or ID',
 		name: 'teamSlug',
 		type: 'options',
 		typeOptions: {

@@ -31,7 +31,7 @@ export const document: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -87,7 +87,7 @@ export const sheet: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -174,7 +174,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 					{
@@ -188,22 +188,22 @@ export class GoogleSheetsTrigger implements INodeType {
 			document,
 			sheet,
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'event',
 				type: 'options',
 				description:
-					"It will be triggered also by newly created columns (if the 'Columns to Watch' option is not set)",
+					"It will be triggered also by newly created columns (if the 'Columns to watch' option is not set)",
 				options: [
 					{
-						name: 'Row Added',
+						name: 'Row added',
 						value: 'rowAdded',
 					},
 					{
-						name: 'Row Updated',
+						name: 'Row updated',
 						value: 'rowUpdate',
 					},
 					{
-						name: 'Row Added or Updated',
+						name: 'Row added or updated',
 						value: 'anyUpdate',
 					},
 				],
@@ -211,22 +211,22 @@ export class GoogleSheetsTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Include in Output',
+				displayName: 'Include in output',
 				name: 'includeInOutput',
 				type: 'options',
 				default: 'new',
 				description: 'This option will be effective only when automatically executing the workflow',
 				options: [
 					{
-						name: 'New Version',
+						name: 'New version',
 						value: 'new',
 					},
 					{
-						name: 'Old Version',
+						name: 'Old version',
 						value: 'old',
 					},
 					{
-						name: 'Both Versions',
+						name: 'Both versions',
 						value: 'both',
 					},
 				],
@@ -244,7 +244,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Columns to Watch',
+						displayName: 'Columns to watch',
 						name: 'columnsToWatch',
 						type: 'multiOptions',
 						description:
@@ -261,10 +261,10 @@ export class GoogleSheetsTrigger implements INodeType {
 						},
 					},
 					{
-						displayName: 'Data Location on Sheet',
+						displayName: 'Data location on sheet',
 						name: 'dataLocationOnSheet',
 						type: 'fixedCollection',
-						placeholder: 'Select Range',
+						placeholder: 'Select range',
 						default: { values: { rangeDefinition: 'specifyRangeA1' } },
 						options: [
 							{
@@ -272,17 +272,17 @@ export class GoogleSheetsTrigger implements INodeType {
 								name: 'values',
 								values: [
 									{
-										displayName: 'Range Definition',
+										displayName: 'Range definition',
 										name: 'rangeDefinition',
 										type: 'options',
 										options: [
 											{
-												name: 'Specify Range (A1 Notation)',
+												name: 'Specify range (A1 notation)',
 												value: 'specifyRangeA1',
 												description: 'Manually specify the data range',
 											},
 											{
-												name: 'Specify Range (Rows)',
+												name: 'Specify range (rows)',
 												value: 'specifyRange',
 												description: 'Manually specify the data range',
 											},
@@ -290,7 +290,7 @@ export class GoogleSheetsTrigger implements INodeType {
 										default: '',
 									},
 									{
-										displayName: 'Header Row',
+										displayName: 'Header row',
 										name: 'headerRow',
 										type: 'number',
 										typeOptions: {
@@ -307,7 +307,7 @@ export class GoogleSheetsTrigger implements INodeType {
 										},
 									},
 									{
-										displayName: 'First Data Row',
+										displayName: 'First data row',
 										name: 'firstDataRow',
 										type: 'number',
 										typeOptions: {
@@ -343,7 +343,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						],
 					},
 					{
-						displayName: 'Value Render',
+						displayName: 'Value render',
 						name: 'valueRender',
 						type: 'options',
 						options: [
@@ -374,18 +374,18 @@ export class GoogleSheetsTrigger implements INodeType {
 						},
 					},
 					{
-						displayName: 'DateTime Render',
+						displayName: 'DateTime render',
 						name: 'dateTimeRenderOption',
 						type: 'options',
 						options: [
 							{
-								name: 'Serial Number',
+								name: 'Serial number',
 								value: 'SERIAL_NUMBER',
 								description:
 									'Fields will be returned as doubles in "serial number" format (as popularized by Lotus 1-2-3)',
 							},
 							{
-								name: 'Formatted String',
+								name: 'Formatted string',
 								value: 'FORMATTED_STRING',
 								description:
 									'Fields will be rendered as strings in their given number format (which depends on the spreadsheet locale)',

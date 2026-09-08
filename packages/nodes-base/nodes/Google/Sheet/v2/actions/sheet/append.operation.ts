@@ -24,17 +24,17 @@ import {
 
 export const description: SheetProperties = [
 	{
-		displayName: 'Data Mode',
+		displayName: 'Data mode',
 		name: 'dataMode',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Map Each Column Below',
+				name: 'Map each column below',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
@@ -75,9 +75,9 @@ export const description: SheetProperties = [
 		},
 	},
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Field to Send',
@@ -101,7 +101,7 @@ export const description: SheetProperties = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'fieldId',
 						type: 'options',
 						description:
@@ -113,7 +113,7 @@ export const description: SheetProperties = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -175,10 +175,10 @@ export const description: SheetProperties = [
 		options: [
 			cellFormat,
 			{
-				displayName: 'Data Location on Sheet',
+				displayName: 'Data location on sheet',
 				name: 'locationDefine',
 				type: 'fixedCollection',
-				placeholder: 'Select Range',
+				placeholder: 'Select range',
 				default: { values: {} },
 				options: [
 					{
@@ -186,7 +186,7 @@ export const description: SheetProperties = [
 						name: 'values',
 						values: [
 							{
-								displayName: 'Header Row',
+								displayName: 'Header row',
 								name: 'headerRow',
 								type: 'number',
 								typeOptions: {

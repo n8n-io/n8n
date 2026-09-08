@@ -15,16 +15,16 @@ import { driveRLC, fileTypesOptions, folderRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Search Method',
+		displayName: 'Search method',
 		name: 'searchMethod',
 		type: 'options',
 		options: [
 			{
-				name: 'Search File/Folder Name',
+				name: 'Search file/folder name',
 				value: 'name',
 			},
 			{
-				name: 'Advanced Search',
+				name: 'Advanced search',
 				value: 'query',
 			},
 		],
@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 		description: 'Whether to search for the file/folder name or use a query string',
 	},
 	{
-		displayName: 'Search Query',
+		displayName: 'Search query',
 		name: 'queryString',
 		type: 'string',
 		default: '',
@@ -46,7 +46,7 @@ const properties: INodeProperties[] = [
 			'The name of the file or folder to search for. Returns also files and folders whose names partially match this search term.',
 	},
 	{
-		displayName: 'Query String',
+		displayName: 'Query string',
 		name: 'queryString',
 		type: 'string',
 		default: '',
@@ -60,7 +60,7 @@ const properties: INodeProperties[] = [
 			'Use the Google query strings syntax to search for a specific set of files or folders. <a href="https://developers.google.com/drive/api/v3/search-files" target="_blank">Learn more</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -85,7 +85,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Filter',
 		name: 'filter',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
@@ -101,13 +101,13 @@ const properties: INodeProperties[] = [
 				required: false,
 			},
 			{
-				displayName: 'What to Search',
+				displayName: 'What to search',
 				name: 'whatToSearch',
 				type: 'options',
 				default: 'all',
 				options: [
 					{
-						name: 'Files and Folders',
+						name: 'Files and folders',
 						value: 'all',
 					},
 					{
@@ -121,7 +121,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'File Types',
+				displayName: 'File types',
 				name: 'fileTypes',
 				type: 'multiOptions',
 				default: [],
@@ -134,7 +134,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'File Types',
+				displayName: 'File types',
 				name: 'fileTypes',
 				type: 'multiOptions',
 				default: [],
@@ -147,7 +147,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Include Trashed Items',
+				displayName: 'Include trashed items',
 				name: 'includeTrashed',
 				type: 'boolean',
 				default: false,

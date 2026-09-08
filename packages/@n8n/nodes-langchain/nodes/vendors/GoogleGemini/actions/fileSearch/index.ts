@@ -15,27 +15,27 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Create File Search Store',
+				name: 'Create file search store',
 				value: 'createStore',
-				action: 'Create a File Search store',
+				action: 'Create a file search store',
 				description: 'Create a new File Search store for RAG (Retrieval Augmented Generation)',
 			},
 			{
-				name: 'Delete File Search Store',
+				name: 'Delete file search store',
 				value: 'deleteStore',
-				action: 'Delete a File Search store',
+				action: 'Delete a file search store',
 				description: 'Delete a File Search store',
 			},
 			{
-				name: 'List File Search Stores',
+				name: 'List file search stores',
 				value: 'listStores',
-				action: 'List all File Search stores',
+				action: 'List all file search stores',
 				description: 'List all File Search stores owned by the user',
 			},
 			{
-				name: 'Upload to File Search Store',
+				name: 'Upload to file search store',
 				value: 'uploadToStore',
-				action: 'Upload a file to a File Search store',
+				action: 'Upload a file to a file search store',
 				description:
 					'Upload a file to a File Search store for RAG (Retrieval Augmented Generation)',
 			},

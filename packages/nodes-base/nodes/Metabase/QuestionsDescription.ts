@@ -26,7 +26,7 @@ export const questionsOperations: INodeProperties[] = [
 				action: 'Get a questions',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many questions',
 				routing: {
@@ -38,7 +38,7 @@ export const questionsOperations: INodeProperties[] = [
 				action: 'Get many questions',
 			},
 			{
-				name: 'Result Data',
+				name: 'Result data',
 				value: 'resultData',
 				description: 'Return the result of the question to a specific file format',
 				routing: {

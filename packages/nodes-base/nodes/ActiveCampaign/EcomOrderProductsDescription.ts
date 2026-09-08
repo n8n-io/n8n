@@ -15,19 +15,19 @@ export const ecomOrderProductsOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many order products',
 				action: 'Get many ecommerce orders',
 			},
 			{
-				name: 'Get by Product ID',
+				name: 'Get by product ID',
 				value: 'getByProductId',
 				description: 'Get data of a ordered product',
 				action: 'Get an e-commerce order product by product ID',
 			},
 			{
-				name: 'Get by Order ID',
+				name: 'Get by order ID',
 				value: 'getByOrderId',
 				description: "Get data of an order's products",
 				action: 'Get an e-commerce order product by order ID',

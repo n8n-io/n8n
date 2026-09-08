@@ -28,10 +28,10 @@ export const ticketCreateDescription: TicketProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['ticket'],
@@ -47,7 +47,7 @@ export const ticketCreateDescription: TicketProperties = [
 				default: '',
 			},
 			{
-				displayName: 'Assign to Contact',
+				displayName: 'Assign to contact',
 				name: 'contactId',
 				type: 'string',
 				default: '',
@@ -60,16 +60,16 @@ export const ticketCreateDescription: TicketProperties = [
 			// 	default: '',
 			// },
 			{
-				displayName: 'Issue Type',
+				displayName: 'Issue type',
 				name: 'issueType',
 				type: 'options',
 				options: [
 					{
-						name: 'Contract Work',
+						name: 'Contract work',
 						value: 'Contract Work',
 					},
 					{
-						name: 'Network Project',
+						name: 'Network project',
 						value: 'Network Project',
 					},
 					{
@@ -77,11 +77,11 @@ export const ticketCreateDescription: TicketProperties = [
 						value: 'Other',
 					},
 					{
-						name: 'Regular Maintenance',
+						name: 'Regular maintenance',
 						value: 'Regular Maintenance',
 					},
 					{
-						name: 'Remote Support',
+						name: 'Remote support',
 						value: 'Remote Support',
 					},
 				],
@@ -93,11 +93,11 @@ export const ticketCreateDescription: TicketProperties = [
 				type: 'options',
 				options: [
 					{
-						name: 'Customer Reply',
+						name: 'Customer reply',
 						value: 'Customer Reply',
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 'In Progress',
 					},
 					{
@@ -113,11 +113,11 @@ export const ticketCreateDescription: TicketProperties = [
 						value: 'Scheduled',
 					},
 					{
-						name: 'Waiting for Parts',
+						name: 'Waiting for parts',
 						value: 'Waiting for Parts',
 					},
 					{
-						name: 'Waiting on Customer',
+						name: 'Waiting on customer',
 						value: 'Waiting on Customer',
 					},
 				],

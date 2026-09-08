@@ -34,13 +34,13 @@ export const listOperations: INodeProperties[] = [
 				action: 'Get a list',
 			},
 			{
-				name: 'Get Cards',
+				name: 'Get cards',
 				value: 'getCards',
 				description: 'Get all the cards in a list',
 				action: 'Get all cards in a list',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many lists',
 				action: 'Get many lists',
@@ -121,10 +121,10 @@ export const listFields: INodeProperties[] = [
 		description: 'The name of the list',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -134,7 +134,7 @@ export const listFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'List Source',
+				displayName: 'List source',
 				name: 'idListSource',
 				type: 'string',
 				default: '',
@@ -168,7 +168,7 @@ export const listFields: INodeProperties[] = [
 		description: 'The ID of the list to get cards',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -198,10 +198,10 @@ export const listFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['getCards'],
@@ -237,10 +237,10 @@ export const listFields: INodeProperties[] = [
 		description: 'The ID of the list to get',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -277,7 +277,7 @@ export const listFields: INodeProperties[] = [
 		description: 'The ID of the board',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -307,10 +307,10 @@ export const listFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -347,10 +347,10 @@ export const listFields: INodeProperties[] = [
 		description: 'The ID of the list to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],

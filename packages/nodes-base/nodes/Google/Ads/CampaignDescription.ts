@@ -35,7 +35,7 @@ export const campaignOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many campaigns linked to the specified account',
 				routing: {
@@ -136,7 +136,7 @@ export const campaignOperations: INodeProperties[] = [
 
 export const campaignFields: INodeProperties[] = [
 	{
-		displayName: 'Manager Customer ID',
+		displayName: 'Manager customer ID',
 		name: 'managerCustomerId',
 		type: 'string',
 		required: true,
@@ -149,7 +149,7 @@ export const campaignFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Client Customer ID',
+		displayName: 'Client customer ID',
 		name: 'clientCustomerId',
 		type: 'string',
 		required: true,
@@ -176,7 +176,7 @@ export const campaignFields: INodeProperties[] = [
 		description: 'ID of the campaign',
 	},
 	{
-		displayName: 'Additional Options',
+		displayName: 'Additional options',
 		name: 'additionalOptions',
 		type: 'collection',
 		displayOptions: {
@@ -190,14 +190,14 @@ export const campaignFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Date Range',
+				displayName: 'Date range',
 				name: 'dateRange',
 				description: 'Filters statistics by period',
 				type: 'options',
 				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'All Time',
+						name: 'All time',
 						value: 'allTime',
 						description: 'Fetch statistics for all period',
 					},
@@ -212,33 +212,33 @@ export const campaignFields: INodeProperties[] = [
 						description: 'Yesterday only',
 					},
 					{
-						name: 'Last 7 Days',
+						name: 'Last 7 days',
 						value: 'LAST_7_DAYS',
 						description: 'Last 7 days, not including today',
 					},
 					{
-						name: 'Last Business Week',
+						name: 'Last business week',
 						value: 'LAST_BUSINESS_WEEK',
 						description:
 							'The 5 day business week, Monday through Friday, of the previous business week',
 					},
 					{
-						name: 'This Month',
+						name: 'This month',
 						value: 'THIS_MONTH',
 						description: 'All days in the current month',
 					},
 					{
-						name: 'Last Month',
+						name: 'Last month',
 						value: 'LAST_MONTH',
 						description: 'All days in the previous month',
 					},
 					{
-						name: 'Last 14 Days',
+						name: 'Last 14 days',
 						value: 'LAST_14_DAYS',
 						description: 'The last 14 days not including today',
 					},
 					{
-						name: 'Last 30 Days',
+						name: 'Last 30 days',
 						value: 'LAST_30_DAYS',
 						description: 'The last 30 days not including today',
 					},
@@ -246,7 +246,7 @@ export const campaignFields: INodeProperties[] = [
 				default: 'allTime',
 			},
 			{
-				displayName: 'Show Campaigns by Status',
+				displayName: 'Show campaigns by status',
 				name: 'campaignStatus',
 				description: 'Filters campaigns by status',
 				type: 'options',

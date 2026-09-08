@@ -87,15 +87,15 @@ export const authenticationProperty = (
 	type: 'options',
 	options: [
 		{
-			name: 'Basic Auth',
+			name: 'Basic auth',
 			value: 'basicAuth',
 		},
 		{
-			name: 'Header Auth',
+			name: 'Header auth',
 			value: 'headerAuth',
 		},
 		{
-			name: 'JWT Auth',
+			name: 'JWT auth',
 			value: 'jwtAuth',
 		},
 		...(includeN8nOAuth2 ? [n8nOAuth2AuthOption] : []),
@@ -119,7 +119,7 @@ export const authenticationProperty = (
 // its on-by-default semantics (`node.parameters.requireExecuteAccess !== false`).
 // Only relevant while the n8nOAuth2 mode is selected, so it is hidden otherwise.
 export const requireExecuteAccessProperty = (propertyName = 'authentication'): INodeProperties => ({
-	displayName: 'Require Workflow Execute Permission',
+	displayName: 'Require workflow execute permission',
 	name: 'requireExecuteAccess',
 	type: 'boolean',
 	default: true,
@@ -129,7 +129,7 @@ export const requireExecuteAccessProperty = (propertyName = 'authentication'): I
 });
 
 export const httpMethodsProperty: INodeProperties = {
-	displayName: 'HTTP Method',
+	displayName: 'HTTP method',
 	name: 'httpMethod',
 	type: 'options',
 	options: [
@@ -163,7 +163,7 @@ export const httpMethodsProperty: INodeProperties = {
 };
 
 export const responseCodeProperty: INodeProperties = {
-	displayName: 'Response Code',
+	displayName: 'Response code',
 	name: 'responseCode',
 	type: 'number',
 	displayOptions: {
@@ -241,7 +241,7 @@ export const responseModePropertyStreaming: INodeProperties = {
 };
 
 export const responseDataProperty: INodeProperties = {
-	displayName: 'Response Data',
+	displayName: 'Response data',
 	name: 'responseData',
 	type: 'options',
 	displayOptions: {
@@ -251,24 +251,24 @@ export const responseDataProperty: INodeProperties = {
 	},
 	options: [
 		{
-			name: 'All Entries',
+			name: 'All entries',
 			value: 'allEntries',
 			description: 'Returns all the entries of the last node. Always returns an array.',
 		},
 		{
-			name: 'First Entry JSON',
+			name: 'First entry JSON',
 			value: 'firstEntryJson',
 			description:
 				'Returns the JSON data of the first entry of the last node. Always returns a JSON object.',
 		},
 		{
-			name: 'First Entry Binary',
+			name: 'First entry binary',
 			value: 'firstEntryBinary',
 			description:
 				'Returns the binary data of the first entry of the last node. Always returns a binary file.',
 		},
 		{
-			name: 'No Response Body',
+			name: 'No response body',
 			value: 'noData',
 			description: 'Returns without a body',
 		},
@@ -279,7 +279,7 @@ export const responseDataProperty: INodeProperties = {
 };
 
 export const responseBinaryPropertyNameProperty: INodeProperties = {
-	displayName: 'Property Name',
+	displayName: 'Property name',
 	name: 'responseBinaryPropertyName',
 	type: 'string',
 	required: true,
@@ -300,7 +300,7 @@ export const optionsProperty: INodeProperties = {
 	default: {},
 	options: [
 		{
-			displayName: 'Binary File',
+			displayName: 'Binary file',
 			name: 'binaryData',
 			type: 'boolean',
 			displayOptions: {
@@ -313,7 +313,7 @@ export const optionsProperty: INodeProperties = {
 			description: 'Whether the webhook will receive binary data',
 		},
 		{
-			displayName: 'Put Output File in Field',
+			displayName: 'Put output file in field',
 			name: 'binaryPropertyName',
 			type: 'string',
 			default: 'data',
@@ -325,10 +325,10 @@ export const optionsProperty: INodeProperties = {
 			},
 			hint: 'The name of the output binary field to put the file in',
 			description:
-				'If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it',
+				'If the data gets received via "Form-data multipart" it will be the prefix and a number starting with 0 will be attached to it',
 		},
 		{
-			displayName: 'Field Name for Binary Data',
+			displayName: 'Field name for binary data',
 			name: 'binaryPropertyName',
 			type: 'string',
 			default: 'data',
@@ -341,14 +341,14 @@ export const optionsProperty: INodeProperties = {
 				'The name of the output field to put any binary file data in. Only relevant if binary data is received.',
 		},
 		{
-			displayName: 'Ignore Bots',
+			displayName: 'Ignore bots',
 			name: 'ignoreBots',
 			type: 'boolean',
 			default: false,
 			description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 		},
 		{
-			displayName: 'Only Run If',
+			displayName: 'Only run if',
 			name: 'onlyRunIf',
 			type: 'string',
 			default: '',
@@ -358,7 +358,7 @@ export const optionsProperty: INodeProperties = {
 				'Expression evaluated against the incoming request. The workflow will run only if the expression returns true. <code>$json</code> exposes the request as <code>{ body, headers, params, query }</code>. Requests that do not match receive a 200 response, without creating an execution. If the expression fails to evaluate, the request is allowed through and the error is logged.',
 		},
 		{
-			displayName: 'IP(s) Allowlist',
+			displayName: 'IP(s) allowlist',
 			name: 'ipWhitelist',
 			type: 'string',
 			placeholder: 'e.g. 127.0.0.1, 192.168.1.0/24',
@@ -367,7 +367,7 @@ export const optionsProperty: INodeProperties = {
 				'Comma-separated list of allowed IP addresses or CIDR ranges. Leave empty to allow all IPs.',
 		},
 		{
-			displayName: 'No Response Body',
+			displayName: 'No response body',
 			name: 'noResponseBody',
 			type: 'boolean',
 			default: false,
@@ -382,7 +382,7 @@ export const optionsProperty: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Raw Body',
+			displayName: 'Raw body',
 			name: 'rawBody',
 			type: 'boolean',
 			displayOptions: {
@@ -399,7 +399,7 @@ export const optionsProperty: INodeProperties = {
 			description: 'Raw body (binary)',
 		},
 		{
-			displayName: 'Raw Body',
+			displayName: 'Raw body',
 			name: 'rawBody',
 			type: 'boolean',
 			displayOptions: {
@@ -412,7 +412,7 @@ export const optionsProperty: INodeProperties = {
 			description: 'Whether to return the raw body',
 		},
 		{
-			displayName: 'Response Data',
+			displayName: 'Response data',
 			name: 'responseData',
 			type: 'string',
 			displayOptions: {
@@ -444,9 +444,9 @@ export const optionsProperty: INodeProperties = {
 				'Set a custom content-type to return if another one as the "application/json" should be returned',
 		},
 		{
-			displayName: 'Response Headers',
+			displayName: 'Response headers',
 			name: 'responseHeaders',
-			placeholder: 'Add Response Header',
+			placeholder: 'Add response header',
 			description: 'Add headers to the webhook response',
 			type: 'fixedCollection',
 			typeOptions: {
@@ -477,7 +477,7 @@ export const optionsProperty: INodeProperties = {
 			],
 		},
 		{
-			displayName: 'Property Name',
+			displayName: 'Property name',
 			name: 'responsePropertyName',
 			type: 'string',
 			displayOptions: {
@@ -493,7 +493,7 @@ export const optionsProperty: INodeProperties = {
 };
 
 export const responseCodeSelector: INodeProperties = {
-	displayName: 'Response Code',
+	displayName: 'Response code',
 	name: 'responseCode',
 	type: 'options',
 	options: [
@@ -516,7 +516,7 @@ export const responseCodeSelector: INodeProperties = {
 		},
 		{ name: '404', value: 404, description: 'Not Found - Server has not found a match' },
 		{
-			name: 'Custom Code',
+			name: 'Custom code',
 			value: 'customCode',
 			description: 'Write any HTTP code',
 		},
@@ -526,9 +526,9 @@ export const responseCodeSelector: INodeProperties = {
 };
 
 export const responseCodeOption: INodeProperties = {
-	displayName: 'Response Code',
+	displayName: 'Response code',
 	name: 'responseCode',
-	placeholder: 'Add Response Code',
+	placeholder: 'Add response code',
 	type: 'fixedCollection',
 	default: {
 		values: {

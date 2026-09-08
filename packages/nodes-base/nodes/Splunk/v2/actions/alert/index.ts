@@ -18,13 +18,13 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Fired Alerts',
+				name: 'Get fired alerts',
 				value: 'getReport',
 				description: 'Retrieve a fired alerts report',
 				action: 'Get a fired alerts report',
 			},
 			{
-				name: 'Get Metrics',
+				name: 'Get metrics',
 				value: 'getMetrics',
 				description: 'Retrieve metrics',
 				action: 'Get metrics',

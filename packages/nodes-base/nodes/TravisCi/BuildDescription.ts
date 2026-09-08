@@ -25,7 +25,7 @@ export const buildOperations: INodeProperties[] = [
 				action: 'Get a build',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many builds',
 				action: 'Get many builds',
@@ -82,10 +82,10 @@ export const buildFields: INodeProperties[] = [
 		description: 'Value uniquely identifying the build',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -109,7 +109,7 @@ export const buildFields: INodeProperties[] = [
 	/*                                 build:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -140,10 +140,10 @@ export const buildFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -178,16 +178,16 @@ export const buildFields: INodeProperties[] = [
 				description: 'You may specify order to sort your response',
 			},
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortBy',
 				type: 'options',
 				options: [
 					{
-						name: 'Created At',
+						name: 'Created at',
 						value: 'created_at',
 					},
 					{
-						name: 'Finished At',
+						name: 'Finished at',
 						value: 'finished_at',
 					},
 					{
@@ -199,7 +199,7 @@ export const buildFields: INodeProperties[] = [
 						value: 'number',
 					},
 					{
-						name: 'Started At',
+						name: 'Started at',
 						value: 'started_at',
 					},
 				],
@@ -257,10 +257,10 @@ export const buildFields: INodeProperties[] = [
 		description: 'Branch requested to be built',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -277,20 +277,20 @@ export const buildFields: INodeProperties[] = [
 				description: 'Travis-ci status message attached to the request',
 			},
 			{
-				displayName: 'Merge Mode',
+				displayName: 'Merge mode',
 				name: 'mergeMode',
 				type: 'options',
 				options: [
 					{
-						name: 'Deep Merge',
+						name: 'Deep merge',
 						value: 'deep_merge',
 					},
 					{
-						name: 'Deep Merge Append',
+						name: 'Deep merge append',
 						value: 'deep_merge_append',
 					},
 					{
-						name: 'Deep Merge Prepend',
+						name: 'Deep merge prepend',
 						value: 'deep_merge_prepend',
 					},
 					{

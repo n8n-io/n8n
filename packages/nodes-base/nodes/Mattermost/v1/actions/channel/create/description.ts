@@ -2,7 +2,7 @@ import type { ChannelProperties } from '../../Interfaces';
 
 export const channelCreateDescription: ChannelProperties = [
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		type: 'options',
 		typeOptions: {
@@ -21,7 +21,7 @@ export const channelCreateDescription: ChannelProperties = [
 			'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Display Name',
+		displayName: 'Display name',
 		name: 'displayName',
 		type: 'string',
 		default: '',

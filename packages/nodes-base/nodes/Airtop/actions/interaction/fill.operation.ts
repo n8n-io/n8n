@@ -16,7 +16,7 @@ import type { IAirtopResponse } from '../../transport/types';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Form Data',
+		displayName: 'Form data',
 		name: 'formData',
 		type: 'string',
 		typeOptions: {

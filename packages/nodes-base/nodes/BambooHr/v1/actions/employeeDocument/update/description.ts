@@ -28,10 +28,10 @@ export const employeeDocumentUpdateDescription: EmployeeDocumentProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -41,7 +41,7 @@ export const employeeDocumentUpdateDescription: EmployeeDocumentProperties = [
 		},
 		options: [
 			{
-				displayName: 'Employee Document Category Name or ID',
+				displayName: 'Employee document category name or ID',
 				name: 'categoryId',
 				type: 'options',
 				typeOptions: {
@@ -60,7 +60,7 @@ export const employeeDocumentUpdateDescription: EmployeeDocumentProperties = [
 				description: 'New name of the file',
 			},
 			{
-				displayName: 'Share with Employee',
+				displayName: 'Share with employee',
 				name: 'shareWithEmployee',
 				type: 'boolean',
 				default: true,

@@ -19,7 +19,7 @@ export const transactionOperations: INodeProperties[] = [
 		default: 'getReport',
 		options: [
 			{
-				name: 'Get Report',
+				name: 'Get report',
 				value: 'getReport',
 				action: 'Get a report',
 			},
@@ -53,7 +53,7 @@ export const transactionFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -63,21 +63,21 @@ export const transactionFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Accounts Payable Paid',
+				displayName: 'Accounts payable paid',
 				name: 'appaid',
 				type: 'options',
 				default: 'All',
 				options: ['All', 'Paid', 'Unpaid'].map(toOptions),
 			},
 			{
-				displayName: 'Accounts Receivable Paid',
+				displayName: 'Accounts receivable paid',
 				name: 'arpaid',
 				type: 'options',
 				default: 'All',
 				options: ['All', 'Paid', 'Unpaid'].map(toOptions),
 			},
 			{
-				displayName: 'Cleared Status',
+				displayName: 'Cleared status',
 				name: 'cleared',
 				type: 'options',
 				default: 'Reconciled',
@@ -92,7 +92,7 @@ export const transactionFields: INodeProperties[] = [
 				options: TRANSACTION_REPORT_COLUMNS,
 			},
 			{
-				displayName: 'Customer Names or IDs',
+				displayName: 'Customer names or IDs',
 				name: 'customer',
 				type: 'multiOptions',
 				default: [],
@@ -103,25 +103,25 @@ export const transactionFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Date Range (Custom)',
+				displayName: 'Date range (custom)',
 				name: 'dateRangeCustom',
-				placeholder: 'Add Date Range',
+				placeholder: 'Add date range',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
-						displayName: 'Date Range Properties',
+						displayName: 'Date range properties',
 						name: 'dateRangeCustomProperties',
 						values: [
 							{
-								displayName: 'Start Date',
+								displayName: 'Start date',
 								name: 'start_date',
 								type: 'dateTime',
 								default: '',
 								description: 'Start date of the date range to filter results by',
 							},
 							{
-								displayName: 'End Date',
+								displayName: 'End date',
 								name: 'end_date',
 								type: 'dateTime',
 								default: '',
@@ -132,7 +132,7 @@ export const transactionFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Date Range (Predefined)',
+				displayName: 'Date range (predefined)',
 				name: 'date_macro',
 				type: 'options',
 				default: 'This Month',
@@ -140,25 +140,25 @@ export const transactionFields: INodeProperties[] = [
 				options: PREDEFINED_DATE_RANGES.map(toOptions),
 			},
 			{
-				displayName: 'Date Range for Creation Date (Custom)',
+				displayName: 'Date range for creation date (custom)',
 				name: 'dateRangeCreationCustom',
-				placeholder: 'Add Creation Date Range',
+				placeholder: 'Add creation date range',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
-						displayName: 'Creation Date Range Properties',
+						displayName: 'Creation date range properties',
 						name: 'dateRangeCreationCustomProperties',
 						values: [
 							{
-								displayName: 'Start Creation Date',
+								displayName: 'Start creation date',
 								name: 'start_createdate',
 								type: 'dateTime',
 								default: '',
 								description: 'Start date of the account creation date range to filter results by',
 							},
 							{
-								displayName: 'End Creation Date',
+								displayName: 'End creation date',
 								name: 'end_createdate',
 								type: 'dateTime',
 								default: '',
@@ -169,7 +169,7 @@ export const transactionFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Date Range for Creation Date (Predefined)',
+				displayName: 'Date range for creation date (predefined)',
 				name: 'createdate_macro',
 				type: 'options',
 				default: 'This Month',
@@ -177,25 +177,25 @@ export const transactionFields: INodeProperties[] = [
 				description: 'Predefined report account creation date range',
 			},
 			{
-				displayName: 'Date Range for Due Date (Custom)',
+				displayName: 'Date range for due date (custom)',
 				name: 'dateRangeDueCustom',
-				placeholder: 'Add Due Date Range',
+				placeholder: 'Add due date range',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
-						displayName: 'Due Date Range Properties',
+						displayName: 'Due date range properties',
 						name: 'dateRangeDueCustomProperties',
 						values: [
 							{
-								displayName: 'Start Due Date',
+								displayName: 'Start due date',
 								name: 'start_duedate',
 								type: 'dateTime',
 								default: '',
 								description: 'Start date of the due date range to filter results by',
 							},
 							{
-								displayName: 'End Due Date',
+								displayName: 'End due date',
 								name: 'end_duedate',
 								type: 'dateTime',
 								default: '',
@@ -206,7 +206,7 @@ export const transactionFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Date Range for Due Date (Predefined)',
+				displayName: 'Date range for due date (predefined)',
 				name: 'duedate_macro',
 				type: 'options',
 				default: 'This Month',
@@ -214,18 +214,18 @@ export const transactionFields: INodeProperties[] = [
 				options: PREDEFINED_DATE_RANGES.map(toOptions),
 			},
 			{
-				displayName: 'Date Range for Modification Date (Custom)',
+				displayName: 'Date range for modification date (custom)',
 				name: 'dateRangeModificationCustom',
-				placeholder: 'Add Modification Date Range',
+				placeholder: 'Add modification date range',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
-						displayName: 'Modification Date Range Properties',
+						displayName: 'Modification date range properties',
 						name: 'dateRangeModificationCustomProperties',
 						values: [
 							{
-								displayName: 'Start Modification Date',
+								displayName: 'Start modification date',
 								name: 'start_moddate',
 								type: 'dateTime',
 								default: '',
@@ -233,7 +233,7 @@ export const transactionFields: INodeProperties[] = [
 									'Start date of the account modification date range to filter results by',
 							},
 							{
-								displayName: 'End Modification Date',
+								displayName: 'End modification date',
 								name: 'end_moddate',
 								type: 'dateTime',
 								default: '',
@@ -244,7 +244,7 @@ export const transactionFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Date Range for Modification Date (Predefined)',
+				displayName: 'Date range for modification date (predefined)',
 				name: 'moddate_macro',
 				type: 'options',
 				default: 'This Month',
@@ -252,7 +252,7 @@ export const transactionFields: INodeProperties[] = [
 				options: PREDEFINED_DATE_RANGES.map(toOptions),
 			},
 			{
-				displayName: 'Department Names or IDs',
+				displayName: 'Department names or IDs',
 				name: 'department',
 				type: 'multiOptions',
 				default: [],
@@ -263,14 +263,14 @@ export const transactionFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Document Number',
+				displayName: 'Document number',
 				name: 'docnum',
 				type: 'string',
 				default: '',
 				description: 'Transaction document number to filter results by',
 			},
 			{
-				displayName: 'Group By',
+				displayName: 'Group by',
 				name: 'group_by',
 				default: 'Account',
 				type: 'options',
@@ -278,7 +278,7 @@ export const transactionFields: INodeProperties[] = [
 				options: GROUP_BY_OPTIONS.map(toOptions),
 			},
 			{
-				displayName: 'Memo Names or IDs',
+				displayName: 'Memo names or IDs',
 				name: 'memo',
 				type: 'multiOptions',
 				default: [],
@@ -289,7 +289,7 @@ export const transactionFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Payment Method',
+				displayName: 'Payment method',
 				name: 'payment_Method',
 				type: 'options',
 				default: 'Cash',
@@ -297,7 +297,7 @@ export const transactionFields: INodeProperties[] = [
 				options: PAYMENT_METHODS.map(toOptions),
 			},
 			{
-				displayName: 'Printed Status',
+				displayName: 'Printed status',
 				name: 'printed',
 				type: 'options',
 				default: 'Printed',
@@ -308,7 +308,7 @@ export const transactionFields: INodeProperties[] = [
 						value: 'Printed',
 					},
 					{
-						name: 'To Be Printed',
+						name: 'To be printed',
 						value: 'To_be_printed',
 					},
 				],
@@ -321,7 +321,7 @@ export const transactionFields: INodeProperties[] = [
 				description: 'Whether Quick Zoom URL information should be generated',
 			},
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sort_by',
 				type: 'options',
 				default: 'account_name',
@@ -329,14 +329,14 @@ export const transactionFields: INodeProperties[] = [
 				options: TRANSACTION_REPORT_COLUMNS,
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sort_order',
 				type: 'options',
 				default: 'Ascend',
 				options: ['Ascend', 'Descend'].map(toOptions),
 			},
 			{
-				displayName: 'Source Account Type',
+				displayName: 'Source account type',
 				name: 'source_account_type',
 				default: 'Bank',
 				type: 'options',
@@ -344,7 +344,7 @@ export const transactionFields: INodeProperties[] = [
 				options: SOURCE_ACCOUNT_TYPES.map(toOptions).map(toDisplayName),
 			},
 			{
-				displayName: 'Term Names or IDs',
+				displayName: 'Term names or IDs',
 				name: 'term',
 				type: 'multiOptions',
 				default: [],
@@ -355,7 +355,7 @@ export const transactionFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Transaction Amount',
+				displayName: 'Transaction amount',
 				name: 'bothamount',
 				type: 'number',
 				default: 0,
@@ -365,7 +365,7 @@ export const transactionFields: INodeProperties[] = [
 				description: 'Monetary amount to filter results by',
 			},
 			{
-				displayName: 'Transaction Type',
+				displayName: 'Transaction type',
 				name: 'transaction_type',
 				type: 'options',
 				default: 'CreditCardCharge',
@@ -373,7 +373,7 @@ export const transactionFields: INodeProperties[] = [
 				options: TRANSACTION_TYPES.map(toOptions).map(toDisplayName),
 			},
 			{
-				displayName: 'Vendor Names or IDs',
+				displayName: 'Vendor names or IDs',
 				name: 'vendor',
 				type: 'multiOptions',
 				default: [],

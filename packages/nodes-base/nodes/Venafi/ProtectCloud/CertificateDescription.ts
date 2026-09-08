@@ -31,7 +31,7 @@ export const certificateOperations: INodeProperties[] = [
 				action: 'Get a certificate',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getMany',
 				description: 'Retrieve many certificates',
 				action: 'Get many certificates',
@@ -65,7 +65,7 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Download Item',
+		displayName: 'Download item',
 		name: 'downloadItem',
 		type: 'options',
 		options: [
@@ -87,7 +87,7 @@ export const certificateFields: INodeProperties[] = [
 		default: 'certificate',
 	},
 	{
-		displayName: 'Keystore Type',
+		displayName: 'Keystore type',
 		name: 'keystoreType',
 		type: 'options',
 		options: [
@@ -114,7 +114,7 @@ export const certificateFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Certificate Label',
+		displayName: 'Certificate label',
 		name: 'certificateLabel',
 		type: 'string',
 		required: true,
@@ -128,7 +128,7 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Private Key Passphrase',
+		displayName: 'Private key passphrase',
 		name: 'privateKeyPassphrase',
 		type: 'string',
 		required: true,
@@ -142,7 +142,7 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Keystore Passphrase',
+		displayName: 'Keystore passphrase',
 		name: 'keystorePassphrase',
 		type: 'string',
 		required: true,
@@ -157,7 +157,7 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryProperty',
 		type: 'string',
 		default: 'data',
@@ -174,7 +174,7 @@ export const certificateFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -184,7 +184,7 @@ export const certificateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Chain Order',
+				displayName: 'Chain order',
 				name: 'chainOrder',
 				type: 'options',
 				options: [
@@ -244,7 +244,7 @@ export const certificateFields: INodeProperties[] = [
 	/*                                 certificate:getMany                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -278,7 +278,7 @@ export const certificateFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -299,7 +299,7 @@ export const certificateFields: INodeProperties[] = [
 	/*                                 certificate:renew                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Application Name or ID',
+		displayName: 'Application name or ID',
 		name: 'applicationId',
 		type: 'options',
 		description:
@@ -316,7 +316,7 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Existing Certificate ID',
+		displayName: 'Existing certificate ID',
 		name: 'existingCertificateId',
 		type: 'string',
 		displayOptions: {
@@ -328,7 +328,7 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Certificate Issuing Template Name or ID',
+		displayName: 'Certificate issuing template name or ID',
 		name: 'certificateIssuingTemplateId',
 		type: 'options',
 		description:
@@ -345,7 +345,7 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Certificate Signing Request',
+		displayName: 'Certificate signing request',
 		name: 'certificateSigningRequest',
 		type: 'string',
 		displayOptions: {
@@ -360,7 +360,7 @@ export const certificateFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -370,20 +370,20 @@ export const certificateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Validity Period',
+				displayName: 'Validity period',
 				name: 'validityPeriod',
 				type: 'options',
 				options: [
 					{
-						name: '1 Year',
+						name: '1 year',
 						value: 'P1Y',
 					},
 					{
-						name: '10 Days',
+						name: '10 days',
 						value: 'P10D',
 					},
 					{
-						name: '12 Hours',
+						name: '12 hours',
 						value: 'PT12H',
 					},
 				],

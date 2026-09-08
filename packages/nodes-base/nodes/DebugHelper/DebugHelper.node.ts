@@ -51,22 +51,22 @@ export class DebugHelper implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Do Nothing',
+						name: 'Do nothing',
 						value: 'doNothing',
 						description: 'Does nothing',
 					},
 					{
-						name: 'Throw Error',
+						name: 'Throw error',
 						value: 'throwError',
 						description: 'Throws an error with the specified type and message',
 					},
 					{
-						name: 'Out Of Memory',
+						name: 'Out of memory',
 						value: 'oom',
 						description: 'Generates a large amount of memory to cause an out of memory error',
 					},
 					{
-						name: 'Generate Random Data',
+						name: 'Generate random data',
 						value: 'randomData',
 						description: 'Generates random data sets',
 					},
@@ -74,7 +74,7 @@ export class DebugHelper implements INodeType {
 				default: 'throwError',
 			},
 			{
-				displayName: 'Error Type',
+				displayName: 'Error type',
 				name: 'throwErrorType',
 				type: 'options',
 				noDataExpression: true,
@@ -100,7 +100,7 @@ export class DebugHelper implements INodeType {
 				},
 			},
 			{
-				displayName: 'Error Message',
+				displayName: 'Error message',
 				name: 'throwErrorMessage',
 				type: 'string',
 				default: 'Node has thrown an error',
@@ -112,7 +112,7 @@ export class DebugHelper implements INodeType {
 				},
 			},
 			{
-				displayName: 'Memory Size to Generate',
+				displayName: 'Memory size to generate',
 				name: 'memorySizeValue',
 				type: 'number',
 				default: 10,
@@ -124,7 +124,7 @@ export class DebugHelper implements INodeType {
 				},
 			},
 			{
-				displayName: 'Data Type',
+				displayName: 'Data type',
 				name: 'randomDataType',
 				type: 'options',
 				noDataExpression: true,
@@ -138,7 +138,7 @@ export class DebugHelper implements INodeType {
 						value: 'latLong',
 					},
 					{
-						name: 'Credit Card',
+						name: 'Credit card',
 						value: 'creditCard',
 					},
 					{
@@ -166,7 +166,7 @@ export class DebugHelper implements INodeType {
 						value: 'url',
 					},
 					{
-						name: 'User Data',
+						name: 'User data',
 						value: 'user',
 					},
 					{
@@ -186,7 +186,7 @@ export class DebugHelper implements INodeType {
 				},
 			},
 			{
-				displayName: 'NanoId Alphabet',
+				displayName: 'NanoId alphabet',
 				name: 'nanoidAlphabet',
 				type: 'string',
 				default: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -199,7 +199,7 @@ export class DebugHelper implements INodeType {
 				},
 			},
 			{
-				displayName: 'NanoId Length',
+				displayName: 'NanoId length',
 				name: 'nanoidLength',
 				type: 'string',
 				default: '16',
@@ -226,7 +226,7 @@ export class DebugHelper implements INodeType {
 				},
 			},
 			{
-				displayName: 'Number of Items to Generate',
+				displayName: 'Number of items to generate',
 				name: 'randomDataCount',
 				type: 'number',
 				default: 10,
@@ -238,7 +238,7 @@ export class DebugHelper implements INodeType {
 				},
 			},
 			{
-				displayName: 'Output as Single Array',
+				displayName: 'Output as single array',
 				name: 'randomDataSingleArray',
 				type: 'boolean',
 				default: false,

@@ -33,7 +33,7 @@ export const clientOperations: INodeProperties[] = [
 				action: 'Get data of a client',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many clients',
 				action: 'Get data of all clients',
@@ -56,7 +56,7 @@ export const clientFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -90,7 +90,7 @@ export const clientFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -100,14 +100,14 @@ export const clientFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to only return active clients and false to return inactive clients',
 			},
 			{
-				displayName: 'Updated Since',
+				displayName: 'Updated since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
@@ -170,10 +170,10 @@ export const clientFields: INodeProperties[] = [
 		description: 'The name of the client',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -199,7 +199,7 @@ export const clientFields: INodeProperties[] = [
 					'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'string',
 				default: '',
@@ -226,10 +226,10 @@ export const clientFields: INodeProperties[] = [
 		description: 'The ID of the client want to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -255,7 +255,7 @@ export const clientFields: INodeProperties[] = [
 					'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,

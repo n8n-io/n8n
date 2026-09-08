@@ -42,7 +42,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'API Version',
+				displayName: 'API version',
 				name: 'apiVersion',
 				type: 'options',
 				isNodeSetting: true,
@@ -64,7 +64,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 				default: 'v4',
 			},
 			{
-				displayName: 'API Version',
+				displayName: 'API version',
 				name: 'apiVersion',
 				type: 'options',
 				isNodeSetting: true,
@@ -91,23 +91,23 @@ export class InvoiceNinjaTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Client Created',
+						name: 'Client created',
 						value: 'create_client',
 					},
 					{
-						name: 'Invoice Created',
+						name: 'Invoice created',
 						value: 'create_invoice',
 					},
 					{
-						name: 'Payment Created',
+						name: 'Payment created',
 						value: 'create_payment',
 					},
 					{
-						name: 'Quote Created',
+						name: 'Quote created',
 						value: 'create_quote',
 					},
 					{
-						name: 'Vendor Created',
+						name: 'Vendor created',
 						value: 'create_vendor',
 					},
 				],

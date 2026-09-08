@@ -14,12 +14,12 @@ export const enrichmentOperations: INodeProperties[] = [
 				action: 'Fetches a previously completed enrichment',
 			},
 			{
-				name: 'Enrich Lead',
+				name: 'Enrich lead',
 				value: 'enrichLead',
 				action: 'Enrich a lead using an email or LinkedIn URL',
 			},
 			{
-				name: 'Enrich Person',
+				name: 'Enrich person',
 				value: 'enrichPerson',
 				action: 'Enrich a person using an email or LinkedIn URL',
 			},
@@ -67,7 +67,7 @@ export const enrichmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Find Email',
+		displayName: 'Find email',
 		name: 'findEmail',
 		type: 'boolean',
 		default: false,
@@ -79,7 +79,7 @@ export const enrichmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Verify Email',
+		displayName: 'Verify email',
 		name: 'verifyEmail',
 		type: 'boolean',
 		default: false,
@@ -91,7 +91,7 @@ export const enrichmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'LinkedIn Enrichment',
+		displayName: 'LinkedIn enrichment',
 		name: 'linkedinEnrichment',
 		type: 'boolean',
 		default: false,
@@ -103,7 +103,7 @@ export const enrichmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Find Phone',
+		displayName: 'Find phone',
 		name: 'findPhone',
 		type: 'boolean',
 		default: false,
@@ -118,10 +118,10 @@ export const enrichmentFields: INodeProperties[] = [
 	//				enrichment: enrichPerson
 	// ----------------------------------
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -138,31 +138,31 @@ export const enrichmentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'LinkedIn Url',
+				displayName: 'LinkedIn URL',
 				name: 'linkedinUrl',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Company Name',
+				displayName: 'Company name',
 				name: 'companyName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Company Domain',
+				displayName: 'Company domain',
 				name: 'companyDomain',
 				type: 'string',
 				default: '',

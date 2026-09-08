@@ -24,12 +24,12 @@ export const memberOperations: INodeProperties[] = [
 				action: 'Get a member',
 			},
 			{
-				name: 'Get Groups',
+				name: 'Get groups',
 				value: 'getGroups',
 				action: 'Get groups for a member',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many members',
 			},
@@ -39,7 +39,7 @@ export const memberOperations: INodeProperties[] = [
 				action: 'Update a member',
 			},
 			{
-				name: 'Update Groups',
+				name: 'Update groups',
 				value: 'updateGroups',
 				action: 'Update groups for a member',
 			},
@@ -106,7 +106,7 @@ export const memberFields: INodeProperties[] = [
 	//       member: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -153,7 +153,7 @@ export const memberFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Access All',
+		displayName: 'Access all',
 		name: 'accessAll',
 		type: 'boolean',
 		default: false,
@@ -165,14 +165,14 @@ export const memberFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Collection Names or IDs',
+				displayName: 'Collection names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
 				description:
@@ -201,10 +201,10 @@ export const memberFields: INodeProperties[] = [
 	//       member: update
 	// ----------------------------------
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -232,7 +232,7 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Collection Names or IDs',
+				displayName: 'Collection names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
 				description:
@@ -250,7 +250,7 @@ export const memberFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Access All',
+				displayName: 'Access all',
 				name: 'accessAll',
 				type: 'boolean',
 				default: false,

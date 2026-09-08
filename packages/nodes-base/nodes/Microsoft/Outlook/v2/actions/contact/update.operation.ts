@@ -9,10 +9,10 @@ import { microsoftApiRequest } from '../../transport';
 export const properties: INodeProperties[] = [
 	contactRLC,
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: contactFields,
 	},

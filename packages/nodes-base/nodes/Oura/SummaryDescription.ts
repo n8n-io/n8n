@@ -13,19 +13,19 @@ export const summaryOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Activity Summary',
+				name: 'Get activity summary',
 				value: 'getActivity',
 				description: "Get the user's activity summary",
 				action: 'Get activity summary',
 			},
 			{
-				name: 'Get Readiness Summary',
+				name: 'Get readiness summary',
 				value: 'getReadiness',
 				description: "Get the user's readiness summary",
 				action: 'Get readiness summary',
 			},
 			{
-				name: 'Get Sleep Periods',
+				name: 'Get sleep periods',
 				value: 'getSleep',
 				description: "Get the user's sleep summary",
 				action: 'Get sleep summary',
@@ -37,7 +37,7 @@ export const summaryOperations: INodeProperties[] = [
 
 export const summaryFields: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -69,7 +69,7 @@ export const summaryFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['summary'],
@@ -78,7 +78,7 @@ export const summaryFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'end',
 				type: 'dateTime',
 				default: '',
@@ -86,7 +86,7 @@ export const summaryFields: INodeProperties[] = [
 					'End date for the summary retrieval. If omitted, it defaults to the current day.',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'start',
 				type: 'dateTime',
 				default: '',

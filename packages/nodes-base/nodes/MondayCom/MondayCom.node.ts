@@ -67,7 +67,7 @@ export class MondayCom implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -88,15 +88,15 @@ export class MondayCom implements INodeType {
 						value: 'board',
 					},
 					{
-						name: 'Board Column',
+						name: 'Board column',
 						value: 'boardColumn',
 					},
 					{
-						name: 'Board Group',
+						name: 'Board group',
 						value: 'boardGroup',
 					},
 					{
-						name: 'Board Item',
+						name: 'Board item',
 						value: 'boardItem',
 					},
 				],

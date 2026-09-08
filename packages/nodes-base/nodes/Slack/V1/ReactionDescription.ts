@@ -37,7 +37,7 @@ export const reactionOperations: INodeProperties[] = [
 
 export const reactionFields: INodeProperties[] = [
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {

@@ -31,7 +31,7 @@ export const orderOperations: INodeProperties[] = [
 				action: 'Get an order',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many orders',
 				action: 'Get many orders',
@@ -52,10 +52,10 @@ export const orderFields: INodeProperties[] = [
 	/*                                order:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -65,9 +65,9 @@ export const orderFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Billing Address',
+				displayName: 'Billing address',
 				name: 'billingAddressUi',
-				placeholder: 'Add Billing Address',
+				placeholder: 'Add billing address',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -76,16 +76,16 @@ export const orderFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'billingAddressValues',
-						displayName: 'Billing Address',
+						displayName: 'Billing address',
 						values: [
 							{
-								displayName: 'First Name',
+								displayName: 'First name',
 								name: 'firstName',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Last Name',
+								displayName: 'Last name',
 								name: 'lastName',
 								type: 'string',
 								default: '',
@@ -103,13 +103,13 @@ export const orderFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Address Line 1',
+								displayName: 'Address line 1',
 								name: 'address1',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Address Line 2',
+								displayName: 'Address line 2',
 								name: 'address2',
 								type: 'string',
 								default: '',
@@ -127,7 +127,7 @@ export const orderFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zip',
 								type: 'string',
 								default: '',
@@ -143,9 +143,9 @@ export const orderFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Discount Codes',
+				displayName: 'Discount codes',
 				name: 'discountCodesUi',
-				placeholder: 'Add Discount Code',
+				placeholder: 'Add discount code',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -154,7 +154,7 @@ export const orderFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'discountCodesValues',
-						displayName: 'Discount Code',
+						displayName: 'Discount code',
 						values: [
 							{
 								displayName: 'Amount',
@@ -176,7 +176,7 @@ export const orderFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Fixed Amount',
+										name: 'Fixed amount',
 										value: 'fixedAmount',
 										description: "Applies amount as a unit of the store's currency",
 									},
@@ -208,7 +208,7 @@ export const orderFields: INodeProperties[] = [
 				description: "The customer's email address",
 			},
 			{
-				displayName: 'Fulfillment Status',
+				displayName: 'Fulfillment status',
 				name: 'fulfillmentStatus',
 				type: 'options',
 				options: [
@@ -237,7 +237,7 @@ export const orderFields: INodeProperties[] = [
 				description: "The order's status in terms of fulfilled line items",
 			},
 			{
-				displayName: 'Inventory Behaviour',
+				displayName: 'Inventory behaviour',
 				name: 'inventoryBehaviour',
 				type: 'options',
 				options: [
@@ -247,12 +247,12 @@ export const orderFields: INodeProperties[] = [
 						description: 'Do not claim inventory',
 					},
 					{
-						name: 'Decrement Ignoring Policy',
+						name: 'Decrement ignoring policy',
 						value: 'decrementIgnoringPolicy',
 						description: "Ignore the product's inventory policy and claim inventory",
 					},
 					{
-						name: 'Decrement Obeying Policy',
+						name: 'Decrement obeying policy',
 						value: 'decrementObeyingPolicy',
 						description: "Follow the product's inventory policy and claim inventory, if possible",
 					},
@@ -261,7 +261,7 @@ export const orderFields: INodeProperties[] = [
 				description: 'The behaviour to use when updating inventory',
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location name or ID',
 				name: 'locationId',
 				type: 'options',
 				typeOptions: {
@@ -279,23 +279,23 @@ export const orderFields: INodeProperties[] = [
 				description: 'An optional note that a shop owner can attach to the order',
 			},
 			{
-				displayName: 'Send Fulfillment Receipt',
+				displayName: 'Send fulfillment receipt',
 				name: 'sendFulfillmentReceipt',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to send a shipping confirmation to the customer',
 			},
 			{
-				displayName: 'Send Receipt',
+				displayName: 'Send receipt',
 				name: 'sendReceipt',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to send an order confirmation to the customer',
 			},
 			{
-				displayName: 'Shipping Address',
+				displayName: 'Shipping address',
 				name: 'shippingAddressUi',
-				placeholder: 'Add Shipping',
+				placeholder: 'Add shipping',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -304,16 +304,16 @@ export const orderFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'shippingAddressValues',
-						displayName: 'Shipping Address',
+						displayName: 'Shipping address',
 						values: [
 							{
-								displayName: 'First Name',
+								displayName: 'First name',
 								name: 'firstName',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Last Name',
+								displayName: 'Last name',
 								name: 'lastName',
 								type: 'string',
 								default: '',
@@ -331,13 +331,13 @@ export const orderFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Address Line 1',
+								displayName: 'Address line 1',
 								name: 'address1',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Address Line 2',
+								displayName: 'Address line 2',
 								name: 'address2',
 								type: 'string',
 								default: '',
@@ -355,7 +355,7 @@ export const orderFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zip',
 								type: 'string',
 								default: '',
@@ -371,7 +371,7 @@ export const orderFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Source Name',
+				displayName: 'Source name',
 				name: 'sourceName',
 				type: 'string',
 				default: '',
@@ -395,9 +395,9 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Line Items',
+		displayName: 'Line items',
 		name: 'limeItemsUi',
-		placeholder: 'Add Line Item',
+		placeholder: 'Add line item',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -411,11 +411,11 @@ export const orderFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Line Item',
+				displayName: 'Line item',
 				name: 'lineItemValues',
 				values: [
 					{
-						displayName: 'Product Name or ID',
+						displayName: 'Product name or ID',
 						name: 'productId',
 						type: 'options',
 						typeOptions: {
@@ -502,7 +502,7 @@ export const orderFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -525,7 +525,7 @@ export const orderFields: INodeProperties[] = [
 	/*                                order:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -559,7 +559,7 @@ export const orderFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -569,7 +569,7 @@ export const orderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Attribution App ID',
+				displayName: 'Attribution app ID',
 				name: 'attributionAppId',
 				type: 'string',
 				default: '',
@@ -577,21 +577,21 @@ export const orderFields: INodeProperties[] = [
 					'Show orders attributed to a certain app, specified by the app ID. Set as current to show orders for the app currently consuming the API.',
 			},
 			{
-				displayName: 'Created At Min',
+				displayName: 'Created at min',
 				name: 'createdAtMin',
 				type: 'dateTime',
 				default: '',
 				description: 'Show orders created at or after date',
 			},
 			{
-				displayName: 'Created At Max',
+				displayName: 'Created at max',
 				name: 'createdAtMax',
 				type: 'dateTime',
 				default: '',
 				description: 'Show orders created at or before date',
 			},
 			{
-				displayName: 'Financial Status',
+				displayName: 'Financial status',
 				name: 'financialStatus',
 				type: 'options',
 				options: [
@@ -611,12 +611,12 @@ export const orderFields: INodeProperties[] = [
 						description: 'Show only paid orders',
 					},
 					{
-						name: 'Partially Paid',
+						name: 'Partially paid',
 						value: 'partiallyPaid',
 						description: 'Show only partially paid orders',
 					},
 					{
-						name: 'Partially Refunded',
+						name: 'Partially refunded',
 						value: 'partiallyRefunded',
 						description: 'Show only partially refunded orders',
 					},
@@ -645,7 +645,7 @@ export const orderFields: INodeProperties[] = [
 				description: 'Filter orders by their financial status',
 			},
 			{
-				displayName: 'Fulfillment Status',
+				displayName: 'Fulfillment status',
 				name: 'fulfillmentStatus',
 				type: 'options',
 				options: [
@@ -696,14 +696,14 @@ export const orderFields: INodeProperties[] = [
 				description: 'Retrieve only orders specified by a comma-separated list of order IDs',
 			},
 			{
-				displayName: 'Processed At Max',
+				displayName: 'Processed at max',
 				name: 'processedAtMax',
 				type: 'dateTime',
 				default: '',
 				description: 'Show orders imported at or before date',
 			},
 			{
-				displayName: 'Processed At Min',
+				displayName: 'Processed at min',
 				name: 'processedAtMin',
 				type: 'dateTime',
 				default: '',
@@ -746,14 +746,14 @@ export const orderFields: INodeProperties[] = [
 				description: 'Show orders after the specified ID',
 			},
 			{
-				displayName: 'Updated At Max',
+				displayName: 'Updated at max',
 				name: 'updatedAtMax',
 				type: 'dateTime',
 				default: '',
 				description: 'Show orders last updated at or after date',
 			},
 			{
-				displayName: 'Updated At Min',
+				displayName: 'Updated at min',
 				name: 'updatedAtMin',
 				type: 'dateTime',
 				default: '',
@@ -778,10 +778,10 @@ export const orderFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -799,7 +799,7 @@ export const orderFields: INodeProperties[] = [
 				description: "The customer's email address",
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location name or ID',
 				name: 'locationId',
 				type: 'options',
 				typeOptions: {
@@ -817,9 +817,9 @@ export const orderFields: INodeProperties[] = [
 				description: 'An optional note that a shop owner can attach to the order',
 			},
 			{
-				displayName: 'Shipping Address',
+				displayName: 'Shipping address',
 				name: 'shippingAddressUi',
-				placeholder: 'Add Shipping',
+				placeholder: 'Add shipping',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -828,16 +828,16 @@ export const orderFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'shippingAddressValues',
-						displayName: 'Shipping Address',
+						displayName: 'Shipping address',
 						values: [
 							{
-								displayName: 'First Name',
+								displayName: 'First name',
 								name: 'firstName',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Last Name',
+								displayName: 'Last name',
 								name: 'lastName',
 								type: 'string',
 								default: '',
@@ -855,13 +855,13 @@ export const orderFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Address Line 1',
+								displayName: 'Address line 1',
 								name: 'address1',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Address Line 2',
+								displayName: 'Address line 2',
 								name: 'address2',
 								type: 'string',
 								default: '',
@@ -879,7 +879,7 @@ export const orderFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Zip Code',
+								displayName: 'Zip code',
 								name: 'zip',
 								type: 'string',
 								default: '',
@@ -895,7 +895,7 @@ export const orderFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Source Name',
+				displayName: 'Source name',
 				name: 'sourceName',
 				type: 'string',
 				default: '',

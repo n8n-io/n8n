@@ -34,7 +34,7 @@ type ColumnOptions = {
 
 const sharedFields: INodeProperties[] = [
 	{
-		displayName: 'Table Name',
+		displayName: 'Table name',
 		name: 'tableName',
 		type: 'string',
 		default: 'n8n_vectors',
@@ -56,20 +56,20 @@ const collectionField: INodeProperties = {
 		},
 	},
 	typeOptions: {},
-	placeholder: 'Add Collection Settings',
+	placeholder: 'Add collection settings',
 	options: [
 		{
 			name: 'values',
-			displayName: 'Collection Settings',
+			displayName: 'Collection settings',
 			values: [
 				{
-					displayName: 'Use Collection',
+					displayName: 'Use collection',
 					name: 'useCollection',
 					type: 'boolean',
 					default: false,
 				},
 				{
-					displayName: 'Collection Name',
+					displayName: 'Collection name',
 					name: 'collectionName',
 					type: 'string',
 					default: 'n8n',
@@ -77,7 +77,7 @@ const collectionField: INodeProperties = {
 					displayOptions: { show: { useCollection: [true] } },
 				},
 				{
-					displayName: 'Collection Table Name',
+					displayName: 'Collection table name',
 					name: 'collectionTableName',
 					type: 'string',
 					default: 'n8n_vector_collections',
@@ -90,7 +90,7 @@ const collectionField: INodeProperties = {
 };
 
 const columnNamesField: INodeProperties = {
-	displayName: 'Column Names',
+	displayName: 'Column names',
 	name: 'columnNames',
 	type: 'fixedCollection',
 	description: 'The names of the columns in the PGVector table',
@@ -107,31 +107,31 @@ const columnNamesField: INodeProperties = {
 	options: [
 		{
 			name: 'values',
-			displayName: 'Column Name Settings',
+			displayName: 'Column name settings',
 			values: [
 				{
-					displayName: 'ID Column Name',
+					displayName: 'ID column name',
 					name: 'idColumnName',
 					type: 'string',
 					default: 'id',
 					required: true,
 				},
 				{
-					displayName: 'Vector Column Name',
+					displayName: 'Vector column name',
 					name: 'vectorColumnName',
 					type: 'string',
 					default: 'embedding',
 					required: true,
 				},
 				{
-					displayName: 'Content Column Name',
+					displayName: 'Content column name',
 					name: 'contentColumnName',
 					type: 'string',
 					default: 'text',
 					required: true,
 				},
 				{
-					displayName: 'Metadata Column Name',
+					displayName: 'Metadata column name',
 					name: 'metadataColumnName',
 					type: 'string',
 					default: 'metadata',
@@ -143,7 +143,7 @@ const columnNamesField: INodeProperties = {
 };
 
 const distanceStrategyField: INodeProperties = {
-	displayName: 'Distance Strategy',
+	displayName: 'Distance strategy',
 	name: 'distanceStrategy',
 	type: 'options',
 	default: 'cosine',
@@ -154,7 +154,7 @@ const distanceStrategyField: INodeProperties = {
 			value: 'cosine',
 		},
 		{
-			name: 'Inner Product',
+			name: 'Inner product',
 			value: 'innerProduct',
 		},
 		{
@@ -169,7 +169,7 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [collectionField, columnNamesField],
 	},
@@ -180,7 +180,7 @@ const retrieveFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [distanceStrategyField, collectionField, columnNamesField, metadataFilterField],
 	},

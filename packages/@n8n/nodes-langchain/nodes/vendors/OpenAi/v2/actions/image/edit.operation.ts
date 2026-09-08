@@ -61,7 +61,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Images',
 		name: 'images',
 		type: 'fixedCollection',
-		placeholder: 'Add Image',
+		placeholder: 'Add image',
 		typeOptions: {
 			multipleValues: true,
 			multipleValueButtonText: 'Add Image',
@@ -80,7 +80,7 @@ export const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Binary Field Name',
+						displayName: 'Binary field name',
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
@@ -95,7 +95,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Images',
 		name: 'images',
 		type: 'fixedCollection',
-		placeholder: 'Add Image',
+		placeholder: 'Add image',
 		typeOptions: {
 			multipleValues: true,
 			multipleValueButtonText: 'Add Image',
@@ -114,7 +114,7 @@ export const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Binary Field Name',
+						displayName: 'Binary field name',
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
@@ -126,7 +126,7 @@ export const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Binary Field Name',
+		displayName: 'Binary field name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -141,7 +141,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Field Name',
+		displayName: 'Binary field name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -156,7 +156,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Number of Images',
+		displayName: 'Number of images',
 		name: 'n',
 		type: 'number',
 		default: 1,
@@ -187,11 +187,11 @@ export const properties: INodeProperties[] = [
 				value: '1024x1024',
 			},
 			{
-				name: '1024x1536 (Portrait)',
+				name: '1024x1536 (portrait)',
 				value: '1024x1536',
 			},
 			{
-				name: '1536x1024 (Landscape)',
+				name: '1536x1024 (landscape)',
 				value: '1536x1024',
 			},
 			{
@@ -271,7 +271,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Response Format',
+		displayName: 'Response format',
 		name: 'responseFormat',
 		type: 'options',
 		default: 'url',
@@ -294,7 +294,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Response Format',
+		displayName: 'Response format',
 		name: 'responseFormat',
 		type: 'options',
 		default: 'url',
@@ -317,7 +317,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Output Format',
+		displayName: 'Output format',
 		name: 'outputFormat',
 		type: 'options',
 		default: 'png',
@@ -344,7 +344,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Output Format',
+		displayName: 'Output format',
 		name: 'outputFormat',
 		type: 'options',
 		default: 'png',
@@ -371,7 +371,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Output Compression',
+		displayName: 'Output compression',
 		name: 'outputCompression',
 		type: 'number',
 		default: 100,
@@ -389,7 +389,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Output Compression',
+		displayName: 'Output compression',
 		name: 'outputCompression',
 		type: 'number',
 		default: 100,
@@ -409,7 +409,7 @@ export const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		displayOptions: {
@@ -455,7 +455,7 @@ export const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Input Fidelity',
+				displayName: 'Input fidelity',
 				name: 'inputFidelity',
 				type: 'options',
 				default: 'low',
@@ -478,7 +478,7 @@ export const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Image Mask',
+				displayName: 'Image mask',
 				name: 'imageMask',
 				type: 'string',
 				default: 'data',
@@ -491,7 +491,7 @@ export const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		displayOptions: {
@@ -537,7 +537,7 @@ export const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Input Fidelity',
+				displayName: 'Input fidelity',
 				name: 'inputFidelity',
 				type: 'options',
 				default: 'low',
@@ -560,7 +560,7 @@ export const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Image Mask',
+				displayName: 'Image mask',
 				name: 'imageMask',
 				type: 'string',
 				default: 'data',

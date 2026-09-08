@@ -21,13 +21,13 @@ export const logOperations: INodeProperties[] = [
 				action: 'Create a log',
 			},
 			{
-				name: 'Execute Responder',
+				name: 'Execute responder',
 				value: 'executeResponder',
 				description: 'Execute a responder on a selected log',
 				action: 'Execute a responder',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many task logs',
 				action: 'Get many logs',
@@ -58,7 +58,7 @@ export const logFields: INodeProperties[] = [
 		description: 'ID of the task',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -117,7 +117,7 @@ export const logFields: INodeProperties[] = [
 		description: 'Content of the Log',
 	},
 	{
-		displayName: 'Start Date',
+		displayName: 'Start date',
 		name: 'startDate',
 		type: 'dateTime',
 		required: true,
@@ -156,7 +156,7 @@ export const logFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder Name or ID',
+		displayName: 'Responder name or ID',
 		name: 'responder',
 		type: 'options',
 		description:
@@ -194,7 +194,7 @@ export const logFields: INodeProperties[] = [
 			{
 				displayName: 'Attachment',
 				name: 'attachmentValues',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -206,7 +206,7 @@ export const logFields: INodeProperties[] = [
 						name: 'attachmentValues',
 						values: [
 							{
-								displayName: 'Input Binary Field',
+								displayName: 'Input binary field',
 								name: 'binaryProperty',
 								type: 'string',
 								default: 'data',

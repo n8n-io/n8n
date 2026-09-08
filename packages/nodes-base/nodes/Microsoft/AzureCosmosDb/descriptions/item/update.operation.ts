@@ -12,7 +12,7 @@ const properties: INodeProperties[] = [
 	{ ...containerResourceLocator, description: 'Select the container you want to use' },
 	{ ...itemResourceLocator, description: 'Select the item to be updated' },
 	{
-		displayName: 'Item Contents',
+		displayName: 'Item contents',
 		name: 'customProperties',
 		default: '{}',
 		description: 'The item contents as a JSON object',
@@ -31,7 +31,7 @@ const properties: INodeProperties[] = [
 		type: 'json',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		default: {},
 		displayOptions: {
@@ -42,14 +42,14 @@ const properties: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Partition Key',
+				displayName: 'Partition key',
 				name: 'partitionKey',
 				type: 'string',
 				hint: 'Only required if a custom partition key is set for the container',
 				default: '',
 			},
 		],
-		placeholder: 'Add Partition Key',
+		placeholder: 'Add partition key',
 		type: 'collection',
 	},
 ];

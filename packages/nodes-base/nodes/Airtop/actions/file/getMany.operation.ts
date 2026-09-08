@@ -18,7 +18,7 @@ const displayOptions = {
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -54,7 +54,7 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'Output Files in Single Item',
+		displayName: 'Output files in single item',
 		name: 'outputSingleItem',
 		type: 'boolean',
 		default: true,

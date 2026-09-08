@@ -48,7 +48,7 @@ export class AwsSnsTrigger implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a topic...',

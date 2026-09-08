@@ -35,7 +35,7 @@ export class Cron implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Trigger Times',
+				displayName: 'Trigger times',
 				name: 'triggerTimes',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -44,7 +44,7 @@ export class Cron implements INodeType {
 				},
 				default: {},
 				description: 'Triggers for the workflow',
-				placeholder: 'Add Cron Time',
+				placeholder: 'Add cron time',
 				options: NodeHelpers.cronNodeOptions,
 			},
 		],

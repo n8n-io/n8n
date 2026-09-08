@@ -29,7 +29,7 @@ export const properties: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Select Included Fields',
+				name: 'Select included fields',
 				value: 'fields',
 			},
 		],
@@ -55,7 +55,7 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Attachments Prefix',
+				displayName: 'Attachments prefix',
 				name: 'attachmentsPrefix',
 				type: 'string',
 				default: 'attachment_',
@@ -63,7 +63,7 @@ export const properties: INodeProperties[] = [
 					'Prefix for name of the output fields to put the binary files data in. An index starting from 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
-				displayName: 'Download Attachments',
+				displayName: 'Download attachments',
 				name: 'downloadAttachments',
 				type: 'boolean',
 				default: false,
@@ -71,7 +71,7 @@ export const properties: INodeProperties[] = [
 					"Whether the message's attachments will be downloaded and included in the output",
 			},
 			{
-				displayName: 'Get MIME Content',
+				displayName: 'Get MIME content',
 				name: 'getMimeContent',
 				type: 'fixedCollection',
 				default: { values: { binaryPropertyName: 'data' } },
@@ -81,14 +81,14 @@ export const properties: INodeProperties[] = [
 						name: 'values',
 						values: [
 							{
-								displayName: 'Put Output in Field',
+								displayName: 'Put output in field',
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
 								hint: 'The name of the output field to put the binary file data in',
 							},
 							{
-								displayName: 'File Name',
+								displayName: 'File name',
 								name: 'outputFileName',
 								type: 'string',
 								placeholder: 'message',

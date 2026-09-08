@@ -27,7 +27,7 @@ export const exchangeRateFields: INodeProperties[] = [
 	//         exchangeRate: get
 	// ----------------------------------
 	{
-		displayName: 'Source Currency',
+		displayName: 'Source currency',
 		name: 'source',
 		type: 'string',
 		default: '',
@@ -40,7 +40,7 @@ export const exchangeRateFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Target Currency',
+		displayName: 'Target currency',
 		name: 'target',
 		type: 'string',
 		default: '',
@@ -53,10 +53,10 @@ export const exchangeRateFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -89,22 +89,22 @@ export const exchangeRateFields: INodeProperties[] = [
 				displayName: 'Range',
 				name: 'range',
 				type: 'fixedCollection',
-				placeholder: 'Add Range',
+				placeholder: 'Add range',
 				description: 'Range of time to retrieve the exchange rate for',
 				default: {},
 				options: [
 					{
-						displayName: 'Range Properties',
+						displayName: 'Range properties',
 						name: 'rangeProperties',
 						values: [
 							{
-								displayName: 'Range Start',
+								displayName: 'Range start',
 								name: 'from',
 								type: 'dateTime',
 								default: '',
 							},
 							{
-								displayName: 'Range End',
+								displayName: 'Range end',
 								name: 'to',
 								type: 'dateTime',
 								default: '',

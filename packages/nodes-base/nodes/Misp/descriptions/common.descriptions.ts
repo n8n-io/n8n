@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const searchProperties: INodeProperties[] = [
 	{
-		displayName: 'Use JSON to Specify Fields',
+		displayName: 'Use JSON to specify fields',
 		name: 'useJson',
 		type: 'boolean',
 		default: false,
@@ -39,10 +39,10 @@ export const searchProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -64,7 +64,7 @@ export const searchProperties: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Search All',
+				displayName: 'Search all',
 				name: 'searchall',
 				type: 'string',
 				description:

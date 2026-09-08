@@ -13,11 +13,11 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description:
 					'Create a new contact, or update the current one if it already exists (upsert)',
-				action: 'Create or Update a contact',
+				action: 'Create or update a contact',
 			},
 			{
 				name: 'Delete',
@@ -32,7 +32,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many contacts',
 				action: 'Get many contacts',
@@ -62,7 +62,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'Email address of the contact',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
@@ -72,7 +72,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Company',
@@ -81,11 +81,11 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 					loadOptionsMethod: 'getCustomFields',
@@ -93,10 +93,10 @@ export const contactFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Key Name or ID',
+								displayName: 'Key name or ID',
 								name: 'key',
 								type: 'options',
 								typeOptions: {
@@ -124,7 +124,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'FirstName',
 				type: 'string',
 				default: '',
@@ -136,13 +136,13 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'LastName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Lead Source',
+				displayName: 'Lead source',
 				name: 'LeadSource',
 				type: 'string',
 				default: '',
@@ -154,7 +154,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List name or ID',
 				name: 'autopilotList',
 				type: 'options',
 				typeOptions: {
@@ -165,43 +165,43 @@ export const contactFields: INodeProperties[] = [
 					'List to which this contact will be added on creation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Mailing Country',
+				displayName: 'Mailing country',
 				name: 'MailingCountry',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mailing Postal Code',
+				displayName: 'Mailing postal code',
 				name: 'MailingPostalCode',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mailing State',
+				displayName: 'Mailing state',
 				name: 'MailingState',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mailing Street',
+				displayName: 'Mailing street',
 				name: 'MailingStreet',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mailing City',
+				displayName: 'Mailing city',
 				name: 'MailingCity',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'MobilePhone',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'New Email',
+				displayName: 'New email',
 				name: 'newEmail',
 				type: 'string',
 				default: '',
@@ -218,13 +218,13 @@ export const contactFields: INodeProperties[] = [
 					'By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated events when a new contact is added or an existing contact is updated via API. Disable to skip notifications.',
 			},
 			{
-				displayName: 'Number of Employees',
+				displayName: 'Number of employees',
 				name: 'NumberOfEmployees',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Owner Name',
+				displayName: 'Owner name',
 				name: 'owner_name',
 				type: 'string',
 				default: '',
@@ -316,7 +316,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

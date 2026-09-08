@@ -8,14 +8,14 @@ export const options = {
 	default: {},
 	options: [
 		{
-			displayName: 'Download Attachments',
+			displayName: 'Download attachments',
 			name: 'download',
 			type: 'boolean',
 			default: false,
 			description: 'Whether to download submitted attachments',
 		},
 		{
-			displayName: 'Attachments Naming Scheme',
+			displayName: 'Attachments naming scheme',
 			name: 'binaryNamingScheme',
 			type: 'options',
 			default: 'sequence',
@@ -30,13 +30,13 @@ export const options = {
 					value: 'sequence',
 				},
 				{
-					name: 'Use Original Form Question ID',
+					name: 'Use original form question ID',
 					value: 'question',
 				},
 			],
 		},
 		{
-			displayName: 'Attachments Prefix',
+			displayName: 'Attachments prefix',
 			name: 'dataPropertyAttachmentsPrefixName',
 			type: 'string',
 			displayOptions: {
@@ -50,7 +50,7 @@ export const options = {
 				'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 		},
 		{
-			displayName: 'File Size',
+			displayName: 'File size',
 			name: 'version',
 			type: 'options',
 			displayOptions: {
@@ -80,7 +80,7 @@ export const options = {
 			],
 		},
 		{
-			displayName: 'Multiselect Mask',
+			displayName: 'Multiselect mask',
 			name: 'selectMask',
 			type: 'string',
 			default: 'select_*',
@@ -88,7 +88,7 @@ export const options = {
 				'Comma-separated list of wildcard-style selectors for fields that should be treated as multiselect fields, i.e. parsed as arrays.',
 		},
 		{
-			displayName: 'Number Mask',
+			displayName: 'Number mask',
 			name: 'numberMask',
 			type: 'string',
 			default: 'n_*, f_*',

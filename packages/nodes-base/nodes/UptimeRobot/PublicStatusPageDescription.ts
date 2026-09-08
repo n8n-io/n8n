@@ -31,7 +31,7 @@ export const publicStatusPageOperations: INodeProperties[] = [
 				action: 'Get a public status page',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many public status pages',
 				action: 'Get many public status pages',
@@ -53,7 +53,7 @@ export const publicStatusPageFields: INodeProperties[] = [
 	/*                            publicStatusPage:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Friendly Name',
+		displayName: 'Friendly name',
 		name: 'friendlyName',
 		type: 'string',
 		required: true,
@@ -82,10 +82,10 @@ export const publicStatusPageFields: INodeProperties[] = [
 			'Monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors)',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -95,7 +95,7 @@ export const publicStatusPageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Domain',
+				displayName: 'Custom domain',
 				name: 'custom_domain',
 				type: 'string',
 				default: '',
@@ -116,19 +116,19 @@ export const publicStatusPageFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						name: 'Friendly Name (A-Z)',
+						name: 'Friendly name (A-Z)',
 						value: 1,
 					},
 					{
-						name: 'Friendly Name (Z-A)',
+						name: 'Friendly name (Z-A)',
 						value: 2,
 					},
 					{
-						name: 'Status (Up-Down-Paused)',
+						name: 'Status (up-down-paused)',
 						value: 3,
 					},
 					{
-						name: 'Status (Down-Up-Paused)',
+						name: 'Status (down-up-paused)',
 						value: 4,
 					},
 				],
@@ -159,7 +159,7 @@ export const publicStatusPageFields: INodeProperties[] = [
 	/*                            publicStatusPage:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -193,7 +193,7 @@ export const publicStatusPageFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -203,7 +203,7 @@ export const publicStatusPageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Public Status Page IDs',
+				displayName: 'Public status page IDs',
 				name: 'psps',
 				type: 'string',
 				default: '',
@@ -230,10 +230,10 @@ export const publicStatusPageFields: INodeProperties[] = [
 		description: 'The ID of the public status page',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -243,14 +243,14 @@ export const publicStatusPageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Domain',
+				displayName: 'Custom domain',
 				name: 'custom_domain',
 				type: 'string',
 				default: '',
 				description: 'The domain or subdomain that the status page will run on',
 			},
 			{
-				displayName: 'Friendly Name',
+				displayName: 'Friendly name',
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
@@ -279,19 +279,19 @@ export const publicStatusPageFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						name: 'Friendly Name (A-Z)',
+						name: 'Friendly name (A-Z)',
 						value: 1,
 					},
 					{
-						name: 'Friendly Name (Z-A)',
+						name: 'Friendly name (Z-A)',
 						value: 2,
 					},
 					{
-						name: 'Status (Up-Down-Paused)',
+						name: 'Status (up-down-paused)',
 						value: 3,
 					},
 					{
-						name: 'Status (Down-Up-Paused)',
+						name: 'Status (down-up-paused)',
 						value: 4,
 					},
 				],

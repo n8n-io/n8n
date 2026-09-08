@@ -25,7 +25,7 @@ export const folderOperations: INodeProperties[] = [
 				action: 'Delete a folder',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many folders',
 				action: 'Get many folders',
@@ -40,7 +40,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Bucket Name',
+		displayName: 'Bucket name',
 		name: 'bucketName',
 		type: 'string',
 		required: true,
@@ -53,7 +53,7 @@ export const folderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Folder Name',
+		displayName: 'Folder name',
 		name: 'folderName',
 		type: 'string',
 		required: true,
@@ -66,10 +66,10 @@ export const folderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['folder'],
@@ -79,14 +79,14 @@ export const folderFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Parent Folder Key',
+				displayName: 'Parent folder key',
 				name: 'parentFolderKey',
 				type: 'string',
 				default: '',
 				description: 'Parent folder you want to create the folder in',
 			},
 			{
-				displayName: 'Requester Pays',
+				displayName: 'Requester pays',
 				name: 'requesterPays',
 				type: 'boolean',
 				default: false,
@@ -94,12 +94,12 @@ export const folderFields: INodeProperties[] = [
 					'Whether the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
 			},
 			{
-				displayName: 'Storage Class',
+				displayName: 'Storage class',
 				name: 'storageClass',
 				type: 'options',
 				options: [
 					{
-						name: 'Deep Archive',
+						name: 'Deep archive',
 						value: 'deepArchive',
 					},
 					{
@@ -136,7 +136,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                folder:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Bucket Name',
+		displayName: 'Bucket name',
 		name: 'bucketName',
 		type: 'string',
 		required: true,
@@ -149,7 +149,7 @@ export const folderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Folder Key',
+		displayName: 'Folder key',
 		name: 'folderKey',
 		type: 'string',
 		required: true,
@@ -165,7 +165,7 @@ export const folderFields: INodeProperties[] = [
 	/*                                 folder:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Bucket Name',
+		displayName: 'Bucket name',
 		name: 'bucketName',
 		type: 'string',
 		required: true,
@@ -178,7 +178,7 @@ export const folderFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -212,7 +212,7 @@ export const folderFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -222,7 +222,7 @@ export const folderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fetch Owner',
+				displayName: 'Fetch owner',
 				name: 'fetchOwner',
 				type: 'boolean',
 				default: false,
@@ -231,7 +231,7 @@ export const folderFields: INodeProperties[] = [
 					'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true',
 			},
 			{
-				displayName: 'Folder Key',
+				displayName: 'Folder key',
 				name: 'folderKey',
 				type: 'string',
 				default: '',

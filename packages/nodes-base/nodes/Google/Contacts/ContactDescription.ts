@@ -31,7 +31,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many contacts',
 				action: 'Get many contacts',
@@ -52,7 +52,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Family Name',
+		displayName: 'Family name',
 		name: 'familyName',
 		type: 'string',
 		displayOptions: {
@@ -64,7 +64,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Given Name',
+		displayName: 'Given name',
 		name: 'givenName',
 		type: 'string',
 		displayOptions: {
@@ -76,10 +76,10 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -91,7 +91,7 @@ export const contactFields: INodeProperties[] = [
 			{
 				displayName: 'Addresses',
 				name: 'addressesUi',
-				placeholder: 'Add Address',
+				placeholder: 'Add address',
 				type: 'fixedCollection',
 				default: {},
 				options: [
@@ -100,7 +100,7 @@ export const contactFields: INodeProperties[] = [
 						name: 'addressesValues',
 						values: [
 							{
-								displayName: 'Street Address',
+								displayName: 'Street address',
 								name: 'streetAddress',
 								type: 'string',
 								default: '',
@@ -118,13 +118,13 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Country Code',
+								displayName: 'Country code',
 								name: 'countryCode',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Postal Code',
+								displayName: 'Postal code',
 								name: 'postalCode',
 								type: 'string',
 								default: '',
@@ -164,7 +164,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'companyUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Company',
+				placeholder: 'Add company',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -202,18 +202,18 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
 								displayName: 'Key',
@@ -238,7 +238,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'emailsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Email',
+				placeholder: 'Add email',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -285,7 +285,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'eventsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Event',
+				placeholder: 'Add event',
 				description: 'An event related to the person',
 				typeOptions: {
 					multipleValues: true,
@@ -325,14 +325,14 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'File As',
+				displayName: 'File as',
 				name: 'fileAs',
 				type: 'string',
 				default: '',
 				description: 'The name that should be used to sort the person in a list',
 			},
 			{
-				displayName: 'Group Names or IDs',
+				displayName: 'Group names or IDs',
 				name: 'group',
 				type: 'multiOptions',
 				description:
@@ -343,19 +343,19 @@ export const contactFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Honorific Prefix',
+				displayName: 'Honorific prefix',
 				name: 'honorificPrefix',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Honorific Suffix',
+				displayName: 'Honorific suffix',
 				name: 'honorificSuffix',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Middle Name',
+				displayName: 'Middle name',
 				name: 'middleName',
 				type: 'string',
 				default: '',
@@ -371,7 +371,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'phoneUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Phone',
+				placeholder: 'Add phone',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -394,7 +394,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'home',
 									},
 									{
-										name: 'Home Fax',
+										name: 'Home fax',
 										value: 'homeFax',
 									},
 									{
@@ -410,7 +410,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'other',
 									},
 									{
-										name: 'Other Fax',
+										name: 'Other fax',
 										value: 'otherFax',
 									},
 									{
@@ -422,15 +422,15 @@ export const contactFields: INodeProperties[] = [
 										value: 'work',
 									},
 									{
-										name: 'Work Fax',
+										name: 'Work fax',
 										value: 'workFax',
 									},
 									{
-										name: 'Work Mobile',
+										name: 'Work mobile',
 										value: 'workMobile',
 									},
 									{
-										name: 'Work Pager',
+										name: 'Work pager',
 										value: 'workPager',
 									},
 								],
@@ -452,7 +452,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'relationsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Relation',
+				placeholder: 'Add relation',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -486,7 +486,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'child',
 									},
 									{
-										name: 'Domestic Partner',
+										name: 'Domestic partner',
 										value: 'domesticPartner',
 									},
 									{
@@ -510,7 +510,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'parent',
 									},
 									{
-										name: 'Referred By',
+										name: 'Referred by',
 										value: 'referredBy',
 									},
 									{
@@ -590,11 +590,11 @@ export const contactFields: INodeProperties[] = [
 				value: 'birthdays',
 			},
 			{
-				name: 'Cover Photos',
+				name: 'Cover photos',
 				value: 'coverPhotos',
 			},
 			{
-				name: 'Email Addresses',
+				name: 'Email addresses',
 				value: 'emailAddresses',
 			},
 			{
@@ -606,7 +606,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'genders',
 			},
 			{
-				name: 'IM Clients',
+				name: 'IM clients',
 				value: 'imClients',
 			},
 			{
@@ -642,7 +642,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'organizations',
 			},
 			{
-				name: 'Phone Numbers',
+				name: 'Phone numbers',
 				value: 'phoneNumbers',
 			},
 			{
@@ -658,7 +658,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'residences',
 			},
 			{
-				name: 'Sip Addresses',
+				name: 'SIP addresses',
 				value: 'sipAddresses',
 			},
 			{
@@ -670,7 +670,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'urls',
 			},
 			{
-				name: 'User Defined',
+				name: 'User defined',
 				value: 'userDefined',
 			},
 		],
@@ -685,7 +685,7 @@ export const contactFields: INodeProperties[] = [
 			'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -701,7 +701,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -753,11 +753,11 @@ export const contactFields: INodeProperties[] = [
 				value: 'birthdays',
 			},
 			{
-				name: 'Cover Photos',
+				name: 'Cover photos',
 				value: 'coverPhotos',
 			},
 			{
-				name: 'Email Addresses',
+				name: 'Email addresses',
 				value: 'emailAddresses',
 			},
 			{
@@ -769,7 +769,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'genders',
 			},
 			{
-				name: 'IM Clients',
+				name: 'IM clients',
 				value: 'imClients',
 			},
 			{
@@ -805,7 +805,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'organizations',
 			},
 			{
-				name: 'Phone Numbers',
+				name: 'Phone numbers',
 				value: 'phoneNumbers',
 			},
 			{
@@ -821,7 +821,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'residences',
 			},
 			{
-				name: 'Sip Addresses',
+				name: 'SIP addresses',
 				value: 'sipAddresses',
 			},
 			{
@@ -833,7 +833,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'urls',
 			},
 			{
-				name: 'User Defined',
+				name: 'User defined',
 				value: 'userDefined',
 			},
 		],
@@ -848,7 +848,7 @@ export const contactFields: INodeProperties[] = [
 			'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
-		displayName: 'Use Query',
+		displayName: 'Use query',
 		name: 'useQuery',
 		type: 'boolean',
 		displayOptions: {
@@ -876,7 +876,7 @@ export const contactFields: INodeProperties[] = [
 			'The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name "foo name" matches queries such as "f", "fo", "foo", "foo n", "nam", etc., but not "oo n".',
 	},
 	{
-		displayName: 'RAW Data',
+		displayName: 'RAW data',
 		name: 'rawData',
 		type: 'boolean',
 		displayOptions: {
@@ -903,27 +903,27 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sortOrder',
 				type: 'options',
 				options: [
 					{
-						name: 'Last Modified Ascending',
+						name: 'Last modified ascending',
 						value: 'LAST_MODIFIED_ASCENDING',
 						description: 'Sort people by when they were changed; older entries first',
 					},
 					{
-						name: 'Last Modified Descending',
+						name: 'Last modified descending',
 						value: 'LAST_MODIFIED_DESCENDING',
 						description: 'Sort people by when they were changed; newer entries first',
 					},
 					{
-						name: 'First Name Ascending',
+						name: 'First name ascending',
 						value: 'FIRST_NAME_ASCENDING',
 						description: 'Sort people by first name',
 					},
 					{
-						name: 'Last Name Ascending',
+						name: 'Last name ascending',
 						value: 'LAST_NAME_ASCENDING',
 						description: 'Sort people by last name',
 					},
@@ -971,11 +971,11 @@ export const contactFields: INodeProperties[] = [
 				value: 'birthdays',
 			},
 			{
-				name: 'Cover Photos',
+				name: 'Cover photos',
 				value: 'coverPhotos',
 			},
 			{
-				name: 'Email Addresses',
+				name: 'Email addresses',
 				value: 'emailAddresses',
 			},
 			{
@@ -987,7 +987,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'genders',
 			},
 			{
-				name: 'IM Clients',
+				name: 'IM clients',
 				value: 'imClients',
 			},
 			{
@@ -1023,7 +1023,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'organizations',
 			},
 			{
-				name: 'Phone Numbers',
+				name: 'Phone numbers',
 				value: 'phoneNumbers',
 			},
 			{
@@ -1039,7 +1039,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'residences',
 			},
 			{
-				name: 'Sip Addresses',
+				name: 'SIP addresses',
 				value: 'sipAddresses',
 			},
 			{
@@ -1051,7 +1051,7 @@ export const contactFields: INodeProperties[] = [
 				value: 'urls',
 			},
 			{
-				name: 'User Defined',
+				name: 'User defined',
 				value: 'userDefined',
 			},
 		],
@@ -1066,10 +1066,10 @@ export const contactFields: INodeProperties[] = [
 			'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1087,13 +1087,13 @@ export const contactFields: INodeProperties[] = [
 					'The etag field in the person is nedded to make sure the contact has not changed since your last read',
 			},
 			{
-				displayName: 'Family Name',
+				displayName: 'Family name',
 				name: 'familyName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Given Name',
+				displayName: 'Given name',
 				name: 'givenName',
 				type: 'string',
 				default: '',
@@ -1101,7 +1101,7 @@ export const contactFields: INodeProperties[] = [
 			{
 				displayName: 'Addresses',
 				name: 'addressesUi',
-				placeholder: 'Add Address',
+				placeholder: 'Add address',
 				type: 'fixedCollection',
 				default: {},
 				options: [
@@ -1110,7 +1110,7 @@ export const contactFields: INodeProperties[] = [
 						name: 'addressesValues',
 						values: [
 							{
-								displayName: 'Street Address',
+								displayName: 'Street address',
 								name: 'streetAddress',
 								type: 'string',
 								default: '',
@@ -1128,13 +1128,13 @@ export const contactFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Country Code',
+								displayName: 'Country code',
 								name: 'countryCode',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Postal Code',
+								displayName: 'Postal code',
 								name: 'postalCode',
 								type: 'string',
 								default: '',
@@ -1174,7 +1174,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'companyUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Company',
+				placeholder: 'Add company',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -1212,18 +1212,18 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
 								displayName: 'Key',
@@ -1248,7 +1248,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'emailsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Email',
+				placeholder: 'Add email',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -1295,7 +1295,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'eventsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Event',
+				placeholder: 'Add event',
 				description: 'An event related to the person',
 				typeOptions: {
 					multipleValues: true,
@@ -1335,14 +1335,14 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'File As',
+				displayName: 'File as',
 				name: 'fileAs',
 				type: 'string',
 				default: '',
 				description: 'The name that should be used to sort the person in a list',
 			},
 			{
-				displayName: 'Group Names or IDs',
+				displayName: 'Group names or IDs',
 				name: 'group',
 				type: 'multiOptions',
 				description:
@@ -1353,19 +1353,19 @@ export const contactFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Honorific Prefix',
+				displayName: 'Honorific prefix',
 				name: 'honorificPrefix',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Honorific Suffix',
+				displayName: 'Honorific suffix',
 				name: 'honorificSuffix',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Middle Name',
+				displayName: 'Middle name',
 				name: 'middleName',
 				type: 'string',
 				default: '',
@@ -1381,7 +1381,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'phoneUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Phone',
+				placeholder: 'Add phone',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -1404,7 +1404,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'home',
 									},
 									{
-										name: 'Home Fax',
+										name: 'Home fax',
 										value: 'homeFax',
 									},
 									{
@@ -1420,7 +1420,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'other',
 									},
 									{
-										name: 'Other Fax',
+										name: 'Other fax',
 										value: 'otherFax',
 									},
 									{
@@ -1432,15 +1432,15 @@ export const contactFields: INodeProperties[] = [
 										value: 'work',
 									},
 									{
-										name: 'Work Fax',
+										name: 'Work fax',
 										value: 'workFax',
 									},
 									{
-										name: 'Work Mobile',
+										name: 'Work mobile',
 										value: 'workMobile',
 									},
 									{
-										name: 'Work Pager',
+										name: 'Work pager',
 										value: 'workPager',
 									},
 								],
@@ -1462,7 +1462,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'relationsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Relation',
+				placeholder: 'Add relation',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -1496,7 +1496,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'child',
 									},
 									{
-										name: 'Domestic Partner',
+										name: 'Domestic partner',
 										value: 'domesticPartner',
 									},
 									{
@@ -1520,7 +1520,7 @@ export const contactFields: INodeProperties[] = [
 										value: 'parent',
 									},
 									{
-										name: 'Referred By',
+										name: 'Referred by',
 										value: 'referredBy',
 									},
 									{

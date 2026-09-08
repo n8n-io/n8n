@@ -3,7 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 export const DATA_TABLE_ID_FIELD = 'dataTableId';
 
 export const DRY_RUN = {
-	displayName: 'Dry Run',
+	displayName: 'Dry run',
 	name: 'dryRun',
 	type: 'boolean',
 	default: false,
@@ -21,7 +21,7 @@ export const DATA_TABLE_RESOURCE_LOCATOR_BASE = {
 	builderHint: { propertyHint: "Default to mode: 'list' which is easier for users to set up" },
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -30,7 +30,7 @@ export const DATA_TABLE_RESOURCE_LOCATOR_BASE = {
 			},
 		},
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'name',
 			type: 'string',
 			placeholder: 'e.g. My Table',

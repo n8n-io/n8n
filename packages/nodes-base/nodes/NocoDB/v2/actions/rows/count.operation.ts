@@ -25,7 +25,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			placeholder: 'Add option',
 			options: [
 				{
-					displayName: 'Filter By Formula',
+					displayName: 'Filter by formula',
 					name: 'where',
 					type: 'string',
 					default: '',

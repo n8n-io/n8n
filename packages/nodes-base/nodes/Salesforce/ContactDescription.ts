@@ -15,13 +15,13 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Contact To Campaign',
+				name: 'Add contact to campaign',
 				value: 'addToCampaign',
 				description: 'Add contact to a campaign',
 				action: 'Add a contact to a campaign',
 			},
 			{
-				name: 'Add Note',
+				name: 'Add note',
 				value: 'addNote',
 				description: 'Add note to a contact',
 				action: 'Add a note to a contact',
@@ -33,7 +33,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Create a contact',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description:
 					'Create a new contact, or update the current one if it already exists (upsert)',
@@ -52,13 +52,13 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many contacts',
 				action: 'Get many contacts',
 			},
 			{
-				name: 'Get Summary',
+				name: 'Get summary',
 				value: 'getSummary',
 				description: "Returns an overview of contact's metadata",
 				action: 'Get a contact summary',
@@ -80,7 +80,7 @@ export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Match Against',
+		displayName: 'Match against',
 		name: 'externalId',
 		type: 'options',
 		typeOptions: {
@@ -99,7 +99,7 @@ export const contactFields: INodeProperties[] = [
 			'The field to check to see if the contact already exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Value to Match',
+		displayName: 'Value to match',
 		name: 'externalIdValue',
 		type: 'string',
 		required: true,
@@ -114,7 +114,7 @@ export const contactFields: INodeProperties[] = [
 			"If this value exists in the 'match against' field, update the contact. Otherwise create a new one.",
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastname',
 		type: 'string',
 		required: true,
@@ -128,10 +128,10 @@ export const contactFields: INodeProperties[] = [
 		description: 'Required. Last name of the contact. Limited to 80 characters.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -142,30 +142,30 @@ export const contactFields: INodeProperties[] = [
 		options: [
 			accountResourceLocator('acconuntId', 'The account that is the parent of this contact'),
 			{
-				displayName: 'Assistant Name',
+				displayName: 'Assistant name',
 				name: 'assistantName',
 				type: 'string',
 				default: '',
 				description: 'The name of the assistant',
 			},
 			{
-				displayName: 'Assistant Phone',
+				displayName: 'Assistant phone',
 				name: 'Assistant Phone',
 				type: 'string',
 				default: '',
 				description: 'The telephone number of the assistant',
 			},
 			{
-				displayName: 'Birth Date',
+				displayName: 'Birth date',
 				name: 'birthdate',
 				type: 'dateTime',
 				default: '',
 				description: 'The birth date of the contact',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -175,10 +175,10 @@ export const contactFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -222,7 +222,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Email address for the contact',
 			},
 			{
-				displayName: 'Email Bounced Date',
+				displayName: 'Email bounced date',
 				name: 'otherPostalCode',
 				type: 'dateTime',
 				default: '',
@@ -230,7 +230,7 @@ export const contactFields: INodeProperties[] = [
 					'If bounce management is activated and an email sent to the contact bounces, the date and time the bounce occurred',
 			},
 			{
-				displayName: 'Email Bounced Reason',
+				displayName: 'Email bounced reason',
 				name: 'emailBouncedReason',
 				type: 'string',
 				default: '',
@@ -238,7 +238,7 @@ export const contactFields: INodeProperties[] = [
 					'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred',
 			},
 			{
-				displayName: 'Email Opt Out',
+				displayName: 'Email opt out',
 				name: 'hasOptedOutOfEmail',
 				type: 'boolean',
 				default: false,
@@ -252,14 +252,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Fax number for the contact. Label is Business Fax.',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'First name of the contact. Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Middle Name',
+				displayName: 'Middle name',
 				name: 'middleName',
 				type: 'string',
 				default: '',
@@ -273,7 +273,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Name suffix of the contact. Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Home Phone',
+				displayName: 'Home phone',
 				name: 'homePhone',
 				type: 'string',
 				default: '',
@@ -288,7 +288,7 @@ export const contactFields: INodeProperties[] = [
 					'References the ID of a contact in Data.com. If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.',
 			},
 			{
-				displayName: 'Lead Source Name or ID',
+				displayName: 'Lead source name or ID',
 				name: 'leadSource',
 				type: 'options',
 				typeOptions: {
@@ -299,76 +299,76 @@ export const contactFields: INodeProperties[] = [
 					'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Mailing City',
+				displayName: 'Mailing city',
 				name: 'mailingCity',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mailing Country',
+				displayName: 'Mailing country',
 				name: 'mailingCountry',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
 				description: 'Contact’s mobile phone number',
 			},
 			{
-				displayName: 'Mailing Postal Code',
+				displayName: 'Mailing postal code',
 				name: 'mailingPostalCode',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mailing State',
+				displayName: 'Mailing state',
 				name: 'mailingState',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mailing Street',
+				displayName: 'Mailing street',
 				name: 'mailingStreet',
 				type: 'string',
 				default: '',
 				description: 'Street address for mailing address',
 			},
 			{
-				displayName: 'Other City',
+				displayName: 'Other city',
 				name: 'otherCity',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Other Country',
+				displayName: 'Other country',
 				name: 'otherCountry',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Other Phone',
+				displayName: 'Other phone',
 				name: 'otherPhone',
 				type: 'string',
 				default: '',
 				description: 'Telephone for alternate address',
 			},
 			{
-				displayName: 'Other Postal Code',
+				displayName: 'Other postal code',
 				name: 'otherPostalCode',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Other State',
+				displayName: 'Other state',
 				name: 'otherState',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Other Street',
+				displayName: 'Other street',
 				name: 'otherStreet',
 				type: 'string',
 				default: '',
@@ -381,7 +381,7 @@ export const contactFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',
@@ -416,7 +416,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Phone number for the contact',
 			},
 			{
-				displayName: 'Record Type Name or ID',
+				displayName: 'Record type name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				description:
@@ -442,7 +442,7 @@ export const contactFields: INodeProperties[] = [
 				description: "The contact's personal pronouns",
 			},
 			{
-				displayName: 'Gender Identity',
+				displayName: 'Gender identity',
 				name: 'genderIdentity',
 				type: 'string',
 				default: '',
@@ -476,10 +476,10 @@ export const contactFields: INodeProperties[] = [
 		description: 'ID of contact that needs to be fetched',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -490,30 +490,30 @@ export const contactFields: INodeProperties[] = [
 		options: [
 			accountResourceLocator('acconuntId', 'The account that is the parent of this contact'),
 			{
-				displayName: 'Assistant Name',
+				displayName: 'Assistant name',
 				name: 'assistantName',
 				type: 'string',
 				default: '',
 				description: 'The name of the assistant',
 			},
 			{
-				displayName: 'Assistant Phone',
+				displayName: 'Assistant phone',
 				name: 'Assistant Phone',
 				type: 'string',
 				default: '',
 				description: 'The telephone number of the assistant',
 			},
 			{
-				displayName: 'Birth Date',
+				displayName: 'Birth date',
 				name: 'birthdate',
 				type: 'dateTime',
 				default: '',
 				description: 'The birth date of the contact',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -523,10 +523,10 @@ export const contactFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -570,7 +570,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Email address for the contact',
 			},
 			{
-				displayName: 'Email Bounced Date',
+				displayName: 'Email bounced date',
 				name: 'emailBouncedDate',
 				type: 'dateTime',
 				default: '',
@@ -578,7 +578,7 @@ export const contactFields: INodeProperties[] = [
 					'If bounce management is activated and an email sent to the contact bounces, the date and time the bounce occurred',
 			},
 			{
-				displayName: 'Email Bounced Reason',
+				displayName: 'Email bounced reason',
 				name: 'emailBouncedReason',
 				type: 'string',
 				default: '',
@@ -586,7 +586,7 @@ export const contactFields: INodeProperties[] = [
 					'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred',
 			},
 			{
-				displayName: 'Email Opt Out',
+				displayName: 'Email opt out',
 				name: 'hasOptedOutOfEmail',
 				type: 'boolean',
 				default: false,
@@ -600,14 +600,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Fax number for the contact. Label is Business Fax.',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'First name of the contact. Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Middle Name',
+				displayName: 'Middle name',
 				name: 'middleName',
 				type: 'string',
 				default: '',
@@ -621,7 +621,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Name suffix of the contact. Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Home Phone',
+				displayName: 'Home phone',
 				name: 'homePhone',
 				type: 'string',
 				default: '',
@@ -636,14 +636,14 @@ export const contactFields: INodeProperties[] = [
 					'References the ID of a contact in Data.com. If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
 				description: 'Last name of the contact. Limited to 80 characters.',
 			},
 			{
-				displayName: 'Lead Source Name or ID',
+				displayName: 'Lead source name or ID',
 				name: 'leadSource',
 				type: 'options',
 				typeOptions: {
@@ -654,76 +654,76 @@ export const contactFields: INodeProperties[] = [
 					'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Mailing City',
+				displayName: 'Mailing city',
 				name: 'mailingCity',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mailing Country',
+				displayName: 'Mailing country',
 				name: 'mailingCountry',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mailing State',
+				displayName: 'Mailing state',
 				name: 'mailingState',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mailing Street',
+				displayName: 'Mailing street',
 				name: 'mailingStreet',
 				type: 'string',
 				default: '',
 				description: 'Street address for mailing address',
 			},
 			{
-				displayName: 'Mailing Postal Code',
+				displayName: 'Mailing postal code',
 				name: 'mailingPostalCode',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobilePhone',
 				type: 'string',
 				default: '',
 				description: 'Contact’s mobile phone number',
 			},
 			{
-				displayName: 'Other City',
+				displayName: 'Other city',
 				name: 'otherCity',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Other Country',
+				displayName: 'Other country',
 				name: 'otherCountry',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Other Phone',
+				displayName: 'Other phone',
 				name: 'otherPhone',
 				type: 'string',
 				default: '',
 				description: 'Telephone for alternate address',
 			},
 			{
-				displayName: 'Other Postal Code',
+				displayName: 'Other postal code',
 				name: 'otherPostalCode',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Other State',
+				displayName: 'Other state',
 				name: 'otherState',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Other Street',
+				displayName: 'Other street',
 				name: 'otherStreet',
 				type: 'string',
 				default: '',
@@ -736,7 +736,7 @@ export const contactFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',
@@ -771,7 +771,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Phone number for the contact',
 			},
 			{
-				displayName: 'Record Type Name or ID',
+				displayName: 'Record type name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				description:
@@ -797,7 +797,7 @@ export const contactFields: INodeProperties[] = [
 				description: "The contact's personal pronouns",
 			},
 			{
-				displayName: 'Gender Identity',
+				displayName: 'Gender identity',
 				name: 'genderIdentity',
 				type: 'string',
 				default: '',
@@ -853,7 +853,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -887,7 +887,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -899,7 +899,7 @@ export const contactFields: INodeProperties[] = [
 			{
 				displayName: 'Conditions',
 				name: 'conditionsUi',
-				placeholder: 'Add Condition',
+				placeholder: 'Add condition',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -912,7 +912,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -989,7 +989,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'ID of contact that needs to be fetched',
 	},
 	{
-		displayName: 'Campaign Name or ID',
+		displayName: 'Campaign name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -1010,7 +1010,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1064,7 +1064,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1081,7 +1081,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Body of the note. Limited to 32 KB.',
 			},
 			{
-				displayName: 'Is Private',
+				displayName: 'Is private',
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
@@ -1095,7 +1095,7 @@ export const contactFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',

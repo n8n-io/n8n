@@ -40,7 +40,7 @@ export const databasePageOperations: INodeProperties[] = [
 				action: 'Get a database page',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many pages in a database',
 				action: 'Get many database pages',
@@ -73,7 +73,7 @@ export const databasePageOperations: INodeProperties[] = [
 				action: 'Create a database page',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many pages in a database',
 				action: 'Get many database pages',
@@ -104,7 +104,7 @@ export const databasePageFields: INodeProperties[] = [
 				displayName: 'Database',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a Database...',
+				placeholder: 'Select a database...',
 				typeOptions: {
 					searchListMethod: 'getDatabases',
 					searchable: true,
@@ -202,14 +202,14 @@ export const databasePageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Property',
+		placeholder: 'Add property',
 		options: [
 			{
 				name: 'propertyValues',
 				displayName: 'Property',
 				values: [
 					{
-						displayName: 'Key Name or ID',
+						displayName: 'Key name or ID',
 						name: 'key',
 						type: 'options',
 						description:
@@ -238,7 +238,7 @@ export const databasePageFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Rich Text',
+						displayName: 'Rich text',
 						name: 'richText',
 						type: 'boolean',
 						displayOptions: {
@@ -267,7 +267,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 					}),
 					{
-						displayName: 'Phone Number',
+						displayName: 'Phone number',
 						name: 'phoneValue',
 						type: 'string',
 						displayOptions: {
@@ -279,7 +279,7 @@ export const databasePageFields: INodeProperties[] = [
 						description: 'Phone number. No structure is enforced.',
 					},
 					{
-						displayName: 'Option Names or IDs',
+						displayName: 'Option names or IDs',
 						name: 'multiSelectValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -295,7 +295,7 @@ export const databasePageFields: INodeProperties[] = [
 							'Name of the options you want to set. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Option Name or ID',
+						displayName: 'Option name or ID',
 						name: 'selectValue',
 						type: 'options',
 						typeOptions: {
@@ -311,7 +311,7 @@ export const databasePageFields: INodeProperties[] = [
 							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Status Name or ID',
+						displayName: 'Status name or ID',
 						name: 'statusValue',
 						type: 'options',
 						typeOptions: {
@@ -339,7 +339,7 @@ export const databasePageFields: INodeProperties[] = [
 						description: 'Email address',
 					},
 					{
-						displayName: 'Ignore If Empty',
+						displayName: 'Ignore if empty',
 						name: 'ignoreIfEmpty',
 						type: 'boolean',
 						displayOptions: {
@@ -362,7 +362,7 @@ export const databasePageFields: INodeProperties[] = [
 						description: 'Web address',
 					},
 					{
-						displayName: 'User Names or IDs',
+						displayName: 'User names or IDs',
 						name: 'peopleValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -431,7 +431,7 @@ export const databasePageFields: INodeProperties[] = [
 						description: 'Whether or not you want to define a date range',
 					},
 					{
-						displayName: 'Include Time',
+						displayName: 'Include time',
 						name: 'includeTime',
 						displayOptions: {
 							show: {
@@ -456,7 +456,7 @@ export const databasePageFields: INodeProperties[] = [
 						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
-						displayName: 'Date Start',
+						displayName: 'Date start',
 						name: 'dateStart',
 						displayOptions: {
 							show: {
@@ -469,7 +469,7 @@ export const databasePageFields: INodeProperties[] = [
 						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
-						displayName: 'Date End',
+						displayName: 'Date end',
 						name: 'dateEnd',
 						displayOptions: {
 							show: {
@@ -483,7 +483,7 @@ export const databasePageFields: INodeProperties[] = [
 							'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
 					},
 					{
-						displayName: 'Timezone Name or ID',
+						displayName: 'Timezone name or ID',
 						name: 'timezone',
 						type: 'options',
 						displayOptions: {
@@ -501,7 +501,7 @@ export const databasePageFields: INodeProperties[] = [
 					{
 						displayName: 'File URLs',
 						name: 'fileUrls',
-						placeholder: 'Add File',
+						placeholder: 'Add file',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -557,7 +557,7 @@ export const databasePageFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Icon Type',
+				displayName: 'Icon type',
 				name: 'iconType',
 				type: 'options',
 				options: [
@@ -588,7 +588,7 @@ export const databasePageFields: INodeProperties[] = [
 	/*                      databasePage:update                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database Page',
+		displayName: 'Database page',
 		name: 'pageId',
 		type: 'resourceLocator',
 		default: { mode: 'url', value: '' },
@@ -669,14 +669,14 @@ export const databasePageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Property',
+		placeholder: 'Add property',
 		options: [
 			{
 				name: 'propertyValues',
 				displayName: 'Property',
 				values: [
 					{
-						displayName: 'Key Name or ID',
+						displayName: 'Key name or ID',
 						name: 'key',
 						type: 'options',
 						description:
@@ -705,7 +705,7 @@ export const databasePageFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Rich Text',
+						displayName: 'Rich text',
 						name: 'richText',
 						type: 'boolean',
 						displayOptions: {
@@ -734,7 +734,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 					}),
 					{
-						displayName: 'Phone Number',
+						displayName: 'Phone number',
 						name: 'phoneValue',
 						type: 'string',
 						displayOptions: {
@@ -746,7 +746,7 @@ export const databasePageFields: INodeProperties[] = [
 						description: 'Phone number. No structure is enforced.',
 					},
 					{
-						displayName: 'Option Names or IDs',
+						displayName: 'Option names or IDs',
 						name: 'multiSelectValue',
 						type: 'multiOptions',
 						description:
@@ -762,7 +762,7 @@ export const databasePageFields: INodeProperties[] = [
 						default: [],
 					},
 					{
-						displayName: 'Option Name or ID',
+						displayName: 'Option name or ID',
 						name: 'selectValue',
 						type: 'options',
 						description:
@@ -778,7 +778,7 @@ export const databasePageFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Status Name or ID',
+						displayName: 'Status name or ID',
 						name: 'statusValue',
 						type: 'options',
 						typeOptions: {
@@ -805,7 +805,7 @@ export const databasePageFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Ignore If Empty',
+						displayName: 'Ignore if empty',
 						name: 'ignoreIfEmpty',
 						type: 'boolean',
 						displayOptions: {
@@ -828,7 +828,7 @@ export const databasePageFields: INodeProperties[] = [
 						description: 'Web address',
 					},
 					{
-						displayName: 'User Names or IDs',
+						displayName: 'User names or IDs',
 						name: 'peopleValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -897,7 +897,7 @@ export const databasePageFields: INodeProperties[] = [
 						description: 'Whether or not you want to define a date range',
 					},
 					{
-						displayName: 'Include Time',
+						displayName: 'Include time',
 						name: 'includeTime',
 						displayOptions: {
 							show: {
@@ -922,7 +922,7 @@ export const databasePageFields: INodeProperties[] = [
 						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
-						displayName: 'Date Start',
+						displayName: 'Date start',
 						name: 'dateStart',
 						displayOptions: {
 							show: {
@@ -935,7 +935,7 @@ export const databasePageFields: INodeProperties[] = [
 						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
-						displayName: 'Date End',
+						displayName: 'Date end',
 						name: 'dateEnd',
 						displayOptions: {
 							show: {
@@ -949,7 +949,7 @@ export const databasePageFields: INodeProperties[] = [
 							'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
 					},
 					{
-						displayName: 'Timezone Name or ID',
+						displayName: 'Timezone name or ID',
 						name: 'timezone',
 						type: 'options',
 						displayOptions: {
@@ -967,7 +967,7 @@ export const databasePageFields: INodeProperties[] = [
 					{
 						displayName: 'File URLs',
 						name: 'fileUrls',
-						placeholder: 'Add File',
+						placeholder: 'Add file',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -1022,7 +1022,7 @@ export const databasePageFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Icon Type',
+				displayName: 'Icon type',
 				name: 'iconType',
 				type: 'options',
 				options: [
@@ -1054,7 +1054,7 @@ export const databasePageFields: INodeProperties[] = [
 	/*                                databasePage:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database Page',
+		displayName: 'Database page',
 		name: 'pageId',
 		type: 'resourceLocator',
 		default: { mode: 'url', value: '' },
@@ -1141,7 +1141,7 @@ export const databasePageFields: INodeProperties[] = [
 				displayName: 'Database',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a Database...',
+				placeholder: 'Select a database...',
 				typeOptions: {
 					searchListMethod: 'getDatabases',
 					searchable: true,
@@ -1197,7 +1197,7 @@ export const databasePageFields: INodeProperties[] = [
 		description: 'The Notion Database to operate on',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -1251,10 +1251,10 @@ export const databasePageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
-				displayName: 'Download Files',
+				displayName: 'Download files',
 				name: 'downloadFiles',
 				type: 'boolean',
 				displayOptions: {
@@ -1272,7 +1272,7 @@ export const databasePageFields: INodeProperties[] = [
 			{
 				displayName: 'Filters',
 				name: 'filter',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -1285,18 +1285,18 @@ export const databasePageFields: INodeProperties[] = [
 				default: {},
 				options: [
 					{
-						displayName: 'Single Condition',
+						displayName: 'Single condition',
 						name: 'singleCondition',
 						values: [...filters(getConditions())],
 					},
 					{
-						displayName: 'Multiple Condition',
+						displayName: 'Multiple condition',
 						name: 'multipleCondition',
 						values: [
 							{
 								displayName: 'Condition',
 								name: 'condition',
-								placeholder: 'Add Condition',
+								placeholder: 'Add condition',
 								type: 'fixedCollection',
 								typeOptions: {
 									multipleValues: true,
@@ -1322,7 +1322,7 @@ export const databasePageFields: INodeProperties[] = [
 			{
 				displayName: 'Sort',
 				name: 'sort',
-				placeholder: 'Add Sort',
+				placeholder: 'Add sort',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -1341,7 +1341,7 @@ export const databasePageFields: INodeProperties[] = [
 								description: "Whether or not to use the record's timestamp to sort the response",
 							},
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'key',
 								type: 'options',
 								displayOptions: {
@@ -1358,16 +1358,16 @@ export const databasePageFields: INodeProperties[] = [
 									'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
-								displayName: 'Property Name',
+								displayName: 'Property name',
 								name: 'key',
 								type: 'options',
 								options: [
 									{
-										name: 'Created Time',
+										name: 'Created time',
 										value: 'created_time',
 									},
 									{
-										name: 'Last Edited Time',
+										name: 'Last edited time',
 										value: 'last_edited_time',
 									},
 								],

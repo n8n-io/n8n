@@ -81,11 +81,11 @@ export class Stripe implements INodeType {
 						value: 'customer',
 					},
 					{
-						name: 'Customer Card',
+						name: 'Customer card',
 						value: 'customerCard',
 					},
 					{
-						name: 'Meter Event',
+						name: 'Meter event',
 						value: 'meterEvent',
 					},
 					{

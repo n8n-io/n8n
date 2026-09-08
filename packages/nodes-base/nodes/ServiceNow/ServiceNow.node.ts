@@ -72,7 +72,7 @@ export class ServiceNow implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Basic Auth',
+						name: 'Basic auth',
 						value: 'basicAuth',
 					},
 					{
@@ -94,11 +94,11 @@ export class ServiceNow implements INodeType {
 						value: 'attachment',
 					},
 					{
-						name: 'Business Service',
+						name: 'Business service',
 						value: 'businessService',
 					},
 					{
-						name: 'Configuration Item',
+						name: 'Configuration item',
 						value: 'configurationItems',
 					},
 					{
@@ -114,7 +114,7 @@ export class ServiceNow implements INodeType {
 						value: 'incident',
 					},
 					{
-						name: 'Table Record',
+						name: 'Table record',
 						value: 'tableRecord',
 					},
 					{
@@ -122,11 +122,11 @@ export class ServiceNow implements INodeType {
 						value: 'user',
 					},
 					{
-						name: 'User Group',
+						name: 'User group',
 						value: 'userGroup',
 					},
 					{
-						name: 'User Role',
+						name: 'User role',
 						value: 'userRole',
 					},
 				],

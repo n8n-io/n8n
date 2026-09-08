@@ -2,7 +2,7 @@ import type { UserProperties } from '../../Interfaces';
 
 export const userInviteDescription: UserProperties = [
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'teamId',
 		type: 'options',
 		description:

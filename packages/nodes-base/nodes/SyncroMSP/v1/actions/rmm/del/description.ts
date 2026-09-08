@@ -2,7 +2,7 @@ import type { RmmProperties } from '../../Interfaces';
 
 export const rmmDeleteDescription: RmmProperties = [
 	{
-		displayName: 'RMM Alert ID',
+		displayName: 'RMM alert ID',
 		name: 'alertId',
 		type: 'string',
 		required: true,

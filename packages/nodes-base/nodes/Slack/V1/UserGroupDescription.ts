@@ -31,7 +31,7 @@ export const userGroupOperations: INodeProperties[] = [
 				action: 'Enable a user group',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many user groups',
 				action: 'Get many user groups',
@@ -66,10 +66,10 @@ export const userGroupFields: INodeProperties[] = [
 		description: 'A name for the User Group. Must be unique among User Groups.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -79,7 +79,7 @@ export const userGroupFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Channel Names or IDs',
+				displayName: 'Channel names or IDs',
 				name: 'channelIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -104,7 +104,7 @@ export const userGroupFields: INodeProperties[] = [
 				description: 'A mention handle. Must be unique among channels, users and User Groups.',
 			},
 			{
-				displayName: 'Include Count',
+				displayName: 'Include count',
 				name: 'include_count',
 				type: 'boolean',
 				default: true,
@@ -116,7 +116,7 @@ export const userGroupFields: INodeProperties[] = [
 	/*                                 userGroup:disable                       */
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'User Group ID',
+		displayName: 'User group ID',
 		name: 'userGroupId',
 		type: 'string',
 		default: '',
@@ -130,10 +130,10 @@ export const userGroupFields: INodeProperties[] = [
 		description: 'The encoded ID of the User Group to update',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -143,7 +143,7 @@ export const userGroupFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Count',
+				displayName: 'Include count',
 				name: 'include_count',
 				type: 'boolean',
 				default: true,
@@ -155,7 +155,7 @@ export const userGroupFields: INodeProperties[] = [
 	/*                                 userGroup:enable                        */
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'User Group ID',
+		displayName: 'User group ID',
 		name: 'userGroupId',
 		type: 'string',
 		default: '',
@@ -169,10 +169,10 @@ export const userGroupFields: INodeProperties[] = [
 		description: 'The encoded ID of the User Group to update',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -182,7 +182,7 @@ export const userGroupFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Count',
+				displayName: 'Include count',
 				name: 'include_count',
 				type: 'boolean',
 				default: true,
@@ -194,7 +194,7 @@ export const userGroupFields: INodeProperties[] = [
 	/*                                userGroup:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -225,10 +225,10 @@ export const userGroupFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -238,21 +238,21 @@ export const userGroupFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Count',
+				displayName: 'Include count',
 				name: 'include_count',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to include the number of users in each User Group',
 			},
 			{
-				displayName: 'Include Disabled',
+				displayName: 'Include disabled',
 				name: 'include_disabled',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to include disabled User Groups',
 			},
 			{
-				displayName: 'Include Users',
+				displayName: 'Include users',
 				name: 'include_users',
 				type: 'boolean',
 				default: true,
@@ -264,7 +264,7 @@ export const userGroupFields: INodeProperties[] = [
 	/*                                 userGroup:update                        */
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'User Group ID',
+		displayName: 'User group ID',
 		name: 'userGroupId',
 		type: 'string',
 		default: '',
@@ -278,10 +278,10 @@ export const userGroupFields: INodeProperties[] = [
 		description: 'The encoded ID of the User Group to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -291,7 +291,7 @@ export const userGroupFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Channel Names or IDs',
+				displayName: 'Channel names or IDs',
 				name: 'channels',
 				type: 'multiOptions',
 				typeOptions: {
@@ -316,7 +316,7 @@ export const userGroupFields: INodeProperties[] = [
 				description: 'A mention handle. Must be unique among channels, users and User Groups.',
 			},
 			{
-				displayName: 'Include Count',
+				displayName: 'Include count',
 				name: 'include_count',
 				type: 'boolean',
 				default: true,

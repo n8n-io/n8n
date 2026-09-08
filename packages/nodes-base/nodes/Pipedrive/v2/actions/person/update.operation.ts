@@ -24,10 +24,10 @@ const properties: INodeProperties[] = [
 		description: 'ID of the person to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -72,7 +72,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Label Names or IDs',
+				displayName: 'Label names or IDs',
 				name: 'label_ids',
 				type: 'multiOptions',
 				description:
@@ -90,7 +90,7 @@ const properties: INodeProperties[] = [
 				description: 'The name of the person',
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'org_id',
 				type: 'options',
 				typeOptions: {
@@ -101,7 +101,7 @@ const properties: INodeProperties[] = [
 					'ID of the organization this person will belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				typeOptions: {
@@ -124,7 +124,7 @@ const properties: INodeProperties[] = [
 						name: 'phoneProperties',
 						values: [
 							{
-								displayName: 'Phone Number',
+								displayName: 'Phone number',
 								name: 'value',
 								type: 'string',
 								default: '',

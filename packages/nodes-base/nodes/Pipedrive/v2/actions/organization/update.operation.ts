@@ -24,14 +24,14 @@ const properties: INodeProperties[] = [
 		description: 'ID of the organization to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Label Names or IDs',
+				displayName: 'Label names or IDs',
 				name: 'label_ids',
 				type: 'multiOptions',
 				description:
@@ -49,7 +49,7 @@ const properties: INodeProperties[] = [
 				description: 'The name of the organization',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				typeOptions: {

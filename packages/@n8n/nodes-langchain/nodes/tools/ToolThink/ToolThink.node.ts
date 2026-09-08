@@ -68,7 +68,7 @@ export class ToolThink implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
-				displayName: 'Think Tool Description',
+				displayName: 'Think Tool description',
 				name: 'description',
 				type: 'string',
 				default: defaultToolDescription,

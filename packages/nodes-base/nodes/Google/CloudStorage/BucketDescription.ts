@@ -127,7 +127,7 @@ export const bucketOperations: INodeProperties[] = [
 						preSend: [parseJSONBody],
 					},
 				},
-				action: 'Create a new Bucket',
+				action: 'Create a new bucket',
 			},
 			{
 				name: 'Delete',
@@ -140,7 +140,7 @@ export const bucketOperations: INodeProperties[] = [
 						returnFullResponse: true,
 					},
 				},
-				action: 'Delete an empty Bucket',
+				action: 'Delete an empty bucket',
 			},
 			{
 				name: 'Get',
@@ -154,10 +154,10 @@ export const bucketOperations: INodeProperties[] = [
 						qs: {},
 					},
 				},
-				action: 'Get a Bucket',
+				action: 'Get a bucket',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get list of Buckets',
 				routing: {
@@ -215,7 +215,7 @@ export const bucketOperations: INodeProperties[] = [
 						},
 					},
 				},
-				action: 'Get a list of Buckets for a given project',
+				action: 'Get a list of buckets for a given project',
 			},
 			{
 				name: 'Update',
@@ -233,7 +233,7 @@ export const bucketOperations: INodeProperties[] = [
 						preSend: [parseJSONBody],
 					},
 				},
-				action: 'Update the metadata of a Bucket',
+				action: 'Update the metadata of a bucket',
 			},
 		],
 		default: 'getAll',
@@ -278,7 +278,7 @@ export const bucketFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -311,7 +311,7 @@ export const bucketFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Bucket Name',
+		displayName: 'Bucket name',
 		name: 'bucketName',
 		type: 'string',
 		placeholder: 'Bucket Name',
@@ -351,7 +351,7 @@ export const bucketFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'All Properties',
+				name: 'All properties',
 				value: 'full',
 			},
 			{
@@ -375,7 +375,7 @@ export const bucketFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -398,10 +398,10 @@ export const bucketFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		options: [
 			{
-				displayName: 'Metageneration Match',
+				displayName: 'Metageneration match',
 				name: 'ifMetagenerationMatch',
 				type: 'number',
 				description:
@@ -416,7 +416,7 @@ export const bucketFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Metageneration Exclude',
+				displayName: 'Metageneration exclude',
 				name: 'ifMetagenerationNotMatch',
 				type: 'number',
 				description:
@@ -433,12 +433,12 @@ export const bucketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Predefined Access Control',
+		displayName: 'Predefined access control',
 		name: 'createAcl',
 		type: 'collection',
 		noDataExpression: true,
 		default: {},
-		placeholder: 'Add Access Control Parameters',
+		placeholder: 'Add access control parameters',
 		displayOptions: {
 			show: {
 				resource: ['bucket'],
@@ -454,7 +454,7 @@ export const bucketFields: INodeProperties[] = [
 				placeholder: 'Apply a predefined set of access controls to this bucket',
 				options: [
 					{
-						name: 'Authenticated Read',
+						name: 'Authenticated read',
 						value: 'authenticatedRead',
 					},
 					{
@@ -462,15 +462,15 @@ export const bucketFields: INodeProperties[] = [
 						value: 'private',
 					},
 					{
-						name: 'Project Private',
+						name: 'Project private',
 						value: 'projectPrivate',
 					},
 					{
-						name: 'Public Read',
+						name: 'Public read',
 						value: 'publicRead',
 					},
 					{
-						name: 'Public Read/Write',
+						name: 'Public read/write',
 						value: 'publicReadWrite',
 					},
 				],
@@ -483,22 +483,22 @@ export const bucketFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Predefined Default Object ACL',
+				displayName: 'Predefined default object ACL',
 				name: 'predefinedDefaultObjectAcl',
 				type: 'options',
 				default: 'authenticatedRead',
 				placeholder: 'Apply a predefined set of default object access controls to this bucket',
 				options: [
 					{
-						name: 'Authenticated Read',
+						name: 'Authenticated read',
 						value: 'authenticatedRead',
 					},
 					{
-						name: 'Bucket Owner Full Control',
+						name: 'Bucket owner full control',
 						value: 'bucketOwnerFullControl',
 					},
 					{
-						name: 'Bucket Owner Read',
+						name: 'Bucket owner read',
 						value: 'bucketOwnerRead',
 					},
 					{
@@ -506,11 +506,11 @@ export const bucketFields: INodeProperties[] = [
 						value: 'private',
 					},
 					{
-						name: 'Project Private',
+						name: 'Project private',
 						value: 'projectPrivate',
 					},
 					{
-						name: 'Public Read',
+						name: 'Public read',
 						value: 'publicRead',
 					},
 				],
@@ -525,12 +525,12 @@ export const bucketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Parameters',
+		displayName: 'Additional parameters',
 		name: 'createBody',
 		type: 'collection',
 		noDataExpression: true,
 		default: {},
-		placeholder: 'Add Metadata Parameter',
+		placeholder: 'Add metadata parameter',
 		displayOptions: {
 			show: {
 				resource: ['bucket'],
@@ -539,7 +539,7 @@ export const bucketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Access Control',
+				displayName: 'Access control',
 				name: 'acl',
 				type: 'json',
 				default: '[]',
@@ -560,28 +560,28 @@ export const bucketFields: INodeProperties[] = [
 				placeholder: "The bucket's Cross Origin Resource Sharing configuration",
 			},
 			{
-				displayName: 'Custom Placement Config',
+				displayName: 'Custom placement config',
 				name: 'customPlacementConfig',
 				type: 'json',
 				default: '{}',
 				placeholder: 'The configuration for the region(s) for the Bucket',
 			},
 			{
-				displayName: 'Data Locations',
+				displayName: 'Data locations',
 				name: 'dataLocations',
 				type: 'json',
 				default: '[]',
 				placeholder: 'The list of individual regions that comprise a dual-region Bucket',
 			},
 			{
-				displayName: 'Default Event Based Hold',
+				displayName: 'Default event based hold',
 				name: 'defaultEventBasedHold',
 				type: 'boolean',
 				default: true,
 				placeholder: 'Whether or not to automatically apply an event based hold to new objects',
 			},
 			{
-				displayName: 'Default Object ACL',
+				displayName: 'Default object ACL',
 				name: 'defaultObjectAcl',
 				type: 'json',
 				default: '[]',
@@ -595,7 +595,7 @@ export const bucketFields: INodeProperties[] = [
 				placeholder: 'Encryption configuration for a bucket',
 			},
 			{
-				displayName: 'IAM Configuration',
+				displayName: 'IAM configuration',
 				name: 'iamConfiguration',
 				type: 'json',
 				default: '{}',
@@ -630,21 +630,21 @@ export const bucketFields: INodeProperties[] = [
 				placeholder: "The bucket's logging configuration",
 			},
 			{
-				displayName: 'Retention Policy',
+				displayName: 'Retention policy',
 				name: 'retentionPolicy',
 				type: 'json',
 				default: '{}',
 				placeholder: "The bucket's retention policy",
 			},
 			{
-				displayName: 'Recovery Point Objective',
+				displayName: 'Recovery point objective',
 				name: 'rpo',
 				type: 'string',
 				default: 'DEFAULT',
 				placeholder: 'The recovery point objective for the bucket',
 			},
 			{
-				displayName: 'Storage Class',
+				displayName: 'Storage class',
 				name: 'storageClass',
 				type: 'string',
 				default: 'STANDARD',

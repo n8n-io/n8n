@@ -289,7 +289,7 @@ export class Ftp implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				displayOptions: {
 					show: {
 						operation: ['download'],
@@ -305,7 +305,7 @@ export class Ftp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -314,14 +314,14 @@ export class Ftp implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Enable Concurrent Reads',
+						displayName: 'Enable concurrent reads',
 						name: 'enableConcurrentReads',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to enable concurrent reads for downloading files',
 					},
 					{
-						displayName: 'Max Concurrent Reads',
+						displayName: 'Max concurrent reads',
 						name: 'maxConcurrentReads',
 						type: 'number',
 						default: 5,
@@ -332,7 +332,7 @@ export class Ftp implements INodeType {
 						},
 					},
 					{
-						displayName: 'Chunk Size',
+						displayName: 'Chunk size',
 						name: 'chunkSize',
 						type: 'number',
 						default: 64,
@@ -350,7 +350,7 @@ export class Ftp implements INodeType {
 			//         rename
 			// ----------------------------------
 			{
-				displayName: 'Old Path',
+				displayName: 'Old path',
 				displayOptions: {
 					show: {
 						operation: ['rename'],
@@ -363,7 +363,7 @@ export class Ftp implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'New Path',
+				displayName: 'New path',
 				displayOptions: {
 					show: {
 						operation: ['rename'],
@@ -379,7 +379,7 @@ export class Ftp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -388,7 +388,7 @@ export class Ftp implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Create Directories',
+						displayName: 'Create directories',
 						name: 'createDirectories',
 						type: 'boolean',
 						default: false,
@@ -417,7 +417,7 @@ export class Ftp implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Binary File',
+				displayName: 'Binary file',
 				displayOptions: {
 					show: {
 						operation: ['upload'],
@@ -430,7 +430,7 @@ export class Ftp implements INodeType {
 				description: 'The text content of the file to upload',
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				displayOptions: {
 					show: {
 						operation: ['upload'],
@@ -444,7 +444,7 @@ export class Ftp implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'File Content',
+				displayName: 'File content',
 				displayOptions: {
 					show: {
 						operation: ['upload'],
@@ -460,7 +460,7 @@ export class Ftp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -505,7 +505,7 @@ export class Ftp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {

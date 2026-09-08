@@ -92,7 +92,7 @@ export const sourceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Currency Name or ID',
+		displayName: 'Currency name or ID',
 		name: 'currency',
 		type: 'options',
 		typeOptions: {
@@ -109,10 +109,10 @@ export const sourceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -125,7 +125,7 @@ export const sourceFields: INodeProperties[] = [
 				displayName: 'Metadata',
 				name: 'metadata',
 				type: 'fixedCollection',
-				placeholder: 'Add Metadata Item',
+				placeholder: 'Add metadata item',
 				description: 'Set of key-value pairs to attach to the source to create',
 				default: {},
 				typeOptions: {
@@ -133,7 +133,7 @@ export const sourceFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Metadata Properties',
+						displayName: 'Metadata properties',
 						name: 'metadataProperties',
 						values: [
 							{
@@ -153,7 +153,7 @@ export const sourceFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Statement Descriptor',
+				displayName: 'Statement descriptor',
 				name: 'statement_descriptor',
 				type: 'string',
 				default: '',

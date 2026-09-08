@@ -31,19 +31,19 @@ export const dealOperations: INodeProperties[] = [
 				action: 'Get a deal',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many deals',
 				action: 'Get many deals',
 			},
 			{
-				name: 'Get Recently Created',
+				name: 'Get recently created',
 				value: 'getRecentlyCreated',
 				description: 'Get recently created deals',
 				action: 'Get recently created deals',
 			},
 			{
-				name: 'Get Recently Modified',
+				name: 'Get recently modified',
 				value: 'getRecentlyModified',
 				description: 'Get recently modified deals',
 				action: 'Get recently modified deals',
@@ -70,7 +70,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                deal:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Deal Stage Name or ID',
+		displayName: 'Deal stage name or ID',
 		name: 'stage',
 		type: 'options',
 		required: true,
@@ -89,10 +89,10 @@ export const dealFields: INodeProperties[] = [
 			'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -108,7 +108,7 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Associated Company Names or IDs',
+				displayName: 'Associated company names or IDs',
 				name: 'associatedCompany',
 				type: 'multiOptions',
 				description:
@@ -119,7 +119,7 @@ export const dealFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Associated Vid Names or IDs',
+				displayName: 'Associated vid names or IDs',
 				name: 'associatedVids',
 				type: 'multiOptions',
 				description:
@@ -130,15 +130,15 @@ export const dealFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Close Date',
+				displayName: 'Close date',
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Custom Properties',
+				displayName: 'Custom properties',
 				name: 'customPropertiesUi',
-				placeholder: 'Add Custom Property',
+				placeholder: 'Add custom property',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -147,10 +147,10 @@ export const dealFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customPropertiesValues',
-						displayName: 'Custom Property',
+						displayName: 'Custom property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -172,19 +172,19 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Deal Description',
+				displayName: 'Deal description',
 				name: 'description',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Deal Name',
+				displayName: 'Deal name',
 				name: 'dealName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Deal Type Name or ID',
+				displayName: 'Deal type name or ID',
 				name: 'dealType',
 				type: 'options',
 				description:
@@ -221,10 +221,10 @@ export const dealFields: INodeProperties[] = [
 		description: 'Unique identifier for a particular deal',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Update Field',
+		placeholder: 'Add update field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -240,15 +240,15 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Close Date',
+				displayName: 'Close date',
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Custom Properties',
+				displayName: 'Custom properties',
 				name: 'customPropertiesUi',
-				placeholder: 'Add Custom Property',
+				placeholder: 'Add custom property',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -257,10 +257,10 @@ export const dealFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customPropertiesValues',
-						displayName: 'Custom Property',
+						displayName: 'Custom property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -282,19 +282,19 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Deal Description',
+				displayName: 'Deal description',
 				name: 'description',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Deal Name',
+				displayName: 'Deal name',
 				name: 'dealName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Deal Stage Name or ID',
+				displayName: 'Deal stage name or ID',
 				name: 'stage',
 				type: 'options',
 				typeOptions: {
@@ -305,7 +305,7 @@ export const dealFields: INodeProperties[] = [
 					'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Deal Type Name or ID',
+				displayName: 'Deal type name or ID',
 				name: 'dealType',
 				type: 'options',
 				description:
@@ -342,10 +342,10 @@ export const dealFields: INodeProperties[] = [
 		description: 'Unique identifier for a particular deal',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -355,7 +355,7 @@ export const dealFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Property Versions',
+				displayName: 'Include property versions',
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
@@ -370,7 +370,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                 deal:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -404,7 +404,7 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -414,7 +414,7 @@ export const dealFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Associations',
+				displayName: 'Include associations',
 				name: 'includeAssociations',
 				type: 'boolean',
 				default: false,
@@ -422,7 +422,7 @@ export const dealFields: INodeProperties[] = [
 					'Whether to include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
 			},
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Property names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -433,7 +433,7 @@ export const dealFields: INodeProperties[] = [
 					'<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Properties with History',
+				displayName: 'Properties with history',
 				name: 'propertiesWithHistory',
 				type: 'multiOptions',
 				typeOptions: {
@@ -468,7 +468,7 @@ export const dealFields: INodeProperties[] = [
 	/*               deal:getRecentlyCreated deal:getRecentlyModified             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -502,7 +502,7 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -519,7 +519,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Only return deals created after timestamp x',
 			},
 			{
-				displayName: 'Include Property Versions',
+				displayName: 'Include property versions',
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
@@ -534,7 +534,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                 deal:search                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -565,11 +565,11 @@ export const dealFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Filter Groups',
+		displayName: 'Filter groups',
 		name: 'filterGroupsUi',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Filter Group',
+		placeholder: 'Add filter group',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -582,14 +582,14 @@ export const dealFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'filterGroupsValues',
-				displayName: 'Filter Group',
+				displayName: 'Filter group',
 				values: [
 					{
 						displayName: 'Filters',
 						name: 'filtersUi',
 						type: 'fixedCollection',
 						default: {},
-						placeholder: 'Add Filter',
+						placeholder: 'Add filter',
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -599,7 +599,7 @@ export const dealFields: INodeProperties[] = [
 								displayName: 'Filter',
 								values: [
 									{
-										displayName: 'Property Name or ID',
+										displayName: 'Property name or ID',
 										name: 'propertyName',
 										type: 'options',
 										description:
@@ -615,7 +615,7 @@ export const dealFields: INodeProperties[] = [
 										type: 'options',
 										options: [
 											{
-												name: 'Contains Exactly',
+												name: 'Contains exactly',
 												value: 'CONTAINS_TOKEN',
 											},
 											{
@@ -623,31 +623,31 @@ export const dealFields: INodeProperties[] = [
 												value: 'EQ',
 											},
 											{
-												name: 'Greater Than',
+												name: 'Greater than',
 												value: 'GT',
 											},
 											{
-												name: 'Greater Than Or Equal',
+												name: 'Greater than or equal',
 												value: 'GTE',
 											},
 											{
-												name: 'Is Known',
+												name: 'Is known',
 												value: 'HAS_PROPERTY',
 											},
 											{
-												name: 'Is Unknown',
+												name: 'Is unknown',
 												value: 'NOT_HAS_PROPERTY',
 											},
 											{
-												name: 'Less Than',
+												name: 'Less than',
 												value: 'LT',
 											},
 											{
-												name: 'Less Than Or Equal',
+												name: 'Less than or equal',
 												value: 'LTE',
 											},
 											{
-												name: 'Not Equal',
+												name: 'Not equal',
 												value: 'NEQ',
 											},
 										],
@@ -677,10 +677,10 @@ export const dealFields: INodeProperties[] = [
 			'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -708,7 +708,7 @@ export const dealFields: INodeProperties[] = [
 					'Defines the direction in which search results are ordered. Default value is DESC.',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -727,7 +727,7 @@ export const dealFields: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sortBy',
 				type: 'options',
 				description:

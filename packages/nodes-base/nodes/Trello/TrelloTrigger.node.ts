@@ -55,7 +55,7 @@ export class TrelloTrigger implements INodeType {
 				name: 'authentication',
 				type: 'options',
 				options: [
-					{ name: 'API Key', value: 'apiKey' },
+					{ name: 'API key', value: 'apiKey' },
 					{ name: 'OAuth1', value: 'oAuth1' },
 				],
 				default: 'apiKey',

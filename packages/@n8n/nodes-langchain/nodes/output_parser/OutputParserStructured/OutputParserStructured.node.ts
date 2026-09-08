@@ -131,7 +131,7 @@ export class OutputParserStructured implements INodeType {
 				},
 			},
 			{
-				displayName: 'Auto-Fix Format',
+				displayName: 'Auto-fix format',
 				description:
 					'Whether to automatically fix the output when it is not in the correct format. Will cause another LLM call.',
 				name: 'autoFix',
@@ -139,7 +139,7 @@ export class OutputParserStructured implements INodeType {
 				default: false,
 			},
 			{
-				displayName: 'Customize Retry Prompt',
+				displayName: 'Customize retry prompt',
 				name: 'customizeRetryPrompt',
 				type: 'boolean',
 				displayOptions: {
@@ -152,7 +152,7 @@ export class OutputParserStructured implements INodeType {
 					'Whether to customize the prompt used for retrying the output parsing. If disabled, a default prompt will be used.',
 			},
 			{
-				displayName: 'Custom Prompt',
+				displayName: 'Custom prompt',
 				name: 'prompt',
 				type: 'string',
 				displayOptions: {

@@ -31,7 +31,7 @@ export const productOperations: INodeProperties[] = [
 				action: 'Get a product',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many products',
 				action: 'Get many products',
@@ -66,10 +66,10 @@ export const productFields: INodeProperties[] = [
 		description: 'Product name',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -100,14 +100,14 @@ export const productFields: INodeProperties[] = [
 				description: 'If managing stock, this controls if backorders are allowed',
 			},
 			{
-				displayName: 'Button Text',
+				displayName: 'Button text',
 				name: 'buttonText',
 				type: 'string',
 				default: '',
 				description: 'Product external button text. Only for external products.',
 			},
 			{
-				displayName: 'Catalog Visibility',
+				displayName: 'Catalog visibility',
 				name: 'catalogVisibility',
 				type: 'options',
 				options: [
@@ -131,7 +131,7 @@ export const productFields: INodeProperties[] = [
 				default: 'visible',
 			},
 			{
-				displayName: 'Category Names or IDs',
+				displayName: 'Category names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
@@ -142,21 +142,21 @@ export const productFields: INodeProperties[] = [
 					'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Cross Sell IDs',
+				displayName: 'Cross sell IDs',
 				name: 'crossSellIds',
 				type: 'string',
 				default: '',
 				description: 'List of cross-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
-				displayName: 'Date On Sale From',
+				displayName: 'Date on sale from',
 				name: 'dateOnSaleFrom',
 				type: 'dateTime',
 				default: '',
 				description: "Start date of sale price, in the site's timezone",
 			},
 			{
-				displayName: 'Date On Sale To',
+				displayName: 'Date on sale to',
 				name: 'dateOnSaleTo',
 				type: 'dateTime',
 				default: '',
@@ -191,7 +191,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Whether the product is featured',
 			},
 			{
-				displayName: 'Manage Stock',
+				displayName: 'Manage stock',
 				name: 'manageStock',
 				type: 'boolean',
 				default: false,
@@ -199,7 +199,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Stock management at product level',
 			},
 			{
-				displayName: 'Menu Order',
+				displayName: 'Menu order',
 				name: 'menuOrder',
 				type: 'number',
 				default: 1,
@@ -213,42 +213,42 @@ export const productFields: INodeProperties[] = [
 				description: 'Product parent ID',
 			},
 			{
-				displayName: 'Purchase Note',
+				displayName: 'Purchase note',
 				name: 'purchaseNote',
 				type: 'string',
 				default: '',
 				description: 'Optional note to send the customer after purchase',
 			},
 			{
-				displayName: 'Regular Price',
+				displayName: 'Regular price',
 				name: 'regularPrice',
 				type: 'string',
 				default: '',
 				description: 'Product regular price',
 			},
 			{
-				displayName: 'Reviews Allowed',
+				displayName: 'Reviews allowed',
 				name: 'reviewsAllowed',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to allow reviews',
 			},
 			{
-				displayName: 'Sale Price',
+				displayName: 'Sale price',
 				name: 'salePrice',
 				type: 'string',
 				default: '',
 				description: 'Product sale price',
 			},
 			{
-				displayName: 'Shipping Class',
+				displayName: 'Shipping class',
 				name: 'shippingClass',
 				type: 'string',
 				default: '',
 				description: 'Shipping class slug',
 			},
 			{
-				displayName: 'Short Description',
+				displayName: 'Short description',
 				name: 'shortDescription',
 				type: 'string',
 				default: '',
@@ -269,7 +269,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Product slug',
 			},
 			{
-				displayName: 'Sold Individually',
+				displayName: 'Sold individually',
 				name: 'soldIndividually',
 				type: 'boolean',
 				default: false,
@@ -301,26 +301,26 @@ export const productFields: INodeProperties[] = [
 				description: 'A named status for the product',
 			},
 			{
-				displayName: 'Stock Quantity',
+				displayName: 'Stock quantity',
 				name: 'stockQuantity',
 				type: 'number',
 				default: 1,
 			},
 			{
-				displayName: 'Stock Status',
+				displayName: 'Stock status',
 				name: 'stockStatus',
 				type: 'options',
 				options: [
 					{
-						name: 'In Stock',
+						name: 'In stock',
 						value: 'instock',
 					},
 					{
-						name: 'Out Of Stock',
+						name: 'Out of stock',
 						value: 'outofstock',
 					},
 					{
-						name: 'On Back Order',
+						name: 'On back order',
 						value: 'onbackorder',
 					},
 				],
@@ -328,7 +328,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -339,13 +339,13 @@ export const productFields: INodeProperties[] = [
 					'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tax Class',
+				displayName: 'Tax class',
 				name: 'taxClass',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Status',
+				displayName: 'Tax status',
 				name: 'taxStatus',
 				type: 'options',
 				options: [
@@ -415,7 +415,7 @@ export const productFields: INodeProperties[] = [
 	{
 		displayName: 'Dimensions',
 		name: 'dimensionsUi',
-		placeholder: 'Add Dimension',
+		placeholder: 'Add dimension',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -461,7 +461,7 @@ export const productFields: INodeProperties[] = [
 	{
 		displayName: 'Images',
 		name: 'imagesUi',
-		placeholder: 'Add Image',
+		placeholder: 'Add image',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -507,7 +507,7 @@ export const productFields: INodeProperties[] = [
 	{
 		displayName: 'Metadata',
 		name: 'metadataUi',
-		placeholder: 'Add Metadata',
+		placeholder: 'Add metadata',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -559,10 +559,10 @@ export const productFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -593,14 +593,14 @@ export const productFields: INodeProperties[] = [
 				description: 'If managing stock, this controls if backorders are allowed',
 			},
 			{
-				displayName: 'Button Text',
+				displayName: 'Button text',
 				name: 'buttonText',
 				type: 'string',
 				default: '',
 				description: 'Product external button text. Only for external products.',
 			},
 			{
-				displayName: 'Catalog Visibility',
+				displayName: 'Catalog visibility',
 				name: 'catalogVisibility',
 				type: 'options',
 				options: [
@@ -624,7 +624,7 @@ export const productFields: INodeProperties[] = [
 				default: 'visible',
 			},
 			{
-				displayName: 'Category Names or IDs',
+				displayName: 'Category names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
@@ -635,21 +635,21 @@ export const productFields: INodeProperties[] = [
 					'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Cross Sell IDs',
+				displayName: 'Cross sell IDs',
 				name: 'crossSellIds',
 				type: 'string',
 				default: '',
 				description: 'List of cross-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
-				displayName: 'Date On Sale From',
+				displayName: 'Date on sale from',
 				name: 'dateOnSaleFrom',
 				type: 'dateTime',
 				default: '',
 				description: "Start date of sale price, in the site's timezone",
 			},
 			{
-				displayName: 'Date On Sale To',
+				displayName: 'Date on sale to',
 				name: 'dateOnSaleTo',
 				type: 'dateTime',
 				default: '',
@@ -684,7 +684,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Whether the product is featured',
 			},
 			{
-				displayName: 'Manage Stock',
+				displayName: 'Manage stock',
 				name: 'manageStock',
 				type: 'boolean',
 				default: false,
@@ -692,7 +692,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Stock management at product level',
 			},
 			{
-				displayName: 'Menu Order',
+				displayName: 'Menu order',
 				name: 'menuOrder',
 				type: 'number',
 				default: 1,
@@ -713,42 +713,42 @@ export const productFields: INodeProperties[] = [
 				description: 'Product parent ID',
 			},
 			{
-				displayName: 'Purchase Note',
+				displayName: 'Purchase note',
 				name: 'purchaseNote',
 				type: 'string',
 				default: '',
 				description: 'Optional note to send the customer after purchase',
 			},
 			{
-				displayName: 'Regular Price',
+				displayName: 'Regular price',
 				name: 'regularPrice',
 				type: 'string',
 				default: '',
 				description: 'Product regular price',
 			},
 			{
-				displayName: 'Reviews Allowed',
+				displayName: 'Reviews allowed',
 				name: 'reviewsAllowed',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to allow reviews',
 			},
 			{
-				displayName: 'Sale Price',
+				displayName: 'Sale price',
 				name: 'salePrice',
 				type: 'string',
 				default: '',
 				description: 'Product sale price',
 			},
 			{
-				displayName: 'Shipping Class',
+				displayName: 'Shipping class',
 				name: 'shippingClass',
 				type: 'string',
 				default: '',
 				description: 'Shipping class slug',
 			},
 			{
-				displayName: 'Short Description',
+				displayName: 'Short description',
 				name: 'shortDescription',
 				type: 'string',
 				default: '',
@@ -769,7 +769,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Product slug',
 			},
 			{
-				displayName: 'Sold Individually',
+				displayName: 'Sold individually',
 				name: 'soldIndividually',
 				type: 'boolean',
 				default: false,
@@ -801,26 +801,26 @@ export const productFields: INodeProperties[] = [
 				description: 'A named status for the product',
 			},
 			{
-				displayName: 'Stock Quantity',
+				displayName: 'Stock quantity',
 				name: 'stockQuantity',
 				type: 'number',
 				default: 1,
 			},
 			{
-				displayName: 'Stock Status',
+				displayName: 'Stock status',
 				name: 'stockStatus',
 				type: 'options',
 				options: [
 					{
-						name: 'In Stock',
+						name: 'In stock',
 						value: 'instock',
 					},
 					{
-						name: 'Out Of Stock',
+						name: 'Out of stock',
 						value: 'outofstock',
 					},
 					{
-						name: 'On Back Order',
+						name: 'On back order',
 						value: 'onbackorder',
 					},
 				],
@@ -828,7 +828,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -839,13 +839,13 @@ export const productFields: INodeProperties[] = [
 					'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tax Class',
+				displayName: 'Tax class',
 				name: 'taxClass',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Status',
+				displayName: 'Tax status',
 				name: 'taxStatus',
 				type: 'options',
 				options: [
@@ -915,7 +915,7 @@ export const productFields: INodeProperties[] = [
 	{
 		displayName: 'Dimensions',
 		name: 'dimensionsUi',
-		placeholder: 'Add Dimension',
+		placeholder: 'Add dimension',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -961,7 +961,7 @@ export const productFields: INodeProperties[] = [
 	{
 		displayName: 'Images',
 		name: 'imagesUi',
-		placeholder: 'Add Image',
+		placeholder: 'Add image',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -1007,7 +1007,7 @@ export const productFields: INodeProperties[] = [
 	{
 		displayName: 'Metadata',
 		name: 'metadataUi',
-		placeholder: 'Add Metadata',
+		placeholder: 'Add metadata',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -1062,7 +1062,7 @@ export const productFields: INodeProperties[] = [
 	/*                                   product:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -1120,7 +1120,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Limit response to resources published before a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category name or ID',
 				name: 'category',
 				type: 'options',
 				default: '',
@@ -1159,14 +1159,14 @@ export const productFields: INodeProperties[] = [
 				description: 'Whether to limit the result set to featured products',
 			},
 			{
-				displayName: 'Max Price',
+				displayName: 'Max price',
 				name: 'maxPrice',
 				type: 'string',
 				default: '',
 				description: 'Limit result set to products based on a maximun price',
 			},
 			{
-				displayName: 'Min Price',
+				displayName: 'Min price',
 				name: 'minPrice',
 				type: 'string',
 				default: '',
@@ -1190,7 +1190,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Order sort attribute ascending or descending',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'options',
 				options: [
@@ -1269,20 +1269,20 @@ export const productFields: INodeProperties[] = [
 				description: 'Limit result set to products assigned a specific status',
 			},
 			{
-				displayName: 'Stock Status',
+				displayName: 'Stock status',
 				name: 'stockStatus',
 				type: 'options',
 				options: [
 					{
-						name: 'In Stock',
+						name: 'In stock',
 						value: 'instock',
 					},
 					{
-						name: 'Out Of Stock',
+						name: 'Out of stock',
 						value: 'outofstock',
 					},
 					{
-						name: 'On Back Order',
+						name: 'On back order',
 						value: 'onbackorder',
 					},
 				],
@@ -1290,7 +1290,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tag Name or ID',
+				displayName: 'Tag name or ID',
 				name: 'tag',
 				type: 'options',
 				default: [],
@@ -1301,7 +1301,7 @@ export const productFields: INodeProperties[] = [
 					'Limit result set to products assigned a specific tag ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tax Class',
+				displayName: 'Tax class',
 				name: 'taxClass',
 				type: 'options',
 				options: [
@@ -1310,11 +1310,11 @@ export const productFields: INodeProperties[] = [
 						value: 'standard',
 					},
 					{
-						name: 'Reduced Rate',
+						name: 'Reduced rate',
 						value: 'reduced-rate',
 					},
 					{
-						name: 'Zero Rate',
+						name: 'Zero rate',
 						value: 'zero-rate.',
 					},
 				],

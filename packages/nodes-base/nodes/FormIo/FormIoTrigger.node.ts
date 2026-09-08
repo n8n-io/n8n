@@ -42,7 +42,7 @@ export class FormIoTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project name or ID',
 				name: 'projectId',
 				type: 'options',
 				typeOptions: {
@@ -54,7 +54,7 @@ export class FormIoTrigger implements INodeType {
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
-				displayName: 'Form Name or ID',
+				displayName: 'Form name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -67,16 +67,16 @@ export class FormIoTrigger implements INodeType {
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
-				displayName: 'Trigger Events',
+				displayName: 'Trigger events',
 				name: 'events',
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Submission Created',
+						name: 'Submission created',
 						value: 'create',
 					},
 					{
-						name: 'Submission Updated',
+						name: 'Submission updated',
 						value: 'update',
 					},
 				],

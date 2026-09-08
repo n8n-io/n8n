@@ -31,7 +31,7 @@ export const messageConversationOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many messages in a conversation',
 				action: 'Get many messages',
@@ -52,7 +52,7 @@ export const messageConversationFields: INodeProperties[] = [
 	/*                                messageConversation:create                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -70,7 +70,7 @@ export const messageConversationFields: INodeProperties[] = [
 			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Conversation Name or ID',
+		displayName: 'Conversation name or ID',
 		name: 'conversationId',
 		type: 'options',
 		typeOptions: {
@@ -103,7 +103,7 @@ export const messageConversationFields: INodeProperties[] = [
 			'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
@@ -121,7 +121,7 @@ export const messageConversationFields: INodeProperties[] = [
 				name: 'actionsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Action',
+				placeholder: 'Add action',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -141,18 +141,18 @@ export const messageConversationFields: INodeProperties[] = [
 										value: 'open_url',
 									},
 									{
-										name: 'Prefill Message',
+										name: 'Prefill message',
 										value: 'prefill_message',
 									},
 									{
-										name: 'Send Reply',
+										name: 'Send reply',
 										value: 'send_reply',
 									},
 								],
 								default: '',
 							},
 							{
-								displayName: 'Button Text',
+								displayName: 'Button text',
 								name: 'button_text',
 								type: 'string',
 								description: 'The text for the action button',
@@ -209,7 +209,7 @@ export const messageConversationFields: INodeProperties[] = [
 					'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
-				displayName: 'Direct Mention Names or IDs',
+				displayName: 'Direct mention names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
@@ -236,7 +236,7 @@ export const messageConversationFields: INodeProperties[] = [
 	/*                                messageConversation:getAll                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -254,7 +254,7 @@ export const messageConversationFields: INodeProperties[] = [
 			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Conversation Name or ID',
+		displayName: 'Conversation name or ID',
 		name: 'conversationId',
 		type: 'options',
 		typeOptions: {
@@ -273,7 +273,7 @@ export const messageConversationFields: INodeProperties[] = [
 			'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
@@ -286,7 +286,7 @@ export const messageConversationFields: INodeProperties[] = [
 		description: 'Other options to set',
 		options: [
 			{
-				displayName: 'Ending Object Index',
+				displayName: 'Ending object index',
 				name: 'to_obj_index',
 				type: 'number',
 				default: 50,
@@ -303,7 +303,7 @@ export const messageConversationFields: INodeProperties[] = [
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'order_by',
 				type: 'options',
 				default: 'ASC',
@@ -320,7 +320,7 @@ export const messageConversationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Starting Object Index',
+				displayName: 'Starting object index',
 				name: 'from_obj_index',
 				type: 'number',
 				default: 0,
@@ -351,7 +351,7 @@ export const messageConversationFields: INodeProperties[] = [
 	/*                                messageConversation:update                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Conversation Message ID',
+		displayName: 'Conversation message ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -365,7 +365,7 @@ export const messageConversationFields: INodeProperties[] = [
 		description: 'The ID of the conversation message',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		displayOptions: {
@@ -382,7 +382,7 @@ export const messageConversationFields: INodeProperties[] = [
 				name: 'actionsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Action',
+				placeholder: 'Add action',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -402,18 +402,18 @@ export const messageConversationFields: INodeProperties[] = [
 										value: 'open_url',
 									},
 									{
-										name: 'Prefill Message',
+										name: 'Prefill message',
 										value: 'prefill_message',
 									},
 									{
-										name: 'Send Reply',
+										name: 'Send reply',
 										value: 'send_reply',
 									},
 								],
 								default: '',
 							},
 							{
-								displayName: 'Button Text',
+								displayName: 'Button text',
 								name: 'button_text',
 								type: 'string',
 								description: 'The text for the action button',
@@ -478,7 +478,7 @@ export const messageConversationFields: INodeProperties[] = [
 					'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
 			},
 			{
-				displayName: 'Direct Mention Names or IDs',
+				displayName: 'Direct mention names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {

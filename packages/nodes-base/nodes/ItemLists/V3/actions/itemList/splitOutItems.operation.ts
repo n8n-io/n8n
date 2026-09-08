@@ -16,7 +16,7 @@ import { disableDotNotationBoolean } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Fields To Split Out',
+		displayName: 'Fields to split out',
 		name: 'fieldToSplitOut',
 		type: 'string',
 		default: '',
@@ -32,15 +32,15 @@ const properties: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'No Other Fields',
+				name: 'No other fields',
 				value: 'noOtherFields',
 			},
 			{
-				name: 'All Other Fields',
+				name: 'All other fields',
 				value: 'allOtherFields',
 			},
 			{
-				name: 'Selected Other Fields',
+				name: 'Selected other fields',
 				value: 'selectedOtherFields',
 			},
 		],
@@ -48,7 +48,7 @@ const properties: INodeProperties[] = [
 		description: 'Whether to copy any other fields into the new items',
 	},
 	{
-		displayName: 'Fields To Include',
+		displayName: 'Fields to include',
 		name: 'fieldsToInclude',
 		type: 'string',
 		placeholder: 'e.g. email, name',
@@ -65,12 +65,12 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			disableDotNotationBoolean,
 			{
-				displayName: 'Destination Field Name',
+				displayName: 'Destination field name',
 				name: 'destinationFieldName',
 				type: 'string',
 				requiresDataPath: 'multiple',
@@ -78,7 +78,7 @@ const properties: INodeProperties[] = [
 				description: 'The field in the output under which to put the split field contents',
 			},
 			{
-				displayName: 'Include Binary',
+				displayName: 'Include binary',
 				name: 'includeBinary',
 				type: 'boolean',
 				default: false,

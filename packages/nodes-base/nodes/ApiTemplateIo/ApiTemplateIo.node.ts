@@ -120,7 +120,7 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template Name or ID',
+				displayName: 'Template name or ID',
 				name: 'imageTemplateId',
 				type: 'options',
 				required: true,
@@ -138,7 +138,7 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template Name or ID',
+				displayName: 'Template name or ID',
 				name: 'pdfTemplateId',
 				type: 'options',
 				required: true,
@@ -156,7 +156,7 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'JSON Parameters',
+				displayName: 'JSON parameters',
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
@@ -182,7 +182,7 @@ export class ApiTemplateIo implements INodeType {
 				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				name: 'binaryProperty',
 				type: 'string',
 				required: true,
@@ -228,7 +228,7 @@ export class ApiTemplateIo implements INodeType {
 			{
 				displayName: 'Overrides',
 				name: 'overridesUi',
-				placeholder: 'Add Override',
+				placeholder: 'Add override',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -249,7 +249,7 @@ export class ApiTemplateIo implements INodeType {
 							{
 								displayName: 'Properties',
 								name: 'propertiesUi',
-								placeholder: 'Add Property',
+								placeholder: 'Add property',
 								type: 'fixedCollection',
 								typeOptions: {
 									multipleValues: true,
@@ -285,7 +285,7 @@ export class ApiTemplateIo implements INodeType {
 			{
 				displayName: 'Properties',
 				name: 'propertiesUi',
-				placeholder: 'Add Property',
+				placeholder: 'Add property',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -325,7 +325,7 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						operation: ['create'],
@@ -336,7 +336,7 @@ export class ApiTemplateIo implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'File Name',
+						displayName: 'File name',
 						name: 'fileName',
 						type: 'string',
 						default: '',

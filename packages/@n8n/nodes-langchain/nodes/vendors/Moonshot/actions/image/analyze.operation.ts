@@ -9,7 +9,7 @@ import { modelRLC } from '../descriptions';
 const properties: INodeProperties[] = [
 	modelRLC,
 	{
-		displayName: 'Text Input',
+		displayName: 'Text input',
 		name: 'text',
 		type: 'string',
 		placeholder: "e.g. What's in this image?",
@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Data Field Name(s)',
+		displayName: 'Input data field name(s)',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
@@ -41,12 +41,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Maximum Number of Tokens',
+				displayName: 'Maximum number of tokens',
 				description: 'Fewer tokens will result in shorter, less detailed image description',
 				name: 'maxTokens',
 				type: 'number',

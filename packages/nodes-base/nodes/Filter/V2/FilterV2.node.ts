@@ -37,7 +37,7 @@ export class FilterV2 implements INodeType {
 				{
 					displayName: 'Conditions',
 					name: 'conditions',
-					placeholder: 'Add Condition',
+					placeholder: 'Add condition',
 					type: 'filter',
 					default: {},
 					typeOptions: {
@@ -72,7 +72,7 @@ e.g.: { combinator: 'and', options: { caseSensitive: true, leftValue: '', typeVa
 					default: {},
 					options: [
 						{
-							displayName: 'Ignore Case',
+							displayName: 'Ignore case',
 							description: 'Whether to ignore letter case when evaluating conditions',
 							name: 'ignoreCase',
 							type: 'boolean',

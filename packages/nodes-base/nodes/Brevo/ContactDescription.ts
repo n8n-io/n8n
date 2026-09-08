@@ -30,7 +30,7 @@ export const contactOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				action: 'Upsert a contact',
 				routing: {
@@ -51,7 +51,7 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				routing: {
 					request: {
@@ -125,7 +125,7 @@ const createOperations: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Attributes',
+		displayName: 'Contact attributes',
 		name: 'createContactAttributes',
 		default: {},
 		description: 'Array of attributes to be added',
@@ -141,7 +141,7 @@ const createOperations: INodeProperties[] = [
 				displayName: 'Attribute',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field name',
 						name: 'fieldName',
 						type: 'options',
 						typeOptions: {
@@ -180,7 +180,7 @@ const createOperations: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -195,7 +195,7 @@ const createOperations: INodeProperties[] = [
 				],
 			},
 		],
-		placeholder: 'Add Attribute',
+		placeholder: 'Add attribute',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -205,7 +205,7 @@ const createOperations: INodeProperties[] = [
 
 const getAllOperations: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		routing: {
@@ -283,7 +283,7 @@ const getAllOperations: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -293,7 +293,7 @@ const getAllOperations: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Modified Since',
+				displayName: 'Modified since',
 				name: 'modifiedSince',
 				type: 'dateTime',
 				routing: {
@@ -312,7 +312,7 @@ const getAllOperations: INodeProperties[] = [
 
 const getOperations: INodeProperties[] = [
 	{
-		displayName: 'Contact Identifier',
+		displayName: 'Contact identifier',
 		name: 'identifier',
 		type: 'string',
 		displayOptions: {
@@ -335,7 +335,7 @@ const getOperations: INodeProperties[] = [
 
 const deleteOperations: INodeProperties[] = [
 	{
-		displayName: 'Contact Identifier',
+		displayName: 'Contact identifier',
 		name: 'identifier',
 		type: 'string',
 		displayOptions: {
@@ -367,7 +367,7 @@ const deleteOperations: INodeProperties[] = [
 
 const updateOperations: INodeProperties[] = [
 	{
-		displayName: 'Contact Identifier',
+		displayName: 'Contact identifier',
 		name: 'identifier',
 		default: '',
 		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
@@ -397,7 +397,7 @@ const updateOperations: INodeProperties[] = [
 				name: 'updateAttributesValues',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field name',
 						name: 'fieldName',
 						type: 'options',
 						typeOptions: {
@@ -436,7 +436,7 @@ const updateOperations: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -451,7 +451,7 @@ const updateOperations: INodeProperties[] = [
 				],
 			},
 		],
-		placeholder: 'Add Attribute',
+		placeholder: 'Add attribute',
 		routing: {
 			request: {
 				method: 'PUT',
@@ -489,7 +489,7 @@ const upsertOperations: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Attributes',
+		displayName: 'Contact attributes',
 		name: 'upsertAttributes',
 		default: {},
 		description: 'Array of attributes to be updated',
@@ -505,7 +505,7 @@ const upsertOperations: INodeProperties[] = [
 				displayName: 'Attribute',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field name',
 						name: 'fieldName',
 						type: 'options',
 						typeOptions: {
@@ -544,7 +544,7 @@ const upsertOperations: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -559,7 +559,7 @@ const upsertOperations: INodeProperties[] = [
 				],
 			},
 		],
-		placeholder: 'Add Attribute',
+		placeholder: 'Add attribute',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,

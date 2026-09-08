@@ -31,7 +31,7 @@ export const orderOperations: INodeProperties[] = [
 				action: 'Get an order',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many orders',
 				action: 'Get many orders',
@@ -52,10 +52,10 @@ export const orderFields: INodeProperties[] = [
 	/*                                order:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -79,7 +79,7 @@ export const orderFields: INodeProperties[] = [
 				description: 'User ID who owns the order. 0 for guests.',
 			},
 			{
-				displayName: 'Customer Note',
+				displayName: 'Customer note',
 				name: 'customerNote',
 				type: 'string',
 				default: '',
@@ -93,19 +93,19 @@ export const orderFields: INodeProperties[] = [
 				description: 'Parent order ID',
 			},
 			{
-				displayName: 'Payment Method ID',
+				displayName: 'Payment method ID',
 				name: 'paymentMethodId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Payment Method Title',
+				displayName: 'Payment method title',
 				name: 'paymentMethodTitle',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Set Paid',
+				displayName: 'Set paid',
 				name: 'setPaid',
 				type: 'boolean',
 				default: false,
@@ -165,7 +165,7 @@ export const orderFields: INodeProperties[] = [
 	{
 		displayName: 'Billing',
 		name: 'billingUi',
-		placeholder: 'Add Billing',
+		placeholder: 'Add billing',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -184,13 +184,13 @@ export const orderFields: INodeProperties[] = [
 				displayName: 'Address',
 				values: [
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'firstName',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'lastName',
 						type: 'string',
 						default: '',
@@ -202,13 +202,13 @@ export const orderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Address Line 1',
+						displayName: 'Address line 1',
 						name: 'address_1',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Address Line 2',
+						displayName: 'Address line 2',
 						name: 'address_2',
 						type: 'string',
 						default: '',
@@ -221,7 +221,7 @@ export const orderFields: INodeProperties[] = [
 						description: 'ISO code or name of the state, province or district',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postcode',
 						type: 'string',
 						default: '',
@@ -250,9 +250,9 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Coupon Lines',
+		displayName: 'Coupon lines',
 		name: 'couponLinesUi',
-		placeholder: 'Add Coupon Line',
+		placeholder: 'Add coupon line',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -268,7 +268,7 @@ export const orderFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'couponLinesValues',
-				displayName: 'Coupon Line',
+				displayName: 'Coupon line',
 				values: [
 					{
 						displayName: 'Code',
@@ -280,7 +280,7 @@ export const orderFields: INodeProperties[] = [
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
-						placeholder: 'Add Metadata',
+						placeholder: 'Add metadata',
 						type: 'fixedCollection',
 						default: {},
 						typeOptions: {
@@ -315,9 +315,9 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Fee Lines',
+		displayName: 'Fee lines',
 		name: 'feeLinesUi',
-		placeholder: 'Add Fee Line',
+		placeholder: 'Add fee line',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -333,7 +333,7 @@ export const orderFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'feeLinesValues',
-				displayName: 'Fee Line',
+				displayName: 'Fee line',
 				values: [
 					{
 						displayName: 'Name',
@@ -343,14 +343,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Fee name',
 					},
 					{
-						displayName: 'Tax Class',
+						displayName: 'Tax class',
 						name: 'taxClass',
 						type: 'string',
 						description: 'Tax class of fee',
 						default: '',
 					},
 					{
-						displayName: 'Tax Status',
+						displayName: 'Tax status',
 						name: 'taxStatus',
 						type: 'options',
 						options: [
@@ -376,7 +376,7 @@ export const orderFields: INodeProperties[] = [
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
-						placeholder: 'Add Metadata',
+						placeholder: 'Add metadata',
 						type: 'fixedCollection',
 						default: {},
 						typeOptions: {
@@ -411,9 +411,9 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Line Items',
+		displayName: 'Line items',
 		name: 'lineItemsUi',
-		placeholder: 'Add Line Item',
+		placeholder: 'Add line item',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -429,7 +429,7 @@ export const orderFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'lineItemsValues',
-				displayName: 'Line Item',
+				displayName: 'Line item',
 				values: [
 					{
 						displayName: 'Name',
@@ -459,7 +459,7 @@ export const orderFields: INodeProperties[] = [
 						description: 'Quantity ordered',
 					},
 					{
-						displayName: 'Tax Class',
+						displayName: 'Tax class',
 						name: 'taxClass',
 						type: 'string',
 						default: '',
@@ -482,7 +482,7 @@ export const orderFields: INodeProperties[] = [
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
-						placeholder: 'Add Metadata',
+						placeholder: 'Add metadata',
 						type: 'fixedCollection',
 						default: {},
 						typeOptions: {
@@ -519,7 +519,7 @@ export const orderFields: INodeProperties[] = [
 	{
 		displayName: 'Metadata',
 		name: 'metadataUi',
-		placeholder: 'Add Metadata',
+		placeholder: 'Add metadata',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -558,7 +558,7 @@ export const orderFields: INodeProperties[] = [
 	{
 		displayName: 'Shipping',
 		name: 'shippingUi',
-		placeholder: 'Add Shipping',
+		placeholder: 'Add shipping',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -577,13 +577,13 @@ export const orderFields: INodeProperties[] = [
 				displayName: 'Address',
 				values: [
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'firstName',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'lastName',
 						type: 'string',
 						default: '',
@@ -595,13 +595,13 @@ export const orderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Address Line 1',
+						displayName: 'Address line 1',
 						name: 'address_1',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Address Line 2',
+						displayName: 'Address line 2',
 						name: 'address_2',
 						type: 'string',
 						default: '',
@@ -614,7 +614,7 @@ export const orderFields: INodeProperties[] = [
 						description: 'ISO code or name of the state, province or district',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postcode',
 						type: 'string',
 						default: '',
@@ -630,9 +630,9 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Shipping Lines',
+		displayName: 'Shipping lines',
 		name: 'shippingLinesUi',
-		placeholder: 'Add Shipping Line',
+		placeholder: 'Add shipping line',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -648,10 +648,10 @@ export const orderFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'shippingLinesValues',
-				displayName: 'Fee Line',
+				displayName: 'Fee line',
 				values: [
 					{
-						displayName: 'Method Title',
+						displayName: 'Method title',
 						name: 'methodTitle',
 						type: 'string',
 						default: '',
@@ -674,7 +674,7 @@ export const orderFields: INodeProperties[] = [
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
-						placeholder: 'Add Metadata',
+						placeholder: 'Add metadata',
 						type: 'fixedCollection',
 						default: {},
 						typeOptions: {
@@ -724,10 +724,10 @@ export const orderFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -751,7 +751,7 @@ export const orderFields: INodeProperties[] = [
 				description: 'User ID who owns the order. 0 for guests.',
 			},
 			{
-				displayName: 'Customer Note',
+				displayName: 'Customer note',
 				name: 'customerNote',
 				type: 'string',
 				default: '',
@@ -765,13 +765,13 @@ export const orderFields: INodeProperties[] = [
 				description: 'Parent order ID',
 			},
 			{
-				displayName: 'Payment Method ID',
+				displayName: 'Payment method ID',
 				name: 'paymentMethodId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Payment Method Title',
+				displayName: 'Payment method title',
 				name: 'paymentMethodTitle',
 				type: 'string',
 				default: '',
@@ -829,7 +829,7 @@ export const orderFields: INodeProperties[] = [
 	{
 		displayName: 'Billing',
 		name: 'billingUi',
-		placeholder: 'Add Billing',
+		placeholder: 'Add billing',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -848,13 +848,13 @@ export const orderFields: INodeProperties[] = [
 				displayName: 'Address',
 				values: [
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'firstName',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'lastName',
 						type: 'string',
 						default: '',
@@ -866,13 +866,13 @@ export const orderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Address Line 1',
+						displayName: 'Address line 1',
 						name: 'address_1',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Address Line 2',
+						displayName: 'Address line 2',
 						name: 'address_2',
 						type: 'string',
 						default: '',
@@ -885,7 +885,7 @@ export const orderFields: INodeProperties[] = [
 						description: 'ISO code or name of the state, province or district',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
@@ -914,9 +914,9 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Coupon Lines',
+		displayName: 'Coupon lines',
 		name: 'couponLinesUi',
-		placeholder: 'Add Coupon Line',
+		placeholder: 'Add coupon line',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -932,7 +932,7 @@ export const orderFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'couponLinesValues',
-				displayName: 'Coupon Line',
+				displayName: 'Coupon line',
 				values: [
 					{
 						displayName: 'Code',
@@ -944,7 +944,7 @@ export const orderFields: INodeProperties[] = [
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
-						placeholder: 'Add Metadata',
+						placeholder: 'Add metadata',
 						type: 'fixedCollection',
 						default: {},
 						typeOptions: {
@@ -979,9 +979,9 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Fee Lines',
+		displayName: 'Fee lines',
 		name: 'feeLinesUi',
-		placeholder: 'Add Fee Line',
+		placeholder: 'Add fee line',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -997,7 +997,7 @@ export const orderFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'feeLinesValues',
-				displayName: 'Fee Line',
+				displayName: 'Fee line',
 				values: [
 					{
 						displayName: 'Name',
@@ -1007,14 +1007,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Fee name',
 					},
 					{
-						displayName: 'Tax Class',
+						displayName: 'Tax class',
 						name: 'taxClass',
 						type: 'string',
 						description: 'Tax class of fee',
 						default: '',
 					},
 					{
-						displayName: 'Tax Status',
+						displayName: 'Tax status',
 						name: 'taxStatus',
 						type: 'options',
 						options: [
@@ -1040,7 +1040,7 @@ export const orderFields: INodeProperties[] = [
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
-						placeholder: 'Add Metadata',
+						placeholder: 'Add metadata',
 						type: 'fixedCollection',
 						default: {},
 						typeOptions: {
@@ -1075,9 +1075,9 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Line Items',
+		displayName: 'Line items',
 		name: 'lineItemsUi',
-		placeholder: 'Add Line Item',
+		placeholder: 'Add line item',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -1093,7 +1093,7 @@ export const orderFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'lineItemsValues',
-				displayName: 'Line Item',
+				displayName: 'Line item',
 				values: [
 					{
 						displayName: 'Name',
@@ -1123,7 +1123,7 @@ export const orderFields: INodeProperties[] = [
 						description: 'Quantity ordered',
 					},
 					{
-						displayName: 'Tax Class',
+						displayName: 'Tax class',
 						name: 'taxClass',
 						type: 'string',
 						default: '',
@@ -1146,7 +1146,7 @@ export const orderFields: INodeProperties[] = [
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
-						placeholder: 'Add Metadata',
+						placeholder: 'Add metadata',
 						type: 'fixedCollection',
 						default: {},
 						typeOptions: {
@@ -1183,7 +1183,7 @@ export const orderFields: INodeProperties[] = [
 	{
 		displayName: 'Metadata',
 		name: 'metadataUi',
-		placeholder: 'Add Metadata',
+		placeholder: 'Add metadata',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -1222,7 +1222,7 @@ export const orderFields: INodeProperties[] = [
 	{
 		displayName: 'Shipping',
 		name: 'shippingUi',
-		placeholder: 'Add Shipping',
+		placeholder: 'Add shipping',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -1241,13 +1241,13 @@ export const orderFields: INodeProperties[] = [
 				displayName: 'Address',
 				values: [
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'firstName',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'lastName',
 						type: 'string',
 						default: '',
@@ -1259,13 +1259,13 @@ export const orderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Address Line 1',
+						displayName: 'Address line 1',
 						name: 'address_1',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Address Line 2',
+						displayName: 'Address line 2',
 						name: 'address_2',
 						type: 'string',
 						default: '',
@@ -1278,7 +1278,7 @@ export const orderFields: INodeProperties[] = [
 						description: 'ISO code or name of the state, province or district',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
@@ -1294,9 +1294,9 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Shipping Lines',
+		displayName: 'Shipping lines',
 		name: 'shippingLinesUi',
-		placeholder: 'Add Shipping Line',
+		placeholder: 'Add shipping line',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -1312,10 +1312,10 @@ export const orderFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'shippingLinesValues',
-				displayName: 'Fee Line',
+				displayName: 'Fee line',
 				values: [
 					{
-						displayName: 'Method Title',
+						displayName: 'Method title',
 						name: 'methodTitle',
 						type: 'string',
 						default: '',
@@ -1338,7 +1338,7 @@ export const orderFields: INodeProperties[] = [
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
-						placeholder: 'Add Metadata',
+						placeholder: 'Add metadata',
 						type: 'fixedCollection',
 						default: {},
 						typeOptions: {
@@ -1391,7 +1391,7 @@ export const orderFields: INodeProperties[] = [
 	/*                                   order:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -1456,7 +1456,7 @@ export const orderFields: INodeProperties[] = [
 				description: 'Limit result set to orders assigned a specific customer',
 			},
 			{
-				displayName: 'Decimal Points',
+				displayName: 'Decimal points',
 				name: 'decimalPoints',
 				type: 'number',
 				typeOptions: {
@@ -1491,7 +1491,7 @@ export const orderFields: INodeProperties[] = [
 				description: 'Limit result set to orders assigned a specific product',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'options',
 				options: [
@@ -1548,7 +1548,7 @@ export const orderFields: INodeProperties[] = [
 						value: 'failed',
 					},
 					{
-						name: 'On-Hold',
+						name: 'On-hold',
 						value: 'on-hold',
 					},
 					{

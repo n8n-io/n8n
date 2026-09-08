@@ -31,7 +31,7 @@ export const leadOperations: INodeProperties[] = [
 				action: 'Get a lead',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many leads',
 				action: 'Get many leads',
@@ -52,7 +52,7 @@ export const leadFields: INodeProperties[] = [
 	/*                                 lead:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Delete By',
+		displayName: 'Delete by',
 		name: 'deleteBy',
 		type: 'options',
 		displayOptions: {
@@ -94,7 +94,7 @@ export const leadFields: INodeProperties[] = [
 	/*                                  lead:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Select By',
+		displayName: 'Select by',
 		name: 'selectBy',
 		type: 'options',
 		displayOptions: {
@@ -147,7 +147,7 @@ export const leadFields: INodeProperties[] = [
 	/*                                  lead:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -181,7 +181,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -212,7 +212,7 @@ export const leadFields: INodeProperties[] = [
 	/*                                 lead:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Update By',
+		displayName: 'Update by',
 		name: 'updateBy',
 		type: 'options',
 		displayOptions: {
@@ -270,7 +270,7 @@ export const leadFields: INodeProperties[] = [
 		description: 'The email of the user',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -282,10 +282,10 @@ export const leadFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -302,7 +302,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'An avatar image URL. note: the image URL needs to be https.',
 			},
 			{
-				displayName: 'Company Names or IDs',
+				displayName: 'Company names or IDs',
 				name: 'companies',
 				type: 'multiOptions',
 				typeOptions: {
@@ -341,14 +341,14 @@ export const leadFields: INodeProperties[] = [
 				description: 'The phone number of the user',
 			},
 			{
-				displayName: 'Unsubscribed From Emails',
+				displayName: 'Unsubscribed from emails',
 				name: 'unsubscribedFromEmails',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the Lead is unsubscribed from emails',
 			},
 			{
-				displayName: 'Update Last Request At',
+				displayName: 'Update last request at',
 				name: 'updateLastRequestAt',
 				type: 'boolean',
 				default: false,
@@ -356,35 +356,35 @@ export const leadFields: INodeProperties[] = [
 					'Whether to instruct Intercom to update the users last_request_at value to the current API service time in UTC. default value if not sent is false.',
 			},
 			{
-				displayName: 'UTM Campaign',
+				displayName: 'UTM campaign',
 				name: 'utmCampaign',
 				type: 'string',
 				default: '',
 				description: 'Identifies a specific product promotion or strategic campaign',
 			},
 			{
-				displayName: 'UTM Content',
+				displayName: 'UTM content',
 				name: 'utmContent',
 				type: 'string',
 				default: '',
 				description: 'Identifies what specifically was clicked to bring the user to the site',
 			},
 			{
-				displayName: 'UTM Medium',
+				displayName: 'UTM medium',
 				name: 'utmMedium',
 				type: 'string',
 				default: '',
 				description: 'Identifies what type of link was used',
 			},
 			{
-				displayName: 'UTM Source',
+				displayName: 'UTM source',
 				name: 'utmSource',
 				type: 'string',
 				default: '',
 				description: 'An avatar image URL. note: the image URL needs to be https.',
 			},
 			{
-				displayName: 'UTM Term',
+				displayName: 'UTM term',
 				name: 'utmTerm',
 				type: 'string',
 				default: '',
@@ -393,7 +393,7 @@ export const leadFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Custom Attributes',
+		displayName: 'Custom attributes',
 		name: 'customAttributesJson',
 		type: 'json',
 		typeOptions: {
@@ -411,11 +411,11 @@ export const leadFields: INodeProperties[] = [
 			'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 	{
-		displayName: 'Custom Attributes',
+		displayName: 'Custom attributes',
 		name: 'customAttributesUi',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Attribute',
+		placeholder: 'Add attribute',
 		typeOptions: {
 			multipleValues: true,
 		},

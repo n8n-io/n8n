@@ -19,7 +19,7 @@ export const ticketFieldOperations: INodeProperties[] = [
 				action: 'Get a ticket field',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many system and custom ticket fields',
 				action: 'Get many ticket fields',
@@ -34,7 +34,7 @@ export const ticketFieldFields: INodeProperties[] = [
 	/*                                 ticketField:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ticket Field ID',
+		displayName: 'Ticket field ID',
 		name: 'ticketFieldId',
 		type: 'string',
 		default: '',
@@ -51,7 +51,7 @@ export const ticketFieldFields: INodeProperties[] = [
 	/*                                 ticketField:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

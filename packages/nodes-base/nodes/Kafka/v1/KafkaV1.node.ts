@@ -59,7 +59,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Name of the queue of topic to publish to',
 		},
 		{
-			displayName: 'Send Input Data',
+			displayName: 'Send input data',
 			name: 'sendInputData',
 			type: 'boolean',
 			default: true,
@@ -78,20 +78,20 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The message to be sent',
 		},
 		{
-			displayName: 'JSON Parameters',
+			displayName: 'JSON parameters',
 			name: 'jsonParameters',
 			type: 'boolean',
 			default: false,
 		},
 		{
-			displayName: 'Use Schema Registry',
+			displayName: 'Use schema registry',
 			name: 'useSchemaRegistry',
 			type: 'boolean',
 			default: false,
 			description: 'Whether to use Confluent Schema Registry',
 		},
 		{
-			displayName: 'Schema Registry URL',
+			displayName: 'Schema registry URL',
 			name: 'schemaRegistryUrl',
 			type: 'string',
 			displayOptions: {
@@ -105,7 +105,7 @@ const versionDescription: INodeTypeDescription = {
 				'URL of the schema registry. Only used when no Schema Registry credential is selected.',
 		},
 		{
-			displayName: 'Use Key',
+			displayName: 'Use key',
 			name: 'useKey',
 			type: 'boolean',
 			default: false,
@@ -126,7 +126,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The message key',
 		},
 		{
-			displayName: 'Event Name',
+			displayName: 'Event name',
 			name: 'eventName',
 			type: 'string',
 			required: true,
@@ -141,7 +141,7 @@ const versionDescription: INodeTypeDescription = {
 		{
 			displayName: 'Headers',
 			name: 'headersUi',
-			placeholder: 'Add Header',
+			placeholder: 'Add header',
 			type: 'fixedCollection',
 			displayOptions: {
 				show: {

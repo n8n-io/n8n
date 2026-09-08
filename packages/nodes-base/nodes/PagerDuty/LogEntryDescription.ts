@@ -19,7 +19,7 @@ export const logEntryOperations: INodeProperties[] = [
 				action: 'Get a log entry',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many log entries',
 				action: 'Get many log entries',
@@ -34,7 +34,7 @@ export const logEntryFields: INodeProperties[] = [
 	/*                                 logEntry:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Log Entry ID',
+		displayName: 'Log entry ID',
 		name: 'logEntryId',
 		type: 'string',
 		required: true,
@@ -51,7 +51,7 @@ export const logEntryFields: INodeProperties[] = [
 	/*                                 logEntry:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -85,7 +85,7 @@ export const logEntryFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -120,7 +120,7 @@ export const logEntryFields: INodeProperties[] = [
 				description: 'Additional details to include',
 			},
 			{
-				displayName: 'Is Overview',
+				displayName: 'Is overview',
 				name: 'isOverview',
 				type: 'boolean',
 				default: false,
@@ -136,7 +136,7 @@ export const logEntryFields: INodeProperties[] = [
 					'The start of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {

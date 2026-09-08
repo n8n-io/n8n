@@ -257,7 +257,7 @@ export const configureResponseOptimizer = (
 
 export const optimizeResponseProperties: INodeProperties[] = [
 	{
-		displayName: 'Optimize Response',
+		displayName: 'Optimize response',
 		name: 'optimizeResponse',
 		type: 'boolean',
 		default: false,
@@ -266,7 +266,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 			'Whether the optimize the tool response to reduce amount of data passed to the LLM that could lead to better result and reduce cost',
 	},
 	{
-		displayName: 'Expected Response Type',
+		displayName: 'Expected response type',
 		name: 'responseType',
 		type: 'options',
 		displayOptions: {
@@ -291,7 +291,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		default: 'json',
 	},
 	{
-		displayName: 'Field Containing Data',
+		displayName: 'Field containing data',
 		name: 'dataField',
 		type: 'string',
 		default: '',
@@ -307,7 +307,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include Fields',
+		displayName: 'Include fields',
 		name: 'fieldsToInclude',
 		type: 'options',
 		description: 'What fields response object should include',
@@ -371,7 +371,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return Only Content',
+		displayName: 'Return only content',
 		name: 'onlyContent',
 		type: 'boolean',
 		default: false,
@@ -386,7 +386,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Elements To Omit',
+		displayName: 'Elements to omit',
 		name: 'elementsToOmit',
 		type: 'string',
 		displayOptions: {
@@ -401,7 +401,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		description: 'Comma-separated list of selectors that would be excluded when extracting content',
 	},
 	{
-		displayName: 'Truncate Response',
+		displayName: 'Truncate response',
 		name: 'truncateResponse',
 		type: 'boolean',
 		default: false,
@@ -414,7 +414,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Max Response Characters',
+		displayName: 'Max response characters',
 		name: 'maxLength',
 		type: 'number',
 		default: 1000,

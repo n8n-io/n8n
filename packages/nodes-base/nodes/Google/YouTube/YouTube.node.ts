@@ -61,7 +61,7 @@ export class YouTube implements INodeType {
 						value: 'playlist',
 					},
 					{
-						name: 'Playlist Item',
+						name: 'Playlist item',
 						value: 'playlistItem',
 					},
 					{
@@ -69,7 +69,7 @@ export class YouTube implements INodeType {
 						value: 'video',
 					},
 					{
-						name: 'Video Category',
+						name: 'Video category',
 						value: 'videoCategory',
 					},
 				],

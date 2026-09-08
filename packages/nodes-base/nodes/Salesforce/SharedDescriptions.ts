@@ -14,7 +14,7 @@ export function accountResourceLocator(name: string, description: string): INode
 		description,
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Select an account...',

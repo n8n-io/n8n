@@ -40,7 +40,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Code Interpreter',
+		displayName: 'Code interpreter',
 		name: 'codeInterpreter',
 		type: 'boolean',
 		default: false,
@@ -48,7 +48,7 @@ const properties: INodeProperties[] = [
 			'Whether to enable the code interpreter that allows the assistants to write and run Python code in a sandboxed execution environment, find more <a href="https://platform.openai.com/docs/assistants/tools/code-interpreter" target="_blank">here</a>',
 	},
 	{
-		displayName: 'Knowledge Retrieval',
+		displayName: 'Knowledge retrieval',
 		name: 'knowledgeRetrieval',
 		type: 'boolean',
 		default: false,
@@ -130,12 +130,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Output Randomness (Temperature)',
+				displayName: 'Output randomness (temperature)',
 				name: 'temperature',
 				default: 1,
 				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -144,7 +144,7 @@ const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Output Randomness (Top P)',
+				displayName: 'Output randomness (top P)',
 				name: 'topP',
 				default: 1,
 				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -153,7 +153,7 @@ const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Fail if Assistant Already Exists',
+				displayName: 'Fail if assistant already exists',
 				name: 'failIfExists',
 				type: 'boolean',
 				default: false,

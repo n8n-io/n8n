@@ -39,18 +39,18 @@ export class N8nTrigger implements INodeType {
 				</ul>`,
 				options: [
 					{
-						name: 'Published Workflow Updated',
+						name: 'Published workflow updated',
 						value: 'update',
 						description:
 							'Triggers when workflow version is published from a published state (workflow was already published)',
 					},
 					{
-						name: 'Instance Started',
+						name: 'Instance started',
 						value: 'init',
 						description: 'Triggers when this n8n instance is started or re-started',
 					},
 					{
-						name: 'Workflow Published',
+						name: 'Workflow published',
 						value: 'activate',
 						description:
 							'Triggers when workflow version is published from an unpublished state (workflow was not published)',

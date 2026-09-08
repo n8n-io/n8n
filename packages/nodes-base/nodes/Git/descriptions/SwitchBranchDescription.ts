@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const switchBranchFields: INodeProperties[] = [
 	{
-		displayName: 'Branch Name',
+		displayName: 'Branch name',
 		name: 'branchName',
 		type: 'string',
 		displayOptions: {
@@ -28,14 +28,14 @@ export const switchBranchFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Create Branch If Not Exists',
+				displayName: 'Create branch if not exists',
 				name: 'createBranch',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to create the branch if it does not exist',
 			},
 			{
-				displayName: 'Start Point',
+				displayName: 'Start point',
 				name: 'startPoint',
 				type: 'string',
 				default: '',
@@ -49,14 +49,14 @@ export const switchBranchFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Force Switch',
+				displayName: 'Force switch',
 				name: 'force',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to force the branch switch, discarding any local changes',
 			},
 			{
-				displayName: 'Set Upstream',
+				displayName: 'Set upstream',
 				name: 'setUpstream',
 				type: 'boolean',
 				default: false,
@@ -68,7 +68,7 @@ export const switchBranchFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Remote Name',
+				displayName: 'Remote name',
 				name: 'remoteName',
 				type: 'string',
 				default: 'origin',

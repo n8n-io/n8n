@@ -28,7 +28,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many users',
 			},
@@ -48,7 +48,7 @@ export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Short Description',
+		displayName: 'Short description',
 		name: 'short_description',
 		type: 'string',
 		default: '',
@@ -62,10 +62,10 @@ export const userFields: INodeProperties[] = [
 		description: 'Short description of the user',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -125,7 +125,7 @@ export const userFields: INodeProperties[] = [
 				description: 'The email address associated with the user',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
@@ -139,14 +139,14 @@ export const userFields: INodeProperties[] = [
 				description: 'The gender of the user',
 			},
 			{
-				displayName: 'Home Phone',
+				displayName: 'Home phone',
 				name: 'home_phone',
 				type: 'string',
 				default: '',
 				description: 'Home phone of the user',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
@@ -167,14 +167,14 @@ export const userFields: INodeProperties[] = [
 				description: 'Manager of the user',
 			},
 			{
-				displayName: 'Middle Name',
+				displayName: 'Middle name',
 				name: 'middle_name',
 				type: 'string',
 				default: '',
 				description: 'The middle name of the user',
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobile_phone',
 				type: 'string',
 				default: '',
@@ -189,7 +189,7 @@ export const userFields: INodeProperties[] = [
 				description: "The user's password",
 			},
 			{
-				displayName: 'Password Needs Reset',
+				displayName: 'Password needs reset',
 				name: 'password_needs_reset',
 				type: 'boolean',
 				default: false,
@@ -203,7 +203,7 @@ export const userFields: INodeProperties[] = [
 				description: 'The main phone number of the user',
 			},
 			{
-				displayName: 'Role Names or IDs',
+				displayName: 'Role names or IDs',
 				name: 'roles',
 				type: 'multiOptions',
 				typeOptions: {
@@ -242,7 +242,7 @@ export const userFields: INodeProperties[] = [
 				description: 'A username associated with the user (e.g. user_name.123)',
 			},
 			{
-				displayName: 'Zip Code',
+				displayName: 'Zip code',
 				name: 'zip',
 				type: 'string',
 				default: '',
@@ -255,7 +255,7 @@ export const userFields: INodeProperties[] = [
 	/*                                user:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -289,7 +289,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -299,14 +299,14 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Exclude Reference Link',
+				displayName: 'Exclude reference link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -327,12 +327,12 @@ export const userFields: INodeProperties[] = [
 					'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
-				displayName: 'Return Values',
+				displayName: 'Return values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
 					{
-						name: 'Actual Values',
+						name: 'Actual values',
 						value: 'false',
 					},
 					{
@@ -340,7 +340,7 @@ export const userFields: INodeProperties[] = [
 						value: 'all',
 					},
 					{
-						name: 'Display Values',
+						name: 'Display values',
 						value: 'true',
 					},
 				],
@@ -354,7 +354,7 @@ export const userFields: INodeProperties[] = [
 	/*                                user:get/delete                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Retrieve Identifier',
+		displayName: 'Retrieve identifier',
 		name: 'getOption',
 		type: 'options',
 		default: 'id',
@@ -425,7 +425,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -435,14 +435,14 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Exclude Reference Link',
+				displayName: 'Exclude reference link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -455,12 +455,12 @@ export const userFields: INodeProperties[] = [
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
-				displayName: 'Return Values',
+				displayName: 'Return values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
 					{
-						name: 'Actual Values',
+						name: 'Actual values',
 						value: 'false',
 					},
 					{
@@ -468,7 +468,7 @@ export const userFields: INodeProperties[] = [
 						value: 'all',
 					},
 					{
-						name: 'Display Values',
+						name: 'Display values',
 						value: 'true',
 					},
 				],
@@ -496,10 +496,10 @@ export const userFields: INodeProperties[] = [
 		description: 'Unique identifier of the user',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -559,7 +559,7 @@ export const userFields: INodeProperties[] = [
 				description: 'The email address associated with the user',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
@@ -573,14 +573,14 @@ export const userFields: INodeProperties[] = [
 				description: 'The gender of the user',
 			},
 			{
-				displayName: 'Home Phone',
+				displayName: 'Home phone',
 				name: 'home_phone',
 				type: 'string',
 				default: '',
 				description: 'Home phone of the user',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
@@ -601,14 +601,14 @@ export const userFields: INodeProperties[] = [
 				description: 'Manager of the user',
 			},
 			{
-				displayName: 'Middle Name',
+				displayName: 'Middle name',
 				name: 'middle_name',
 				type: 'string',
 				default: '',
 				description: 'The middle name of the user',
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobile_phone',
 				type: 'string',
 				default: '',
@@ -623,7 +623,7 @@ export const userFields: INodeProperties[] = [
 				description: "The user's password",
 			},
 			{
-				displayName: 'Password Needs Reset',
+				displayName: 'Password needs reset',
 				name: 'password_needs_reset',
 				type: 'boolean',
 				default: false,
@@ -637,7 +637,7 @@ export const userFields: INodeProperties[] = [
 				description: 'The main phone number of the user',
 			},
 			{
-				displayName: 'Role Names or IDs',
+				displayName: 'Role names or IDs',
 				name: 'roles',
 				type: 'multiOptions',
 				typeOptions: {
@@ -676,7 +676,7 @@ export const userFields: INodeProperties[] = [
 				description: 'A username associated with the user (e.g. user_name.123)',
 			},
 			{
-				displayName: 'Zip Code',
+				displayName: 'Zip code',
 				name: 'zip',
 				type: 'string',
 				default: '',

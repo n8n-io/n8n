@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const fileUploadDescription: INodeProperties[] = [
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -17,7 +17,7 @@ export const fileUploadDescription: INodeProperties[] = [
 			'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 	},
 	{
-		displayName: 'Category Name or ID',
+		displayName: 'Category name or ID',
 		name: 'categoryId',
 		type: 'options',
 		description:
@@ -38,7 +38,7 @@ export const fileUploadDescription: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['upload'],
@@ -48,7 +48,7 @@ export const fileUploadDescription: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Share with Employee',
+				displayName: 'Share with employee',
 				name: 'share',
 				type: 'boolean',
 				default: true,

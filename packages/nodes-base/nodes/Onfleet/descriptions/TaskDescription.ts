@@ -46,7 +46,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many Onfleet tasks',
 				action: 'Get many tasks',
@@ -79,7 +79,7 @@ const executorIdField = {
 } as INodeProperties;
 
 const completeAfterField = {
-	displayName: 'Complete After',
+	displayName: 'Complete after',
 	name: 'completeAfter',
 	type: 'dateTime',
 	default: null,
@@ -87,7 +87,7 @@ const completeAfterField = {
 } as INodeProperties;
 
 const completeBeforeField = {
-	displayName: 'Complete Before',
+	displayName: 'Complete before',
 	name: 'completeBefore',
 	type: 'dateTime',
 	default: null,
@@ -95,7 +95,7 @@ const completeBeforeField = {
 } as INodeProperties;
 
 const pickupTaskField = {
-	displayName: 'Pick Up Task',
+	displayName: 'Pick up task',
 	name: 'pickupTask',
 	type: 'boolean',
 	default: false,
@@ -120,7 +120,7 @@ const quantityField = {
 } as INodeProperties;
 
 const serviceTimeField = {
-	displayName: 'Service Time',
+	displayName: 'Service time',
 	name: 'serviceTime',
 	type: 'number',
 	default: 0,
@@ -146,7 +146,7 @@ export const taskFields: INodeProperties[] = [
 		description: 'The ID of the task object for lookup',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -188,7 +188,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Complete as a Success',
+		displayName: 'Complete as a success',
 		name: 'success',
 		type: 'boolean',
 		displayOptions: {
@@ -205,7 +205,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -261,10 +261,10 @@ export const taskFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Override Fields',
+		displayName: 'Override fields',
 		name: 'overrideFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -280,19 +280,19 @@ export const taskFields: INodeProperties[] = [
 				...completeBeforeField,
 			},
 			{
-				displayName: 'Include Barcodes',
+				displayName: 'Include barcodes',
 				name: 'includeBarcodes',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Include Dependencies',
+				displayName: 'Include dependencies',
 				name: 'includeDependencies',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Include Metadata',
+				displayName: 'Include metadata',
 				name: 'includeMetadata',
 				type: 'boolean',
 				default: false,
@@ -312,10 +312,10 @@ export const taskFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -335,10 +335,10 @@ export const taskFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -357,10 +357,10 @@ export const taskFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -378,21 +378,21 @@ export const taskFields: INodeProperties[] = [
 			quantityField,
 			recipientExternalField,
 			{
-				displayName: 'Recipient Name Override',
+				displayName: 'Recipient name override',
 				name: 'recipientName',
 				type: 'string',
 				default: '',
 				description: 'Override the recipient name for this task only',
 			},
 			{
-				displayName: 'Recipient Notes Override',
+				displayName: 'Recipient notes override',
 				name: 'recipientNotes',
 				type: 'string',
 				default: '',
 				description: 'Override the recipient notes for this task only',
 			},
 			{
-				displayName: 'Recipient Skip SMS Notifications Override',
+				displayName: 'Recipient skip SMS notifications override',
 				name: 'recipientSkipSMSNotifications',
 				type: 'boolean',
 				default: false,
@@ -400,7 +400,7 @@ export const taskFields: INodeProperties[] = [
 			},
 			serviceTimeField,
 			{
-				displayName: 'Use Merchant For Proxy Override',
+				displayName: 'Use merchant for proxy override',
 				name: 'useMerchantForProxy',
 				type: 'boolean',
 				default: false,

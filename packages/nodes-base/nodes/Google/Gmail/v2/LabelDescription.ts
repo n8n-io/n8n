@@ -29,7 +29,7 @@ export const labelOperations: INodeProperties[] = [
 				action: 'Get a label info',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many labels',
 			},
@@ -82,7 +82,7 @@ export const labelFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Label List Visibility',
+				displayName: 'Label list visibility',
 				name: 'labelListVisibility',
 				type: 'options',
 				options: [
@@ -95,7 +95,7 @@ export const labelFields: INodeProperties[] = [
 						value: 'labelShow',
 					},
 					{
-						name: 'Show If Unread',
+						name: 'Show if unread',
 						value: 'labelShowIfUnread',
 					},
 				],
@@ -103,7 +103,7 @@ export const labelFields: INodeProperties[] = [
 				description: 'The visibility of the label in the label list in the Gmail web interface',
 			},
 			{
-				displayName: 'Message List Visibility',
+				displayName: 'Message list visibility',
 				name: 'messageListVisibility',
 				type: 'options',
 				options: [
@@ -126,7 +126,7 @@ export const labelFields: INodeProperties[] = [
 	/*                                 label:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

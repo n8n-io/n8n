@@ -19,7 +19,7 @@ export const listOperations: INodeProperties[] = [
 				action: 'Create a list',
 			},
 			{
-				name: 'Custom Fields',
+				name: 'Custom fields',
 				value: 'customFields',
 				description: "Retrieve list's custom fields",
 				action: 'Get custom fields from a list',
@@ -37,7 +37,7 @@ export const listOperations: INodeProperties[] = [
 				action: 'Get a list',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many lists',
 				action: 'Get many lists',
@@ -64,7 +64,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -82,7 +82,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -101,7 +101,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folderless List',
+		displayName: 'Folderless list',
 		name: 'folderless',
 		type: 'boolean',
 		default: false,
@@ -114,7 +114,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folder',
 		type: 'options',
 		description:
@@ -147,10 +147,10 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -172,13 +172,13 @@ export const listFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Due Date Time',
+				displayName: 'Due date time',
 				name: 'dueDateTime',
 				type: 'boolean',
 				default: false,
@@ -195,7 +195,7 @@ export const listFields: INodeProperties[] = [
 				default: 3,
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				description:
@@ -227,7 +227,7 @@ export const listFields: INodeProperties[] = [
 		description: 'Task ID',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -261,7 +261,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:customFields                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -279,7 +279,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -298,7 +298,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folderless List',
+		displayName: 'Folderless list',
 		name: 'folderless',
 		type: 'boolean',
 		default: false,
@@ -311,7 +311,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folder',
 		type: 'options',
 		description:
@@ -331,7 +331,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'list',
 		type: 'options',
 		description:
@@ -351,7 +351,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'list',
 		type: 'options',
 		description:
@@ -375,7 +375,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -393,7 +393,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -412,7 +412,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folderless List',
+		displayName: 'Folderless list',
 		name: 'folderless',
 		type: 'boolean',
 		default: false,
@@ -425,7 +425,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folder',
 		type: 'options',
 		description:
@@ -462,7 +462,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -480,7 +480,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -499,7 +499,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folderless List',
+		displayName: 'Folderless list',
 		name: 'folderless',
 		type: 'boolean',
 		default: false,
@@ -512,7 +512,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folder',
 		type: 'options',
 		description:
@@ -549,7 +549,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -567,7 +567,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -586,7 +586,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folderless List',
+		displayName: 'Folderless list',
 		name: 'folderless',
 		type: 'boolean',
 		default: false,
@@ -599,7 +599,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folder',
 		type: 'options',
 		description:
@@ -639,7 +639,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -661,7 +661,7 @@ export const listFields: INodeProperties[] = [
 	/*                                list:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -679,7 +679,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'space',
 		type: 'options',
 		description:
@@ -698,7 +698,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folderless List',
+		displayName: 'Folderless list',
 		name: 'folderless',
 		type: 'boolean',
 		default: false,
@@ -711,7 +711,7 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder Name or ID',
+		displayName: 'Folder name or ID',
 		name: 'folder',
 		type: 'options',
 		description:
@@ -744,10 +744,10 @@ export const listFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -757,7 +757,7 @@ export const listFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assignee',
 				type: 'options',
 				description:
@@ -776,13 +776,13 @@ export const listFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Due Date Time',
+				displayName: 'Due date time',
 				name: 'dueDateTime',
 				type: 'boolean',
 				default: false,
@@ -805,7 +805,7 @@ export const listFields: INodeProperties[] = [
 				default: 3,
 			},
 			{
-				displayName: 'Unset Status',
+				displayName: 'Unset status',
 				name: 'unsetStatus',
 				type: 'boolean',
 				default: false,

@@ -59,7 +59,7 @@ export class Wordpress implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Basic Auth',
+						name: 'Basic auth',
 						value: 'basicAuth',
 					},
 					{

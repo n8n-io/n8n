@@ -44,7 +44,7 @@ const OPENAI_MODEL_BUILDER_HINT = {
 };
 
 const completionsResponseFormat: INodeProperties = {
-	displayName: 'Response Format',
+	displayName: 'Response format',
 	name: 'responseFormat',
 	default: 'text',
 	type: 'options',
@@ -216,7 +216,7 @@ export class LmChatOpenAi implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a model...',
@@ -265,20 +265,20 @@ export class LmChatOpenAi implements INodeType {
 				},
 			},
 			{
-				displayName: 'Built-in Tools',
+				displayName: 'Built-in tools',
 				name: 'builtInTools',
-				placeholder: 'Add Built-in Tool',
+				placeholder: 'Add built-in tool',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Web Search',
+						displayName: 'Web search',
 						name: 'webSearch',
 						type: 'collection',
 						default: { searchContextSize: 'medium' },
 						options: [
 							{
-								displayName: 'Search Context Size',
+								displayName: 'Search context size',
 								name: 'searchContextSize',
 								type: 'options',
 								default: 'medium',
@@ -291,7 +291,7 @@ export class LmChatOpenAi implements INodeType {
 								],
 							},
 							{
-								displayName: 'Web Search Allowed Domains',
+								displayName: 'Web search allowed domains',
 								name: 'allowedDomains',
 								type: 'string',
 								default: '',
@@ -323,13 +323,13 @@ export class LmChatOpenAi implements INodeType {
 						],
 					},
 					{
-						displayName: 'File Search',
+						displayName: 'File search',
 						name: 'fileSearch',
 						type: 'collection',
 						default: { vectorStoreIds: '[]' },
 						options: [
 							{
-								displayName: 'Vector Store IDs',
+								displayName: 'Vector store IDs',
 								name: 'vectorStoreIds',
 								description:
 									'The vector store IDs to use for the file search. Vector stores are managed via OpenAI Dashboard. <a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/#built-in-tools">Learn more</a>.',
@@ -344,7 +344,7 @@ export class LmChatOpenAi implements INodeType {
 								default: '{}',
 							},
 							{
-								displayName: 'Max Results',
+								displayName: 'Max results',
 								name: 'maxResults',
 								type: 'number',
 								default: 1,
@@ -353,7 +353,7 @@ export class LmChatOpenAi implements INodeType {
 						],
 					},
 					{
-						displayName: 'Code Interpreter',
+						displayName: 'Code interpreter',
 						name: 'codeInterpreter',
 						type: 'boolean',
 						default: true,
@@ -370,7 +370,7 @@ export class LmChatOpenAi implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
@@ -388,7 +388,7 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
-						displayName: 'Frequency Penalty',
+						displayName: 'Frequency penalty',
 						name: 'frequencyPenalty',
 						default: 0,
 						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -397,7 +397,7 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Maximum Number of Tokens',
+						displayName: 'Maximum number of tokens',
 						name: 'maxTokens',
 						default: -1,
 						description:
@@ -425,7 +425,7 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
-						displayName: 'Response Format',
+						displayName: 'Response format',
 						name: 'textFormat',
 						type: 'fixedCollection',
 						default: { textOptions: [{ type: 'text' }] },
@@ -443,7 +443,7 @@ export class LmChatOpenAi implements INodeType {
 											{ name: 'Text', value: 'text' },
 											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 											{ name: 'JSON Schema (recommended)', value: 'json_schema' },
-											{ name: 'JSON Object', value: 'json_object' },
+											{ name: 'JSON object', value: 'json_object' },
 										],
 									},
 									{
@@ -530,7 +530,7 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
-						displayName: 'Presence Penalty',
+						displayName: 'Presence penalty',
 						name: 'presencePenalty',
 						default: 0,
 						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
@@ -539,7 +539,7 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Sampling Temperature',
+						displayName: 'Sampling temperature',
 						name: 'temperature',
 						default: 0.7,
 						typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
@@ -548,7 +548,7 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Reasoning Effort',
+						displayName: 'Reasoning effort',
 						name: 'reasoningEffort',
 						default: 'medium',
 						description:
@@ -587,7 +587,7 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Max Retries',
+						displayName: 'Max retries',
 						name: 'maxRetries',
 						default: 2,
 						description: 'Maximum number of retries to attempt',
@@ -603,7 +603,7 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Extra Body',
+						displayName: 'Extra body',
 						name: 'extraBody',
 						type: 'json',
 						default: '{}',
@@ -625,7 +625,7 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
-						displayName: 'Prompt Cache Key',
+						displayName: 'Prompt cache key',
 						name: 'promptCacheKey',
 						type: 'string',
 						default: '',
@@ -639,7 +639,7 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
-						displayName: 'Safety Identifier',
+						displayName: 'Safety identifier',
 						name: 'safetyIdentifier',
 						type: 'string',
 						default: '',
@@ -653,7 +653,7 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
-						displayName: 'Service Tier',
+						displayName: 'Service tier',
 						name: 'serviceTier',
 						type: 'options',
 						default: 'auto',
@@ -686,7 +686,7 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
-						displayName: 'Top Logprobs',
+						displayName: 'Top logprobs',
 						name: 'topLogprobs',
 						type: 'number',
 						default: 0,

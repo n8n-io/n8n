@@ -28,7 +28,7 @@ export const mediaFields: INodeProperties[] = [
 	/*                               media:upload                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -46,7 +46,7 @@ export const mediaFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -60,7 +60,7 @@ export const mediaFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Media Type',
+		displayName: 'Media type',
 		name: 'mediaType',
 		type: 'options',
 		default: 'image',
@@ -97,10 +97,10 @@ export const mediaFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -110,7 +110,7 @@ export const mediaFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',

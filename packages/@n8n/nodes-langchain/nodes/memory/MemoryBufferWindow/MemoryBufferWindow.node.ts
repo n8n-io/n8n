@@ -117,7 +117,7 @@ export class MemoryBufferWindow implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Session Key',
+				displayName: 'Session key',
 				name: 'sessionKey',
 				type: 'string',
 				default: 'chat_history',

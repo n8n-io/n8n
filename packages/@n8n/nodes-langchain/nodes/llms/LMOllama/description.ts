@@ -65,13 +65,13 @@ export const ollamaModel: INodeProperties = {
 export const ollamaOptions: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	description: 'Additional options to add',
 	type: 'collection',
 	default: {},
 	options: [
 		{
-			displayName: 'Enable Thinking',
+			displayName: 'Enable thinking',
 			name: 'think',
 			type: 'boolean',
 			default: true,
@@ -79,7 +79,7 @@ export const ollamaOptions: INodeProperties = {
 				"Whether to enable (default) thinking mode for supported models. When enabled, the model's thinking process is separated from the output. When disabled, the model outputs content directly (only for supported models).",
 		},
 		{
-			displayName: 'Sampling Temperature',
+			displayName: 'Sampling temperature',
 			name: 'temperature',
 			default: 0.7,
 			typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -106,7 +106,7 @@ export const ollamaOptions: INodeProperties = {
 			type: 'number',
 		},
 		{
-			displayName: 'Frequency Penalty',
+			displayName: 'Frequency penalty',
 			name: 'frequencyPenalty',
 			type: 'number',
 			default: 0.0,
@@ -115,7 +115,7 @@ export const ollamaOptions: INodeProperties = {
 				'Adjusts the penalty for tokens that have already appeared in the generated text. Higher values discourage repetition.',
 		},
 		{
-			displayName: 'Keep Alive',
+			displayName: 'Keep alive',
 			name: 'keepAlive',
 			type: 'string',
 			default: '5m',
@@ -123,7 +123,7 @@ export const ollamaOptions: INodeProperties = {
 				'Specifies the duration to keep the loaded model in memory after use. Useful for frequently used models. Format: 1h30m (1 hour 30 minutes).',
 		},
 		{
-			displayName: 'Low VRAM Mode',
+			displayName: 'Low VRAM mode',
 			name: 'lowVram',
 			type: 'boolean',
 			default: false,
@@ -139,7 +139,7 @@ export const ollamaOptions: INodeProperties = {
 				'Specifies the ID of the GPU to use for the main computation. Only change this if you have multiple GPUs.',
 		},
 		{
-			displayName: 'Context Batch Size',
+			displayName: 'Context batch size',
 			name: 'numBatch',
 			type: 'number',
 			default: 512,
@@ -147,7 +147,7 @@ export const ollamaOptions: INodeProperties = {
 				'Sets the batch size for prompt processing. Larger batch sizes may improve generation speed but increase memory usage.',
 		},
 		{
-			displayName: 'Context Length',
+			displayName: 'Context length',
 			name: 'numCtx',
 			type: 'number',
 			default: 2048,
@@ -163,7 +163,7 @@ export const ollamaOptions: INodeProperties = {
 				'Specifies the number of GPUs to use for parallel processing. Set to -1 for auto-detection.',
 		},
 		{
-			displayName: 'Max Tokens to Generate',
+			displayName: 'Max tokens to generate',
 			name: 'numPredict',
 			type: 'number',
 			default: -1,
@@ -171,7 +171,7 @@ export const ollamaOptions: INodeProperties = {
 				'The maximum number of tokens to generate. Set to -1 for no limit. Be cautious when setting this to a large value, as it can lead to very long outputs.',
 		},
 		{
-			displayName: 'Number of CPU Threads',
+			displayName: 'Number of CPU threads',
 			name: 'numThread',
 			type: 'number',
 			default: 0,
@@ -179,7 +179,7 @@ export const ollamaOptions: INodeProperties = {
 				'Specifies the number of CPU threads to use for processing. Set to 0 for auto-detection.',
 		},
 		{
-			displayName: 'Penalize Newlines',
+			displayName: 'Penalize newlines',
 			name: 'penalizeNewline',
 			type: 'boolean',
 			default: true,
@@ -187,7 +187,7 @@ export const ollamaOptions: INodeProperties = {
 				'Whether the model will be less likely to generate newline characters, encouraging longer continuous sequences of text',
 		},
 		{
-			displayName: 'Presence Penalty',
+			displayName: 'Presence penalty',
 			name: 'presencePenalty',
 			type: 'number',
 			default: 0.0,
@@ -195,7 +195,7 @@ export const ollamaOptions: INodeProperties = {
 				'Adjusts the penalty for tokens based on their presence in the generated text so far. Positive values penalize tokens that have already appeared, encouraging diversity.',
 		},
 		{
-			displayName: 'Repetition Penalty',
+			displayName: 'Repetition penalty',
 			name: 'repeatPenalty',
 			type: 'number',
 			default: 1.0,
@@ -203,7 +203,7 @@ export const ollamaOptions: INodeProperties = {
 				'Adjusts the penalty factor for repeated tokens. Higher values more strongly discourage repetition. Set to 1.0 to disable repetition penalty.',
 		},
 		{
-			displayName: 'Use Memory Locking',
+			displayName: 'Use memory locking',
 			name: 'useMLock',
 			type: 'boolean',
 			default: false,
@@ -211,7 +211,7 @@ export const ollamaOptions: INodeProperties = {
 				'Whether to lock the model in memory to prevent swapping. This can improve performance but requires sufficient available memory.',
 		},
 		{
-			displayName: 'Use Memory Mapping',
+			displayName: 'Use memory mapping',
 			name: 'useMMap',
 			type: 'boolean',
 			default: true,
@@ -219,7 +219,7 @@ export const ollamaOptions: INodeProperties = {
 				'Whether to use memory mapping for loading the model. This can reduce memory usage but may impact performance. Recommended to keep enabled.',
 		},
 		{
-			displayName: 'Load Vocabulary Only',
+			displayName: 'Load vocabulary only',
 			name: 'vocabOnly',
 			type: 'boolean',
 			default: false,
@@ -227,7 +227,7 @@ export const ollamaOptions: INodeProperties = {
 				'Whether to only load the model vocabulary without the weights. Useful for quickly testing tokenization.',
 		},
 		{
-			displayName: 'Output Format',
+			displayName: 'Output format',
 			name: 'format',
 			type: 'options',
 			options: [

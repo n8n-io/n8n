@@ -25,7 +25,7 @@ export const description: INodeProperties[] = [
 				action: 'Get a space',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getMany',
 				description: 'Retrieve many spaces',
 				action: 'Get many spaces',

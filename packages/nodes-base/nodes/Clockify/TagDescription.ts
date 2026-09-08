@@ -25,7 +25,7 @@ export const tagOperations: INodeProperties[] = [
 				action: 'Delete a tag',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many tags',
 				action: 'Get many tags',
@@ -79,7 +79,7 @@ export const tagFields: INodeProperties[] = [
 	/*                                 tag:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -110,10 +110,10 @@ export const tagFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -135,7 +135,7 @@ export const tagFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Sort Column',
+				displayName: 'Sort column',
 				name: 'sort-column',
 				type: 'options',
 				options: [
@@ -147,7 +147,7 @@ export const tagFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sort-order',
 				type: 'options',
 				options: [
@@ -182,10 +182,10 @@ export const tagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],

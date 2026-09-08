@@ -43,7 +43,7 @@ export const checklistItemFields: INodeProperties[] = [
 	//         checklistItem:delete
 	// ----------------------------------
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -61,7 +61,7 @@ export const checklistItemFields: INodeProperties[] = [
 			'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -80,7 +80,7 @@ export const checklistItemFields: INodeProperties[] = [
 			'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Card Name or ID',
+		displayName: 'Card name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -99,7 +99,7 @@ export const checklistItemFields: INodeProperties[] = [
 			'The ID of the card that checklistItem belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Checklist Name or ID',
+		displayName: 'Checklist name or ID',
 		name: 'checklistId',
 		type: 'options',
 		typeOptions: {
@@ -118,7 +118,7 @@ export const checklistItemFields: INodeProperties[] = [
 			'The ID of the checklistItem that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Checklist Item Name or ID',
+		displayName: 'Checklist item name or ID',
 		name: 'checklistItemId',
 		type: 'options',
 		typeOptions: {
@@ -141,7 +141,7 @@ export const checklistItemFields: INodeProperties[] = [
 	//         checklistItem:get
 	// ----------------------------------
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -159,7 +159,7 @@ export const checklistItemFields: INodeProperties[] = [
 			'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -178,7 +178,7 @@ export const checklistItemFields: INodeProperties[] = [
 			'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Card Name or ID',
+		displayName: 'Card name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -211,7 +211,7 @@ export const checklistItemFields: INodeProperties[] = [
 		description: 'The ID of the checklistItem that card belongs to',
 	},
 	{
-		displayName: 'Checklist Item Name or ID',
+		displayName: 'Checklist item name or ID',
 		name: 'checklistItemId',
 		type: 'options',
 		typeOptions: {
@@ -234,7 +234,7 @@ export const checklistItemFields: INodeProperties[] = [
 	//         checklistItem:update
 	// ----------------------------------
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -252,7 +252,7 @@ export const checklistItemFields: INodeProperties[] = [
 			'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -271,7 +271,7 @@ export const checklistItemFields: INodeProperties[] = [
 			'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Card Name or ID',
+		displayName: 'Card name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -290,7 +290,7 @@ export const checklistItemFields: INodeProperties[] = [
 			'The ID of the card that checklistItem belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'CheckList Name or ID',
+		displayName: 'CheckList name or ID',
 		name: 'checklistId',
 		type: 'options',
 		typeOptions: {
@@ -309,7 +309,7 @@ export const checklistItemFields: INodeProperties[] = [
 			'The ID of the checklistItem that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Checklist Item Name or ID',
+		displayName: 'Checklist item name or ID',
 		name: 'checklistItemId',
 		type: 'options',
 		typeOptions: {
@@ -328,10 +328,10 @@ export const checklistItemFields: INodeProperties[] = [
 			'The ID of the checklistItem item to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],

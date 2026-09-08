@@ -25,7 +25,7 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get a post',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many posts',
 				action: 'Get many posts',
@@ -60,10 +60,10 @@ export const postFields: INodeProperties[] = [
 		description: 'The title for the post',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -73,7 +73,7 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author Name or ID',
+				displayName: 'Author name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
@@ -142,7 +142,7 @@ export const postFields: INodeProperties[] = [
 				description: "The date the post was published, in the site's timezone",
 			},
 			{
-				displayName: 'Comment Status',
+				displayName: 'Comment status',
 				name: 'commentStatus',
 				type: 'options',
 				options: [
@@ -159,7 +159,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not comments are open on the post',
 			},
 			{
-				displayName: 'Ping Status',
+				displayName: 'Ping status',
 				name: 'pingStatus',
 				type: 'options',
 				options: [
@@ -232,7 +232,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not the object should be treated as sticky',
 			},
 			{
-				displayName: 'Category Names or IDs',
+				displayName: 'Category names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
@@ -243,7 +243,7 @@ export const postFields: INodeProperties[] = [
 					'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -267,7 +267,7 @@ export const postFields: INodeProperties[] = [
 						name: 'values',
 						values: [
 							{
-								displayName: 'Elementor Template',
+								displayName: 'Elementor template',
 								name: 'elementor',
 								type: 'boolean',
 								default: true,
@@ -303,7 +303,7 @@ export const postFields: INodeProperties[] = [
 										value: 'elementor_header_footer',
 									},
 									{
-										name: 'Elementor Theme',
+										name: 'Elementor theme',
 										value: 'elementor_theme',
 									},
 								],
@@ -339,10 +339,10 @@ export const postFields: INodeProperties[] = [
 		description: 'Unique identifier for the object',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -352,7 +352,7 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author Name or ID',
+				displayName: 'Author name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
@@ -428,7 +428,7 @@ export const postFields: INodeProperties[] = [
 				description: "The date the post was published, in the site's timezone",
 			},
 			{
-				displayName: 'Comment Status',
+				displayName: 'Comment status',
 				name: 'commentStatus',
 				type: 'options',
 				options: [
@@ -445,7 +445,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not comments are open on the post',
 			},
 			{
-				displayName: 'Ping Status',
+				displayName: 'Ping status',
 				name: 'pingStatus',
 				type: 'options',
 				options: [
@@ -518,7 +518,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not the object should be treated as sticky',
 			},
 			{
-				displayName: 'Category Names or IDs',
+				displayName: 'Category names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
@@ -529,7 +529,7 @@ export const postFields: INodeProperties[] = [
 					'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -553,7 +553,7 @@ export const postFields: INodeProperties[] = [
 						name: 'values',
 						values: [
 							{
-								displayName: 'Elementor Template',
+								displayName: 'Elementor template',
 								name: 'elementor',
 								type: 'boolean',
 								default: true,
@@ -589,7 +589,7 @@ export const postFields: INodeProperties[] = [
 										value: 'elementor_header_footer',
 									},
 									{
-										name: 'Elementor Theme',
+										name: 'Elementor theme',
 										value: 'elementor_theme',
 									},
 								],
@@ -672,7 +672,7 @@ export const postFields: INodeProperties[] = [
 	/*                                   post:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -723,7 +723,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit response to posts published after a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Author Names or IDs',
+				displayName: 'Author names or IDs',
 				name: 'author',
 				type: 'multiOptions',
 				default: [],
@@ -741,7 +741,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit response to posts published before a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Category Names or IDs',
+				displayName: 'Category names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				default: [],
@@ -774,7 +774,7 @@ export const postFields: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Exclude Categories',
+				displayName: 'Exclude categories',
 				name: 'excludedCategories',
 				type: 'multiOptions',
 				default: [],
@@ -786,7 +786,7 @@ export const postFields: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Exclude Tags',
+				displayName: 'Exclude tags',
 				name: 'excludedTags',
 				type: 'multiOptions',
 				default: [],
@@ -814,7 +814,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Order sort attribute ascending or descending',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderBy',
 				type: 'options',
 				options: [
@@ -835,7 +835,7 @@ export const postFields: INodeProperties[] = [
 						value: 'include',
 					},
 					{
-						name: 'Include Slugs',
+						name: 'Include slugs',
 						value: 'include_slugs',
 					},
 					{
@@ -906,7 +906,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether to limit the result set to items that are sticky',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				default: [],

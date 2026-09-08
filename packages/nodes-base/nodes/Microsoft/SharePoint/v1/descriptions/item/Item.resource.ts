@@ -37,7 +37,7 @@ export const description: INodeProperties[] = [
 				action: 'Create item in a list',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new item, or update the current one if it already exists (upsert)',
 				routing: {
@@ -91,7 +91,7 @@ export const description: INodeProperties[] = [
 				action: 'Get an item',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get specific items in a list or list many items',
 				routing: {

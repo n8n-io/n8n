@@ -22,7 +22,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'groupName',
 				type: 'string',
 				hint: 'Enter the group name',

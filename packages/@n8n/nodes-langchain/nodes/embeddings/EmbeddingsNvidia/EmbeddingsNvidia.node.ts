@@ -67,7 +67,7 @@ export class EmbeddingsNvidia implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a model...',
@@ -89,13 +89,13 @@ export class EmbeddingsNvidia implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Batch Size',
+						displayName: 'Batch size',
 						name: 'batchSize',
 						default: 512,
 						typeOptions: { maxValue: 2048 },
@@ -103,7 +103,7 @@ export class EmbeddingsNvidia implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Strip New Lines',
+						displayName: 'Strip new lines',
 						name: 'stripNewLines',
 						default: true,
 						description: 'Whether to strip new lines from the input text',

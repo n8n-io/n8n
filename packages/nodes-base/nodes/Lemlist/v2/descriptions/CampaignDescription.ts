@@ -9,12 +9,12 @@ export const campaignOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many campaigns',
 			},
 			{
-				name: 'Get Stats',
+				name: 'Get stats',
 				value: 'getStats',
 				action: 'Get campaign stats',
 			},
@@ -32,7 +32,7 @@ export const campaignFields: INodeProperties[] = [
 	//        campaign: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -66,7 +66,7 @@ export const campaignFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -87,7 +87,7 @@ export const campaignFields: INodeProperties[] = [
 	//        campaign: getStats
 	// ----------------------------------
 	{
-		displayName: 'Campaign Name or ID',
+		displayName: 'Campaign name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -105,7 +105,7 @@ export const campaignFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Start Date',
+		displayName: 'Start date',
 		name: 'startDate',
 		type: 'dateTime',
 		default: '',
@@ -119,7 +119,7 @@ export const campaignFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'End Date',
+		displayName: 'End date',
 		name: 'endDate',
 		type: 'dateTime',
 		default: '',

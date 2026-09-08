@@ -91,10 +91,10 @@ export const cardFields: INodeProperties[] = [
 		description: 'The description of the card',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -104,14 +104,14 @@ export const cardFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'due',
 				type: 'dateTime',
 				default: '',
 				description: 'A due date for the card',
 			},
 			{
-				displayName: 'Due Complete',
+				displayName: 'Due complete',
 				name: 'dueComplete',
 				type: 'boolean',
 				default: false,
@@ -139,7 +139,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'Comma-separated list of label IDs to add to the card',
 			},
 			{
-				displayName: 'URL Source',
+				displayName: 'URL source',
 				name: 'urlSource',
 				type: 'string',
 				default: '',
@@ -153,7 +153,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'The ID of a card to copy into the new card',
 			},
 			{
-				displayName: 'Keep From Source',
+				displayName: 'Keep from source',
 				name: 'keepFromSource',
 				type: 'string',
 				default: 'all',
@@ -171,10 +171,10 @@ export const cardFields: INodeProperties[] = [
 		required: true,
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a Card...',
+				placeholder: 'Select a card...',
 				typeOptions: {
 					searchListMethod: 'searchCards',
 					searchFilterRequired: true,
@@ -230,10 +230,10 @@ export const cardFields: INodeProperties[] = [
 	//         card:get
 	// ----------------------------------
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -259,7 +259,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'Whether to return the board object the card is on',
 			},
 			{
-				displayName: 'Board Fields',
+				displayName: 'Board fields',
 				name: 'board_fields',
 				type: 'string',
 				default: 'all',
@@ -268,7 +268,7 @@ export const cardFields: INodeProperties[] = [
 					'Fields to return. Either "all" or a comma-separated list: name, desc, descData, closed, idOrganization, pinned, url, prefs.',
 			},
 			{
-				displayName: 'Custom Field Items',
+				displayName: 'Custom field items',
 				name: 'customFieldItems',
 				type: 'boolean',
 				default: false,
@@ -282,7 +282,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'Whether to return member objects for members on the card',
 			},
 			{
-				displayName: 'Member Fields',
+				displayName: 'Member fields',
 				name: 'member_fields',
 				type: 'string',
 				default: 'all',
@@ -290,7 +290,7 @@ export const cardFields: INodeProperties[] = [
 					'Fields to return. Either "all" or a comma-separated list: avatarHash, fullName, initials, username.',
 			},
 			{
-				displayName: 'Plugin Data',
+				displayName: 'Plugin data',
 				name: 'pluginData',
 				type: 'boolean',
 				default: false,
@@ -304,7 +304,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'Whether to include sticker models with the response',
 			},
 			{
-				displayName: 'Sticker Fields',
+				displayName: 'Sticker fields',
 				name: 'sticker_fields',
 				type: 'string',
 				default: 'all',
@@ -317,10 +317,10 @@ export const cardFields: INodeProperties[] = [
 	//         card:update
 	// ----------------------------------
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -330,7 +330,7 @@ export const cardFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Attachment Cover',
+				displayName: 'Attachment cover',
 				name: 'idAttachmentCover',
 				type: 'string',
 				default: '',
@@ -359,14 +359,14 @@ export const cardFields: INodeProperties[] = [
 				description: 'New description of the board',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'due',
 				type: 'dateTime',
 				default: '',
 				description: 'A due date for the card',
 			},
 			{
-				displayName: 'Due Complete',
+				displayName: 'Due complete',
 				name: 'dueComplete',
 				type: 'boolean',
 				default: false,

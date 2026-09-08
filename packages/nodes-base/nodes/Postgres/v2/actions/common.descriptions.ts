@@ -6,7 +6,7 @@ export const operatorOptions: INodePropertyOptions[] = [
 		value: 'equal',
 	},
 	{
-		name: 'Not Equal',
+		name: 'Not equal',
 		value: '!=',
 	},
 	{
@@ -14,27 +14,27 @@ export const operatorOptions: INodePropertyOptions[] = [
 		value: 'LIKE',
 	},
 	{
-		name: 'Greater Than',
+		name: 'Greater than',
 		value: '>',
 	},
 	{
-		name: 'Less Than',
+		name: 'Less than',
 		value: '<',
 	},
 	{
-		name: 'Greater Than Or Equal',
+		name: 'Greater than or equal',
 		value: '>=',
 	},
 	{
-		name: 'Less Than Or Equal',
+		name: 'Less than or equal',
 		value: '<=',
 	},
 	{
-		name: 'Is Null',
+		name: 'Is null',
 		value: 'IS NULL',
 	},
 	{
-		name: 'Is Not Null',
+		name: 'Is not null',
 		value: 'IS NOT NULL',
 	},
 ];
@@ -63,14 +63,14 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Connection Timeout',
+			displayName: 'Connection timeout',
 			name: 'connectionTimeout',
 			type: 'number',
 			default: 30,
 			description: 'Number of seconds reserved for connecting to the database',
 		},
 		{
-			displayName: 'Delay Closing Idle Connection',
+			displayName: 'Delay closing idle connection',
 			name: 'delayClosingIdleConnection',
 			type: 'number',
 			default: 0,
@@ -80,13 +80,13 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Query Batching',
+			displayName: 'Query batching',
 			name: 'queryBatching',
 			type: 'options',
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Single Query',
+					name: 'Single query',
 					value: 'single',
 					description: 'A single query for all incoming items',
 				},
@@ -106,7 +106,7 @@ export const optionsCollection: INodeProperties = {
 			description: 'The way queries should be sent to the database',
 		},
 		{
-			displayName: 'Query Parameters',
+			displayName: 'Query parameters',
 			name: 'queryReplacement',
 			type: 'string',
 			default: '',
@@ -131,7 +131,7 @@ export const optionsCollection: INodeProperties = {
 		},
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-			displayName: 'Output Columns',
+			displayName: 'Output columns',
 			name: 'outputColumns',
 			type: 'multiOptions',
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
@@ -147,7 +147,7 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Output Large-Format Numbers As',
+			displayName: 'Output large-format numbers as',
 			name: 'largeNumbersOutput',
 			type: 'options',
 			options: [
@@ -166,7 +166,7 @@ export const optionsCollection: INodeProperties = {
 			default: 'text',
 		},
 		{
-			displayName: 'Skip on Conflict',
+			displayName: 'Skip on conflict',
 			name: 'skipOnConflict',
 			type: 'boolean',
 			default: false,
@@ -179,7 +179,7 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Replace Empty Strings with NULL',
+			displayName: 'Replace empty strings with NULL',
 			name: 'replaceEmptyStrings',
 			type: 'boolean',
 			default: false,
@@ -204,7 +204,7 @@ export const schemaRLC: INodeProperties = {
 	description: 'The schema that contains the table you want to work on',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -212,7 +212,7 @@ export const schemaRLC: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'name',
 			type: 'string',
 		},
@@ -228,7 +228,7 @@ export const tableRLC: INodeProperties = {
 	description: 'The table you want to work on',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -236,7 +236,7 @@ export const tableRLC: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'name',
 			type: 'string',
 		},
@@ -244,13 +244,13 @@ export const tableRLC: INodeProperties = {
 };
 
 export const whereFixedCollection: INodeProperties = {
-	displayName: 'Select Rows',
+	displayName: 'Select rows',
 	name: 'where',
 	type: 'fixedCollection',
 	typeOptions: {
 		multipleValues: true,
 	},
-	placeholder: 'Add Condition',
+	placeholder: 'Add condition',
 	default: {},
 	description: 'If not set, all rows will be selected',
 	options: [
@@ -306,7 +306,7 @@ export const sortFixedCollection: INodeProperties = {
 	typeOptions: {
 		multipleValues: true,
 	},
-	placeholder: 'Add Sort Rule',
+	placeholder: 'Add sort rule',
 	default: {},
 	options: [
 		{
@@ -349,11 +349,11 @@ export const sortFixedCollection: INodeProperties = {
 };
 
 export const combineConditionsCollection: INodeProperties = {
-	displayName: 'Combine Conditions',
+	displayName: 'Combine conditions',
 	name: 'combineConditions',
 	type: 'options',
 	description:
-		'How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true',
+		'How to combine the conditions defined in "Select rows": AND requires all conditions to be true, OR requires at least one condition to be true',
 	options: [
 		{
 			name: 'AND',

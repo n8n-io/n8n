@@ -36,9 +36,9 @@ export const vertexLocationField: INodeProperties = {
 	description:
 		'Where the model runs. Newer Gemini models (3.x) are only available on the Global or the EU/US multi-region locations. Leave as Default to use the region set in the credential.',
 	options: [
-		{ name: 'Default (Use Credential Region)', value: '' },
+		{ name: 'Default (use credential region)', value: '' },
 		{ name: 'Global', value: 'global' },
-		{ name: 'EU (Multi-Region)', value: 'eu' },
-		{ name: 'US (Multi-Region)', value: 'us' },
+		{ name: 'EU (multi-region)', value: 'eu' },
+		{ name: 'US (multi-region)', value: 'us' },
 	],
 };

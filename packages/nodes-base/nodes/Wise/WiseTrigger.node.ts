@@ -43,7 +43,7 @@ export class WiseTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Profile Name or ID',
+				displayName: 'Profile name or ID',
 				name: 'profileId',
 				type: 'options',
 				description:
@@ -62,22 +62,22 @@ export class WiseTrigger implements INodeType {
 				default: '',
 				options: [
 					{
-						name: 'Balance Credit',
+						name: 'Balance credit',
 						value: 'balanceCredit',
 						description: 'Triggered every time a balance account is credited',
 					},
 					{
-						name: 'Balance Update',
+						name: 'Balance update',
 						value: 'balanceUpdate',
 						description: 'Triggered every time a balance account is credited or debited',
 					},
 					{
-						name: 'Transfer Active Case',
+						name: 'Transfer active case',
 						value: 'transferActiveCases',
 						description: "Triggered every time a transfer's list of active cases is updated",
 					},
 					{
-						name: 'Transfer State Changed',
+						name: 'Transfer state changed',
 						value: 'tranferStateChange',
 						description: "Triggered every time a transfer's status is updated",
 					},

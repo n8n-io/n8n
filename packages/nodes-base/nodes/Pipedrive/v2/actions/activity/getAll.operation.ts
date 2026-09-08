@@ -16,7 +16,7 @@ import { rawCustomFieldOutputOption } from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -43,7 +43,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
@@ -62,7 +62,7 @@ const properties: INodeProperties[] = [
 					'Whether the Activity is done or not. If omitted returns both Done and Not done activities.',
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'end_date',
 				type: 'dateTime',
 				default: '',
@@ -70,7 +70,7 @@ const properties: INodeProperties[] = [
 					'Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format.',
 			},
 			{
-				displayName: 'Predefined Filter Name or ID',
+				displayName: 'Predefined filter name or ID',
 				name: 'filterId',
 				type: 'options',
 				typeOptions: {
@@ -81,7 +81,7 @@ const properties: INodeProperties[] = [
 					'The ID of the Filter to use (will narrow down results if used together with user_id parameter). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'start_date',
 				type: 'dateTime',
 				default: '',
@@ -89,7 +89,7 @@ const properties: INodeProperties[] = [
 					'Use the Activity due date where you wish to begin fetching Activities from. Insert due date in YYYY-MM-DD format.',
 			},
 			{
-				displayName: 'Type Names or IDs',
+				displayName: 'Type names or IDs',
 				name: 'type',
 				type: 'multiOptions',
 				typeOptions: {
@@ -100,7 +100,7 @@ const properties: INodeProperties[] = [
 					'Type of the Activity. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'User Name or ID',
+				displayName: 'User name or ID',
 				name: 'user_id',
 				type: 'options',
 				typeOptions: {

@@ -13,7 +13,7 @@ const properties: INodeProperties[] = [
 		description: 'ID of the file to download',
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,

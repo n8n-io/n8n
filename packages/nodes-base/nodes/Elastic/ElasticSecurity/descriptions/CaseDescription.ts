@@ -31,13 +31,13 @@ export const caseOperations: INodeProperties[] = [
 				action: 'Get a case',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many cases',
 				action: 'Get many cases',
 			},
 			{
-				name: 'Get Status',
+				name: 'Get status',
 				value: 'getStatus',
 				description: 'Retrieve a summary of all case activity',
 				action: 'Get the status of a case',
@@ -71,7 +71,7 @@ export const caseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Connector Name or ID',
+		displayName: 'Connector name or ID',
 		name: 'connectorId',
 		description:
 			'Connectors allow you to send Elastic Security cases into other systems (only ServiceNow, Jira, or IBM Resilient). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -89,7 +89,7 @@ export const caseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Connector Type',
+		displayName: 'Connector type',
 		name: 'connectorType',
 		type: 'options',
 		required: true,
@@ -116,7 +116,7 @@ export const caseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Issue Type',
+		displayName: 'Issue type',
 		name: 'issueType',
 		description: 'Type of the Jira issue to create for this case',
 		type: 'string',
@@ -251,7 +251,7 @@ export const caseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Issue Types',
+		displayName: 'Issue types',
 		name: 'issueTypes',
 		description:
 			'Comma-separated list of numerical types of the IBM Resilient issue to create for this case',
@@ -268,7 +268,7 @@ export const caseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Severity Code',
+		displayName: 'Severity code',
 		name: 'severityCode',
 		description: 'Severity code of the IBM Resilient issue to create for this case',
 		type: 'number',
@@ -286,10 +286,10 @@ export const caseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -313,7 +313,7 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Sync Alerts',
+				displayName: 'Sync alerts',
 				name: 'syncAlerts',
 				description: 'Whether to synchronize with alerts',
 				type: 'boolean',
@@ -360,7 +360,7 @@ export const caseFields: INodeProperties[] = [
 	//               case: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -394,7 +394,7 @@ export const caseFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['case'],
@@ -412,7 +412,7 @@ export const caseFields: INodeProperties[] = [
 						value: 'open',
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 'in-progress',
 					},
 					{
@@ -423,7 +423,7 @@ export const caseFields: INodeProperties[] = [
 				default: 'open',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				description:
@@ -439,7 +439,7 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Sort',
 		name: 'sortOptions',
 		type: 'fixedCollection',
-		placeholder: 'Add Sort Options',
+		placeholder: 'Add sort options',
 		default: {},
 		displayOptions: {
 			show: {
@@ -449,27 +449,27 @@ export const caseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Sort Options',
+				displayName: 'Sort options',
 				name: 'sortOptionsProperties',
 				values: [
 					{
-						displayName: 'Sort Key',
+						displayName: 'Sort key',
 						name: 'sortField',
 						type: 'options',
 						options: [
 							{
-								name: 'Created At',
+								name: 'Created at',
 								value: 'createdAt',
 							},
 							{
-								name: 'Updated At',
+								name: 'Updated at',
 								value: 'updatedAt',
 							},
 						],
 						default: 'createdAt',
 					},
 					{
-						displayName: 'Sort Order',
+						displayName: 'Sort order',
 						name: 'sortOrder',
 						type: 'options',
 						options: [
@@ -506,10 +506,10 @@ export const caseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -539,13 +539,13 @@ export const caseFields: INodeProperties[] = [
 						value: 'open',
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 'in-progress',
 					},
 				],
 			},
 			{
-				displayName: 'Sync Alerts',
+				displayName: 'Sync alerts',
 				name: 'syncAlerts',
 				description: 'Whether to synchronize with alerts',
 				type: 'boolean',

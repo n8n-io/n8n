@@ -33,7 +33,7 @@ export const rowOperations: INodeProperties[] = [
 				action: 'Get a row',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many rows',
 				action: 'Get many rows',
@@ -54,7 +54,7 @@ export const rowFields: INodeProperties[] = [
 	/*                                row:create                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table name or ID',
 		name: 'tableId',
 		type: 'options',
 		description:
@@ -88,17 +88,17 @@ export const rowFields: INodeProperties[] = [
 		],
 	}),
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'dataToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
@@ -112,7 +112,7 @@ export const rowFields: INodeProperties[] = [
 		default: 'defineBelow',
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
@@ -128,9 +128,9 @@ export const rowFields: INodeProperties[] = [
 		placeholder: 'Enter properties...',
 	},
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Field to Send',
@@ -150,7 +150,7 @@ export const rowFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'fieldId',
 						type: 'options',
 						description:
@@ -162,7 +162,7 @@ export const rowFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -193,7 +193,7 @@ export const rowFields: INodeProperties[] = [
 	/*                                row:get                                     */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Select Conditions',
+		displayName: 'Select conditions',
 		name: 'filters',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -206,7 +206,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Condition',
+		placeholder: 'Add condition',
 		options: [
 			{
 				displayName: 'Conditions',
@@ -238,7 +238,7 @@ export const rowFields: INodeProperties[] = [
 	/*                                  row:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		noDataExpression: true,
@@ -274,7 +274,7 @@ export const rowFields: INodeProperties[] = [
 	// boundaries and prevents duplicates when using Return All or Limit >= 1000.
 	// See https://supabase.com/docs/guides/api/sql-to-rest for the order parameter syntax.
 	{
-		displayName: 'Order By',
+		displayName: 'Order by',
 		name: 'orderBy',
 		type: 'string',
 		displayOptions: {

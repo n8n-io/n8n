@@ -15,7 +15,7 @@ export const subredditOperations: INodeProperties[] = [
 				action: 'Get a subreddit',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve information about many subreddits',
 				action: 'Get many subreddits',
@@ -76,7 +76,7 @@ export const subredditFields: INodeProperties[] = [
 	//        subreddit: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -110,7 +110,7 @@ export const subredditFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{

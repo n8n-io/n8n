@@ -54,7 +54,7 @@ export const reactionFields: INodeProperties[] = [
 		description: 'The Slack channel to get the reactions from',
 	},
 	{
-		displayName: 'Message Timestamp',
+		displayName: 'Message timestamp',
 		name: 'timestamp',
 		required: true,
 		type: 'number',
@@ -69,7 +69,7 @@ export const reactionFields: INodeProperties[] = [
 		placeholder: '1663233118.856619',
 	},
 	{
-		displayName: 'Emoji Code',
+		displayName: 'Emoji code',
 		name: 'name',
 		type: 'string',
 		required: true,

@@ -10,21 +10,21 @@ import { microsoftApiRequest } from '../../transport';
 export const properties: INodeProperties[] = [
 	messageRLC,
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'BCC Recipients',
+				displayName: 'BCC recipients',
 				name: 'bccRecipients',
 				description: 'Comma-separated list of email addresses of BCC recipients',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Category Names or IDs',
+				displayName: 'Category names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				description:
@@ -35,16 +35,16 @@ export const properties: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'CC Recipients',
+				displayName: 'CC recipients',
 				name: 'ccRecipients',
 				description: 'Comma-separated list of email addresses of CC recipients',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Custom Headers',
+				displayName: 'Custom headers',
 				name: 'internetMessageHeaders',
-				placeholder: 'Add Header',
+				placeholder: 'Add header',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -96,7 +96,7 @@ export const properties: INodeProperties[] = [
 				default: 'Normal',
 			},
 			{
-				displayName: 'Is Read',
+				displayName: 'Is read',
 				name: 'isRead',
 				description: 'Whether the message must be marked as read',
 				type: 'boolean',
@@ -113,7 +113,7 @@ export const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Message Type',
+				displayName: 'Message type',
 				name: 'bodyContentType',
 				description: 'Message body content type',
 				type: 'options',
@@ -130,7 +130,7 @@ export const properties: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Read Receipt Requested',
+				displayName: 'Read receipt requested',
 				name: 'isReadReceiptRequested',
 				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
@@ -144,7 +144,7 @@ export const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Reply To',
+				displayName: 'Reply to',
 				name: 'replyTo',
 				description: 'Email address to use when replying',
 				type: 'string',

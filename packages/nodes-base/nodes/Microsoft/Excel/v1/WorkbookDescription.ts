@@ -13,13 +13,13 @@ export const workbookOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Worksheet',
+				name: 'Add worksheet',
 				value: 'addWorksheet',
 				description: 'Adds a new worksheet to the workbook',
 				action: 'Add a worksheet to a workbook',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many workbooks',
 				action: 'Get many workbooks',
@@ -34,7 +34,7 @@ export const workbookFields: INodeProperties[] = [
 	/*                                 workbook:addWorksheet                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
+		displayName: 'Workbook name or ID',
 		name: 'workbook',
 		type: 'options',
 		description:
@@ -52,10 +52,10 @@ export const workbookFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -78,7 +78,7 @@ export const workbookFields: INodeProperties[] = [
 	/*                                 workbook:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -112,7 +112,7 @@ export const workbookFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {

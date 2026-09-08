@@ -88,10 +88,10 @@ export const fileFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['copy'],
@@ -111,10 +111,10 @@ export const fileFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Parent Reference',
+		displayName: 'Parent reference',
 		name: 'parentReference',
 		type: 'collection',
-		placeholder: 'Add Parent Reference',
+		placeholder: 'Add parent reference',
 		description:
 			'Reference to the parent item the copy will be created in <a href="https://docs.microsoft.com/en-us/onedrive/developer/rest-api/resources/itemreference?view=odsp-graph-online"> Details </a>',
 		displayOptions: {
@@ -133,7 +133,7 @@ export const fileFields: INodeProperties[] = [
 				description: 'Identifier of the drive instance that contains the item',
 			},
 			{
-				displayName: 'Drive Type',
+				displayName: 'Drive type',
 				name: 'driveType',
 				type: 'string',
 				default: '',
@@ -215,7 +215,7 @@ export const fileFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,
@@ -262,7 +262,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'ID of the file to move',
 	},
 	{
-		displayName: 'Destination Folder ID',
+		displayName: 'Destination folder ID',
 		name: 'destinationFolderId',
 		type: 'string',
 		default: '',
@@ -277,10 +277,10 @@ export const fileFields: INodeProperties[] = [
 			"ID of the destination folder to move the item into. Use `root` for the drive's top-level folder.",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['move'],
@@ -290,7 +290,7 @@ export const fileFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'New Name',
+				displayName: 'New name',
 				name: 'name',
 				type: 'string',
 				default: '',
@@ -315,7 +315,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'ID of the file',
 	},
 	{
-		displayName: 'New Name',
+		displayName: 'New name',
 		name: 'newName',
 		type: 'string',
 		displayOptions: {
@@ -444,7 +444,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                 file:upload                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		displayOptions: {
@@ -473,7 +473,7 @@ export const fileFields: INodeProperties[] = [
 			"ID of the parent folder that will contain the file. Use `root` for the drive's top-level folder.",
 	},
 	{
-		displayName: 'Binary File',
+		displayName: 'Binary file',
 		name: 'binaryData',
 		type: 'boolean',
 		default: false,
@@ -487,7 +487,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
-		displayName: 'File Content',
+		displayName: 'File content',
 		name: 'fileContent',
 		type: 'string',
 		default: '',
@@ -503,7 +503,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The text content of the file',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

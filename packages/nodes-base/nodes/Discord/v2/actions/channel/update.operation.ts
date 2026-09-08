@@ -29,7 +29,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Age-Restricted (NSFW)',
+				displayName: 'Age-restricted (NSFW)',
 				name: 'nsfw',
 				type: 'boolean',
 				default: false,
@@ -56,7 +56,7 @@ const properties: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Rate Limit Per User',
+				displayName: 'Rate limit per user',
 				name: 'rate_limit_per_user',
 				type: 'number',
 				default: 0,
@@ -74,7 +74,7 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. This channel is about…',
 			},
 			{
-				displayName: 'User Limit',
+				displayName: 'User limit',
 				name: 'user_limit',
 				type: 'number',
 				default: 0,

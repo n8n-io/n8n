@@ -29,7 +29,7 @@ export const certificateDescription: INodeProperties[] = [
 	/*                                certificate:create                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Certificate File Name',
+		displayName: 'Certificate file name',
 		name: 'certificateFileName',
 		type: 'string',
 		required: true,
@@ -44,7 +44,7 @@ export const certificateDescription: INodeProperties[] = [
 			'Name for and, optionally, path to the generated certificate file. /nsconfig/ssl/ is the default path.',
 	},
 	{
-		displayName: 'Certificate Format',
+		displayName: 'Certificate format',
 		name: 'certificateFormat',
 		type: 'options',
 		options: [
@@ -68,7 +68,7 @@ export const certificateDescription: INodeProperties[] = [
 		description: 'Format in which the certificate is stored on the appliance',
 	},
 	{
-		displayName: 'Certificate Type',
+		displayName: 'Certificate type',
 		name: 'certificateType',
 		type: 'options',
 		options: [
@@ -104,7 +104,7 @@ export const certificateDescription: INodeProperties[] = [
 		default: 'ROOT_CERT',
 	},
 	{
-		displayName: 'Certificate Request File Name',
+		displayName: 'Certificate request file name',
 		name: 'certificateRequestFileName',
 		type: 'string',
 		default: '',
@@ -119,7 +119,7 @@ export const certificateDescription: INodeProperties[] = [
 			'Name for and, optionally, path to the certificate-signing request (CSR). /nsconfig/ssl/ is the default path.',
 	},
 	{
-		displayName: 'CA Certificate File Name',
+		displayName: 'CA certificate file name',
 		name: 'caCertificateFileName',
 		type: 'string',
 		required: true,
@@ -135,7 +135,7 @@ export const certificateDescription: INodeProperties[] = [
 			'Name of the CA certificate file that issues and signs the Intermediate-CA certificate or the end-user client and server certificates',
 	},
 	{
-		displayName: 'CA Certificate File Format',
+		displayName: 'CA certificate file format',
 		name: 'caCertificateFileFormat',
 		type: 'options',
 		options: [
@@ -160,7 +160,7 @@ export const certificateDescription: INodeProperties[] = [
 		description: 'Format of the CA certificate',
 	},
 	{
-		displayName: 'CA Private Key File Name',
+		displayName: 'CA private key file name',
 		name: 'caPrivateKeyFileName',
 		type: 'string',
 		required: true,
@@ -176,7 +176,7 @@ export const certificateDescription: INodeProperties[] = [
 			'Private key, associated with the CA certificate that is used to sign the Intermediate-CA certificate or the end-user client and server certificate. If the CA key file is password protected, the user is prompted to enter the pass phrase that was used to encrypt the key.',
 	},
 	{
-		displayName: 'CA Private Key File Format',
+		displayName: 'CA private key file format',
 		name: 'caPrivateKeyFileFormat',
 		type: 'options',
 		options: [
@@ -201,7 +201,7 @@ export const certificateDescription: INodeProperties[] = [
 		description: 'Format of the CA certificate',
 	},
 	{
-		displayName: 'Private Key File Name',
+		displayName: 'Private key file name',
 		name: 'privateKeyFileName',
 		type: 'string',
 		default: '',
@@ -217,7 +217,7 @@ export const certificateDescription: INodeProperties[] = [
 			'Name for and, optionally, path to the private key. You can either use an existing RSA or DSA key that you own or create a new private key on the Netscaler ADC. This file is required only when creating a self-signed Root-CA certificate. The key file is stored in the /nsconfig/ssl directory by default.',
 	},
 	{
-		displayName: 'CA Serial File Number',
+		displayName: 'CA serial file number',
 		name: 'caSerialFileNumber',
 		type: 'string',
 		required: true,
@@ -233,7 +233,7 @@ export const certificateDescription: INodeProperties[] = [
 			'Serial number file maintained for the CA certificate. This file contains the serial number of the next certificate to be issued or signed by the CA.',
 	},
 	{
-		displayName: 'Private Key Format',
+		displayName: 'Private key format',
 		name: 'privateKeyFormat',
 		type: 'options',
 		options: [
@@ -258,10 +258,10 @@ export const certificateDescription: INodeProperties[] = [
 		description: 'Format in which the key is stored on the appliance',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -271,7 +271,7 @@ export const certificateDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'PEM Passphrase (For Encrypted Key)',
+				displayName: 'PEM passphrase (for encrypted key)',
 				name: 'pempassphrase',
 				type: 'string',
 				displayOptions: {
@@ -284,7 +284,7 @@ export const certificateDescription: INodeProperties[] = [
 					'Name for and, optionally, path to the private key. You can either use an existing RSA or DSA key that you own or create a new private key on the Netscaler ADC. This file is required only when creating a self-signed Root-CA certificate. The key file is stored in the /nsconfig/ssl directory by default.',
 			},
 			{
-				displayName: 'PEM Passphrase (For Encrypted CA Key)',
+				displayName: 'PEM passphrase (for encrypted CA key)',
 				name: 'pempassphrase',
 				type: 'string',
 				displayOptions: {
@@ -297,7 +297,7 @@ export const certificateDescription: INodeProperties[] = [
 					'Name for and, optionally, path to the private key. You can either use an existing RSA or DSA key that you own or create a new private key on the Netscaler ADC. This file is required only when creating a self-signed Root-CA certificate. The key file is stored in the /nsconfig/ssl directory by default.',
 			},
 			{
-				displayName: 'Subject Alternative Name',
+				displayName: 'Subject alternative name',
 				name: 'subjectaltname',
 				type: 'string',
 				default: '',
@@ -305,7 +305,7 @@ export const certificateDescription: INodeProperties[] = [
 					'Subject Alternative Name (SAN) is an extension to X.509 that allows various values to be associated with a security certificate using a subjectAltName field',
 			},
 			{
-				displayName: 'Validity Period (Number of Days)',
+				displayName: 'Validity period (number of days)',
 				name: 'days',
 				type: 'string',
 				default: '',
@@ -318,7 +318,7 @@ export const certificateDescription: INodeProperties[] = [
 	/*                                certificate:install                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Certificate-Key Pair Name',
+		displayName: 'Certificate-key pair name',
 		name: 'certificateKeyPairName',
 		type: 'string',
 		required: true,
@@ -332,7 +332,7 @@ export const certificateDescription: INodeProperties[] = [
 		description: 'Name for the certificate and private-key pair',
 	},
 	{
-		displayName: 'Certificate File Name',
+		displayName: 'Certificate file name',
 		name: 'certificateFileName',
 		type: 'string',
 		required: true,
@@ -347,7 +347,7 @@ export const certificateDescription: INodeProperties[] = [
 			'Name of and, optionally, path to the X509 certificate file that is used to form the certificate-key pair. /nsconfig/ssl/ is the default path.',
 	},
 	{
-		displayName: 'Private Key File Name',
+		displayName: 'Private key file name',
 		name: 'privateKeyFileName',
 		type: 'string',
 		default: '',
@@ -362,7 +362,7 @@ export const certificateDescription: INodeProperties[] = [
 			'Name of and, optionally, path to the X509 certificate file that is used to form the certificate-key pair. /nsconfig/ssl/ is the default path.',
 	},
 	{
-		displayName: 'Certificate Format',
+		displayName: 'Certificate format',
 		name: 'certificateFormat',
 		type: 'options',
 		options: [
@@ -406,7 +406,7 @@ export const certificateDescription: INodeProperties[] = [
 			'Input format of the certificate and the private-key files. The three formats supported by the appliance are: PEM - Privacy Enhanced Mail DER - Distinguished Encoding Rule PFX - Personal Information Exchange.',
 	},
 	{
-		displayName: 'Notify When Expires',
+		displayName: 'Notify when expires',
 		name: 'notifyExpiration',
 		type: 'boolean',
 		required: true,
@@ -420,7 +420,7 @@ export const certificateDescription: INodeProperties[] = [
 		description: 'Whether to alert when the certificate is about to expire',
 	},
 	{
-		displayName: 'Notification Period (Days)',
+		displayName: 'Notification period (days)',
 		name: 'notificationPeriod',
 		type: 'number',
 		default: 10,
@@ -440,7 +440,7 @@ export const certificateDescription: INodeProperties[] = [
 			'Time, in number of days, before certificate expiration, at which to generate an alert that the certificate is about to expire',
 	},
 	{
-		displayName: 'Certificate Bundle',
+		displayName: 'Certificate bundle',
 		name: 'certificateBundle',
 		type: 'boolean',
 		default: false,

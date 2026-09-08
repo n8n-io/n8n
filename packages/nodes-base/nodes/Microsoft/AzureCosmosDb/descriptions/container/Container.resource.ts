@@ -73,7 +73,7 @@ export const description: INodeProperties[] = [
 				action: 'Get container',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of containers',
 				routing: {

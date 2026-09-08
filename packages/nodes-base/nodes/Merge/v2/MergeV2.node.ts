@@ -63,7 +63,7 @@ export class MergeV2 implements INodeType {
 							description: 'Merge matching items together',
 						},
 						{
-							name: 'Choose Branch',
+							name: 'Choose branch',
 							value: 'chooseBranch',
 							description: 'Output input data, without modifying it',
 						},
@@ -72,17 +72,17 @@ export class MergeV2 implements INodeType {
 					description: 'How data of branches should be merged',
 				},
 				{
-					displayName: 'Combination Mode',
+					displayName: 'Combination mode',
 					name: 'combinationMode',
 					type: 'options',
 					options: [
 						{
-							name: 'Merge By Fields',
+							name: 'Merge by fields',
 							value: 'mergeByFields',
 							description: 'Combine items with the same field values',
 						},
 						{
-							name: 'Merge By Position',
+							name: 'Merge by position',
 							value: 'mergeByPosition',
 							description: 'Combine items based on their order',
 						},
@@ -101,10 +101,10 @@ export class MergeV2 implements INodeType {
 				},
 				// mergeByFields ------------------------------------------------------------------
 				{
-					displayName: 'Fields to Match',
+					displayName: 'Fields to match',
 					name: 'mergeByFields',
 					type: 'fixedCollection',
-					placeholder: 'Add Fields to Match',
+					placeholder: 'Add fields to match',
 					default: { values: [{ field1: '', field2: '' }] },
 					typeOptions: {
 						multipleValues: true,
@@ -115,7 +115,7 @@ export class MergeV2 implements INodeType {
 							name: 'values',
 							values: [
 								{
-									displayName: 'Input 1 Field',
+									displayName: 'Input 1 field',
 									name: 'field1',
 									type: 'string',
 									default: '',
@@ -125,7 +125,7 @@ export class MergeV2 implements INodeType {
 									requiresDataPath: 'single',
 								},
 								{
-									displayName: 'Input 2 Field',
+									displayName: 'Input 2 field',
 									name: 'field2',
 									type: 'string',
 									default: '',
@@ -145,34 +145,34 @@ export class MergeV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Output Type',
+					displayName: 'Output type',
 					name: 'joinMode',
 					type: 'options',
 					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 					options: [
 						{
-							name: 'Keep Matches',
+							name: 'Keep matches',
 							value: 'keepMatches',
 							description: 'Items that match, merged together (inner join)',
 						},
 						{
-							name: 'Keep Non-Matches',
+							name: 'Keep non-matches',
 							value: 'keepNonMatches',
 							description: "Items that don't match",
 						},
 						{
-							name: 'Keep Everything',
+							name: 'Keep everything',
 							value: 'keepEverything',
 							description:
 								"Items that match merged together, plus items that don't match (outer join)",
 						},
 						{
-							name: 'Enrich Input 1',
+							name: 'Enrich input 1',
 							value: 'enrichInput1',
 							description: 'All of input 1, with data from input 2 added in (left join)',
 						},
 						{
-							name: 'Enrich Input 2',
+							name: 'Enrich input 2',
 							value: 'enrichInput2',
 							description: 'All of input 2, with data from input 1 added in (right join)',
 						},
@@ -186,12 +186,12 @@ export class MergeV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Output Data From',
+					displayName: 'Output data from',
 					name: 'outputDataFrom',
 					type: 'options',
 					options: [
 						{
-							name: 'Both Inputs Merged Together',
+							name: 'Both inputs merged together',
 							value: 'both',
 						},
 						{
@@ -213,12 +213,12 @@ export class MergeV2 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Output Data From',
+					displayName: 'Output data from',
 					name: 'outputDataFrom',
 					type: 'options',
 					options: [
 						{
-							name: 'Both Inputs Appended Together',
+							name: 'Both inputs appended together',
 							value: 'both',
 						},
 						{
@@ -242,12 +242,12 @@ export class MergeV2 implements INodeType {
 
 				// chooseBranch -----------------------------------------------------------------
 				{
-					displayName: 'Output Type',
+					displayName: 'Output type',
 					name: 'chooseBranchMode',
 					type: 'options',
 					options: [
 						{
-							name: 'Wait for Both Inputs to Arrive',
+							name: 'Wait for both inputs to arrive',
 							value: 'waitForBoth',
 						},
 					],
@@ -264,15 +264,15 @@ export class MergeV2 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'Input 1 Data',
+							name: 'Input 1 data',
 							value: 'input1',
 						},
 						{
-							name: 'Input 2 Data',
+							name: 'Input 2 data',
 							value: 'input2',
 						},
 						{
-							name: 'A Single, Empty Item',
+							name: 'A single, empty item',
 							value: 'empty',
 						},
 					],

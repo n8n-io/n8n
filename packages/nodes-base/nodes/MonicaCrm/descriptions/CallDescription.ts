@@ -31,7 +31,7 @@ export const callOperations: INodeProperties[] = [
 				action: 'Get a call',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many calls',
 				action: 'Get many calls',
@@ -66,7 +66,7 @@ export const callFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Called At',
+		displayName: 'Called at',
 		name: 'calledAt',
 		description: 'Date when the call happened',
 		type: 'dateTime',
@@ -134,7 +134,7 @@ export const callFields: INodeProperties[] = [
 	//               call: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -182,10 +182,10 @@ export const callFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -195,7 +195,7 @@ export const callFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Called At',
+				displayName: 'Called at',
 				name: 'calledAt',
 				description: 'Date when the call happened',
 				type: 'dateTime',

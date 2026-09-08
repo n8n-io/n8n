@@ -50,11 +50,11 @@ export class UptimeRobot implements INodeType {
 						value: 'account',
 					},
 					{
-						name: 'Alert Contact',
+						name: 'Alert contact',
 						value: 'alertContact',
 					},
 					{
-						name: 'Maintenance Window',
+						name: 'Maintenance window',
 						value: 'maintenanceWindow',
 					},
 					{
@@ -62,7 +62,7 @@ export class UptimeRobot implements INodeType {
 						value: 'monitor',
 					},
 					{
-						name: 'Public Status Page',
+						name: 'Public status page',
 						value: 'publicStatusPage',
 					},
 				],

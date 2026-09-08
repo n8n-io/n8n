@@ -72,7 +72,7 @@ export class TypeformTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -83,7 +83,7 @@ export class TypeformTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Form Name or ID',
+				displayName: 'Form name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -96,7 +96,7 @@ export class TypeformTrigger implements INodeType {
 					'Form which should trigger workflow on submission. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Simplify Answers',
+				displayName: 'Simplify answers',
 				name: 'simplifyAnswers',
 				type: 'boolean',
 				default: true,
@@ -105,7 +105,7 @@ export class TypeformTrigger implements INodeType {
 					'Whether to convert the answers to a key:value pair ("FIELD_TITLE":"USER_ANSER") to be easily processable',
 			},
 			{
-				displayName: 'Only Answers',
+				displayName: 'Only answers',
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,

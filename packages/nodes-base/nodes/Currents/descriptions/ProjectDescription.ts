@@ -33,7 +33,7 @@ export const projectOperations: INodeProperties[] = [
 				action: 'Get a project',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many projects',
 				routing: {
@@ -55,7 +55,7 @@ export const projectOperations: INodeProperties[] = [
 				action: 'Get many projects',
 			},
 			{
-				name: 'Get Insights',
+				name: 'Get insights',
 				value: 'getInsights',
 				description: 'Get project insights and metrics',
 				routing: {
@@ -126,7 +126,7 @@ export const projectFields: INodeProperties[] = [
 	//         project:getInsights
 	// ----------------------------------
 	{
-		displayName: 'Date Start',
+		displayName: 'Date start',
 		name: 'dateStart',
 		type: 'dateTime',
 		required: true,
@@ -146,7 +146,7 @@ export const projectFields: INodeProperties[] = [
 		description: 'Start date for metrics (ISO 8601 format)',
 	},
 	{
-		displayName: 'Date End',
+		displayName: 'Date end',
 		name: 'dateEnd',
 		type: 'dateTime',
 		required: true,
@@ -169,7 +169,7 @@ export const projectFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -186,9 +186,9 @@ export const projectFields: INodeProperties[] = [
 				name: 'resolution',
 				type: 'options',
 				options: [
-					{ name: '1 Hour', value: '1h' },
-					{ name: '1 Day', value: '1d' },
-					{ name: '1 Week', value: '1w' },
+					{ name: '1 hour', value: '1h' },
+					{ name: '1 day', value: '1d' },
+					{ name: '1 week', value: '1w' },
 				],
 				default: '1d',
 				routing: {

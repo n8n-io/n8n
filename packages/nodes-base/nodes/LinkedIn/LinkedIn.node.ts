@@ -67,7 +67,7 @@ export class LinkedIn implements INodeType {
 						value: 'standard',
 					},
 					{
-						name: 'Community Management',
+						name: 'Community management',
 						value: 'communityManagement',
 					},
 				],

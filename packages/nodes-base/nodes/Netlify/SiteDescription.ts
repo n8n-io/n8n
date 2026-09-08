@@ -25,7 +25,7 @@ export const siteOperations: INodeProperties[] = [
 				action: 'Get a site',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Returns many sites',
 				action: 'Get many sites',
@@ -50,7 +50,7 @@ export const siteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

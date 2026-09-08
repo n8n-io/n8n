@@ -8,7 +8,7 @@ export const endOfDayDataOperations: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many EoD data',
 			},
@@ -39,7 +39,7 @@ export const endOfDayDataFields: INodeProperties[] = [
 			'One or multiple comma-separated stock symbols (tickers) to retrieve, e.g. <code>AAPL</code> or <code>AAPL,MSFT</code>',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -72,7 +72,7 @@ export const endOfDayDataFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -97,7 +97,7 @@ export const endOfDayDataFields: INodeProperties[] = [
 				description: 'Whether to fetch the most recent stock market data',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sort',
 				description: 'Order to sort results in',
 				type: 'options',
@@ -114,7 +114,7 @@ export const endOfDayDataFields: INodeProperties[] = [
 				default: 'DESC',
 			},
 			{
-				displayName: 'Specific Date',
+				displayName: 'Specific date',
 				name: 'specificDate',
 				type: 'dateTime',
 				default: '',
@@ -122,7 +122,7 @@ export const endOfDayDataFields: INodeProperties[] = [
 					'Date in YYYY-MM-DD format, e.g. <code>2020-01-01</code>, or in ISO-8601 date format, e.g. <code>2020-05-21T00:00:00+0000</code>',
 			},
 			{
-				displayName: 'Timeframe Start Date',
+				displayName: 'Timeframe start date',
 				name: 'dateFrom',
 				type: 'dateTime',
 				default: '',
@@ -130,7 +130,7 @@ export const endOfDayDataFields: INodeProperties[] = [
 					'Timeframe start date in YYYY-MM-DD format, e.g. <code>2020-01-01</code>, or in ISO-8601 date format, e.g. <code>2020-05-21T00:00:00+0000</code>',
 			},
 			{
-				displayName: 'Timeframe End Date',
+				displayName: 'Timeframe end date',
 				name: 'dateTo',
 				type: 'dateTime',
 				default: '',

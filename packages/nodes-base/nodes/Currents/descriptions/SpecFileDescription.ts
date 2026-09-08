@@ -21,7 +21,7 @@ export const specFileOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get aggregated spec file metrics for a project',
 				routing: {
@@ -61,7 +61,7 @@ export const specFileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Date Start',
+		displayName: 'Date start',
 		name: 'dateStart',
 		type: 'dateTime',
 		required: true,
@@ -81,7 +81,7 @@ export const specFileFields: INodeProperties[] = [
 		description: 'Start date for metrics (ISO 8601 format)',
 	},
 	{
-		displayName: 'Date End',
+		displayName: 'Date end',
 		name: 'dateEnd',
 		type: 'dateTime',
 		required: true,
@@ -127,7 +127,7 @@ export const specFileFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -140,7 +140,7 @@ export const specFileFields: INodeProperties[] = [
 			filterBranchesOption,
 			filterGroupsOption,
 			{
-				displayName: 'Spec Name',
+				displayName: 'Spec name',
 				name: 'specNameFilter',
 				type: 'string',
 				default: '',
@@ -159,7 +159,7 @@ export const specFileFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -169,7 +169,7 @@ export const specFileFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Failed in Duration',
+				displayName: 'Include failed in duration',
 				name: 'includeFailedInDuration',
 				type: 'boolean',
 				default: false,
@@ -182,20 +182,20 @@ export const specFileFields: INodeProperties[] = [
 				description: 'Whether to include failed executions in duration calculation',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'order',
 				type: 'options',
 				options: [
-					{ name: 'Average Duration', value: 'avgDuration' },
-					{ name: 'Failed Executions', value: 'failedExecutions' },
-					{ name: 'Failure Rate', value: 'failureRate' },
-					{ name: 'Flake Rate', value: 'flakeRate' },
-					{ name: 'Flaky Executions', value: 'flakyExecutions' },
-					{ name: 'Fully Reported', value: 'fullyReported' },
-					{ name: 'Overall Executions', value: 'overallExecutions' },
-					{ name: 'Suite Size', value: 'suiteSize' },
-					{ name: 'Timeout Executions', value: 'timeoutExecutions' },
-					{ name: 'Timeout Rate', value: 'timeoutRate' },
+					{ name: 'Average duration', value: 'avgDuration' },
+					{ name: 'Failed executions', value: 'failedExecutions' },
+					{ name: 'Failure rate', value: 'failureRate' },
+					{ name: 'Flake rate', value: 'flakeRate' },
+					{ name: 'Flaky executions', value: 'flakyExecutions' },
+					{ name: 'Fully reported', value: 'fullyReported' },
+					{ name: 'Overall executions', value: 'overallExecutions' },
+					{ name: 'Suite size', value: 'suiteSize' },
+					{ name: 'Timeout executions', value: 'timeoutExecutions' },
+					{ name: 'Timeout rate', value: 'timeoutRate' },
 				],
 				default: 'avgDuration',
 				routing: {
@@ -207,7 +207,7 @@ export const specFileFields: INodeProperties[] = [
 				description: 'The field to order results by',
 			},
 			{
-				displayName: 'Sort Direction',
+				displayName: 'Sort direction',
 				name: 'dir',
 				type: 'options',
 				options: [

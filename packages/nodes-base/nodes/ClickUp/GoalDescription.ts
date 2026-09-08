@@ -31,7 +31,7 @@ export const goalOperations: INodeProperties[] = [
 				action: 'Get a goal',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many goals',
 				action: 'Get many goals',
@@ -52,7 +52,7 @@ export const goalFields: INodeProperties[] = [
 	/*                                goal:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -83,10 +83,10 @@ export const goalFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -108,13 +108,13 @@ export const goalFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Multiple Owners',
+				displayName: 'Multiple owners',
 				name: 'multipleOwners',
 				type: 'boolean',
 				default: false,
@@ -166,7 +166,7 @@ export const goalFields: INodeProperties[] = [
 	/*                                goal:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team name or ID',
 		name: 'team',
 		type: 'options',
 		description:
@@ -218,10 +218,10 @@ export const goalFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -231,7 +231,7 @@ export const goalFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Add Owners',
+				displayName: 'Add owners',
 				name: 'addOwners',
 				type: 'string',
 				default: '',
@@ -249,7 +249,7 @@ export const goalFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
@@ -261,7 +261,7 @@ export const goalFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Remove Owners',
+				displayName: 'Remove owners',
 				name: 'removeOwners',
 				type: 'string',
 				default: '',

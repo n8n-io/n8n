@@ -31,7 +31,7 @@ export const problemOperations: INodeProperties[] = [
 				action: 'Get a problem',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many problems',
 				action: 'Get many problems',
@@ -65,7 +65,7 @@ export const problemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Requester Name or ID',
+		displayName: 'Requester name or ID',
 		name: 'requesterId',
 		description:
 			'ID of the initiator of the problem. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -83,7 +83,7 @@ export const problemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Due By',
+		displayName: 'Due by',
 		name: 'dueBy',
 		description: 'Date when the problem is due to be solved',
 		type: 'dateTime',
@@ -96,10 +96,10 @@ export const problemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -109,7 +109,7 @@ export const problemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name or ID',
+				displayName: 'Agent name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -120,7 +120,7 @@ export const problemFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -138,7 +138,7 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -203,7 +203,7 @@ export const problemFields: INodeProperties[] = [
 						value: 1,
 					},
 					{
-						name: 'Change Requested',
+						name: 'Change requested',
 						value: 2,
 					},
 					{
@@ -255,7 +255,7 @@ export const problemFields: INodeProperties[] = [
 	//             problem: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -303,10 +303,10 @@ export const problemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -316,7 +316,7 @@ export const problemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name or ID',
+				displayName: 'Agent name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -327,7 +327,7 @@ export const problemFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -345,14 +345,14 @@ export const problemFields: INodeProperties[] = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Due By',
+				displayName: 'Due by',
 				name: 'due_by',
 				description: 'Date when the problem is due to be solved',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -407,7 +407,7 @@ export const problemFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Requester Name or ID',
+				displayName: 'Requester name or ID',
 				name: 'requester_id',
 				type: 'options',
 				default: '',
@@ -428,7 +428,7 @@ export const problemFields: INodeProperties[] = [
 						value: 1,
 					},
 					{
-						name: 'Change Requested',
+						name: 'Change requested',
 						value: 2,
 					},
 					{

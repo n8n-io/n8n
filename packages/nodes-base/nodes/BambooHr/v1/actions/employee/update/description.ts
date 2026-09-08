@@ -32,10 +32,10 @@ export const employeeUpdateDescription: EmployeeProperties = [
 	},
 	...(updateEmployeeSharedDescription(true) as EmployeeProperties),
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -46,13 +46,13 @@ export const employeeUpdateDescription: EmployeeProperties = [
 		options: [
 			...updateEmployeeSharedDescription(false),
 			{
-				displayName: 'Work Email',
+				displayName: 'Work email',
 				name: 'workEmail',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Work Phone',
+				displayName: 'Work phone',
 				name: 'workPhone',
 				type: 'string',
 				default: '',

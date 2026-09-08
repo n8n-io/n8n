@@ -23,7 +23,7 @@ const displayOptions: IDisplayOptions = {
 export const description: INodeProperties[] = [
 	...getSelectFields(displayOptions),
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions,
@@ -31,7 +31,7 @@ export const description: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
-		displayName: 'Limit Per Input Row',
+		displayName: 'Limit per input row',
 		name: 'limit',
 		type: 'number',
 		displayOptions: {
@@ -48,7 +48,7 @@ export const description: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Order By',
+		displayName: 'Order by',
 		name: 'orderBy',
 		type: 'boolean',
 		displayOptions,
@@ -57,7 +57,7 @@ export const description: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Order By Column',
+		displayName: 'Order by column',
 		name: 'orderByColumn',
 		type: 'options',
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
@@ -77,7 +77,7 @@ export const description: INodeProperties[] = [
 		default: 'createdAt',
 	},
 	{
-		displayName: 'Order By Direction',
+		displayName: 'Order by direction',
 		name: 'orderByDirection',
 		type: 'options',
 		options: [

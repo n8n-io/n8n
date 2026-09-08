@@ -28,7 +28,7 @@ export const opportunityOperations: INodeProperties[] = [
 				action: 'Get an opportunity',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many opportunities',
 			},
@@ -61,7 +61,7 @@ export const opportunityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Customer Source ID',
+		displayName: 'Customer source ID',
 		name: 'customerSourceId',
 		type: 'string',
 		default: '',
@@ -74,7 +74,7 @@ export const opportunityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Primary Contact ID',
+		displayName: 'Primary contact ID',
 		name: 'primaryContactId',
 		type: 'string',
 		default: '',
@@ -127,7 +127,7 @@ export const opportunityFields: INodeProperties[] = [
 	//           opportunity: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -161,7 +161,7 @@ export const opportunityFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filterFields',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -178,7 +178,7 @@ export const opportunityFields: INodeProperties[] = [
 				description: 'Comma-separated IDs of the primary companies to filter by',
 			},
 			{
-				displayName: 'Customer Source IDs',
+				displayName: 'Customer source IDs',
 				name: 'customer_source_ids',
 				type: 'string',
 				default: '',
@@ -205,10 +205,10 @@ export const opportunityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -218,7 +218,7 @@ export const opportunityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Customer Source ID',
+				displayName: 'Customer source ID',
 				name: 'customer_source_id',
 				type: 'string',
 				default: '',
@@ -232,7 +232,7 @@ export const opportunityFields: INodeProperties[] = [
 				description: 'Name to set for the opportunity',
 			},
 			{
-				displayName: 'Primary Contact ID',
+				displayName: 'Primary contact ID',
 				name: 'primary_contact_id',
 				type: 'string',
 				default: '',

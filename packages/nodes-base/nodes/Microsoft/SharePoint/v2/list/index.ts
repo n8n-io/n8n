@@ -23,7 +23,7 @@ export const listRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -32,7 +32,7 @@ export const listRLC: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'By ID or Title',
+			displayName: 'By ID or title',
 			name: 'id',
 			type: 'string',
 			placeholder: 'e.g. 58a279af-1f06-4392-a5ed-2b37fa1d6c1d or My List',

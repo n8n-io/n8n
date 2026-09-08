@@ -33,7 +33,7 @@ export const agentOperations: INodeProperties[] = [
 				action: 'Get an agent',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many agents',
 				action: 'Get many agents',
@@ -68,7 +68,7 @@ export const agentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'firstName',
 		type: 'string',
 		required: true,
@@ -85,7 +85,7 @@ export const agentFields: INodeProperties[] = [
 		name: 'roles',
 		description: 'Role to assign to the agent',
 		type: 'fixedCollection',
-		placeholder: 'Add Role',
+		placeholder: 'Add role',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -99,11 +99,11 @@ export const agentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Role Properties',
+				displayName: 'Role properties',
 				name: 'roleProperties',
 				values: [
 					{
-						displayName: 'Role Name or ID',
+						displayName: 'Role name or ID',
 						name: 'role',
 						description:
 							'Name of the role to assign to the agent. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -121,19 +121,19 @@ export const agentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Entire Helpdesk',
+								name: 'Entire helpdesk',
 								value: 'entire_helpdesk',
 							},
 							{
-								name: 'Member Groups',
+								name: 'Member groups',
 								value: 'member_groups',
 							},
 							{
-								name: 'Specified Groups',
+								name: 'Specified groups',
 								value: 'specified_groups',
 							},
 							{
-								name: 'Assigned Items',
+								name: 'Assigned items',
 								value: 'assigned_items',
 							},
 						],
@@ -141,7 +141,7 @@ export const agentFields: INodeProperties[] = [
 						default: 'specified_groups',
 					},
 					{
-						displayName: 'Group Names or IDs',
+						displayName: 'Group names or IDs',
 						name: 'groups',
 						description:
 							'Groups in which the permissions granted by the role apply. Required only when Scope is Specified Groups - ignored otherwise. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -156,10 +156,10 @@ export const agentFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -175,13 +175,13 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Background Information',
+				displayName: 'Background information',
 				name: 'background_information',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Department Names or IDs',
+				displayName: 'Department names or IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
@@ -192,7 +192,7 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
@@ -205,13 +205,13 @@ export const agentFields: INodeProperties[] = [
 				options: LANGUAGES,
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location name or ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
@@ -222,7 +222,7 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Group Names or IDs',
+				displayName: 'Group names or IDs',
 				name: 'member_of',
 				type: 'multiOptions',
 				default: [],
@@ -233,13 +233,13 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Observer of Group Names/IDs',
+				displayName: 'Observer of group names/IDs',
 				name: 'observer_of',
 				type: 'multiOptions',
 				default: [],
@@ -250,7 +250,7 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Scoreboard Level ID',
+				displayName: 'Scoreboard level ID',
 				name: 'scoreboard_level_id',
 				type: 'options',
 				description: 'ID of the level of the agent in the Arcade',
@@ -284,23 +284,23 @@ export const agentFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Time Format',
+				displayName: 'Time format',
 				name: 'time_format',
 				type: 'options',
 				default: '12h',
 				options: [
 					{
-						name: '12-Hour Format',
+						name: '12-hour format',
 						value: '12h',
 					},
 					{
-						name: '24-Hour Format',
+						name: '24-hour format',
 						value: '24h',
 					},
 				],
 			},
 			{
-				displayName: 'Work Phone',
+				displayName: 'Work phone',
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',
@@ -348,7 +348,7 @@ export const agentFields: INodeProperties[] = [
 	//              agent: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -381,7 +381,7 @@ export const agentFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -391,7 +391,7 @@ export const agentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -409,13 +409,13 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
@@ -428,13 +428,13 @@ export const agentFields: INodeProperties[] = [
 				options: LANGUAGES,
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location name or ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
@@ -445,13 +445,13 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Mobile Phone Number',
+				displayName: 'Mobile phone number',
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Work Phone Number',
+				displayName: 'Work phone number',
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',
@@ -477,10 +477,10 @@ export const agentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -496,13 +496,13 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Background Information',
+				displayName: 'Background information',
 				name: 'background_information',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Department Names or IDs',
+				displayName: 'Department names or IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
@@ -520,13 +520,13 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Job Title',
+				displayName: 'Job title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
@@ -539,13 +539,13 @@ export const agentFields: INodeProperties[] = [
 				options: LANGUAGES,
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location name or ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
@@ -556,7 +556,7 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Group Names or IDs',
+				displayName: 'Group names or IDs',
 				name: 'member_of',
 				type: 'multiOptions',
 				default: [],
@@ -567,13 +567,13 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Mobile Phone',
+				displayName: 'Mobile phone',
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Observer of Group Names/IDs',
+				displayName: 'Observer of group names/IDs',
 				name: 'observer_of',
 				type: 'multiOptions',
 				default: [],
@@ -584,7 +584,7 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Scoreboard Level ID',
+				displayName: 'Scoreboard level ID',
 				name: 'scoreboard_level_id',
 				type: 'options',
 				description: 'ID of the level of the agent in the Arcade',
@@ -618,23 +618,23 @@ export const agentFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Time Format',
+				displayName: 'Time format',
 				name: 'time_format',
 				type: 'options',
 				default: '12h',
 				options: [
 					{
-						name: '12-Hour Format',
+						name: '12-hour format',
 						value: '12h',
 					},
 					{
-						name: '24-Hour Format',
+						name: '24-hour format',
 						value: '24h',
 					},
 				],
 			},
 			{
-				displayName: 'Work Phone',
+				displayName: 'Work phone',
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',

@@ -63,11 +63,11 @@ export class Strapi implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Username & Password',
+						name: 'Username & password',
 						value: 'password',
 					},
 					{
-						name: 'API Token',
+						name: 'API token',
 						value: 'token',
 					},
 				],

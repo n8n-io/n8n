@@ -7,7 +7,7 @@ import { resolveSiteId } from '../site';
 export const untilFolderSelected = { folder: [''] };
 
 export const folderRLC: INodeProperties = {
-	displayName: 'Parent Folder',
+	displayName: 'Parent folder',
 	name: 'folder',
 	type: 'resourceLocator',
 	required: true,
@@ -18,7 +18,7 @@ export const folderRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {

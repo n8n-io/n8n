@@ -21,7 +21,7 @@ export const hubOperations: INodeProperties[] = [
 				action: 'Create a hub',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many Onfleet hubs',
 				action: 'Get many hubs',
@@ -46,7 +46,7 @@ const nameField = {
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Team Names or IDs',
+	displayName: 'Team names or IDs',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
@@ -73,7 +73,7 @@ export const hubFields: INodeProperties[] = [
 		description: 'The ID of the hub object for lookup',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -123,10 +123,10 @@ export const hubFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -142,10 +142,10 @@ export const hubFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

@@ -35,7 +35,7 @@ export const commitFields: INodeProperties[] = [
 					'The branch to switch to before committing. If empty or not set, will commit to current branch.',
 			},
 			{
-				displayName: 'Paths to Add',
+				displayName: 'Paths to add',
 				name: 'pathsToAdd',
 				type: 'string',
 				default: '',

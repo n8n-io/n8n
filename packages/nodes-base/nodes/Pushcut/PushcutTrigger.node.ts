@@ -39,7 +39,7 @@ export class PushcutTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Action Name',
+				displayName: 'Action name',
 				name: 'actionName',
 				type: 'string',
 				description:

@@ -31,7 +31,7 @@ export const documentOperations: INodeProperties[] = [
 				action: 'Get a document',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many documents',
 				action: 'Get many documents',
@@ -52,7 +52,7 @@ export const documentFields: INodeProperties[] = [
 	//       document: getAll
 	// ----------------------------------
 	{
-		displayName: 'DocType Name or ID',
+		displayName: 'DocType name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
@@ -70,7 +70,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -103,7 +103,7 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -113,7 +113,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -130,7 +130,7 @@ export const documentFields: INodeProperties[] = [
 				name: 'filters',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -141,7 +141,7 @@ export const documentFields: INodeProperties[] = [
 						name: 'customProperty',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								description:
@@ -202,7 +202,7 @@ export const documentFields: INodeProperties[] = [
 	//       document: create
 	// ----------------------------------
 	{
-		displayName: 'DocType Name or ID',
+		displayName: 'DocType name or ID',
 		name: 'docType',
 		type: 'options',
 		default: '',
@@ -224,7 +224,7 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Properties',
 		name: 'properties',
 		type: 'fixedCollection',
-		placeholder: 'Add Property',
+		placeholder: 'Add property',
 		required: true,
 		default: {},
 		typeOptions: {
@@ -240,10 +240,10 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Property',
 				name: 'customProperty',
-				placeholder: 'Add Property',
+				placeholder: 'Add property',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'field',
 						type: 'options',
 						description:
@@ -269,7 +269,7 @@ export const documentFields: INodeProperties[] = [
 	//          document: get
 	// ----------------------------------
 	{
-		displayName: 'DocType Name or ID',
+		displayName: 'DocType name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
@@ -287,7 +287,7 @@ export const documentFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Document Name',
+		displayName: 'Document name',
 		name: 'documentName',
 		type: 'string',
 		default: '',
@@ -305,7 +305,7 @@ export const documentFields: INodeProperties[] = [
 	//       document: delete
 	// ----------------------------------
 	{
-		displayName: 'DocType Name or ID',
+		displayName: 'DocType name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
@@ -323,7 +323,7 @@ export const documentFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Document Name',
+		displayName: 'Document name',
 		name: 'documentName',
 		type: 'string',
 		default: '',
@@ -341,7 +341,7 @@ export const documentFields: INodeProperties[] = [
 	//       document: update
 	// ----------------------------------
 	{
-		displayName: 'DocType Name or ID',
+		displayName: 'DocType name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
@@ -359,7 +359,7 @@ export const documentFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Document Name',
+		displayName: 'Document name',
 		name: 'documentName',
 		type: 'string',
 		default: '',
@@ -376,7 +376,7 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Properties',
 		name: 'properties',
 		type: 'fixedCollection',
-		placeholder: 'Add Property',
+		placeholder: 'Add property',
 		description: 'Properties of request body',
 		default: {},
 		typeOptions: {
@@ -394,7 +394,7 @@ export const documentFields: INodeProperties[] = [
 				name: 'customProperty',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field name or ID',
 						name: 'field',
 						type: 'options',
 						description:

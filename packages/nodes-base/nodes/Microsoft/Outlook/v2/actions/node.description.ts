@@ -74,7 +74,7 @@ export const description: INodeTypeDescription = {
 					value: 'microsoftOAuth2Api',
 				},
 				{
-					name: 'Microsoft Entra Service Principal (App-Only)',
+					name: 'Microsoft Entra service principal (app-only)',
 					value: 'microsoftEntraServicePrincipalApi',
 					description:
 						'App-only access via a Microsoft Entra app registration. Choose which mailbox to act on under "Mailbox".',
@@ -123,7 +123,7 @@ export const description: INodeTypeDescription = {
 					value: 'folder',
 				},
 				{
-					name: 'Folder Message',
+					name: 'Folder message',
 					value: 'folderMessage',
 				},
 				{
@@ -131,7 +131,7 @@ export const description: INodeTypeDescription = {
 					value: 'message',
 				},
 				{
-					name: 'Message Attachment',
+					name: 'Message attachment',
 					value: 'messageAttachment',
 				},
 			],

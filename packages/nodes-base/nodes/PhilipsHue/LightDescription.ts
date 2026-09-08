@@ -25,7 +25,7 @@ export const lightOperations: INodeProperties[] = [
 				action: 'Get a light',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many lights',
 				action: 'Get many lights',
@@ -63,7 +63,7 @@ export const lightFields: INodeProperties[] = [
 	/*                                 light:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -115,7 +115,7 @@ export const lightFields: INodeProperties[] = [
 	/*                                 light:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Light Name or ID',
+		displayName: 'Light name or ID',
 		name: 'lightId',
 		type: 'options',
 		description:
@@ -148,10 +148,10 @@ export const lightFields: INodeProperties[] = [
 		description: 'On/Off state of the light',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['light'],
@@ -161,7 +161,7 @@ export const lightFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Alert Effect',
+				displayName: 'Alert effect',
 				name: 'alert',
 				type: 'options',
 				options: [
@@ -198,7 +198,7 @@ export const lightFields: INodeProperties[] = [
 					'The brightness value to set the light to. Brightness is a scale from 1 (the minimum the light is capable of) to 254 (the maximum).',
 			},
 			{
-				displayName: 'Brightness Increments',
+				displayName: 'Brightness increments',
 				name: 'bri_inc',
 				type: 'number',
 				typeOptions: {
@@ -210,7 +210,7 @@ export const lightFields: INodeProperties[] = [
 					'Increments or decrements the value of the brightness. This value is ignored if the Brightness attribute is provided.',
 			},
 			{
-				displayName: 'Color Temperature',
+				displayName: 'Color temperature',
 				name: 'ct',
 				type: 'number',
 				default: 0,
@@ -218,7 +218,7 @@ export const lightFields: INodeProperties[] = [
 					'The Mired color temperature of the light. 2012 connected lights are capable of 153 (6500K) to 500 (2000K).',
 			},
 			{
-				displayName: 'Color Temperature Increments',
+				displayName: 'Color temperature increments',
 				name: 'ct_inc',
 				type: 'number',
 				typeOptions: {
@@ -239,7 +239,7 @@ export const lightFields: INodeProperties[] = [
 					'The x and y coordinates of a color in CIE color space. The first entry is the x coordinate and the second entry is the y coordinate. Both x and y are between 0 and 1',
 			},
 			{
-				displayName: 'Coordinates Increments',
+				displayName: 'Coordinates increments',
 				name: 'xy_inc',
 				type: 'string',
 				default: '',
@@ -248,7 +248,7 @@ export const lightFields: INodeProperties[] = [
 					'Increments or decrements the value of the xy. This value is ignored if the Coordinates attribute is provided. Any ongoing color transition is stopped. Max value [0.5, 0.5]',
 			},
 			{
-				displayName: 'Dynamic Effect',
+				displayName: 'Dynamic effect',
 				name: 'effect',
 				type: 'options',
 				options: [
@@ -257,7 +257,7 @@ export const lightFields: INodeProperties[] = [
 						value: 'none',
 					},
 					{
-						name: 'Color Loop',
+						name: 'Color loop',
 						value: 'colorloop',
 					},
 				],
@@ -277,7 +277,7 @@ export const lightFields: INodeProperties[] = [
 					'The hue value to set light to.The hue value is a wrapping value between 0 and 65535. Both 0 and 65535 are red, 25500 is green and 46920 is blue.',
 			},
 			{
-				displayName: 'Hue Increments',
+				displayName: 'Hue increments',
 				name: 'hue_inc',
 				type: 'number',
 				typeOptions: {
@@ -301,7 +301,7 @@ export const lightFields: INodeProperties[] = [
 					'Saturation of the light. 254 is the most saturated (colored) and 0 is the least saturated (white).',
 			},
 			{
-				displayName: 'Saturation Increments',
+				displayName: 'Saturation increments',
 				name: 'sat_inc',
 				type: 'number',
 				typeOptions: {
@@ -313,7 +313,7 @@ export const lightFields: INodeProperties[] = [
 					'Increments or decrements the value of the sat. This value is ignored if the Saturation attribute is provided.',
 			},
 			{
-				displayName: 'Transition Time',
+				displayName: 'Transition time',
 				name: 'transitiontime',
 				type: 'number',
 				typeOptions: {

@@ -41,10 +41,10 @@ export const description: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select an Agent...',
+				placeholder: 'Select an agent...',
 				typeOptions: {
 					searchListMethod: 'listSearchAgents',
 					searchFilterRequired: false,
@@ -69,7 +69,7 @@ export const description: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Agent Parameters',
+		displayName: 'Agent parameters',
 		name: 'agentParameters',
 		type: 'resourceMapper',
 		noDataExpression: true,
@@ -111,7 +111,7 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'Await Agent',
+		displayName: 'Await agent',
 		name: 'awaitExecution',
 		type: 'boolean',
 		default: true,

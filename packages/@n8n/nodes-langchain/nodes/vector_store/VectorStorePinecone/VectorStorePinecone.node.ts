@@ -11,7 +11,7 @@ import { pineconeIndexRLC } from '../shared/descriptions';
 const sharedFields: INodeProperties[] = [pineconeIndexRLC];
 
 const pineconeNamespaceField: INodeProperties = {
-	displayName: 'Pinecone Namespace',
+	displayName: 'Pinecone namespace',
 	name: 'pineconeNamespace',
 	type: 'string',
 	description:
@@ -24,7 +24,7 @@ const retrieveFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [pineconeNamespaceField, metadataFilterField],
 	},
@@ -35,11 +35,11 @@ const insertFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Clear Namespace',
+				displayName: 'Clear namespace',
 				name: 'clearNamespace',
 				type: 'boolean',
 				default: false,

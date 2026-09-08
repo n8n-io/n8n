@@ -71,11 +71,11 @@ export class Baserow implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Username & Password',
+						name: 'Username & password',
 						value: 'usernamePassword',
 					},
 					{
-						name: 'Database Token',
+						name: 'Database token',
 						value: 'databaseToken',
 					},
 				],
@@ -106,19 +106,19 @@ export class Baserow implements INodeType {
 				},
 				options: [
 					{
-						name: 'Batch Create',
+						name: 'Batch create',
 						value: 'batchCreate',
 						description: 'Create up to 200 rows in one request',
 						action: 'Create multiple rows',
 					},
 					{
-						name: 'Batch Delete',
+						name: 'Batch delete',
 						value: 'batchDelete',
 						description: 'Delete up to 200 rows in one request',
 						action: 'Delete multiple rows',
 					},
 					{
-						name: 'Batch Update',
+						name: 'Batch update',
 						value: 'batchUpdate',
 						description: 'Update up to 200 rows in one request',
 						action: 'Update multiple rows',
@@ -142,7 +142,7 @@ export class Baserow implements INodeType {
 						action: 'Get a row',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Retrieve many rows',
 						action: 'Get many rows',

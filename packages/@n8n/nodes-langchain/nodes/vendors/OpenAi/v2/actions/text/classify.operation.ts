@@ -5,7 +5,7 @@ import { apiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Text Input',
+		displayName: 'Text input',
 		name: 'input',
 		type: 'string',
 		placeholder: 'e.g. Sample text goes here',
@@ -16,7 +16,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: false,
@@ -25,12 +25,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Use Stable Model',
+				displayName: 'Use stable model',
 				name: 'useStableModel',
 				type: 'boolean',
 				default: false,

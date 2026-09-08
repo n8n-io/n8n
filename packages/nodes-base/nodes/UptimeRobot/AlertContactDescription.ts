@@ -31,7 +31,7 @@ export const alertContactOperations: INodeProperties[] = [
 				action: 'Get an alert contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many alert contacts',
 				action: 'Get many alert contacts',
@@ -52,7 +52,7 @@ export const alertContactFields: INodeProperties[] = [
 	/*                                alertContact:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Friendly Name',
+		displayName: 'Friendly name',
 		name: 'friendlyName',
 		type: 'string',
 		required: true,
@@ -77,7 +77,7 @@ export const alertContactFields: INodeProperties[] = [
 				value: 4,
 			},
 			{
-				name: 'E-Mail',
+				name: 'E-mail',
 				value: 2,
 			},
 			{
@@ -159,7 +159,7 @@ export const alertContactFields: INodeProperties[] = [
 	/*                                alertContact:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -193,7 +193,7 @@ export const alertContactFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -203,7 +203,7 @@ export const alertContactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Alert Contact IDs',
+				displayName: 'Alert contact IDs',
 				name: 'alert_contacts',
 				type: 'string',
 				default: '',
@@ -230,10 +230,10 @@ export const alertContactFields: INodeProperties[] = [
 		description: 'The ID of the alert contact',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -243,7 +243,7 @@ export const alertContactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Friendly Name',
+				displayName: 'Friendly name',
 				name: 'friendly_name',
 				type: 'string',
 				default: '',

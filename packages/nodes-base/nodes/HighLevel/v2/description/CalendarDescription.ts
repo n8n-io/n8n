@@ -12,7 +12,7 @@ export const calendarOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Book Appointment',
+				name: 'Book appointment',
 				value: 'bookAppointment',
 				action: 'Book appointment in a calendar',
 				routing: {
@@ -23,7 +23,7 @@ export const calendarOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get Free Slots',
+				name: 'Get free slots',
 				value: 'getFreeSlots',
 				action: 'Get free slots of a calendar',
 				routing: {
@@ -98,7 +98,7 @@ const bookAppointmentProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Start Time',
+		displayName: 'Start time',
 		name: 'startTime',
 		type: 'string',
 		required: true,
@@ -118,10 +118,10 @@ const bookAppointmentProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -131,7 +131,7 @@ const bookAppointmentProperties: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'End Time',
+				displayName: 'End time',
 				name: 'endTime',
 				type: 'string',
 				description: 'Example: 2021-06-23T04:30:00+05:30',
@@ -156,7 +156,7 @@ const bookAppointmentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Appointment Status',
+				displayName: 'Appointment status',
 				name: 'appointmentStatus',
 				type: 'options',
 				default: 'new',
@@ -180,7 +180,7 @@ const bookAppointmentProperties: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'No Show',
+						name: 'No show',
 						value: 'noshow',
 					},
 					{
@@ -196,7 +196,7 @@ const bookAppointmentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Assigned User ID',
+				displayName: 'Assigned user ID',
 				name: 'assignedUserId',
 				type: 'string',
 				default: '',
@@ -220,7 +220,7 @@ const bookAppointmentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Ignore Date Range',
+				displayName: 'Ignore date range',
 				name: 'ignoreDateRange',
 				type: 'boolean',
 				default: false,
@@ -262,7 +262,7 @@ const getFreeSlotsProperties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Start Date',
+		displayName: 'Start date',
 		name: 'startDate',
 		type: 'number',
 		//type: 'dateTime' TODO
@@ -283,7 +283,7 @@ const getFreeSlotsProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'End Date',
+		displayName: 'End date',
 		name: 'endDate',
 		type: 'number',
 		//type: 'dateTime' TODO
@@ -304,10 +304,10 @@ const getFreeSlotsProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -364,7 +364,7 @@ const getFreeSlotsProperties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Apply Look Busy',
+				displayName: 'Apply look busy',
 				name: 'enableLookBusy',
 				type: 'boolean',
 				default: false,

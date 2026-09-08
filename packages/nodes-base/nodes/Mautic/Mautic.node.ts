@@ -78,7 +78,7 @@ export class Mautic implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Campaign Contact',
+						name: 'Campaign contact',
 						value: 'campaignContact',
 						description: 'Add/remove contacts to/from a campaign',
 					},
@@ -88,7 +88,7 @@ export class Mautic implements INodeType {
 						description: 'Create or modify a company',
 					},
 					{
-						name: 'Company Contact',
+						name: 'Company contact',
 						value: 'companyContact',
 						description: 'Add/remove contacts to/from a company',
 					},
@@ -98,12 +98,12 @@ export class Mautic implements INodeType {
 						description: 'Create & modify contacts',
 					},
 					{
-						name: 'Contact Segment',
+						name: 'Contact segment',
 						value: 'contactSegment',
 						description: 'Add/remove contacts to/from a segment',
 					},
 					{
-						name: 'Segment Email',
+						name: 'Segment email',
 						value: 'segmentEmail',
 						description: 'Send an email',
 					},

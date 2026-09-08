@@ -56,10 +56,10 @@ export const eventFields: INodeProperties[] = [
 		description: "The user's distinct ID",
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['event'],
@@ -72,7 +72,7 @@ export const eventFields: INodeProperties[] = [
 				displayName: 'Properties',
 				name: 'propertiesUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Property',
+				placeholder: 'Add property',
 				default: {},
 				typeOptions: {
 					multipleValues: true,

@@ -62,7 +62,7 @@ export class NextCloud implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -229,7 +229,7 @@ export class NextCloud implements INodeType {
 						action: 'Get a user',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Retrieve a list of users',
 						action: 'Get many users',
@@ -252,7 +252,7 @@ export class NextCloud implements INodeType {
 			//         file/folder:copy
 			// ----------------------------------
 			{
-				displayName: 'From Path',
+				displayName: 'From path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -267,7 +267,7 @@ export class NextCloud implements INodeType {
 				description: 'The path of file or folder to copy. The path should start with "/".',
 			},
 			{
-				displayName: 'To Path',
+				displayName: 'To path',
 				name: 'toPath',
 				type: 'string',
 				default: '',
@@ -286,7 +286,7 @@ export class NextCloud implements INodeType {
 			//         file/folder:delete
 			// ----------------------------------
 			{
-				displayName: 'Delete Path',
+				displayName: 'Delete path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -306,7 +306,7 @@ export class NextCloud implements INodeType {
 			//         file/folder:move
 			// ----------------------------------
 			{
-				displayName: 'From Path',
+				displayName: 'From path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -321,7 +321,7 @@ export class NextCloud implements INodeType {
 				description: 'The path of file or folder to move. The path should start with "/".',
 			},
 			{
-				displayName: 'To Path',
+				displayName: 'To path',
 				name: 'toPath',
 				type: 'string',
 				default: '',
@@ -340,7 +340,7 @@ export class NextCloud implements INodeType {
 			//         file:download
 			// ----------------------------------
 			{
-				displayName: 'File Path',
+				displayName: 'File path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -356,7 +356,7 @@ export class NextCloud implements INodeType {
 					'The file path of the file to download. Has to contain the full path. The path should start with "/".',
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -374,7 +374,7 @@ export class NextCloud implements INodeType {
 			//         file:upload
 			// ----------------------------------
 			{
-				displayName: 'File Path',
+				displayName: 'File path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -390,7 +390,7 @@ export class NextCloud implements INodeType {
 					'The absolute file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
-				displayName: 'Binary File',
+				displayName: 'Binary file',
 				name: 'binaryDataUpload',
 				type: 'boolean',
 				default: false,
@@ -403,7 +403,7 @@ export class NextCloud implements INodeType {
 				},
 			},
 			{
-				displayName: 'File Content',
+				displayName: 'File content',
 				name: 'fileContent',
 				type: 'string',
 				default: '',
@@ -418,7 +418,7 @@ export class NextCloud implements INodeType {
 				description: 'The text content of the file to upload',
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -438,7 +438,7 @@ export class NextCloud implements INodeType {
 			//         file:share
 			// ----------------------------------
 			{
-				displayName: 'File Path',
+				displayName: 'File path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -454,7 +454,7 @@ export class NextCloud implements INodeType {
 					'The file path of the file to share. Has to contain the full path. The path should start with "/".',
 			},
 			{
-				displayName: 'Share Type',
+				displayName: 'Share type',
 				name: 'shareType',
 				type: 'options',
 				displayOptions: {
@@ -477,13 +477,13 @@ export class NextCloud implements INodeType {
 						value: 1,
 					},
 					{
-						name: 'Internal Link',
+						name: 'Internal link',
 						value: 200,
 						description:
 							'Generates an internal Nextcloud URL (not a public share). Uses the file/folder ID from a PROPFIND call. The output is { link: "..." }. Do not use with shareWith fields.',
 					},
 					{
-						name: 'Public Link',
+						name: 'Public link',
 						value: 3,
 					},
 					{
@@ -639,7 +639,7 @@ export class NextCloud implements INodeType {
 			//         folder:list
 			// ----------------------------------
 			{
-				displayName: 'Folder Path',
+				displayName: 'Folder path',
 				name: 'path',
 				type: 'string',
 				default: '',
@@ -691,10 +691,10 @@ export class NextCloud implements INodeType {
 				description: 'The email of the user to invite',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -704,7 +704,7 @@ export class NextCloud implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Display Name',
+						displayName: 'Display name',
 						name: 'displayName',
 						type: 'string',
 						default: '',
@@ -734,7 +734,7 @@ export class NextCloud implements INodeType {
 			//         user:getAll
 			// ----------------------------------
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -797,7 +797,7 @@ export class NextCloud implements INodeType {
 			//         user:update
 			// ----------------------------------
 			{
-				displayName: 'Update Fields',
+				displayName: 'Update fields',
 				name: 'updateFields',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -828,7 +828,7 @@ export class NextCloud implements INodeType {
 										description: 'The new address for the user',
 									},
 									{
-										name: 'Display Name',
+										name: 'Display name',
 										value: 'displayname',
 										description: 'The new display name for the user',
 									},

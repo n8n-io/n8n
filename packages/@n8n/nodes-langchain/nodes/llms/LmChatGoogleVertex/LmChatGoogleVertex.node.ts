@@ -84,7 +84,7 @@ export class LmChatGoogleVertex implements INodeType {
 				description: 'Select or enter your Google Cloud project ID',
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						typeOptions: {
@@ -99,7 +99,7 @@ export class LmChatGoogleVertex implements INodeType {
 				],
 			},
 			{
-				displayName: 'Model Name',
+				displayName: 'Model name',
 				name: 'modelName',
 				type: 'string',
 				description:

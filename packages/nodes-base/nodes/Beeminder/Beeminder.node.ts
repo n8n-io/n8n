@@ -82,7 +82,7 @@ export class Beeminder implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Token',
+						name: 'API token',
 						value: 'apiToken',
 					},
 					{
@@ -157,7 +157,7 @@ export class Beeminder implements INodeType {
 						action: 'Create datapoint for goal',
 					},
 					{
-						name: 'Create All',
+						name: 'Create all',
 						value: 'createAll',
 						description: 'Create multiple datapoints at once',
 						action: 'Create multiple datapoints at once',
@@ -175,7 +175,7 @@ export class Beeminder implements INodeType {
 						action: 'Get a single datapoint',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many datapoints for a goal',
 						action: 'Get many datapoints for a goal',
@@ -215,13 +215,13 @@ export class Beeminder implements INodeType {
 						action: 'Get a specific goal',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many goals',
 						action: 'Get many goals',
 					},
 					{
-						name: 'Get Archived',
+						name: 'Get archived',
 						value: 'getArchived',
 						description: 'Get archived goals',
 						action: 'Get archived goals',
@@ -239,19 +239,19 @@ export class Beeminder implements INodeType {
 						action: 'Refresh goal data',
 					},
 					{
-						name: 'Short Circuit',
+						name: 'Short circuit',
 						value: 'shortCircuit',
 						description: 'Short circuit pledge',
 						action: 'Short circuit pledge',
 					},
 					{
-						name: 'Step Down',
+						name: 'Step down',
 						value: 'stepDown',
 						description: 'Step down pledge',
 						action: 'Step down pledge',
 					},
 					{
-						name: 'Cancel Step Down',
+						name: 'Cancel step down',
 						value: 'cancelStepDown',
 						action: 'Cancel step down',
 					},
@@ -287,7 +287,7 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Goal Name or ID',
+				displayName: 'Goal name or ID',
 				name: 'goalName',
 				type: 'options',
 				typeOptions: {
@@ -304,7 +304,7 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Goal Name or ID',
+				displayName: 'Goal name or ID',
 				name: 'goalName',
 				type: 'options',
 				typeOptions: {
@@ -322,7 +322,7 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Goal Name or ID',
+				displayName: 'Goal name or ID',
 				name: 'goalName',
 				type: 'options',
 				typeOptions: {
@@ -371,7 +371,7 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Goal Slug',
+				displayName: 'Goal slug',
 				name: 'slug',
 				type: 'string',
 				displayOptions: {
@@ -385,7 +385,7 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Goal Title',
+				displayName: 'Goal title',
 				name: 'title',
 				type: 'string',
 				displayOptions: {
@@ -399,7 +399,7 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Goal Type',
+				displayName: 'Goal type',
 				name: 'goal_type',
 				type: 'options',
 				displayOptions: {
@@ -445,7 +445,7 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Goal Units',
+				displayName: 'Goal units',
 				name: 'gunits',
 				type: 'string',
 				displayOptions: {
@@ -459,7 +459,7 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
@@ -518,10 +518,10 @@ export class Beeminder implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -556,10 +556,10 @@ export class Beeminder implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -576,7 +576,7 @@ export class Beeminder implements INodeType {
 						description: 'Charge explanation',
 					},
 					{
-						displayName: 'Dry Run',
+						displayName: 'Dry run',
 						name: 'dryrun',
 						type: 'boolean',
 						default: false,
@@ -585,10 +585,10 @@ export class Beeminder implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -598,14 +598,14 @@ export class Beeminder implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Goal Date',
+						displayName: 'Goal date',
 						name: 'goaldate',
 						type: 'dateTime',
 						default: null,
 						description: 'Target date for the goal',
 					},
 					{
-						displayName: 'Goal Value',
+						displayName: 'Goal value',
 						name: 'goalval',
 						type: 'number',
 						default: null,
@@ -619,7 +619,7 @@ export class Beeminder implements INodeType {
 						description: 'Rate of progress (units per day)',
 					},
 					{
-						displayName: 'Initial Value',
+						displayName: 'Initial value',
 						name: 'initval',
 						type: 'number',
 						default: 0,
@@ -633,14 +633,14 @@ export class Beeminder implements INodeType {
 						description: 'Whether the goal is secret',
 					},
 					{
-						displayName: 'Data Public',
+						displayName: 'Data public',
 						name: 'datapublic',
 						type: 'boolean',
 						default: false,
 						description: 'Whether the data is public',
 					},
 					{
-						displayName: 'Data Source',
+						displayName: 'Data source',
 						name: 'datasource',
 						type: 'options',
 						options: [
@@ -665,7 +665,7 @@ export class Beeminder implements INodeType {
 						description: 'Data source for the goal',
 					},
 					{
-						displayName: 'Dry Run',
+						displayName: 'Dry run',
 						name: 'dryrun',
 						type: 'boolean',
 						default: false,
@@ -682,10 +682,10 @@ export class Beeminder implements INodeType {
 				],
 			},
 			{
-				displayName: 'Update Fields',
+				displayName: 'Update fields',
 				name: 'updateFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -702,7 +702,7 @@ export class Beeminder implements INodeType {
 						description: 'Human-readable title for the goal',
 					},
 					{
-						displayName: 'Y-Axis',
+						displayName: 'Y-axis',
 						name: 'yaxis',
 						type: 'string',
 						default: '',
@@ -732,14 +732,14 @@ export class Beeminder implements INodeType {
 						description: 'Whether the goal is secret',
 					},
 					{
-						displayName: 'Data Public',
+						displayName: 'Data public',
 						name: 'datapublic',
 						type: 'boolean',
 						default: false,
 						description: 'Whether the data is public',
 					},
 					{
-						displayName: 'Road All',
+						displayName: 'Road all',
 						name: 'roadall',
 						type: 'json',
 						default: '[]',
@@ -748,7 +748,7 @@ export class Beeminder implements INodeType {
 						placeholder: '[["2023-01-01", 0, null], [null, 100, 1]]',
 					},
 					{
-						displayName: 'Data Source',
+						displayName: 'Data source',
 						name: 'datasource',
 						type: 'options',
 						options: [
@@ -783,10 +783,10 @@ export class Beeminder implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -796,7 +796,7 @@ export class Beeminder implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Include Datapoints',
+						displayName: 'Include datapoints',
 						name: 'datapoints',
 						type: 'boolean',
 						default: false,
@@ -813,10 +813,10 @@ export class Beeminder implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -833,7 +833,7 @@ export class Beeminder implements INodeType {
 						description: 'Whether to include associations in the response',
 					},
 					{
-						displayName: 'Diff Since',
+						displayName: 'Diff since',
 						name: 'diff_since',
 						type: 'dateTime',
 						default: null,
@@ -856,7 +856,7 @@ export class Beeminder implements INodeType {
 							'Whether to include the goal attributes called road, roadall, and fullroad will be stripped from any goal objects returned with the user',
 					},
 					{
-						displayName: 'Datapoints Count',
+						displayName: 'Datapoints count',
 						name: 'datapoints_count',
 						type: 'number',
 						default: null,
@@ -865,10 +865,10 @@ export class Beeminder implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -888,10 +888,10 @@ export class Beeminder implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -947,7 +947,7 @@ export class Beeminder implements INodeType {
 						description: 'Used to paginate results, 1-indexed, meaning page 1 is the first page',
 					},
 					{
-						displayName: 'Per Page',
+						displayName: 'Per page',
 						name: 'per',
 						type: 'number',
 						displayOptions: {
@@ -965,10 +965,10 @@ export class Beeminder implements INodeType {
 				],
 			},
 			{
-				displayName: 'Update Fields',
+				displayName: 'Update fields',
 				name: 'updateFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {

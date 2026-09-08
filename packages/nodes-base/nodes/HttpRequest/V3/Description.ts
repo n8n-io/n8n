@@ -66,13 +66,13 @@ export const mainProperties: INodeProperties[] = [
 				value: 'none',
 			},
 			{
-				name: 'Predefined Credential Type',
+				name: 'Predefined credential type',
 				value: 'predefinedCredentialType',
 				description:
 					"We've already implemented auth for many services so that you don't have to set it up manually",
 			},
 			{
-				name: 'Generic Credential Type',
+				name: 'Generic credential type',
 				value: 'genericCredentialType',
 				description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
 			},
@@ -84,7 +84,7 @@ export const mainProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Credential Type',
+		displayName: 'Credential type',
 		name: 'nodeCredentialType',
 		type: 'credentialsSelect',
 		noDataExpression: true,
@@ -110,7 +110,7 @@ export const mainProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Generic Auth Type',
+		displayName: 'Generic auth type',
 		name: 'genericAuthType',
 		type: 'credentialsSelect',
 		required: true,
@@ -131,7 +131,7 @@ For what a template cannot express, use the matching type for new and existing c
 		},
 	},
 	{
-		displayName: 'SSL Certificates',
+		displayName: 'SSL certificates',
 		name: 'provideSslCertificates',
 		type: 'boolean',
 		default: false,
@@ -150,7 +150,7 @@ For what a template cannot express, use the matching type for new and existing c
 		},
 	},
 	{
-		displayName: 'SSL Certificate',
+		displayName: 'SSL certificate',
 		name: 'sslCertificate',
 		type: 'credentials',
 		default: '',
@@ -161,7 +161,7 @@ For what a template cannot express, use the matching type for new and existing c
 		},
 	},
 	{
-		displayName: 'Send Query Parameters',
+		displayName: 'Send query parameters',
 		name: 'sendQuery',
 		type: 'boolean',
 		default: false,
@@ -169,7 +169,7 @@ For what a template cannot express, use the matching type for new and existing c
 		description: 'Whether the request has query params or not',
 	},
 	{
-		displayName: 'Specify Query Parameters',
+		displayName: 'Specify query parameters',
 		name: 'specifyQuery',
 		type: 'options',
 		displayOptions: {
@@ -179,7 +179,7 @@ For what a template cannot express, use the matching type for new and existing c
 		},
 		options: [
 			{
-				name: 'Using Fields Below',
+				name: 'Using fields below',
 				value: 'keypair',
 			},
 			{
@@ -190,7 +190,7 @@ For what a template cannot express, use the matching type for new and existing c
 		default: 'keypair',
 	},
 	{
-		displayName: 'Query Parameters',
+		displayName: 'Query parameters',
 		name: 'queryParameters',
 		type: 'fixedCollection',
 		displayOptions: {
@@ -205,7 +205,7 @@ For what a template cannot express, use the matching type for new and existing c
 				itemTitle: '={{ $collection.item.value.name }}',
 			},
 		},
-		placeholder: 'Add Query Parameter',
+		placeholder: 'Add query parameter',
 		default: {
 			parameters: [
 				{
@@ -217,7 +217,7 @@ For what a template cannot express, use the matching type for new and existing c
 		options: [
 			{
 				name: 'parameters',
-				displayName: 'Query Parameter',
+				displayName: 'Query parameter',
 				builderHint: {
 					propertyHint: `NEVER put static authentication values (API keys, tokens, PATs) in queryParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "httpQueryAuth", and add credentials: { httpQueryAuth:
  newCredential("Name") }. Only use queryParameters for non-auth values. Dynamic values from previous nodes via expr() are acceptable.`,
@@ -252,7 +252,7 @@ For what a template cannot express, use the matching type for new and existing c
 		default: '',
 	},
 	{
-		displayName: 'Send Headers',
+		displayName: 'Send headers',
 		name: 'sendHeaders',
 		type: 'boolean',
 		default: false,
@@ -260,7 +260,7 @@ For what a template cannot express, use the matching type for new and existing c
 		description: 'Whether the request has headers or not',
 	},
 	{
-		displayName: 'Specify Headers',
+		displayName: 'Specify headers',
 		name: 'specifyHeaders',
 		type: 'options',
 		displayOptions: {
@@ -270,7 +270,7 @@ For what a template cannot express, use the matching type for new and existing c
 		},
 		options: [
 			{
-				name: 'Using Fields Below',
+				name: 'Using fields below',
 				value: 'keypair',
 			},
 			{
@@ -296,7 +296,7 @@ For what a template cannot express, use the matching type for new and existing c
 				itemTitle: '={{ $collection.item.value.name }}',
 			},
 		},
-		placeholder: 'Add Header',
+		placeholder: 'Add header',
 		default: {
 			parameters: [
 				{
@@ -343,7 +343,7 @@ For what a template cannot express, use the matching type for new and existing c
 		default: '',
 	},
 	{
-		displayName: 'Send Body',
+		displayName: 'Send body',
 		name: 'sendBody',
 		type: 'boolean',
 		default: false,
@@ -351,7 +351,7 @@ For what a template cannot express, use the matching type for new and existing c
 		description: 'Whether the request has a body or not',
 	},
 	{
-		displayName: 'Body Content Type',
+		displayName: 'Body content type',
 		name: 'contentType',
 		type: 'options',
 		displayOptions: {
@@ -361,11 +361,11 @@ For what a template cannot express, use the matching type for new and existing c
 		},
 		options: [
 			{
-				name: 'Form URL Encoded',
+				name: 'Form URL encoded',
 				value: 'form-urlencoded',
 			},
 			{
-				name: 'Form-Data',
+				name: 'Form-data',
 				value: 'multipart-form-data',
 			},
 			{
@@ -374,7 +374,7 @@ For what a template cannot express, use the matching type for new and existing c
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				name: 'n8n Binary File',
+				name: 'n8n binary file',
 				value: 'binaryData',
 			},
 			{
@@ -386,7 +386,7 @@ For what a template cannot express, use the matching type for new and existing c
 		description: 'Content-Type to use to send body parameters',
 	},
 	{
-		displayName: 'Specify Body',
+		displayName: 'Specify body',
 		name: 'specifyBody',
 		type: 'options',
 		displayOptions: {
@@ -397,7 +397,7 @@ For what a template cannot express, use the matching type for new and existing c
 		},
 		options: [
 			{
-				name: 'Using Fields Below',
+				name: 'Using fields below',
 				value: 'keypair',
 			},
 			{
@@ -411,7 +411,7 @@ For what a template cannot express, use the matching type for new and existing c
 			'The body can be specified using explicit fields (<code>keypair</code>) or using a JavaScript object (<code>json</code>)',
 	},
 	{
-		displayName: 'Body Parameters',
+		displayName: 'Body parameters',
 		name: 'bodyParameters',
 		type: 'fixedCollection',
 		builderHint: {
@@ -431,7 +431,7 @@ For what a template cannot express, use the matching type for new and existing c
 				itemTitle: '={{ $collection.item.value.name }}',
 			},
 		},
-		placeholder: 'Add Body Field',
+		placeholder: 'Add body field',
 		default: {
 			parameters: [
 				{
@@ -443,7 +443,7 @@ For what a template cannot express, use the matching type for new and existing c
 		options: [
 			{
 				name: 'parameters',
-				displayName: 'Body Field',
+				displayName: 'Body field',
 				values: [
 					{
 						displayName: 'Name',
@@ -497,7 +497,7 @@ For what a template cannot express, use the matching type for new and existing c
 				itemTitle: '={{ $collection.item.value.name }}',
 			},
 		},
-		placeholder: 'Add Body Field',
+		placeholder: 'Add body field',
 		default: {
 			parameters: [
 				{
@@ -509,7 +509,7 @@ For what a template cannot express, use the matching type for new and existing c
 		options: [
 			{
 				name: 'parameters',
-				displayName: 'Body Field',
+				displayName: 'Body field',
 				values: [
 					{
 						displayName: 'Type',
@@ -518,11 +518,11 @@ For what a template cannot express, use the matching type for new and existing c
 						options: [
 							{
 								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-								name: 'n8n Binary File',
+								name: 'n8n binary file',
 								value: 'formBinaryData',
 							},
 							{
-								name: 'Form Data',
+								name: 'Form data',
 								value: 'formData',
 							},
 						],
@@ -549,7 +549,7 @@ For what a template cannot express, use the matching type for new and existing c
 						description: 'Value of the field to set',
 					},
 					{
-						displayName: 'Input Data Field Name',
+						displayName: 'Input data field name',
 						name: 'inputDataFieldName',
 						type: 'string',
 						displayOptions: {
@@ -566,7 +566,7 @@ For what a template cannot express, use the matching type for new and existing c
 		],
 	},
 	{
-		displayName: 'Specify Body',
+		displayName: 'Specify body',
 		name: 'specifyBody',
 		type: 'options',
 		displayOptions: {
@@ -577,18 +577,18 @@ For what a template cannot express, use the matching type for new and existing c
 		},
 		options: [
 			{
-				name: 'Using Fields Below',
+				name: 'Using fields below',
 				value: 'keypair',
 			},
 			{
-				name: 'Using Single Field',
+				name: 'Using single field',
 				value: 'string',
 			},
 		],
 		default: 'keypair',
 	},
 	{
-		displayName: 'Body Fields',
+		displayName: 'Body fields',
 		name: 'bodyParameters',
 		type: 'fixedCollection',
 		displayOptions: {
@@ -604,7 +604,7 @@ For what a template cannot express, use the matching type for new and existing c
 				itemTitle: '={{ $collection.item.value.name }}',
 			},
 		},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {
 			parameters: [
 				{
@@ -651,7 +651,7 @@ For what a template cannot express, use the matching type for new and existing c
 		placeholder: 'field1=value1&field2=value2',
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'inputDataFieldName',
 		type: 'string',
 		displayOptions: {
@@ -664,7 +664,7 @@ For what a template cannot express, use the matching type for new and existing c
 		description: 'The name of the incoming field containing the binary file data to be processed',
 	},
 	{
-		displayName: 'Content Type',
+		displayName: 'Content type',
 		name: 'rawContentType',
 		type: 'string',
 		displayOptions: {
@@ -699,7 +699,7 @@ For what a template cannot express, use the matching type for new and existing c
 			{
 				displayName: 'Batching',
 				name: 'batching',
-				placeholder: 'Add Batching',
+				placeholder: 'Add batching',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -713,7 +713,7 @@ For what a template cannot express, use the matching type for new and existing c
 						name: 'batch',
 						values: [
 							{
-								displayName: 'Items per Batch',
+								displayName: 'Items per batch',
 								name: 'batchSize',
 								type: 'number',
 								typeOptions: {
@@ -725,7 +725,7 @@ For what a template cannot express, use the matching type for new and existing c
 							},
 							{
 								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-								displayName: 'Batch Interval (ms)',
+								displayName: 'Batch interval (ms)',
 								name: 'batchInterval',
 								type: 'number',
 								typeOptions: {
@@ -740,7 +740,7 @@ For what a template cannot express, use the matching type for new and existing c
 				],
 			},
 			{
-				displayName: 'Ignore SSL Issues (Insecure)',
+				displayName: 'Ignore SSL issues (insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				noDataExpression: true,
@@ -750,7 +750,7 @@ For what a template cannot express, use the matching type for new and existing c
 					'Whether to download the response even if SSL certificate validation is not possible',
 			},
 			{
-				displayName: 'Array Format in Query Parameters',
+				displayName: 'Array format in query parameters',
 				name: 'queryParameterArrays',
 				type: 'options',
 				displayOptions: {
@@ -760,19 +760,19 @@ For what a template cannot express, use the matching type for new and existing c
 				},
 				options: [
 					{
-						name: 'No Brackets',
+						name: 'No brackets',
 						value: 'repeat',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
 						description: 'e.g. foo=bar&foo=qux',
 					},
 					{
-						name: 'Brackets Only',
+						name: 'Brackets only',
 						value: 'brackets',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
 						description: 'e.g. foo[]=bar&foo[]=qux',
 					},
 					{
-						name: 'Brackets with Indices',
+						name: 'Brackets with indices',
 						value: 'indices',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
 						description: 'e.g. foo[0]=bar&foo[1]=qux',
@@ -781,7 +781,7 @@ For what a template cannot express, use the matching type for new and existing c
 				default: 'brackets',
 			},
 			{
-				displayName: 'Lowercase Headers',
+				displayName: 'Lowercase headers',
 				name: 'lowercaseHeaders',
 				type: 'boolean',
 				default: true,
@@ -790,7 +790,7 @@ For what a template cannot express, use the matching type for new and existing c
 			{
 				displayName: 'Redirects',
 				name: 'redirect',
-				placeholder: 'Add Redirect',
+				placeholder: 'Add redirect',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -802,7 +802,7 @@ For what a template cannot express, use the matching type for new and existing c
 						name: 'redirect',
 						values: [
 							{
-								displayName: 'Follow Redirects',
+								displayName: 'Follow redirects',
 								name: 'followRedirects',
 								type: 'boolean',
 								default: false,
@@ -810,7 +810,7 @@ For what a template cannot express, use the matching type for new and existing c
 								description: 'Whether to follow all redirects',
 							},
 							{
-								displayName: 'Max Redirects',
+								displayName: 'Max redirects',
 								name: 'maxRedirects',
 								type: 'number',
 								displayOptions: {
@@ -833,7 +833,7 @@ For what a template cannot express, use the matching type for new and existing c
 			{
 				displayName: 'Redirects',
 				name: 'redirect',
-				placeholder: 'Add Redirect',
+				placeholder: 'Add redirect',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: false,
@@ -847,7 +847,7 @@ For what a template cannot express, use the matching type for new and existing c
 						name: 'redirect',
 						values: [
 							{
-								displayName: 'Follow Redirects',
+								displayName: 'Follow redirects',
 								name: 'followRedirects',
 								type: 'boolean',
 								default: true,
@@ -855,7 +855,7 @@ For what a template cannot express, use the matching type for new and existing c
 								description: 'Whether to follow all redirects',
 							},
 							{
-								displayName: 'Max Redirects',
+								displayName: 'Max redirects',
 								name: 'maxRedirects',
 								type: 'number',
 								displayOptions: {
@@ -892,7 +892,7 @@ For what a template cannot express, use the matching type for new and existing c
 						name: 'response',
 						values: [
 							{
-								displayName: 'Include Response Headers and Status',
+								displayName: 'Include response headers and status',
 								name: 'fullResponse',
 								type: 'boolean',
 								default: false,
@@ -900,14 +900,14 @@ For what a template cannot express, use the matching type for new and existing c
 									'Whether to return the full response (headers and response status code) data instead of only the body',
 							},
 							{
-								displayName: 'Never Error',
+								displayName: 'Never error',
 								name: 'neverError',
 								type: 'boolean',
 								default: false,
 								description: 'Whether to succeeds also when status code is not 2xx',
 							},
 							{
-								displayName: 'Response Format',
+								displayName: 'Response format',
 								name: 'responseFormat',
 								type: 'options',
 								noDataExpression: true,
@@ -933,7 +933,7 @@ For what a template cannot express, use the matching type for new and existing c
 								description: 'The format in which the data gets returned from the URL',
 							},
 							{
-								displayName: 'Put Output in Field',
+								displayName: 'Put output in field',
 								name: 'outputPropertyName',
 								type: 'string',
 								default: 'data',
@@ -967,7 +967,7 @@ For what a template cannot express, use the matching type for new and existing c
 						name: 'pagination',
 						values: [
 							{
-								displayName: 'Pagination Mode',
+								displayName: 'Pagination mode',
 								name: 'paginationMode',
 								type: 'options',
 								typeOptions: {
@@ -979,11 +979,11 @@ For what a template cannot express, use the matching type for new and existing c
 										value: 'off',
 									},
 									{
-										name: 'Update a Parameter in Each Request',
+										name: 'Update a parameter in each request',
 										value: 'updateAParameterInEachRequest',
 									},
 									{
-										name: 'Response Contains Next URL',
+										name: 'Response contains next URL',
 										value: 'responseContainsNextURL',
 									},
 								],
@@ -1032,7 +1032,7 @@ For what a template cannot express, use the matching type for new and existing c
 											'={{ (() => { const name = $collection.item.value.name; if (!name) return ""; const typeName = $collection.item.properties.find(p => p.name === "type").options.find(o => o.value === $collection.item.value.type).name; return typeName + ": " + name; })() }}',
 									},
 								},
-								placeholder: 'Add Parameter',
+								placeholder: 'Add parameter',
 								default: {
 									parameters: [
 										{
@@ -1087,7 +1087,7 @@ For what a template cannot express, use the matching type for new and existing c
 								],
 							},
 							{
-								displayName: 'Pagination Complete When',
+								displayName: 'Pagination complete when',
 								name: 'paginationCompleteWhen',
 								type: 'options',
 								typeOptions: {
@@ -1100,11 +1100,11 @@ For what a template cannot express, use the matching type for new and existing c
 								},
 								options: [
 									{
-										name: 'Response Is Empty',
+										name: 'Response is empty',
 										value: 'responseIsEmpty',
 									},
 									{
-										name: 'Receive Specific Status Code(s)',
+										name: 'Receive specific status code(s)',
 										value: 'receiveSpecificStatusCodes',
 									},
 									{
@@ -1116,7 +1116,7 @@ For what a template cannot express, use the matching type for new and existing c
 								description: 'When should no further requests be made?',
 							},
 							{
-								displayName: 'Status Code(s) when Complete',
+								displayName: 'Status code(s) when complete',
 								name: 'statusCodesWhenComplete',
 								type: 'string',
 								typeOptions: {
@@ -1131,7 +1131,7 @@ For what a template cannot express, use the matching type for new and existing c
 								description: 'Accepts comma-separated values',
 							},
 							{
-								displayName: 'Complete Expression',
+								displayName: 'Complete expression',
 								name: 'completeExpression',
 								type: 'string',
 								displayOptions: {
@@ -1144,7 +1144,7 @@ For what a template cannot express, use the matching type for new and existing c
 									'Should evaluate to true when pagination is complete. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination" target="_blank">More info</a>.',
 							},
 							{
-								displayName: 'Limit Pages Fetched',
+								displayName: 'Limit pages fetched',
 								name: 'limitPagesFetched',
 								type: 'boolean',
 								typeOptions: {
@@ -1160,7 +1160,7 @@ For what a template cannot express, use the matching type for new and existing c
 								description: 'Whether the number of requests should be limited',
 							},
 							{
-								displayName: 'Max Pages',
+								displayName: 'Max pages',
 								name: 'maxRequests',
 								type: 'number',
 								typeOptions: {
@@ -1176,7 +1176,7 @@ For what a template cannot express, use the matching type for new and existing c
 							},
 							{
 								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-								displayName: 'Interval Between Requests (ms)',
+								displayName: 'Interval between requests (ms)',
 								name: 'requestInterval',
 								type: 'number',
 								displayOptions: {
@@ -1215,7 +1215,7 @@ For what a template cannot express, use the matching type for new and existing c
 					'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
 			},
 			{
-				displayName: 'Send Credentials on Cross-Origin Redirect',
+				displayName: 'Send credentials on cross-origin redirect',
 				name: 'sendCredentialsOnCrossOriginRedirect',
 				type: 'boolean',
 				default: false,

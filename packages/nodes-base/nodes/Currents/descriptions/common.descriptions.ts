@@ -9,7 +9,7 @@ export const projectRLC: INodeProperties = {
 	description: 'The Currents project',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a project...',
@@ -32,7 +32,7 @@ const COMMA_TO_ARRAY_VALUE =
 	"={{ $value && String($value).trim() ? String($value).split(',').map(v => v.trim()).filter(Boolean) : undefined }}";
 
 export const filterAuthorsOption: INodeProperties = {
-	displayName: 'Git Authors',
+	displayName: 'Git authors',
 	name: 'authors',
 	type: 'string',
 	default: '',

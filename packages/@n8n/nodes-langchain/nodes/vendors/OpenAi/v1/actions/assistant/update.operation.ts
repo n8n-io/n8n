@@ -14,12 +14,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Code Interpreter',
+				displayName: 'Code interpreter',
 				name: 'codeInterpreter',
 				type: 'boolean',
 				default: false,
@@ -61,7 +61,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Knowledge Retrieval',
+				displayName: 'Knowledge retrieval',
 				name: 'knowledgeRetrieval',
 				type: 'boolean',
 				default: false,
@@ -79,7 +79,7 @@ const properties: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Remove All Custom Tools (Functions)',
+				displayName: 'Remove all custom tools (functions)',
 				name: 'removeCustomTools',
 				type: 'boolean',
 				default: false,
@@ -87,7 +87,7 @@ const properties: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Output Randomness (Temperature)',
+				displayName: 'Output randomness (temperature)',
 				name: 'temperature',
 				default: 1,
 				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -96,7 +96,7 @@ const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Output Randomness (Top P)',
+				displayName: 'Output randomness (top P)',
 				name: 'topP',
 				default: 1,
 				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },

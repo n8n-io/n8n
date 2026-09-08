@@ -53,7 +53,7 @@ export const versionDescription: INodeTypeDescription = {
 			description: 'ID of the consumer group',
 		},
 		{
-			displayName: 'Resolve Offset',
+			displayName: 'Resolve offset',
 			name: 'resolveOffset',
 			type: 'options',
 			default: 'onCompletion',
@@ -61,17 +61,17 @@ export const versionDescription: INodeTypeDescription = {
 				'Select on which condition the offsets should be resolved. In the manual mode, when execution started by clicking on Execute Workflow or Execute Step button, offsets are always resolved immediately after message received.',
 			options: [
 				{
-					name: 'On Execution Completion',
+					name: 'On execution completion',
 					value: 'onCompletion',
 					description: 'Resolve offset after execution completion regardless of the status',
 				},
 				{
-					name: 'On Execution Success',
+					name: 'On execution success',
 					value: 'onSuccess',
 					description: 'Resolve offset only if execution status equals success',
 				},
 				{
-					name: 'On Allowed Execution Statuses',
+					name: 'On allowed execution statuses',
 					value: 'onStatus',
 					description: 'Resolve offset only if execution status in the list of selected statuses',
 				},
@@ -84,7 +84,7 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Allowed Statuses',
+			displayName: 'Allowed statuses',
 			name: 'allowedStatuses',
 			type: 'multiOptions',
 			default: ['success'],
@@ -129,14 +129,14 @@ export const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Use Schema Registry',
+			displayName: 'Use schema registry',
 			name: 'useSchemaRegistry',
 			type: 'boolean',
 			default: false,
 			description: 'Whether to use Confluent Schema Registry',
 		},
 		{
-			displayName: 'Schema Registry URL',
+			displayName: 'Schema registry URL',
 			name: 'schemaRegistryUrl',
 			type: 'string',
 			displayOptions: {
@@ -163,7 +163,7 @@ export const versionDescription: INodeTypeDescription = {
 				// with the flag on or off. Not shipped as a third control that does
 				// nothing.
 				{
-					displayName: 'Auto Commit Interval',
+					displayName: 'Auto commit interval',
 					name: 'autoCommitInterval',
 					type: 'number',
 					default: 0,
@@ -172,7 +172,7 @@ export const versionDescription: INodeTypeDescription = {
 					hint: 'Value in milliseconds',
 				},
 				{
-					displayName: 'Batch Size',
+					displayName: 'Batch size',
 					name: 'batchSize',
 					type: 'number',
 					default: 1,
@@ -184,7 +184,7 @@ export const versionDescription: INodeTypeDescription = {
 				// resolution off, so honouring it would mark messages read that no
 				// execution ever saw. Dropped rather than shipped as a dead control.
 				{
-					displayName: 'Fetch Max Bytes',
+					displayName: 'Fetch max bytes',
 					name: 'fetchMaxBytes',
 					type: 'number',
 					default: 1048576,
@@ -192,7 +192,7 @@ export const versionDescription: INodeTypeDescription = {
 						'Maximum amount of data the server should return for a fetch request. In bytes. Default is 1MB. Higher values allow fetching more messages at once.',
 				},
 				{
-					displayName: 'Fetch Min Bytes',
+					displayName: 'Fetch min bytes',
 					name: 'fetchMinBytes',
 					type: 'number',
 					default: 1,
@@ -200,7 +200,7 @@ export const versionDescription: INodeTypeDescription = {
 						'Minimum amount of data the server should return for a fetch request. In bytes. Server will wait up to fetchMaxWaitTime for this amount to accumulate.',
 				},
 				{
-					displayName: 'Heartbeat Interval',
+					displayName: 'Heartbeat interval',
 					name: 'heartbeatInterval',
 					type: 'number',
 					default: 10000,
@@ -209,7 +209,7 @@ export const versionDescription: INodeTypeDescription = {
 					hint: 'Value in milliseconds. Lowered automatically if it is more than a third of the Session Timeout.',
 				},
 				{
-					displayName: 'Max Number of Requests',
+					displayName: 'Max number of requests',
 					name: 'maxInFlightRequests',
 					type: 'number',
 					default: 1,
@@ -217,21 +217,21 @@ export const versionDescription: INodeTypeDescription = {
 						'The maximum number of unacknowledged requests the client will send on a single connection',
 				},
 				{
-					displayName: 'Read Messages From Beginning',
+					displayName: 'Read messages from beginning',
 					name: 'fromBeginning',
 					type: 'boolean',
 					default: true,
 					description: 'Whether to read message from beginning',
 				},
 				{
-					displayName: 'JSON Parse Message',
+					displayName: 'JSON parse message',
 					name: 'jsonParseMessage',
 					type: 'boolean',
 					default: false,
 					description: 'Whether to try to parse the message to an object',
 				},
 				{
-					displayName: 'Keep Message as Binary Data',
+					displayName: 'Keep message as binary data',
 					name: 'keepBinaryData',
 					type: 'boolean',
 					default: false,
@@ -239,7 +239,7 @@ export const versionDescription: INodeTypeDescription = {
 						'Whether to keep message value as binary data for downstream processing (e.g., Avro deserialization)',
 				},
 				{
-					displayName: 'Partitions Consumed Concurrently',
+					displayName: 'Partitions consumed concurrently',
 					name: 'partitionsConsumedConcurrently',
 					type: 'number',
 					default: 0,
@@ -248,7 +248,7 @@ export const versionDescription: INodeTypeDescription = {
 					hint: 'Set to 0 to process all partitions sequentially',
 				},
 				{
-					displayName: 'Only Message',
+					displayName: 'Only message',
 					name: 'onlyMessage',
 					type: 'boolean',
 					displayOptions: {
@@ -260,14 +260,14 @@ export const versionDescription: INodeTypeDescription = {
 					description: 'Whether to return only the message property',
 				},
 				{
-					displayName: 'Return Headers',
+					displayName: 'Return headers',
 					name: 'returnHeaders',
 					type: 'boolean',
 					default: false,
 					description: 'Whether to return the headers received from Kafka',
 				},
 				{
-					displayName: 'Rebalance Timeout',
+					displayName: 'Rebalance timeout',
 					name: 'rebalanceTimeout',
 					type: 'number',
 					default: 600000,
@@ -276,7 +276,7 @@ export const versionDescription: INodeTypeDescription = {
 					hint: 'Value in milliseconds',
 				},
 				{
-					displayName: 'Retry Delay on Error',
+					displayName: 'Retry delay on error',
 					name: 'errorRetryDelay',
 					type: 'number',
 					default: 5000,
@@ -293,7 +293,7 @@ export const versionDescription: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'Session Timeout',
+					displayName: 'Session timeout',
 					name: 'sessionTimeout',
 					type: 'number',
 					default: 30000,

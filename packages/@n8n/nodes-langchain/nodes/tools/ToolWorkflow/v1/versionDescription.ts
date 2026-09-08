@@ -105,7 +105,7 @@ export const versionDescription: INodeTypeDescription = {
 					description: 'Load the workflow from the database by ID',
 				},
 				{
-					name: 'Define Below',
+					name: 'Define below',
 					value: 'parameter',
 					description: 'Pass the JSON code of a workflow',
 				},
@@ -170,7 +170,7 @@ export const versionDescription: INodeTypeDescription = {
 		//         For all
 		// ----------------------------------
 		{
-			displayName: 'Field to Return',
+			displayName: 'Field to return',
 			name: 'responsePropertyName',
 			type: 'string',
 			default: 'response',
@@ -185,9 +185,9 @@ export const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Extra Workflow Inputs',
+			displayName: 'Extra workflow inputs',
 			name: 'fields',
-			placeholder: 'Add Value',
+			placeholder: 'Add value',
 			type: 'fixedCollection',
 			description:
 				"These will be output by the 'execute workflow' trigger of the workflow being called",
@@ -328,7 +328,7 @@ export const versionDescription: INodeTypeDescription = {
 		//         Output Parsing
 		// ----------------------------------
 		{
-			displayName: 'Specify Input Schema',
+			displayName: 'Specify input schema',
 			name: 'specifyInputSchema',
 			type: 'boolean',
 			description:

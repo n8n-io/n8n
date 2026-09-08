@@ -56,7 +56,7 @@ export class RssFeedRead implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Custom Fields',
+						displayName: 'Custom fields',
 						name: 'customFields',
 						type: 'string',
 						default: '',
@@ -64,7 +64,7 @@ export class RssFeedRead implements INodeType {
 							'A comma-separated list of custom fields to include in the output. For example, "author, contentSnippet".',
 					},
 					{
-						displayName: 'Ignore SSL Issues (Insecure)',
+						displayName: 'Ignore SSL issues (insecure)',
 						name: 'ignoreSSL',
 						type: 'boolean',
 						default: false,

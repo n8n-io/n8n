@@ -7,14 +7,14 @@ import { paginationParameters } from '../common';
 const properties: INodeProperties[] = [
 	...paginationParameters,
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Path Prefix',
+				displayName: 'Path prefix',
 				name: 'pathPrefix',
 				type: 'string',
 				validateType: 'string',

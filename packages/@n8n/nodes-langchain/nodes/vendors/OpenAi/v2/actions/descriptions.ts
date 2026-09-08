@@ -8,7 +8,7 @@ export const modelRLC = (searchListMethod: string = 'modelSearch'): INodePropert
 	required: true,
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -36,14 +36,14 @@ export const metadataProperty: INodeProperties = {
 
 const imageMessageProperties: INodeProperties[] = [
 	{
-		displayName: 'Image Type',
+		displayName: 'Image type',
 		name: 'imageType',
 		type: 'options',
 		default: 'url',
 		options: [
 			{ name: 'Image URL', value: 'url' },
 			{ name: 'File ID', value: 'fileId' },
-			{ name: 'File Data', value: 'base64' },
+			{ name: 'File data', value: 'base64' },
 		],
 		displayOptions: {
 			show: {
@@ -66,7 +66,7 @@ const imageMessageProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Image Data',
+		displayName: 'Image data',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -133,14 +133,14 @@ export const textMessageProperties: INodeProperties[] = [
 
 const fileMessageProperties: INodeProperties[] = [
 	{
-		displayName: 'File Type',
+		displayName: 'File type',
 		name: 'fileType',
 		type: 'options',
 		default: 'url',
 		options: [
 			{ name: 'File URL', value: 'url' },
 			{ name: 'File ID', value: 'fileId' },
-			{ name: 'File Data', value: 'base64' },
+			{ name: 'File data', value: 'base64' },
 		],
 		displayOptions: {
 			show: {
@@ -176,7 +176,7 @@ const fileMessageProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Data',
+		displayName: 'File data',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -191,7 +191,7 @@ const fileMessageProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		default: '',
@@ -257,7 +257,7 @@ export const messageOptions: INodePropertyCollection[] = [
 export const imageGenerateOptions: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	type: 'collection',
 	default: {},
 	displayOptions: {
@@ -267,7 +267,7 @@ export const imageGenerateOptions: INodeProperties = {
 	},
 	options: [
 		{
-			displayName: 'Number of Images',
+			displayName: 'Number of images',
 			name: 'n',
 			default: 1,
 			description: 'Number of images to generate',
@@ -433,7 +433,7 @@ export const imageGenerateOptions: INodeProperties = {
 			default: 'vivid',
 		},
 		{
-			displayName: 'Respond with Image URL(s)',
+			displayName: 'Respond with image URL(s)',
 			name: 'returnImageUrls',
 			type: 'boolean',
 			default: false,
@@ -445,7 +445,7 @@ export const imageGenerateOptions: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Put Output in Field',
+			displayName: 'Put output in field',
 			name: 'binaryPropertyOutput',
 			type: 'string',
 			default: 'data',
@@ -462,7 +462,7 @@ export const imageGenerateOptions: INodeProperties = {
 export const imageGenerateOptionsRLC: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	type: 'collection',
 	default: {},
 	displayOptions: {
@@ -472,7 +472,7 @@ export const imageGenerateOptionsRLC: INodeProperties = {
 	},
 	options: [
 		{
-			displayName: 'Number of Images',
+			displayName: 'Number of images',
 			name: 'n',
 			default: 1,
 			description: 'Number of images to generate',
@@ -637,7 +637,7 @@ export const imageGenerateOptionsRLC: INodeProperties = {
 			default: 'vivid',
 		},
 		{
-			displayName: 'Respond with Image URL(s)',
+			displayName: 'Respond with image URL(s)',
 			name: 'returnImageUrls',
 			type: 'boolean',
 			default: false,
@@ -649,7 +649,7 @@ export const imageGenerateOptionsRLC: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Put Output in Field',
+			displayName: 'Put output in field',
 			name: 'binaryPropertyOutput',
 			type: 'string',
 			default: 'data',

@@ -48,7 +48,7 @@ export class VectorStoreInMemoryLoad implements INodeType {
 		outputNames: ['Vector Store'],
 		properties: [
 			{
-				displayName: 'Memory Key',
+				displayName: 'Memory key',
 				name: 'memoryKey',
 				type: 'string',
 				default: 'vector_store_key',

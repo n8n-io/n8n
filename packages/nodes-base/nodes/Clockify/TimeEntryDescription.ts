@@ -59,10 +59,10 @@ export const timeEntryFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -78,9 +78,9 @@ export const timeEntryFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -90,10 +90,10 @@ export const timeEntryFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
@@ -128,7 +128,7 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -140,7 +140,7 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
 				description:
@@ -164,7 +164,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                 timeEntry:delete                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry ID',
+		displayName: 'Time entry ID',
 		name: 'timeEntryId',
 		type: 'string',
 		required: true,
@@ -180,7 +180,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                 timeEntry:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry ID',
+		displayName: 'Time entry ID',
 		name: 'timeEntryId',
 		type: 'string',
 		required: true,
@@ -193,10 +193,10 @@ export const timeEntryFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -206,7 +206,7 @@ export const timeEntryFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Consider Duration Format',
+				displayName: 'Consider duration format',
 				name: 'consider-duration-format',
 				type: 'boolean',
 				default: false,
@@ -227,7 +227,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                 timeEntry:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry ID',
+		displayName: 'Time entry ID',
 		name: 'timeEntryId',
 		type: 'string',
 		required: true,
@@ -240,10 +240,10 @@ export const timeEntryFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -259,9 +259,9 @@ export const timeEntryFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -271,10 +271,10 @@ export const timeEntryFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
@@ -309,7 +309,7 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -327,7 +327,7 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
 				description:

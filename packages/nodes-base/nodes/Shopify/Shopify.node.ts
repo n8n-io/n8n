@@ -73,7 +73,7 @@ export class Shopify implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -81,7 +81,7 @@ export class Shopify implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'API Key',
+						name: 'API key',
 						value: 'apiKey',
 					},
 				],

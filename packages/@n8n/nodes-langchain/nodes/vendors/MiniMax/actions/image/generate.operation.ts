@@ -37,7 +37,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. A serene mountain landscape at sunset with reflections in a lake',
 	},
 	{
-		displayName: 'Aspect Ratio',
+		displayName: 'Aspect ratio',
 		name: 'aspectRatio',
 		type: 'options',
 		options: [
@@ -54,7 +54,7 @@ const properties: INodeProperties[] = [
 		description: 'Aspect ratio of the generated image',
 	},
 	{
-		displayName: 'Number of Images',
+		displayName: 'Number of images',
 		name: 'numberOfImages',
 		type: 'number',
 		typeOptions: {
@@ -65,7 +65,7 @@ const properties: INodeProperties[] = [
 		description: 'Number of images to generate per request (1-9)',
 	},
 	{
-		displayName: 'Download Image',
+		displayName: 'Download image',
 		name: 'downloadImage',
 		type: 'boolean',
 		default: true,
@@ -75,12 +75,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Prompt Optimizer',
+				displayName: 'Prompt optimizer',
 				name: 'promptOptimizer',
 				type: 'boolean',
 				default: false,

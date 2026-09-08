@@ -26,7 +26,7 @@ export const paymentOperations: INodeProperties[] = [
 				action: 'Get a payment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many payments',
 			},
@@ -59,7 +59,7 @@ export const paymentFields: INodeProperties[] = [
 	//         payment: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer Name or ID',
+		displayName: 'For customer name or ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
@@ -77,7 +77,7 @@ export const paymentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Total Amount',
+		displayName: 'Total amount',
 		name: 'TotalAmt',
 		description: 'Total amount of the transaction',
 		type: 'number',
@@ -90,10 +90,10 @@ export const paymentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -154,7 +154,7 @@ export const paymentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
@@ -169,7 +169,7 @@ export const paymentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		required: true,
@@ -189,7 +189,7 @@ export const paymentFields: INodeProperties[] = [
 	//         payment: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -223,7 +223,7 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -313,10 +313,10 @@ export const paymentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		required: true,
 		displayOptions: {

@@ -33,7 +33,7 @@ const properties: INodeProperties[] = [
 			multipleValues: true,
 			sortable: true,
 		},
-		placeholder: 'Add Message',
+		placeholder: 'Add message',
 		default: {
 			message: [
 				{
@@ -97,7 +97,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: false,
@@ -121,11 +121,11 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Disable Search',
+				displayName: 'Disable search',
 				name: 'disableSearch',
 				type: 'boolean',
 				default: false,
@@ -143,7 +143,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Enable Search Classifier',
+				displayName: 'Enable search classifier',
 				name: 'enableSearchClassifier',
 				type: 'boolean',
 				default: false,
@@ -161,7 +161,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Frequency Penalty',
+				displayName: 'Frequency penalty',
 				name: 'frequencyPenalty',
 				type: 'number',
 				default: 0,
@@ -178,7 +178,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Image Domain Filter',
+				displayName: 'Image domain filter',
 				name: 'imageDomainFilter',
 				type: 'string',
 				default: '',
@@ -198,7 +198,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Image Format Filter',
+				displayName: 'Image format filter',
 				name: 'imageFormatFilter',
 				type: 'string',
 				default: '',
@@ -218,7 +218,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Language Preference',
+				displayName: 'Language preference',
 				name: 'languagePreference',
 				type: 'string',
 				default: '',
@@ -237,7 +237,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Last Updated After',
+				displayName: 'Last updated after',
 				name: 'lastUpdatedAfter',
 				type: 'string',
 				default: '',
@@ -256,7 +256,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Last Updated Before',
+				displayName: 'Last updated before',
 				name: 'lastUpdatedBefore',
 				type: 'string',
 				default: '',
@@ -275,7 +275,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Maximum Number of Tokens',
+				displayName: 'Maximum number of tokens',
 				name: 'maxTokens',
 				type: 'number',
 				default: 1,
@@ -289,7 +289,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Temperature)',
+				displayName: 'Output randomness (temperature)',
 				name: 'temperature',
 				type: 'number',
 				default: 0.2,
@@ -307,7 +307,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Presence Penalty',
+				displayName: 'Presence penalty',
 				name: 'presencePenalty',
 				type: 'number',
 				default: 0,
@@ -325,7 +325,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Reasoning Effort',
+				displayName: 'Reasoning effort',
 				name: 'reasoningEffort',
 				type: 'options',
 				options: [
@@ -349,7 +349,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Response Format',
+				displayName: 'Response format',
 				name: 'responseFormat',
 				type: 'json',
 				default: '',
@@ -369,7 +369,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Return Images',
+				displayName: 'Return images',
 				name: 'returnImages',
 				type: 'boolean',
 				default: false,
@@ -383,7 +383,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Return Related Questions',
+				displayName: 'Return related questions',
 				name: 'returnRelatedQuestions',
 				type: 'boolean',
 				default: false,
@@ -397,7 +397,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search After Date',
+				displayName: 'Search after date',
 				name: 'searchAfterDate',
 				type: 'string',
 				default: '',
@@ -416,7 +416,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search Before Date',
+				displayName: 'Search before date',
 				name: 'searchBeforeDate',
 				type: 'string',
 				default: '',
@@ -435,7 +435,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search Domain Filter',
+				displayName: 'Search domain filter',
 				name: 'searchDomainFilter',
 				type: 'string',
 				default: '',
@@ -451,7 +451,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search Language Filter',
+				displayName: 'Search language filter',
 				name: 'searchLanguageFilter',
 				type: 'string',
 				default: '',
@@ -472,7 +472,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search Mode',
+				displayName: 'Search mode',
 				name: 'searchMode',
 				type: 'options',
 				options: [
@@ -495,7 +495,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Search Recency Filter',
+				displayName: 'Search recency filter',
 				name: 'searchRecency',
 				type: 'options',
 				options: [
@@ -515,7 +515,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Stop Sequences',
+				displayName: 'Stop sequences',
 				name: 'stop',
 				type: 'string',
 				default: '',
@@ -571,7 +571,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Web Search Options',
+				displayName: 'Web search options',
 				name: 'webSearchOptions',
 				type: 'json',
 				default: '',

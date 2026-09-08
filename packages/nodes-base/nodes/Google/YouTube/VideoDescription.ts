@@ -25,7 +25,7 @@ export const videoOperations: INodeProperties[] = [
 				action: 'Get a video',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many videos',
 				action: 'Get many videos',
@@ -72,7 +72,7 @@ export const videoFields: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Region Code',
+		displayName: 'Region code',
 		name: 'regionCode',
 		type: 'options',
 		description:
@@ -89,7 +89,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Category Name or ID',
+		displayName: 'Category name or ID',
 		name: 'categoryId',
 		type: 'options',
 		description:
@@ -107,7 +107,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
@@ -134,7 +134,7 @@ export const videoFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Default Language Name or ID',
+				displayName: 'Default language name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {
@@ -176,7 +176,7 @@ export const videoFields: INodeProperties[] = [
 				description: "The video's license",
 			},
 			{
-				displayName: 'Notify Subscribers',
+				displayName: 'Notify subscribers',
 				name: 'notifySubscribers',
 				type: 'boolean',
 				default: false,
@@ -184,7 +184,7 @@ export const videoFields: INodeProperties[] = [
 					"Whether YouTube should send a notification about the new video to users who subscribe to the video's channel",
 			},
 			{
-				displayName: 'Privacy Status',
+				displayName: 'Privacy status',
 				name: 'privacyStatus',
 				type: 'options',
 				options: [
@@ -205,7 +205,7 @@ export const videoFields: INodeProperties[] = [
 				description: "The playlist's privacy status",
 			},
 			{
-				displayName: 'Public Stats Viewable',
+				displayName: 'Public stats viewable',
 				name: 'publicStatsViewable',
 				type: 'boolean',
 				default: true,
@@ -213,7 +213,7 @@ export const videoFields: INodeProperties[] = [
 					"Whether the extended video statistics on the video's watch page are publicly viewable",
 			},
 			{
-				displayName: 'Publish At',
+				displayName: 'Publish at',
 				name: 'publishAt',
 				type: 'dateTime',
 				default: '',
@@ -221,14 +221,14 @@ export const videoFields: INodeProperties[] = [
 					'If you set a value for this property, you must also set the status.privacyStatus property to private',
 			},
 			{
-				displayName: 'Recording Date',
+				displayName: 'Recording date',
 				name: 'recordingDate',
 				type: 'dateTime',
 				default: '',
 				description: 'The date and time when the video was recorded',
 			},
 			{
-				displayName: 'Self Declared Made For Kids',
+				displayName: 'Self declared made for kids',
 				name: 'selfDeclaredMadeForKids',
 				type: 'boolean',
 				default: false,
@@ -276,7 +276,7 @@ export const videoFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -311,7 +311,7 @@ export const videoFields: INodeProperties[] = [
 				value: '*',
 			},
 			{
-				name: 'Content Details',
+				name: 'Content details',
 				value: 'contentDetails',
 			},
 			{
@@ -319,7 +319,7 @@ export const videoFields: INodeProperties[] = [
 				value: 'id',
 			},
 			{
-				name: 'Live Streaming Details',
+				name: 'Live streaming details',
 				value: 'liveStreamingDetails',
 			},
 			{
@@ -331,7 +331,7 @@ export const videoFields: INodeProperties[] = [
 				value: 'player',
 			},
 			{
-				name: 'Recording Details',
+				name: 'Recording details',
 				value: 'recordingDetails',
 			},
 			{
@@ -347,7 +347,7 @@ export const videoFields: INodeProperties[] = [
 				value: 'status',
 			},
 			{
-				name: 'Topic Details',
+				name: 'Topic details',
 				value: 'topicDetails',
 			},
 		],
@@ -376,7 +376,7 @@ export const videoFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'On Behalf Of Content Owner',
+				displayName: 'On behalf of content owner',
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
@@ -389,7 +389,7 @@ export const videoFields: INodeProperties[] = [
 	/*                                 video:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -441,7 +441,7 @@ export const videoFields: INodeProperties[] = [
 					'The channelId parameter indicates that the API response should only contain resources created by the channel',
 			},
 			{
-				displayName: 'For Developer',
+				displayName: 'For developer',
 				name: 'forDeveloper',
 				type: 'boolean',
 				default: false,
@@ -449,7 +449,7 @@ export const videoFields: INodeProperties[] = [
 					"Whether to restrict the search to only retrieve videos uploaded via the developer's application or website",
 			},
 			{
-				displayName: 'Published After',
+				displayName: 'Published after',
 				name: 'publishedAfter',
 				type: 'dateTime',
 				default: '',
@@ -457,7 +457,7 @@ export const videoFields: INodeProperties[] = [
 					'The publishedAfter parameter indicates that the API response should only contain resources created at or after the specified time',
 			},
 			{
-				displayName: 'Published Before',
+				displayName: 'Published before',
 				name: 'publishedBefore',
 				type: 'dateTime',
 				default: '',
@@ -473,7 +473,7 @@ export const videoFields: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Region Code',
+				displayName: 'Region code',
 				name: 'regionCode',
 				type: 'options',
 				typeOptions: {
@@ -484,7 +484,7 @@ export const videoFields: INodeProperties[] = [
 					'The regionCode parameter instructs the API to select a video chart available in the specified region. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Related To Video ID',
+				displayName: 'Related to video ID',
 				name: 'relatedToVideoId',
 				type: 'string',
 				default: '',
@@ -492,7 +492,7 @@ export const videoFields: INodeProperties[] = [
 					'The relatedToVideoId parameter retrieves a list of videos that are related to the video that the parameter value identifies',
 			},
 			{
-				displayName: 'Video Category ID',
+				displayName: 'Video category ID',
 				name: 'videoCategoryId',
 				type: 'string',
 				default: '',
@@ -500,7 +500,7 @@ export const videoFields: INodeProperties[] = [
 					'The videoCategoryId parameter identifies the video category for which the chart should be retrieved',
 			},
 			{
-				displayName: 'Video Syndicated',
+				displayName: 'Video syndicated',
 				name: 'videoSyndicated',
 				type: 'boolean',
 				default: false,
@@ -508,7 +508,7 @@ export const videoFields: INodeProperties[] = [
 					'Whether to restrict a search to only videos that can be played outside youtube.com',
 			},
 			{
-				displayName: 'Video Type',
+				displayName: 'Video type',
 				name: 'videoType',
 				type: 'options',
 				options: [
@@ -561,7 +561,7 @@ export const videoFields: INodeProperties[] = [
 				default: 'relevance',
 			},
 			{
-				displayName: 'Safe Search',
+				displayName: 'Safe search',
 				name: 'safeSearch',
 				type: 'options',
 				options: [
@@ -664,7 +664,7 @@ export const videoFields: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Region Code',
+		displayName: 'Region code',
 		name: 'regionCode',
 		type: 'options',
 		description:
@@ -681,7 +681,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Category Name or ID',
+		displayName: 'Category name or ID',
 		name: 'categoryId',
 		type: 'options',
 		description:
@@ -699,7 +699,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add option',
@@ -712,7 +712,7 @@ export const videoFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Default Language Name or ID',
+				displayName: 'Default language name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {
@@ -754,7 +754,7 @@ export const videoFields: INodeProperties[] = [
 				description: "The video's license",
 			},
 			{
-				displayName: 'Notify Subscribers',
+				displayName: 'Notify subscribers',
 				name: 'notifySubscribers',
 				type: 'boolean',
 				default: false,
@@ -762,7 +762,7 @@ export const videoFields: INodeProperties[] = [
 					"Whether YouTube should send a notification about the new video to users who subscribe to the video's channel",
 			},
 			{
-				displayName: 'Privacy Status',
+				displayName: 'Privacy status',
 				name: 'privacyStatus',
 				type: 'options',
 				options: [
@@ -783,7 +783,7 @@ export const videoFields: INodeProperties[] = [
 				description: "The playlist's privacy status",
 			},
 			{
-				displayName: 'Public Stats Viewable',
+				displayName: 'Public stats viewable',
 				name: 'publicStatsViewable',
 				type: 'boolean',
 				default: true,
@@ -791,7 +791,7 @@ export const videoFields: INodeProperties[] = [
 					"Whether the extended video statistics on the video's watch page are publicly viewable",
 			},
 			{
-				displayName: 'Publish At',
+				displayName: 'Publish at',
 				name: 'publishAt',
 				type: 'dateTime',
 				default: '',
@@ -799,14 +799,14 @@ export const videoFields: INodeProperties[] = [
 					'If you set a value for this property, you must also set the status.privacyStatus property to private',
 			},
 			{
-				displayName: 'Recording Date',
+				displayName: 'Recording date',
 				name: 'recordingDate',
 				type: 'dateTime',
 				default: '',
 				description: 'The date and time when the video was recorded',
 			},
 			{
-				displayName: 'Self Declared Made For Kids',
+				displayName: 'Self declared made for kids',
 				name: 'selfDeclaredMadeForKids',
 				type: 'boolean',
 				default: false,

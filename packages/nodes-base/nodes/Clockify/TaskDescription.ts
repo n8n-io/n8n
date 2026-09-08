@@ -31,7 +31,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many tasks',
 				action: 'Get many tasks',
@@ -49,7 +49,7 @@ export const taskOperations: INodeProperties[] = [
 
 export const taskFields: INodeProperties[] = [
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project name or ID',
 		name: 'projectId',
 		type: 'options',
 		description:
@@ -70,7 +70,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task Name',
+		displayName: 'Task name',
 		name: 'name',
 		type: 'string',
 		required: true,
@@ -84,10 +84,10 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -97,7 +97,7 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee Names or IDs',
+				displayName: 'Assignee names or IDs',
 				name: 'assigneeIds',
 				type: 'multiOptions',
 				description:
@@ -158,7 +158,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -192,7 +192,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -202,7 +202,7 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is-active',
 				type: 'boolean',
 				default: false,
@@ -215,7 +215,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Text to match in the task name',
 			},
 			{
-				displayName: 'Sort Column',
+				displayName: 'Sort column',
 				name: 'sort-column',
 				type: 'options',
 				options: [
@@ -227,7 +227,7 @@ export const taskFields: INodeProperties[] = [
 				default: 'NAME',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sort-order',
 				type: 'options',
 				options: [
@@ -263,10 +263,10 @@ export const taskFields: INodeProperties[] = [
 		description: 'ID of task to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -276,7 +276,7 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee Names or IDs',
+				displayName: 'Assignee names or IDs',
 				name: 'assigneeIds',
 				type: 'multiOptions',
 				description:

@@ -13,7 +13,7 @@ export const containerOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Tasks',
+				name: 'Add tasks',
 				value: 'addTask',
 				description: 'Add task at index (or append)',
 				action: 'Add tasks',
@@ -25,7 +25,7 @@ export const containerOperations: INodeProperties[] = [
 				action: 'Get a container',
 			},
 			{
-				name: 'Update Tasks',
+				name: 'Update tasks',
 				value: 'updateTask',
 				description: "Fully replace a container's tasks",
 				action: 'Update tasks',
@@ -36,7 +36,7 @@ export const containerOperations: INodeProperties[] = [
 ];
 
 const containerTypeField = {
-	displayName: 'Container Type',
+	displayName: 'Container type',
 	name: 'containerType',
 	type: 'options',
 	options: [
@@ -65,7 +65,7 @@ const containerIdField = {
 } as INodeProperties;
 
 const insertTypeField = {
-	displayName: 'Insert Type',
+	displayName: 'Insert type',
 	name: 'type',
 	type: 'options',
 	options: [
@@ -78,7 +78,7 @@ const insertTypeField = {
 			value: 0,
 		},
 		{
-			name: 'At Specific Index',
+			name: 'At specific index',
 			value: 1,
 		},
 	],
@@ -106,7 +106,7 @@ const tasksField = {
 } as INodeProperties;
 
 const considerDependenciesField = {
-	displayName: 'Consider Dependencies',
+	displayName: 'Consider dependencies',
 	name: 'considerDependencies',
 	type: 'boolean',
 	default: false,

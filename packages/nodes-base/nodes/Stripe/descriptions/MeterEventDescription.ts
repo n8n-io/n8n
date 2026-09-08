@@ -28,7 +28,7 @@ export const meterEventFields: INodeProperties[] = [
 	//       meterEvent: create
 	// ----------------------------------
 	{
-		displayName: 'Event Name',
+		displayName: 'Event name',
 		name: 'eventName',
 		type: 'string',
 		required: true,
@@ -70,10 +70,10 @@ export const meterEventFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -99,11 +99,11 @@ export const meterEventFields: INodeProperties[] = [
 					'The time of the event. Measured in seconds since the Unix epoch. Must be within the past 35 calendar days or up to 5 minutes in the future. Defaults to current time if not specified.',
 			},
 			{
-				displayName: 'Custom Payload Properties',
+				displayName: 'Custom payload properties',
 				name: 'customPayload',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Custom Property',
+				placeholder: 'Add custom property',
 				description:
 					'Additional custom properties to include in the event payload. Use this for custom meter configurations with non-default payload keys.',
 				typeOptions: {

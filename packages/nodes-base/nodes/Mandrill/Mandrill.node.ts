@@ -141,7 +141,7 @@ export class Mandrill implements INodeType {
 				},
 				options: [
 					{
-						name: 'Send Template',
+						name: 'Send template',
 						value: 'sendTemplate',
 						description: 'Send message based on template',
 						action: 'Send a message based on a template',
@@ -156,7 +156,7 @@ export class Mandrill implements INodeType {
 				default: 'sendTemplate',
 			},
 			{
-				displayName: 'Template Name or ID',
+				displayName: 'Template name or ID',
 				name: 'template',
 				type: 'options',
 				typeOptions: {
@@ -174,7 +174,7 @@ export class Mandrill implements INodeType {
 					'The template you want to send. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'From Email',
+				displayName: 'From email',
 				name: 'fromEmail',
 				type: 'string',
 				default: '',
@@ -188,7 +188,7 @@ export class Mandrill implements INodeType {
 				},
 			},
 			{
-				displayName: 'To Email',
+				displayName: 'To email',
 				name: 'toEmail',
 				type: 'string',
 				default: '',
@@ -202,7 +202,7 @@ export class Mandrill implements INodeType {
 				},
 			},
 			{
-				displayName: 'JSON Parameters',
+				displayName: 'JSON parameters',
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
@@ -233,7 +233,7 @@ export class Mandrill implements INodeType {
 							'Whether to enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the \'reject\' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.',
 					},
 					{
-						displayName: 'Auto Text',
+						displayName: 'Auto text',
 						name: 'autoText',
 						type: 'boolean',
 						default: false,
@@ -249,7 +249,7 @@ export class Mandrill implements INodeType {
 							'Whether or not to automatically generate an HTML part for messages that are not given HTML',
 					},
 					{
-						displayName: 'BCC Address',
+						displayName: 'BCC address',
 						name: 'bccAddress',
 						type: 'string',
 						default: '',
@@ -257,7 +257,7 @@ export class Mandrill implements INodeType {
 						description: "An optional address to receive an exact copy of each recipient's email",
 					},
 					{
-						displayName: 'From Name',
+						displayName: 'From name',
 						name: 'fromName',
 						type: 'string',
 						default: '',
@@ -265,7 +265,7 @@ export class Mandrill implements INodeType {
 						description: 'Optional from name to be used',
 					},
 					{
-						displayName: 'Google Analytics Campaign',
+						displayName: 'Google Analytics campaign',
 						name: 'googleAnalyticsCampaign',
 						type: 'string',
 						default: '',
@@ -274,7 +274,7 @@ export class Mandrill implements INodeType {
 							"Optional string indicating the value to set for the utm_campaign tracking parameter. If this isn't provided the email's from address will be used instead.",
 					},
 					{
-						displayName: 'Google Analytics Domains',
+						displayName: 'Google Analytics domains',
 						name: 'googleAnalyticsDomains',
 						type: 'string',
 						default: '',
@@ -310,7 +310,7 @@ export class Mandrill implements INodeType {
 							'Whether or not to automatically inline all CSS styles provided in the message HTML - only for HTML documents less than 256KB in size',
 					},
 					{
-						displayName: 'Ip Pool',
+						displayName: 'IP pool',
 						name: 'ipPool',
 						type: 'string',
 						default: '',
@@ -319,14 +319,14 @@ export class Mandrill implements INodeType {
 							'The name of the dedicated ip pool that should be used to send the message. If you do not have any dedicated IPs, this parameter has no effect. If you specify a pool that does not exist, your default pool will be used instead.',
 					},
 					{
-						displayName: 'Preserve Recipients',
+						displayName: 'Preserve recipients',
 						name: 'preserveRecipients',
 						type: 'boolean',
 						default: false,
 						description: 'Whether or not to expose all recipients in to "To" header for each email',
 					},
 					{
-						displayName: 'Return Path Domain',
+						displayName: 'Return path domain',
 						name: 'returnPathDomain',
 						type: 'string',
 						default: '',
@@ -334,7 +334,7 @@ export class Mandrill implements INodeType {
 						description: "A custom domain to use for the messages's return-path",
 					},
 					{
-						displayName: 'Sent At',
+						displayName: 'Sent at',
 						name: 'sendAt',
 						type: 'dateTime',
 						default: '',
@@ -343,7 +343,7 @@ export class Mandrill implements INodeType {
 							'When this message should be sent as a UTC timestamp in YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message will be sent immediately. An additional fee applies for scheduled email, and this feature is only available to accounts with a positive balance.',
 					},
 					{
-						displayName: 'Signing Domain',
+						displayName: 'Signing domain',
 						name: 'signingDomain',
 						type: 'string',
 						default: '',
@@ -389,21 +389,21 @@ export class Mandrill implements INodeType {
 						description: 'Example text content',
 					},
 					{
-						displayName: 'Track Clicks',
+						displayName: 'Track clicks',
 						name: 'trackClicks',
 						type: 'boolean',
 						default: false,
 						description: 'Whether or not to turn on click tracking for the message',
 					},
 					{
-						displayName: 'Track Opens',
+						displayName: 'Track opens',
 						name: 'trackOpens',
 						type: 'boolean',
 						default: false,
 						description: 'Whether or not to turn on open tracking for the message',
 					},
 					{
-						displayName: 'Tracking Domain',
+						displayName: 'Tracking domain',
 						name: 'trackingDomain',
 						type: 'string',
 						default: '',
@@ -412,7 +412,7 @@ export class Mandrill implements INodeType {
 							'A custom domain to use for tracking opens and clicks instead of mandrillapp.com',
 					},
 					{
-						displayName: 'Url Strip Qs',
+						displayName: 'URL strip QS',
 						name: 'urlStripQs',
 						type: 'boolean',
 						default: false,
@@ -420,7 +420,7 @@ export class Mandrill implements INodeType {
 							'Whether or not to strip the query string from URLs when aggregating tracked URL data',
 					},
 					{
-						displayName: 'View Content Link',
+						displayName: 'View content link',
 						name: 'viewContentLink',
 						type: 'boolean',
 						default: false,
@@ -429,7 +429,7 @@ export class Mandrill implements INodeType {
 				],
 			},
 			{
-				displayName: 'Merge Vars',
+				displayName: 'Merge vars',
 				name: 'mergeVarsJson',
 				type: 'json',
 				typeOptions: {
@@ -449,9 +449,9 @@ export class Mandrill implements INodeType {
 				description: 'Global merge variables',
 			},
 			{
-				displayName: 'Merge Vars',
+				displayName: 'Merge vars',
 				name: 'mergeVarsUi',
-				placeholder: 'Add Merge Vars',
+				placeholder: 'Add merge vars',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -487,7 +487,7 @@ export class Mandrill implements INodeType {
 			{
 				displayName: 'Metadata',
 				name: 'metadataUi',
-				placeholder: 'Add Metadata',
+				placeholder: 'Add metadata',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -566,7 +566,7 @@ export class Mandrill implements INodeType {
 			{
 				displayName: 'Attachments',
 				name: 'attachmentsUi',
-				placeholder: 'Add Attachments',
+				placeholder: 'Add attachments',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -579,7 +579,7 @@ export class Mandrill implements INodeType {
 				options: [
 					{
 						name: 'attachmentsValues',
-						displayName: 'Attachments Values',
+						displayName: 'Attachments values',
 						values: [
 							{
 								displayName: 'Type',
@@ -609,7 +609,7 @@ export class Mandrill implements INodeType {
 					},
 					{
 						name: 'attachmentsBinary',
-						displayName: 'Attachments Binary',
+						displayName: 'Attachments binary',
 						values: [
 							{
 								displayName: 'Property',
@@ -646,7 +646,7 @@ export class Mandrill implements INodeType {
 			{
 				displayName: 'Headers',
 				name: 'headersUi',
-				placeholder: 'Add Headers',
+				placeholder: 'Add headers',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {

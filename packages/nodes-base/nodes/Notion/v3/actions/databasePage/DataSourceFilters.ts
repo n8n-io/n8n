@@ -302,19 +302,19 @@ export function dataSourceSearchFilterDescriptions(): INodeProperties[] {
 			type: 'options',
 			options: [
 				{ name: 'None', value: 'none' },
-				{ name: 'Build Manually', value: 'manual' },
+				{ name: 'Build manually', value: 'manual' },
 				{ name: 'JSON', value: 'json' },
 			],
 			displayOptions: { show: { resource: ['databasePage'], operation: ['getAll'] } },
 			default: 'none',
 		},
 		{
-			displayName: 'Must Match',
+			displayName: 'Must match',
 			name: 'matchType',
 			type: 'options',
 			options: [
-				{ name: 'Any Filter', value: 'anyFilter' },
-				{ name: 'All Filters', value: 'allFilters' },
+				{ name: 'Any filter', value: 'anyFilter' },
+				{ name: 'All filters', value: 'allFilters' },
 			],
 			displayOptions: {
 				show: { resource: ['databasePage'], operation: ['getAll'], filterType: ['manual'] },
@@ -330,14 +330,14 @@ export function dataSourceSearchFilterDescriptions(): INodeProperties[] {
 				show: { resource: ['databasePage'], operation: ['getAll'], filterType: ['manual'] },
 			},
 			default: {},
-			placeholder: 'Add Condition',
+			placeholder: 'Add condition',
 			options: [
 				{
 					displayName: 'Conditions',
 					name: 'conditions',
 					values: [
 						{
-							displayName: 'Property Name or ID',
+							displayName: 'Property name or ID',
 							name: 'key',
 							type: 'options',
 							typeOptions: {
@@ -358,7 +358,7 @@ export function dataSourceSearchFilterDescriptions(): INodeProperties[] {
 							propertyTypes.filter((type) => type !== 'formula' && type !== 'rollup'),
 						),
 						{
-							displayName: 'Formula Return Type',
+							displayName: 'Formula return type',
 							name: 'returnType',
 							type: 'options',
 							displayOptions: { show: { type: ['formula'] } },
@@ -377,7 +377,7 @@ export function dataSourceSearchFilterDescriptions(): INodeProperties[] {
 							),
 						),
 						{
-							displayName: 'Rollup Filter (JSON)',
+							displayName: 'Rollup filter (JSON)',
 							name: 'rollupJson',
 							type: 'json',
 							typeOptions: { rows: 4 },
@@ -478,7 +478,7 @@ export function dataSourceSearchFilterDescriptions(): INodeProperties[] {
 							},
 						},
 						{
-							displayName: 'Option Name(s)',
+							displayName: 'Option name(s)',
 							name: 'optionValue',
 							type: 'string',
 							default: '',
@@ -490,7 +490,7 @@ export function dataSourceSearchFilterDescriptions(): INodeProperties[] {
 							},
 						},
 						{
-							displayName: 'User ID or Me',
+							displayName: 'User ID or me',
 							name: 'peopleValue',
 							type: 'string',
 							default: '',
@@ -500,7 +500,7 @@ export function dataSourceSearchFilterDescriptions(): INodeProperties[] {
 							},
 						},
 						{
-							displayName: 'Relation Page ID',
+							displayName: 'Relation page ID',
 							name: 'relationValue',
 							type: 'string',
 							default: '',
@@ -510,7 +510,7 @@ export function dataSourceSearchFilterDescriptions(): INodeProperties[] {
 							},
 						},
 						{
-							displayName: 'Verification Status',
+							displayName: 'Verification status',
 							name: 'verificationStatus',
 							type: 'options',
 							options: [

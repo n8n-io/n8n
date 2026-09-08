@@ -19,7 +19,7 @@ export const boardColumnOperations: INodeProperties[] = [
 				action: 'Create a board column',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many columns',
 				action: 'Get many board columns',
@@ -34,7 +34,7 @@ export const boardColumnFields: INodeProperties[] = [
 	/*                                 boardColumn:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		description:
@@ -65,7 +65,7 @@ export const boardColumnFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Column Type',
+		displayName: 'Column type',
 		name: 'columnType',
 		type: 'options',
 		default: '',
@@ -99,7 +99,7 @@ export const boardColumnFields: INodeProperties[] = [
 				value: 'Link',
 			},
 			{
-				name: 'Long Text',
+				name: 'Long text',
 				value: 'longText',
 			},
 			{
@@ -151,7 +151,7 @@ export const boardColumnFields: INodeProperties[] = [
 				value: 'week',
 			},
 			{
-				name: 'World Clock',
+				name: 'World clock',
 				value: 'worldClock',
 			},
 		],
@@ -164,10 +164,10 @@ export const boardColumnFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['boardColumn'],
@@ -192,7 +192,7 @@ export const boardColumnFields: INodeProperties[] = [
 	/*                                 boardColumn:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		description:

@@ -5,7 +5,7 @@ import { getBatchingOptionFields } from '@n8n/ai-utilities';
 import { commonOptions } from '../options';
 
 const enableStreaminOption: INodeProperties = {
-	displayName: 'Enable Streaming',
+	displayName: 'Enable streaming',
 	name: 'enableStreaming',
 	type: 'boolean',
 	default: true,
@@ -20,7 +20,7 @@ export const getToolsAgentProperties = ({
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			...commonOptions,
 			getBatchingOptionFields(undefined, 1),
@@ -37,7 +37,7 @@ export const getToolsAgentProperties = ({
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [...commonOptions, getBatchingOptionFields(undefined, 1)],
 		displayOptions: {
 			show: {

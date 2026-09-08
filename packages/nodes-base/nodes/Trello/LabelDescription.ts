@@ -16,7 +16,7 @@ export const labelOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add to Card',
+				name: 'Add to card',
 				value: 'addLabel',
 				description: 'Add a label to a card',
 				action: 'Add a label to a card',
@@ -40,13 +40,13 @@ export const labelOperations: INodeProperties[] = [
 				action: 'Get a label',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Returns many labels for the board',
 				action: 'Get many labels',
 			},
 			{
-				name: 'Remove From Card',
+				name: 'Remove from card',
 				value: 'removeLabel',
 				description: 'Remove a label from a card',
 				action: 'Remove a label from a card',
@@ -78,10 +78,10 @@ export const labelFields: INodeProperties[] = [
 		description: 'The ID of the board',
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a Board...',
+				placeholder: 'Select a board...',
 				initType: 'board',
 				typeOptions: {
 					searchListMethod: 'searchBoards',
@@ -227,10 +227,10 @@ export const labelFields: INodeProperties[] = [
 	//         label:getAll
 	// ----------------------------------
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -267,10 +267,10 @@ export const labelFields: INodeProperties[] = [
 		description: 'Get information about a label by ID',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -297,7 +297,7 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				placeholder: 'Choose...',
@@ -406,10 +406,10 @@ export const labelFields: INodeProperties[] = [
 		description: 'The ID of the label to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],

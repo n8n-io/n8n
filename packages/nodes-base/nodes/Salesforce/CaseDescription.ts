@@ -13,7 +13,7 @@ export const caseOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Comment',
+				name: 'Add comment',
 				value: 'addComment',
 				description: 'Add a comment to a case',
 				action: 'Add a comment to a case',
@@ -37,13 +37,13 @@ export const caseOperations: INodeProperties[] = [
 				action: 'Get a case',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many cases',
 				action: 'Get many cases',
 			},
 			{
-				name: 'Get Summary',
+				name: 'Get summary',
 				value: 'getSummary',
 				description: "Returns an overview of case's metadata",
 				action: 'Get a case summary',
@@ -64,7 +64,7 @@ export const caseFields: INodeProperties[] = [
 	/*                                case:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Type Name or ID',
+		displayName: 'Type name or ID',
 		name: 'type',
 		type: 'options',
 		required: true,
@@ -82,10 +82,10 @@ export const caseFields: INodeProperties[] = [
 			'The type of case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -109,9 +109,9 @@ export const caseFields: INodeProperties[] = [
 				description: 'ID of the associated Contact',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -121,10 +121,10 @@ export const caseFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -153,14 +153,14 @@ export const caseFields: INodeProperties[] = [
 				description: 'A text description of the case. Limit: 32 KB.',
 			},
 			{
-				displayName: 'Is Escalated',
+				displayName: 'Is escalated',
 				name: 'isEscalated',
 				type: 'boolean',
 				default: false,
 				description: 'Whether indicates whether the case has been escalated (true) or not',
 			},
 			{
-				displayName: 'Origin Name or ID',
+				displayName: 'Origin name or ID',
 				name: 'origin',
 				type: 'options',
 				typeOptions: {
@@ -177,7 +177,7 @@ export const caseFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user or queue...',
@@ -212,7 +212,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The ID of the parent case in the hierarchy. The label is Parent Case.',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -223,7 +223,7 @@ export const caseFields: INodeProperties[] = [
 					'The importance or urgency of the case, such as High, Medium, or Low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Reason Name or ID',
+				displayName: 'Reason name or ID',
 				name: 'reason',
 				type: 'options',
 				typeOptions: {
@@ -234,7 +234,7 @@ export const caseFields: INodeProperties[] = [
 					'The reason why the case was created, such as Instructions not clear, or User didn’t attend training. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Record Type Name or ID',
+				displayName: 'Record type name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				description:
@@ -245,7 +245,7 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -263,7 +263,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The subject of the case. Limit: 255 characters.',
 			},
 			{
-				displayName: 'Supplied Company',
+				displayName: 'Supplied company',
 				name: 'suppliedCompany',
 				type: 'string',
 				default: '',
@@ -271,7 +271,7 @@ export const caseFields: INodeProperties[] = [
 					"The company name that was entered when the case was created. This field can't be updated after the case has been created..",
 			},
 			{
-				displayName: 'Supplied Email',
+				displayName: 'Supplied email',
 				name: 'suppliedEmail',
 				type: 'string',
 				default: '',
@@ -279,7 +279,7 @@ export const caseFields: INodeProperties[] = [
 					"The email address that was entered when the case was created. This field can't be updated after the case has been created.",
 			},
 			{
-				displayName: 'Supplied Name',
+				displayName: 'Supplied name',
 				name: 'suppliedName',
 				type: 'string',
 				default: '',
@@ -287,7 +287,7 @@ export const caseFields: INodeProperties[] = [
 					"The name that was entered when the case was created. This field can't be updated after the case has been created.",
 			},
 			{
-				displayName: 'Supplied Phone',
+				displayName: 'Supplied phone',
 				name: 'suppliedPhone',
 				type: 'string',
 				default: '',
@@ -315,10 +315,10 @@ export const caseFields: INodeProperties[] = [
 		description: 'ID of case that needs to be fetched',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -342,9 +342,9 @@ export const caseFields: INodeProperties[] = [
 				description: 'ID of the associated Contact',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -354,10 +354,10 @@ export const caseFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -386,14 +386,14 @@ export const caseFields: INodeProperties[] = [
 				description: 'A text description of the case. Limit: 32 KB.',
 			},
 			{
-				displayName: 'Is Escalated',
+				displayName: 'Is escalated',
 				name: 'isEscalated',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the case has been escalated (true) or not',
 			},
 			{
-				displayName: 'Origin Name or ID',
+				displayName: 'Origin name or ID',
 				name: 'origin',
 				type: 'options',
 				typeOptions: {
@@ -410,7 +410,7 @@ export const caseFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user or queue...',
@@ -445,7 +445,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The ID of the parent case in the hierarchy. The label is Parent Case.',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
@@ -456,7 +456,7 @@ export const caseFields: INodeProperties[] = [
 					'The importance or urgency of the case, such as High, Medium, or Low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Reason Name or ID',
+				displayName: 'Reason name or ID',
 				name: 'reason',
 				type: 'options',
 				typeOptions: {
@@ -467,7 +467,7 @@ export const caseFields: INodeProperties[] = [
 					'The reason why the case was created, such as Instructions not clear, or User didn’t attend training. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Record Type Name or ID',
+				displayName: 'Record type name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				description:
@@ -478,7 +478,7 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -496,7 +496,7 @@ export const caseFields: INodeProperties[] = [
 				description: 'The subject of the case. Limit: 255 characters.',
 			},
 			{
-				displayName: 'Supplied Company',
+				displayName: 'Supplied company',
 				name: 'suppliedCompany',
 				type: 'string',
 				default: '',
@@ -504,7 +504,7 @@ export const caseFields: INodeProperties[] = [
 					"The company name that was entered when the case was created. This field can't be updated after the case has been created..",
 			},
 			{
-				displayName: 'Supplied Email',
+				displayName: 'Supplied email',
 				name: 'suppliedEmail',
 				type: 'string',
 				default: '',
@@ -512,7 +512,7 @@ export const caseFields: INodeProperties[] = [
 					"The email address that was entered when the case was created. This field can't be updated after the case has been created.",
 			},
 			{
-				displayName: 'Supplied Name',
+				displayName: 'Supplied name',
 				name: 'suppliedName',
 				type: 'string',
 				default: '',
@@ -520,7 +520,7 @@ export const caseFields: INodeProperties[] = [
 					"The name that was entered when the case was created. This field can't be updated after the case has been created.",
 			},
 			{
-				displayName: 'Supplied Phone',
+				displayName: 'Supplied phone',
 				name: 'suppliedPhone',
 				type: 'string',
 				default: '',
@@ -528,7 +528,7 @@ export const caseFields: INodeProperties[] = [
 					"The phone number that was entered when the case was created. This field can't be updated after the case has been created.",
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type name or ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
@@ -581,7 +581,7 @@ export const caseFields: INodeProperties[] = [
 	/*                                 case:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -615,7 +615,7 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -627,7 +627,7 @@ export const caseFields: INodeProperties[] = [
 			{
 				displayName: 'Conditions',
 				name: 'conditionsUi',
-				placeholder: 'Add Condition',
+				placeholder: 'Add condition',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -640,7 +640,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -720,7 +720,7 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -730,7 +730,7 @@ export const caseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Comment Body',
+				displayName: 'Comment body',
 				name: 'commentBody',
 				type: 'string',
 				default: '',
@@ -738,7 +738,7 @@ export const caseFields: INodeProperties[] = [
 					'Text of the CaseComment. The maximum size of the comment body is 4,000 bytes. Label is Body.',
 			},
 			{
-				displayName: 'Is Published',
+				displayName: 'Is published',
 				name: 'isPublished',
 				type: 'boolean',
 				default: false,

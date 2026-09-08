@@ -20,9 +20,9 @@ export const emailOperations: INodeProperties[] = [
 				action: 'Send a transactional email',
 			},
 			{
-				name: 'Send Template',
+				name: 'Send template',
 				value: 'sendTemplate',
-				action: 'Send an email with an existing Template',
+				action: 'Send an email with an existing template',
 			},
 		],
 		routing: {
@@ -68,7 +68,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		description: 'Subject of the email',
 	},
 	{
-		displayName: 'Text Content',
+		displayName: 'Text content',
 		name: 'textContent',
 		type: 'string',
 		displayOptions: {
@@ -88,7 +88,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		description: 'Text content of the message',
 	},
 	{
-		displayName: 'HTML Content',
+		displayName: 'HTML content',
 		name: 'htmlContent',
 		type: 'string',
 		displayOptions: {
@@ -144,9 +144,9 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		description: 'Additional fields to add',
 		type: 'collection',
 		default: {},
@@ -160,16 +160,16 @@ const sendHtmlEmailFields: INodeProperties[] = [
 			{
 				displayName: 'Attachments',
 				name: 'emailAttachments',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
 						name: 'attachment',
-						displayName: 'Attachment Data',
+						displayName: 'Attachment data',
 						values: [
 							{
-								displayName: 'Input Data Field Name',
+								displayName: 'Input data field name',
 								default: '',
 								name: 'binaryPropertyName',
 								type: 'string',
@@ -238,11 +238,11 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Email Tags',
+				displayName: 'Email tags',
 				name: 'emailTags',
 				default: {},
 				description: 'Add tags to your emails to find them more easily',
-				placeholder: 'Add Email Tags',
+				placeholder: 'Add email tags',
 				type: 'fixedCollection',
 				options: [
 					{
@@ -345,11 +345,11 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		description: 'Additional fields to add',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -361,16 +361,16 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 			{
 				displayName: 'Attachments',
 				name: 'emailAttachments',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
-						displayName: 'Attachment Data',
+						displayName: 'Attachment data',
 						name: 'attachment',
 						values: [
 							{
-								displayName: 'Input Data Field Name',
+								displayName: 'Input data field name',
 								name: 'binaryPropertyName',
 								default: '',
 								type: 'string',
@@ -387,11 +387,11 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Email Tags',
+				displayName: 'Email tags',
 				name: 'emailTags',
 				default: {},
 				description: 'Add tags to your emails to find them more easily',
-				placeholder: 'Add Email Tags',
+				placeholder: 'Add email tags',
 				type: 'fixedCollection',
 				options: [
 					{
@@ -414,11 +414,11 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Template Parameters',
+				displayName: 'Template parameters',
 				name: 'templateParameters',
 				default: {},
 				description: 'Pass a set of attributes to customize the template',
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				type: 'fixedCollection',
 				options: [
 					{

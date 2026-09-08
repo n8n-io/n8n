@@ -24,12 +24,12 @@ export const groupOperations: INodeProperties[] = [
 				action: 'Get a group',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many groups',
 			},
 			{
-				name: 'Get Members',
+				name: 'Get members',
 				value: 'getMembers',
 				action: 'Get group members',
 			},
@@ -39,7 +39,7 @@ export const groupOperations: INodeProperties[] = [
 				action: 'Update a group',
 			},
 			{
-				name: 'Update Members',
+				name: 'Update members',
 				value: 'updateMembers',
 				action: 'Update group members',
 			},
@@ -76,7 +76,7 @@ export const groupFields: INodeProperties[] = [
 	//       group: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -124,7 +124,7 @@ export const groupFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Access All',
+		displayName: 'Access all',
 		name: 'accessAll',
 		type: 'boolean',
 		default: false,
@@ -138,14 +138,14 @@ export const groupFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Collection Names or IDs',
+				displayName: 'Collection names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
 				description:
@@ -175,14 +175,14 @@ export const groupFields: INodeProperties[] = [
 	//       group: update
 	// ----------------------------------
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Access All',
+				displayName: 'Access all',
 				name: 'accessAll',
 				type: 'boolean',
 				default: false,
@@ -190,7 +190,7 @@ export const groupFields: INodeProperties[] = [
 					'Whether to allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 			},
 			{
-				displayName: 'Collection Names or IDs',
+				displayName: 'Collection names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
 				description:

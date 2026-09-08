@@ -31,7 +31,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many tasks',
 				action: 'Get many tasks',
@@ -66,7 +66,7 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Due Date',
+		displayName: 'Due date',
 		name: 'dueDate',
 		description: 'Timestamp that denotes when the task is due to be completed',
 		type: 'dateTime',
@@ -80,7 +80,7 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Owner Name or ID',
+		displayName: 'Owner name or ID',
 		name: 'ownerId',
 		description:
 			'ID of the user to whom the task is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -98,7 +98,7 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Target Type',
+		displayName: 'Target type',
 		name: 'targetableType',
 		description: 'Type of the entity for which the task is updated',
 		type: 'options',
@@ -129,7 +129,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Target ID',
 		name: 'targetable_id',
 		description:
-			'ID of the entity for which the task is created. The type of entity is selected in "Target Type".',
+			'ID of the entity for which the task is created. The type of entity is selected in "Target type".',
 		type: 'string',
 		default: '',
 		required: true,
@@ -141,10 +141,10 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -154,7 +154,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Creator Name or ID',
+				displayName: 'Creator name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: '',
@@ -165,7 +165,7 @@ export const taskFields: INodeProperties[] = [
 					'ID of the user who created the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Outcome Name or ID',
+				displayName: 'Outcome name or ID',
 				name: 'outcome_id',
 				type: 'options',
 				default: '',
@@ -176,7 +176,7 @@ export const taskFields: INodeProperties[] = [
 					'ID of the outcome of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Task Type ID',
+				displayName: 'Task type ID',
 				name: 'task_type_id',
 				type: 'string', // not obtainable from API
 				default: '',
@@ -225,7 +225,7 @@ export const taskFields: INodeProperties[] = [
 	//               task: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -259,7 +259,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				resource: ['task'],
@@ -298,11 +298,11 @@ export const taskFields: INodeProperties[] = [
 						value: 'completed',
 					},
 					{
-						name: 'Due Today',
+						name: 'Due today',
 						value: 'due_today',
 					},
 					{
-						name: 'Due Tomorrow',
+						name: 'Due tomorrow',
 						value: 'due_tomorrow',
 					},
 					{
@@ -336,10 +336,10 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -349,7 +349,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Creator Name or ID',
+				displayName: 'Creator name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: '',
@@ -360,14 +360,14 @@ export const taskFields: INodeProperties[] = [
 					'ID of the user who created the sales activity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				description: 'Timestamp that denotes when the task is due to be completed',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Outcome Name or ID',
+				displayName: 'Outcome name or ID',
 				name: 'outcome_id',
 				type: 'options',
 				default: '',
@@ -378,7 +378,7 @@ export const taskFields: INodeProperties[] = [
 					'ID of the outcome of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
@@ -394,10 +394,10 @@ export const taskFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'ID of the entity for which the task is updated. The type of entity is selected in "Target Type".',
+					'ID of the entity for which the task is updated. The type of entity is selected in "Target type".',
 			},
 			{
-				displayName: 'Target Type',
+				displayName: 'Target type',
 				name: 'targetable_type',
 				description: 'Type of the entity for which the task is updated',
 				type: 'options',
@@ -418,7 +418,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Task Type ID',
+				displayName: 'Task type ID',
 				name: 'task_type_id',
 				type: 'string', // not obtainable from API
 				default: '',

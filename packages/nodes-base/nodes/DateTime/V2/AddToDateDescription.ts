@@ -16,7 +16,7 @@ export const AddToDateDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Date to Add To',
+		displayName: 'Date to add to',
 		name: 'magnitude',
 		type: 'string',
 		description: 'The date that you want to change',
@@ -29,7 +29,7 @@ export const AddToDateDescription: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Time Unit to Add',
+		displayName: 'Time unit to add',
 		name: 'timeUnit',
 		description: 'Time unit for Duration parameter below',
 		displayOptions: {
@@ -93,7 +93,7 @@ export const AddToDateDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Output Field Name',
+		displayName: 'Output field name',
 		name: 'outputFieldName',
 		type: 'string',
 		default: 'newDate',

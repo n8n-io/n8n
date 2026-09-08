@@ -25,13 +25,13 @@ export const streamOperations: INodeProperties[] = [
 				action: 'Delete a stream',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many streams',
 				action: 'Get many streams',
 			},
 			{
-				name: 'Get Subscribed',
+				name: 'Get subscribed',
 				value: 'getSubscribed',
 				description: 'Get subscribed streams',
 				action: 'Get subscribed streams',
@@ -52,7 +52,7 @@ export const streamFields: INodeProperties[] = [
 	/*                                stream:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -64,7 +64,7 @@ export const streamFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -100,7 +100,7 @@ export const streamFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Subscription Properties',
+				displayName: 'Subscription properties',
 				name: 'properties',
 				values: [
 					{
@@ -124,10 +124,10 @@ export const streamFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -147,7 +147,7 @@ export const streamFields: INodeProperties[] = [
 					'If announce is True and one of the streams specified in subscriptions has to be created (i.e. doesnt exist to begin with), an announcement will be made notifying that a new stream was created.',
 			},
 			{
-				displayName: 'Authorization Errors Fatal',
+				displayName: 'Authorization errors fatal',
 				name: 'authorizationErrorsFatal',
 				type: 'boolean',
 				default: false,
@@ -155,7 +155,7 @@ export const streamFields: INodeProperties[] = [
 					'Whether authorization errors (such as when the requesting user is not authorized to access a private stream) should be considered fatal or not. When True, an authorization error is reported as such. When set to False, the returned JSON payload indicates that there was an authorization error, but the response is still considered a successful one.',
 			},
 			{
-				displayName: 'History Public to Subscribers',
+				displayName: 'History public to subscribers',
 				name: 'historyPublicToSubscribers',
 				type: 'boolean',
 				default: false,
@@ -163,7 +163,7 @@ export const streamFields: INodeProperties[] = [
 					'Whether the streams message history should be available to newly subscribed members, or users can only access messages they actually received while subscribed to the stream',
 			},
 			{
-				displayName: 'Invite Only',
+				displayName: 'Invite only',
 				name: 'inviteOnly',
 				type: 'boolean',
 				default: false,
@@ -181,11 +181,11 @@ export const streamFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Principals Properties',
+						displayName: 'Principals properties',
 						name: 'properties',
 						values: [
 							{
-								displayName: 'Principal Email',
+								displayName: 'Principal email',
 								name: 'email',
 								type: 'string',
 								placeholder: 'name@email.com',
@@ -198,7 +198,7 @@ export const streamFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Stream Post Policy',
+				displayName: 'Stream post policy',
 				name: 'streamPostPolicy',
 				type: 'options',
 				default: '',
@@ -228,10 +228,10 @@ export const streamFields: INodeProperties[] = [
 	/*                                stream:get all                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -241,7 +241,7 @@ export const streamFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include All Active',
+				displayName: 'Include all active',
 				name: 'includeAllActive',
 				type: 'boolean',
 				default: true,
@@ -249,14 +249,14 @@ export const streamFields: INodeProperties[] = [
 					'Whether to include all active streams. The user must have administrative privileges to use this parameter.',
 			},
 			{
-				displayName: 'Include Default',
+				displayName: 'Include default',
 				name: 'includeDefault',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to include all default streams for the users realm',
 			},
 			{
-				displayName: 'Include Owner Subscribed',
+				displayName: 'Include owner subscribed',
 				name: 'includeOwnersubscribed',
 				type: 'boolean',
 				default: true,
@@ -264,14 +264,14 @@ export const streamFields: INodeProperties[] = [
 					'Whether the user is a bot, include all streams that the bots owner is subscribed to',
 			},
 			{
-				displayName: 'Include Public',
+				displayName: 'Include public',
 				name: 'includePublic',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to include all public streams',
 			},
 			{
-				displayName: 'Include Subscribed',
+				displayName: 'Include subscribed',
 				name: 'includeSubscribed',
 				type: 'boolean',
 				default: true,
@@ -284,10 +284,10 @@ export const streamFields: INodeProperties[] = [
 	/*                                stream:get subscribed                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -297,7 +297,7 @@ export const streamFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Subscribers',
+				displayName: 'Include subscribers',
 				name: 'includeSubscribers',
 				type: 'boolean',
 				default: true,
@@ -325,7 +325,7 @@ export const streamFields: INodeProperties[] = [
 		description: 'ID of stream to update',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -337,7 +337,7 @@ export const streamFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -356,10 +356,10 @@ export const streamFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -370,7 +370,7 @@ export const streamFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Announcement Only',
+				displayName: 'Announcement only',
 				name: 'isAnnouncementOnly',
 				type: 'boolean',
 				default: false,
@@ -385,14 +385,14 @@ export const streamFields: INodeProperties[] = [
 				placeholder: 'Place of discussion',
 			},
 			{
-				displayName: 'Is Private',
+				displayName: 'Is private',
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the stream is a private stream',
 			},
 			{
-				displayName: 'History Public to Subscribers',
+				displayName: 'History public to subscribers',
 				name: 'historyPublicToSubscribers',
 				type: 'boolean',
 				default: false,
@@ -400,7 +400,7 @@ export const streamFields: INodeProperties[] = [
 					'Whether the streams message history should be available to newly subscribed members, or users can only access messages they actually received while subscribed to the stream',
 			},
 			{
-				displayName: 'New Name',
+				displayName: 'New name',
 				name: 'newName',
 				type: 'string',
 				default: '',
@@ -408,7 +408,7 @@ export const streamFields: INodeProperties[] = [
 				placeholder: 'Italy',
 			},
 			{
-				displayName: 'Stream Post Policy',
+				displayName: 'Stream post policy',
 				name: 'streamPostPolicy',
 				type: 'options',
 				default: '',

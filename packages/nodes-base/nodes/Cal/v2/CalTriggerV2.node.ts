@@ -79,22 +79,22 @@ export class CalTriggerV2 implements INodeType {
 					type: 'multiOptions',
 					options: [
 						{
-							name: 'Booking Cancelled',
+							name: 'Booking cancelled',
 							value: 'BOOKING_CANCELLED',
 							description: 'Receive notifications when a Cal event is canceled',
 						},
 						{
-							name: 'Booking Created',
+							name: 'Booking created',
 							value: 'BOOKING_CREATED',
 							description: 'Receive notifications when a new Cal event is created',
 						},
 						{
-							name: 'Booking Rescheduled',
+							name: 'Booking rescheduled',
 							value: 'BOOKING_RESCHEDULED',
 							description: 'Receive notifications when a Cal event is rescheduled',
 						},
 						{
-							name: 'Meeting Ended',
+							name: 'Meeting ended',
 							value: 'MEETING_ENDED',
 							description: 'Receive notifications when a Cal event or meeting has ended',
 						},
@@ -106,11 +106,11 @@ export class CalTriggerV2 implements INodeType {
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add Field',
+					placeholder: 'Add field',
 					default: {},
 					options: [
 						{
-							displayName: 'EventType Name or ID',
+							displayName: 'EventType name or ID',
 							name: 'eventTypeId',
 							type: 'options',
 							typeOptions: {
@@ -121,7 +121,7 @@ export class CalTriggerV2 implements INodeType {
 							default: '',
 						},
 						{
-							displayName: 'Payload Template',
+							displayName: 'Payload template',
 							name: 'payloadTemplate',
 							type: 'string',
 							description: 'Template to customize the webhook payload',

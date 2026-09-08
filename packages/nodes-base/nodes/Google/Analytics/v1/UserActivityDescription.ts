@@ -25,7 +25,7 @@ export const userActivityOperations: INodeProperties[] = [
 
 export const userActivityFields: INodeProperties[] = [
 	{
-		displayName: 'View Name or ID',
+		displayName: 'View name or ID',
 		name: 'viewId',
 		type: 'options',
 		typeOptions: {
@@ -59,7 +59,7 @@ export const userActivityFields: INodeProperties[] = [
 		description: 'ID of a user',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -90,10 +90,10 @@ export const userActivityFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -103,7 +103,7 @@ export const userActivityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Activity Types',
+				displayName: 'Activity types',
 				name: 'activityTypes',
 				type: 'multiOptions',
 				options: [

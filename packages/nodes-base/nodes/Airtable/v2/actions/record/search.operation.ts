@@ -13,7 +13,7 @@ import { viewRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Filter By Formula',
+		displayName: 'Filter by formula',
 		name: 'filterByFormula',
 		type: 'string',
 		default: '',
@@ -23,7 +23,7 @@ const properties: INodeProperties[] = [
 			'The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response. <a href="https://support.airtable.com/docs/formula-field-reference" target="_blank">More info</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: true,
@@ -55,7 +55,7 @@ const properties: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Download Attachments',
+				displayName: 'Download attachments',
 				name: 'downloadFields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -68,7 +68,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Output Fields',
+				displayName: 'Output fields',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -85,7 +85,7 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Sort',
 		name: 'sort',
-		placeholder: 'Add Sort Rule',
+		placeholder: 'Add sort rule',
 		description: 'Defines how the returned records should be ordered',
 		type: 'fixedCollection',
 		typeOptions: {

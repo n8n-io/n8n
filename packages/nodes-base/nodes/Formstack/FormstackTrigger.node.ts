@@ -62,7 +62,7 @@ export class FormstackTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -73,7 +73,7 @@ export class FormstackTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Form Name or ID',
+				displayName: 'Form name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {

@@ -13,7 +13,7 @@ export const videoCategoryOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many video categories',
 				action: 'Get many video categories',
@@ -29,7 +29,7 @@ export const videoCategoryFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Region Code',
+		displayName: 'Region code',
 		name: 'regionCode',
 		type: 'options',
 		description:
@@ -47,7 +47,7 @@ export const videoCategoryFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

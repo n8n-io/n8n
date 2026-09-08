@@ -62,19 +62,19 @@ const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Fired Alert',
+					name: 'Fired alert',
 					value: 'firedAlert',
 				},
 				{
-					name: 'Search Configuration',
+					name: 'Search configuration',
 					value: 'searchConfiguration',
 				},
 				{
-					name: 'Search Job',
+					name: 'Search job',
 					value: 'searchJob',
 				},
 				{
-					name: 'Search Result',
+					name: 'Search result',
 					value: 'searchResult',
 				},
 				{

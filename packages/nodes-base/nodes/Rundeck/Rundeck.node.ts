@@ -58,7 +58,7 @@ export class Rundeck implements INodeType {
 						action: 'Execute a job',
 					},
 					{
-						name: 'Get Metadata',
+						name: 'Get metadata',
 						value: 'getMetadata',
 						description: 'Get metadata of a job',
 						action: 'Get metadata of a job',
@@ -88,7 +88,7 @@ export class Rundeck implements INodeType {
 			{
 				displayName: 'Arguments',
 				name: 'arguments',
-				placeholder: 'Add Argument',
+				placeholder: 'Add argument',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -132,7 +132,7 @@ export class Rundeck implements INodeType {
 					},
 				},
 				default: '',
-				placeholder: 'Add Filters',
+				placeholder: 'Add filters',
 				description: 'Filter Rundeck nodes by name',
 			},
 

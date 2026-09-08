@@ -42,7 +42,7 @@ export const description: SheetProperties = [
 				description: "Whether the sheet is hidden in the UI, false if it's visible",
 			},
 			{
-				displayName: 'Right To Left',
+				displayName: 'Right to left',
 				name: 'rightToLeft',
 				type: 'boolean',
 				default: false,
@@ -57,14 +57,14 @@ export const description: SheetProperties = [
 					'The ID of the sheet. Must be non-negative. This field cannot be changed once set.',
 			},
 			{
-				displayName: 'Sheet Index',
+				displayName: 'Sheet index',
 				name: 'index',
 				type: 'number',
 				default: 0,
 				description: 'The index of the sheet within the spreadsheet',
 			},
 			{
-				displayName: 'Tab Color',
+				displayName: 'Tab color',
 				name: 'tabColor',
 				type: 'color',
 				default: '0aa55c',

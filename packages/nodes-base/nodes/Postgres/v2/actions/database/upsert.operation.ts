@@ -29,17 +29,17 @@ import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Data Mode',
+		displayName: 'Data mode',
 		name: 'dataMode',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties names exactly match the table column names',
 			},
 			{
-				name: 'Map Each Column Manually',
+				name: 'Map each column manually',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column manually',
 			},
@@ -69,7 +69,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Unique Column',
+		displayName: 'Unique column',
 		name: 'columnToMatchOn',
 		type: 'options',
 		required: true,
@@ -89,12 +89,12 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Value of Unique Column',
+		displayName: 'Value of unique column',
 		name: 'valueToMatchOn',
 		type: 'string',
 		default: '',
 		description:
-			'Rows with a value in the specified "Column to Match On" that corresponds to the value in this field will be updated. New rows will be created for non-matching items.',
+			'Rows with a value in the specified "Column to match on" that corresponds to the value in this field will be updated. New rows will be created for non-matching items.',
 		displayOptions: {
 			show: {
 				dataMode: ['defineBelow'],
@@ -103,9 +103,9 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Values to Send',
+		displayName: 'Values to send',
 		name: 'valuesToSend',
-		placeholder: 'Add Value',
+		placeholder: 'Add value',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Value',

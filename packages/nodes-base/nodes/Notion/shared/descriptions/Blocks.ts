@@ -91,7 +91,7 @@ const annotation: INodeProperties[] = [
 		displayName: 'Annotations',
 		name: 'annotationUi',
 		type: 'collection',
-		placeholder: 'Add Annotation',
+		placeholder: 'Add annotation',
 		default: {},
 		options: [
 			{
@@ -204,7 +204,7 @@ const typeMention = (config: BlocksConfig = {}): INodeProperties[] => {
 				'An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date.',
 		},
 		{
-			displayName: 'User Name or ID',
+			displayName: 'User name or ID',
 			name: 'user',
 			type: 'options',
 			typeOptions: {
@@ -241,7 +241,7 @@ const typeMention = (config: BlocksConfig = {}): INodeProperties[] => {
 					displayName: 'Database',
 					name: 'list',
 					type: 'list',
-					placeholder: 'Select a Database...',
+					placeholder: 'Select a database...',
 					typeOptions: {
 						searchListMethod: resolvedConfig.databaseSearchListMethod,
 						searchable: true,
@@ -321,7 +321,7 @@ const typeMention = (config: BlocksConfig = {}): INodeProperties[] => {
 			description: 'An ISO 8601 format date, with optional time',
 		},
 		{
-			displayName: 'Date Start',
+			displayName: 'Date start',
 			name: 'dateStart',
 			displayOptions: {
 				show: {
@@ -334,7 +334,7 @@ const typeMention = (config: BlocksConfig = {}): INodeProperties[] => {
 			description: 'An ISO 8601 format date, with optional time',
 		},
 		{
-			displayName: 'Date End',
+			displayName: 'Date end',
 			name: 'dateEnd',
 			displayOptions: {
 				show: {
@@ -379,7 +379,7 @@ const typeText: INodeProperties[] = [
 			"Text content. This field contains the actual content of your text and is probably the field you'll use most often.",
 	},
 	{
-		displayName: 'Is Link',
+		displayName: 'Is link',
 		name: 'isLink',
 		displayOptions: {
 			show: {
@@ -390,7 +390,7 @@ const typeText: INodeProperties[] = [
 		default: false,
 	},
 	{
-		displayName: 'Text Link',
+		displayName: 'Text link',
 		name: 'textLink',
 		displayOptions: {
 			show: {
@@ -412,7 +412,7 @@ export const text = (
 		{
 			displayName: 'Text',
 			name: 'text',
-			placeholder: 'Add Text',
+			placeholder: 'Add text',
 			type: 'fixedCollection',
 			default: {},
 			typeOptions: {
@@ -490,7 +490,7 @@ const title = (type: string): INodeProperties[] =>
 
 const richText = (displayOptions: IDisplayOptions): INodeProperties[] => [
 	{
-		displayName: 'Rich Text',
+		displayName: 'Rich text',
 		name: 'richText',
 		type: 'boolean',
 		displayOptions,
@@ -624,7 +624,7 @@ export const blocks = (
 			typeOptions,
 			default: {},
 			displayOptions,
-			placeholder: 'Add Block',
+			placeholder: 'Add block',
 			options: [
 				{
 					name: 'blockValues',
@@ -632,7 +632,7 @@ export const blocks = (
 					...(resolvedConfig.sortable ? { typeOptions: { sortable: true } } : {}),
 					values: [
 						{
-							displayName: 'Type Name or ID',
+							displayName: 'Type name or ID',
 							name: 'type',
 							type: 'options',
 							description:

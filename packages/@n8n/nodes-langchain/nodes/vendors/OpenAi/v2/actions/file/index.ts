@@ -14,19 +14,19 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Delete a File',
+				name: 'Delete a file',
 				value: 'deleteFile',
 				action: 'Delete a file',
 				description: 'Delete a file from the server',
 			},
 			{
-				name: 'List Files',
+				name: 'List files',
 				value: 'list',
 				action: 'List files',
 				description: "Returns a list of files that belong to the user's organization",
 			},
 			{
-				name: 'Upload a File',
+				name: 'Upload a file',
 				value: 'upload',
 				action: 'Upload a file',
 				description: 'Upload a file that can be used across various endpoints',

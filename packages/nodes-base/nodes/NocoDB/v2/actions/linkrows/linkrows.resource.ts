@@ -48,7 +48,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 		//         Shared
 		// ----------------------------------
 		{
-			displayName: 'Workspace Name or ID',
+			displayName: 'Workspace name or ID',
 			name: 'workspaceId',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -56,7 +56,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					typeOptions: {
@@ -73,7 +73,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			],
 		},
 		{
-			displayName: 'Base Name or ID',
+			displayName: 'Base name or ID',
 			name: 'projectId',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -85,7 +85,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			},
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					typeOptions: {
@@ -102,7 +102,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			],
 		},
 		{
-			displayName: 'Table Name or ID',
+			displayName: 'Table name or ID',
 			name: 'table',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -114,7 +114,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			},
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					typeOptions: {

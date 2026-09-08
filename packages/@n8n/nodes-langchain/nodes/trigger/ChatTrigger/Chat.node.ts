@@ -111,12 +111,12 @@ export class Chat implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Send Message',
+						name: 'Send message',
 						value: 'send',
 						action: 'Send a message',
 					},
 					{
-						name: 'Send and Wait for Response',
+						name: 'Send and wait for response',
 						value: SEND_AND_WAIT_OPERATION,
 						action: 'Send message and wait for response',
 					},
@@ -138,7 +138,7 @@ export class Chat implements INodeType {
 				},
 			},
 			{
-				displayName: 'Wait for User Reply',
+				displayName: 'Wait for user reply',
 				name: CHAT_WAIT_USER_REPLY,
 				type: 'boolean',
 				default: true,
@@ -154,7 +154,7 @@ export class Chat implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					hide: {
@@ -163,7 +163,7 @@ export class Chat implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Add Memory Input Connection',
+						displayName: 'Add memory input connection',
 						name: 'memoryConnection',
 						type: 'boolean',
 						default: false,
@@ -196,7 +196,7 @@ export class Chat implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [limitWaitTimeOption, autoSaveHighlightedDataProperty],
 				displayOptions: {
@@ -210,7 +210,7 @@ export class Chat implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [limitWaitTimeOption, autoSaveHighlightedDataProperty],
 				displayOptions: {

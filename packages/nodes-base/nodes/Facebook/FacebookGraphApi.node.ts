@@ -51,7 +51,7 @@ export class FacebookGraphApi implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -72,7 +72,7 @@ export class FacebookGraphApi implements INodeType {
 						value: 'graph.facebook.com',
 					},
 					{
-						name: 'Video Uploads',
+						name: 'Video uploads',
 						value: 'graph-video.facebook.com',
 					},
 				],
@@ -82,7 +82,7 @@ export class FacebookGraphApi implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'HTTP Request Method',
+				displayName: 'HTTP request method',
 				name: 'httpRequestMethod',
 				type: 'options',
 				options: [
@@ -104,7 +104,7 @@ export class FacebookGraphApi implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Graph API Version',
+				displayName: 'Graph API version',
 				name: 'graphApiVersion',
 				type: 'options',
 				options: [
@@ -241,14 +241,14 @@ export class FacebookGraphApi implements INodeType {
 				placeholder: 'videos',
 			},
 			{
-				displayName: 'Ignore SSL Issues (Insecure)',
+				displayName: 'Ignore SSL issues (insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to connect even if SSL certificate validation is not possible',
 			},
 			{
-				displayName: 'Send Binary File',
+				displayName: 'Send binary file',
 				name: 'sendBinaryData',
 				type: 'boolean',
 				displayOptions: {
@@ -262,7 +262,7 @@ export class FacebookGraphApi implements INodeType {
 				description: 'Whether to upload binary data as multipart/form-data',
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: '',
@@ -289,7 +289,7 @@ export class FacebookGraphApi implements INodeType {
 					{
 						displayName: 'Fields',
 						name: 'fields',
-						placeholder: 'Add Field',
+						placeholder: 'Add field',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -318,9 +318,9 @@ export class FacebookGraphApi implements INodeType {
 						],
 					},
 					{
-						displayName: 'Query Parameters',
+						displayName: 'Query parameters',
 						name: 'queryParameters',
-						placeholder: 'Add Parameter',
+						placeholder: 'Add parameter',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -351,7 +351,7 @@ export class FacebookGraphApi implements INodeType {
 						],
 					},
 					{
-						displayName: 'Query Parameters JSON',
+						displayName: 'Query parameters JSON',
 						name: 'queryParametersJson',
 						type: 'json',
 						default: '{}',

@@ -66,7 +66,7 @@ export class Grafana implements INodeType {
 						value: 'team',
 					},
 					{
-						name: 'Team Member',
+						name: 'Team member',
 						value: 'teamMember',
 					},
 					{

@@ -53,20 +53,20 @@ export class Sort implements INodeType {
 				description: 'The type of sorting to perform',
 			},
 			{
-				displayName: 'Fields To Sort By',
+				displayName: 'Fields to sort by',
 				name: 'sortFieldsUi',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Field To Sort By',
+				placeholder: 'Add field to sort by',
 				options: [
 					{
 						displayName: '',
 						name: 'sortField',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field name',
 								name: 'fieldName',
 								type: 'string',
 								required: true,
@@ -140,7 +140,7 @@ export class Sort implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -149,7 +149,7 @@ export class Sort implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Disable Dot Notation',
+						displayName: 'Disable dot notation',
 						name: 'disableDotNotation',
 						type: 'boolean',
 						default: false,

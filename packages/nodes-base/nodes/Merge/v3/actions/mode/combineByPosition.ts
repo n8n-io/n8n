@@ -26,7 +26,7 @@ export const properties: INodeProperties[] = [
 				default: { values: { resolveClash: 'addSuffix' } },
 			},
 			{
-				displayName: 'Include Any Unpaired Items',
+				displayName: 'Include any unpaired items',
 				name: 'includeUnpaired',
 				type: 'boolean',
 				default: false,

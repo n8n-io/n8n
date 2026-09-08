@@ -31,7 +31,7 @@ export const searchJobOperations: INodeProperties[] = [
 				action: 'Get a search job',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many search jobs',
 				action: 'Get many search jobs',
@@ -61,10 +61,10 @@ export const searchJobFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -74,7 +74,7 @@ export const searchJobFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Ad Hoc Search Level',
+				displayName: 'Ad hoc search level',
 				name: 'adhoc_search_level',
 				type: 'options',
 				default: 'verbose',
@@ -94,42 +94,42 @@ export const searchJobFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Auto-Cancel After (Seconds)',
+				displayName: 'Auto-cancel after (seconds)',
 				name: 'auto_cancel',
 				type: 'number',
 				default: 0,
 				description: 'Seconds after which the search job automatically cancels',
 			},
 			{
-				displayName: 'Auto-Finalize After (Num Events)',
+				displayName: 'Auto-finalize after (num events)',
 				name: 'auto_finalize_ec',
 				type: 'number',
 				default: 0,
 				description: 'Auto-finalize the search after at least this many events are processed',
 			},
 			{
-				displayName: 'Auto Pause After (Seconds)',
+				displayName: 'Auto pause after (seconds)',
 				name: 'auto_pause',
 				type: 'number',
 				default: 0,
 				description: 'Seconds of inactivity after which the search job automatically pauses',
 			},
 			{
-				displayName: 'Earliest Index',
+				displayName: 'Earliest index',
 				name: 'index_earliest',
 				type: 'dateTime',
 				default: '',
 				description: 'The earliest index time for the search (inclusive)',
 			},
 			{
-				displayName: 'Earliest Time',
+				displayName: 'Earliest time',
 				name: 'earliest_time',
 				type: 'dateTime',
 				default: '',
 				description: 'The earliest cut-off for the search (inclusive)',
 			},
 			{
-				displayName: 'Exec Mode',
+				displayName: 'Exec mode',
 				name: 'exec_mode',
 				type: 'options',
 				default: 'blocking',
@@ -143,34 +143,34 @@ export const searchJobFields: INodeProperties[] = [
 						value: 'normal',
 					},
 					{
-						name: 'One Shot',
+						name: 'One shot',
 						value: 'oneshot',
 					},
 				],
 			},
 			{
-				displayName: 'Indexed Real Time Offset',
+				displayName: 'Indexed real time offset',
 				name: 'indexedRealtimeOffset',
 				type: 'number',
 				default: 0,
 				description: 'Seconds of disk sync delay for indexed real-time search',
 			},
 			{
-				displayName: 'Latest Index',
+				displayName: 'Latest index',
 				name: 'index_latest',
 				type: 'dateTime',
 				default: '',
 				description: 'The latest index time for the search (inclusive)',
 			},
 			{
-				displayName: 'Latest Time',
+				displayName: 'Latest time',
 				name: 'latest_time',
 				type: 'dateTime',
 				default: '',
 				description: 'The latest cut-off for the search (inclusive)',
 			},
 			{
-				displayName: 'Max Time',
+				displayName: 'Max time',
 				name: 'max_time',
 				type: 'number',
 				default: 0,
@@ -185,14 +185,14 @@ export const searchJobFields: INodeProperties[] = [
 				description: 'Application namespace in which to restrict searches',
 			},
 			{
-				displayName: 'Reduce Frequency',
+				displayName: 'Reduce frequency',
 				name: 'reduce_freq',
 				type: 'number',
 				default: 0,
 				description: 'How frequently to run the MapReduce reduce phase on accumulated map values',
 			},
 			{
-				displayName: 'Remote Server List',
+				displayName: 'Remote server list',
 				name: 'remote_server_list',
 				type: 'string',
 				default: '',
@@ -200,7 +200,7 @@ export const searchJobFields: INodeProperties[] = [
 					'Comma-separated list of (possibly wildcarded) servers from which raw events should be pulled. This same server list is to be used in subsearches.',
 			},
 			{
-				displayName: 'Reuse Limit (Seconds)',
+				displayName: 'Reuse limit (seconds)',
 				name: 'reuse_max_seconds_ago',
 				type: 'number',
 				default: 0,
@@ -208,7 +208,7 @@ export const searchJobFields: INodeProperties[] = [
 					'Number of seconds ago to check when an identical search is started and return the job’s search ID instead of starting a new job',
 			},
 			{
-				displayName: 'Required Field',
+				displayName: 'Required field',
 				name: 'rf',
 				type: 'string',
 				default: '',
@@ -216,7 +216,7 @@ export const searchJobFields: INodeProperties[] = [
 					'Name of a required field to add to the search. Even if not referenced or used directly by the search, a required field is still included in events and summary endpoints.',
 			},
 			{
-				displayName: 'Search Mode',
+				displayName: 'Search mode',
 				name: 'search_mode',
 				type: 'options',
 				default: 'normal',
@@ -226,13 +226,13 @@ export const searchJobFields: INodeProperties[] = [
 						value: 'normal',
 					},
 					{
-						name: 'Real Time',
+						name: 'Real time',
 						value: 'realtime',
 					},
 				],
 			},
 			{
-				displayName: 'Status Buckets',
+				displayName: 'Status buckets',
 				name: 'status_buckets',
 				type: 'number',
 				default: 0,
@@ -247,7 +247,7 @@ export const searchJobFields: INodeProperties[] = [
 				description: 'Number of seconds to keep this search after processing has stopped',
 			},
 			{
-				displayName: 'Workload Pool',
+				displayName: 'Workload pool',
 				name: 'workload_pool',
 				type: 'string',
 				default: '',
@@ -296,7 +296,7 @@ export const searchJobFields: INodeProperties[] = [
 	//            searchJob: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -339,7 +339,7 @@ export const searchJobFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Sort Direction',
+				displayName: 'Sort direction',
 				name: 'sort_dir',
 				type: 'options',
 				options: [
@@ -355,14 +355,14 @@ export const searchJobFields: INodeProperties[] = [
 				default: 'asc',
 			},
 			{
-				displayName: 'Sort Key',
+				displayName: 'Sort key',
 				name: 'sort_key',
 				description: 'Key name to use for sorting',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Sort Mode',
+				displayName: 'Sort mode',
 				name: 'sort_mode',
 				type: 'options',
 				options: [
@@ -378,7 +378,7 @@ export const searchJobFields: INodeProperties[] = [
 						description: 'Collate alphabetically, case-insensitive',
 					},
 					{
-						name: 'Alphabetic and Case-Sensitive',
+						name: 'Alphabetic and case-sensitive',
 						value: 'alpha_case',
 						description: 'Collate alphabetically, case-sensitive',
 					},

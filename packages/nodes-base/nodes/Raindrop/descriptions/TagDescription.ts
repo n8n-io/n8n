@@ -14,7 +14,7 @@ export const tagOperations: INodeProperties[] = [
 				action: 'Delete a tag',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many tags',
 			},
@@ -47,10 +47,10 @@ export const tagFields: INodeProperties[] = [
 			'One or more tags to delete. Enter comma-separated values to delete multiple tags.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -60,7 +60,7 @@ export const tagFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Collection Name or ID',
+				displayName: 'Collection name or ID',
 				name: 'collectionId',
 				type: 'options',
 				typeOptions: {
@@ -76,7 +76,7 @@ export const tagFields: INodeProperties[] = [
 	//       tag: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -110,7 +110,7 @@ export const tagFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -120,7 +120,7 @@ export const tagFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Collection Name or ID',
+				displayName: 'Collection name or ID',
 				name: 'collectionId',
 				type: 'options',
 				description:

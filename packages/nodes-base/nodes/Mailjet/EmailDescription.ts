@@ -19,7 +19,7 @@ export const emailOperations: INodeProperties[] = [
 				action: 'Send an email',
 			},
 			{
-				name: 'Send Template',
+				name: 'Send template',
 				value: 'sendTemplate',
 				description: 'Send a email template',
 				action: 'Send an email template',
@@ -34,7 +34,7 @@ export const emailFields: INodeProperties[] = [
 	/*                                email:send                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'From Email',
+		displayName: 'From email',
 		name: 'fromEmail',
 		type: 'string',
 		required: true,
@@ -49,7 +49,7 @@ export const emailFields: INodeProperties[] = [
 		description: 'The title for the email',
 	},
 	{
-		displayName: 'To Email',
+		displayName: 'To email',
 		name: 'toEmail',
 		type: 'string',
 		default: '',
@@ -98,7 +98,7 @@ export const emailFields: INodeProperties[] = [
 		description: 'HTML text message of email',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -110,10 +110,10 @@ export const emailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -123,21 +123,21 @@ export const emailFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Bcc Email',
+				displayName: 'BCC email',
 				name: 'bccEmail',
 				type: 'string',
 				description: 'Bcc Email address of the recipient. Multiple ones can be separated by comma.',
 				default: '',
 			},
 			{
-				displayName: 'Cc Addresses',
+				displayName: 'CC addresses',
 				name: 'ccAddresses',
 				type: 'string',
 				description: 'Cc Email address of the recipient. Multiple ones can be separated by comma.',
 				default: '',
 			},
 			{
-				displayName: 'From Name',
+				displayName: 'From name',
 				name: 'fromName',
 				type: 'string',
 				default: '',
@@ -149,25 +149,25 @@ export const emailFields: INodeProperties[] = [
 				default: 2,
 			},
 			{
-				displayName: 'Reply To',
+				displayName: 'Reply to',
 				name: 'replyTo',
 				type: 'string',
 				description: 'The reply-to email address. Multiple ones can be separated by comma.',
 				default: '',
 			},
 			{
-				displayName: 'Template Language',
+				displayName: 'Template language',
 				name: 'templateLanguage',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Track Clicks',
+				displayName: 'Track clicks',
 				name: 'trackClicks',
 				type: 'options',
 				options: [
 					{
-						name: 'Account Default',
+						name: 'Account default',
 						value: 'account_default',
 						description: 'Use the values specified in the Mailjet account',
 					},
@@ -186,12 +186,12 @@ export const emailFields: INodeProperties[] = [
 				default: 'account_default',
 			},
 			{
-				displayName: 'Track Opens',
+				displayName: 'Track opens',
 				name: 'trackOpens',
 				type: 'options',
 				options: [
 					{
-						name: 'Account Default',
+						name: 'Account default',
 						value: 'account_default',
 						description: 'Use the values specified in the Mailjet account',
 					},
@@ -210,13 +210,13 @@ export const emailFields: INodeProperties[] = [
 				default: 'account_default',
 			},
 			{
-				displayName: 'Custom Campaign',
+				displayName: 'Custom campaign',
 				name: 'customCampaign',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Deduplicate Campaign',
+				displayName: 'Deduplicate campaign',
 				name: 'deduplicateCampaign',
 				type: 'boolean',
 				default: false,
@@ -251,7 +251,7 @@ export const emailFields: INodeProperties[] = [
 				jsonParameters: [false],
 			},
 		},
-		placeholder: 'Add Variable',
+		placeholder: 'Add variable',
 		default: {},
 		options: [
 			{
@@ -278,7 +278,7 @@ export const emailFields: INodeProperties[] = [
 	/*                                email:sendTemplate                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'From Email',
+		displayName: 'From email',
 		name: 'fromEmail',
 		type: 'string',
 		required: true,
@@ -293,7 +293,7 @@ export const emailFields: INodeProperties[] = [
 		description: 'The title for the email',
 	},
 	{
-		displayName: 'To Email',
+		displayName: 'To email',
 		name: 'toEmail',
 		type: 'string',
 		default: '',
@@ -308,7 +308,7 @@ export const emailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Template Name or ID',
+		displayName: 'Template name or ID',
 		name: 'templateId',
 		type: 'options',
 		description:
@@ -326,7 +326,7 @@ export const emailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -338,10 +338,10 @@ export const emailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -351,21 +351,21 @@ export const emailFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Bcc Email',
+				displayName: 'BCC email',
 				name: 'bccEmail',
 				type: 'string',
 				description: 'BCC Recipients of the email separated by ,',
 				default: '',
 			},
 			{
-				displayName: 'Cc Email',
+				displayName: 'CC email',
 				name: 'ccEmail',
 				type: 'string',
 				description: 'Cc recipients of the email separated by ,',
 				default: '',
 			},
 			{
-				displayName: 'From Name',
+				displayName: 'From name',
 				name: 'fromName',
 				type: 'string',
 				default: '',
@@ -377,7 +377,7 @@ export const emailFields: INodeProperties[] = [
 				default: 2,
 			},
 			{
-				displayName: 'Reply To',
+				displayName: 'Reply to',
 				name: 'replyTo',
 				type: 'string',
 				description: 'The reply-to email address. Multiple ones can be separated by comma.',
@@ -390,33 +390,33 @@ export const emailFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Template Language',
+				displayName: 'Template language',
 				name: 'templateLanguage',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Track Clicks',
+				displayName: 'Track clicks',
 				name: 'trackClicks',
 				type: 'string',
 				description: 'Enable or disable open tracking on this message',
 				default: '',
 			},
 			{
-				displayName: 'Track Opens',
+				displayName: 'Track opens',
 				name: 'trackOpens',
 				type: 'string',
 				description: 'Enable or disable open tracking on this message',
 				default: '',
 			},
 			{
-				displayName: 'Custom Campaign',
+				displayName: 'Custom campaign',
 				name: 'customCampaign',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Deduplicate Campaign',
+				displayName: 'Deduplicate campaign',
 				name: 'deduplicateCampaign',
 				type: 'boolean',
 				default: false,
@@ -437,7 +437,7 @@ export const emailFields: INodeProperties[] = [
 				jsonParameters: [false],
 			},
 		},
-		placeholder: 'Add Variable',
+		placeholder: 'Add variable',
 		default: {},
 		options: [
 			{

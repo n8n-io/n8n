@@ -73,7 +73,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. English_Graceful_Lady',
 	},
 	{
-		displayName: 'Download Audio',
+		displayName: 'Download audio',
 		name: 'downloadAudio',
 		type: 'boolean',
 		default: true,
@@ -83,12 +83,12 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Audio Format',
+				displayName: 'Audio format',
 				name: 'audioFormat',
 				type: 'options',
 				options: [
@@ -118,7 +118,7 @@ const properties: INodeProperties[] = [
 					'Emotion for synthesized speech. By default the model auto-selects the most natural emotion.',
 			},
 			{
-				displayName: 'Language Boost',
+				displayName: 'Language boost',
 				name: 'languageBoost',
 				type: 'options',
 				options: [

@@ -5,7 +5,7 @@ import { createFileSearchStore } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Display Name',
+		displayName: 'Display name',
 		name: 'displayName',
 		type: 'string',
 		placeholder: 'e.g. My File Search Store',

@@ -8,23 +8,23 @@ import { microsoftApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'First Name',
+		displayName: 'First name',
 		name: 'givenName',
 		type: 'string',
 		default: '',
 		required: true,
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'surname',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: contactFields,
 	},

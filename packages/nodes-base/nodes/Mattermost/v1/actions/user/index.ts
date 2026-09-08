@@ -35,19 +35,19 @@ export const descriptions: INodeProperties[] = [
 				action: 'Deactivate a user',
 			},
 			{
-				name: 'Get By Email',
+				name: 'Get by email',
 				value: 'getByEmail',
 				description: 'Get a user by email',
 				action: 'Get a user by email',
 			},
 			{
-				name: 'Get By ID',
+				name: 'Get by ID',
 				value: 'getById',
 				description: 'Get a user by ID',
 				action: 'Get a user by ID',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many users',
 				action: 'Get many users',

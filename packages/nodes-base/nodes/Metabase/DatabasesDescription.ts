@@ -25,7 +25,7 @@ export const databasesOperations: INodeProperties[] = [
 				action: 'Add a databases',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many databases',
 				routing: {
@@ -47,7 +47,7 @@ export const databasesOperations: INodeProperties[] = [
 				action: 'Get many databases',
 			},
 			{
-				name: 'Get Fields',
+				name: 'Get fields',
 				value: 'getFields',
 				description: 'Get fields from database',
 				routing: {
@@ -56,7 +56,7 @@ export const databasesOperations: INodeProperties[] = [
 						url: '={{"/api/database/" + $parameter.databaseId + "/fields"}}',
 					},
 				},
-				action: 'Get Fields a databases',
+				action: 'Get fields a databases',
 			},
 		],
 		default: 'getAll',
@@ -230,7 +230,7 @@ export const databasesFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Database Name',
+		displayName: 'Database name',
 		name: 'dbName',
 		type: 'string',
 		placeholder: 'Users',
@@ -250,7 +250,7 @@ export const databasesFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'File Path',
+		displayName: 'File path',
 		name: 'filePath',
 		type: 'string',
 		required: true,
@@ -271,7 +271,7 @@ export const databasesFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Full Sync',
+		displayName: 'Full sync',
 		name: 'fullSync',
 		type: 'boolean',
 		required: true,

@@ -13,7 +13,7 @@ export const accountOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Note',
+				name: 'Add note',
 				value: 'addNote',
 				description: 'Add note to an account',
 				action: 'Add a note to an account',
@@ -25,7 +25,7 @@ export const accountOperations: INodeProperties[] = [
 				action: 'Create an account',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description:
 					'Create a new account, or update the current one if it already exists (upsert)',
@@ -44,13 +44,13 @@ export const accountOperations: INodeProperties[] = [
 				action: 'Get an account',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many accounts',
 				action: 'Get many accounts',
 			},
 			{
-				name: 'Get Summary',
+				name: 'Get summary',
 				value: 'getSummary',
 				description: "Returns an overview of account's metadata",
 				action: 'Get an account summary',
@@ -72,7 +72,7 @@ export const accountFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Match Against',
+		displayName: 'Match against',
 		name: 'externalId',
 		type: 'options',
 		typeOptions: {
@@ -91,7 +91,7 @@ export const accountFields: INodeProperties[] = [
 			'The field to check to see if the account already exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Value to Match',
+		displayName: 'Value to match',
 		name: 'externalIdValue',
 		type: 'string',
 		required: true,
@@ -120,10 +120,10 @@ export const accountFields: INodeProperties[] = [
 		description: 'Name of the account. Maximum size is 255 characters.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -133,7 +133,7 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Number',
+				displayName: 'Account number',
 				name: 'accountNumber',
 				type: 'string',
 				default: '',
@@ -141,7 +141,7 @@ export const accountFields: INodeProperties[] = [
 					'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'annualRevenue',
 				type: 'number',
 				typeOptions: {
@@ -151,7 +151,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Estimated annual revenue of the account',
 			},
 			{
-				displayName: 'Account Source Name or ID',
+				displayName: 'Account source name or ID',
 				name: 'accountSource',
 				type: 'options',
 				typeOptions: {
@@ -162,7 +162,7 @@ export const accountFields: INodeProperties[] = [
 					'The source of the account record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Billing City',
+				displayName: 'Billing city',
 				name: 'billingCity',
 				type: 'string',
 				default: '',
@@ -170,7 +170,7 @@ export const accountFields: INodeProperties[] = [
 					'Details for the billing address of this account. Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Billing Country',
+				displayName: 'Billing country',
 				name: 'billingCountry',
 				type: 'string',
 				default: '',
@@ -178,7 +178,7 @@ export const accountFields: INodeProperties[] = [
 					'Details for the billing address of this account. Maximum size is 80 characters.',
 			},
 			{
-				displayName: 'Billing Postal Code',
+				displayName: 'Billing postal code',
 				name: 'billingPostalCode',
 				type: 'string',
 				default: '',
@@ -186,7 +186,7 @@ export const accountFields: INodeProperties[] = [
 					'Details for the billing address of this account. Maximum size is 20 characters.',
 			},
 			{
-				displayName: 'Billing State',
+				displayName: 'Billing state',
 				name: 'billingState',
 				type: 'string',
 				default: '',
@@ -194,16 +194,16 @@ export const accountFields: INodeProperties[] = [
 					'Details for the billing address of this account. Maximum size is 80 characters.',
 			},
 			{
-				displayName: 'Billing Street',
+				displayName: 'Billing street',
 				name: 'billingStreet',
 				type: 'string',
 				default: '',
 				description: 'Street address for the billing address of this account',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -213,10 +213,10 @@ export const accountFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -266,7 +266,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'The website of this account. Maximum of 255 characters.',
 			},
 			{
-				displayName: 'Number Of Employees',
+				displayName: 'Number of employees',
 				name: 'numberOfEmployees',
 				type: 'number',
 				default: '',
@@ -278,7 +278,7 @@ export const accountFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',
@@ -320,7 +320,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Phone number for the account',
 			},
 			{
-				displayName: 'Record Type Name or ID',
+				displayName: 'Record type name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				description:
@@ -339,7 +339,7 @@ export const accountFields: INodeProperties[] = [
 					'A brief description of an organization’s line of business, based on its SIC code',
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type name or ID',
 				name: 'type',
 				type: 'options',
 				default: '',
@@ -350,7 +350,7 @@ export const accountFields: INodeProperties[] = [
 					'Type of account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Shipping City',
+				displayName: 'Shipping city',
 				name: 'shippingCity',
 				type: 'string',
 				default: '',
@@ -358,7 +358,7 @@ export const accountFields: INodeProperties[] = [
 					'Details of the shipping address for this account. City maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Shipping Country',
+				displayName: 'Shipping country',
 				name: 'shippingCountry',
 				type: 'string',
 				default: '',
@@ -366,7 +366,7 @@ export const accountFields: INodeProperties[] = [
 					'Details of the shipping address for this account. Country maximum size is 80 characters.',
 			},
 			{
-				displayName: 'Shipping Postal Code',
+				displayName: 'Shipping postal code',
 				name: 'shippingPostalCode',
 				type: 'string',
 				default: '',
@@ -374,7 +374,7 @@ export const accountFields: INodeProperties[] = [
 					'Details of the shipping address for this account. Postal code maximum size is 20 characters.',
 			},
 			{
-				displayName: 'Shipping State',
+				displayName: 'Shipping state',
 				name: 'shippingState',
 				type: 'string',
 				default: '',
@@ -382,7 +382,7 @@ export const accountFields: INodeProperties[] = [
 					'Details of the shipping address for this account. State maximum size is 80 characters.',
 			},
 			{
-				displayName: 'Shipping Street',
+				displayName: 'Shipping street',
 				name: 'shippingStreet',
 				type: 'string',
 				default: '',
@@ -417,10 +417,10 @@ export const accountFields: INodeProperties[] = [
 		description: 'ID of account that needs to be fetched',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -430,7 +430,7 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Number',
+				displayName: 'Account number',
 				name: 'accountNumber',
 				type: 'string',
 				default: '',
@@ -438,7 +438,7 @@ export const accountFields: INodeProperties[] = [
 					'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Account Source Name or ID',
+				displayName: 'Account source name or ID',
 				name: 'accountSource',
 				type: 'options',
 				typeOptions: {
@@ -449,7 +449,7 @@ export const accountFields: INodeProperties[] = [
 					'The source of the account record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'annualRevenue',
 				type: 'number',
 				typeOptions: {
@@ -459,7 +459,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Estimated annual revenue of the account',
 			},
 			{
-				displayName: 'Billing City',
+				displayName: 'Billing city',
 				name: 'billingCity',
 				type: 'string',
 				default: '',
@@ -467,7 +467,7 @@ export const accountFields: INodeProperties[] = [
 					'Details for the billing address of this account. Maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Billing Country',
+				displayName: 'Billing country',
 				name: 'billingCountry',
 				type: 'string',
 				default: '',
@@ -475,7 +475,7 @@ export const accountFields: INodeProperties[] = [
 					'Details for the billing address of this account. Maximum size is 80 characters.',
 			},
 			{
-				displayName: 'Billing Postal Code',
+				displayName: 'Billing postal code',
 				name: 'billingPostalCode',
 				type: 'string',
 				default: '',
@@ -483,7 +483,7 @@ export const accountFields: INodeProperties[] = [
 					'Details for the billing address of this account. Maximum size is 20 characters.',
 			},
 			{
-				displayName: 'Billing State',
+				displayName: 'Billing state',
 				name: 'billingState',
 				type: 'string',
 				default: '',
@@ -491,16 +491,16 @@ export const accountFields: INodeProperties[] = [
 					'Details for the billing address of this account. Maximum size is 80 characters.',
 			},
 			{
-				displayName: 'Billing Street',
+				displayName: 'Billing street',
 				name: 'billingStreet',
 				type: 'string',
 				default: '',
 				description: 'Street address for the billing address of this account',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -510,10 +510,10 @@ export const accountFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -570,7 +570,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Name of the account. Maximum size is 255 characters.',
 			},
 			{
-				displayName: 'Number Of Employees',
+				displayName: 'Number of employees',
 				name: 'numberOfEmployees',
 				type: 'number',
 				default: '',
@@ -582,7 +582,7 @@ export const accountFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',
@@ -624,7 +624,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Phone number for the account',
 			},
 			{
-				displayName: 'Record Type Name or ID',
+				displayName: 'Record type name or ID',
 				name: 'recordTypeId',
 				type: 'options',
 				description:
@@ -643,7 +643,7 @@ export const accountFields: INodeProperties[] = [
 					'A brief description of an organization’s line of business, based on its SIC code',
 			},
 			{
-				displayName: 'Shipping City',
+				displayName: 'Shipping city',
 				name: 'shippingCity',
 				type: 'string',
 				default: '',
@@ -651,7 +651,7 @@ export const accountFields: INodeProperties[] = [
 					'Details of the shipping address for this account. City maximum size is 40 characters.',
 			},
 			{
-				displayName: 'Shipping Country',
+				displayName: 'Shipping country',
 				name: 'shippingCountry',
 				type: 'string',
 				default: '',
@@ -659,7 +659,7 @@ export const accountFields: INodeProperties[] = [
 					'Details of the shipping address for this account. Country maximum size is 80 characters.',
 			},
 			{
-				displayName: 'Shipping Postal Code',
+				displayName: 'Shipping postal code',
 				name: 'shippingPostalCode',
 				type: 'string',
 				default: '',
@@ -667,7 +667,7 @@ export const accountFields: INodeProperties[] = [
 					'Details of the shipping address for this account. Postal code maximum size is 20 characters.',
 			},
 			{
-				displayName: 'Shipping State',
+				displayName: 'Shipping state',
 				name: 'shippingState',
 				type: 'string',
 				default: '',
@@ -675,7 +675,7 @@ export const accountFields: INodeProperties[] = [
 					'Details of the shipping address for this account. State maximum size is 80 characters.',
 			},
 			{
-				displayName: 'Shipping Street',
+				displayName: 'Shipping street',
 				name: 'shippingStreet',
 				type: 'string',
 				default: '',
@@ -683,7 +683,7 @@ export const accountFields: INodeProperties[] = [
 					'The street address of the shipping address for this account. Maximum of 255 characters.',
 			},
 			{
-				displayName: 'Type Name or ID',
+				displayName: 'Type name or ID',
 				name: 'type',
 				type: 'options',
 				default: '',
@@ -743,7 +743,7 @@ export const accountFields: INodeProperties[] = [
 	/*                                 account:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -777,7 +777,7 @@ export const accountFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -796,7 +796,7 @@ export const accountFields: INodeProperties[] = [
 			{
 				displayName: 'Conditions',
 				name: 'conditionsUi',
-				placeholder: 'Add Condition',
+				placeholder: 'Add condition',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -809,7 +809,7 @@ export const accountFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -896,7 +896,7 @@ export const accountFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -913,7 +913,7 @@ export const accountFields: INodeProperties[] = [
 				description: 'Body of the note. Limited to 32 KB.',
 			},
 			{
-				displayName: 'Is Private',
+				displayName: 'Is private',
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
@@ -927,7 +927,7 @@ export const accountFields: INodeProperties[] = [
 				default: { mode: 'list', value: '' },
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a user...',

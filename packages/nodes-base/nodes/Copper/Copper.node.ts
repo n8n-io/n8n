@@ -67,7 +67,7 @@ export class Copper implements INodeType {
 						value: 'company',
 					},
 					{
-						name: 'Customer Source',
+						name: 'Customer source',
 						value: 'customerSource',
 					},
 					{

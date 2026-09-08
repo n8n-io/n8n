@@ -35,7 +35,7 @@ const getPromptOption: (
 	};
 	if (collapsible) {
 		return [
-			{ displayName: 'Customize Prompt', name: 'customizePrompt', type: 'boolean', default: false },
+			{ displayName: 'Customize prompt', name: 'customizePrompt', type: 'boolean', default: false },
 			{ ...promptParameters, displayOptions: { show: { customizePrompt: [true] } } },
 		];
 	}
@@ -63,13 +63,13 @@ export const propertiesDescription: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Check Text for Violations',
+				name: 'Check text for violations',
 				value: 'classify',
 				action: 'Check text for violations',
 				description: 'Validate text against a set of policies (e.g. NSFW, prompt injection)',
 			},
 			{
-				name: 'Sanitize Text',
+				name: 'Sanitize text',
 				value: 'sanitize',
 				action: 'Sanitize text',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period
@@ -79,7 +79,7 @@ export const propertiesDescription: INodeProperties[] = [
 		default: 'classify',
 	},
 	{
-		displayName: 'Text To Check',
+		displayName: 'Text to check',
 		name: 'text',
 		type: 'string',
 		required: true,
@@ -91,7 +91,7 @@ export const propertiesDescription: INodeProperties[] = [
 	{
 		displayName: 'Guardrails',
 		name: 'guardrails',
-		placeholder: 'Add Guardrail',
+		placeholder: 'Add guardrail',
 		type: 'collection',
 		default: {},
 		options: [
@@ -135,7 +135,7 @@ export const propertiesDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Personal Data (PII)',
+				displayName: 'Personal data (PII)',
 				name: 'pii',
 				type: 'fixedCollection',
 				default: { value: { type: 'all' } },
@@ -171,7 +171,7 @@ export const propertiesDescription: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Secret Keys',
+				displayName: 'Secret keys',
 				name: 'secretKeys',
 				type: 'fixedCollection',
 				default: { value: { permissiveness: 'balanced' } },
@@ -208,7 +208,7 @@ export const propertiesDescription: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Topical Alignment',
+				displayName: 'Topical alignment',
 				name: 'topicalAlignment',
 				type: 'fixedCollection',
 				default: { value: { threshold: 0.7 } },
@@ -238,7 +238,7 @@ export const propertiesDescription: INodeProperties[] = [
 				options: [
 					wrapValue([
 						{
-							displayName: 'Block All URLs Except',
+							displayName: 'Block all URLs except',
 							name: 'allowedUrls',
 							type: 'string',
 							// keep placeholder to avoid limitation that removes collections with unchanged default values
@@ -247,7 +247,7 @@ export const propertiesDescription: INodeProperties[] = [
 								'Multiple URLs can be added separated by comma. Leave empty to block all URLs.',
 						},
 						{
-							displayName: 'Allowed Schemes',
+							displayName: 'Allowed schemes',
 							name: 'allowedSchemes',
 							type: 'multiOptions',
 							default: ['https'],
@@ -270,7 +270,7 @@ export const propertiesDescription: INodeProperties[] = [
 							],
 						},
 						{
-							displayName: 'Block Userinfo',
+							displayName: 'Block userinfo',
 							name: 'blockUserinfo',
 							type: 'boolean',
 							default: true,
@@ -283,7 +283,7 @@ export const propertiesDescription: INodeProperties[] = [
 							},
 						},
 						{
-							displayName: 'Sanitize Userinfo',
+							displayName: 'Sanitize userinfo',
 							name: 'blockUserinfo',
 							type: 'boolean',
 							default: true,
@@ -296,7 +296,7 @@ export const propertiesDescription: INodeProperties[] = [
 							},
 						},
 						{
-							displayName: 'Allow Subdomains',
+							displayName: 'Allow subdomains',
 							name: 'allowSubdomains',
 							type: 'boolean',
 							default: true,
@@ -314,7 +314,7 @@ export const propertiesDescription: INodeProperties[] = [
 					sortable: true,
 					multipleValues: true,
 				},
-				placeholder: 'Add Custom Guardrail',
+				placeholder: 'Add custom guardrail',
 				default: {
 					guardrail: [{ name: 'Custom Guardrail' }],
 				},
@@ -342,14 +342,14 @@ export const propertiesDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Custom Regex',
+				displayName: 'Custom regex',
 				name: 'customRegex',
 				type: 'fixedCollection',
 				typeOptions: {
 					sortable: true,
 					multipleValues: true,
 				},
-				placeholder: 'Add Custom Regex',
+				placeholder: 'Add custom regex',
 				default: {},
 				options: [
 					{
@@ -379,7 +379,7 @@ export const propertiesDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Customize System Message',
+		displayName: 'Customize system message',
 		name: 'customizeSystemMessage',
 		description:
 			'Whether to customize the system message used by the guardrail to specify the output format',
@@ -392,7 +392,7 @@ export const propertiesDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'System Message',
+		displayName: 'System message',
 		name: 'systemMessage',
 		type: 'string',
 		description:

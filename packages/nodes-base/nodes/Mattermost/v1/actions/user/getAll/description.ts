@@ -2,7 +2,7 @@ import type { UserProperties } from '../../Interfaces';
 
 export const userGetAllDescription: UserProperties = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -33,10 +33,10 @@ export const userGetAllDescription: UserProperties = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -46,28 +46,28 @@ export const userGetAllDescription: UserProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'In Channel',
+				displayName: 'In channel',
 				name: 'inChannel',
 				type: 'string',
 				default: '',
 				description: 'The ID of the channel to get users for',
 			},
 			{
-				displayName: 'In Team',
+				displayName: 'In team',
 				name: 'inTeam',
 				type: 'string',
 				default: '',
 				description: 'The ID of the team to get users for',
 			},
 			{
-				displayName: 'Not In Team',
+				displayName: 'Not in team',
 				name: 'notInTeam',
 				type: 'string',
 				default: '',
 				description: 'The ID of the team to exclude users for',
 			},
 			{
-				displayName: 'Not In Channel',
+				displayName: 'Not in channel',
 				name: 'notInChannel',
 				type: 'string',
 				default: '',
@@ -79,11 +79,11 @@ export const userGetAllDescription: UserProperties = [
 				type: 'options',
 				options: [
 					{
-						name: 'Created At',
+						name: 'Created at',
 						value: 'createdAt',
 					},
 					{
-						name: 'Last Activity At',
+						name: 'Last activity at',
 						value: 'lastActivityAt',
 					},
 					{

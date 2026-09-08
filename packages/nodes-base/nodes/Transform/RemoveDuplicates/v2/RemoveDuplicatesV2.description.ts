@@ -83,7 +83,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Fields To Exclude',
+		displayName: 'Fields to exclude',
 		name: 'fieldsToExclude',
 		type: 'string',
 		placeholder: 'e.g. email, name',
@@ -97,7 +97,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Fields To Compare',
+		displayName: 'Fields to compare',
 		name: 'fieldsToCompare',
 		type: 'string',
 		placeholder: 'e.g. email, name',
@@ -113,7 +113,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 
 	// ----------------------------------
 	{
-		displayName: 'Keep Items Where',
+		displayName: 'Keep items where',
 		name: 'logic',
 		type: 'options',
 		noDataExpression: true,
@@ -128,7 +128,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Value to Dedupe On',
+		displayName: 'Value to dedupe on',
 		name: 'dedupeValue',
 		type: 'string',
 		default: '',
@@ -144,7 +144,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Value to Dedupe On',
+		displayName: 'Value to dedupe on',
 		name: 'incrementalDedupeValue',
 		type: 'number',
 		default: '',
@@ -159,7 +159,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Value to Dedupe On',
+		displayName: 'Value to dedupe on',
 		name: 'dateDedupeValue',
 		type: 'dateTime',
 		default: '',
@@ -191,7 +191,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -204,7 +204,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Disable Dot Notation',
+				displayName: 'Disable dot notation',
 				name: 'disableDotNotation',
 				type: 'boolean',
 				default: false,
@@ -220,7 +220,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 					'Whether to disallow referencing child fields using `parent.child` in the field name',
 			},
 			{
-				displayName: 'Remove Other Fields',
+				displayName: 'Remove other fields',
 				name: 'removeOtherFields',
 				type: 'boolean',
 				default: false,
@@ -261,7 +261,7 @@ export const removeDuplicatesNodeFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'History Size',
+				displayName: 'History size',
 				name: 'historySize',
 				type: 'number',
 				default: 10000,

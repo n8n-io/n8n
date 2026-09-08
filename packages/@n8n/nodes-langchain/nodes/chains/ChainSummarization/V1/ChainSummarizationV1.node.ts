@@ -55,7 +55,7 @@ export class ChainSummarizationV1 implements INodeType {
 					default: 'map_reduce',
 					options: [
 						{
-							name: 'Map Reduce (Recommended)',
+							name: 'Map reduce (recommended)',
 							value: 'map_reduce',
 							description:
 								'Summarize each document (or chunk) individually, then summarize those summaries',
@@ -78,10 +78,10 @@ export class ChainSummarizationV1 implements INodeType {
 					name: 'options',
 					type: 'collection',
 					default: {},
-					placeholder: 'Add Option',
+					placeholder: 'Add option',
 					options: [
 						{
-							displayName: 'Final Prompt to Combine',
+							displayName: 'Final prompt to combine',
 							name: 'combineMapPrompt',
 							type: 'string',
 							hint: 'The prompt to combine individual summaries',
@@ -96,7 +96,7 @@ export class ChainSummarizationV1 implements INodeType {
 							},
 						},
 						{
-							displayName: 'Individual Summary Prompt',
+							displayName: 'Individual summary prompt',
 							name: 'prompt',
 							type: 'string',
 							default: DEFAULT_PROMPT_TEMPLATE,
@@ -125,7 +125,7 @@ export class ChainSummarizationV1 implements INodeType {
 							},
 						},
 						{
-							displayName: 'Subsequent (Refine) Prompt',
+							displayName: 'Subsequent (refine) prompt',
 							name: 'refinePrompt',
 							type: 'string',
 							displayOptions: {
@@ -140,7 +140,7 @@ export class ChainSummarizationV1 implements INodeType {
 							},
 						},
 						{
-							displayName: 'Initial Prompt',
+							displayName: 'Initial prompt',
 							name: 'refineQuestionPrompt',
 							type: 'string',
 							displayOptions: {

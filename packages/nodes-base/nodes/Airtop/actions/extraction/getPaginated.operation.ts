@@ -28,10 +28,10 @@ export const description: INodeProperties[] = [
 		placeholder: 'e.g. Extract all the product names and prices',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -47,7 +47,7 @@ export const description: INodeProperties[] = [
 				...parseJsonOutputField,
 			},
 			{
-				displayName: 'Interaction Mode',
+				displayName: 'Interaction mode',
 				name: 'interactionMode',
 				type: 'options',
 				default: 'auto',
@@ -64,14 +64,14 @@ export const description: INodeProperties[] = [
 						value: 'accurate',
 					},
 					{
-						name: 'Cost Efficient',
+						name: 'Cost efficient',
 						description: 'Minimize costs while ensuring effectiveness',
 						value: 'cost-efficient',
 					},
 				],
 			},
 			{
-				displayName: 'Pagination Mode',
+				displayName: 'Pagination mode',
 				name: 'paginationMode',
 				type: 'options',
 				default: 'auto',
@@ -88,7 +88,7 @@ export const description: INodeProperties[] = [
 						value: 'paginated',
 					},
 					{
-						name: 'Infinite Scroll',
+						name: 'Infinite scroll',
 						description: 'Scroll the page to load more content',
 						value: 'infinite-scroll',
 					},

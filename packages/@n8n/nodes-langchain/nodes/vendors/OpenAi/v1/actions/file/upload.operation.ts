@@ -7,7 +7,7 @@ import { apiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
@@ -36,7 +36,7 @@ const properties: INodeProperties[] = [
 						value: 'assistants',
 					},
 					{
-						name: 'Fine-Tune',
+						name: 'Fine-tune',
 						value: 'fine-tune',
 					},
 				],

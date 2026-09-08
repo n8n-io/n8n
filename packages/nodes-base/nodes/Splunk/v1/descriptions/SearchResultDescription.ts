@@ -13,7 +13,7 @@ export const searchResultOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many search results for a search job',
 				action: 'Get many search results',
@@ -42,7 +42,7 @@ export const searchResultFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -75,7 +75,7 @@ export const searchResultFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -85,16 +85,16 @@ export const searchResultFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Key-Value Match',
+				displayName: 'Key-value match',
 				name: 'keyValueMatch',
 				description:
 					'Key-value pair to match against. Example: if "Key" is set to <code>user</code> and "Field" is set to <code>john</code>, only the results where <code>user</code> is <code>john</code> will be returned.',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Key-Value Pair',
+				placeholder: 'Add key-value pair',
 				options: [
 					{
-						displayName: 'Key-Value Pair',
+						displayName: 'Key-value pair',
 						name: 'keyValuePair',
 						values: [
 							{
@@ -131,7 +131,7 @@ export const searchResultFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Add Summary to Metadata',
+				displayName: 'Add summary to metadata',
 				name: 'add_summary_to_metadata',
 				description: 'Whether to include field summary statistics in the response',
 				type: 'boolean',

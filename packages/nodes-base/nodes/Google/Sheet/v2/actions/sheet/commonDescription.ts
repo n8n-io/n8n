@@ -11,10 +11,10 @@ export const upsertColumnsResourceMapperBuilderHint: IParameterBuilderHint = {
 };
 
 export const dataLocationOnSheet: INodeProperties = {
-	displayName: 'Data Location on Sheet',
+	displayName: 'Data location on sheet',
 	name: 'dataLocationOnSheet',
 	type: 'fixedCollection',
-	placeholder: 'Select Range',
+	placeholder: 'Select range',
 	default: { values: { rangeDefinition: 'detectAutomatically' } },
 	options: [
 		{
@@ -22,22 +22,22 @@ export const dataLocationOnSheet: INodeProperties = {
 			name: 'values',
 			values: [
 				{
-					displayName: 'Range Definition',
+					displayName: 'Range definition',
 					name: 'rangeDefinition',
 					type: 'options',
 					options: [
 						{
-							name: 'Detect Automatically',
+							name: 'Detect automatically',
 							value: 'detectAutomatically',
 							description: 'Automatically detect the data range',
 						},
 						{
-							name: 'Specify Range (A1 Notation)',
+							name: 'Specify range (A1 notation)',
 							value: 'specifyRangeA1',
 							description: 'Manually specify the data range',
 						},
 						{
-							name: 'Specify Range (Rows)',
+							name: 'Specify range (rows)',
 							value: 'specifyRange',
 							description: 'Manually specify the data range',
 						},
@@ -45,17 +45,17 @@ export const dataLocationOnSheet: INodeProperties = {
 					default: '',
 				},
 				{
-					displayName: 'Read Rows Until',
+					displayName: 'Read rows until',
 					name: 'readRowsUntil',
 					type: 'options',
 					default: 'lastRowInSheet',
 					options: [
 						{
-							name: 'First Empty Row',
+							name: 'First empty row',
 							value: 'firstEmptyRow',
 						},
 						{
-							name: 'Last Row In Sheet',
+							name: 'Last row in sheet',
 							value: 'lastRowInSheet',
 						},
 					],
@@ -66,7 +66,7 @@ export const dataLocationOnSheet: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Header Row',
+					displayName: 'Header row',
 					name: 'headerRow',
 					type: 'number',
 					typeOptions: {
@@ -82,7 +82,7 @@ export const dataLocationOnSheet: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'First Data Row',
+					displayName: 'First data row',
 					name: 'firstDataRow',
 					type: 'number',
 					typeOptions: {
@@ -118,10 +118,10 @@ export const dataLocationOnSheet: INodeProperties = {
 };
 
 export const locationDefine: INodeProperties = {
-	displayName: 'Data Location on Sheet',
+	displayName: 'Data location on sheet',
 	name: 'locationDefine',
 	type: 'fixedCollection',
-	placeholder: 'Select Range',
+	placeholder: 'Select range',
 	default: { values: {} },
 	options: [
 		{
@@ -129,7 +129,7 @@ export const locationDefine: INodeProperties = {
 			name: 'values',
 			values: [
 				{
-					displayName: 'Header Row',
+					displayName: 'Header row',
 					name: 'headerRow',
 					type: 'number',
 					typeOptions: {
@@ -140,7 +140,7 @@ export const locationDefine: INodeProperties = {
 					hint: 'Index of the row which contains the column names',
 				},
 				{
-					displayName: 'First Data Row',
+					displayName: 'First data row',
 					name: 'firstDataRow',
 					type: 'number',
 					typeOptions: {
@@ -156,10 +156,10 @@ export const locationDefine: INodeProperties = {
 };
 
 export const outputFormatting: INodeProperties = {
-	displayName: 'Output Formatting',
+	displayName: 'Output formatting',
 	name: 'outputFormatting',
 	type: 'fixedCollection',
-	placeholder: 'Add Formatting',
+	placeholder: 'Add formatting',
 	default: { values: { general: 'UNFORMATTED_VALUE', date: 'FORMATTED_STRING' } },
 	options: [
 		{
@@ -167,7 +167,7 @@ export const outputFormatting: INodeProperties = {
 			name: 'values',
 			values: [
 				{
-					displayName: 'General Formatting',
+					displayName: 'General formatting',
 					name: 'general',
 					type: 'options',
 					options: [
@@ -194,18 +194,18 @@ export const outputFormatting: INodeProperties = {
 					description: 'Determines how values should be rendered in the output',
 				},
 				{
-					displayName: 'Date Formatting',
+					displayName: 'Date formatting',
 					name: 'date',
 					type: 'options',
 					default: '',
 					options: [
 						{
-							name: 'Formatted Text',
+							name: 'Formatted text',
 							value: 'FORMATTED_STRING',
 							description: "As displayed in Google Sheets, e.g. '01/01/2022'",
 						},
 						{
-							name: 'Serial Number',
+							name: 'Serial number',
 							value: 'SERIAL_NUMBER',
 							description: 'A number representing the number of days since Dec 30, 1899',
 						},
@@ -217,7 +217,7 @@ export const outputFormatting: INodeProperties = {
 };
 
 export const cellFormat: INodeProperties = {
-	displayName: 'Cell Format',
+	displayName: 'Cell format',
 	name: 'cellFormat',
 	type: 'options',
 	options: [
@@ -245,12 +245,12 @@ export const handlingExtraData: INodeProperties = {
 	type: 'options',
 	options: [
 		{
-			name: 'Insert in New Column(s)',
+			name: 'Insert in new column(s)',
 			value: 'insertInNewColumn',
 			description: 'Create a new column for extra data',
 		},
 		{
-			name: 'Ignore Them',
+			name: 'Ignore them',
 			value: 'ignoreIt',
 			description: 'Ignore extra data',
 		},
@@ -270,7 +270,7 @@ export const handlingExtraData: INodeProperties = {
 };
 
 export const useAppendOption: INodeProperties = {
-	displayName: 'Minimise API Calls',
+	displayName: 'Minimise API calls',
 	name: 'useAppend',
 	type: 'boolean',
 	default: false,

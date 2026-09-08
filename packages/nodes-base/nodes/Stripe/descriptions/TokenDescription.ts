@@ -36,7 +36,7 @@ export const tokenFields: INodeProperties[] = [
 		description: 'Type of token to create',
 		options: [
 			{
-				name: 'Card Token',
+				name: 'Card token',
 				value: 'cardToken',
 			},
 		],
@@ -48,7 +48,7 @@ export const tokenFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Card Number',
+		displayName: 'Card number',
 		name: 'number',
 		type: 'string',
 		displayOptions: {
@@ -77,7 +77,7 @@ export const tokenFields: INodeProperties[] = [
 		description: 'Security code printed on the back of the card',
 	},
 	{
-		displayName: 'Expiration Month',
+		displayName: 'Expiration month',
 		description: 'Number of the month when the card will expire',
 		name: 'expirationMonth',
 		type: 'string',
@@ -92,7 +92,7 @@ export const tokenFields: INodeProperties[] = [
 		placeholder: '10',
 	},
 	{
-		displayName: 'Expiration Year',
+		displayName: 'Expiration year',
 		description: 'Year when the card will expire',
 		name: 'expirationYear',
 		type: 'string',

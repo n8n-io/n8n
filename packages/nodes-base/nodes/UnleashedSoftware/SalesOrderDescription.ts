@@ -13,7 +13,7 @@ export const salesOrderOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many sales orders',
 				action: 'Get many sales orders',
@@ -28,7 +28,7 @@ export const salesOrderFields: INodeProperties[] = [
 	/*                                salesOrder:getAll                          */
 	/* ------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -62,7 +62,7 @@ export const salesOrderFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -81,28 +81,28 @@ export const salesOrderFields: INodeProperties[] = [
 					'Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs.',
 			},
 			{
-				displayName: 'Customer Code',
+				displayName: 'Customer code',
 				name: 'customerCode',
 				type: 'string',
 				default: '',
 				description: 'Returns orders that start with the specific customer code',
 			},
 			{
-				displayName: 'End Date',
+				displayName: 'End date',
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
 				description: 'Returns orders with order date before the specified date. UTC.',
 			},
 			{
-				displayName: 'Modified Since',
+				displayName: 'Modified since',
 				name: 'modifiedSince',
 				type: 'dateTime',
 				default: '',
 				description: 'Returns orders created or edited after a specified date, must be UTC format',
 			},
 			{
-				displayName: 'Order Number',
+				displayName: 'Order number',
 				name: 'orderNumber',
 				type: 'string',
 				default: '',
@@ -110,7 +110,7 @@ export const salesOrderFields: INodeProperties[] = [
 					'Returns a single order with the specified order number. If set, it overrides all other filters.',
 			},
 			{
-				displayName: 'Order Status',
+				displayName: 'Order status',
 				name: 'orderStatus',
 				type: 'multiOptions',
 				options: [
@@ -140,7 +140,7 @@ export const salesOrderFields: INodeProperties[] = [
 					'Returns orders with the specified status. If no orderStatus filter is specified, then we exclude "Deleted" by default.',
 			},
 			{
-				displayName: 'Start Date',
+				displayName: 'Start date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',

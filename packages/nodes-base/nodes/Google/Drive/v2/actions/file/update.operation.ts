@@ -24,14 +24,14 @@ const properties: INodeProperties[] = [
 		description: 'The file to update',
 	},
 	{
-		displayName: 'Change File Content',
+		displayName: 'Change file content',
 		name: 'changeFileContent',
 		type: 'boolean',
 		default: false,
 		description: 'Whether to send a new binary data to update the file',
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'inputDataFieldName',
 		type: 'string',
 		placeholder: 'e.g. data',
@@ -46,7 +46,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'New Updated File Name',
+		displayName: 'New updated file name',
 		name: 'newUpdatedFileName',
 		type: 'string',
 		default: '',
@@ -63,14 +63,14 @@ const properties: INodeProperties[] = [
 		options: [
 			...updateCommonOptions,
 			{
-				displayName: 'Move to Trash',
+				displayName: 'Move to trash',
 				name: 'trashed',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to move a file to the trash. Only the owner may trash a file.',
 			},
 			{
-				displayName: 'Return Fields',
+				displayName: 'Return fields',
 				name: 'fields',
 				type: 'multiOptions',
 				options: [

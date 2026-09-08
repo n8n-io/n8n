@@ -19,7 +19,7 @@ export const templateOperations: INodeProperties[] = [
 				action: 'Get a template',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many templates',
 				action: 'Get many templates',

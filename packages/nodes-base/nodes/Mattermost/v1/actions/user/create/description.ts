@@ -15,7 +15,7 @@ export const userCreateDescription: UserProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Auth Service',
+		displayName: 'Auth service',
 		name: 'authService',
 		type: 'options',
 		options: [
@@ -53,7 +53,7 @@ export const userCreateDescription: UserProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Auth Data',
+		displayName: 'Auth data',
 		name: 'authData',
 		displayOptions: {
 			show: {
@@ -99,10 +99,10 @@ export const userCreateDescription: UserProperties = [
 		description: 'The password used for email authentication',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -112,13 +112,13 @@ export const userCreateDescription: UserProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
@@ -136,10 +136,10 @@ export const userCreateDescription: UserProperties = [
 				default: '',
 			},
 			{
-				displayName: 'Notification Settings',
+				displayName: 'Notification settings',
 				name: 'notificationUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Notification Setting',
+				placeholder: 'Add notification setting',
 				default: {},
 				typeOptions: {
 					multipleValues: false,
@@ -181,7 +181,7 @@ export const userCreateDescription: UserProperties = [
 								default: 'all',
 							},
 							{
-								displayName: 'Desktop Sound',
+								displayName: 'Desktop sound',
 								name: 'desktop_sound',
 								type: 'boolean',
 								default: true,
@@ -197,7 +197,7 @@ export const userCreateDescription: UserProperties = [
 									'Whether to enable email notifications, "false" to disable. Defaults to "false".',
 							},
 							{
-								displayName: 'First Name',
+								displayName: 'First name',
 								name: 'first_name',
 								type: 'boolean',
 								default: false,
@@ -205,7 +205,7 @@ export const userCreateDescription: UserProperties = [
 									'Whether to enable mentions for first name. Defaults to "true" if a first name is set, "false" otherwise.',
 							},
 							{
-								displayName: 'Mention Keys',
+								displayName: 'Mention keys',
 								name: 'mention_keys',
 								type: 'string',
 								default: '',

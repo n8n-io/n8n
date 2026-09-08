@@ -9,7 +9,7 @@ export const recipientOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many recipients',
 			},
@@ -27,7 +27,7 @@ export const recipientFields: INodeProperties[] = [
 	//        recipient: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

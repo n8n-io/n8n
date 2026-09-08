@@ -74,7 +74,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 				default: 'newLead',
 				options: [
 					{
-						name: 'New Lead',
+						name: 'New lead',
 						value: 'newLead',
 					},
 				],
@@ -88,7 +88,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 				description: 'The page linked to the form for retrieving new leads',
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						typeOptions: {
@@ -112,7 +112,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 				description: 'The form to monitor for fetching lead details upon submission',
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						typeOptions: {
@@ -135,7 +135,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Simplify Output',
+						displayName: 'Simplify output',
 						name: 'simplifyOutput',
 						type: 'boolean',
 						default: true,

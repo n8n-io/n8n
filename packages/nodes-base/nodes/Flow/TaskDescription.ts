@@ -31,7 +31,7 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many tasks',
 				action: 'Get many tasks',
@@ -74,10 +74,10 @@ export const taskFields: INodeProperties[] = [
 		description: 'The title of the task',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -102,21 +102,21 @@ export const taskFields: INodeProperties[] = [
 					'Put the new task in a list ("project"). Omit this param to have the task be private.',
 			},
 			{
-				displayName: 'Starts On',
+				displayName: 'Starts on',
 				name: 'startsOn',
 				type: 'dateTime',
 				default: '',
 				description: 'The date on which the task should start',
 			},
 			{
-				displayName: 'Due On',
+				displayName: 'Due on',
 				name: 'dueOn',
 				type: 'dateTime',
 				default: '',
 				description: 'The date on which the task should be due',
 			},
 			{
-				displayName: 'Mirror Parent Subscribers',
+				displayName: 'Mirror parent subscribers',
 				name: 'mirrorParentSubscribers',
 				type: 'boolean',
 				default: false,
@@ -124,7 +124,7 @@ export const taskFields: INodeProperties[] = [
 					"Whether this task will be a subtask, and this is true, the parent tasks's subscribers will be mirrored to this one",
 			},
 			{
-				displayName: 'Mirror Parent Tags',
+				displayName: 'Mirror parent tags',
 				name: 'mirrorParentTags',
 				type: 'boolean',
 				default: false,
@@ -132,14 +132,14 @@ export const taskFields: INodeProperties[] = [
 					"Whether this task will be a subtask, and this is true, the parent tasks's tags will be mirrored to this one",
 			},
 			{
-				displayName: 'Note Content',
+				displayName: 'Note content',
 				name: 'noteContent',
 				type: 'string',
 				default: '',
 				description: "Provide the content for the task's note",
 			},
 			{
-				displayName: 'Note Mime Type',
+				displayName: 'Note MIME type',
 				name: 'noteMimeType',
 				type: 'options',
 				default: 'text/plain',
@@ -169,14 +169,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'If provided, this task will become a subtask of the given task',
 			},
 			{
-				displayName: 'Position List',
+				displayName: 'Position list',
 				name: 'positionList',
 				type: 'number',
 				default: 0,
 				description: 'Determines the sort order when showing tasks in, or grouped by, a list',
 			},
 			{
-				displayName: 'Position Upcoming',
+				displayName: 'Position upcoming',
 				name: 'positionUpcoming',
 				type: 'number',
 				default: 0,
@@ -237,10 +237,10 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Update Field',
+		placeholder: 'Add update field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -279,21 +279,21 @@ export const taskFields: INodeProperties[] = [
 					'Put the new task in a list ("project"). Omit this param to have the task be private.',
 			},
 			{
-				displayName: 'Starts On',
+				displayName: 'Starts on',
 				name: 'startsOn',
 				type: 'dateTime',
 				default: '',
 				description: 'The date on which the task should start',
 			},
 			{
-				displayName: 'Due On',
+				displayName: 'Due on',
 				name: 'dueOn',
 				type: 'dateTime',
 				default: '',
 				description: 'The date on which the task should be due',
 			},
 			{
-				displayName: 'Mirror Parent Subscribers',
+				displayName: 'Mirror parent subscribers',
 				name: 'mirrorParentSubscribers',
 				type: 'boolean',
 				default: false,
@@ -301,7 +301,7 @@ export const taskFields: INodeProperties[] = [
 					"Whether this task will be a subtask, and this is true, the parent tasks's subscribers will be mirrored to this one",
 			},
 			{
-				displayName: 'Mirror Parent Tags',
+				displayName: 'Mirror parent tags',
 				name: 'mirrorParentTags',
 				type: 'boolean',
 				default: false,
@@ -309,14 +309,14 @@ export const taskFields: INodeProperties[] = [
 					"Whether this task will be a subtask, and this is true, the parent tasks's tags will be mirrored to this one",
 			},
 			{
-				displayName: 'Note Content',
+				displayName: 'Note content',
 				name: 'noteContent',
 				type: 'string',
 				default: '',
 				description: "Provide the content for the task's note",
 			},
 			{
-				displayName: 'Note Mime Type',
+				displayName: 'Note MIME type',
 				name: 'noteMimeType',
 				type: 'options',
 				default: 'text/plain',
@@ -344,14 +344,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'If provided, this task will become a subtask of the given task',
 			},
 			{
-				displayName: 'Position List',
+				displayName: 'Position list',
 				name: 'positionList',
 				type: 'number',
 				default: 0,
 				description: 'Determines the sort order when showing tasks in, or grouped by, a list',
 			},
 			{
-				displayName: 'Position Upcoming',
+				displayName: 'Position upcoming',
 				name: 'positionUpcoming',
 				type: 'number',
 				default: 0,
@@ -400,7 +400,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -424,7 +424,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'files',
 					},
 					{
-						name: 'File Associations',
+						name: 'File associations',
 						value: 'file_associations',
 					},
 					{
@@ -439,7 +439,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -473,7 +473,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -497,7 +497,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'files',
 					},
 					{
-						name: 'File Associations',
+						name: 'File associations',
 						value: 'file_associations',
 					},
 					{
@@ -517,15 +517,15 @@ export const taskFields: INodeProperties[] = [
 						value: 'account_id',
 					},
 					{
-						name: 'Completed At',
+						name: 'Completed at',
 						value: 'completed_at',
 					},
 					{
-						name: 'Created At',
+						name: 'Created at',
 						value: 'created_at',
 					},
 					{
-						name: 'Due On',
+						name: 'Due on',
 						value: 'due_on',
 					},
 					{
@@ -549,11 +549,11 @@ export const taskFields: INodeProperties[] = [
 						value: 'section_id',
 					},
 					{
-						name: 'Starts On',
+						name: 'Starts on',
 						value: 'starts_on',
 					},
 					{
-						name: 'Updated At',
+						name: 'Updated at',
 						value: 'updated_at',
 					},
 				],
@@ -566,28 +566,28 @@ export const taskFields: INodeProperties[] = [
 				description: 'Create resources under the given workspace',
 			},
 			{
-				displayName: 'Created Before',
+				displayName: 'Created before',
 				name: 'createdBefore',
 				type: 'dateTime',
 				default: '',
 				description: 'Select resources created before a certain time',
 			},
 			{
-				displayName: 'Created After',
+				displayName: 'Created after',
 				name: 'createdAfter',
 				type: 'dateTime',
 				default: '',
 				description: 'Select resources created after a certain time',
 			},
 			{
-				displayName: 'Update Before',
+				displayName: 'Update before',
 				name: 'updateBefore',
 				type: 'dateTime',
 				default: '',
 				description: 'Select resources updated before a certain time',
 			},
 			{
-				displayName: 'Update After',
+				displayName: 'Update after',
 				name: 'updateAfter',
 				type: 'dateTime',
 				default: '',

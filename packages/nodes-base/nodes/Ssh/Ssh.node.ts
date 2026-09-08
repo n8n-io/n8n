@@ -98,7 +98,7 @@ export class Ssh implements INodeType {
 						value: 'password',
 					},
 					{
-						name: 'Private Key',
+						name: 'Private key',
 						value: 'privateKey',
 					},
 				],
@@ -155,7 +155,7 @@ export class Ssh implements INodeType {
 				description: 'The command to be executed on a remote device',
 			},
 			{
-				displayName: 'Working Directory',
+				displayName: 'Working directory',
 				name: 'cwd',
 				type: 'string',
 				displayOptions: {
@@ -194,7 +194,7 @@ export class Ssh implements INodeType {
 				default: 'upload',
 			},
 			{
-				displayName: 'Input Binary Field',
+				displayName: 'Input binary field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -209,7 +209,7 @@ export class Ssh implements INodeType {
 				hint: 'The name of the input binary field containing the file to be uploaded',
 			},
 			{
-				displayName: 'Target Directory',
+				displayName: 'Target directory',
 				name: 'path',
 				type: 'string',
 				displayOptions: {
@@ -222,7 +222,7 @@ export class Ssh implements INodeType {
 				required: true,
 				placeholder: '/home/user',
 				description:
-					'The directory to upload the file to. The name of the file does not need to be specified, it\'s taken from the binary data file name. To override this behavior, set the parameter "File Name" under options.',
+					'The directory to upload the file to. The name of the file does not need to be specified, it\'s taken from the binary data file name. To override this behavior, set the parameter "File name" under options.',
 			},
 			{
 				displayName: 'Path',
@@ -241,7 +241,7 @@ export class Ssh implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'File Property',
+				displayName: 'File property',
 				displayOptions: {
 					show: {
 						resource: ['file'],
@@ -268,7 +268,7 @@ export class Ssh implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'File Name',
+						displayName: 'File name',
 						name: 'fileName',
 						type: 'string',
 						default: '',

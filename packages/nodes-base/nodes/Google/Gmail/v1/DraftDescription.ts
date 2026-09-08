@@ -28,7 +28,7 @@ export const draftOperations: INodeProperties[] = [
 				action: 'Get a draft',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many drafts',
 			},
@@ -80,7 +80,7 @@ export const draftFields: INodeProperties[] = [
 		description: 'Whether the message should also be included as HTML',
 	},
 	{
-		displayName: 'HTML Message',
+		displayName: 'HTML message',
 		name: 'htmlMessage',
 		type: 'string',
 		default: '',
@@ -108,13 +108,13 @@ export const draftFields: INodeProperties[] = [
 		},
 		placeholder: 'Hello World!',
 		description:
-			'The message body. If HTML formatted, then you have to add and activate the option "HTML content" in the "Additional Options" section.',
+			'The message body. If HTML formatted, then you have to add and activate the option "HTML content" in the "Additional options" section.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['draft'],
@@ -124,7 +124,7 @@ export const draftFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'To Email',
+				displayName: 'To email',
 				name: 'toList',
 				type: 'string',
 				default: [],
@@ -136,7 +136,7 @@ export const draftFields: INodeProperties[] = [
 				description: 'The email addresses of the recipients',
 			},
 			{
-				displayName: 'CC Email',
+				displayName: 'CC email',
 				name: 'ccList',
 				type: 'string',
 				description: 'The email addresses of the copy recipients',
@@ -148,7 +148,7 @@ export const draftFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'BCC Email',
+				displayName: 'BCC email',
 				name: 'bccList',
 				type: 'string',
 				description: 'The email addresses of the blind copy recipients',
@@ -162,7 +162,7 @@ export const draftFields: INodeProperties[] = [
 			{
 				displayName: 'Attachment',
 				name: 'attachmentsUi',
-				placeholder: 'Add Attachment',
+				placeholder: 'Add attachment',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -170,10 +170,10 @@ export const draftFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'attachmentsBinary',
-						displayName: 'Attachment Binary',
+						displayName: 'Attachment binary',
 						values: [
 							{
-								displayName: 'Attachment Field Name (in Input)',
+								displayName: 'Attachment field name (in input)',
 								name: 'property',
 								type: 'string',
 								default: '',
@@ -189,10 +189,10 @@ export const draftFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['draft'],
@@ -202,7 +202,7 @@ export const draftFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Attachment Prefix',
+				displayName: 'Attachment prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
@@ -259,7 +259,7 @@ export const draftFields: INodeProperties[] = [
 	/*                                 draft:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -290,10 +290,10 @@ export const draftFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -303,7 +303,7 @@ export const draftFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Attachment Prefix',
+				displayName: 'Attachment prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
@@ -359,7 +359,7 @@ export const draftFields: INodeProperties[] = [
 				description: 'The format to return the message in',
 			},
 			{
-				displayName: 'Include Spam and Trash',
+				displayName: 'Include spam and trash',
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,

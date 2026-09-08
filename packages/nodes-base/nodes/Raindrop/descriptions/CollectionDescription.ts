@@ -24,7 +24,7 @@ export const collectionOperations: INodeProperties[] = [
 				action: 'Get a collection',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many collections',
 			},
@@ -61,10 +61,10 @@ export const collectionFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -95,7 +95,7 @@ export const collectionFields: INodeProperties[] = [
 				description: "ID of this collection's parent collection, if it is a child collection",
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sort',
 				type: 'number',
 				default: 1,
@@ -195,7 +195,7 @@ export const collectionFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -244,10 +244,10 @@ export const collectionFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -280,7 +280,7 @@ export const collectionFields: INodeProperties[] = [
 				description: "ID of this collection's parent collection, if it is a child collection",
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sort',
 				type: 'number',
 				default: 1,

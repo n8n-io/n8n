@@ -32,7 +32,7 @@ export const siteRLC: INodeProperties = {
 		'The Confluence site to use. Can be left empty when the connection has access to exactly one site.',
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -66,7 +66,7 @@ export const pageRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -109,7 +109,7 @@ export const pageRLC: INodeProperties = {
 			],
 		},
 		{
-			displayName: 'By Title',
+			displayName: 'By title',
 			name: 'title',
 			type: 'string',
 			placeholder: 'e.g. Project plan',
@@ -129,7 +129,7 @@ export const labelRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -158,17 +158,17 @@ export const labelRLC: INodeProperties = {
 export type ConfluenceBodyFormat = 'storage' | 'atlas_doc_format' | 'plainText';
 
 export const bodyFormatOption: INodeProperties = {
-	displayName: 'Body Format',
+	displayName: 'Body format',
 	name: 'bodyFormat',
 	type: 'options',
 	options: [
 		{
-			name: 'Atlas Doc Format',
+			name: 'Atlas doc format',
 			value: 'atlas_doc_format',
 			description: 'The ADF JSON representation',
 		},
 		{
-			name: 'Plain Text',
+			name: 'Plain text',
 			value: 'plainText',
 			description: 'Text extracted from the ADF body (dynamic macros carry no text)',
 		},
@@ -192,7 +192,7 @@ export const spaceRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {
@@ -222,11 +222,11 @@ export const spaceOptionsCollection: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
 	type: 'collection',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	default: {},
 	options: [
 		{
-			displayName: 'Description Format',
+			displayName: 'Description format',
 			name: 'descriptionFormat',
 			type: 'options',
 			options: [
@@ -251,7 +251,7 @@ export const spaceOptionsCollection: INodeProperties = {
 
 /** Companion to an endpoint-specific Sort By option; composed into `sort` by `sortQs`. */
 export const sortDirectionOption: INodeProperties = {
-	displayName: 'Sort Direction',
+	displayName: 'Sort direction',
 	name: 'sortDirection',
 	type: 'options',
 	default: 'asc',

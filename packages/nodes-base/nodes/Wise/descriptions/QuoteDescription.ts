@@ -32,7 +32,7 @@ export const quoteFields: INodeProperties[] = [
 	//         quote: create
 	// ----------------------------------
 	{
-		displayName: 'Profile Name or ID',
+		displayName: 'Profile name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -50,7 +50,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Target Account Name or ID',
+		displayName: 'Target account name or ID',
 		name: 'targetAccountId',
 		type: 'options',
 		required: true,
@@ -68,7 +68,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Amount Type',
+		displayName: 'Amount type',
 		name: 'amountType',
 		type: 'options',
 		default: 'source',
@@ -107,7 +107,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Source Currency',
+		displayName: 'Source currency',
 		name: 'sourceCurrency',
 		type: 'string',
 		default: '',
@@ -120,7 +120,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Target Currency',
+		displayName: 'Target currency',
 		name: 'targetCurrency',
 		type: 'string',
 		default: '',

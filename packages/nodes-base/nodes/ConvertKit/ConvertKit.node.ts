@@ -45,7 +45,7 @@ export class ConvertKit implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Custom Field',
+						name: 'Custom field',
 						value: 'customField',
 					},
 					{
@@ -61,7 +61,7 @@ export class ConvertKit implements INodeType {
 						value: 'tag',
 					},
 					{
-						name: 'Tag Subscriber',
+						name: 'Tag subscriber',
 						value: 'tagSubscriber',
 					},
 				],

@@ -13,10 +13,10 @@ export const listOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Member',
+				name: 'Add member',
 				value: 'add',
 				description: 'Add a member to a list',
-				action: 'Add Member to List',
+				action: 'Add member to list',
 			},
 		],
 		default: 'add',
@@ -74,7 +74,7 @@ export const listFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'By Username',
+				displayName: 'By username',
 				name: 'username',
 				type: 'string',
 				validation: [],

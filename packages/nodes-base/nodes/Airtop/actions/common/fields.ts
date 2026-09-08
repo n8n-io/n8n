@@ -30,7 +30,7 @@ export const windowIdField: INodeProperties = {
 };
 
 export const profileNameField: INodeProperties = {
-	displayName: 'Browser Profile ID',
+	displayName: 'Browser profile ID',
 	name: 'profileName',
 	type: 'string',
 	default: '',
@@ -54,7 +54,7 @@ export const urlField: INodeProperties = {
  */
 
 export const outputSchemaField: INodeProperties = {
-	displayName: 'JSON Output Schema',
+	displayName: 'JSON output schema',
 	name: 'outputSchema',
 	description: 'JSON schema defining the structure of the output',
 	hint: 'If you want to force your output to be JSON, provide a valid JSON schema describing the output. You can generate one automatically in the <a href="https://portal.airtop.ai/" target="_blank">Airtop API Playground</a>.',
@@ -63,7 +63,7 @@ export const outputSchemaField: INodeProperties = {
 };
 
 export const parseJsonOutputField: INodeProperties = {
-	displayName: 'Parse JSON Output',
+	displayName: 'Parse JSON output',
 	name: 'parseJsonOutput',
 	type: 'boolean',
 	default: true,
@@ -76,7 +76,7 @@ export const parseJsonOutputField: INodeProperties = {
  */
 
 export const elementDescriptionField: INodeProperties = {
-	displayName: 'Element Description',
+	displayName: 'Element description',
 	name: 'elementDescription',
 	type: 'string',
 	default: '',
@@ -87,19 +87,19 @@ export const elementDescriptionField: INodeProperties = {
 export function getSessionModeFields(resource: string, operations: string[]): INodeProperties[] {
 	return [
 		{
-			displayName: 'Session Mode',
+			displayName: 'Session mode',
 			name: 'sessionMode',
 			type: 'options',
 			default: 'existing',
 			description: 'Choose between creating a new session or using an existing one',
 			options: [
 				{
-					name: 'Automatically Create Session',
+					name: 'Automatically create session',
 					description: 'Automatically create a new session and window for this operation',
 					value: SESSION_MODE.NEW,
 				},
 				{
-					name: 'Use Existing Session',
+					name: 'Use existing session',
 					description: 'Use an existing session and window for this operation',
 					value: SESSION_MODE.EXISTING,
 				},
@@ -149,7 +149,7 @@ export function getSessionModeFields(resource: string, operations: string[]): IN
 			},
 		},
 		{
-			displayName: 'Auto-Terminate Session',
+			displayName: 'Auto-terminate session',
 			name: 'autoTerminateSession',
 			type: 'boolean',
 			default: true,
@@ -166,7 +166,7 @@ export function getSessionModeFields(resource: string, operations: string[]): IN
 }
 
 export const includeHiddenElementsField: INodeProperties = {
-	displayName: 'Include Hidden Elements',
+	displayName: 'Include hidden elements',
 	name: 'includeHiddenElements',
 	type: 'boolean',
 	default: true,

@@ -4,7 +4,7 @@ import { validateName } from '../helpers/utils';
 
 export const paginationParameters: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -55,7 +55,7 @@ export const userLocator: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'userName',
 			type: 'string',
 			placeholder: 'e.g. Admins',
@@ -93,7 +93,7 @@ export const groupLocator: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'groupName',
 			type: 'string',
 			placeholder: 'e.g. Admins',
@@ -120,7 +120,7 @@ export const pathParameter: INodeProperties = {
 };
 
 export const groupNameParameter: INodeProperties = {
-	displayName: 'Group Name',
+	displayName: 'Group name',
 	name: 'groupName',
 	required: true,
 	type: 'string',
@@ -139,7 +139,7 @@ export const groupNameParameter: INodeProperties = {
 };
 
 export const userNameParameter: INodeProperties = {
-	displayName: 'User Name',
+	displayName: 'User name',
 	name: 'userName',
 	required: true,
 	type: 'string',

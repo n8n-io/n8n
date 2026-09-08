@@ -49,52 +49,52 @@ export class MailerLiteTriggerV2 implements INodeType {
 					type: 'multiOptions',
 					options: [
 						{
-							name: 'Campaign Sent',
+							name: 'Campaign sent',
 							value: 'campaign.sent',
 							description: 'Fired when campaign is sent',
 						},
 						{
-							name: 'Subscriber Added to Group',
+							name: 'Subscriber added to group',
 							value: 'subscriber.added_to_group',
 							description: 'Fired when a subscriber is added to a group',
 						},
 						{
-							name: 'Subscriber Automation Completed',
+							name: 'Subscriber automation completed',
 							value: 'subscriber.automation_completed',
 							description: 'Fired when subscriber finishes automation',
 						},
 						{
-							name: 'Subscriber Automation Triggered',
+							name: 'Subscriber automation triggered',
 							value: 'subscriber.automation_triggered',
 							description: 'Fired when subscriber starts automation',
 						},
 						{
-							name: 'Subscriber Bounced',
+							name: 'Subscriber bounced',
 							value: 'subscriber.bounced',
 							description: 'Fired when an email address bounces',
 						},
 						{
-							name: 'Subscriber Created',
+							name: 'Subscriber created',
 							value: 'subscriber.created',
 							description: 'Fired when a new subscriber is added to an account',
 						},
 						{
-							name: 'Subscriber Removed From Group',
+							name: 'Subscriber removed from group',
 							value: 'subscriber.removed_from_group',
 							description: 'Fired when a subscriber is removed from a group',
 						},
 						{
-							name: 'Subscriber Spam Reported',
+							name: 'Subscriber spam reported',
 							value: 'subscriber.spam_reported',
 							description: 'Fired when subscriber marks a campaign as a spam',
 						},
 						{
-							name: 'Subscriber Unsubscribe',
+							name: 'Subscriber unsubscribe',
 							value: 'subscriber.unsubscribed',
 							description: 'Fired when a subscriber becomes unsubscribed',
 						},
 						{
-							name: 'Subscriber Updated',
+							name: 'Subscriber updated',
 							value: 'subscriber.updated',
 							description: "Fired when any of the subscriber's custom fields are updated",
 						},

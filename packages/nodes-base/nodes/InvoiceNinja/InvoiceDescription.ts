@@ -37,7 +37,7 @@ export const invoiceOperations: INodeProperties[] = [
 				action: 'Get an invoice',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many invoices',
 				action: 'Get many invoices',
@@ -52,10 +52,10 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                 invoice:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -65,7 +65,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client Name or ID',
+				displayName: 'Client name or ID',
 				name: 'client',
 				type: 'options',
 				description:
@@ -76,13 +76,13 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Auto Bill',
+				displayName: 'Auto bill',
 				name: 'autoBill',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Custom Value 1',
+				displayName: 'Custom value 1',
 				name: 'customValue1',
 				type: 'number',
 				typeOptions: {
@@ -91,7 +91,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Custom Value 2',
+				displayName: 'Custom value 2',
 				name: 'customValue2',
 				type: 'number',
 				typeOptions: {
@@ -106,7 +106,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Due Date',
+				displayName: 'Due date',
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
@@ -119,25 +119,25 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Email Invoice',
+				displayName: 'Email invoice',
 				name: 'emailInvoice',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Invoice Date',
+				displayName: 'Invoice date',
 				name: 'invoiceDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Invoice Number',
+				displayName: 'Invoice number',
 				name: 'invoiceNumber',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Invoice Status',
+				displayName: 'Invoice status',
 				name: 'invoiceStatus',
 				type: 'options',
 				options: [
@@ -153,13 +153,13 @@ export const invoiceFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Is Amount Discount',
+				displayName: 'Is amount discount',
 				name: 'isAmountDiscount',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Mark Sent',
+				displayName: 'Mark sent',
 				name: 'markSent',
 				type: 'boolean',
 				default: false,
@@ -177,49 +177,49 @@ export const invoiceFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Partial Due Date',
+				displayName: 'Partial due date',
 				name: 'partialDueDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'PO Number',
+				displayName: 'PO number',
 				name: 'poNumber',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Private Notes',
+				displayName: 'Private notes',
 				name: 'privateNotes',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Public Notes',
+				displayName: 'Public notes',
 				name: 'publicNotes',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Name 1',
+				displayName: 'Tax name 1',
 				name: 'taxName1',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Name 2',
+				displayName: 'Tax name 2',
 				name: 'taxName2',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Rate 1',
+				displayName: 'Tax rate 1',
 				name: 'taxRate1',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Tax Rate 2',
+				displayName: 'Tax rate 2',
 				name: 'taxRate2',
 				type: 'number',
 				default: 0,
@@ -227,9 +227,9 @@ export const invoiceFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Invoice Items',
+		displayName: 'Invoice items',
 		name: 'invoiceItemsUi',
-		placeholder: 'Add Invoice Item',
+		placeholder: 'Add invoice item',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -244,7 +244,7 @@ export const invoiceFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'invoiceItemsValues',
-				displayName: 'Invoice Item',
+				displayName: 'Invoice item',
 				values: [
 					{
 						displayName: 'Cost',
@@ -274,25 +274,25 @@ export const invoiceFields: INodeProperties[] = [
 						default: 0,
 					},
 					{
-						displayName: 'Tax Name 1',
+						displayName: 'Tax name 1',
 						name: 'taxName1',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Tax Name 2',
+						displayName: 'Tax name 2',
 						name: 'taxName2',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Tax Rate 1',
+						displayName: 'Tax rate 1',
 						name: 'taxRate1',
 						type: 'number',
 						default: 0,
 					},
 					{
-						displayName: 'Tax Rate 2',
+						displayName: 'Tax rate 2',
 						name: 'taxRate2',
 						type: 'number',
 						default: 0,
@@ -353,7 +353,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -380,7 +380,7 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                  invoice:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -414,7 +414,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -424,7 +424,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Invoice Number',
+				displayName: 'Invoice number',
 				name: 'invoiceNumber',
 				type: 'string',
 				default: '',
@@ -462,25 +462,25 @@ export const invoiceFields: INodeProperties[] = [
 				default: 'active',
 			},
 			{
-				displayName: 'Created At',
+				displayName: 'Created at',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Updated At',
+				displayName: 'Updated at',
 				name: 'updatedAt',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Is Deleted',
+				displayName: 'Is deleted',
 				name: 'isDeleted',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Client Status',
+				displayName: 'Client status',
 				name: 'clientStatus',
 				type: 'options',
 				options: [

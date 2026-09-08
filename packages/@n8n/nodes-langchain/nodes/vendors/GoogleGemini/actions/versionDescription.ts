@@ -71,7 +71,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'document',
 				},
 				{
-					name: 'File Search',
+					name: 'File search',
 					value: 'fileSearch',
 				},
 				{
@@ -79,7 +79,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'image',
 				},
 				{
-					name: 'Media File',
+					name: 'Media file',
 					value: 'file',
 				},
 				{

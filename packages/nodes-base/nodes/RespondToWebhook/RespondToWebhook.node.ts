@@ -28,22 +28,22 @@ import { configuredOutputs } from './utils/outputs';
 import { generatePairedItemData } from '../../utils/utilities';
 
 const respondWithProperty: INodeProperties = {
-	displayName: 'Respond With',
+	displayName: 'Respond with',
 	name: 'respondWith',
 	type: 'options',
 	options: [
 		{
-			name: 'All Incoming Items',
+			name: 'All incoming items',
 			value: 'allIncomingItems',
 			description: 'Respond with all input JSON items',
 		},
 		{
-			name: 'Binary File',
+			name: 'Binary file',
 			value: 'binary',
 			description: 'Respond with incoming file binary data',
 		},
 		{
-			name: 'First Incoming Item',
+			name: 'First incoming item',
 			value: 'firstIncomingItem',
 			description: 'Respond with the first input JSON item',
 		},
@@ -53,12 +53,12 @@ const respondWithProperty: INodeProperties = {
 			description: 'Respond with a custom JSON body',
 		},
 		{
-			name: 'JWT Token',
+			name: 'JWT token',
 			value: 'jwt',
 			description: 'Respond with a JWT token',
 		},
 		{
-			name: 'No Data',
+			name: 'No data',
 			value: 'noData',
 			description: 'Respond with an empty body',
 		},
@@ -115,7 +115,7 @@ export class RespondToWebhook implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Enable Response Output Branch',
+				displayName: 'Enable response output branch',
 				name: 'enableResponseOutput',
 				type: 'boolean',
 				default: false,
@@ -179,7 +179,7 @@ export class RespondToWebhook implements INodeType {
 				validateType: 'url',
 			},
 			{
-				displayName: 'Response Body',
+				displayName: 'Response body',
 				name: 'responseBody',
 				type: 'json',
 				displayOptions: {
@@ -210,7 +210,7 @@ export class RespondToWebhook implements INodeType {
 				description: 'The payload to include in the JWT token',
 			},
 			{
-				displayName: 'Response Body',
+				displayName: 'Response body',
 				name: 'responseBody',
 				type: 'string',
 				displayOptions: {
@@ -226,7 +226,7 @@ export class RespondToWebhook implements INodeType {
 				description: 'The HTTP response text data',
 			},
 			{
-				displayName: 'Response Data Source',
+				displayName: 'Response data source',
 				name: 'responseDataSource',
 				type: 'options',
 				displayOptions: {
@@ -236,12 +236,12 @@ export class RespondToWebhook implements INodeType {
 				},
 				options: [
 					{
-						name: 'Choose Automatically From Input',
+						name: 'Choose automatically from input',
 						value: 'automatically',
 						description: 'Use if input data will contain a single piece of binary data',
 					},
 					{
-						name: 'Specify Myself',
+						name: 'Specify myself',
 						value: 'set',
 						description: 'Enter the name of the input field the binary data will be in',
 					},
@@ -249,7 +249,7 @@ export class RespondToWebhook implements INodeType {
 				default: 'automatically',
 			},
 			{
-				displayName: 'Input Field Name',
+				displayName: 'Input field name',
 				name: 'inputFieldName',
 				type: 'string',
 				required: true,
@@ -282,7 +282,7 @@ export class RespondToWebhook implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Response Code',
+						displayName: 'Response code',
 						name: 'responseCode',
 						type: 'number',
 						typeOptions: {
@@ -293,9 +293,9 @@ export class RespondToWebhook implements INodeType {
 						description: 'The HTTP response code to return. Defaults to 200.',
 					},
 					{
-						displayName: 'Response Headers',
+						displayName: 'Response headers',
 						name: 'responseHeaders',
-						placeholder: 'Add Response Header',
+						placeholder: 'Add response header',
 						description: 'Add headers to the webhook response',
 						type: 'fixedCollection',
 						typeOptions: {
@@ -326,7 +326,7 @@ export class RespondToWebhook implements INodeType {
 						],
 					},
 					{
-						displayName: 'Put Response in Field',
+						displayName: 'Put response in field',
 						name: 'responseKey',
 						type: 'string',
 						displayOptions: {
@@ -339,7 +339,7 @@ export class RespondToWebhook implements INodeType {
 						placeholder: 'e.g. data',
 					},
 					{
-						displayName: 'Enable Streaming',
+						displayName: 'Enable streaming',
 						name: 'enableStreaming',
 						type: 'boolean',
 						default: true,

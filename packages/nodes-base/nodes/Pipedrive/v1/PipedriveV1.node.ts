@@ -102,7 +102,7 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'API Token',
+					name: 'API token',
 					value: 'apiToken',
 				},
 				{
@@ -127,11 +127,11 @@ const versionDescription: INodeTypeDescription = {
 					value: 'deal',
 				},
 				{
-					name: 'Deal Activity',
+					name: 'Deal activity',
 					value: 'dealActivity',
 				},
 				{
-					name: 'Deal Product',
+					name: 'Deal product',
 					value: 'dealProduct',
 				},
 				{
@@ -195,7 +195,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get an activity',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get data of many activities',
 					action: 'Get many activities',
@@ -246,7 +246,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get a deal',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get data of many deals',
 					action: 'Get many deals',
@@ -279,7 +279,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get many activities of a deal',
 					action: 'Get many deal activities',
@@ -306,7 +306,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Add a deal product',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get many products in a deal',
 					action: 'Get many deal products',
@@ -412,7 +412,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get a lead',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get data of many leads',
 					action: 'Get many leads',
@@ -456,7 +456,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get a note',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get data of many notes',
 					action: 'Get many notes',
@@ -501,7 +501,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get an organization',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get data of many organizations',
 					action: 'Get many organizations',
@@ -552,7 +552,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Get a person',
 				},
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get data of many persons',
 					action: 'Get many people',
@@ -585,7 +585,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					name: 'Get Many',
+					name: 'Get many',
 					value: 'getAll',
 					description: 'Get data of many products',
 					action: 'Get many products',
@@ -627,7 +627,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					name: 'Not Done',
+					name: 'Not done',
 					value: '0',
 				},
 				{
@@ -654,10 +654,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Type of the activity like "call", "meeting", etc',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['create'],
@@ -674,7 +674,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'ID of the deal this activity will be associated with',
 				},
 				{
-					displayName: 'Due Date',
+					displayName: 'Due date',
 					name: 'due_date',
 					type: 'dateTime',
 					default: '',
@@ -691,7 +691,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Note of the activity (HTML format)',
 				},
 				{
-					displayName: 'Organization Name or ID',
+					displayName: 'Organization name or ID',
 					name: 'org_id',
 					type: 'options',
 					typeOptions: {
@@ -709,7 +709,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'ID of the person this activity will be associated with',
 				},
 				{
-					displayName: 'User Name or ID',
+					displayName: 'User name or ID',
 					name: 'user_id',
 					type: 'options',
 					typeOptions: {
@@ -720,9 +720,9 @@ const versionDescription: INodeTypeDescription = {
 						'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Custom Properties',
+					displayName: 'Custom properties',
 					name: 'customProperties',
-					placeholder: 'Add Custom Property',
+					placeholder: 'Add custom property',
 					description: 'Adds a custom property to set also values which have not been predefined',
 					type: 'fixedCollection',
 					typeOptions: {
@@ -735,14 +735,14 @@ const versionDescription: INodeTypeDescription = {
 							displayName: 'Property',
 							values: [
 								{
-									displayName: 'Property Name',
+									displayName: 'Property name',
 									name: 'name',
 									type: 'string',
 									default: '',
 									description: 'Name of the property to set',
 								},
 								{
-									displayName: 'Property Value',
+									displayName: 'Property value',
 									name: 'value',
 									type: 'string',
 									default: '',
@@ -808,10 +808,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'ID of the activity to update',
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'updateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['update'],
@@ -821,7 +821,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Busy Flag',
+					displayName: 'Busy flag',
 					name: 'busy_flag',
 					type: 'boolean',
 					default: false,
@@ -835,7 +835,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'ID of the deal this activity will be associated with',
 				},
 				{
-					displayName: 'Due Date',
+					displayName: 'Due date',
 					name: 'due_date',
 					type: 'dateTime',
 					default: '',
@@ -847,7 +847,7 @@ const versionDescription: INodeTypeDescription = {
 					type: 'options',
 					options: [
 						{
-							name: 'Not Done',
+							name: 'Not done',
 							value: '0',
 						},
 						{
@@ -869,7 +869,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Note of the activity (HTML format)',
 				},
 				{
-					displayName: 'Organization Name or ID',
+					displayName: 'Organization name or ID',
 					name: 'org_id',
 					type: 'options',
 					typeOptions: {
@@ -887,7 +887,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'ID of the person this activity will be associated with',
 				},
 				{
-					displayName: 'Public Description',
+					displayName: 'Public description',
 					name: 'public_description',
 					type: 'string',
 					default: '',
@@ -910,7 +910,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Type of the activity like "call", "meeting", etc',
 				},
 				{
-					displayName: 'User Name or ID',
+					displayName: 'User name or ID',
 					name: 'user_id',
 					type: 'options',
 					typeOptions: {
@@ -921,9 +921,9 @@ const versionDescription: INodeTypeDescription = {
 						'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Custom Properties',
+					displayName: 'Custom properties',
 					name: 'customProperties',
-					placeholder: 'Add Custom Property',
+					placeholder: 'Add custom property',
 					description: 'Adds a custom property to set also values which have not been predefined',
 					type: 'fixedCollection',
 					typeOptions: {
@@ -936,14 +936,14 @@ const versionDescription: INodeTypeDescription = {
 							displayName: 'Property',
 							values: [
 								{
-									displayName: 'Property Name',
+									displayName: 'Property name',
 									name: 'name',
 									type: 'string',
 									default: '',
 									description: 'Name of the property to set',
 								},
 								{
-									displayName: 'Property Value',
+									displayName: 'Property value',
 									name: 'value',
 									type: 'string',
 									default: '',
@@ -978,7 +978,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The title of the deal to create',
 		},
 		{
-			displayName: 'Associate With',
+			displayName: 'Associate with',
 			name: 'associateWith',
 			type: 'options',
 			options: [
@@ -1031,10 +1031,10 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['create'],
@@ -1052,9 +1052,9 @@ const versionDescription: INodeTypeDescription = {
 						'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
 				},
 				{
-					displayName: 'Custom Properties',
+					displayName: 'Custom properties',
 					name: 'customProperties',
-					placeholder: 'Add Custom Property',
+					placeholder: 'Add custom property',
 					description: 'Adds a custom property to set also values which have not been predefined',
 					type: 'fixedCollection',
 					typeOptions: {
@@ -1067,7 +1067,7 @@ const versionDescription: INodeTypeDescription = {
 							displayName: 'Property',
 							values: [
 								{
-									displayName: 'Property Name or ID',
+									displayName: 'Property name or ID',
 									name: 'name',
 									type: 'options',
 									typeOptions: {
@@ -1078,7 +1078,7 @@ const versionDescription: INodeTypeDescription = {
 										'Name of the property to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								},
 								{
-									displayName: 'Property Value',
+									displayName: 'Property value',
 									name: 'value',
 									type: 'string',
 									default: '',
@@ -1089,7 +1089,7 @@ const versionDescription: INodeTypeDescription = {
 					],
 				},
 				{
-					displayName: 'Label Name or ID',
+					displayName: 'Label name or ID',
 					name: 'label',
 					type: 'options',
 					description:
@@ -1100,7 +1100,7 @@ const versionDescription: INodeTypeDescription = {
 					default: '',
 				},
 				{
-					displayName: 'Lost Reason',
+					displayName: 'Lost reason',
 					name: 'lost_reason',
 					type: 'string',
 					default: '',
@@ -1142,7 +1142,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Deal success probability percentage',
 				},
 				{
-					displayName: 'Stage Name or ID',
+					displayName: 'Stage name or ID',
 					name: 'stage_id',
 					type: 'options',
 					typeOptions: {
@@ -1179,7 +1179,7 @@ const versionDescription: INodeTypeDescription = {
 						'The status of the deal. If not provided it will automatically be set to "open".',
 				},
 				{
-					displayName: 'User Name or ID',
+					displayName: 'User name or ID',
 					name: 'user_id',
 					type: 'options',
 					typeOptions: {
@@ -1197,16 +1197,16 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Value of the deal. If not set it will automatically be set to 0.',
 				},
 				{
-					displayName: 'Visible To',
+					displayName: 'Visible to',
 					name: 'visible_to',
 					type: 'options',
 					options: [
 						{
-							name: 'Owner & Followers (Private)',
+							name: 'Owner & followers (private)',
 							value: '1',
 						},
 						{
-							name: 'Entire Company (Shared)',
+							name: 'Entire company (shared)',
 							value: '3',
 						},
 					],
@@ -1289,10 +1289,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'ID of the deal to update',
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'updateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['update'],
@@ -1310,9 +1310,9 @@ const versionDescription: INodeTypeDescription = {
 						'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
 				},
 				{
-					displayName: 'Custom Properties',
+					displayName: 'Custom properties',
 					name: 'customProperties',
-					placeholder: 'Add Custom Property',
+					placeholder: 'Add custom property',
 					description: 'Adds a custom property to set also values which have not been predefined',
 					type: 'fixedCollection',
 					typeOptions: {
@@ -1325,7 +1325,7 @@ const versionDescription: INodeTypeDescription = {
 							displayName: 'Property',
 							values: [
 								{
-									displayName: 'Property Name or ID',
+									displayName: 'Property name or ID',
 									name: 'name',
 									type: 'options',
 									typeOptions: {
@@ -1336,7 +1336,7 @@ const versionDescription: INodeTypeDescription = {
 										'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								},
 								{
-									displayName: 'Property Value',
+									displayName: 'Property value',
 									name: 'value',
 									type: 'string',
 									default: '',
@@ -1347,7 +1347,7 @@ const versionDescription: INodeTypeDescription = {
 					],
 				},
 				{
-					displayName: 'User Name or ID',
+					displayName: 'User name or ID',
 					name: 'user_id',
 					type: 'options',
 					typeOptions: {
@@ -1358,7 +1358,7 @@ const versionDescription: INodeTypeDescription = {
 						'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Label Name or ID',
+					displayName: 'Label name or ID',
 					name: 'label',
 					type: 'options',
 					description:
@@ -1369,14 +1369,14 @@ const versionDescription: INodeTypeDescription = {
 					default: '',
 				},
 				{
-					displayName: 'Lost Reason',
+					displayName: 'Lost reason',
 					name: 'lost_reason',
 					type: 'string',
 					default: '',
 					description: 'Reason why the deal was lost',
 				},
 				{
-					displayName: 'Organization Name or ID',
+					displayName: 'Organization name or ID',
 					name: 'org_id',
 					type: 'options',
 					typeOptions: {
@@ -1405,7 +1405,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Deal success probability percentage',
 				},
 				{
-					displayName: 'Stage Name or ID',
+					displayName: 'Stage name or ID',
 					name: 'stage_id',
 					type: 'options',
 					typeOptions: {
@@ -1456,16 +1456,16 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Value of the deal. If not set it will automatically be set to 0.',
 				},
 				{
-					displayName: 'Visible To',
+					displayName: 'Visible to',
 					name: 'visible_to',
 					type: 'options',
 					options: [
 						{
-							name: 'Owner & Followers (Private)',
+							name: 'Owner & followers (private)',
 							value: '1',
 						},
 						{
-							name: 'Entire Company (Shared)',
+							name: 'Entire company (shared)',
 							value: '3',
 						},
 					],
@@ -1479,7 +1479,7 @@ const versionDescription: INodeTypeDescription = {
 		//         dealProduct:add
 		// ----------------------------------
 		{
-			displayName: 'Deal Name or ID',
+			displayName: 'Deal name or ID',
 			name: 'dealId',
 			type: 'options',
 			default: '',
@@ -1497,7 +1497,7 @@ const versionDescription: INodeTypeDescription = {
 				'The ID of the deal to add a product to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Product Name or ID',
+			displayName: 'Product name or ID',
 			name: 'productId',
 			type: 'options',
 			default: '',
@@ -1515,7 +1515,7 @@ const versionDescription: INodeTypeDescription = {
 				'The ID of the product to add to a deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Item Price',
+			displayName: 'Item price',
 			name: 'item_price',
 			type: 'number',
 			typeOptions: {
@@ -1549,10 +1549,10 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['add'],
@@ -1572,7 +1572,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Text to describe this product-deal attachment',
 				},
 				{
-					displayName: 'Discount Percentage',
+					displayName: 'Discount percentage',
 					name: 'discount_percentage',
 					type: 'number',
 					default: 0,
@@ -1583,7 +1583,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Percentage of discount to apply',
 				},
 				{
-					displayName: 'Product Variation ID',
+					displayName: 'Product variation ID',
 					name: 'product_variation_id',
 					type: 'string',
 					default: '',
@@ -1595,7 +1595,7 @@ const versionDescription: INodeTypeDescription = {
 		//        dealProduct:update
 		// ----------------------------------
 		{
-			displayName: 'Deal Name or ID',
+			displayName: 'Deal name or ID',
 			name: 'dealId',
 			type: 'options',
 			default: '',
@@ -1613,7 +1613,7 @@ const versionDescription: INodeTypeDescription = {
 				'The ID of the deal whose product to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Product Attachment Name or ID',
+			displayName: 'Product attachment name or ID',
 			name: 'productAttachmentId',
 			type: 'options',
 			default: '',
@@ -1632,10 +1632,10 @@ const versionDescription: INodeTypeDescription = {
 				'ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'updateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['update'],
@@ -1655,7 +1655,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Text to describe this product-deal attachment',
 				},
 				{
-					displayName: 'Discount Percentage',
+					displayName: 'Discount percentage',
 					name: 'discount_percentage',
 					type: 'number',
 					default: 0,
@@ -1666,7 +1666,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Percentage of discount to apply',
 				},
 				{
-					displayName: 'Item Price',
+					displayName: 'Item price',
 					name: 'item_price',
 					type: 'number',
 					typeOptions: {
@@ -1686,7 +1686,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'How many items of this product to add/update in a deal',
 				},
 				{
-					displayName: 'Product Variation ID',
+					displayName: 'Product variation ID',
 					name: 'product_variation_id',
 					type: 'string',
 					default: '',
@@ -1698,7 +1698,7 @@ const versionDescription: INodeTypeDescription = {
 		//        dealProduct:remove
 		// ----------------------------------
 		{
-			displayName: 'Deal Name or ID',
+			displayName: 'Deal name or ID',
 			name: 'dealId',
 			type: 'options',
 			default: '',
@@ -1716,7 +1716,7 @@ const versionDescription: INodeTypeDescription = {
 				'The ID of the deal whose product to remove. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Product Attachment Name or ID',
+			displayName: 'Product attachment name or ID',
 			name: 'productAttachmentId',
 			type: 'options',
 			default: '',
@@ -1738,7 +1738,7 @@ const versionDescription: INodeTypeDescription = {
 		//        dealProduct:getAll
 		// ----------------------------------
 		{
-			displayName: 'Deal Name or ID',
+			displayName: 'Deal name or ID',
 			name: 'dealId',
 			type: 'options',
 			default: '',
@@ -1774,7 +1774,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
 		},
 		{
-			displayName: 'Exact Match',
+			displayName: 'Exact match',
 			name: 'exactMatch',
 			type: 'boolean',
 			displayOptions: {
@@ -1788,7 +1788,7 @@ const versionDescription: INodeTypeDescription = {
 				'Whether only full exact matches against the given term are returned. It is not case sensitive.',
 		},
 		{
-			displayName: 'Return All',
+			displayName: 'Return all',
 			name: 'returnAll',
 			type: 'boolean',
 			displayOptions: {
@@ -1817,10 +1817,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'Max number of results to return',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['search'],
@@ -1830,7 +1830,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Include Fields',
+					displayName: 'Include fields',
 					name: 'includeFields',
 					type: 'string',
 					default: '',
@@ -1852,12 +1852,12 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Will filter Deals by the provided Person ID',
 				},
 				{
-					displayName: 'Search Fields',
+					displayName: 'Search fields',
 					name: 'fields',
 					type: 'multiOptions',
 					options: [
 						{
-							name: 'Custom Fields',
+							name: 'Custom fields',
 							value: 'custom_fields',
 						},
 						{
@@ -1906,7 +1906,7 @@ const versionDescription: INodeTypeDescription = {
 		//         file:create
 		// ----------------------------------
 		{
-			displayName: 'Input Binary Field',
+			displayName: 'Input binary field',
 			name: 'binaryPropertyName',
 			type: 'string',
 			default: 'data',
@@ -1921,10 +1921,10 @@ const versionDescription: INodeTypeDescription = {
 			hint: 'The name of the input binary field containing the file to be written',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['create'],
@@ -1948,7 +1948,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'ID of the deal this file will be associated with',
 				},
 				{
-					displayName: 'Organization Name or ID',
+					displayName: 'Organization name or ID',
 					name: 'org_id',
 					type: 'options',
 					typeOptions: {
@@ -2011,7 +2011,7 @@ const versionDescription: INodeTypeDescription = {
 			description: 'ID of the file to download',
 		},
 		{
-			displayName: 'Put Output File in Field',
+			displayName: 'Put output file in field',
 			name: 'binaryPropertyName',
 			type: 'string',
 			required: true,
@@ -2061,10 +2061,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'ID of the file to update',
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'updateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['update'],
@@ -2112,7 +2112,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Associate With',
+			displayName: 'Associate with',
 			name: 'associateWith',
 			type: 'options',
 			options: [
@@ -2166,10 +2166,10 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -2179,14 +2179,14 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'Expected Close Date',
+					displayName: 'Expected close date',
 					name: 'expected_close_date',
 					type: 'dateTime',
 					default: '',
 					description: 'Date when the lead’s deal is expected to be closed, in ISO-8601 format',
 				},
 				{
-					displayName: 'Label Names or IDs',
+					displayName: 'Label names or IDs',
 					name: 'label_ids',
 					type: 'multiOptions',
 					typeOptions: {
@@ -2209,7 +2209,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 				},
 				{
-					displayName: 'Owner Name or ID',
+					displayName: 'Owner name or ID',
 					name: 'owner_id',
 					type: 'options',
 					typeOptions: {
@@ -2239,7 +2239,7 @@ const versionDescription: INodeTypeDescription = {
 					default: {},
 					options: [
 						{
-							displayName: 'Value Properties',
+							displayName: 'Value properties',
 							name: 'valueProperties',
 							values: [
 								{
@@ -2316,10 +2316,10 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'updateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			default: {},
 			displayOptions: {
 				show: {
@@ -2336,7 +2336,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Name of the lead to update',
 				},
 				{
-					displayName: 'Owner Name or ID',
+					displayName: 'Owner name or ID',
 					name: 'owner_id',
 					type: 'options',
 					typeOptions: {
@@ -2347,7 +2347,7 @@ const versionDescription: INodeTypeDescription = {
 						'ID of the user who will own the lead to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Label Names or IDs',
+					displayName: 'Label names or IDs',
 					name: 'label_ids',
 					type: 'multiOptions',
 					typeOptions: {
@@ -2358,7 +2358,7 @@ const versionDescription: INodeTypeDescription = {
 						'ID of the labels to attach to the lead to update. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Person Name or ID',
+					displayName: 'Person name or ID',
 					name: 'person_id',
 					type: 'options',
 					typeOptions: {
@@ -2376,7 +2376,7 @@ const versionDescription: INodeTypeDescription = {
 					default: {},
 					options: [
 						{
-							displayName: 'Value Properties',
+							displayName: 'Value properties',
 							name: 'valueProperties',
 							values: [
 								{
@@ -2397,7 +2397,7 @@ const versionDescription: INodeTypeDescription = {
 					],
 				},
 				{
-					displayName: 'Expected Close Date',
+					displayName: 'Expected close date',
 					name: 'expected_close_date',
 					type: 'dateTime',
 					default: '',
@@ -2529,10 +2529,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'ID of the note to update',
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'updateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['update'],
@@ -2566,7 +2566,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'ID of the lead this note will be associated with',
 				},
 				{
-					displayName: 'Organization Name or ID',
+					displayName: 'Organization name or ID',
 					name: 'org_id',
 					type: 'options',
 					typeOptions: {
@@ -2608,10 +2608,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The name of the organization to create',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['create'],
@@ -2621,9 +2621,9 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Custom Properties',
+					displayName: 'Custom properties',
 					name: 'customProperties',
-					placeholder: 'Add Custom Property',
+					placeholder: 'Add custom property',
 					description: 'Adds a custom property to set also values which have not been predefined',
 					type: 'fixedCollection',
 					typeOptions: {
@@ -2636,14 +2636,14 @@ const versionDescription: INodeTypeDescription = {
 							displayName: 'Property',
 							values: [
 								{
-									displayName: 'Property Name',
+									displayName: 'Property name',
 									name: 'name',
 									type: 'string',
 									default: '',
 									description: 'Name of the property to set',
 								},
 								{
-									displayName: 'Property Value',
+									displayName: 'Property value',
 									name: 'value',
 									type: 'string',
 									default: '',
@@ -2654,7 +2654,7 @@ const versionDescription: INodeTypeDescription = {
 					],
 				},
 				{
-					displayName: 'Label Name or ID',
+					displayName: 'Label name or ID',
 					name: 'label',
 					type: 'options',
 					description:
@@ -2665,16 +2665,16 @@ const versionDescription: INodeTypeDescription = {
 					default: '',
 				},
 				{
-					displayName: 'Visible To',
+					displayName: 'Visible to',
 					name: 'visible_to',
 					type: 'options',
 					options: [
 						{
-							name: 'Owner & Followers (Private)',
+							name: 'Owner & followers (private)',
 							value: '1',
 						},
 						{
-							name: 'Entire Company (Shared)',
+							name: 'Entire company (shared)',
 							value: '3',
 						},
 					],
@@ -2739,10 +2739,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['search'],
@@ -2752,7 +2752,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Exact Match',
+					displayName: 'Exact match',
 					name: 'exactMatch',
 					type: 'boolean',
 					default: false,
@@ -2771,7 +2771,7 @@ const versionDescription: INodeTypeDescription = {
 							value: 'address',
 						},
 						{
-							name: 'Custom Fields',
+							name: 'Custom fields',
 							value: 'custom_fields',
 						},
 						{
@@ -2785,7 +2785,7 @@ const versionDescription: INodeTypeDescription = {
 					],
 				},
 				{
-					displayName: 'RAW Data',
+					displayName: 'RAW data',
 					name: 'rawData',
 					type: 'boolean',
 					default: false,
@@ -2811,10 +2811,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The ID of the organization to create',
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'updateFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['update'],
@@ -2824,9 +2824,9 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Custom Properties',
+					displayName: 'Custom properties',
 					name: 'customProperties',
-					placeholder: 'Add Custom Property',
+					placeholder: 'Add custom property',
 					description: 'Adds a custom property to set also values which have not been predefined',
 					type: 'fixedCollection',
 					typeOptions: {
@@ -2839,14 +2839,14 @@ const versionDescription: INodeTypeDescription = {
 							displayName: 'Property',
 							values: [
 								{
-									displayName: 'Property Name',
+									displayName: 'Property name',
 									name: 'name',
 									type: 'string',
 									default: '',
 									description: 'Name of the property to set',
 								},
 								{
-									displayName: 'Property Value',
+									displayName: 'Property value',
 									name: 'value',
 									type: 'string',
 									default: '',
@@ -2857,7 +2857,7 @@ const versionDescription: INodeTypeDescription = {
 					],
 				},
 				{
-					displayName: 'Label Name or ID',
+					displayName: 'Label name or ID',
 					name: 'label',
 					type: 'options',
 					description:
@@ -2883,16 +2883,16 @@ const versionDescription: INodeTypeDescription = {
 						'The ID of the user who will be marked as the owner of this Organization. When omitted, the authorized User ID will be used.',
 				},
 				{
-					displayName: 'Visible To',
+					displayName: 'Visible to',
 					name: 'visible_to',
 					type: 'options',
 					options: [
 						{
-							name: 'Owner & Followers (Private)',
+							name: 'Owner & followers (private)',
 							value: '1',
 						},
 						{
-							name: 'Entire Company (Shared)',
+							name: 'Entire company (shared)',
 							value: '3',
 						},
 					],
@@ -2925,10 +2925,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The name of the person to create',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['create'],
@@ -2938,9 +2938,9 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Custom Properties',
+					displayName: 'Custom properties',
 					name: 'customProperties',
-					placeholder: 'Add Custom Property',
+					placeholder: 'Add custom property',
 					description: 'Adds a custom property to set also values which have not been predefined',
 					type: 'fixedCollection',
 					typeOptions: {
@@ -2953,7 +2953,7 @@ const versionDescription: INodeTypeDescription = {
 							displayName: 'Property',
 							values: [
 								{
-									displayName: 'Property Name or ID',
+									displayName: 'Property name or ID',
 									name: 'name',
 									type: 'options',
 									typeOptions: {
@@ -2964,7 +2964,7 @@ const versionDescription: INodeTypeDescription = {
 										'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								},
 								{
-									displayName: 'Property Value',
+									displayName: 'Property value',
 									name: 'value',
 									type: 'string',
 									default: '',
@@ -2986,7 +2986,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Email of the person',
 				},
 				{
-					displayName: 'Label Name or ID',
+					displayName: 'Label name or ID',
 					name: 'label',
 					type: 'options',
 					description:
@@ -2997,12 +2997,12 @@ const versionDescription: INodeTypeDescription = {
 					default: '',
 				},
 				{
-					displayName: 'Marketing Status',
+					displayName: 'Marketing status',
 					name: 'marketing_status',
 					type: 'options',
 					options: [
 						{
-							name: 'No Consent',
+							name: 'No consent',
 							value: 'no_consent',
 						},
 						{
@@ -3023,7 +3023,7 @@ const versionDescription: INodeTypeDescription = {
 						'Please be aware that it is only allowed once to change the marketing status from an old status to a new one',
 				},
 				{
-					displayName: 'Organization Name or ID',
+					displayName: 'Organization name or ID',
 					name: 'org_id',
 					type: 'options',
 					typeOptions: {
@@ -3044,16 +3044,16 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Phone number of the person',
 				},
 				{
-					displayName: 'Visible To',
+					displayName: 'Visible to',
 					name: 'visible_to',
 					type: 'options',
 					options: [
 						{
-							name: 'Owner & Followers (Private)',
+							name: 'Owner & followers (private)',
 							value: '1',
 						},
 						{
-							name: 'Entire Company (Shared)',
+							name: 'Entire company (shared)',
 							value: '3',
 						},
 					],
@@ -3062,7 +3062,7 @@ const versionDescription: INodeTypeDescription = {
 						'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
 				},
 				{
-					displayName: 'User Name or ID',
+					displayName: 'User name or ID',
 					name: 'owner_id',
 					type: 'options',
 					typeOptions: {
@@ -3129,11 +3129,11 @@ const versionDescription: INodeTypeDescription = {
 			description: 'ID of the person to update',
 		},
 		{
-			displayName: 'Update Fields',
+			displayName: 'Update fields',
 			name: 'updateFields',
 			type: 'collection',
 			description: 'The fields to update',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['update'],
@@ -3143,9 +3143,9 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Custom Properties',
+					displayName: 'Custom properties',
 					name: 'customProperties',
-					placeholder: 'Add Custom Property',
+					placeholder: 'Add custom property',
 					description: 'Adds a custom property to set also values which have not been predefined',
 					type: 'fixedCollection',
 					typeOptions: {
@@ -3158,7 +3158,7 @@ const versionDescription: INodeTypeDescription = {
 							displayName: 'Property',
 							values: [
 								{
-									displayName: 'Property Name or ID',
+									displayName: 'Property name or ID',
 									name: 'name',
 									type: 'options',
 									typeOptions: {
@@ -3169,7 +3169,7 @@ const versionDescription: INodeTypeDescription = {
 										'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								},
 								{
-									displayName: 'Property Value',
+									displayName: 'Property value',
 									name: 'value',
 									type: 'string',
 									default: '',
@@ -3191,7 +3191,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Email of the person',
 				},
 				{
-					displayName: 'Label Name or ID',
+					displayName: 'Label name or ID',
 					name: 'label',
 					type: 'options',
 					description:
@@ -3202,12 +3202,12 @@ const versionDescription: INodeTypeDescription = {
 					default: '',
 				},
 				{
-					displayName: 'Marketing Status',
+					displayName: 'Marketing status',
 					name: 'marketing_status',
 					type: 'options',
 					options: [
 						{
-							name: 'No Consent',
+							name: 'No consent',
 							value: 'no_consent',
 						},
 						{
@@ -3235,7 +3235,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'The name of the person',
 				},
 				{
-					displayName: 'Organization Name or ID',
+					displayName: 'Organization name or ID',
 					name: 'org_id',
 					type: 'options',
 					typeOptions: {
@@ -3256,7 +3256,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Phone number of the person',
 				},
 				{
-					displayName: 'User Name or ID',
+					displayName: 'User name or ID',
 					name: 'owner_id',
 					type: 'options',
 					typeOptions: {
@@ -3267,16 +3267,16 @@ const versionDescription: INodeTypeDescription = {
 						'ID of the User this person will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Visible To',
+					displayName: 'Visible to',
 					name: 'visible_to',
 					type: 'options',
 					options: [
 						{
-							name: 'Owner & Followers (Private)',
+							name: 'Owner & followers (private)',
 							value: '1',
 						},
 						{
-							name: 'Entire Company (Shared)',
+							name: 'Entire company (shared)',
 							value: '3',
 						},
 					],
@@ -3291,7 +3291,7 @@ const versionDescription: INodeTypeDescription = {
 		//         activity / deal / note / organization / person / product
 		// ----------------------------------
 		{
-			displayName: 'Resolve Properties',
+			displayName: 'Resolve properties',
 			name: 'resolveProperties',
 			type: 'boolean',
 			displayOptions: {
@@ -3306,7 +3306,7 @@ const versionDescription: INodeTypeDescription = {
 				'By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.',
 		},
 		{
-			displayName: 'Encode Properties',
+			displayName: 'Encode properties',
 			name: 'encodeProperties',
 			type: 'boolean',
 			displayOptions: {
@@ -3321,7 +3321,7 @@ const versionDescription: INodeTypeDescription = {
 				'By default do custom properties have to be set as ID instead of their actual name. Also option fields have to be set as ID instead of their actual value. If this option gets set they get automatically encoded.',
 		},
 		{
-			displayName: 'Return All',
+			displayName: 'Return all',
 			name: 'returnAll',
 			type: 'boolean',
 			displayOptions: {
@@ -3354,7 +3354,7 @@ const versionDescription: INodeTypeDescription = {
 		//        dealActivities:getAll
 		// ----------------------------------
 		{
-			displayName: 'Deal Name or ID',
+			displayName: 'Deal name or ID',
 			name: 'dealId',
 			type: 'options',
 			default: '',
@@ -3372,10 +3372,10 @@ const versionDescription: INodeTypeDescription = {
 				'The ID of the deal whose activity to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['getAll'],
@@ -3392,7 +3392,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Whether the activity is done or not',
 				},
 				{
-					displayName: 'Exclude Activity IDs',
+					displayName: 'Exclude activity IDs',
 					name: 'exclude',
 					type: 'string',
 					default: '',
@@ -3408,7 +3408,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Filters',
 			name: 'filters',
 			type: 'collection',
-			placeholder: 'Add Filter',
+			placeholder: 'Add filter',
 			default: {},
 			displayOptions: {
 				show: {
@@ -3418,7 +3418,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			options: [
 				{
-					displayName: 'Archived Status',
+					displayName: 'Archived status',
 					name: 'archived_status',
 					type: 'options',
 					default: 'all',
@@ -3432,7 +3432,7 @@ const versionDescription: INodeTypeDescription = {
 							value: 'all',
 						},
 						{
-							name: 'Not Archived',
+							name: 'Not archived',
 							value: 'not_archived',
 						},
 					],
@@ -3447,7 +3447,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Filters',
 			name: 'filters',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['getAll'],
@@ -3457,7 +3457,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'First Char',
+					displayName: 'First char',
 					name: 'firstChar',
 					type: 'string',
 					default: '',
@@ -3465,7 +3465,7 @@ const versionDescription: INodeTypeDescription = {
 						'If supplied, only organizations whose name starts with the specified letter will be returned',
 				},
 				{
-					displayName: 'Predefined Filter Name or ID',
+					displayName: 'Predefined filter name or ID',
 					name: 'filterId',
 					type: 'options',
 					typeOptions: {
@@ -3482,10 +3482,10 @@ const versionDescription: INodeTypeDescription = {
 		//         person:getAll
 		// ----------------------------------
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['getAll'],
@@ -3495,7 +3495,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Predefined Filter Name or ID',
+					displayName: 'Predefined filter name or ID',
 					name: 'filterId',
 					type: 'options',
 					typeOptions: {
@@ -3506,7 +3506,7 @@ const versionDescription: INodeTypeDescription = {
 						'ID of the filter to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'First Char',
+					displayName: 'First char',
 					name: 'firstChar',
 					type: 'string',
 					default: '',
@@ -3542,10 +3542,10 @@ const versionDescription: INodeTypeDescription = {
 			description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
 		},
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['search'],
@@ -3555,7 +3555,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Exact Match',
+					displayName: 'Exact match',
 					name: 'exactMatch',
 					type: 'boolean',
 					default: false,
@@ -3571,7 +3571,7 @@ const versionDescription: INodeTypeDescription = {
 						'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
 				},
 				{
-					displayName: 'Include Fields',
+					displayName: 'Include fields',
 					name: 'includeFields',
 					type: 'string',
 					default: '',
@@ -3586,7 +3586,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Will filter Deals by the provided Organization ID',
 				},
 				{
-					displayName: 'RAW Data',
+					displayName: 'RAW data',
 					name: 'rawData',
 					type: 'boolean',
 					default: false,
@@ -3599,10 +3599,10 @@ const versionDescription: INodeTypeDescription = {
 		//         note:create/getAll
 		// ----------------------------------
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['create', 'getAll'],
@@ -3626,7 +3626,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'ID of the lead this note will be associated with',
 				},
 				{
-					displayName: 'Organization Name or ID',
+					displayName: 'Organization name or ID',
 					name: 'org_id',
 					type: 'options',
 					typeOptions: {
@@ -3649,10 +3649,10 @@ const versionDescription: INodeTypeDescription = {
 		//         activity:getAll
 		// ----------------------------------
 		{
-			displayName: 'Additional Fields',
+			displayName: 'Additional fields',
 			name: 'additionalFields',
 			type: 'collection',
-			placeholder: 'Add Field',
+			placeholder: 'Add field',
 			displayOptions: {
 				show: {
 					operation: ['getAll'],
@@ -3670,7 +3670,7 @@ const versionDescription: INodeTypeDescription = {
 						'Whether the Activity is done or not. 0 = Not done, 1 = Done. If omitted returns both Done and Not done activities.',
 				},
 				{
-					displayName: 'End Date',
+					displayName: 'End date',
 					name: 'end_date',
 					type: 'dateTime',
 					default: '',
@@ -3678,7 +3678,7 @@ const versionDescription: INodeTypeDescription = {
 						'Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format.',
 				},
 				{
-					displayName: 'Predefined Filter Name or ID',
+					displayName: 'Predefined filter name or ID',
 					name: 'filterId',
 					type: 'options',
 					typeOptions: {
@@ -3689,7 +3689,7 @@ const versionDescription: INodeTypeDescription = {
 						'The ID of the Filter to use (will narrow down results if used together with user_id parameter). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Star Date',
+					displayName: 'Star date',
 					name: 'start_date',
 					type: 'dateTime',
 					default: '',
@@ -3697,7 +3697,7 @@ const versionDescription: INodeTypeDescription = {
 						'Use the Activity due date where you wish to begin fetching Activities from. Insert due date in YYYY-MM-DD format.',
 				},
 				{
-					displayName: 'Type Names or IDs',
+					displayName: 'Type names or IDs',
 					name: 'type',
 					type: 'multiOptions',
 					typeOptions: {
@@ -3708,7 +3708,7 @@ const versionDescription: INodeTypeDescription = {
 						'Type of the Activity. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'User Name or ID',
+					displayName: 'User name or ID',
 					name: 'user_id',
 					type: 'options',
 					typeOptions: {
@@ -3727,7 +3727,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Filters',
 			name: 'filters',
 			type: 'collection',
-			placeholder: 'Add Filter',
+			placeholder: 'Add filter',
 			displayOptions: {
 				show: {
 					operation: ['getAll'],
@@ -3737,7 +3737,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Predefined Filter Name or ID',
+					displayName: 'Predefined filter name or ID',
 					name: 'filter_id',
 					type: 'options',
 					typeOptions: {
@@ -3748,7 +3748,7 @@ const versionDescription: INodeTypeDescription = {
 						'Predefined filter to apply to the deals to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Stage Name or ID',
+					displayName: 'Stage name or ID',
 					name: 'stage_id',
 					type: 'options',
 					typeOptions: {
@@ -3764,7 +3764,7 @@ const versionDescription: INodeTypeDescription = {
 					type: 'options',
 					options: [
 						{
-							name: 'All Not Deleted',
+							name: 'All not deleted',
 							value: 'all_not_deleted',
 						},
 						{
@@ -3788,7 +3788,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Status to filter deals by. Defaults to <code>all_not_deleted</code>',
 				},
 				{
-					displayName: 'User Name or ID',
+					displayName: 'User name or ID',
 					name: 'user_id',
 					type: 'options',
 					typeOptions: {

@@ -31,7 +31,7 @@ export const ticketOperations: INodeProperties[] = [
 				action: 'Get a ticket',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many tickets',
 				action: 'Get many tickets',
@@ -152,10 +152,10 @@ export const ticketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -165,14 +165,14 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'CC Emails',
+				displayName: 'CC emails',
 				name: 'cc_emails',
 				type: 'string',
 				default: '',
 				description: 'Comma-separated email addresses to add in the CC field of the ticket email',
 			},
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -183,7 +183,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -221,7 +221,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Name of the ticket author',
 			},
 			{
-				displayName: 'Requester Name or ID',
+				displayName: 'Requester name or ID',
 				name: 'requester_id',
 				type: 'options',
 				description:
@@ -274,7 +274,7 @@ export const ticketFields: INodeProperties[] = [
 	//              ticket: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -307,7 +307,7 @@ export const ticketFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -317,7 +317,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name or ID',
+				displayName: 'Agent name or ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
@@ -328,7 +328,7 @@ export const ticketFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
@@ -407,14 +407,14 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Created On',
+				displayName: 'Created on',
 				name: 'created_at',
 				type: 'dateTime',
 				default: '',
 				description: 'Date when the ticket was created',
 			},
 			{
-				displayName: 'Due By',
+				displayName: 'Due by',
 				name: 'due_by',
 				description: 'Date when the ticket is due to be resolved',
 				type: 'dateTime',
@@ -441,10 +441,10 @@ export const ticketFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -454,7 +454,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department name or ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
@@ -480,7 +480,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Email address of the ticket author',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group name or ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',

@@ -43,7 +43,7 @@ export const descriptions: INodeProperties[] = [
 				action: 'Get a row',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'list',
 				description: 'Get many rows from a table or a table view',
 				action: 'Get many rows',

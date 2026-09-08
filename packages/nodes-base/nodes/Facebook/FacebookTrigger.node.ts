@@ -75,7 +75,7 @@ export class FacebookTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -111,7 +111,7 @@ export class FacebookTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Ad Account',
+						name: 'Ad account',
 						value: 'adAccount',
 						description: 'Get updates about Ad Account',
 					},
@@ -121,7 +121,7 @@ export class FacebookTrigger implements INodeType {
 						description: 'Get updates about the app',
 					},
 					{
-						name: 'Certificate Transparency',
+						name: 'Certificate transparency',
 						value: 'certificateTransparency',
 						description: 'Get updates about Certificate Transparency',
 					},
@@ -156,12 +156,12 @@ export class FacebookTrigger implements INodeType {
 						description: 'User profile updates',
 					},
 					{
-						name: 'Whatsapp Business Account',
+						name: 'WhatsApp Business account',
 						value: 'whatsappBusinessAccount',
 						description: 'Get updates about Whatsapp business account',
 					},
 					{
-						name: 'Workplace Security',
+						name: 'Workplace security',
 						value: 'workplaceSecurity',
 						description: 'Get updates about Workplace Security',
 					},
@@ -172,7 +172,7 @@ export class FacebookTrigger implements INodeType {
 			},
 			//https://developers.facebook.com/docs/graph-api/webhooks/reference/page
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -191,7 +191,7 @@ export class FacebookTrigger implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Include Values',
+						displayName: 'Include values',
 						name: 'includeValues',
 						type: 'boolean',
 						default: true,

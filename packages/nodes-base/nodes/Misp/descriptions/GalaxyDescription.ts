@@ -23,7 +23,7 @@ export const galaxyOperations: INodeProperties[] = [
 				action: 'Get a galaxy',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many galaxies',
 			},
@@ -73,7 +73,7 @@ export const galaxyFields: INodeProperties[] = [
 	//              galaxy: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

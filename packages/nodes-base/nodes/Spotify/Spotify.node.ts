@@ -57,7 +57,7 @@ export class Spotify implements INodeType {
 						value: 'library',
 					},
 					{
-						name: 'My Data',
+						name: 'My data',
 						value: 'myData',
 					},
 					{
@@ -93,19 +93,19 @@ export class Spotify implements INodeType {
 				},
 				options: [
 					{
-						name: 'Add Song to Queue',
+						name: 'Add song to queue',
 						value: 'addSongToQueue',
 						description: 'Add a song to your queue',
 						action: 'Add a song to a queue',
 					},
 					{
-						name: 'Currently Playing',
+						name: 'Currently playing',
 						value: 'currentlyPlaying',
 						description: 'Get your currently playing track',
 						action: 'Get the currently playing track',
 					},
 					{
-						name: 'Next Song',
+						name: 'Next song',
 						value: 'nextSong',
 						description: 'Skip to your next track',
 						action: 'Skip to the next track',
@@ -117,13 +117,13 @@ export class Spotify implements INodeType {
 						action: 'Pause the player',
 					},
 					{
-						name: 'Previous Song',
+						name: 'Previous song',
 						value: 'previousSong',
 						description: 'Skip to your previous song',
 						action: 'Skip to the previous song',
 					},
 					{
-						name: 'Recently Played',
+						name: 'Recently played',
 						value: 'recentlyPlayed',
 						description: 'Get your recently played tracks',
 						action: 'Get the recently played tracks',
@@ -135,13 +135,13 @@ export class Spotify implements INodeType {
 						action: 'Resume the player',
 					},
 					{
-						name: 'Set Volume',
+						name: 'Set volume',
 						value: 'volume',
 						description: 'Set volume on the current active device',
 						action: 'Set volume on the player',
 					},
 					{
-						name: 'Start Music',
+						name: 'Start music',
 						value: 'startMusic',
 						description: 'Start playing a playlist, artist, or album',
 						action: 'Start music on the player',
@@ -202,13 +202,13 @@ export class Spotify implements INodeType {
 						action: 'Get an album',
 					},
 					{
-						name: 'Get New Releases',
+						name: 'Get new releases',
 						value: 'getNewReleases',
 						description: 'Get a list of new album releases',
 						action: 'Get new album releases',
 					},
 					{
-						name: 'Get Tracks',
+						name: 'Get tracks',
 						value: 'getTracks',
 						description: "Get an album's tracks by URI or ID",
 						action: "Get an album's tracks by URI or ID",
@@ -241,7 +241,7 @@ export class Spotify implements INodeType {
 				description: "The album's Spotify URI or ID",
 			},
 			{
-				displayName: 'Search Keyword',
+				displayName: 'Search keyword',
 				name: 'query',
 				type: 'string',
 				required: true,
@@ -277,19 +277,19 @@ export class Spotify implements INodeType {
 						action: 'Get an artist',
 					},
 					{
-						name: 'Get Albums',
+						name: 'Get albums',
 						value: 'getAlbums',
 						description: "Get an artist's albums by URI or ID",
 						action: "Get an artist's albums by URI or ID",
 					},
 					{
-						name: 'Get Related Artists',
+						name: 'Get related artists',
 						value: 'getRelatedArtists',
 						description: "Get an artist's related artists by URI or ID",
 						action: "Get an artist's related artists by URI or ID",
 					},
 					{
-						name: 'Get Top Tracks',
+						name: 'Get top tracks',
 						value: 'getTopTracks',
 						description: "Get an artist's top tracks by URI or ID",
 						action: "Get an artist's top tracks by URI or ID",
@@ -337,7 +337,7 @@ export class Spotify implements INodeType {
 			},
 
 			{
-				displayName: 'Search Keyword',
+				displayName: 'Search keyword',
 				name: 'query',
 				type: 'string',
 				required: true,
@@ -368,13 +368,13 @@ export class Spotify implements INodeType {
 
 				options: [
 					{
-						name: 'Add an Item',
+						name: 'Add an item',
 						value: 'add',
 						description: 'Add tracks to a playlist by track and playlist URI or ID',
-						action: 'Add an Item to a playlist',
+						action: 'Add an item to a playlist',
 					},
 					{
-						name: 'Create a Playlist',
+						name: 'Create a playlist',
 						value: 'create',
 						description: 'Create a new playlist',
 						action: 'Create a playlist',
@@ -386,19 +386,19 @@ export class Spotify implements INodeType {
 						action: 'Get a playlist',
 					},
 					{
-						name: "Get the User's Playlists",
+						name: "Get the user's playlists",
 						value: 'getUserPlaylists',
 						description: "Get a user's playlists",
 						action: "Get a user's playlists",
 					},
 					{
-						name: 'Get Tracks',
+						name: 'Get tracks',
 						value: 'getTracks',
 						description: "Get a playlist's tracks by URI or ID",
 						action: "Get a playlist's tracks by URI or ID",
 					},
 					{
-						name: 'Remove an Item',
+						name: 'Remove an item',
 						value: 'delete',
 						description: 'Remove tracks from a playlist by track and playlist URI or ID',
 						action: 'Remove an item from a playlist',
@@ -443,10 +443,10 @@ export class Spotify implements INodeType {
 				description: 'Name of the playlist to create',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -489,10 +489,10 @@ export class Spotify implements INodeType {
 					"The track's Spotify URI or its ID. The track to add/delete from the playlist.",
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -515,7 +515,7 @@ export class Spotify implements INodeType {
 				],
 			},
 			{
-				displayName: 'Search Keyword',
+				displayName: 'Search keyword',
 				name: 'query',
 				type: 'string',
 				required: true,
@@ -551,7 +551,7 @@ export class Spotify implements INodeType {
 						action: 'Get a track',
 					},
 					{
-						name: 'Get Audio Features',
+						name: 'Get audio features',
 						value: 'getAudioFeatures',
 						description: 'Get audio features for a track by URI or ID',
 						action: 'Get audio features of a track',
@@ -583,7 +583,7 @@ export class Spotify implements INodeType {
 				description: "The track's Spotify URI or ID",
 			},
 			{
-				displayName: 'Search Keyword',
+				displayName: 'Search keyword',
 				name: 'query',
 				type: 'string',
 				required: true,
@@ -613,7 +613,7 @@ export class Spotify implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get Liked Tracks',
+						name: 'Get liked tracks',
 						value: 'getLikedTracks',
 						description: "Get the user's liked tracks",
 						action: 'Get liked tracks',
@@ -638,7 +638,7 @@ export class Spotify implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get Following Artists',
+						name: 'Get following artists',
 						value: 'getFollowingArtists',
 						description: 'Get your followed artists',
 						action: 'Get your followed artists',
@@ -647,7 +647,7 @@ export class Spotify implements INodeType {
 				default: 'getFollowingArtists',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				default: false,
@@ -736,7 +736,7 @@ export class Spotify implements INodeType {
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				default: {},
 				displayOptions: {
 					show: {
@@ -759,7 +759,7 @@ export class Spotify implements INodeType {
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				default: {},
 				displayOptions: {
 					show: {

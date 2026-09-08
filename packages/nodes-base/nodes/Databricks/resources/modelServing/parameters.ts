@@ -17,7 +17,7 @@ export const modelServingParameters: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -26,7 +26,7 @@ export const modelServingParameters: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name',
+				displayName: 'By name',
 				name: 'name',
 				type: 'string',
 				placeholder: 'e.g. databricks-mixtral-8x7b-instruct',
@@ -57,7 +57,7 @@ export const modelServingParameters: INodeProperties[] = [
 
 	// Simple JSON input - schema will be fetched and validated at runtime
 	{
-		displayName: 'Request Body',
+		displayName: 'Request body',
 		name: 'requestBody',
 		type: 'json',
 		required: true,

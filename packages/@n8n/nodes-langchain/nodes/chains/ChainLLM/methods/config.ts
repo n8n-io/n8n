@@ -121,7 +121,7 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.5 } }] } },
 	},
 	{
-		displayName: 'Prompt (User Message)',
+		displayName: 'Prompt (user message)',
 		name: 'text',
 		type: 'string',
 		required: true,
@@ -141,7 +141,7 @@ export const nodeProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Require Specific Output Format',
+		displayName: 'Require specific output format',
 		name: 'hasOutputParser',
 		type: 'boolean',
 		default: false,
@@ -153,7 +153,7 @@ export const nodeProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Enable Fallback Model',
+		displayName: 'Enable fallback model',
 		name: 'needsFallback',
 		type: 'boolean',
 		default: false,
@@ -165,7 +165,7 @@ export const nodeProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Chat Messages (if Using a Chat Model)',
+		displayName: 'Chat messages (if using a chat model)',
 		name: 'messages',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -179,7 +179,7 @@ export const nodeProperties: INodeProperties[] = [
 				displayName: 'Prompt',
 				values: [
 					{
-						displayName: 'Type Name or ID',
+						displayName: 'Type name or ID',
 						name: 'type',
 						type: 'options',
 						options: [
@@ -199,7 +199,7 @@ export const nodeProperties: INodeProperties[] = [
 						default: SystemMessagePromptTemplate.lc_name(),
 					},
 					{
-						displayName: 'Message Type',
+						displayName: 'Message type',
 						name: 'messageType',
 						type: 'options',
 						displayOptions: {
@@ -214,7 +214,7 @@ export const nodeProperties: INodeProperties[] = [
 								description: 'Simple text message',
 							},
 							{
-								name: 'Image (Binary)',
+								name: 'Image (binary)',
 								value: 'imageBinary',
 								description: 'Process the binary input from the previous node',
 							},
@@ -227,7 +227,7 @@ export const nodeProperties: INodeProperties[] = [
 						default: 'text',
 					},
 					{
-						displayName: 'Image Data Field Name',
+						displayName: 'Image data field name',
 						name: 'binaryImageDataKey',
 						type: 'string',
 						default: 'data',
@@ -254,7 +254,7 @@ export const nodeProperties: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Image Details',
+						displayName: 'Image details',
 						description:
 							'Control how the model processes the image and generates its textual understanding',
 						name: 'imageDetail',

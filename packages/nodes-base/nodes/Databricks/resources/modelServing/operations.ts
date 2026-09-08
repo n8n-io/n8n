@@ -12,7 +12,7 @@ export const modelServingOperations: INodeProperties = {
 	},
 	options: [
 		{
-			name: 'Query Endpoint',
+			name: 'Query endpoint',
 			value: 'queryEndpoint',
 			description:
 				'Query a serving endpoint. The input format is automatically detected from the endpoint schema.',

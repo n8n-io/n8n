@@ -47,7 +47,7 @@ export class Emelia implements INodeType {
 						value: 'campaign',
 					},
 					{
-						name: 'Contact List',
+						name: 'Contact list',
 						value: 'contactList',
 					},
 				],

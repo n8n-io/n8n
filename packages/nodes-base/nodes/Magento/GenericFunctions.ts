@@ -72,7 +72,7 @@ export function getAddressesUi(): INodeProperties {
 	return {
 		displayName: 'Addresses',
 		name: 'addresses',
-		placeholder: 'Add Address',
+		placeholder: 'Add address',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -104,14 +104,14 @@ export function getAddressesUi(): INodeProperties {
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
+						displayName: 'Postal code',
 						name: 'postcode',
 						type: 'string',
 						required: true,
 						default: '',
 					},
 					{
-						displayName: 'Country Name or ID',
+						displayName: 'Country name or ID',
 						name: 'country_id',
 						type: 'options',
 						description:
@@ -135,21 +135,21 @@ export function getAddressesUi(): INodeProperties {
 						default: '',
 					},
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'firstname',
 						type: 'string',
 						required: true,
 						default: '',
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'lastname',
 						type: 'string',
 						required: true,
 						default: '',
 					},
 					{
-						displayName: 'Middle Name',
+						displayName: 'Middle name',
 						name: 'middlename',
 						type: 'string',
 						default: '',
@@ -174,14 +174,14 @@ export function getAddressesUi(): INodeProperties {
 						default: '',
 					},
 					{
-						displayName: 'Default Billing',
+						displayName: 'Default billing',
 						name: 'default_billing',
 						type: 'boolean',
 						default: false,
 						description: 'Whether this address is default billing address',
 					},
 					{
-						displayName: 'Default Shipping',
+						displayName: 'Default shipping',
 						name: 'default_shipping',
 						type: 'boolean',
 						default: false,
@@ -211,7 +211,7 @@ export function adjustAddresses(
 
 function getConditionTypeFields(): INodeProperties {
 	return {
-		displayName: 'Condition Type',
+		displayName: 'Condition type',
 		name: 'condition_type',
 		type: 'options',
 		options: [
@@ -233,11 +233,11 @@ function getConditionTypeFields(): INodeProperties {
 				description: 'The value can contain a comma-separated list of values',
 			},
 			{
-				name: 'Less Than',
+				name: 'Less than',
 				value: 'lt',
 			},
 			{
-				name: 'Less Than or Equal',
+				name: 'Less than or equal',
 				value: 'lte',
 			},
 			{
@@ -246,20 +246,20 @@ function getConditionTypeFields(): INodeProperties {
 				description: 'The value can contain the SQL wildcard characters when like is specified',
 			},
 			{
-				name: 'More or Equal',
+				name: 'More or equal',
 				value: 'moreq',
 			},
 			{
-				name: 'Not Equal',
+				name: 'Not equal',
 				value: 'neq',
 			},
 			{
-				name: 'Not In',
+				name: 'Not in',
 				value: 'nin',
 				description: 'The value can contain a comma-separated list of values',
 			},
 			{
-				name: 'Not Null',
+				name: 'Not null',
 				value: 'notnull',
 			},
 			{
@@ -313,7 +313,7 @@ export function getSearchFilters(
 					value: 'none',
 				},
 				{
-					name: 'Build Manually',
+					name: 'Build manually',
 					value: 'manual',
 				},
 				{
@@ -330,7 +330,7 @@ export function getSearchFilters(
 			default: 'none',
 		},
 		{
-			displayName: 'Must Match',
+			displayName: 'Must match',
 			name: 'matchType',
 			type: 'options',
 			options: [
@@ -339,7 +339,7 @@ export function getSearchFilters(
 					value: 'anyFilter',
 				},
 				{
-					name: 'All Filters',
+					name: 'All filters',
 					value: 'allFilters',
 				},
 			],
@@ -367,7 +367,7 @@ export function getSearchFilters(
 				},
 			},
 			default: {},
-			placeholder: 'Add Condition',
+			placeholder: 'Add condition',
 			options: [
 				{
 					displayName: 'Conditions',
@@ -430,7 +430,7 @@ export function getSearchFilters(
 					displayName: 'Sort',
 					name: 'sort',
 					type: 'fixedCollection',
-					placeholder: 'Add Sort',
+					placeholder: 'Add sort',
 					typeOptions: {
 						multipleValues: true,
 					},
@@ -539,21 +539,21 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Custom Attributes',
+			displayName: 'Custom attributes',
 			name: 'customAttributes',
 			type: 'fixedCollection',
 			typeOptions: {
 				multipleValues: true,
 			},
 			default: {},
-			placeholder: 'Add Custom Attribute',
+			placeholder: 'Add custom attribute',
 			options: [
 				{
-					displayName: 'Custom Attribute',
+					displayName: 'Custom attribute',
 					name: 'customAttribute',
 					values: [
 						{
-							displayName: 'Attribute Code Name or ID',
+							displayName: 'Attribute code name or ID',
 							name: 'attribute_code',
 							type: 'options',
 							description:
@@ -574,19 +574,19 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			],
 		},
 		{
-			displayName: 'Date of Birth',
+			displayName: 'Date of birth',
 			name: 'dob',
 			type: 'dateTime',
 			default: '',
 		},
 		{
-			displayName: 'Default Billing Address ID',
+			displayName: 'Default billing address ID',
 			name: 'default_billing',
 			type: 'string',
 			default: '',
 		},
 		{
-			displayName: 'Default Shipping Address ID',
+			displayName: 'Default shipping address ID',
 			name: 'default_shipping',
 			type: 'string',
 			default: '',
@@ -605,14 +605,14 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 					value: 2,
 				},
 				{
-					name: 'Not Specified',
+					name: 'Not specified',
 					value: 3,
 				},
 			],
 			default: '',
 		},
 		{
-			displayName: 'Group Name or ID',
+			displayName: 'Group name or ID',
 			name: 'group_id',
 			type: 'options',
 			description:
@@ -623,13 +623,13 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Is Subscribed',
+			displayName: 'Is subscribed',
 			name: 'is_subscribed',
 			type: 'boolean',
 			default: false,
 		},
 		{
-			displayName: 'Middle Name',
+			displayName: 'Middle name',
 			name: 'middlename',
 			type: 'string',
 			default: '',
@@ -648,7 +648,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Store Name or ID',
+			displayName: 'Store name or ID',
 			name: 'store_id',
 			type: 'options',
 			description:
@@ -665,19 +665,19 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Vertex Customer Code',
+			displayName: 'Vertex customer code',
 			name: 'vertex_customer_code',
 			type: 'string',
 			default: '',
 		},
 		{
-			displayName: 'Vertex Customer Country',
+			displayName: 'Vertex customer country',
 			name: 'vertex_customer_country',
 			type: 'string',
 			default: '',
 		},
 		{
-			displayName: 'Website Name or ID',
+			displayName: 'Website name or ID',
 			name: 'website_id',
 			type: 'options',
 			description:
@@ -698,7 +698,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 export function getProductOptionalFields(): INodeProperties[] {
 	return [
 		{
-			displayName: 'Attribute Set Name or ID',
+			displayName: 'Attribute set name or ID',
 			name: 'attribute_set_id',
 			type: 'options',
 			description:
@@ -794,7 +794,7 @@ export function getProductOptionalFields(): INodeProperties[] {
 			default: 1,
 		},
 		{
-			displayName: 'Type Name or ID',
+			displayName: 'Type name or ID',
 			name: 'type_id',
 			type: 'options',
 			description:
@@ -810,7 +810,7 @@ export function getProductOptionalFields(): INodeProperties[] {
 			type: 'options',
 			options: [
 				{
-					name: 'Not Visible',
+					name: 'Not visible',
 					value: 1,
 				},
 				{
@@ -822,7 +822,7 @@ export function getProductOptionalFields(): INodeProperties[] {
 					value: 3,
 				},
 				{
-					name: 'Catalog & Search',
+					name: 'Catalog & search',
 					value: 4,
 				},
 			],

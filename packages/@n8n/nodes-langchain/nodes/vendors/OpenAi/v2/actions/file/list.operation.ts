@@ -12,7 +12,7 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		options: [
@@ -25,7 +25,7 @@ const properties: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Any [Default]',
+						name: 'Any [default]',
 						value: 'any',
 					},
 					{
@@ -33,7 +33,7 @@ const properties: INodeProperties[] = [
 						value: 'assistants',
 					},
 					{
-						name: 'Fine-Tune',
+						name: 'Fine-tune',
 						value: 'fine-tune',
 					},
 					{
@@ -41,7 +41,7 @@ const properties: INodeProperties[] = [
 						value: 'vision',
 					},
 					{
-						name: 'User Data',
+						name: 'User data',
 						value: 'user_data',
 					},
 				],

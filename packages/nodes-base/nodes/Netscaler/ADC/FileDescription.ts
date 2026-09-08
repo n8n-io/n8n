@@ -32,7 +32,7 @@ export const fileDescription: INodeProperties[] = [
 	},
 	// Upload --------------------------------------------------------------------------
 	{
-		displayName: 'File Location',
+		displayName: 'File location',
 		name: 'fileLocation',
 		type: 'string',
 		required: true,
@@ -45,7 +45,7 @@ export const fileDescription: INodeProperties[] = [
 		default: '/nsconfig/ssl/',
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
@@ -72,7 +72,7 @@ export const fileDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
@@ -82,7 +82,7 @@ export const fileDescription: INodeProperties[] = [
 	},
 	// Delete, Download ---------------------------------------------------------------
 	{
-		displayName: 'File Location',
+		displayName: 'File location',
 		name: 'fileLocation',
 		type: 'string',
 		required: true,
@@ -95,7 +95,7 @@ export const fileDescription: INodeProperties[] = [
 		default: '/nsconfig/ssl/',
 	},
 	{
-		displayName: 'File Name',
+		displayName: 'File name',
 		name: 'fileName',
 		type: 'string',
 		default: '',
@@ -109,7 +109,7 @@ export const fileDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Put Output in Field',
+		displayName: 'Put output in field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,

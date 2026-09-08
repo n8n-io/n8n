@@ -42,10 +42,10 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -62,25 +62,25 @@ export const eventFields: INodeProperties[] = [
 				description: 'Campaign tied to conversion',
 			},
 			{
-				displayName: 'Created At',
+				displayName: 'Created at',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
 				description: 'Time event happened',
 			},
 			{
-				displayName: 'Data Fields',
+				displayName: 'Data fields',
 				name: 'dataFieldsUi',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Data Field',
+				placeholder: 'Add data field',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
 						name: 'dataFieldValues',
-						displayName: 'Data Field',
+						displayName: 'Data field',
 						values: [
 							{
 								displayName: 'Key',

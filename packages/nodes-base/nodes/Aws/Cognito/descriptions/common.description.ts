@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 export const userPoolResourceLocator: INodeProperties = {
-	displayName: 'User Pool',
+	displayName: 'User pool',
 	name: 'userPool',
 	required: true,
 	type: 'resourceLocator',
@@ -67,7 +67,7 @@ export const groupResourceLocator: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'By Name',
+			displayName: 'By name',
 			name: 'groupName',
 			type: 'string',
 			hint: 'Enter the group name',
@@ -96,7 +96,7 @@ export const userResourceLocator: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'From List',
+			displayName: 'From list',
 			name: 'list',
 			type: 'list',
 			typeOptions: {

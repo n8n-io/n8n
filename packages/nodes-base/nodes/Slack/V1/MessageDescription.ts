@@ -19,7 +19,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Delete a message',
 			},
 			{
-				name: 'Get Permalink',
+				name: 'Get permalink',
 				value: 'getPermalink',
 				description: 'Get Permanent Link of a message',
 				action: 'Get a message permalink',
@@ -31,7 +31,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Post a message',
 			},
 			{
-				name: 'Post (Ephemeral)',
+				name: 'Post (ephemeral)',
 				value: 'postEphemeral',
 				description: 'Post an ephemeral message to a user in channel',
 				action: 'Post an ephemeral message',
@@ -52,7 +52,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:getPermalink
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -131,7 +131,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'The text to send',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -157,7 +157,7 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Icon Emoji',
+				displayName: 'Icon emoji',
 				name: 'icon_emoji',
 				type: 'string',
 				default: '',
@@ -171,14 +171,14 @@ export const messageFields: INodeProperties[] = [
 				description: 'URL to an image to use as the icon for this message',
 			},
 			{
-				displayName: 'Link Names',
+				displayName: 'Link names',
 				name: 'link_names',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to find and link channel names and usernames',
 			},
 			{
-				displayName: 'Make Reply',
+				displayName: 'Make reply',
 				name: 'thread_ts',
 				type: 'string',
 				default: '',
@@ -192,7 +192,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Whether to use Slack Markdown parsing',
 			},
 			{
-				displayName: 'Reply Broadcast',
+				displayName: 'Reply broadcast',
 				name: 'reply_broadcast',
 				type: 'boolean',
 				default: false,
@@ -200,21 +200,21 @@ export const messageFields: INodeProperties[] = [
 					'Whether the reply should be made visible to everyone in the channel or conversation. Use in conjunction with thread_ts.',
 			},
 			{
-				displayName: 'Unfurl Links',
+				displayName: 'Unfurl links',
 				name: 'unfurl_links',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to unfurl primarily text-based content in the message',
 			},
 			{
-				displayName: 'Unfurl Media',
+				displayName: 'Unfurl media',
 				name: 'unfurl_media',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to unfurl media content in the message',
 			},
 			{
-				displayName: 'Send as User',
+				displayName: 'Send as user',
 				name: 'sendAsUser',
 				type: 'string',
 				displayOptions: {
@@ -247,7 +247,7 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add attachment item',
 		options: [
 			{
-				displayName: 'Fallback Text',
+				displayName: 'Fallback text',
 				name: 'fallback',
 				type: 'string',
 				default: '',
@@ -268,7 +268,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Title of the message',
 			},
 			{
-				displayName: 'Title Link',
+				displayName: 'Title link',
 				name: 'title_link',
 				type: 'string',
 				default: '',
@@ -289,21 +289,21 @@ export const messageFields: INodeProperties[] = [
 				description: 'Text which appears before the message block',
 			},
 			{
-				displayName: 'Author Name',
+				displayName: 'Author name',
 				name: 'author_name',
 				type: 'string',
 				default: '',
 				description: 'Name that should appear',
 			},
 			{
-				displayName: 'Author Link',
+				displayName: 'Author link',
 				name: 'author_link',
 				type: 'string',
 				default: '',
 				description: 'Link for the author',
 			},
 			{
-				displayName: 'Author Icon',
+				displayName: 'Author icon',
 				name: 'author_icon',
 				type: 'string',
 				default: '',
@@ -331,7 +331,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Text of footer to add',
 			},
 			{
-				displayName: 'Footer Icon',
+				displayName: 'Footer icon',
 				name: 'footer_icon',
 				type: 'string',
 				default: '',
@@ -347,7 +347,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				placeholder: 'Add Fields',
+				placeholder: 'Add fields',
 				description: 'Fields to add to message',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -391,7 +391,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:update                          */
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -437,7 +437,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'Timestamp of the message to be updated',
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -449,10 +449,10 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -462,7 +462,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Link Names',
+				displayName: 'Link names',
 				name: 'link_names',
 				type: 'boolean',
 				default: false,
@@ -542,7 +542,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'The blocks to add',
-		placeholder: 'Add Block',
+		placeholder: 'Add block',
 		options: [
 			{
 				name: 'blocksValues',
@@ -580,7 +580,7 @@ export const messageFields: INodeProperties[] = [
 					{
 						displayName: 'Elements',
 						name: 'elementsUi',
-						placeholder: 'Add Element',
+						placeholder: 'Add element',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -701,7 +701,7 @@ export const messageFields: INodeProperties[] = [
 									{
 										displayName: 'Confirm',
 										name: 'confirmUi',
-										placeholder: 'Add Confirm',
+										placeholder: 'Add confirm',
 										type: 'fixedCollection',
 										typeOptions: {
 											multipleValues: false,
@@ -715,7 +715,7 @@ export const messageFields: INodeProperties[] = [
 													{
 														displayName: 'Title',
 														name: 'titleUi',
-														placeholder: 'Add Title',
+														placeholder: 'Add title',
 														type: 'fixedCollection',
 														typeOptions: {
 															multipleValues: false,
@@ -749,7 +749,7 @@ export const messageFields: INodeProperties[] = [
 													{
 														displayName: 'Text',
 														name: 'textUi',
-														placeholder: 'Add Text',
+														placeholder: 'Add text',
 														type: 'fixedCollection',
 														typeOptions: {
 															multipleValues: false,
@@ -784,7 +784,7 @@ export const messageFields: INodeProperties[] = [
 													{
 														displayName: 'Confirm',
 														name: 'confirmTextUi',
-														placeholder: 'Add Confirm',
+														placeholder: 'Add confirm',
 														type: 'fixedCollection',
 														typeOptions: {
 															multipleValues: false,
@@ -819,7 +819,7 @@ export const messageFields: INodeProperties[] = [
 													{
 														displayName: 'Deny',
 														name: 'denyUi',
-														placeholder: 'Add Deny',
+														placeholder: 'Add deny',
 														type: 'fixedCollection',
 														typeOptions: {
 															multipleValues: false,
@@ -898,7 +898,7 @@ export const messageFields: INodeProperties[] = [
 					{
 						displayName: 'Text',
 						name: 'textUi',
-						placeholder: 'Add Text',
+						placeholder: 'Add text',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: false,
@@ -924,7 +924,7 @@ export const messageFields: INodeProperties[] = [
 												value: 'mrkwdn',
 											},
 											{
-												name: 'Plain Text',
+												name: 'Plain text',
 												value: 'plainText',
 											},
 										],
@@ -973,7 +973,7 @@ export const messageFields: INodeProperties[] = [
 					{
 						displayName: 'Fields',
 						name: 'fieldsUi',
-						placeholder: 'Add Fields',
+						placeholder: 'Add fields',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -999,7 +999,7 @@ export const messageFields: INodeProperties[] = [
 												value: 'mrkwdn',
 											},
 											{
-												name: 'Plain Text',
+												name: 'Plain text',
 												value: 'plainText',
 											},
 										],
@@ -1050,7 +1050,7 @@ export const messageFields: INodeProperties[] = [
 					{
 						displayName: 'Accessory',
 						name: 'accessoryUi',
-						placeholder: 'Add Accessory',
+						placeholder: 'Add accessory',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: false,
@@ -1171,7 +1171,7 @@ export const messageFields: INodeProperties[] = [
 									{
 										displayName: 'Confirm',
 										name: 'confirmUi',
-										placeholder: 'Add Confirm',
+										placeholder: 'Add confirm',
 										type: 'fixedCollection',
 										typeOptions: {
 											multipleValues: false,
@@ -1190,7 +1190,7 @@ export const messageFields: INodeProperties[] = [
 													{
 														displayName: 'Title',
 														name: 'titleUi',
-														placeholder: 'Add Title',
+														placeholder: 'Add title',
 														type: 'fixedCollection',
 														typeOptions: {
 															multipleValues: false,
@@ -1225,7 +1225,7 @@ export const messageFields: INodeProperties[] = [
 													{
 														displayName: 'Text',
 														name: 'textUi',
-														placeholder: 'Add Text',
+														placeholder: 'Add text',
 														type: 'fixedCollection',
 														typeOptions: {
 															multipleValues: false,
@@ -1260,7 +1260,7 @@ export const messageFields: INodeProperties[] = [
 													{
 														displayName: 'Confirm',
 														name: 'confirmTextUi',
-														placeholder: 'Add Confirm',
+														placeholder: 'Add confirm',
 														type: 'fixedCollection',
 														typeOptions: {
 															multipleValues: false,
@@ -1296,7 +1296,7 @@ export const messageFields: INodeProperties[] = [
 													{
 														displayName: 'Deny',
 														name: 'denyUi',
-														placeholder: 'Add Deny',
+														placeholder: 'Add deny',
 														type: 'fixedCollection',
 														typeOptions: {
 															multipleValues: false,
@@ -1417,7 +1417,7 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add attachment item',
 		options: [
 			{
-				displayName: 'Fallback Text',
+				displayName: 'Fallback text',
 				name: 'fallback',
 				type: 'string',
 				default: '',
@@ -1438,7 +1438,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Title of the message',
 			},
 			{
-				displayName: 'Title Link',
+				displayName: 'Title link',
 				name: 'title_link',
 				type: 'string',
 				default: '',
@@ -1459,21 +1459,21 @@ export const messageFields: INodeProperties[] = [
 				description: 'Text which appears before the message block',
 			},
 			{
-				displayName: 'Author Name',
+				displayName: 'Author name',
 				name: 'author_name',
 				type: 'string',
 				default: '',
 				description: 'Name that should appear',
 			},
 			{
-				displayName: 'Author Link',
+				displayName: 'Author link',
 				name: 'author_link',
 				type: 'string',
 				default: '',
 				description: 'Link for the author',
 			},
 			{
-				displayName: 'Author Icon',
+				displayName: 'Author icon',
 				name: 'author_icon',
 				type: 'string',
 				default: '',
@@ -1501,7 +1501,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Text of footer to add',
 			},
 			{
-				displayName: 'Footer Icon',
+				displayName: 'Footer icon',
 				name: 'footer_icon',
 				type: 'string',
 				default: '',
@@ -1517,7 +1517,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				placeholder: 'Add Fields',
+				placeholder: 'Add fields',
 				description: 'Fields to add to message',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -1561,7 +1561,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:delete
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {

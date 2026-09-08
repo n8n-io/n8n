@@ -31,7 +31,7 @@ export const maintenanceWindowOperations: INodeProperties[] = [
 				action: 'Get a maintenance window',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many a maintenance windows',
 				action: 'Get many maintenance windows',
@@ -52,7 +52,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 	/*                                maintenanceWindow:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Duration (Minutes)',
+		displayName: 'Duration (minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,
@@ -66,7 +66,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		description: 'The maintenance window activation period (minutes)',
 	},
 	{
-		displayName: 'Friendly Name',
+		displayName: 'Friendly name',
 		name: 'friendlyName',
 		type: 'string',
 		required: true,
@@ -112,7 +112,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		description: 'The type of the maintenance window',
 	},
 	{
-		displayName: 'Week Day',
+		displayName: 'Week day',
 		name: 'weekDay',
 		type: 'options',
 		displayOptions: {
@@ -156,7 +156,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Month Day',
+		displayName: 'Month day',
 		name: 'monthDay',
 		type: 'number',
 		displayOptions: {
@@ -173,7 +173,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		default: 1,
 	},
 	{
-		displayName: 'Start Time',
+		displayName: 'Start time',
 		name: 'start_time',
 		type: 'dateTime',
 		required: true,
@@ -209,7 +209,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 	/*                                maintenanceWindow:getAll                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -243,7 +243,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -253,7 +253,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Maintenance Window IDs',
+				displayName: 'Maintenance window IDs',
 				name: 'mwindow',
 				type: 'string',
 				default: '',
@@ -280,7 +280,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		description: 'The ID of the maintenance window',
 	},
 	{
-		displayName: 'Duration (Minutes)',
+		displayName: 'Duration (minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,
@@ -294,10 +294,10 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		description: 'The maintenance window activation period (minutes)',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -307,14 +307,14 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Friendly Name',
+				displayName: 'Friendly name',
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
 				description: 'The friendly name of the maintenance window',
 			},
 			{
-				displayName: 'Start Time',
+				displayName: 'Start time',
 				name: 'start_time',
 				type: 'dateTime',
 				default: '',
@@ -346,7 +346,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				description: 'The type of the maintenance window',
 			},
 			{
-				displayName: 'Week Day',
+				displayName: 'Week day',
 				name: 'weekDay',
 				type: 'options',
 				displayOptions: {
@@ -388,7 +388,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Month Day',
+				displayName: 'Month day',
 				name: 'monthDay',
 				type: 'number',
 				displayOptions: {

@@ -20,7 +20,7 @@ const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Associate With',
+		displayName: 'Associate with',
 		name: 'associateWith',
 		type: 'options',
 		options: [
@@ -64,21 +64,21 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
-				displayName: 'Expected Close Date',
+				displayName: 'Expected close date',
 				name: 'expected_close_date',
 				type: 'dateTime',
 				default: '',
 				description: "Expected close date for this lead's deal (YYYY-MM-DD)",
 			},
 			{
-				displayName: 'Label Names or IDs',
+				displayName: 'Label names or IDs',
 				name: 'label_ids',
 				type: 'multiOptions',
 				typeOptions: {
@@ -101,7 +101,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				typeOptions: {
@@ -131,7 +131,7 @@ const properties: INodeProperties[] = [
 				default: {},
 				options: [
 					{
-						displayName: 'Value Properties',
+						displayName: 'Value properties',
 						name: 'valueProperties',
 						values: [
 							{
@@ -153,7 +153,7 @@ const properties: INodeProperties[] = [
 			},
 			visibleToOption,
 			{
-				displayName: 'Was Seen',
+				displayName: 'Was seen',
 				name: 'was_seen',
 				type: 'boolean',
 				default: false,

@@ -74,7 +74,7 @@ export class TextClassifier implements INodeType {
 		},
 		properties: [
 			{
-				displayName: 'Text to Classify',
+				displayName: 'Text to classify',
 				name: 'inputText',
 				type: 'string',
 				required: true,
@@ -87,7 +87,7 @@ export class TextClassifier implements INodeType {
 			{
 				displayName: 'Categories',
 				name: 'categories',
-				placeholder: 'Add Category',
+				placeholder: 'Add category',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -122,35 +122,35 @@ export class TextClassifier implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Allow Multiple Classes To Be True',
+						displayName: 'Allow multiple classes to be true',
 						name: 'multiClass',
 						type: 'boolean',
 						default: false,
 					},
 					{
-						displayName: 'When No Clear Match',
+						displayName: 'When no clear match',
 						name: 'fallback',
 						type: 'options',
 						default: 'discard',
 						description: 'What to do with items that don’t match the categories exactly',
 						options: [
 							{
-								name: 'Discard Item',
+								name: 'Discard item',
 								value: 'discard',
 								description: 'Ignore the item and drop it from the output',
 							},
 							{
-								name: "Output on Extra, 'Other' Branch",
+								name: "Output on extra, 'other' branch",
 								value: 'other',
 								description: "Create a separate output branch called 'Other'",
 							},
 						],
 					},
 					{
-						displayName: 'System Prompt Template',
+						displayName: 'System prompt template',
 						name: 'systemPromptTemplate',
 						type: 'string',
 						default: SYSTEM_PROMPT_TEMPLATE,
@@ -160,7 +160,7 @@ export class TextClassifier implements INodeType {
 						},
 					},
 					{
-						displayName: 'Enable Auto-Fixing',
+						displayName: 'Enable auto-fixing',
 						name: 'enableAutoFixing',
 						type: 'boolean',
 						default: true,

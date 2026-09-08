@@ -6,7 +6,7 @@ import { splunkApiJsonRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,

@@ -62,7 +62,7 @@ export class FigmaTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'accessToken',
 					},
 					{
@@ -82,35 +82,35 @@ export class FigmaTrigger implements INodeType {
 					'Trigger will monitor this Figma Team for changes. Team ID can be found in the URL of a Figma Team page when viewed in a web browser: figma.com/files/team/{TEAM-ID}/.',
 			},
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'triggerOn',
 				type: 'options',
 				options: [
 					{
-						name: 'File Commented',
+						name: 'File commented',
 						value: 'fileComment',
 						description: 'Triggers when someone comments on a file',
 					},
 					{
-						name: 'File Deleted',
+						name: 'File deleted',
 						value: 'fileDelete',
 						description:
 							'Triggers whenever a file has been deleted. Does not trigger on all files within a folder, if the folder is deleted.',
 					},
 					{
-						name: 'File Updated',
+						name: 'File updated',
 						value: 'fileUpdate',
 						description:
 							'Triggers whenever a file saves or is deleted. This occurs whenever a file is closed or within 30 seconds after changes have been made.',
 					},
 					{
-						name: 'File Version Updated',
+						name: 'File version updated',
 						value: 'fileVersionUpdate',
 						description:
 							'Triggers whenever a named version is created in the version history of a file',
 					},
 					{
-						name: 'Library Publish',
+						name: 'Library publish',
 						value: 'libraryPublish',
 						description: 'Triggers whenever a library file is published',
 					},

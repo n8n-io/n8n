@@ -70,7 +70,7 @@ export class MicrosoftToDo implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'To Do OAuth2',
+						name: 'To do OAuth2',
 						value: 'microsoftToDoOAuth2Api',
 					},
 					{
@@ -80,7 +80,7 @@ export class MicrosoftToDo implements INodeType {
 							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Tasks.ReadWrite) on the credential.',
 					},
 					{
-						name: 'Microsoft Entra Service Principal (App-Only)',
+						name: 'Microsoft Entra service principal (app-only)',
 						value: 'microsoftEntraServicePrincipalApi',
 						description:
 							'App-only access via a Microsoft Entra app registration. Choose which user to act on.',
@@ -96,7 +96,7 @@ export class MicrosoftToDo implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Linked Resource',
+						name: 'Linked resource',
 						value: 'linkedResource',
 					},
 					{

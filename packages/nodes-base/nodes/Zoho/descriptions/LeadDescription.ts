@@ -26,7 +26,7 @@ export const leadOperations: INodeProperties[] = [
 				action: 'Create a lead',
 			},
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 				action: 'Create or update a lead',
@@ -44,13 +44,13 @@ export const leadOperations: INodeProperties[] = [
 				action: 'Get a lead',
 			},
 			{
-				name: 'Get Fields',
+				name: 'Get fields',
 				value: 'getFields',
 				description: 'Get lead fields',
 				action: 'Get lead fields',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many leads',
 				action: 'Get many leads',
@@ -85,7 +85,7 @@ export const leadFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		required: true,
@@ -98,10 +98,10 @@ export const leadFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -112,7 +112,7 @@ export const leadFields: INodeProperties[] = [
 		options: [
 			address,
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'Annual_Revenue',
 				type: 'number',
 				default: '',
@@ -147,7 +147,7 @@ export const leadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Email Opt Out',
+				displayName: 'Email opt out',
 				name: 'Email_Opt_Out',
 				type: 'boolean',
 				default: false,
@@ -159,13 +159,13 @@ export const leadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'First_Name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'Full_Name',
 				type: 'string',
 				default: '',
@@ -178,21 +178,21 @@ export const leadFields: INodeProperties[] = [
 				description: 'Industry to which the lead belongs',
 			},
 			{
-				displayName: 'Industry Type',
+				displayName: 'Industry type',
 				name: 'Industry_Type',
 				type: 'string',
 				default: '',
 				description: 'Type of industry to which the lead belongs',
 			},
 			{
-				displayName: 'Lead Source',
+				displayName: 'Lead source',
 				name: 'Lead_Source',
 				type: 'string',
 				default: '',
 				description: 'Source from which the lead was created',
 			},
 			{
-				displayName: 'Lead Status',
+				displayName: 'Lead status',
 				name: 'Lead_Status',
 				type: 'string',
 				default: '',
@@ -204,7 +204,7 @@ export const leadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Number of Employees',
+				displayName: 'Number of employees',
 				name: 'No_of_Employees',
 				type: 'number',
 				default: '',
@@ -223,7 +223,7 @@ export const leadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Secondary Email',
+				displayName: 'Secondary email',
 				name: 'Secondary_Email',
 				type: 'string',
 				default: '',
@@ -267,7 +267,7 @@ export const leadFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Last Name',
+		displayName: 'Last name',
 		name: 'lastName',
 		type: 'string',
 		required: true,
@@ -280,10 +280,10 @@ export const leadFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -294,7 +294,7 @@ export const leadFields: INodeProperties[] = [
 		options: [
 			address,
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'Annual_Revenue',
 				type: 'number',
 				default: '',
@@ -331,7 +331,7 @@ export const leadFields: INodeProperties[] = [
 					'Email of the lead. If a record with this email exists it will be updated, otherwise a new one will be created.',
 			},
 			{
-				displayName: 'Email Opt Out',
+				displayName: 'Email opt out',
 				name: 'Email_Opt_Out',
 				type: 'boolean',
 				default: false,
@@ -343,13 +343,13 @@ export const leadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'First_Name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'Full_Name',
 				type: 'string',
 				default: '',
@@ -362,21 +362,21 @@ export const leadFields: INodeProperties[] = [
 				description: 'Industry to which the lead belongs',
 			},
 			{
-				displayName: 'Industry Type',
+				displayName: 'Industry type',
 				name: 'Industry_Type',
 				type: 'string',
 				default: '',
 				description: 'Type of industry to which the lead belongs',
 			},
 			{
-				displayName: 'Lead Source',
+				displayName: 'Lead source',
 				name: 'Lead_Source',
 				type: 'string',
 				default: '',
 				description: 'Source from which the lead was created',
 			},
 			{
-				displayName: 'Lead Status',
+				displayName: 'Lead status',
 				name: 'Lead_Status',
 				type: 'string',
 				default: '',
@@ -388,7 +388,7 @@ export const leadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Number of Employees',
+				displayName: 'Number of employees',
 				name: 'No_of_Employees',
 				type: 'number',
 				default: '',
@@ -407,7 +407,7 @@ export const leadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Secondary Email',
+				displayName: 'Secondary email',
 				name: 'Secondary_Email',
 				type: 'string',
 				default: '',
@@ -492,10 +492,10 @@ export const leadFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -506,7 +506,7 @@ export const leadFields: INodeProperties[] = [
 		options: [
 			address,
 			{
-				displayName: 'Annual Revenue',
+				displayName: 'Annual revenue',
 				name: 'Annual_Revenue',
 				type: 'number',
 				default: '',
@@ -548,7 +548,7 @@ export const leadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Email Opt Out',
+				displayName: 'Email opt out',
 				name: 'Email_Opt_Out',
 				type: 'boolean',
 				default: false,
@@ -560,13 +560,13 @@ export const leadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'First Name',
+				displayName: 'First name',
 				name: 'First_Name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'Full_Name',
 				type: 'string',
 				default: '',
@@ -579,27 +579,27 @@ export const leadFields: INodeProperties[] = [
 				description: 'Industry to which the lead belongs',
 			},
 			{
-				displayName: 'Industry Type',
+				displayName: 'Industry type',
 				name: 'Industry_Type',
 				type: 'string',
 				default: '',
 				description: 'Type of industry to which the lead belongs',
 			},
 			{
-				displayName: 'Last Name',
+				displayName: 'Last name',
 				name: 'Last_Name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Lead Source',
+				displayName: 'Lead source',
 				name: 'Lead_Source',
 				type: 'string',
 				default: '',
 				description: 'Source from which the lead was created',
 			},
 			{
-				displayName: 'Lead Status',
+				displayName: 'Lead status',
 				name: 'Lead_Status',
 				type: 'string',
 				default: '',
@@ -611,7 +611,7 @@ export const leadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Number of Employees',
+				displayName: 'Number of employees',
 				name: 'No_of_Employees',
 				type: 'number',
 				default: '',
@@ -630,7 +630,7 @@ export const leadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Secondary Email',
+				displayName: 'Secondary email',
 				name: 'Secondary_Email',
 				type: 'string',
 				default: '',

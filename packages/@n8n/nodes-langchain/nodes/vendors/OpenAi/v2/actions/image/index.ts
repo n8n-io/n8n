@@ -14,13 +14,13 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Analyze Image',
+				name: 'Analyze image',
 				value: 'analyze',
 				action: 'Analyze image',
 				description: 'Take in images and answer questions about them',
 			},
 			{
-				name: 'Generate an Image',
+				name: 'Generate an image',
 				value: 'generate',
 				action: 'Generate an image',
 				description: 'Creates an image from a text prompt',

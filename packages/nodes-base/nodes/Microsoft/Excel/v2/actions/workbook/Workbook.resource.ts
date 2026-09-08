@@ -19,7 +19,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Sheet',
+				name: 'Add sheet',
 				value: 'addWorksheet',
 				description: 'Add a new sheet to the workbook',
 				action: 'Add a sheet to a workbook',
@@ -31,7 +31,7 @@ export const description: INodeProperties[] = [
 				action: 'Delete workbook',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get workbooks',
 				action: 'Get workbooks',

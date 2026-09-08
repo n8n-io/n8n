@@ -33,7 +33,7 @@ export const customerOperations: INodeProperties[] = [
 				action: 'Get a customer',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many customers',
 				action: 'Get many customers',
@@ -109,7 +109,7 @@ export const customerFields: INodeProperties[] = [
 	//             customer: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -142,7 +142,7 @@ export const customerFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -160,7 +160,7 @@ export const customerFields: INodeProperties[] = [
 				description: 'Email address to filter customers by',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'order',
 				description: 'Order to sort customers in',
 				type: 'options',
@@ -177,7 +177,7 @@ export const customerFields: INodeProperties[] = [
 				default: 'asc',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order by',
 				name: 'orderby',
 				description: 'Field to sort customers by',
 				type: 'options',
@@ -195,7 +195,7 @@ export const customerFields: INodeProperties[] = [
 						value: 'name',
 					},
 					{
-						name: 'Registered Date',
+						name: 'Registered date',
 						value: 'registered_date',
 					},
 				],

@@ -12,7 +12,7 @@ import { updateDisplayOptions } from '../../../../../utils/utilities';
 const properties: INodeProperties[] = [
 	recordRLC('Contact', 'contactId', 'searchContacts', 'Contact to update'),
 	{
-		displayName: 'Fields to Update',
+		displayName: 'Fields to update',
 		name: 'fieldsToSend',
 		type: 'resourceMapper',
 		default: { mappingMode: 'defineBelow', value: null },

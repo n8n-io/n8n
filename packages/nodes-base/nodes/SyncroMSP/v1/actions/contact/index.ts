@@ -39,7 +39,7 @@ export const descriptions = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many contacts',
 				action: 'Get many contacts',

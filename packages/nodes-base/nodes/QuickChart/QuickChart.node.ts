@@ -34,7 +34,7 @@ export class QuickChart implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				displayName: 'Chart Type',
+				displayName: 'Chart type',
 				name: 'chartType',
 				type: 'options',
 				default: 'bar',
@@ -42,7 +42,7 @@ export class QuickChart implements INodeType {
 				description: 'The type of chart to create',
 			},
 			{
-				displayName: 'Add Labels',
+				displayName: 'Add labels',
 				name: 'labelsMode',
 				type: 'options',
 				options: [
@@ -51,7 +51,7 @@ export class QuickChart implements INodeType {
 						value: 'manually',
 					},
 					{
-						name: 'From Array',
+						name: 'From array',
 						value: 'array',
 					},
 				],
@@ -68,7 +68,7 @@ export class QuickChart implements INodeType {
 				default: {},
 				required: true,
 				description: 'Labels to use in the chart',
-				placeholder: 'Add Label',
+				placeholder: 'Add label',
 				options: [
 					{
 						name: 'labelsValues',
@@ -90,7 +90,7 @@ export class QuickChart implements INodeType {
 				},
 			},
 			{
-				displayName: 'Labels Array',
+				displayName: 'Labels array',
 				name: 'labelsArray',
 				type: 'string',
 				required: true,
@@ -114,7 +114,7 @@ export class QuickChart implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Put Output In Field',
+				displayName: 'Put output in field',
 				name: 'output',
 				type: 'string',
 				default: 'data',
@@ -124,14 +124,14 @@ export class QuickChart implements INodeType {
 				hint: 'The name of the output field to put the binary file data in',
 			},
 			{
-				displayName: 'Chart Options',
+				displayName: 'Chart options',
 				name: 'chartOptions',
 				type: 'collection',
 				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
-						displayName: 'Background Color',
+						displayName: 'Background color',
 						name: 'backgroundColor',
 						type: 'color',
 						typeOptions: {
@@ -141,7 +141,7 @@ export class QuickChart implements INodeType {
 						description: 'Background color of the chart',
 					},
 					{
-						displayName: 'Device Pixel Ratio',
+						displayName: 'Device pixel ratio',
 						name: 'devicePixelRatio',
 						type: 'number',
 						default: 2,
@@ -205,14 +205,14 @@ export class QuickChart implements INodeType {
 				],
 			},
 			{
-				displayName: 'Dataset Options',
+				displayName: 'Dataset options',
 				name: 'datasetOptions',
 				type: 'collection',
 				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
-						displayName: 'Background Color',
+						displayName: 'Background color',
 						name: 'backgroundColor',
 						type: 'color',
 						default: '',
@@ -223,7 +223,7 @@ export class QuickChart implements INodeType {
 							'Color used for the background the dataset (area of a line graph, fill of a bar chart, etc.)',
 					},
 					{
-						displayName: 'Border Color',
+						displayName: 'Border color',
 						name: 'borderColor',
 						type: 'color',
 						typeOptions: {
@@ -252,7 +252,7 @@ export class QuickChart implements INodeType {
 						description: 'The label of the dataset',
 					},
 					{
-						displayName: 'Point Style',
+						displayName: 'Point style',
 						name: 'pointStyle',
 						type: 'options',
 						default: 'circle',
@@ -287,7 +287,7 @@ export class QuickChart implements INodeType {
 								value: 'rectRot',
 							},
 							{
-								name: 'Rect Rounded',
+								name: 'Rect rounded',
 								value: 'rectRounded',
 							},
 							{

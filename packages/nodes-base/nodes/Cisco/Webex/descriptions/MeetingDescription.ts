@@ -28,7 +28,7 @@ export const meetingOperations: INodeProperties[] = [
 				action: 'Get a meeting',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many meetings',
 			},
@@ -91,7 +91,7 @@ export const meetingFields: INodeProperties[] = [
 			'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
@@ -101,7 +101,7 @@ export const meetingFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Agenda',
@@ -111,7 +111,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Meeting agenda. The agenda can be a maximum of 1300 characters long.',
 			},
 			{
-				displayName: 'Allow Any User To Be Co-Host',
+				displayName: 'Allow any user to be co-host',
 				name: 'allowAnyUserToBeCoHost',
 				type: 'boolean',
 				default: false,
@@ -119,7 +119,7 @@ export const meetingFields: INodeProperties[] = [
 					'Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting',
 			},
 			{
-				displayName: 'Allow Authenticated Devices',
+				displayName: 'Allow authenticated devices',
 				name: 'allowAuthenticatedDevices',
 				type: 'boolean',
 				default: false,
@@ -127,7 +127,7 @@ export const meetingFields: INodeProperties[] = [
 					"Whether or not to allow authenticated video devices in the meeting's organization to start or join the meeting without a prompt",
 			},
 			{
-				displayName: 'Allow First User To Be Co-Host',
+				displayName: 'Allow first user to be co-host',
 				name: 'allowFirstUserToBeCoHost',
 				type: 'boolean',
 				default: false,
@@ -135,14 +135,14 @@ export const meetingFields: INodeProperties[] = [
 					'Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host',
 			},
 			{
-				displayName: 'Auto Accept Request',
+				displayName: 'Auto accept request',
 				name: 'autoAcceptRequest',
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not meeting registration request is accepted automatically',
 			},
 			{
-				displayName: 'Enable Connect Audio Before Host',
+				displayName: 'Enable connect audio before host',
 				name: 'enableConnectAudioBeforeHost',
 				type: 'boolean',
 				default: false,
@@ -150,14 +150,14 @@ export const meetingFields: INodeProperties[] = [
 					'Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting',
 			},
 			{
-				displayName: 'Enabled Auto Record Meeting',
+				displayName: 'Enabled auto record meeting',
 				name: 'enabledAutoRecordMeeting',
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not meeting is recorded automatically',
 			},
 			{
-				displayName: 'Enabled Join Before Host',
+				displayName: 'Enabled join before host',
 				name: 'enabledJoinBeforeHost',
 				type: 'boolean',
 				default: false,
@@ -165,7 +165,7 @@ export const meetingFields: INodeProperties[] = [
 					'Whether or not to allow any attendee to join the meeting before the host joins the meeting',
 			},
 			{
-				displayName: 'Exclude Password',
+				displayName: 'Exclude password',
 				name: 'excludePassword',
 
 				type: 'boolean',
@@ -173,14 +173,14 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Whether or not to exclude password from the meeting email invitation',
 			},
 			{
-				displayName: 'Host Email',
+				displayName: 'Host email',
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
 				description: "Email address for the meeting host. Can only be set if you're an admin.",
 			},
 			{
-				displayName: 'Integration Tags',
+				displayName: 'Integration tags',
 				name: 'integrationTags',
 				type: 'string',
 				default: '',
@@ -195,7 +195,7 @@ export const meetingFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				placeholder: 'Add Invitee',
+				placeholder: 'Add invitee',
 				options: [
 					{
 						displayName: 'Invitee',
@@ -211,14 +211,14 @@ export const meetingFields: INodeProperties[] = [
 								description: 'Email address of meeting invitee',
 							},
 							{
-								displayName: 'Display Name',
+								displayName: 'Display name',
 								name: 'displayName',
 								type: 'string',
 								default: '',
 								description: 'Display name of meeting invitee',
 							},
 							{
-								displayName: 'Co-Host',
+								displayName: 'Co-host',
 								name: 'coHost',
 								type: 'boolean',
 								default: false,
@@ -229,7 +229,7 @@ export const meetingFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Join Before Host Minutes',
+				displayName: 'Join before host minutes',
 				name: 'joinBeforeHostMinutes',
 				type: 'options',
 				options: [
@@ -255,7 +255,7 @@ export const meetingFields: INodeProperties[] = [
 					'The number of minutes an attendee can join the meeting before the meeting start time and the host joins',
 			},
 			{
-				displayName: 'Public Meeting',
+				displayName: 'Public meeting',
 				name: 'publicMeeting',
 				type: 'boolean',
 				default: false,
@@ -270,61 +270,61 @@ export const meetingFields: INodeProperties[] = [
 					'Rule for how the meeting should recur. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
-				displayName: 'Required Registration Info',
+				displayName: 'Required registration info',
 				name: 'requireRegistrationInfo',
 				type: 'multiOptions',
 				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
-						name: 'Require First Name',
+						name: 'Require first name',
 						value: 'requireFirstName',
 					},
 					{
-						name: 'Require Last Name',
+						name: 'Require last name',
 						value: 'requireLastName',
 					},
 					{
-						name: 'Require Email',
+						name: 'Require email',
 						value: 'requireEmail',
 					},
 					{
-						name: 'Require Job Title',
+						name: 'Require job title',
 						value: 'requireJobTitle',
 					},
 					{
-						name: 'Require Company Name',
+						name: 'Require company name',
 						value: 'requireCompanyName',
 					},
 					{
-						name: 'Require Address 1',
+						name: 'Require address 1',
 						value: 'requireAddress1',
 					},
 					{
-						name: 'Require Address 2',
+						name: 'Require address 2',
 						value: 'requireAddress2',
 					},
 					{
-						name: 'Require City',
+						name: 'Require city',
 						value: 'requireCity',
 					},
 					{
-						name: 'Require State',
+						name: 'Require state',
 						value: 'requireState',
 					},
 					{
-						name: 'Require Zip Code',
+						name: 'Require zip code',
 						value: 'requireZipCode',
 					},
 					{
-						name: 'Require Country Region',
+						name: 'Require country region',
 						value: 'requireCountryRegion',
 					},
 					{
-						name: 'Require Work Phone',
+						name: 'Require work phone',
 						value: 'requireWorkPhone',
 					},
 					{
-						name: 'Require Fax',
+						name: 'Require fax',
 						value: 'requireFax',
 					},
 				],
@@ -332,7 +332,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Data required for meeting registration',
 			},
 			{
-				displayName: 'Reminder Time',
+				displayName: 'Reminder time',
 				name: 'reminderTime',
 				type: 'number',
 				default: 1,
@@ -392,7 +392,7 @@ export const meetingFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Host Email',
+				displayName: 'Host email',
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
@@ -440,7 +440,7 @@ export const meetingFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Host Email',
+				displayName: 'Host email',
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
@@ -471,7 +471,7 @@ export const meetingFields: INodeProperties[] = [
 	//             meeting: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -504,7 +504,7 @@ export const meetingFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -522,14 +522,14 @@ export const meetingFields: INodeProperties[] = [
 					'Start date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
-				displayName: 'Host Email',
+				displayName: 'Host email',
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
 				description: 'Email address for the meeting host',
 			},
 			{
-				displayName: 'Integration Tag',
+				displayName: 'Integration tag',
 				name: 'integrationTag',
 				type: 'string',
 				default: '',
@@ -537,32 +537,32 @@ export const meetingFields: INodeProperties[] = [
 					'External tag created by another application, e.g. Zendesk ticket ID or Jira ID',
 			},
 			{
-				displayName: 'Limit to Current Meetings',
+				displayName: 'Limit to current meetings',
 				name: 'current',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to return just the current meeting or all meetings',
 			},
 			{
-				displayName: 'Meeting Number',
+				displayName: 'Meeting number',
 				name: 'meetingNumber',
 				type: 'string',
 				default: '',
 				description: 'Meeting number for the meeting objects being requested',
 			},
 			{
-				displayName: 'Meeting Type',
+				displayName: 'Meeting type',
 				name: 'meetingType',
 				type: 'options',
 				options: [
 					{
-						name: 'Meeting Series',
+						name: 'Meeting series',
 						value: 'meetingSeries',
 						description:
 							'Master of a scheduled series of meetings which consists of one or more scheduled meeting based on a recurrence rule',
 					},
 					{
-						name: 'Scheduled Meeting',
+						name: 'Scheduled meeting',
 						value: 'scheduledMeeting',
 						description: 'Instance from a master meeting series',
 					},
@@ -575,7 +575,7 @@ export const meetingFields: INodeProperties[] = [
 				default: 'meetingSeries',
 			},
 			{
-				displayName: 'Participant Email',
+				displayName: 'Participant email',
 				name: 'participantEmail',
 				type: 'string',
 				default: '',
@@ -611,7 +611,7 @@ export const meetingFields: INodeProperties[] = [
 						value: 'expired',
 					},
 					{
-						name: 'In Progress',
+						name: 'In progress',
 						value: 'inProgress',
 					},
 					{
@@ -670,7 +670,7 @@ export const meetingFields: INodeProperties[] = [
 		description: 'ID of the meeting',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
 		displayOptions: {
@@ -680,7 +680,7 @@ export const meetingFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		options: [
 			{
 				displayName: 'Agenda',
@@ -690,7 +690,7 @@ export const meetingFields: INodeProperties[] = [
 				description: "The meeting's agenda. Cannot be longer that 1300 characters.",
 			},
 			{
-				displayName: 'Allow Any User To Be Co-Host',
+				displayName: 'Allow any user to be co-host',
 				name: 'allowAnyUserToBeCoHost',
 				type: 'boolean',
 				default: false,
@@ -698,7 +698,7 @@ export const meetingFields: INodeProperties[] = [
 					'Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting',
 			},
 			{
-				displayName: 'Allow Authenticated Devices',
+				displayName: 'Allow authenticated devices',
 				name: 'allowAuthenticatedDevices',
 				type: 'boolean',
 				default: false,
@@ -706,7 +706,7 @@ export const meetingFields: INodeProperties[] = [
 					"Whether or not to allow authenticated video devices in the meeting's organization to start or join the meeting without a prompt",
 			},
 			{
-				displayName: 'Allow First User To Be Co-Host',
+				displayName: 'Allow first user to be co-host',
 				name: 'allowFirstUserToBeCoHost',
 				type: 'boolean',
 				default: false,
@@ -714,7 +714,7 @@ export const meetingFields: INodeProperties[] = [
 					'Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host',
 			},
 			{
-				displayName: 'Enable Connect Audio Before Host',
+				displayName: 'Enable connect audio before host',
 				name: 'enableConnectAudioBeforeHost',
 				type: 'boolean',
 				default: false,
@@ -722,14 +722,14 @@ export const meetingFields: INodeProperties[] = [
 					'Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting',
 			},
 			{
-				displayName: 'Enabled Auto Record Meeting',
+				displayName: 'Enabled auto record meeting',
 				name: 'enabledAutoRecordMeeting',
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not meeting is recorded automatically',
 			},
 			{
-				displayName: 'Enabled Join Before Host',
+				displayName: 'Enabled join before host',
 				name: 'enabledJoinBeforeHost',
 				type: 'boolean',
 				default: false,
@@ -745,7 +745,7 @@ export const meetingFields: INodeProperties[] = [
 					'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
-				displayName: 'Exclude Password',
+				displayName: 'Exclude password',
 				name: 'excludePassword',
 
 				type: 'boolean',
@@ -753,7 +753,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Whether or not to exclude password from the meeting email invitation',
 			},
 			{
-				displayName: 'Host Email',
+				displayName: 'Host email',
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
@@ -768,7 +768,7 @@ export const meetingFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				placeholder: 'Add Invitee',
+				placeholder: 'Add invitee',
 				options: [
 					{
 						displayName: 'Invitee',
@@ -784,14 +784,14 @@ export const meetingFields: INodeProperties[] = [
 								description: 'Email address of meeting invitee',
 							},
 							{
-								displayName: 'Display Name',
+								displayName: 'Display name',
 								name: 'displayName',
 								type: 'string',
 								default: '',
 								description: 'Display name of meeting invitee',
 							},
 							{
-								displayName: 'Co-Host',
+								displayName: 'Co-host',
 								name: 'coHost',
 								type: 'boolean',
 								default: false,
@@ -802,7 +802,7 @@ export const meetingFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Join Before Host Minutes',
+				displayName: 'Join before host minutes',
 				name: 'joinBeforeHostMinutes',
 				type: 'options',
 				options: [
@@ -837,7 +837,7 @@ export const meetingFields: INodeProperties[] = [
 					"Meeting password. Must conform to the site's password complexity settings. If not specified, a random password conforming to the site's password rules will be generated automatically",
 			},
 			{
-				displayName: 'Public Meeting',
+				displayName: 'Public meeting',
 				name: 'publicMeeting',
 				type: 'boolean',
 				default: false,
@@ -852,61 +852,61 @@ export const meetingFields: INodeProperties[] = [
 					'Meeting series recurrence rule (conforming with RFC 2445), applying only to meeting series',
 			},
 			{
-				displayName: 'Required Registration Info',
+				displayName: 'Required registration info',
 				name: 'requireRegistrationInfo',
 				type: 'multiOptions',
 				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
-						name: 'Require First Name',
+						name: 'Require first name',
 						value: 'requireFirstName',
 					},
 					{
-						name: 'Require Last Name',
+						name: 'Require last name',
 						value: 'requireLastName',
 					},
 					{
-						name: 'Require Email',
+						name: 'Require email',
 						value: 'requireEmail',
 					},
 					{
-						name: 'Require Job Title',
+						name: 'Require job title',
 						value: 'requireJobTitle',
 					},
 					{
-						name: 'Require Company Name',
+						name: 'Require company name',
 						value: 'requireCompanyName',
 					},
 					{
-						name: 'Require Address 1',
+						name: 'Require address 1',
 						value: 'requireAddress1',
 					},
 					{
-						name: 'Require Address 2',
+						name: 'Require address 2',
 						value: 'requireAddress2',
 					},
 					{
-						name: 'Require City',
+						name: 'Require city',
 						value: 'requireCity',
 					},
 					{
-						name: 'Require State',
+						name: 'Require state',
 						value: 'requireState',
 					},
 					{
-						name: 'Require Zip Code',
+						name: 'Require zip code',
 						value: 'requireZipCode',
 					},
 					{
-						name: 'Require Country Region',
+						name: 'Require country region',
 						value: 'requireCountryRegion',
 					},
 					{
-						name: 'Require Work Phone',
+						name: 'Require work phone',
 						value: 'requireWorkPhone',
 					},
 					{
-						name: 'Require Fax',
+						name: 'Require fax',
 						value: 'requireFax',
 					},
 				],
@@ -914,7 +914,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Data required for meeting registration',
 			},
 			{
-				displayName: 'Reminder Time',
+				displayName: 'Reminder time',
 				name: 'reminderTime',
 				type: 'number',
 				default: 1,

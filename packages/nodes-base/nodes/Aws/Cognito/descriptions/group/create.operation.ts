@@ -10,7 +10,7 @@ const properties: INodeProperties[] = [
 		description: 'Select the user pool to use',
 	},
 	{
-		displayName: 'Group Name',
+		displayName: 'Group name',
 		name: 'newGroupName',
 		default: '',
 		placeholder: 'e.g. MyNewGroup',
@@ -42,7 +42,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		default: {},
 		options: [
@@ -91,7 +91,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 		],
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];

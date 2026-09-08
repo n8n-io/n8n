@@ -43,7 +43,7 @@ export class LoneScaleTrigger implements INodeType {
 		properties: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Workflow Name',
+				displayName: 'Workflow name',
 				name: 'workflow',
 				type: 'options',
 				noDataExpression: true,

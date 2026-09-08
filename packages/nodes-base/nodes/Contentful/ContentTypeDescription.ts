@@ -42,7 +42,7 @@ export const fields: INodeProperties[] = [
 			'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
 	},
 	{
-		displayName: 'Content Type ID',
+		displayName: 'Content type ID',
 		name: 'contentTypeId',
 		type: 'string',
 		default: '',
@@ -55,10 +55,10 @@ export const fields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -68,7 +68,7 @@ export const fields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'RAW Data',
+				displayName: 'RAW data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,

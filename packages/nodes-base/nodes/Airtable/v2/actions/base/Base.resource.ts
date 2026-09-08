@@ -13,13 +13,13 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getMany',
 				description: 'List all the bases',
 				action: 'Get many bases',
 			},
 			{
-				name: 'Get Schema',
+				name: 'Get schema',
 				value: 'getSchema',
 				description: 'Get the schema of the tables in a base',
 				action: 'Get base schema',

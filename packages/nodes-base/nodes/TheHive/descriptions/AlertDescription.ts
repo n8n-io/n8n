@@ -4,7 +4,7 @@ import { TLPs } from '../interfaces/AlertInterface';
 
 export const alertOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation Name or ID',
+		displayName: 'Operation name or ID',
 		name: 'operation',
 		type: 'options',
 		description:
@@ -25,7 +25,7 @@ export const alertOperations: INodeProperties[] = [
 
 export const alertFields: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -300,7 +300,7 @@ export const alertFields: INodeProperties[] = [
 		displayName: 'Artifacts',
 		name: 'artifactUi',
 		type: 'fixedCollection',
-		placeholder: 'Add Artifact',
+		placeholder: 'Add artifact',
 		default: {},
 		displayOptions: {
 			show: {
@@ -317,7 +317,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'artifactValues',
 				values: [
 					{
-						displayName: 'Data Type Name or ID',
+						displayName: 'Data type name or ID',
 						name: 'dataType',
 						type: 'options',
 						default: '',
@@ -339,7 +339,7 @@ export const alertFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Input Binary Field',
+						displayName: 'Input binary field',
 						name: 'binaryProperty',
 						type: 'string',
 						hint: 'The name of the input binary field containing the file to be written',
@@ -357,7 +357,7 @@ export const alertFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Case Tags',
+						displayName: 'Case tags',
 						name: 'tags',
 						type: 'string',
 						default: '',
@@ -369,7 +369,7 @@ export const alertFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder Name or ID',
+		displayName: 'Responder name or ID',
 		name: 'responder',
 		type: 'options',
 		description:
@@ -391,7 +391,7 @@ export const alertFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'JSON Parameters',
+		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: true,
@@ -405,9 +405,9 @@ export const alertFields: INodeProperties[] = [
 
 	// optional attributs (Create, Promote operations)
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'collection',
 		default: {},
 		displayOptions: {
@@ -418,14 +418,14 @@ export const alertFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Case Template',
+				displayName: 'Case template',
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
 				description: 'Case template to use when a case is created from this alert',
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
@@ -437,14 +437,14 @@ export const alertFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				options: [
 					{
 						name: 'customFields',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								description:
@@ -466,7 +466,7 @@ export const alertFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Custom Fields (JSON)',
+				displayName: 'Custom fields (JSON)',
 				name: 'customFieldsJson',
 				type: 'string',
 				default: '',
@@ -482,9 +482,9 @@ export const alertFields: INodeProperties[] = [
 	// optional attributs (Promote operation)
 
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'collection',
 		default: {},
 		displayOptions: {
@@ -495,7 +495,7 @@ export const alertFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Case Template',
+				displayName: 'Case template',
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
@@ -505,10 +505,10 @@ export const alertFields: INodeProperties[] = [
 	},
 	// optional attributs (Update operation)
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -521,7 +521,7 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'Artifacts',
 				name: 'artifactUi',
 				type: 'fixedCollection',
-				placeholder: 'Add Artifact',
+				placeholder: 'Add artifact',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
@@ -532,7 +532,7 @@ export const alertFields: INodeProperties[] = [
 						name: 'artifactValues',
 						values: [
 							{
-								displayName: 'Data Type Name or ID',
+								displayName: 'Data type name or ID',
 								name: 'dataType',
 								type: 'options',
 								default: '',
@@ -554,7 +554,7 @@ export const alertFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Input Binary Field',
+								displayName: 'Input binary field',
 								name: 'binaryProperty',
 								type: 'string',
 								hint: 'The name of the input binary field containing the file to be written',
@@ -572,7 +572,7 @@ export const alertFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Case Tags',
+								displayName: 'Case tags',
 								name: 'tags',
 								type: 'string',
 								default: '',
@@ -582,7 +582,7 @@ export const alertFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
@@ -594,14 +594,14 @@ export const alertFields: INodeProperties[] = [
 						'/jsonParameters': [false],
 					},
 				},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				options: [
 					{
 						name: 'customFields',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								description:
@@ -623,7 +623,7 @@ export const alertFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Custom Fields (JSON)',
+				displayName: 'Custom fields (JSON)',
 				name: 'customFieldsJson',
 				type: 'string',
 				displayOptions: {
@@ -635,7 +635,7 @@ export const alertFields: INodeProperties[] = [
 				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
 			},
 			{
-				displayName: 'Case Template',
+				displayName: 'Case template',
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
@@ -701,7 +701,7 @@ export const alertFields: INodeProperties[] = [
 				default: 'New',
 			},
 			{
-				displayName: 'Case Tags',
+				displayName: 'Case tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
@@ -778,7 +778,7 @@ export const alertFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Include Similar Cases',
+				displayName: 'Include similar cases',
 				name: 'includeSimilar',
 				type: 'boolean',
 				description: 'Whether to include similar cases',
@@ -789,7 +789,7 @@ export const alertFields: INodeProperties[] = [
 	{
 		displayName: 'Filters',
 		name: 'filters',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		type: 'collection',
 		displayOptions: {
@@ -800,21 +800,21 @@ export const alertFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				options: [
 					{
 						name: 'customFields',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'field',
 								type: 'options',
 								description:

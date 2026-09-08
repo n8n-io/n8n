@@ -117,7 +117,7 @@ export function adjustAddresses(addresses: [{ [key: string]: string }]) {
 export function getAccountFields(): INodeProperties[] {
 	return [
 		{
-			displayName: 'Account Category Name or ID',
+			displayName: 'Account category name or ID',
 			name: 'accountcategorycode',
 			type: 'options',
 			typeOptions: {
@@ -128,7 +128,7 @@ export function getAccountFields(): INodeProperties[] {
 				'Category to indicate whether the customer account is standard or preferred. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Account Rating Name or ID',
+			displayName: 'Account rating name or ID',
 			name: 'accountratingcode',
 			type: 'options',
 			description:
@@ -146,14 +146,14 @@ export function getAccountFields(): INodeProperties[] {
 			typeOptions: {
 				multipleValues: true,
 			},
-			placeholder: 'Add Address Field',
+			placeholder: 'Add address field',
 			options: [
 				{
-					displayName: 'Address Fields',
+					displayName: 'Address fields',
 					name: 'address',
 					values: [
 						{
-							displayName: 'Address Type Name or ID',
+							displayName: 'Address type name or ID',
 							name: 'addresstypecode',
 							type: 'options',
 							description:
@@ -188,7 +188,7 @@ export function getAccountFields(): INodeProperties[] {
 							default: '',
 						},
 						{
-							displayName: 'State or Province',
+							displayName: 'State or province',
 							name: 'stateorprovince',
 							type: 'string',
 							default: '',
@@ -212,7 +212,7 @@ export function getAccountFields(): INodeProperties[] {
 							default: '',
 						},
 						{
-							displayName: 'Primary Contact Name',
+							displayName: 'Primary contact name',
 							name: 'primarycontactname',
 							type: 'string',
 							default: '',
@@ -240,7 +240,7 @@ export function getAccountFields(): INodeProperties[] {
 			],
 		},
 		{
-			displayName: 'Business Type Name or ID',
+			displayName: 'Business type name or ID',
 			name: 'businesstypecode',
 			type: 'options',
 			typeOptions: {
@@ -251,7 +251,7 @@ export function getAccountFields(): INodeProperties[] {
 				'The legal designation or other business type of the account for contracts or reporting purposes. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Customer Size Name or ID',
+			displayName: 'Customer size name or ID',
 			name: 'customersizecode',
 			type: 'options',
 			description:
@@ -262,7 +262,7 @@ export function getAccountFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Customer Type Name or ID',
+			displayName: 'Customer type name or ID',
 			name: 'customertypecode',
 			type: 'options',
 			description:
@@ -281,21 +281,21 @@ export function getAccountFields(): INodeProperties[] {
 				'Additional information to describe the account, such as an excerpt from the company’s website',
 		},
 		{
-			displayName: 'Email Address 1',
+			displayName: 'Email address 1',
 			name: 'emailaddress1',
 			type: 'string',
 			default: '',
 			description: 'The primary email address for the account',
 		},
 		{
-			displayName: 'Email Address 2',
+			displayName: 'Email address 2',
 			name: 'emailaddress2',
 			type: 'string',
 			default: '',
 			description: 'The secondary email address for the account',
 		},
 		{
-			displayName: 'Email Address 3',
+			displayName: 'Email address 3',
 			name: 'emailaddress3',
 			type: 'string',
 			default: '',
@@ -316,7 +316,7 @@ export function getAccountFields(): INodeProperties[] {
 				'URL for the account’s FTP site to enable users to access data and share documents',
 		},
 		{
-			displayName: 'Industry Name or ID',
+			displayName: 'Industry name or ID',
 			name: 'industrycode',
 			type: 'options',
 			typeOptions: {
@@ -340,7 +340,7 @@ export function getAccountFields(): INodeProperties[] {
 			description: 'Company o business name',
 		},
 		{
-			displayName: 'Credit Limit',
+			displayName: 'Credit limit',
 			name: 'creditlimit',
 			type: 'number',
 			default: '',
@@ -348,7 +348,7 @@ export function getAccountFields(): INodeProperties[] {
 				'Credit limit of the account. This is a useful reference when you address invoice and accounting issues with the customer.',
 		},
 		{
-			displayName: 'Number Of Employees',
+			displayName: 'Number of employees',
 			name: 'numberofemployees',
 			type: 'number',
 			default: 0,
@@ -356,7 +356,7 @@ export function getAccountFields(): INodeProperties[] {
 				'Number of employees that work at the account for use in marketing segmentation and demographic analysis',
 		},
 		{
-			displayName: 'Payment Terms Name or ID',
+			displayName: 'Payment terms name or ID',
 			name: 'paymenttermscode',
 			type: 'options',
 			typeOptions: {
@@ -367,7 +367,7 @@ export function getAccountFields(): INodeProperties[] {
 				'The payment terms to indicate when the customer needs to pay the total amount. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Preferred Appointment Day Name or ID',
+			displayName: 'Preferred appointment day name or ID',
 			name: 'preferredappointmentdaycode',
 			type: 'options',
 			typeOptions: {
@@ -378,7 +378,7 @@ export function getAccountFields(): INodeProperties[] {
 				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		},
 		{
-			displayName: 'Preferred Appointment Time Name or ID',
+			displayName: 'Preferred appointment time name or ID',
 			name: 'preferredappointmenttimecode',
 			type: 'options',
 			typeOptions: {
@@ -389,7 +389,7 @@ export function getAccountFields(): INodeProperties[] {
 				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		},
 		{
-			displayName: 'Preferred Contact Method Name or ID',
+			displayName: 'Preferred contact method name or ID',
 			name: 'preferredcontactmethodcode',
 			type: 'options',
 			typeOptions: {
@@ -420,7 +420,7 @@ export function getAccountFields(): INodeProperties[] {
 				'The annual revenue for the account, used as an indicator in financial performance analysis',
 		},
 		{
-			displayName: 'Shares Outstanding',
+			displayName: 'Shares outstanding',
 			name: 'sharesoutstanding',
 			type: 'number',
 			default: '',
@@ -428,7 +428,7 @@ export function getAccountFields(): INodeProperties[] {
 				'The number of shares available to the public for the account. This number is used as an indicator in financial performance analysis.',
 		},
 		{
-			displayName: 'Shipping Method Name or ID',
+			displayName: 'Shipping method name or ID',
 			name: 'shippingmethodcode',
 			type: 'options',
 			typeOptions: {
@@ -453,7 +453,7 @@ export function getAccountFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Stock Exchange',
+			displayName: 'Stock exchange',
 			name: 'stockexchange',
 			type: 'string',
 			default: '',
@@ -482,7 +482,7 @@ export function getAccountFields(): INodeProperties[] {
 			description: 'The third phone number for this account',
 		},
 		{
-			displayName: 'Territory Name or ID',
+			displayName: 'Territory name or ID',
 			name: 'territorycode',
 			type: 'options',
 			typeOptions: {
@@ -493,7 +493,7 @@ export function getAccountFields(): INodeProperties[] {
 				'Region or territory for the account for use in segmentation and analysis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
-			displayName: 'Ticker Symbol',
+			displayName: 'Ticker symbol',
 			name: 'tickersymbol',
 			type: 'string',
 			default: '',
@@ -508,7 +508,7 @@ export function getAccountFields(): INodeProperties[] {
 			description: 'The account’s website URL to get quick details about the company profile',
 		},
 		{
-			displayName: 'Yomi Name',
+			displayName: 'Yomi name',
 			name: 'yominame',
 			type: 'string',
 			default: '',

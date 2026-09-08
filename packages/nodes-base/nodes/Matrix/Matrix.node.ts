@@ -67,7 +67,7 @@ export class Matrix implements INodeType {
 						value: 'room',
 					},
 					{
-						name: 'Room Member',
+						name: 'Room member',
 						value: 'roomMember',
 					},
 				],

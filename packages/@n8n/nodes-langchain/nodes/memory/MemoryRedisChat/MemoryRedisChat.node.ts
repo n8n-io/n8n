@@ -62,7 +62,7 @@ export class MemoryRedisChat implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
-				displayName: 'Session Key',
+				displayName: 'Session key',
 				name: 'sessionKey',
 				type: 'string',
 				default: 'chat_history',
@@ -97,7 +97,7 @@ export class MemoryRedisChat implements INodeType {
 			scopedSessionHint(1.6),
 			sessionKeyProperty,
 			{
-				displayName: 'Session Time To Live',
+				displayName: 'Session time to live',
 				name: 'sessionTTL',
 				type: 'number',
 				default: 0,

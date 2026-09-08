@@ -31,7 +31,7 @@ export const agentGroupOperations: INodeProperties[] = [
 				action: 'Get an agent group',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many agent groups',
 				action: 'Get many agent groups',
@@ -65,10 +65,10 @@ export const agentGroupFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -84,7 +84,7 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Escalate to Agent Name or ID',
+				displayName: 'Escalate to agent name or ID',
 				name: 'escalate_to',
 				type: 'options',
 				default: '',
@@ -95,7 +95,7 @@ export const agentGroupFields: INodeProperties[] = [
 					'ID of the user to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Member Names or IDs',
+				displayName: 'Member names or IDs',
 				name: 'members',
 				type: 'multiOptions',
 				default: [],
@@ -106,7 +106,7 @@ export const agentGroupFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Observer Names or IDs',
+				displayName: 'Observer names or IDs',
 				name: 'observers',
 				type: 'multiOptions',
 				default: [],
@@ -117,7 +117,7 @@ export const agentGroupFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Unassigned For',
+				displayName: 'Unassigned for',
 				name: 'unassigned_for',
 				description:
 					'Time after which an escalation email is sent if a ticket in the group remains unassigned',
@@ -125,35 +125,35 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '30m',
 				options: [
 					{
-						name: '1 Day',
+						name: '1 day',
 						value: '1d',
 					},
 					{
-						name: '1 Hour',
+						name: '1 hour',
 						value: '1h',
 					},
 					{
-						name: '12 Hours',
+						name: '12 hours',
 						value: '12h',
 					},
 					{
-						name: '2 Days',
+						name: '2 days',
 						value: '2d',
 					},
 					{
-						name: '2 Hours',
+						name: '2 hours',
 						value: '2h',
 					},
 					{
-						name: '3 Days',
+						name: '3 days',
 						value: '3d',
 					},
 					{
-						name: '30 Minutes',
+						name: '30 minutes',
 						value: '30m',
 					},
 					{
-						name: '8 Hours',
+						name: '8 hours',
 						value: '8h',
 					},
 				],
@@ -165,7 +165,7 @@ export const agentGroupFields: INodeProperties[] = [
 	//            agentGroup: delete
 	// ----------------------------------------
 	{
-		displayName: 'Agent Group ID',
+		displayName: 'Agent group ID',
 		name: 'agentGroupId',
 		description: 'ID of the agent group to delete',
 		type: 'string',
@@ -183,7 +183,7 @@ export const agentGroupFields: INodeProperties[] = [
 	//             agentGroup: get
 	// ----------------------------------------
 	{
-		displayName: 'Agent Group ID',
+		displayName: 'Agent group ID',
 		name: 'agentGroupId',
 		description: 'ID of the agent group to retrieve',
 		type: 'string',
@@ -201,7 +201,7 @@ export const agentGroupFields: INodeProperties[] = [
 	//            agentGroup: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -235,7 +235,7 @@ export const agentGroupFields: INodeProperties[] = [
 	//            agentGroup: update
 	// ----------------------------------------
 	{
-		displayName: 'Agent Group ID',
+		displayName: 'Agent group ID',
 		name: 'agentGroupId',
 		description: 'ID of the agent group to update',
 		type: 'string',
@@ -249,10 +249,10 @@ export const agentGroupFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -268,7 +268,7 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Escalate to Agent Name or ID',
+				displayName: 'Escalate to agent name or ID',
 				name: 'escalate_to',
 				type: 'options',
 				default: '',
@@ -279,7 +279,7 @@ export const agentGroupFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Member Names or IDs',
+				displayName: 'Member names or IDs',
 				name: 'members',
 				type: 'multiOptions',
 				default: [],
@@ -296,7 +296,7 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Observer Names or IDs',
+				displayName: 'Observer names or IDs',
 				name: 'observers',
 				type: 'multiOptions',
 				default: [],
@@ -307,7 +307,7 @@ export const agentGroupFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Unassigned For',
+				displayName: 'Unassigned for',
 				name: 'unassigned_for',
 				description:
 					'Time after which an escalation email is sent if a ticket in the group remains unassigned',
@@ -315,35 +315,35 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '30m',
 				options: [
 					{
-						name: '1 Day',
+						name: '1 day',
 						value: '1d',
 					},
 					{
-						name: '1 Hour',
+						name: '1 hour',
 						value: '1h',
 					},
 					{
-						name: '12 Hours',
+						name: '12 hours',
 						value: '12h',
 					},
 					{
-						name: '2 Days',
+						name: '2 days',
 						value: '2d',
 					},
 					{
-						name: '2 Hours',
+						name: '2 hours',
 						value: '2h',
 					},
 					{
-						name: '3 Days',
+						name: '3 days',
 						value: '3d',
 					},
 					{
-						name: '30 Minutes',
+						name: '30 minutes',
 						value: '30m',
 					},
 					{
-						name: '8 Hours',
+						name: '8 hours',
 						value: '8h',
 					},
 				],

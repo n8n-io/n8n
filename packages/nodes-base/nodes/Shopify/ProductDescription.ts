@@ -31,7 +31,7 @@ export const productOperations: INodeProperties[] = [
 				action: 'Get a product',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many products',
 				action: 'Get many products',
@@ -80,10 +80,10 @@ export const productFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -111,7 +111,7 @@ export const productFields: INodeProperties[] = [
 				displayName: 'Images',
 				name: 'images',
 				type: 'collection',
-				placeholder: 'Add Image Field',
+				placeholder: 'Add image field',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -120,7 +120,7 @@ export const productFields: INodeProperties[] = [
 					'A list of product image objects, each one representing an image associated with the product',
 				options: [
 					{
-						displayName: 'Created At',
+						displayName: 'Created at',
 						name: 'created_at',
 						type: 'dateTime',
 						default: '',
@@ -181,7 +181,7 @@ export const productFields: INodeProperties[] = [
 						description: 'Height dimension of the image which is determined on upload',
 					},
 					{
-						displayName: 'Updated At',
+						displayName: 'Updated at',
 						name: 'updated_at',
 						type: 'dateTime',
 						default: '',
@@ -224,14 +224,14 @@ export const productFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Product Type',
+				displayName: 'Product type',
 				name: 'product_type',
 				type: 'string',
 				default: '',
 				description: 'A categorization for the product used for filtering and searching products',
 			},
 			{
-				displayName: 'Published At',
+				displayName: 'Published at',
 				name: 'published_at',
 				type: 'dateTime',
 				default: '',
@@ -239,7 +239,7 @@ export const productFields: INodeProperties[] = [
 					'The date and time (ISO 8601 format) when the product was published. Can be set to null to unpublish the product from the Online Store channel.',
 			},
 			{
-				displayName: 'Published Scope',
+				displayName: 'Published scope',
 				name: 'published_scope',
 				type: 'options',
 				default: '',
@@ -267,7 +267,7 @@ export const productFields: INodeProperties[] = [
 					'A string of comma-separated tags that are used for filtering and search. A product can have up to 250 tags. Each tag can have up to 255 characters.',
 			},
 			{
-				displayName: 'Template Suffix',
+				displayName: 'Template suffix',
 				name: 'template_suffix',
 				type: 'string',
 				default: '',
@@ -304,10 +304,10 @@ export const productFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -335,7 +335,7 @@ export const productFields: INodeProperties[] = [
 				displayName: 'Images',
 				name: 'images',
 				type: 'collection',
-				placeholder: 'Add Image Field',
+				placeholder: 'Add image field',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -344,7 +344,7 @@ export const productFields: INodeProperties[] = [
 					'A list of product image objects, each one representing an image associated with the product',
 				options: [
 					{
-						displayName: 'Created At',
+						displayName: 'Created at',
 						name: 'created_at',
 						type: 'dateTime',
 						default: '',
@@ -405,7 +405,7 @@ export const productFields: INodeProperties[] = [
 						description: 'Height dimension of the image which is determined on upload',
 					},
 					{
-						displayName: 'Updated At',
+						displayName: 'Updated at',
 						name: 'updated_at',
 						type: 'dateTime',
 						default: '',
@@ -448,14 +448,14 @@ export const productFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Product Type',
+				displayName: 'Product type',
 				name: 'product_type',
 				type: 'string',
 				default: '',
 				description: 'A categorization for the product used for filtering and searching products',
 			},
 			{
-				displayName: 'Published At',
+				displayName: 'Published at',
 				name: 'published_at',
 				type: 'dateTime',
 				default: '',
@@ -463,7 +463,7 @@ export const productFields: INodeProperties[] = [
 					'The date and time (ISO 8601 format) when the product was published. Can be set to null to unpublish the product from the Online Store channel.',
 			},
 			{
-				displayName: 'Published Scope',
+				displayName: 'Published scope',
 				name: 'published_scope',
 				type: 'options',
 				default: '',
@@ -491,7 +491,7 @@ export const productFields: INodeProperties[] = [
 					'A string of comma-separated tags that are used for filtering and search. A product can have up to 250 tags. Each tag can have up to 255 characters.',
 			},
 			{
-				displayName: 'Template Suffix',
+				displayName: 'Template suffix',
 				name: 'template_suffix',
 				type: 'string',
 				default: '',
@@ -567,10 +567,10 @@ export const productFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -593,7 +593,7 @@ export const productFields: INodeProperties[] = [
 	/*                                product:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -624,10 +624,10 @@ export const productFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -644,14 +644,14 @@ export const productFields: INodeProperties[] = [
 				description: 'Filter results by product collection ID',
 			},
 			{
-				displayName: 'Created At Max',
+				displayName: 'Created at max',
 				name: 'created_at_max',
 				type: 'dateTime',
 				default: '',
 				description: 'Show products created before date',
 			},
 			{
-				displayName: 'Created At Min',
+				displayName: 'Created at min',
 				name: 'created_at_min',
 				type: 'dateTime',
 				default: '',
@@ -679,7 +679,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Return only products specified by a comma-separated list of product IDs',
 			},
 			{
-				displayName: 'Presentment Currencies',
+				displayName: 'Presentment currencies',
 				name: 'presentment_currencies',
 				type: 'string',
 				default: '',
@@ -687,28 +687,28 @@ export const productFields: INodeProperties[] = [
 					'Return presentment prices in only certain currencies, specified by a comma-separated list of ISO 4217 currency codes',
 			},
 			{
-				displayName: 'Product Type',
+				displayName: 'Product type',
 				name: 'product_type',
 				type: 'string',
 				default: '',
 				description: 'Filter results by product type',
 			},
 			{
-				displayName: 'Published At Max',
+				displayName: 'Published at max',
 				name: 'published_at_max',
 				type: 'dateTime',
 				default: '',
 				description: 'Show products published before date',
 			},
 			{
-				displayName: 'Published At Min',
+				displayName: 'Published at min',
 				name: 'published_at_min',
 				type: 'dateTime',
 				default: '',
 				description: 'Show products published after date',
 			},
 			{
-				displayName: 'Published Status',
+				displayName: 'Published status',
 				name: 'published_status',
 				type: 'options',
 				options: [
@@ -739,14 +739,14 @@ export const productFields: INodeProperties[] = [
 				description: 'Filter results by product title',
 			},
 			{
-				displayName: 'Updated At Max',
+				displayName: 'Updated at max',
 				name: 'updated_at_max',
 				type: 'dateTime',
 				default: '',
 				description: 'Show products last updated before date',
 			},
 			{
-				displayName: 'Updated At Min',
+				displayName: 'Updated at min',
 				name: 'updated_at_min',
 				type: 'dateTime',
 				default: '',

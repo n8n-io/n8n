@@ -52,7 +52,7 @@ export class Marketstack implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'End-of-Day Data',
+						name: 'End-of-day data',
 						value: 'endOfDayData',
 						description: 'Stock market closing data',
 					},

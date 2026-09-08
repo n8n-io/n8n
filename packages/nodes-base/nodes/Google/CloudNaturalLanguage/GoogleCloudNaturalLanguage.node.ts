@@ -58,7 +58,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				},
 				options: [
 					{
-						name: 'Analyze Sentiment',
+						name: 'Analyze sentiment',
 						value: 'analyzeSentiment',
 						action: 'Analyze sentiment',
 					},
@@ -135,7 +135,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Document Type',
+						displayName: 'Document type',
 						name: 'documentType',
 						type: 'options',
 						options: [
@@ -144,7 +144,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 								value: 'HTML',
 							},
 							{
-								name: 'Plain Text',
+								name: 'Plain text',
 								value: 'PLAIN_TEXT',
 							},
 						],
@@ -152,7 +152,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 						description: 'The type of input document',
 					},
 					{
-						displayName: 'Encoding Type',
+						displayName: 'Encoding type',
 						name: 'encodingType',
 						type: 'options',
 						options: [

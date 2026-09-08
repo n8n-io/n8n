@@ -58,10 +58,10 @@ type ValueGetterFn = (
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Fields to Summarize',
+		displayName: 'Fields to summarize',
 		name: 'fieldsToSummarize',
 		type: 'fixedCollection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: { values: [{ aggregation: 'count', field: '' }] },
 		typeOptions: {
 			multipleValues: true,
@@ -93,7 +93,7 @@ export const properties: INodeProperties[] = [
 								value: 'count',
 							},
 							{
-								name: 'Count Unique',
+								name: 'Count unique',
 								value: 'countUnique',
 							},
 							{
@@ -162,7 +162,7 @@ export const properties: INodeProperties[] = [
 					},
 					// ----------------------------------------------------------------------------------------------------------
 					{
-						displayName: 'Include Empty Values',
+						displayName: 'Include empty values',
 						name: 'includeEmpty',
 						type: 'boolean',
 						default: false,
@@ -184,11 +184,11 @@ export const properties: INodeProperties[] = [
 								value: ',',
 							},
 							{
-								name: 'Comma and Space',
+								name: 'Comma and space',
 								value: ', ',
 							},
 							{
-								name: 'New Line',
+								name: 'New line',
 								value: '\n',
 							},
 							{
@@ -212,7 +212,7 @@ export const properties: INodeProperties[] = [
 						},
 					},
 					{
-						displayName: 'Custom Separator',
+						displayName: 'Custom separator',
 						name: 'customSeparator',
 						type: 'string',
 						default: '',
@@ -229,7 +229,7 @@ export const properties: INodeProperties[] = [
 	},
 	// fieldsToSplitBy repeated to have different displayName for singleItem and separateItems -----------------------------
 	{
-		displayName: 'Fields to Split By',
+		displayName: 'Fields to split by',
 		name: 'fieldsToSplitBy',
 		type: 'string',
 		placeholder: 'e.g. country, city',
@@ -244,7 +244,7 @@ export const properties: INodeProperties[] = [
 		requiresDataPath: 'multiple',
 	},
 	{
-		displayName: 'Fields to Group By',
+		displayName: 'Fields to group by',
 		name: 'fieldsToSplitBy',
 		type: 'string',
 		placeholder: 'e.g. country, city',
@@ -268,17 +268,17 @@ export const properties: INodeProperties[] = [
 		options: [
 			disableDotNotationBoolean,
 			{
-				displayName: 'Output Format',
+				displayName: 'Output format',
 				name: 'outputFormat',
 				type: 'options',
 				default: 'separateItems',
 				options: [
 					{
-						name: 'Each Split in a Separate Item',
+						name: 'Each split in a separate item',
 						value: 'separateItems',
 					},
 					{
-						name: 'All Splits in a Single Item',
+						name: 'All splits in a single item',
 						value: 'singleItem',
 					},
 				],

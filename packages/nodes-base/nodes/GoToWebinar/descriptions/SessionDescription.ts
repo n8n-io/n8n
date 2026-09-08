@@ -14,12 +14,12 @@ export const sessionOperations: INodeProperties[] = [
 				action: 'Get a session',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many sessions',
 			},
 			{
-				name: 'Get Details',
+				name: 'Get details',
 				value: 'getDetails',
 				action: 'Get details on a session',
 			},
@@ -37,7 +37,7 @@ export const sessionFields: INodeProperties[] = [
 	//         session: getAll
 	// ----------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -68,10 +68,10 @@ export const sessionFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['session'],
@@ -81,26 +81,26 @@ export const sessionFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Time Range',
+				displayName: 'Time range',
 				name: 'times',
 				type: 'fixedCollection',
-				placeholder: 'Add Time Range',
+				placeholder: 'Add time range',
 				required: true,
 				default: {},
 				options: [
 					{
-						displayName: 'Times Properties',
+						displayName: 'Times properties',
 						name: 'timesProperties',
 						values: [
 							{
-								displayName: 'Start Time',
+								displayName: 'Start time',
 								name: 'fromTime',
 								type: 'dateTime',
 								description: 'Start of the datetime range for the session',
 								default: '',
 							},
 							{
-								displayName: 'End Time',
+								displayName: 'End time',
 								name: 'toTime',
 								type: 'dateTime',
 								description: 'End of the datetime range for the session',
@@ -111,7 +111,7 @@ export const sessionFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Webinar Key Name or ID',
+				displayName: 'Webinar key name or ID',
 				name: 'webinarKey',
 				type: 'options',
 				typeOptions: {
@@ -128,7 +128,7 @@ export const sessionFields: INodeProperties[] = [
 	//      session: shared fields
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key Name or ID',
+		displayName: 'Webinar key name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -146,7 +146,7 @@ export const sessionFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Session Key',
+		displayName: 'Session key',
 		name: 'sessionKey',
 		type: 'string',
 		required: true,

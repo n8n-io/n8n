@@ -2,7 +2,7 @@ import type { MessageProperties } from '../../Interfaces';
 
 export const messagePostEphemeralDescription: MessageProperties = [
 	{
-		displayName: 'User Name or ID',
+		displayName: 'User name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -21,7 +21,7 @@ export const messagePostEphemeralDescription: MessageProperties = [
 			'ID of the user to send the ephemeral message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {

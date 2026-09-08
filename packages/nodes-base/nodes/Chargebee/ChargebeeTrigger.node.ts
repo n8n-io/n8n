@@ -43,180 +43,180 @@ export class ChargebeeTrigger implements INodeType {
 						description: 'Any time any event is triggered (Wildcard Event)',
 					},
 					{
-						name: 'Card Added',
+						name: 'Card added',
 						value: 'card_added',
 						description: 'Triggered when a card is added for a customer',
 					},
 					{
-						name: 'Card Deleted',
+						name: 'Card deleted',
 						value: 'card_deleted',
 						description: 'Triggered when a card is deleted for a customer',
 					},
 					{
-						name: 'Card Expired',
+						name: 'Card expired',
 						value: 'card_expired',
 						description: 'Triggered when the card for a customer has expired',
 					},
 					{
-						name: 'Card Expiring',
+						name: 'Card expiring',
 						value: 'card_expiring',
 						description:
 							"Triggered when the customer's credit card is expiring soon.Triggered 30 days before the expiry date",
 					},
 					{
-						name: 'Card Updated',
+						name: 'Card updated',
 						value: 'card_updated',
 						description: 'Triggered when the card is updated for a customer',
 					},
 					{
-						name: 'Customer Changed',
+						name: 'Customer changed',
 						value: 'customer_changed',
 						description: 'Triggered when a customer is changed',
 					},
 					{
-						name: 'Customer Created',
+						name: 'Customer created',
 						value: 'customer_created',
 						description: 'Triggered when a customer is created',
 					},
 					{
-						name: 'Customer Deleted',
+						name: 'Customer deleted',
 						value: 'customer_deleted',
 						description: 'Triggered when a customer is deleted',
 					},
 					{
-						name: 'Invoice Created',
+						name: 'Invoice created',
 						value: 'invoice_created',
 						description:
 							"Event triggered (in the case of metered billing) when a 'Pending' invoice is created that has usage related charges or line items to be added, before being closed. This is triggered only when the “Notify for Pending Invoices” option is enabled.",
 					},
 					{
-						name: 'Invoice Deleted',
+						name: 'Invoice deleted',
 						value: 'invoice_deleted',
 						description: 'Event triggered when an invoice is deleted',
 					},
 					{
-						name: 'Invoice Generated',
+						name: 'Invoice generated',
 						value: 'invoice_generated',
 						description:
 							"Event triggered when a new invoice is generated. In case of metered billing, this event is triggered when a 'Pending' invoice is closed.",
 					},
 					{
-						name: 'Invoice Updated',
+						name: 'Invoice updated',
 						value: 'invoice_updated',
 						description:
 							'Triggered when the invoice’s shipping/billing address is updated, if the invoice is voided, or when the amount due is modified due to payments applied/removed',
 					},
 					{
-						name: 'Payment Failed',
+						name: 'Payment failed',
 						value: 'payment_failed',
 						description: "Triggered when attempt to charge customer's credit card fails",
 					},
 					{
-						name: 'Payment Initiated',
+						name: 'Payment initiated',
 						value: 'payment_initiated',
 						description: 'Triggered when a payment is initiated via direct debit',
 					},
 					{
-						name: 'Payment Refunded',
+						name: 'Payment refunded',
 						value: 'payment_refunded',
 						description: 'Triggered when a payment refund is made',
 					},
 					{
-						name: 'Payment Succeeded',
+						name: 'Payment succeeded',
 						value: 'payment_succeeded',
 						description: 'Triggered when the payment is successfully collected',
 					},
 					{
-						name: 'Refund Initiated',
+						name: 'Refund initiated',
 						value: 'refund_initiated',
 						description: 'Triggered when a refund is initiated via direct debit',
 					},
 					{
-						name: 'Subscription Activated',
+						name: 'Subscription activated',
 						value: 'subscription_activated',
 						description:
 							"Triggered after the subscription has been moved from 'Trial' to 'Active' state",
 					},
 					{
-						name: 'Subscription Cancellation Scheduled',
+						name: 'Subscription cancellation scheduled',
 						value: 'subscription_cancellation_scheduled',
 						description:
 							'Triggered when subscription is scheduled to cancel at end of current term',
 					},
 					{
-						name: 'Subscription Cancelled',
+						name: 'Subscription cancelled',
 						value: 'subscription_cancelled',
 						description:
 							"Triggered when the subscription is cancelled. If it is cancelled due to non payment or because the card details are not present, the subscription will have the possible reason as 'cancel_reason'.",
 					},
 					{
-						name: 'Subscription Cancelling',
+						name: 'Subscription cancelling',
 						value: 'subscription_cancelling',
 						description: 'Triggered 6 days prior to the scheduled cancellation date',
 					},
 					{
-						name: 'Subscription Changed',
+						name: 'Subscription changed',
 						value: 'subscription_changed',
 						description: "Triggered when the subscription's recurring items are changed",
 					},
 					{
-						name: 'Subscription Created',
+						name: 'Subscription created',
 						value: 'subscription_created',
 						description: 'Triggered when a new subscription is created',
 					},
 					{
-						name: 'Subscription Deleted',
+						name: 'Subscription deleted',
 						value: 'subscription_deleted',
 						description: 'Triggered when a subscription is deleted',
 					},
 					{
-						name: 'Subscription Reactivated',
+						name: 'Subscription reactivated',
 						value: 'subscription_reactivated',
 						description:
 							"Triggered when the subscription is moved from cancelled state to 'Active' or 'Trial' state",
 					},
 					{
-						name: 'Subscription Renewal Reminder',
+						name: 'Subscription renewal reminder',
 						value: 'subscription_renewal_reminder',
 						description: "Triggered 3 days before each subscription's renewal",
 					},
 					{
-						name: 'Subscription Renewed',
+						name: 'Subscription renewed',
 						value: 'subscription_renewed',
 						description: 'Triggered when the subscription is renewed from the current term',
 					},
 					{
-						name: 'Subscription Scheduled Cancellation Removed',
+						name: 'Subscription scheduled cancellation removed',
 						value: 'subscription_scheduled_cancellation_removed',
 						description: 'Triggered when scheduled cancellation is removed for the subscription',
 					},
 					{
-						name: 'Subscription Shipping Address Updated',
+						name: 'Subscription shipping address updated',
 						value: 'subscription_shipping_address_updated',
 						description: 'Triggered when shipping address is added or updated for a subscription',
 					},
 					{
-						name: 'Subscription Started',
+						name: 'Subscription started',
 						value: 'subscription_started',
 						description: "Triggered when a 'future' subscription gets started",
 					},
 					{
-						name: 'Subscription Trial Ending',
+						name: 'Subscription trial ending',
 						value: 'subscription_trial_ending',
 						description: "Triggered 6 days prior to the trial period's end date",
 					},
 					{
-						name: 'Transaction Created',
+						name: 'Transaction created',
 						value: 'transaction_created',
 						description: 'Triggered when a transaction is recorded',
 					},
 					{
-						name: 'Transaction Deleted',
+						name: 'Transaction deleted',
 						value: 'transaction_deleted',
 						description: 'Triggered when a transaction is deleted',
 					},
 					{
-						name: 'Transaction Updated',
+						name: 'Transaction updated',
 						value: 'transaction_updated',
 						description:
 							'Triggered when a transaction is updated. E.g. (1) When a transaction is removed, (2) or when an excess payment is applied on an invoice, (3) or when amount_capturable gets updated.',

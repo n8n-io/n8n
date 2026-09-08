@@ -47,7 +47,7 @@ export class AwsLambda implements INodeType {
 				default: 'invoke',
 			},
 			{
-				displayName: 'Function Name or ID',
+				displayName: 'Function name or ID',
 				name: 'function',
 				type: 'options',
 				typeOptions: {
@@ -78,17 +78,17 @@ export class AwsLambda implements INodeType {
 				description: 'Specify a version or alias to invoke a published version of the function',
 			},
 			{
-				displayName: 'Invocation Type',
+				displayName: 'Invocation type',
 				name: 'invocationType',
 				type: 'options',
 				options: [
 					{
-						name: 'Wait for Results',
+						name: 'Wait for results',
 						value: 'RequestResponse',
 						description: 'Invoke the function synchronously and wait for the response',
 					},
 					{
-						name: 'Continue Workflow',
+						name: 'Continue workflow',
 						value: 'Event',
 						description: 'Invoke the function and immediately continue the workflow',
 					},
@@ -102,7 +102,7 @@ export class AwsLambda implements INodeType {
 				description: 'Specify if the workflow should wait for the function to return the results',
 			},
 			{
-				displayName: 'JSON Input',
+				displayName: 'JSON input',
 				name: 'payload',
 				type: 'string',
 				displayOptions: {

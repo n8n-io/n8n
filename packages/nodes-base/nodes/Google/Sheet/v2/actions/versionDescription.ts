@@ -11,7 +11,7 @@ export const authentication: INodeProperties = {
 	type: 'options',
 	options: [
 		{
-			name: 'Service Account',
+			name: 'Service account',
 			value: 'serviceAccount',
 		},
 		{
@@ -106,7 +106,7 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'spreadsheet',
 				},
 				{
-					name: 'Sheet Within Document',
+					name: 'Sheet within document',
 					value: 'sheet',
 				},
 			],

@@ -31,7 +31,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many users',
 				action: 'Get many users',
@@ -67,7 +67,7 @@ export const userFields: INodeProperties[] = [
 		description: 'The email address of the new user',
 	},
 	{
-		displayName: 'Full Name',
+		displayName: 'Full name',
 		name: 'fullName',
 		type: 'string',
 		required: true,
@@ -96,7 +96,7 @@ export const userFields: INodeProperties[] = [
 		description: 'The password of the new user',
 	},
 	{
-		displayName: 'Short Name',
+		displayName: 'Short name',
 		name: 'shortName',
 		type: 'string',
 		required: true,
@@ -128,10 +128,10 @@ export const userFields: INodeProperties[] = [
 		description: 'The ID of user to get',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -149,7 +149,7 @@ export const userFields: INodeProperties[] = [
 					'Whether the client supports computing gravatars URLs. If enabled, avatar_url will be included in the response only if there is a Zulip avatar, and will be null for users who are using gravatar as their avatar.',
 			},
 			{
-				displayName: 'Custom Profile Fields',
+				displayName: 'Custom profile fields',
 				name: 'includeCustomProfileFields',
 				type: 'boolean',
 				default: false,
@@ -177,10 +177,10 @@ export const userFields: INodeProperties[] = [
 		description: 'The ID of user to update',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -190,28 +190,28 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Full Name',
+				displayName: 'Full name',
 				name: 'fullName',
 				type: 'string',
 				default: '',
 				description: 'The users full name',
 			},
 			{
-				displayName: 'Is Admin',
+				displayName: 'Is admin',
 				name: 'isAdmin',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the target user is an administrator',
 			},
 			{
-				displayName: 'Is Guest',
+				displayName: 'Is guest',
 				name: 'isGuest',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the target user is a guest',
 			},
 			{
-				displayName: 'Profile Data',
+				displayName: 'Profile data',
 				name: 'profileData',
 				type: 'fixedCollection',
 				default: {},
@@ -258,15 +258,15 @@ export const userFields: INodeProperties[] = [
 						value: 400,
 					},
 					{
-						name: 'Organization Administrator',
+						name: 'Organization administrator',
 						value: 200,
 					},
 					{
-						name: 'Organization Moderator',
+						name: 'Organization moderator',
 						value: 300,
 					},
 					{
-						name: 'Organization Owner',
+						name: 'Organization owner',
 						value: 100,
 					},
 				],

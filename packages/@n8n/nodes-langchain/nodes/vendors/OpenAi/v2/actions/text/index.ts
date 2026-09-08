@@ -13,7 +13,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Message a Model',
+				name: 'Message a model',
 				value: 'response',
 				action: 'Message a model',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period, n8n-nodes-base/node-param-description-missing-final-period
@@ -24,7 +24,7 @@ export const description: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Classify Text for Violations',
+				name: 'Classify text for violations',
 				value: 'classify',
 				action: 'Classify text for violations',
 				description: 'Check whether content complies with usage policies',

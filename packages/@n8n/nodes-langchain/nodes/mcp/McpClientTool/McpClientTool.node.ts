@@ -84,7 +84,7 @@ export class McpClientTool implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
-				displayName: 'SSE Endpoint',
+				displayName: 'SSE endpoint',
 				name: 'sseEndpoint',
 				type: 'string',
 				description: 'SSE Endpoint of your MCP server',
@@ -133,11 +133,11 @@ export class McpClientTool implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Bearer Auth',
+						name: 'Bearer auth',
 						value: 'bearerAuth',
 					},
 					{
-						name: 'Header Auth',
+						name: 'Header auth',
 						value: 'headerAuth',
 					},
 					{
@@ -159,11 +159,11 @@ export class McpClientTool implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Bearer Auth',
+						name: 'Bearer auth',
 						value: 'bearerAuth',
 					},
 					{
-						name: 'Header Auth',
+						name: 'Header auth',
 						value: 'headerAuth',
 					},
 					{
@@ -171,7 +171,7 @@ export class McpClientTool implements INodeType {
 						value: 'mcpOAuth2Api',
 					},
 					{
-						name: 'Multiple Headers Auth',
+						name: 'Multiple headers auth',
 						value: 'multipleHeadersAuth',
 					},
 					{
@@ -199,7 +199,7 @@ export class McpClientTool implements INodeType {
 				},
 			},
 			{
-				displayName: 'Tools to Include',
+				displayName: 'Tools to include',
 				name: 'include',
 				type: 'options',
 				description: 'How to select the tools you want to be exposed to the AI Agent',
@@ -213,17 +213,17 @@ export class McpClientTool implements INodeType {
 					{
 						name: 'Selected',
 						value: 'selected',
-						description: 'Also include the tools listed in the parameter "Tools to Include"',
+						description: 'Also include the tools listed in the parameter "Tools to include"',
 					},
 					{
-						name: 'All Except',
+						name: 'All except',
 						value: 'except',
-						description: 'Exclude the tools listed in the parameter "Tools to Exclude"',
+						description: 'Exclude the tools listed in the parameter "Tools to exclude"',
 					},
 				],
 			},
 			{
-				displayName: 'Tools to Include',
+				displayName: 'Tools to include',
 				name: 'includeTools',
 				type: 'multiOptions',
 				default: [],
@@ -240,7 +240,7 @@ export class McpClientTool implements INodeType {
 				},
 			},
 			{
-				displayName: 'Tools to Exclude',
+				displayName: 'Tools to exclude',
 				name: 'excludeTools',
 				type: 'multiOptions',
 				default: [],
@@ -258,7 +258,7 @@ export class McpClientTool implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},

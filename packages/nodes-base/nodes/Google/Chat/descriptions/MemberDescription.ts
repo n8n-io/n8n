@@ -21,7 +21,7 @@ export const memberOperations: INodeProperties[] = [
 				action: 'Get a member',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many memberships in a space',
 				action: 'Get many members',
@@ -54,7 +54,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                 member:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name or ID',
+		displayName: 'Space name or ID',
 		name: 'spaceId',
 		type: 'options',
 		required: true,

@@ -31,7 +31,7 @@ export const cardCommentOperations: INodeProperties[] = [
 				action: 'Get a card comment',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many card comments',
 				action: 'Get many card comments',
@@ -46,7 +46,7 @@ export const cardCommentFields: INodeProperties[] = [
 	//         cardComment:create
 	// ----------------------------------
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -64,7 +64,7 @@ export const cardCommentFields: INodeProperties[] = [
 			'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -83,7 +83,7 @@ export const cardCommentFields: INodeProperties[] = [
 			'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Card Name or ID',
+		displayName: 'Card name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -102,7 +102,7 @@ export const cardCommentFields: INodeProperties[] = [
 			'The ID of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Author Name or ID',
+		displayName: 'Author name or ID',
 		name: 'authorId',
 		type: 'options',
 		typeOptions: {
@@ -138,7 +138,7 @@ export const cardCommentFields: INodeProperties[] = [
 	//         cardComment:delete
 	// ----------------------------------
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -156,7 +156,7 @@ export const cardCommentFields: INodeProperties[] = [
 			'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -175,7 +175,7 @@ export const cardCommentFields: INodeProperties[] = [
 			'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Card Name or ID',
+		displayName: 'Card name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -194,7 +194,7 @@ export const cardCommentFields: INodeProperties[] = [
 			'The ID of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Comment Name or ID',
+		displayName: 'Comment name or ID',
 		name: 'commentId',
 		type: 'options',
 		typeOptions: {
@@ -231,7 +231,7 @@ export const cardCommentFields: INodeProperties[] = [
 		description: 'The ID of the board that card belongs to',
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -250,7 +250,7 @@ export const cardCommentFields: INodeProperties[] = [
 			'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Card Name or ID',
+		displayName: 'Card name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -287,7 +287,7 @@ export const cardCommentFields: INodeProperties[] = [
 	//         cardComment:getAll
 	// ----------------------------------
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -305,7 +305,7 @@ export const cardCommentFields: INodeProperties[] = [
 			'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -324,7 +324,7 @@ export const cardCommentFields: INodeProperties[] = [
 			'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Card Name or ID',
+		displayName: 'Card name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -343,7 +343,7 @@ export const cardCommentFields: INodeProperties[] = [
 			'The ID of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

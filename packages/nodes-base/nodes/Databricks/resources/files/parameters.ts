@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const filesParameters: INodeProperties[] = [
 	{
-		displayName: 'Volume Path',
+		displayName: 'Volume path',
 		name: 'volumePath',
 		type: 'string',
 		required: true,
@@ -16,7 +16,7 @@ export const filesParameters: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File Path',
+		displayName: 'File path',
 		name: 'filePath',
 		type: 'string',
 		required: true,
@@ -31,7 +31,7 @@ export const filesParameters: INodeProperties[] = [
 		placeholder: 'folder/file.txt',
 	},
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'dataFieldName',
 		type: 'string',
 		default: 'data',
@@ -46,7 +46,7 @@ export const filesParameters: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Directory Path',
+		displayName: 'Directory path',
 		name: 'directoryPath',
 		type: 'string',
 		required: true,
@@ -61,7 +61,7 @@ export const filesParameters: INodeProperties[] = [
 		placeholder: 'folder1',
 	},
 	{
-		displayName: 'Directory Path',
+		displayName: 'Directory path',
 		name: 'directoryPath',
 		type: 'string',
 		default: '',
@@ -75,10 +75,10 @@ export const filesParameters: INodeProperties[] = [
 		placeholder: 'folder1',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -87,7 +87,7 @@ export const filesParameters: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Page Size',
+				displayName: 'Page size',
 				name: 'pageSize',
 				type: 'number',
 				default: 1000,
@@ -99,7 +99,7 @@ export const filesParameters: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Page Token',
+				displayName: 'Page token',
 				name: 'pageToken',
 				type: 'string',
 				typeOptions: { password: true },

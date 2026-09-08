@@ -13,7 +13,7 @@ export const memberOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or Update',
+				name: 'Create or update',
 				value: 'upsert',
 				description: 'Create a new member, or update the current one if it already exists (upsert)',
 				action: 'Create or update a member',
@@ -31,7 +31,7 @@ export const memberOperations: INodeProperties[] = [
 				action: 'Get a member',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many members in a workspace',
 				action: 'Get many members',
@@ -58,7 +58,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -93,7 +93,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -124,7 +124,7 @@ export const memberFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Resolve Identities',
+		displayName: 'Resolve identities',
 		name: 'resolveIdentities',
 		type: 'boolean',
 		displayOptions: {
@@ -143,7 +143,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -161,7 +161,7 @@ export const memberFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -192,7 +192,7 @@ export const memberFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Resolve Identities',
+		displayName: 'Resolve identities',
 		name: 'resolveIdentities',
 		type: 'boolean',
 		displayOptions: {
@@ -220,14 +220,14 @@ export const memberFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Sort By',
+				displayName: 'Sort by',
 				name: 'sort',
 				type: 'string',
 				default: '',
 				description: 'Name of the field the response will be sorted by',
 			},
 			{
-				displayName: 'Sort Direction',
+				displayName: 'Sort direction',
 				name: 'direction',
 				type: 'options',
 				options: [
@@ -249,7 +249,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:lookup                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -300,7 +300,7 @@ export const memberFields: INodeProperties[] = [
 			"Set to github, twitter, email, discourse or the source of any identities you've manually created",
 	},
 	{
-		displayName: 'Search By',
+		displayName: 'Search by',
 		name: 'searchBy',
 		type: 'options',
 		options: [
@@ -390,7 +390,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -421,10 +421,10 @@ export const memberFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['member'],
@@ -470,7 +470,7 @@ export const memberFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Shipping Address',
+				displayName: 'Shipping address',
 				name: 'shippingAddress',
 				type: 'string',
 				default: '',
@@ -482,21 +482,21 @@ export const memberFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags to Add',
+				displayName: 'Tags to add',
 				name: 'tagsToAdd',
 				type: 'string',
 				default: '',
 				description: 'Adds tags to member; comma-separated string or array',
 			},
 			{
-				displayName: 'Tag List',
+				displayName: 'Tag list',
 				name: 'tagList',
 				type: 'string',
 				default: '',
 				description: 'Replaces all tags for the member; comma-separated string or array',
 			},
 			{
-				displayName: 'T-Shirt',
+				displayName: 'T-shirt',
 				name: 'tShirt',
 				type: 'string',
 				default: '',
@@ -520,7 +520,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:upsert                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -546,7 +546,7 @@ export const memberFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: false,
 		},
-		placeholder: 'Add Identity',
+		placeholder: 'Add identity',
 		default: {},
 		displayOptions: {
 			show: {
@@ -586,7 +586,7 @@ export const memberFields: INodeProperties[] = [
 							"Set to github, twitter, email, discourse or the source of any identities you've manually created",
 					},
 					{
-						displayName: 'Search By',
+						displayName: 'Search by',
 						name: 'searchBy',
 						type: 'options',
 						options: [
@@ -665,10 +665,10 @@ export const memberFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['member'],
@@ -714,7 +714,7 @@ export const memberFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Shipping Address',
+				displayName: 'Shipping address',
 				name: 'shippingAddress',
 				type: 'string',
 				default: '',
@@ -726,21 +726,21 @@ export const memberFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags to Add',
+				displayName: 'Tags to add',
 				name: 'tagsToAdd',
 				type: 'string',
 				default: '',
 				description: 'Adds tags to member; comma-separated string or array',
 			},
 			{
-				displayName: 'Tag List',
+				displayName: 'Tag list',
 				name: 'tagList',
 				type: 'string',
 				default: '',
 				description: 'Replaces all tags for the member; comma-separated string or array',
 			},
 			{
-				displayName: 'T-Shirt',
+				displayName: 'T-shirt',
 				name: 'tShirt',
 				type: 'string',
 				default: '',

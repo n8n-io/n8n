@@ -36,7 +36,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Observables',
 		name: 'observableUi',
 		type: 'fixedCollection',
-		placeholder: 'Add Observable',
+		placeholder: 'Add observable',
 		default: {},
 		typeOptions: {
 			multipleValues: true,
@@ -59,7 +59,7 @@ const properties: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Input Binary Field',
+						displayName: 'Input binary field',
 						name: 'binaryProperty',
 						type: 'string',
 						hint: 'The name of the input binary field containing the file to be written',

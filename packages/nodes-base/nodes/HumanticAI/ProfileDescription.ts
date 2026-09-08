@@ -55,7 +55,7 @@ export const profileFields: INodeProperties[] = [
 			'The LinkedIn profile URL or email ID for creating a Humantic profile. If you are sending the resume, this should be a unique string.',
 	},
 	{
-		displayName: 'Send Resume',
+		displayName: 'Send resume',
 		name: 'sendResume',
 		type: 'boolean',
 		default: false,
@@ -68,7 +68,7 @@ export const profileFields: INodeProperties[] = [
 		description: 'Whether to send a resume for a resume based analysis',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -153,7 +153,7 @@ export const profileFields: INodeProperties[] = [
 			'This value is the same as the User ID that was provided when the analysis was created. Currently only supported for profiles created using LinkedIn URL.',
 	},
 	{
-		displayName: 'Send Resume',
+		displayName: 'Send resume',
 		name: 'sendResume',
 		type: 'boolean',
 		default: false,
@@ -180,7 +180,7 @@ export const profileFields: INodeProperties[] = [
 		description: 'Additional text written by the user',
 	},
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

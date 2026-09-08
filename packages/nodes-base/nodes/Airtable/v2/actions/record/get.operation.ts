@@ -33,7 +33,7 @@ const properties: INodeProperties[] = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Download Attachments',
+				displayName: 'Download attachments',
 				name: 'downloadFields',
 				type: 'multiOptions',
 				typeOptions: {

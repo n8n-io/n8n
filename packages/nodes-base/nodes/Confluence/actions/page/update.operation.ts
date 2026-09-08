@@ -19,7 +19,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: showOnUpdate },
 	},
 	{
-		displayName: 'New Title',
+		displayName: 'New title',
 		name: 'title',
 		type: 'string',
 		default: '',
@@ -41,7 +41,7 @@ export const description: INodeProperties[] = [
 				description: 'Save the update as a draft. Replaces any existing draft of the page.',
 			},
 			{
-				name: 'Keep Current Status',
+				name: 'Keep current status',
 				value: 'keep',
 				description: 'A published page stays published, a draft stays a draft',
 			},

@@ -31,7 +31,7 @@ export const ecommerceOrderOperations: INodeProperties[] = [
 				action: 'Delete an e-commerce order',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve many ecommerce orders',
 				action: 'Get many e-commerce orders',
@@ -59,7 +59,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Order Date',
+		displayName: 'Order date',
 		name: 'orderDate',
 		type: 'dateTime',
 		required: true,
@@ -72,7 +72,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Order Title',
+		displayName: 'Order title',
 		name: 'orderTitle',
 		type: 'string',
 		required: true,
@@ -85,7 +85,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Order Type',
+		displayName: 'Order type',
 		name: 'orderType',
 		type: 'options',
 		options: [
@@ -108,10 +108,10 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -121,7 +121,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Lead Affiliate ID',
+				displayName: 'Lead affiliate ID',
 				name: 'leadAffiliateId',
 				type: 'number',
 				typeOptions: {
@@ -130,7 +130,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Promo Codes',
+				displayName: 'Promo codes',
 				name: 'promoCodes',
 				type: 'string',
 				default: '',
@@ -138,7 +138,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 					'Uses multiple strings separated by comma as promo codes. The corresponding discount will be applied to the order.',
 			},
 			{
-				displayName: 'Sales Affiliate ID',
+				displayName: 'Sales affiliate ID',
 				name: 'salesAffiliateId',
 				type: 'number',
 				typeOptions: {
@@ -149,14 +149,14 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Shipping Address',
+		displayName: 'Shipping address',
 		name: 'addressUi',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
 		},
 		default: {},
-		placeholder: 'Add Address',
+		placeholder: 'Add address',
 		displayOptions: {
 			show: {
 				resource: ['ecommerceOrder'],
@@ -175,7 +175,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country code name or ID',
 						name: 'countryCode',
 						type: 'options',
 						description:
@@ -186,19 +186,19 @@ export const ecommerceOrderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'First Name',
+						displayName: 'First name',
 						name: 'firstName',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Middle Name',
+						displayName: 'Middle name',
 						name: 'middleName',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Last Name',
+						displayName: 'Last name',
 						name: 'lastName',
 						type: 'string',
 						default: '',
@@ -228,13 +228,13 @@ export const ecommerceOrderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Zip Code',
+						displayName: 'Zip code',
 						name: 'zipCode',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Zip Four',
+						displayName: 'Zip four',
 						name: 'zipFour',
 						type: 'string',
 						default: '',
@@ -250,10 +250,10 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Order Items',
+		displayName: 'Order items',
 		name: 'orderItemsUi',
 		type: 'fixedCollection',
-		placeholder: 'Add Order Item',
+		placeholder: 'Add order item',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -267,7 +267,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'orderItemsValues',
-				displayName: 'Order Item',
+				displayName: 'Order item',
 				values: [
 					{
 						displayName: 'Description',
@@ -344,7 +344,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 	/*                                 ecommerceOrder:getAll                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

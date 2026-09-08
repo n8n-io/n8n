@@ -19,7 +19,7 @@ import { theHiveApiQuery } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Search in Knowledge Base',
+		displayName: 'Search in knowledge base',
 		name: 'searchInKnowledgeBase',
 		type: 'boolean',
 		default: true,

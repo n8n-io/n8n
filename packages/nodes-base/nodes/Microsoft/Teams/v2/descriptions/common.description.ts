@@ -6,7 +6,7 @@ import type { INodeProperties } from 'n8n-workflow';
  * two operations from drifting apart on when the link is appended.
  */
 export const includeLinkToWorkflowOption: INodeProperties = {
-	displayName: 'Include Link to Workflow',
+	displayName: 'Include link to workflow',
 	name: 'includeLinkToWorkflow',
 	type: 'boolean',
 	default: true,

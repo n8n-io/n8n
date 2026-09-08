@@ -24,7 +24,7 @@ export const description: INodeProperties[] = [
 				action: 'Get list',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Retrieve a list of lists',
 				action: 'Get many lists',

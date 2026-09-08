@@ -56,7 +56,7 @@ export class GoogleBooks implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 					{
@@ -82,7 +82,7 @@ export class GoogleBooks implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 				],
@@ -104,7 +104,7 @@ export class GoogleBooks implements INodeType {
 						value: 'bookshelf',
 					},
 					{
-						name: 'Bookshelf Volume',
+						name: 'Bookshelf volume',
 						value: 'bookshelfVolume',
 					},
 					{
@@ -127,7 +127,7 @@ export class GoogleBooks implements INodeType {
 						action: 'Get a bookshelf',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many public bookshelf resource for the specified user',
 						action: 'Get many bookshelves',
@@ -159,7 +159,7 @@ export class GoogleBooks implements INodeType {
 						action: 'Clear a bookshelf volume',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many volumes in a specific bookshelf for the specified user',
 						action: 'Get many bookshelf volumes',
@@ -197,7 +197,7 @@ export class GoogleBooks implements INodeType {
 						action: 'Get a volume',
 					},
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many volumes filtered by query',
 						action: 'Get many volumes',
@@ -211,7 +211,7 @@ export class GoogleBooks implements INodeType {
 				default: 'get',
 			},
 			{
-				displayName: 'My Library',
+				displayName: 'My library',
 				name: 'myLibrary',
 				type: 'boolean',
 				default: false,
@@ -228,7 +228,7 @@ export class GoogleBooks implements INodeType {
 			//         All
 			// ----------------------------------
 			{
-				displayName: 'Search Query',
+				displayName: 'Search query',
 				name: 'searchQuery',
 				type: 'string',
 				description: 'Full-text search query string',
@@ -301,7 +301,7 @@ export class GoogleBooks implements INodeType {
 				},
 			},
 			{
-				displayName: 'Volume Position',
+				displayName: 'Volume position',
 				name: 'volumePosition',
 				type: 'string',
 				description:
@@ -316,7 +316,7 @@ export class GoogleBooks implements INodeType {
 				},
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {

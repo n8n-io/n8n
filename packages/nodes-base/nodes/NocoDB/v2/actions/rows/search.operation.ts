@@ -18,7 +18,7 @@ const searchOptions: INodeProperties = {
 	placeholder: 'Add option',
 	options: [
 		{
-			displayName: 'View Name or ID',
+			displayName: 'View name or ID',
 			name: 'viewId',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
@@ -29,7 +29,7 @@ const searchOptions: INodeProperties = {
 			},
 			modes: [
 				{
-					displayName: 'From List',
+					displayName: 'From list',
 					name: 'list',
 					type: 'list',
 					typeOptions: {
@@ -62,7 +62,7 @@ const searchOptions: INodeProperties = {
 		{
 			displayName: 'Sort',
 			name: 'sort',
-			placeholder: 'Add Sort Rule',
+			placeholder: 'Add sort rule',
 			description: 'The sorting rules for the returned rows',
 			type: 'fixedCollection',
 			typeOptions: {
@@ -75,7 +75,7 @@ const searchOptions: INodeProperties = {
 					displayName: 'Property',
 					values: [
 						{
-							displayName: 'Field Name or ID',
+							displayName: 'Field name or ID',
 							name: 'field',
 							type: 'resourceLocator',
 							description: 'Name of the field to sort on',
@@ -85,7 +85,7 @@ const searchOptions: INodeProperties = {
 							},
 							modes: [
 								{
-									displayName: 'From List',
+									displayName: 'From list',
 									name: 'list',
 									type: 'list',
 									typeOptions: {
@@ -125,7 +125,7 @@ const searchOptions: INodeProperties = {
 			],
 		},
 		{
-			displayName: 'Filter By Formula',
+			displayName: 'Filter by formula',
 			name: 'where',
 			type: 'string',
 			default: '',
@@ -157,7 +157,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 	},
 	[
 		{
-			displayName: 'Return All',
+			displayName: 'Return all',
 			name: 'returnAll',
 			type: 'boolean',
 			default: false,
@@ -180,14 +180,14 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description: 'Max number of results to return',
 		},
 		{
-			displayName: 'Download Attachments',
+			displayName: 'Download attachments',
 			name: 'downloadAttachments',
 			type: 'boolean',
 			default: false,
-			description: "Whether the attachment fields defined in 'Download Fields' will be downloaded",
+			description: "Whether the attachment fields defined in 'Download fields' will be downloaded",
 		},
 		{
-			displayName: 'Download Field Names or IDs',
+			displayName: 'Download field names or IDs',
 			name: 'downloadFieldNames',
 			type: 'multiOptions',
 			typeOptions: {

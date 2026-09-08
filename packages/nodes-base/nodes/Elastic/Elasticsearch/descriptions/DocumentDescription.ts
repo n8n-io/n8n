@@ -33,7 +33,7 @@ export const documentOperations: INodeProperties[] = [
 				action: 'Get a document',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many documents',
 				action: 'Get many documents',
@@ -85,7 +85,7 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -95,7 +95,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Bulk Delete',
+				displayName: 'Bulk delete',
 				name: 'bulkOperation',
 				type: 'boolean',
 				default: false,
@@ -162,21 +162,21 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Source Excludes',
+				displayName: 'Source excludes',
 				name: '_source_excludes',
 				description: 'Comma-separated list of source fields to exclude from the response',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Source Includes',
+				displayName: 'Source includes',
 				name: '_source_includes',
 				description: 'Comma-separated list of source fields to include in the response',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Stored Fields',
+				displayName: 'Stored fields',
 				name: 'stored_fields',
 				description:
 					'Whether to retrieve the document fields stored in the index rather than the document <code>_source</code>. Defaults to false.',
@@ -204,7 +204,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -274,7 +274,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Allow No Indices',
+				displayName: 'Allow no indices',
 				name: 'allow_no_indices',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description:
@@ -283,7 +283,7 @@ export const documentFields: INodeProperties[] = [
 				default: true,
 			},
 			{
-				displayName: 'Allow Partial Search Results',
+				displayName: 'Allow partial search results',
 				name: 'allow_partial_search_results',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description:
@@ -292,7 +292,7 @@ export const documentFields: INodeProperties[] = [
 				default: true,
 			},
 			{
-				displayName: 'Batched Reduce Size',
+				displayName: 'Batched reduce size',
 				name: 'batched_reduce_size',
 				description:
 					'Number of shard results that should be reduced at once on the coordinating node. Defaults to 512.',
@@ -303,7 +303,7 @@ export const documentFields: INodeProperties[] = [
 				default: 512,
 			},
 			{
-				displayName: 'CCS Minimize Roundtrips',
+				displayName: 'CCS minimize roundtrips',
 				name: 'ccs_minimize_roundtrips',
 				description:
 					'Whether network round-trips between the coordinating node and the remote clusters are minimized when executing cross-cluster search (CCS) requests. Defaults to true.',
@@ -311,7 +311,7 @@ export const documentFields: INodeProperties[] = [
 				default: true,
 			},
 			{
-				displayName: 'Doc Value Fields',
+				displayName: 'Doc value fields',
 				name: 'docvalue_fields',
 				description:
 					'Comma-separated list of fields to return as the docvalue representation of a field for each hit',
@@ -319,7 +319,7 @@ export const documentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Expand Wildcards',
+				displayName: 'Expand wildcards',
 				name: 'expand_wildcards',
 				description:
 					'Type of index that wildcard expressions can match. Defaults to <code>open</code>',
@@ -357,7 +357,7 @@ export const documentFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Ignore Throttled',
+				displayName: 'Ignore throttled',
 				name: 'ignore_throttled',
 				description:
 					'Whether concrete, expanded or aliased indices are ignored when frozen. Defaults to true.',
@@ -365,7 +365,7 @@ export const documentFields: INodeProperties[] = [
 				default: true,
 			},
 			{
-				displayName: 'Ignore Unavailable',
+				displayName: 'Ignore unavailable',
 				name: 'ignore_unavailable',
 				description:
 					'Whether missing or closed indices are not included in the response. Defaults to false.',
@@ -373,7 +373,7 @@ export const documentFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Max Concurrent Shard Requests',
+				displayName: 'Max concurrent shard requests',
 				name: 'max_concurrent_shard_requests',
 				description:
 					'Define the number of shard requests per node this search executes concurrently. Defaults to 5.',
@@ -381,7 +381,7 @@ export const documentFields: INodeProperties[] = [
 				default: 5,
 			},
 			{
-				displayName: 'Pre-Filter Shard Size',
+				displayName: 'Pre-filter shard size',
 				name: 'pre_filter_shard_size',
 				description:
 					'Define a threshold that enforces a pre-filter roundtrip to prefilter search shards based on query rewriting. Only used if the number of shards the search request expands to exceeds the threshold.',
@@ -405,7 +405,7 @@ export const documentFields: INodeProperties[] = [
 				hint: 'Use query parameters for dynamic values instead of embedding expressions in the query',
 			},
 			{
-				displayName: 'Query Parameters',
+				displayName: 'Query parameters',
 				name: 'queryParameters',
 				description:
 					'Array of values to use for $1, $2, and so on, in order. Values can be strings, numbers, booleans, null, or arrays of these values.',
@@ -419,7 +419,7 @@ export const documentFields: INodeProperties[] = [
 				hint: 'Build the array inside the expression, for example {{ [$json.name, 30] }} sets $1 to the name and $2 to 30',
 			},
 			{
-				displayName: 'Request Cache',
+				displayName: 'Request cache',
 				name: 'request_cache',
 				description:
 					'Whether the caching of search results is enabled for requests where size is 0. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/shard-request-cache.html">Elasticsearch shard request cache settings</a>.',
@@ -434,25 +434,25 @@ export const documentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Search Type',
+				displayName: 'Search type',
 				name: 'search_type',
 				description:
 					'How distributed term frequencies are calculated for relevance scoring. Defaults to Query then Fetch.',
 				type: 'options',
 				options: [
 					{
-						name: 'DFS Query Then Fetch',
+						name: 'DFS query then fetch',
 						value: 'dfs_query_then_fetch',
 					},
 					{
-						name: 'Query Then Fetch',
+						name: 'Query then fetch',
 						value: 'query_then_fetch',
 					},
 				],
 				default: 'query_then_fetch',
 			},
 			{
-				displayName: 'Sequence Number and Primary Term',
+				displayName: 'Sequence number and primary term',
 				name: 'seq_no_primary_term',
 				description:
 					'Whether to return the sequence number and primary term of the last modification of each hit. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/optimistic-concurrency-control.html">Optimistic concurrency control</a>.',
@@ -467,14 +467,14 @@ export const documentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Source Excludes',
+				displayName: 'Source excludes',
 				name: '_source_excludes',
 				description: 'Comma-separated list of source fields to exclude from the response',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Source Includes',
+				displayName: 'Source includes',
 				name: '_source_includes',
 				description: 'Comma-separated list of source fields to include in the response',
 				type: 'string',
@@ -488,7 +488,7 @@ export const documentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Stored Fields',
+				displayName: 'Stored fields',
 				name: 'stored_fields',
 				description:
 					'Whether to retrieve the document fields stored in the index rather than the document <code>_source</code>. Defaults to false.',
@@ -496,7 +496,7 @@ export const documentFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Terminate After',
+				displayName: 'Terminate after',
 				name: 'terminate_after',
 				description: 'Max number of documents to collect for each shard',
 				type: 'number',
@@ -511,7 +511,7 @@ export const documentFields: INodeProperties[] = [
 				default: '1m',
 			},
 			{
-				displayName: 'Track Scores',
+				displayName: 'Track scores',
 				name: 'track_scores',
 				description:
 					'Whether to calculate and return document scores, even if the scores are not used for sorting. Defaults to false.',
@@ -519,7 +519,7 @@ export const documentFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Track Total Hits',
+				displayName: 'Track total hits',
 				name: 'track_total_hits',
 				description: 'Number of hits matching the query to count accurately. Defaults to 10000.',
 				type: 'number',
@@ -553,17 +553,17 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'dataToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -578,7 +578,7 @@ export const documentFields: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
@@ -594,9 +594,9 @@ export const documentFields: INodeProperties[] = [
 		placeholder: 'Enter properties...',
 	},
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Field to Send',
@@ -616,13 +616,13 @@ export const documentFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field name',
 						name: 'fieldId',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -632,10 +632,10 @@ export const documentFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -672,7 +672,7 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -682,7 +682,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Bulk Create',
+				displayName: 'Bulk create',
 				name: 'bulkOperation',
 				type: 'boolean',
 				default: false,
@@ -709,7 +709,7 @@ export const documentFields: INodeProperties[] = [
 						description: 'Refreshes the affected shards to make this operation visible to search',
 					},
 					{
-						name: 'Wait For',
+						name: 'Wait for',
 						value: 'wait_for',
 						description: 'Wait for a refresh to make this operation visible',
 					},
@@ -755,17 +755,17 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data to send',
 		name: 'dataToSend',
 		type: 'options',
 		options: [
 			{
-				name: 'Define Below for Each Column',
+				name: 'Define below for each column',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map input data to columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -780,7 +780,7 @@ export const documentFields: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Inputs to Ignore',
+		displayName: 'Inputs to ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
@@ -796,9 +796,9 @@ export const documentFields: INodeProperties[] = [
 		placeholder: 'Enter properties...',
 	},
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Fields to send',
 		name: 'fieldsUi',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValueButtonText: 'Add Field to Send',
@@ -818,13 +818,13 @@ export const documentFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field name',
 						name: 'fieldId',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Field value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -837,7 +837,7 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -847,7 +847,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Bulk Update',
+				displayName: 'Bulk update',
 				name: 'bulkOperation',
 				type: 'boolean',
 				default: false,
@@ -867,7 +867,7 @@ export const documentFields: INodeProperties[] = [
 						description: 'Refreshes the affected shards to make this operation visible to search',
 					},
 					{
-						name: 'Wait For',
+						name: 'Wait for',
 						value: 'wait_for',
 						description: 'Wait for a refresh to make this operation visible',
 					},

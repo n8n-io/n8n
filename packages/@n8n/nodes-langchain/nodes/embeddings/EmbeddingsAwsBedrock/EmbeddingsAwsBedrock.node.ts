@@ -83,13 +83,13 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Additional Model Request Fields',
+						displayName: 'Additional model request fields',
 						name: 'additionalModelRequestFields',
 						default: '{}',
 						description:
@@ -98,7 +98,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 						typeOptions: { rows: 4 },
 					},
 					{
-						displayName: 'Max Retries',
+						displayName: 'Max retries',
 						name: 'maxRetries',
 						default: 2,
 						description: 'Maximum number of retries to attempt when a request fails',

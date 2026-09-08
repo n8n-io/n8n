@@ -16,7 +16,7 @@ import { rawCustomFieldOutputOption } from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -43,11 +43,11 @@ const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
-				displayName: 'First Character',
+				displayName: 'First character',
 				name: 'first_char',
 				type: 'string',
 				default: '',
@@ -55,7 +55,7 @@ const properties: INodeProperties[] = [
 					'Filter organizations whose name starts with this character (single character)',
 			},
 			{
-				displayName: 'Predefined Filter Name or ID',
+				displayName: 'Predefined filter name or ID',
 				name: 'filter_id',
 				type: 'options',
 				typeOptions: {

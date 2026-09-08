@@ -22,10 +22,10 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Concatenate Items',
+				name: 'Concatenate items',
 				value: 'concatenateItems',
 				description: 'Combine fields into a list in a single new item',
-				action: 'Concatenate Items',
+				action: 'Concatenate items',
 			},
 			{
 				name: 'Limit',
@@ -46,11 +46,11 @@ export const description: INodeProperties[] = [
 				action: 'Sort',
 			},
 			{
-				name: 'Split Out Items',
+				name: 'Split out items',
 				value: 'splitOutItems',
 				description:
 					"Turn a list or values of object's properties inside item(s) into separate items",
-				action: 'Split Out Items',
+				action: 'Split out items',
 			},
 			{
 				name: 'Summarize',

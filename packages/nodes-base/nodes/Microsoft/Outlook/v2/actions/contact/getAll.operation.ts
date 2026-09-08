@@ -23,7 +23,7 @@ export const properties: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Select Included Fields',
+				name: 'Select included fields',
 				value: 'fields',
 			},
 		],
@@ -45,11 +45,11 @@ export const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
-				displayName: 'Filter Query',
+				displayName: 'Filter query',
 				name: 'custom',
 				type: 'string',
 				default: '',
@@ -57,7 +57,7 @@ export const properties: INodeProperties[] = [
 				hint: 'Search query to filter contacts. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
 			},
 			{
-				displayName: 'Email Address',
+				displayName: 'Email address',
 				name: 'emailAddress',
 				type: 'string',
 				default: '',

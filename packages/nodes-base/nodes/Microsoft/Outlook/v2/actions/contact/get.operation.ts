@@ -23,7 +23,7 @@ export const properties: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Select Included Fields',
+				name: 'Select included fields',
 				value: 'fields',
 			},
 		],

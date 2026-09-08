@@ -15,7 +15,7 @@ import { microsoftApiRequest } from '../../transport';
 export const properties: INodeProperties[] = [
 	messageRLC,
 	{
-		displayName: 'Input Data Field Name',
+		displayName: 'Input data field name',
 		name: 'binaryPropertyName',
 		hint: 'The name of the input field containing the binary file data to be attached',
 		type: 'string',
@@ -31,7 +31,7 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				description:
 					'Filename of the attachment. If not set will the file-name of the binary property be used, if it exists.',

@@ -21,7 +21,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 	[
 		...DataToSendOption,
 		{
-			displayName: 'Row ID Value',
+			displayName: 'Row ID value',
 			name: 'id',
 			type: 'string',
 			default: '',
@@ -31,7 +31,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 		...RowCreateUpdateOptions,
 
 		{
-			displayName: 'Fields to Send',
+			displayName: 'Fields to send',
 			name: 'fieldsMapper',
 			type: 'resourceMapper',
 			default: {

@@ -25,7 +25,7 @@ export const spaceTagOperations: INodeProperties[] = [
 				action: 'Delete a space tag',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many space tags',
 				action: 'Get many space tags',
@@ -91,7 +91,7 @@ export const spaceTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'New Name',
+		displayName: 'New name',
 		name: 'newName',
 		type: 'string',
 		description: 'New name to set for the tag',
@@ -105,7 +105,7 @@ export const spaceTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Foreground Color',
+		displayName: 'Foreground color',
 		name: 'foregroundColor',
 		type: 'color',
 		default: '#000000',
@@ -118,7 +118,7 @@ export const spaceTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Background Color',
+		displayName: 'Background color',
 		name: 'backgroundColor',
 		type: 'color',
 		default: '#000000',
@@ -131,7 +131,7 @@ export const spaceTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

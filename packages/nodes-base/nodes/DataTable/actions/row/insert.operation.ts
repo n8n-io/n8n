@@ -24,11 +24,11 @@ export const description: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Optimize Bulk',
+				displayName: 'Optimize bulk',
 				name: 'optimizeBulk',
 				type: 'boolean',
 				default: false,

@@ -7,13 +7,13 @@ export const operationProperty: INodeProperties = {
 	noDataExpression: true,
 	options: [
 		{
-			name: 'Read From File',
+			name: 'Read from file',
 			value: 'fromFile',
 			description: 'Reads data from a spreadsheet file',
 			action: 'Read data from a spreadsheet file',
 		},
 		{
-			name: 'Write to File',
+			name: 'Write to file',
 			value: 'toFile',
 			description: 'Writes the workflow data to a spreadsheet file',
 			action: 'Write data to a spreadsheet file',
@@ -23,7 +23,7 @@ export const operationProperty: INodeProperties = {
 };
 
 export const binaryProperty: INodeProperties = {
-	displayName: 'Input Binary Field',
+	displayName: 'Input binary field',
 	name: 'binaryPropertyName',
 	type: 'string',
 	default: 'data',
@@ -39,7 +39,7 @@ export const binaryProperty: INodeProperties = {
 
 export const toFileProperties: INodeProperties[] = [
 	{
-		displayName: 'File Format',
+		displayName: 'File format',
 		name: 'fileFormat',
 		type: 'options',
 		options: [
@@ -83,7 +83,7 @@ export const toFileProperties: INodeProperties[] = [
 		description: 'The format of the file to save the data as',
 	},
 	{
-		displayName: 'Put Output File in Field',
+		displayName: 'Put output file in field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -123,7 +123,7 @@ export const toFileOptions: INodeProperties = {
 			description: 'Whether compression will be applied or not',
 		},
 		{
-			displayName: 'File Name',
+			displayName: 'File name',
 			name: 'fileName',
 			type: 'string',
 			default: '',
@@ -131,14 +131,14 @@ export const toFileOptions: INodeProperties = {
 				'File name to set in binary data. By default will "spreadsheet.&lt;fileFormat&gt;" be used.',
 		},
 		{
-			displayName: 'Header Row',
+			displayName: 'Header row',
 			name: 'headerRow',
 			type: 'boolean',
 			default: true,
 			description: 'Whether the first row of the file contains the header names',
 		},
 		{
-			displayName: 'Sheet Name',
+			displayName: 'Sheet name',
 			name: 'sheetName',
 			type: 'string',
 			displayOptions: {
@@ -198,7 +198,7 @@ export const fromFileOptions: INodeProperties = {
 			default: 'utf-8',
 		},
 		{
-			displayName: 'Exclude Byte Order Mark (BOM)',
+			displayName: 'Exclude byte order mark (BOM)',
 			name: 'enableBOM',
 			type: 'boolean',
 			displayOptions: {
@@ -211,7 +211,7 @@ export const fromFileOptions: INodeProperties = {
 				'Whether to detect and exclude the byte-order-mark from the CSV Input if present',
 		},
 		{
-			displayName: 'Preserve Quotes',
+			displayName: 'Preserve quotes',
 			name: 'relaxQuotes',
 			type: 'boolean',
 			displayOptions: {
@@ -224,14 +224,14 @@ export const fromFileOptions: INodeProperties = {
 				"Whether to handle unclosed quotes in CSV fields as part of the field's content instead of throwing a parsing error",
 		},
 		{
-			displayName: 'Header Row',
+			displayName: 'Header row',
 			name: 'headerRow',
 			type: 'boolean',
 			default: true,
 			description: 'Whether the first row of the file contains the header names',
 		},
 		{
-			displayName: 'Include Empty Cells',
+			displayName: 'Include empty cells',
 			name: 'includeEmptyCells',
 			type: 'boolean',
 			default: false,
@@ -239,7 +239,7 @@ export const fromFileOptions: INodeProperties = {
 				'Whether to include empty cells when reading from file. They will be filled with an empty string.',
 		},
 		{
-			displayName: 'Max Number of Rows to Load',
+			displayName: 'Max number of rows to load',
 			name: 'maxRowCount',
 			type: 'number',
 			displayOptions: {
@@ -261,14 +261,14 @@ export const fromFileOptions: INodeProperties = {
 				'The range to read from the table. If set to a number it will be the starting row. If set to string it will be used as A1-style notation range.',
 		},
 		{
-			displayName: 'RAW Data',
+			displayName: 'RAW data',
 			name: 'rawData',
 			type: 'boolean',
 			default: false,
 			description: 'Whether to return RAW data, instead of parsing it',
 		},
 		{
-			displayName: 'Read As String',
+			displayName: 'Read as string',
 			name: 'readAsString',
 			type: 'boolean',
 			default: false,
@@ -277,7 +277,7 @@ export const fromFileOptions: INodeProperties = {
 				'In some cases and file formats, it is necessary to read as string to ensure special characters are interpreted correctly',
 		},
 		{
-			displayName: 'Sheet Name',
+			displayName: 'Sheet name',
 			name: 'sheetName',
 			type: 'string',
 			default: 'Sheet',
@@ -286,7 +286,7 @@ export const fromFileOptions: INodeProperties = {
 				'Name of the sheet to read from in the spreadsheet (if supported). If not set, the first one will be chosen.',
 		},
 		{
-			displayName: 'Starting Line',
+			displayName: 'Starting line',
 			name: 'fromLine',
 			type: 'number',
 			displayOptions: {
@@ -299,7 +299,7 @@ export const fromFileOptions: INodeProperties = {
 			description: 'Start handling records from the requested line number. Starts at 0.',
 		},
 		{
-			displayName: 'Skip Records With Errors',
+			displayName: 'Skip records with errors',
 			name: 'skipRecordsWithErrors',
 			type: 'fixedCollection',
 			default: { value: { enabled: true, maxSkippedRecords: -1 } },
@@ -316,7 +316,7 @@ export const fromFileOptions: INodeProperties = {
 							description: 'Whether to skip records with errors when reading from file',
 						},
 						{
-							displayName: 'Max Skipped Records',
+							displayName: 'Max skipped records',
 							name: 'maxSkippedRecords',
 							type: 'number',
 							default: -1,

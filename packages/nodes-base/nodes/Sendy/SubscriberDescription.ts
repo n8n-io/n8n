@@ -80,10 +80,10 @@ export const subscriberFields: INodeProperties[] = [
 			'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -116,7 +116,7 @@ export const subscriberFields: INodeProperties[] = [
 					"Include this 'honeypot' field to prevent spambots from signing up via this API call. When spambots fills in this field, this API call will exit, preventing them from signing up fake addresses to your form. This parameter is only supported in Sendy 3.0 onwards.",
 			},
 			{
-				displayName: 'IP Address',
+				displayName: 'IP address',
 				name: 'ipaddress',
 				type: 'string',
 				default: '',

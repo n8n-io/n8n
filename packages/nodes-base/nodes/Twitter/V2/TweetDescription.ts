@@ -16,31 +16,31 @@ export const tweetOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create, quote, or reply to a tweet',
-				action: 'Create Tweet',
+				action: 'Create tweet',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a tweet',
-				action: 'Delete Tweet',
+				action: 'Delete tweet',
 			},
 			{
 				name: 'Like',
 				value: 'like',
 				description: 'Like a tweet',
-				action: 'Like Tweet',
+				action: 'Like tweet',
 			},
 			{
 				name: 'Retweet',
 				value: 'retweet',
 				description: 'Retweet a tweet',
-				action: 'Retweet Tweet',
+				action: 'Retweet tweet',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search for tweets from the last seven days',
-				action: 'Search Tweets',
+				action: 'Search tweets',
 			},
 		],
 		default: 'create',
@@ -73,7 +73,7 @@ export const tweetFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -99,7 +99,7 @@ export const tweetFields: INodeProperties[] = [
 				description: 'The attachment ID to associate with the message',
 			},
 			{
-				displayName: 'Quote a Tweet',
+				displayName: 'Quote a tweet',
 				name: 'inQuoteToStatusId',
 				type: 'resourceLocator',
 				default: { mode: 'id', value: '' },
@@ -124,7 +124,7 @@ export const tweetFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Reply to Tweet',
+				displayName: 'Reply to tweet',
 				name: 'inReplyToStatusId',
 				type: 'resourceLocator',
 				default: { mode: 'id', value: '' },
@@ -251,7 +251,7 @@ export const tweetFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		// displayName: 'Search Text',
-		displayName: 'Search Term',
+		displayName: 'Search term',
 		name: 'searchText',
 		type: 'string',
 		required: true,
@@ -267,7 +267,7 @@ export const tweetFields: INodeProperties[] = [
 			'A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -300,7 +300,7 @@ export const tweetFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -310,7 +310,7 @@ export const tweetFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sortOrder',
 				type: 'options',
 				options: [
@@ -344,7 +344,7 @@ export const tweetFields: INodeProperties[] = [
 					"Tweets after this date will not be returned. This date must be within the last 7 days if you don't have Academic Research access.",
 			},
 			{
-				displayName: 'Tweet Fields',
+				displayName: 'Tweet fields',
 				name: 'tweetFieldsObject',
 				type: 'multiOptions',
 				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
@@ -358,7 +358,7 @@ export const tweetFields: INodeProperties[] = [
 						value: 'author_id',
 					},
 					{
-						name: 'Context Annotations',
+						name: 'Context annotations',
 						value: 'context_annotations',
 					},
 					{
@@ -366,11 +366,11 @@ export const tweetFields: INodeProperties[] = [
 						value: 'conversation_id',
 					},
 					{
-						name: 'Created At',
+						name: 'Created at',
 						value: 'created_at',
 					},
 					{
-						name: 'Edit Controls',
+						name: 'Edit controls',
 						value: 'edit_controls',
 					},
 					{
@@ -386,7 +386,7 @@ export const tweetFields: INodeProperties[] = [
 						value: 'id',
 					},
 					{
-						name: 'In Reply To User ID',
+						name: 'In reply to user ID',
 						value: 'in_reply_to_user_id',
 					},
 					{
@@ -394,31 +394,31 @@ export const tweetFields: INodeProperties[] = [
 						value: 'lang',
 					},
 					{
-						name: 'Non Public Metrics',
+						name: 'Non public metrics',
 						value: 'non_public_metrics',
 					},
 					{
-						name: 'Public Metrics',
+						name: 'Public metrics',
 						value: 'public_metrics',
 					},
 					{
-						name: 'Organic Metrics',
+						name: 'Organic metrics',
 						value: 'organic_metrics',
 					},
 					{
-						name: 'Promoted Metrics',
+						name: 'Promoted metrics',
 						value: 'promoted_metrics',
 					},
 					{
-						name: 'Possibly Sensitive',
+						name: 'Possibly sensitive',
 						value: 'possibly_sensitive',
 					},
 					{
-						name: 'Referenced Tweets',
+						name: 'Referenced tweets',
 						value: 'referenced_tweets',
 					},
 					{
-						name: 'Reply Settings',
+						name: 'Reply settings',
 						value: 'reply_settings',
 					},
 					{

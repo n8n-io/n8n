@@ -10,7 +10,7 @@ import { pipedriveApiRequest, pipedriveApiRequestAllItemsOffset } from '../../tr
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -36,11 +36,11 @@ const properties: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
-				displayName: 'Archived Status',
+				displayName: 'Archived status',
 				name: 'archived_status',
 				type: 'options',
 				default: 'all',
@@ -54,7 +54,7 @@ const properties: INodeProperties[] = [
 						value: 'archived',
 					},
 					{
-						name: 'Not Archived',
+						name: 'Not archived',
 						value: 'not_archived',
 					},
 				],
@@ -67,7 +67,7 @@ const properties: INodeProperties[] = [
 				description: 'Filter leads by organization ID',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner name or ID',
 				name: 'owner_id',
 				type: 'options',
 				typeOptions: {

@@ -28,7 +28,7 @@ export const incidentOperations: INodeProperties[] = [
 				action: 'Get an incident',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many incidents',
 			},
@@ -48,7 +48,7 @@ export const incidentFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Short Description',
+		displayName: 'Short description',
 		name: 'short_description',
 		type: 'string',
 		default: '',
@@ -62,10 +62,10 @@ export const incidentFields: INodeProperties[] = [
 		description: 'Short description of the incident',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['incident'],
@@ -75,7 +75,7 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -88,7 +88,7 @@ export const incidentFields: INodeProperties[] = [
 					'Which user is the incident assigned to. Requires the selection of an assignment group. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Assignment Group Name or ID',
+				displayName: 'Assignment group name or ID',
 				name: 'assignment_group',
 				type: 'options',
 				typeOptions: {
@@ -100,7 +100,7 @@ export const incidentFields: INodeProperties[] = [
 					'The assignment group of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Business Service Name or ID',
+				displayName: 'Business service name or ID',
 				name: 'business_service',
 				type: 'options',
 				description:
@@ -119,7 +119,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The unique identifier of the caller of the incident',
 			},
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
@@ -131,14 +131,14 @@ export const incidentFields: INodeProperties[] = [
 					'The category of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Close Notes',
+				displayName: 'Close notes',
 				name: 'close_notes',
 				type: 'string',
 				default: '',
 				description: 'The close notes for the incident',
 			},
 			{
-				displayName: 'Configuration Item Names or IDs',
+				displayName: 'Configuration item names or IDs',
 				name: 'cmdb_ci',
 				type: 'multiOptions',
 				typeOptions: {
@@ -150,7 +150,7 @@ export const incidentFields: INodeProperties[] = [
 					'Configuration Items, \'cmdb_ci\' in metadata. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Contact Type',
+				displayName: 'Contact type',
 				name: 'contact_type',
 				type: 'options',
 				options: [
@@ -163,11 +163,11 @@ export const incidentFields: INodeProperties[] = [
 						value: 'phone',
 					},
 					{
-						name: 'Self Service',
+						name: 'Self service',
 						value: 'self-service',
 					},
 					{
-						name: 'Walk In',
+						name: 'Walk in',
 						value: 'walk-in',
 					},
 				],
@@ -202,7 +202,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The impact of the incident',
 			},
 			{
-				displayName: 'Resolution Code Name or ID',
+				displayName: 'Resolution code name or ID',
 				name: 'close_code',
 				type: 'options',
 				typeOptions: {
@@ -214,7 +214,7 @@ export const incidentFields: INodeProperties[] = [
 					'The resolution code of the incident, \'close_code\' in metadata. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'State Name or ID',
+				displayName: 'State name or ID',
 				name: 'state',
 				type: 'options',
 				typeOptions: {
@@ -226,7 +226,7 @@ export const incidentFields: INodeProperties[] = [
 					'The state of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Subcategory Name or ID',
+				displayName: 'Subcategory name or ID',
 				name: 'subcategory',
 				type: 'options',
 				typeOptions: {
@@ -266,7 +266,7 @@ export const incidentFields: INodeProperties[] = [
 	/*                                incident:getAll                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -310,14 +310,14 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Exclude Reference Link',
+				displayName: 'Exclude reference link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -338,12 +338,12 @@ export const incidentFields: INodeProperties[] = [
 					'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
-				displayName: 'Return Values',
+				displayName: 'Return values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
 					{
-						name: 'Actual Values',
+						name: 'Actual values',
 						value: 'false',
 					},
 					{
@@ -351,7 +351,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 'all',
 					},
 					{
-						name: 'Display Values',
+						name: 'Display values',
 						value: 'true',
 					},
 				],
@@ -392,14 +392,14 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Exclude Reference Link',
+				displayName: 'Exclude reference link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Field names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -412,12 +412,12 @@ export const incidentFields: INodeProperties[] = [
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
-				displayName: 'Return Values',
+				displayName: 'Return values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
 					{
-						name: 'Actual Values',
+						name: 'Actual values',
 						value: 'false',
 					},
 					{
@@ -425,7 +425,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 'all',
 					},
 					{
-						name: 'Display Values',
+						name: 'Display values',
 						value: 'true',
 					},
 				],
@@ -453,10 +453,10 @@ export const incidentFields: INodeProperties[] = [
 		description: 'Unique identifier of the incident',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['incident'],
@@ -466,7 +466,7 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assigned To Name or ID',
+				displayName: 'Assigned to name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -479,7 +479,7 @@ export const incidentFields: INodeProperties[] = [
 					'Which user is the incident assigned to. Requires the selection of an assignment group. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Assignment Group Name or ID',
+				displayName: 'Assignment group name or ID',
 				name: 'assignment_group',
 				type: 'options',
 				typeOptions: {
@@ -491,7 +491,7 @@ export const incidentFields: INodeProperties[] = [
 					'The assignment group of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Business Service Name or ID',
+				displayName: 'Business service name or ID',
 				name: 'business_service',
 				type: 'options',
 				description:
@@ -510,7 +510,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The unique identifier of the caller of the incident',
 			},
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
@@ -522,14 +522,14 @@ export const incidentFields: INodeProperties[] = [
 					'The category of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Close Notes',
+				displayName: 'Close notes',
 				name: 'close_notes',
 				type: 'string',
 				default: '',
 				description: 'The close notes for the incident',
 			},
 			{
-				displayName: 'Configuration Item Names or IDs',
+				displayName: 'Configuration item names or IDs',
 				name: 'cmdb_ci',
 				type: 'multiOptions',
 				typeOptions: {
@@ -541,7 +541,7 @@ export const incidentFields: INodeProperties[] = [
 					'Configuration Items, \'cmdb_ci\' in metadata. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Contact Type',
+				displayName: 'Contact type',
 				name: 'contact_type',
 				type: 'options',
 				options: [
@@ -554,11 +554,11 @@ export const incidentFields: INodeProperties[] = [
 						value: 'phone',
 					},
 					{
-						name: 'Self Service',
+						name: 'Self service',
 						value: 'self-service',
 					},
 					{
-						name: 'Walk In',
+						name: 'Walk in',
 						value: 'walk-in',
 					},
 				],
@@ -593,7 +593,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The impact of the incident',
 			},
 			{
-				displayName: 'Resolution Code Name or ID',
+				displayName: 'Resolution code name or ID',
 				name: 'close_code',
 				type: 'options',
 				typeOptions: {
@@ -606,7 +606,7 @@ export const incidentFields: INodeProperties[] = [
 					'The resolution code of the incident. \'close_code\' in metadata. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'On Hold Reason Name or ID',
+				displayName: 'On hold reason name or ID',
 				name: 'hold_reason',
 				type: 'options',
 				typeOptions: {
@@ -618,7 +618,7 @@ export const incidentFields: INodeProperties[] = [
 					'The on hold reason for the incident. It applies if the state is <code>On Hold</code>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'State Name or ID',
+				displayName: 'State name or ID',
 				name: 'state',
 				type: 'options',
 				typeOptions: {
@@ -630,7 +630,7 @@ export const incidentFields: INodeProperties[] = [
 					'The state of the incident. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Subcategory Name or ID',
+				displayName: 'Subcategory name or ID',
 				name: 'subcategory',
 				type: 'options',
 				typeOptions: {
@@ -664,7 +664,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The urgency of the incident',
 			},
 			{
-				displayName: 'Work Notes',
+				displayName: 'Work notes',
 				name: 'work_notes',
 				type: 'string',
 				default: '',

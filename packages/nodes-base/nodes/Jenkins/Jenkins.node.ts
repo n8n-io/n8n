@@ -100,7 +100,7 @@ export class Jenkins implements INodeType {
 						action: 'Trigger a job',
 					},
 					{
-						name: 'Trigger with Parameters',
+						name: 'Trigger with parameters',
 						value: 'triggerParams',
 						description: 'Trigger a specific job',
 						action: 'Trigger a job with parameters',
@@ -124,7 +124,7 @@ export class Jenkins implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Job Name or ID',
+				displayName: 'Job name or ID',
 				name: 'job',
 				type: 'options',
 				typeOptions: {
@@ -149,7 +149,7 @@ export class Jenkins implements INodeType {
 				displayName: 'Parameters',
 				name: 'param',
 				type: 'fixedCollection',
-				placeholder: 'Add Parameter',
+				placeholder: 'Add parameter',
 				displayOptions: {
 					show: {
 						resource: ['job'],
@@ -194,7 +194,7 @@ export class Jenkins implements INodeType {
 			//         Copy or Create a Job
 			// --------------------------------------------------------------------------------------------------------
 			{
-				displayName: 'New Job Name',
+				displayName: 'New job name',
 				name: 'newJob',
 				type: 'string',
 				displayOptions: {
@@ -249,17 +249,17 @@ export class Jenkins implements INodeType {
 				},
 				options: [
 					{
-						name: 'Cancel Quiet Down',
+						name: 'Cancel quiet down',
 						value: 'cancelQuietDown',
 						description: 'Cancel quiet down state',
-						action: 'Cancel Quiet Down an instance',
+						action: 'Cancel quiet down an instance',
 					},
 					{
-						name: 'Quiet Down',
+						name: 'Quiet down',
 						value: 'quietDown',
 						description:
 							'Put Jenkins in quiet mode, no builds can be started, Jenkins is ready for shutdown',
-						action: 'Quiet Down an instance',
+						action: 'Quiet down an instance',
 					},
 					{
 						name: 'Restart',
@@ -268,17 +268,17 @@ export class Jenkins implements INodeType {
 						action: 'Restart an instance',
 					},
 					{
-						name: 'Safely Restart',
+						name: 'Safely restart',
 						value: 'safeRestart',
 						description:
 							'Restart Jenkins once no jobs are running on environments where it is possible',
-						action: 'Safely Restart an instance',
+						action: 'Safely restart an instance',
 					},
 					{
-						name: 'Safely Shutdown',
+						name: 'Safely shutdown',
 						value: 'safeExit',
 						description: 'Shutdown once no jobs are running',
-						action: 'Safely Shutdown an instance',
+						action: 'Safely shutdown an instance',
 					},
 					{
 						name: 'Shutdown',
@@ -331,7 +331,7 @@ export class Jenkins implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'List Builds',
 						action: 'Get many builds',
@@ -341,7 +341,7 @@ export class Jenkins implements INodeType {
 				noDataExpression: true,
 			},
 			{
-				displayName: 'Job Name or ID',
+				displayName: 'Job name or ID',
 				name: 'job',
 				type: 'options',
 				typeOptions: {
@@ -359,7 +359,7 @@ export class Jenkins implements INodeType {
 					'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				default: false,

@@ -20,14 +20,14 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Include Similar Alerts',
+				displayName: 'Include similar alerts',
 				name: 'includeSimilarAlerts',
 				type: 'boolean',
 				description: 'Whether to include similar cases',
 				default: false,
 			},
 			{
-				displayName: 'Include Similar Cases',
+				displayName: 'Include similar cases',
 				name: 'includeSimilarCases',
 				type: 'boolean',
 				description: 'Whether to include similar cases',

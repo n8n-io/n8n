@@ -31,7 +31,7 @@ export const listEntryOperations: INodeProperties[] = [
 				action: 'Get a list entry',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many list entries',
 				action: 'Get many list entries',
@@ -46,7 +46,7 @@ export const listEntryFields: INodeProperties[] = [
 	/*                                listEntry:create                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		required: true,
@@ -79,10 +79,10 @@ export const listEntryFields: INodeProperties[] = [
 			'The unique ID of the entity (person, organization, or opportunity) to add to this list',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -105,7 +105,7 @@ export const listEntryFields: INodeProperties[] = [
 	/*                                 listEntry:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		required: true,
@@ -123,7 +123,7 @@ export const listEntryFields: INodeProperties[] = [
 			'The unique ID of the list that contains the specified list_entry_id. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'List Entry ID',
+		displayName: 'List entry ID',
 		name: 'listEntryId',
 		type: 'string',
 		required: true,
@@ -140,7 +140,7 @@ export const listEntryFields: INodeProperties[] = [
 	/*                                 listEntry:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -157,7 +157,7 @@ export const listEntryFields: INodeProperties[] = [
 			'The unique ID of the list whose list entries are to be retrieved. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -191,7 +191,7 @@ export const listEntryFields: INodeProperties[] = [
 	/*                                 listEntry:delete                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List Name or ID',
+		displayName: 'List name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -209,7 +209,7 @@ export const listEntryFields: INodeProperties[] = [
 			'The unique ID of the list that contains the specified list_entry_id. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'List Entry ID',
+		displayName: 'List entry ID',
 		name: 'listEntryId',
 		type: 'string',
 		required: true,

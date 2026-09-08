@@ -28,10 +28,10 @@ export const description: INodeProperties[] = [
 		description: 'The prompt to query the page content',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -47,7 +47,7 @@ export const description: INodeProperties[] = [
 				...parseJsonOutputField,
 			},
 			{
-				displayName: 'Include Visual Analysis',
+				displayName: 'Include visual analysis',
 				name: 'includeVisualAnalysis',
 				type: 'boolean',
 				default: false,

@@ -23,7 +23,7 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'File(s) Selector',
+		displayName: 'File(s) selector',
 		name: 'fileSelector',
 		type: 'string',
 		default: '',
@@ -41,7 +41,7 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'File Extension',
+				displayName: 'File extension',
 				name: 'fileExtension',
 				type: 'string',
 				default: '',
@@ -49,7 +49,7 @@ export const properties: INodeProperties[] = [
 				description: 'Extension of the file in the output binary',
 			},
 			{
-				displayName: 'File Name',
+				displayName: 'File name',
 				name: 'fileName',
 				type: 'string',
 				default: '',
@@ -57,7 +57,7 @@ export const properties: INodeProperties[] = [
 				description: 'Name of the file in the output binary',
 			},
 			{
-				displayName: 'Mime Type',
+				displayName: 'MIME type',
 				name: 'mimeType',
 				type: 'string',
 				default: '',
@@ -65,7 +65,7 @@ export const properties: INodeProperties[] = [
 				description: 'Mime type of the file in the output binary',
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put output file in field',
 				name: 'dataPropertyName',
 				type: 'string',
 				default: 'data',
@@ -74,7 +74,7 @@ export const properties: INodeProperties[] = [
 				hint: 'The name of the output binary field to put the file in',
 			},
 			{
-				displayName: 'Treat Brackets and Parentheses as Literal',
+				displayName: 'Treat brackets and parentheses as literal',
 				name: 'literalBrackets',
 				type: 'boolean',
 				default: true,

@@ -31,7 +31,7 @@ export const conversationOperations: INodeProperties[] = [
 				action: 'Get a conversation',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many conversations',
 				action: 'Get many conversations',
@@ -46,7 +46,7 @@ export const conversationFields: INodeProperties[] = [
 	/*                                conversation:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Mailbox Name or ID',
+		displayName: 'Mailbox name or ID',
 		name: 'mailboxId',
 		type: 'options',
 		typeOptions: {
@@ -134,7 +134,7 @@ export const conversationFields: INodeProperties[] = [
 		description: 'Conversation type',
 	},
 	{
-		displayName: 'Resolve Data',
+		displayName: 'Resolve data',
 		name: 'resolveData',
 		type: 'boolean',
 		default: true,
@@ -149,10 +149,10 @@ export const conversationFields: INodeProperties[] = [
 			'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -162,14 +162,14 @@ export const conversationFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assign To',
+				displayName: 'Assign to',
 				name: 'assignTo',
 				type: 'number',
 				default: 0,
 				description: 'The Help Scout user assigned to the conversation',
 			},
 			{
-				displayName: 'Auto Reply',
+				displayName: 'Auto reply',
 				name: 'autoReply',
 				type: 'boolean',
 				default: false,
@@ -177,21 +177,21 @@ export const conversationFields: INodeProperties[] = [
 					'Whether set to true, an auto reply will be sent as long as there is at least one customer thread in the conversation',
 			},
 			{
-				displayName: 'Closed At',
+				displayName: 'Closed at',
 				name: 'closedAt',
 				type: 'dateTime',
 				default: '',
 				description: 'When the conversation was closed, only applicable for imported conversations',
 			},
 			{
-				displayName: 'Created At',
+				displayName: 'Created at',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
 				description: 'When this conversation was created - ISO 8601 date time',
 			},
 			{
-				displayName: 'Customer Email',
+				displayName: 'Customer email',
 				name: 'customerEmail',
 				type: 'string',
 				default: '',
@@ -210,7 +210,7 @@ export const conversationFields: INodeProperties[] = [
 				description: 'Whether set to true, no outgoing emails or notifications will be generated',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -232,7 +232,7 @@ export const conversationFields: INodeProperties[] = [
 	{
 		displayName: 'Threads',
 		name: 'threadsUi',
-		placeholder: 'Add Thread',
+		placeholder: 'Add thread',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -285,7 +285,7 @@ export const conversationFields: INodeProperties[] = [
 						description: 'The message text',
 					},
 					{
-						displayName: 'Bcc',
+						displayName: 'BCC',
 						name: 'bcc',
 						displayOptions: {
 							show: {
@@ -301,7 +301,7 @@ export const conversationFields: INodeProperties[] = [
 						description: 'Email addresses',
 					},
 					{
-						displayName: 'Cc',
+						displayName: 'CC',
 						name: 'cc',
 						displayOptions: {
 							show: {
@@ -368,7 +368,7 @@ export const conversationFields: INodeProperties[] = [
 	/*                                conversation:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -411,7 +411,7 @@ export const conversationFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assign To',
+				displayName: 'Assign to',
 				name: 'assignTo',
 				type: 'number',
 				default: 0,
@@ -445,7 +445,7 @@ export const conversationFields: INodeProperties[] = [
 				description: 'Filters conversations from a specific mailbox',
 			},
 			{
-				displayName: 'Modified Since',
+				displayName: 'Modified since',
 				name: 'modifiedSince',
 				type: 'dateTime',
 				default: '',
@@ -470,20 +470,20 @@ export const conversationFields: INodeProperties[] = [
 					'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/conversations/list/#query">Examples</a>',
 			},
 			{
-				displayName: 'Sort Field',
+				displayName: 'Sort field',
 				name: 'sortField',
 				type: 'options',
 				options: [
 					{
-						name: 'Created At',
+						name: 'Created at',
 						value: 'createdAt',
 					},
 					{
-						name: 'Customer Email',
+						name: 'Customer email',
 						value: 'customerEmail',
 					},
 					{
-						name: 'Customer Name',
+						name: 'Customer name',
 						value: 'customerName',
 					},
 					{
@@ -491,7 +491,7 @@ export const conversationFields: INodeProperties[] = [
 						value: 'mailboxid',
 					},
 					{
-						name: 'Modified At',
+						name: 'Modified at',
 						value: 'modifiedAt',
 					},
 					{
@@ -515,7 +515,7 @@ export const conversationFields: INodeProperties[] = [
 				description: 'Sorts the result by specified field',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sort order',
 				name: 'sortOrder',
 				type: 'options',
 				options: [
@@ -564,7 +564,7 @@ export const conversationFields: INodeProperties[] = [
 				description: 'Filter conversation by status',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tag names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

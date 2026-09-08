@@ -66,7 +66,7 @@ export class HackerNews implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get Many',
+						name: 'Get many',
 						value: 'getAll',
 						description: 'Get many items',
 						action: 'Get many items',
@@ -146,7 +146,7 @@ export class HackerNews implements INodeType {
 				},
 			},
 			{
-				displayName: 'Return All',
+				displayName: 'Return all',
 				name: 'returnAll',
 				type: 'boolean',
 				default: false,
@@ -176,10 +176,10 @@ export class HackerNews implements INodeType {
 				},
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -189,7 +189,7 @@ export class HackerNews implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Include Comments',
+						displayName: 'Include comments',
 						name: 'includeComments',
 						type: 'boolean',
 						default: false,
@@ -198,10 +198,10 @@ export class HackerNews implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				displayOptions: {
 					show: {
@@ -233,7 +233,7 @@ export class HackerNews implements INodeType {
 								description: 'Returns query results filtered by comment tag',
 							},
 							{
-								name: 'Front Page',
+								name: 'Front page',
 								value: 'front_page', // snake case per HN tags
 								description: 'Returns query results filtered by Front Page tag',
 							},

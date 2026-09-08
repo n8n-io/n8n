@@ -56,7 +56,7 @@ export class HomeAssistant implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Camera Proxy',
+						name: 'Camera proxy',
 						value: 'cameraProxy',
 					},
 					{

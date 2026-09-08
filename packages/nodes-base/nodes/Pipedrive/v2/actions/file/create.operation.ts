@@ -10,7 +10,7 @@ import { pipedriveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input binary field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -19,10 +19,10 @@ const properties: INodeProperties[] = [
 		hint: 'The name of the input binary field containing the file to be written',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		options: [
 			{
@@ -47,7 +47,7 @@ const properties: INodeProperties[] = [
 				description: 'ID of the lead this file will be associated with',
 			},
 			{
-				displayName: 'Organization Name or ID',
+				displayName: 'Organization name or ID',
 				name: 'org_id',
 				type: 'options',
 				typeOptions: {

@@ -151,7 +151,7 @@ export const genericFiltersCollection: INodeProperties = {
 	displayName: 'Filters',
 	name: 'filters',
 	type: 'fixedCollection',
-	placeholder: 'Add Filter',
+	placeholder: 'Add filter',
 	default: {},
 	typeOptions: {
 		multipleValues: true,
@@ -178,7 +178,7 @@ export const genericFiltersCollection: INodeProperties = {
 							description: 'Field contains the substring from value',
 						},
 						{
-							name: 'Ends With',
+							name: 'Ends with',
 							value: '_endsWith',
 							description: 'Field ends with value',
 						},
@@ -188,12 +188,12 @@ export const genericFiltersCollection: INodeProperties = {
 							description: 'Field is equal to value',
 						},
 						{
-							name: 'Greater Than',
+							name: 'Greater than',
 							value: '_gt',
 							description: 'Field is greater than value',
 						},
 						{
-							name: 'Greater Than Or Equal To',
+							name: 'Greater than or equal to',
 							value: '_gte',
 							description: 'Field is greater than or equal to value',
 						},
@@ -203,27 +203,27 @@ export const genericFiltersCollection: INodeProperties = {
 							description: 'Field is one of the values',
 						},
 						{
-							name: 'Less Than',
+							name: 'Less than',
 							value: '_lt',
 							description: 'Field is less than value',
 						},
 						{
-							name: 'Less Than Or Equal To',
+							name: 'Less than or equal to',
 							value: '_lte',
 							description: 'Field is less than or equal to value',
 						},
 						{
-							name: 'Match Word',
+							name: 'Match word',
 							value: '_match',
 							description: 'Field contains the value as a word',
 						},
 						{
-							name: 'Not Equal',
+							name: 'Not equal',
 							value: '_ne',
 							description: 'Field is not equal to value',
 						},
 						{
-							name: 'Starts With',
+							name: 'Starts with',
 							value: '_startsWith',
 							description: 'Field starts with value',
 						},
@@ -285,7 +285,7 @@ export const sortCollection: INodeProperties = {
 	displayName: 'Sort',
 	name: 'sort',
 	type: 'fixedCollection',
-	placeholder: 'Add Sort Rule',
+	placeholder: 'Add sort rule',
 	default: {},
 	typeOptions: {
 		multipleValues: true,

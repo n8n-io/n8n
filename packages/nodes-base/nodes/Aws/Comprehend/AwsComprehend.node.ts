@@ -49,19 +49,19 @@ export class AwsComprehend implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Detect Dominant Language',
+						name: 'Detect dominant language',
 						value: 'detectDominantLanguage',
 						description: 'Identify the dominant language',
 						action: 'Identify the dominant language',
 					},
 					{
-						name: 'Detect Entities',
+						name: 'Detect entities',
 						value: 'detectEntities',
 						description: 'Inspects text for named entities, and returns information about them',
 						action: 'Inspect text for named entities, and returns information about them',
 					},
 					{
-						name: 'Detect Sentiment',
+						name: 'Detect sentiment',
 						value: 'detectSentiment',
 						description: 'Analyse the sentiment of the text',
 						action: 'Analyze the sentiment of the text',
@@ -70,7 +70,7 @@ export class AwsComprehend implements INodeType {
 				default: 'detectDominantLanguage',
 			},
 			{
-				displayName: 'Language Code',
+				displayName: 'Language code',
 				name: 'languageCode',
 				type: 'options',
 				options: [
@@ -159,10 +159,10 @@ export class AwsComprehend implements INodeType {
 					'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						resource: ['text'],

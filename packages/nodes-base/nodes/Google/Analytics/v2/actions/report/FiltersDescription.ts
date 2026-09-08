@@ -29,11 +29,11 @@ export const dimensionDropdown: INodeProperties[] = [
 				value: 'date',
 			},
 			{
-				name: 'Device Category',
+				name: 'Device category',
 				value: 'deviceCategory',
 			},
 			{
-				name: 'Item Name',
+				name: 'Item name',
 				value: 'itemName',
 			},
 			{
@@ -41,11 +41,11 @@ export const dimensionDropdown: INodeProperties[] = [
 				value: 'language',
 			},
 			{
-				name: 'Page Location',
+				name: 'Page location',
 				value: 'pageLocation',
 			},
 			{
-				name: 'Source / Medium',
+				name: 'Source / medium',
 				value: 'sourceMedium',
 			},
 			{
@@ -83,15 +83,15 @@ export const metricDropdown: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
-				name: '1 Day Active Users',
+				name: '1 day active users',
 				value: 'active1DayUsers',
 			},
 			{
-				name: '28 Day Active Users',
+				name: '28 day active users',
 				value: 'active28DayUsers',
 			},
 			{
-				name: '7 Day Active Users',
+				name: '7 day active users',
 				value: 'active7DayUsers',
 			},
 			{
@@ -103,11 +103,11 @@ export const metricDropdown: INodeProperties[] = [
 				value: 'eventCount',
 			},
 			{
-				name: 'Page Views',
+				name: 'Page views',
 				value: 'screenPageViews',
 			},
 			{
-				name: 'Session Duration',
+				name: 'Session duration',
 				value: 'userEngagementDuration',
 			},
 			{
@@ -115,11 +115,11 @@ export const metricDropdown: INodeProperties[] = [
 				value: 'sessions',
 			},
 			{
-				name: 'Sessions per User',
+				name: 'Sessions per user',
 				value: 'sessionsPerUser',
 			},
 			{
-				name: 'Total Users',
+				name: 'Total users',
 				value: 'totalUsers',
 			},
 			{
@@ -174,10 +174,10 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 			multipleValues: true,
 		},
 		default: {},
-		placeholder: 'Add Expression',
+		placeholder: 'Add expression',
 		options: [
 			{
-				displayName: 'String Filter',
+				displayName: 'String filter',
 				name: 'stringFilter',
 				values: [
 					...dimensionDropdown,
@@ -188,39 +188,39 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Case Sensitive',
+						displayName: 'Case sensitive',
 						name: 'caseSensitive',
 						type: 'boolean',
 						default: true,
 					},
 					{
-						displayName: 'Match Type',
+						displayName: 'Match type',
 						name: 'matchType',
 						type: 'options',
 						default: 'EXACT',
 						options: [
 							{
-								name: 'Begins With',
+								name: 'Begins with',
 								value: 'BEGINS_WITH',
 							},
 							{
-								name: 'Contains Value',
+								name: 'Contains value',
 								value: 'CONTAINS',
 							},
 							{
-								name: 'Ends With',
+								name: 'Ends with',
 								value: 'ENDS_WITH',
 							},
 							{
-								name: 'Exact Match',
+								name: 'Exact match',
 								value: 'EXACT',
 							},
 							{
-								name: 'Full Match for the Regular Expression',
+								name: 'Full match for the regular expression',
 								value: 'FULL_REGEXP',
 							},
 							{
-								name: 'Partial Match for the Regular Expression',
+								name: 'Partial match for the regular expression',
 								value: 'PARTIAL_REGEXP',
 							},
 						],
@@ -228,7 +228,7 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'In List Filter',
+				displayName: 'In list filter',
 				name: 'inListFilter',
 				values: [
 					...dimensionDropdown,
@@ -240,7 +240,7 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 						hint: 'Comma separated list of values. Must be non-empty.',
 					},
 					{
-						displayName: 'Case Sensitive',
+						displayName: 'Case sensitive',
 						name: 'caseSensitive',
 						type: 'boolean',
 						default: true,
@@ -248,22 +248,22 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Numeric Filter',
+				displayName: 'Numeric filter',
 				name: 'numericFilter',
 				values: [
 					...dimensionDropdown,
 					{
-						displayName: 'Value Type',
+						displayName: 'Value type',
 						name: 'valueType',
 						type: 'options',
 						default: 'doubleValue',
 						options: [
 							{
-								name: 'Double Value',
+								name: 'Double value',
 								value: 'doubleValue',
 							},
 							{
-								name: 'Integer Value',
+								name: 'Integer value',
 								value: 'int64Value',
 							},
 						],
@@ -286,19 +286,19 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 								value: 'EQUAL',
 							},
 							{
-								name: 'Greater Than',
+								name: 'Greater than',
 								value: 'GREATER_THAN',
 							},
 							{
-								name: 'Greater than or Equal',
+								name: 'Greater than or equal',
 								value: 'GREATER_THAN_OR_EQUAL',
 							},
 							{
-								name: 'Less Than',
+								name: 'Less than',
 								value: 'LESS_THAN',
 							},
 							{
-								name: 'Less than or Equal',
+								name: 'Less than or equal',
 								value: 'LESS_THAN_OR_EQUAL',
 							},
 						],
@@ -311,28 +311,28 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 
 export const dimensionFilterField: INodeProperties[] = [
 	{
-		displayName: 'Dimensions Filters',
+		displayName: 'Dimensions filters',
 		name: 'dimensionFiltersUI',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		options: [
 			{
-				displayName: 'Filter Expressions',
+				displayName: 'Filter expressions',
 				name: 'filterExpressions',
 				values: [
 					{
-						displayName: 'Filter Expression Type',
+						displayName: 'Filter expression type',
 						name: 'filterExpressionType',
 						type: 'options',
 						default: 'andGroup',
 						options: [
 							{
-								name: 'And Group',
+								name: 'And group',
 								value: 'andGroup',
 							},
 							{
-								name: 'Or Group',
+								name: 'Or group',
 								value: 'orGroup',
 							},
 						],
@@ -353,37 +353,37 @@ const metricsFilterExpressions: INodeProperties[] = [
 			multipleValues: true,
 		},
 		default: {},
-		placeholder: 'Add Expression',
+		placeholder: 'Add expression',
 		options: [
 			{
-				displayName: 'Between Filter',
+				displayName: 'Between filter',
 				name: 'betweenFilter',
 				values: [
 					...metricDropdown,
 					{
-						displayName: 'Value Type',
+						displayName: 'Value type',
 						name: 'valueType',
 						type: 'options',
 						default: 'doubleValue',
 						options: [
 							{
-								name: 'Double Value',
+								name: 'Double value',
 								value: 'doubleValue',
 							},
 							{
-								name: 'Integer Value',
+								name: 'Integer value',
 								value: 'int64Value',
 							},
 						],
 					},
 					{
-						displayName: 'From Value',
+						displayName: 'From value',
 						name: 'fromValue',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'To Value',
+						displayName: 'To value',
 						name: 'toValue',
 						type: 'string',
 						default: '',
@@ -391,22 +391,22 @@ const metricsFilterExpressions: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Numeric Filter',
+				displayName: 'Numeric filter',
 				name: 'numericFilter',
 				values: [
 					...metricDropdown,
 					{
-						displayName: 'Value Type',
+						displayName: 'Value type',
 						name: 'valueType',
 						type: 'options',
 						default: 'doubleValue',
 						options: [
 							{
-								name: 'Double Value',
+								name: 'Double value',
 								value: 'doubleValue',
 							},
 							{
-								name: 'Integer Value',
+								name: 'Integer value',
 								value: 'int64Value',
 							},
 						],
@@ -429,19 +429,19 @@ const metricsFilterExpressions: INodeProperties[] = [
 								value: 'EQUAL',
 							},
 							{
-								name: 'Greater Than',
+								name: 'Greater than',
 								value: 'GREATER_THAN',
 							},
 							{
-								name: 'Greater than or Equal',
+								name: 'Greater than or equal',
 								value: 'GREATER_THAN_OR_EQUAL',
 							},
 							{
-								name: 'Less Than',
+								name: 'Less than',
 								value: 'LESS_THAN',
 							},
 							{
-								name: 'Less than or Equal',
+								name: 'Less than or equal',
 								value: 'LESS_THAN_OR_EQUAL',
 							},
 						],
@@ -454,28 +454,28 @@ const metricsFilterExpressions: INodeProperties[] = [
 
 export const metricsFilterField: INodeProperties[] = [
 	{
-		displayName: 'Metrics Filters',
+		displayName: 'Metrics filters',
 		name: 'metricsFiltersUI',
 		type: 'fixedCollection',
 		default: {},
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		options: [
 			{
-				displayName: 'Filter Expressions',
+				displayName: 'Filter expressions',
 				name: 'filterExpressions',
 				values: [
 					{
-						displayName: 'Filter Expression Type',
+						displayName: 'Filter expression type',
 						name: 'filterExpressionType',
 						type: 'options',
 						default: 'andGroup',
 						options: [
 							{
-								name: 'And Group',
+								name: 'And group',
 								value: 'andGroup',
 							},
 							{
-								name: 'Or Group',
+								name: 'Or group',
 								value: 'orGroup',
 							},
 						],

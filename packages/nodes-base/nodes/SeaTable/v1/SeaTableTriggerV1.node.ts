@@ -41,7 +41,7 @@ export class SeaTableTriggerV1 implements INodeType {
 			outputs: [NodeConnectionTypes.Main],
 			properties: [
 				{
-					displayName: 'Table Name or ID',
+					displayName: 'Table name or ID',
 					name: 'tableName',
 					type: 'options',
 					required: true,
@@ -58,7 +58,7 @@ export class SeaTableTriggerV1 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'Row Created',
+							name: 'Row created',
 							value: 'rowCreated',
 							description: 'Trigger on newly created rows',
 						},

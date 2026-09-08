@@ -58,7 +58,7 @@ export class CiscoWebexTrigger implements INodeType {
 						value: 'all',
 					},
 					{
-						name: 'Attachment Action',
+						name: 'Attachment action',
 						value: 'attachmentAction',
 					},
 					{
@@ -91,7 +91,7 @@ export class CiscoWebexTrigger implements INodeType {
 			},
 			...getEvents(),
 			{
-				displayName: 'Resolve Data',
+				displayName: 'Resolve data',
 				name: 'resolveData',
 				type: 'boolean',
 				displayOptions: {
@@ -108,11 +108,11 @@ export class CiscoWebexTrigger implements INodeType {
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				default: {},
 				options: [
 					{
-						displayName: 'Has Files',
+						displayName: 'Has files',
 						name: 'hasFiles',
 						type: 'boolean',
 						displayOptions: {
@@ -125,7 +125,7 @@ export class CiscoWebexTrigger implements INodeType {
 						description: 'Whether to limit to messages which contain file content attachments',
 					},
 					{
-						displayName: 'Is Locked',
+						displayName: 'Is locked',
 						name: 'isLocked',
 						type: 'boolean',
 						displayOptions: {
@@ -138,7 +138,7 @@ export class CiscoWebexTrigger implements INodeType {
 						description: 'Whether to limit to rooms that are locked',
 					},
 					{
-						displayName: 'Is Moderator',
+						displayName: 'Is moderator',
 						name: 'isModerator',
 						type: 'boolean',
 						displayOptions: {
@@ -151,7 +151,7 @@ export class CiscoWebexTrigger implements INodeType {
 						description: 'Whether to limit to moderators of a room',
 					},
 					{
-						displayName: 'Mentioned People',
+						displayName: 'Mentioned people',
 						name: 'mentionedPeople',
 						type: 'string',
 						displayOptions: {
@@ -178,7 +178,7 @@ export class CiscoWebexTrigger implements INodeType {
 						description: 'Limit to a particular message, by ID',
 					},
 					{
-						displayName: 'Owned By',
+						displayName: 'Owned by',
 						name: 'ownedBy',
 						displayOptions: {
 							show: {
@@ -189,7 +189,7 @@ export class CiscoWebexTrigger implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Person Email',
+						displayName: 'Person email',
 						name: 'personEmail',
 						type: 'string',
 						displayOptions: {
@@ -202,7 +202,7 @@ export class CiscoWebexTrigger implements INodeType {
 						description: 'Limit to a particular person, by email',
 					},
 					{
-						displayName: 'Person Email',
+						displayName: 'Person email',
 						name: 'personEmail',
 						type: 'string',
 						displayOptions: {
@@ -294,7 +294,7 @@ export class CiscoWebexTrigger implements INodeType {
 						description: 'Limit to a particular room, by ID',
 					},
 					{
-						displayName: 'Room Type',
+						displayName: 'Room type',
 						name: 'roomType',
 						type: 'options',
 						options: [

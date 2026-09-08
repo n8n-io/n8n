@@ -129,7 +129,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 						value: 'oAuth2',
 					},
 					{
-						name: 'Service Account',
+						name: 'Service account',
 						value: 'serviceAccount',
 					},
 				],
@@ -142,7 +142,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				default: 'messageReceived',
 				options: [
 					{
-						name: 'Message Received',
+						name: 'Message received',
 						value: 'messageReceived',
 					},
 				],
@@ -161,7 +161,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			},
 			simplifyMemoryNotice({ displayOptions: { show: { simple: [false] } } }),
 			{
-				displayName: 'Max Emails per Poll',
+				displayName: 'Max emails per poll',
 				name: 'maxResults',
 				type: 'number',
 				default: 10,
@@ -181,25 +181,25 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Filter',
+				placeholder: 'Add filter',
 				default: {},
 				options: [
 					{
-						displayName: 'Include Spam and Trash',
+						displayName: 'Include spam and trash',
 						name: 'includeSpamTrash',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to include messages from SPAM and TRASH in the results',
 					},
 					{
-						displayName: 'Include Drafts',
+						displayName: 'Include drafts',
 						name: 'includeDrafts',
 						type: 'boolean',
 						default: false,
 						description: 'Whether to include email drafts in the results',
 					},
 					{
-						displayName: 'Label Names or IDs',
+						displayName: 'Label names or IDs',
 						name: 'labelIds',
 						type: 'multiOptions',
 						typeOptions: {
@@ -223,7 +223,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 						description: 'Only return messages matching the specified query',
 					},
 					{
-						displayName: 'Read Status',
+						displayName: 'Read status',
 						name: 'readStatus',
 						type: 'options',
 						default: 'unread',
@@ -269,7 +269,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				},
 				options: [
 					{
-						displayName: 'Attachment Prefix',
+						displayName: 'Attachment prefix',
 						name: 'dataPropertyAttachmentsPrefixName',
 						type: 'string',
 						default: 'attachment_',
@@ -277,7 +277,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 							"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
 					},
 					{
-						displayName: 'Download Attachments',
+						displayName: 'Download attachments',
 						name: 'downloadAttachments',
 						type: 'boolean',
 						default: false,

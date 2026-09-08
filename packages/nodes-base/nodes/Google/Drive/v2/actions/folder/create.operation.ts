@@ -14,7 +14,7 @@ import { driveRLC, folderRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Folder Name',
+		displayName: 'Folder name',
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -39,14 +39,14 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Simplify Output',
+				displayName: 'Simplify output',
 				name: 'simplifyOutput',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to return a simplified version of the response instead of all fields',
 			},
 			{
-				displayName: 'Folder Color',
+				displayName: 'Folder color',
 				name: 'folderColorRgb',
 				type: 'color',
 				default: '',

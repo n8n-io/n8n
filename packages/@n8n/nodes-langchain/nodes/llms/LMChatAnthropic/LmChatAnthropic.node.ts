@@ -214,7 +214,7 @@ export class LmChatAnthropic implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a model...',
@@ -251,7 +251,7 @@ export class LmChatAnthropic implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a model...',
@@ -288,7 +288,7 @@ export class LmChatAnthropic implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a model...',
@@ -325,7 +325,7 @@ export class LmChatAnthropic implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'From List',
+						displayName: 'From list',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a model...',
@@ -352,20 +352,20 @@ export class LmChatAnthropic implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
 				options: [
 					{
-						displayName: 'Maximum Number of Tokens',
+						displayName: 'Maximum number of tokens',
 						name: 'maxTokensToSample',
 						default: DEFAULT_MAX_TOKENS,
 						description: 'The maximum number of tokens to generate in the completion',
 						type: 'number',
 					},
 					{
-						displayName: 'Sampling Temperature',
+						displayName: 'Sampling temperature',
 						name: 'temperature',
 						default: 0.7,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
@@ -410,7 +410,7 @@ export class LmChatAnthropic implements INodeType {
 						},
 					},
 					{
-						displayName: 'Enable Thinking',
+						displayName: 'Enable thinking',
 						name: 'thinking',
 						type: 'boolean',
 						default: false,
@@ -422,7 +422,7 @@ export class LmChatAnthropic implements INodeType {
 						},
 					},
 					{
-						displayName: 'Thinking Budget (Tokens)',
+						displayName: 'Thinking budget (tokens)',
 						name: 'thinkingBudget',
 						type: 'number',
 						default: MIN_THINKING_BUDGET,
@@ -435,7 +435,7 @@ export class LmChatAnthropic implements INodeType {
 						},
 					},
 					{
-						displayName: 'Thinking Mode',
+						displayName: 'Thinking mode',
 						name: 'thinkingMode',
 						type: 'options',
 						default: 'disabled',
@@ -447,12 +447,12 @@ export class LmChatAnthropic implements INodeType {
 								description: 'No extended thinking',
 							},
 							{
-								name: 'Adaptive (Recommended)',
+								name: 'Adaptive (recommended)',
 								value: 'adaptive',
 								description: 'Claude decides how much to think; control with Effort',
 							},
 							{
-								name: 'Manual (Deprecated)',
+								name: 'Manual (deprecated)',
 								value: 'manual',
 								description: 'Legacy fixed-budget mode; rejected by Opus 4.7+',
 							},
@@ -474,7 +474,7 @@ export class LmChatAnthropic implements INodeType {
 							{ name: 'Low', value: 'low' },
 							{ name: 'Medium', value: 'medium' },
 							{ name: 'High', value: 'high' },
-							{ name: 'X-High', value: 'xhigh' },
+							{ name: 'X-high', value: 'xhigh' },
 							{ name: 'Max', value: 'max' },
 						],
 						displayOptions: {
@@ -505,7 +505,7 @@ export class LmChatAnthropic implements INodeType {
 						},
 					},
 					{
-						displayName: 'Thinking Budget (Tokens)',
+						displayName: 'Thinking budget (tokens)',
 						name: 'thinkingBudget',
 						type: 'number',
 						default: MIN_THINKING_BUDGET,
@@ -518,7 +518,7 @@ export class LmChatAnthropic implements INodeType {
 						},
 					},
 					{
-						displayName: 'Stream Responses',
+						displayName: 'Stream responses',
 						name: 'streaming',
 						type: 'boolean',
 						default: false,
@@ -526,7 +526,7 @@ export class LmChatAnthropic implements INodeType {
 							'Whether the model should stream its response over Server-Sent Events instead of returning a single non-streamed payload. Final output shape is unchanged.',
 					},
 					{
-						displayName: 'Prompt Caching',
+						displayName: 'Prompt caching',
 						name: 'promptCaching',
 						type: 'options',
 						default: 'disabled',
@@ -534,8 +534,8 @@ export class LmChatAnthropic implements INodeType {
 							'Whether to cache the system prompt, tool definitions, and conversation history between requests using <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">Anthropic prompt caching</a>. The value sets how long cached content stays valid before it has to be written again.',
 						options: [
 							{ name: 'Disabled', value: 'disabled' },
-							{ name: '5 Minutes', value: '5m' },
-							{ name: '1 Hour', value: '1h' },
+							{ name: '5 minutes', value: '5m' },
+							{ name: '1 hour', value: '1h' },
 						],
 					},
 				],

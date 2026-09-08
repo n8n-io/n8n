@@ -84,11 +84,11 @@ export class MonicaCrm implements INodeType {
 						value: 'contact',
 					},
 					{
-						name: 'Contact Field',
+						name: 'Contact field',
 						value: 'contactField',
 					},
 					{
-						name: 'Contact Tag',
+						name: 'Contact tag',
 						value: 'contactTag',
 					},
 					{
@@ -96,11 +96,11 @@ export class MonicaCrm implements INodeType {
 						value: 'conversation',
 					},
 					{
-						name: 'Conversation Message',
+						name: 'Conversation message',
 						value: 'conversationMessage',
 					},
 					{
-						name: 'Journal Entry',
+						name: 'Journal entry',
 						value: 'journalEntry',
 					},
 					{

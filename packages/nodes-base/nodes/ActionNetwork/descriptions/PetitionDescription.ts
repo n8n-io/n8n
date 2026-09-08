@@ -25,7 +25,7 @@ export const petitionOperations: INodeProperties[] = [
 				action: 'Get a petition',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				action: 'Get many petitions',
 			},
@@ -44,7 +44,7 @@ export const petitionFields: INodeProperties[] = [
 	//             petition: create
 	// ----------------------------------------
 	{
-		displayName: 'Origin System',
+		displayName: 'Origin system',
 		name: 'originSystem',
 		description: 'Source where the petition originated',
 		type: 'string',
@@ -73,10 +73,10 @@ export const petitionFields: INodeProperties[] = [
 	},
 	makeSimpleField('petition', 'create'),
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -110,7 +110,7 @@ export const petitionFields: INodeProperties[] = [
 	//             petition: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -160,10 +160,10 @@ export const petitionFields: INodeProperties[] = [
 	},
 	makeSimpleField('petition', 'update'),
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {

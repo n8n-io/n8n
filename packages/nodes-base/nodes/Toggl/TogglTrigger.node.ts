@@ -40,7 +40,7 @@ export class TogglTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'New Time Entry',
+						name: 'New time entry',
 						value: 'newTimeEntry',
 					},
 				],

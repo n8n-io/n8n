@@ -19,7 +19,7 @@ export const activityOperations: INodeProperties[] = [
 				action: 'Create an activity',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many activities',
 				action: 'Get many activities',
@@ -34,7 +34,7 @@ export const activityFields: INodeProperties[] = [
 	/*                                activity:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -78,10 +78,10 @@ export const activityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				resource: ['activity'],
@@ -91,7 +91,7 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Activity Type Name or ID',
+				displayName: 'Activity type name or ID',
 				name: 'activityType',
 				type: 'options',
 				typeOptions: {
@@ -123,14 +123,14 @@ export const activityFields: INodeProperties[] = [
 				description: 'A URL for the activity; displayed in the timeline',
 			},
 			{
-				displayName: 'Link Text',
+				displayName: 'Link text',
 				name: 'linkText',
 				type: 'string',
 				default: '',
 				description: 'The text for the timeline link',
 			},
 			{
-				displayName: 'Occurred At',
+				displayName: 'Occurred at',
 				name: 'occurredAt',
 				type: 'dateTime',
 				default: '',
@@ -143,7 +143,7 @@ export const activityFields: INodeProperties[] = [
 	/*                                activity:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		description:
@@ -161,7 +161,7 @@ export const activityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -195,7 +195,7 @@ export const activityFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {

@@ -98,7 +98,7 @@ const properties: INodeProperties[] = [
 				},
 			],
 		},
-		placeholder: 'Add Message',
+		placeholder: 'Add message',
 		options: [
 			{
 				name: 'messageValues',
@@ -136,7 +136,7 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
@@ -146,18 +146,18 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
-				displayName: 'Enable Search',
+				displayName: 'Enable search',
 				name: 'enableSearch',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to enable web search for up-to-date information',
 			},
 			{
-				displayName: 'Max Tokens',
+				displayName: 'Max tokens',
 				name: 'maxTokens',
 				type: 'number',
 				typeOptions: {
@@ -167,7 +167,7 @@ const properties: INodeProperties[] = [
 				description: 'Maximum number of tokens to generate',
 			},
 			{
-				displayName: 'Max Tools Iterations',
+				displayName: 'Max tools iterations',
 				name: 'maxToolsIterations',
 				type: 'number',
 				default: 15,
@@ -175,7 +175,7 @@ const properties: INodeProperties[] = [
 					'Maximum number of tool-calling iterations before stopping. Set to 0 for unlimited.',
 			},
 			{
-				displayName: 'Repetition Penalty',
+				displayName: 'Repetition penalty',
 				name: 'repetitionPenalty',
 				type: 'number',
 				typeOptions: {
@@ -194,14 +194,14 @@ const properties: INodeProperties[] = [
 				description: 'Random seed for reproducible outputs',
 			},
 			{
-				displayName: 'Stop Sequences',
+				displayName: 'Stop sequences',
 				name: 'stop',
 				type: 'string',
 				default: '',
 				description: 'Comma-separated list of sequences where the API will stop generating',
 			},
 			{
-				displayName: 'System Message',
+				displayName: 'System message',
 				name: 'system',
 				type: 'string',
 				default: '',

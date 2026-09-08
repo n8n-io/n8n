@@ -19,7 +19,7 @@ export const threadOperations: INodeProperties[] = [
 				action: 'Create a thread',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many chat threads',
 				action: 'Get many threads',
@@ -96,10 +96,10 @@ export const threadFields: INodeProperties[] = [
 		description: 'The chat text',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -109,13 +109,13 @@ export const threadFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Created At',
+				displayName: 'Created at',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Customer Email',
+				displayName: 'Customer email',
 				name: 'customerEmail',
 				type: 'string',
 				default: '',
@@ -150,7 +150,7 @@ export const threadFields: INodeProperties[] = [
 	{
 		displayName: 'Attachments',
 		name: 'attachmentsUi',
-		placeholder: 'Add Attachments',
+		placeholder: 'Add attachments',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -164,7 +164,7 @@ export const threadFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'attachmentsValues',
-				displayName: 'Attachments Values',
+				displayName: 'Attachments values',
 				values: [
 					{
 						displayName: 'FileName',
@@ -174,7 +174,7 @@ export const threadFields: INodeProperties[] = [
 						description: 'Attachment’s file name',
 					},
 					{
-						displayName: 'Mime Type',
+						displayName: 'MIME type',
 						name: 'mimeType',
 						type: 'string',
 						default: '',
@@ -192,7 +192,7 @@ export const threadFields: INodeProperties[] = [
 			},
 			{
 				name: 'attachmentsBinary',
-				displayName: 'Attachments Binary',
+				displayName: 'Attachments binary',
 				values: [
 					{
 						displayName: 'Property',
@@ -225,7 +225,7 @@ export const threadFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {

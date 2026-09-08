@@ -25,7 +25,7 @@ export const subscriberOperations: INodeProperties[] = [
 				action: 'Get a subscriber',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many subscribers',
 				action: 'Get many subscribers',
@@ -65,7 +65,7 @@ export const subscriberFields: INodeProperties[] = [
 	/*                                subscriber:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Subscriber Email',
+		displayName: 'Subscriber email',
 		name: 'subscriberId',
 		type: 'string',
 		required: true,
@@ -79,10 +79,10 @@ export const subscriberFields: INodeProperties[] = [
 		description: 'Email of subscriber',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -92,9 +92,9 @@ export const subscriberFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Fields',
+				displayName: 'Custom fields',
 				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
+				placeholder: 'Add custom field',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -104,10 +104,10 @@ export const subscriberFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'customFieldsValues',
-						displayName: 'Custom Field',
+						displayName: 'Custom field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -157,31 +157,31 @@ export const subscriberFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Subscribed At',
+				displayName: 'Subscribed at',
 				name: 'subscribed_at',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'IP Address',
+				displayName: 'IP address',
 				name: 'ip_address',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Opted In At',
+				displayName: 'Opted in at',
 				name: 'opted_in_at',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Opt In IP',
+				displayName: 'Opt in IP',
 				name: 'optin_ip',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Unsubscribed At',
+				displayName: 'Unsubscribed at',
 				name: 'unsubscribed_at',
 				type: 'dateTime',
 				default: '',
@@ -193,7 +193,7 @@ export const subscriberFields: INodeProperties[] = [
 	/*                                subscriber:delete                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Subscriber Email',
+		displayName: 'Subscriber email',
 		name: 'subscriberId',
 		type: 'string',
 		required: true,
@@ -211,7 +211,7 @@ export const subscriberFields: INodeProperties[] = [
 	/*                                  subscriber:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Subscriber Email',
+		displayName: 'Subscriber email',
 		name: 'subscriberId',
 		type: 'string',
 		required: true,
@@ -228,7 +228,7 @@ export const subscriberFields: INodeProperties[] = [
 	/*                                  subscriber:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -262,7 +262,7 @@ export const subscriberFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],

@@ -16,7 +16,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Message a Model',
+				name: 'Message a model',
 				value: 'complete',
 				action: 'Message a model',
 				description: 'Create one or more completions for a given text',

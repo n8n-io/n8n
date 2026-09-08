@@ -26,7 +26,7 @@ export class MessageAnAgentV2 implements INodeType {
 				// never strip it. Existing workflows have no stored agentSource, so
 				// the default must keep them on the referenced path.
 				{
-					displayName: 'Agent Source',
+					displayName: 'Agent source',
 					name: 'agentSource',
 					type: 'hidden',
 					default: 'referenced',
@@ -49,7 +49,7 @@ export class MessageAnAgentV2 implements INodeType {
 				// otherwise strip the config whenever the node is saved in
 				// referenced mode, making mode toggling destructive.
 				{
-					displayName: 'Inline Agent',
+					displayName: 'Inline agent',
 					name: 'inlineAgent',
 					type: 'hidden',
 					default: {},

@@ -33,7 +33,7 @@ export const projectOperations: INodeProperties[] = [
 				action: 'Get data of a project',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get data of many projects',
 				action: 'Get data of all projects',
@@ -55,7 +55,7 @@ export const projectFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -89,7 +89,7 @@ export const projectFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -106,7 +106,7 @@ export const projectFields: INodeProperties[] = [
 				description: 'Only return projects belonging to the client with the given ID',
 			},
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
@@ -123,7 +123,7 @@ export const projectFields: INodeProperties[] = [
 				description: 'The page number to use in pagination',
 			},
 			{
-				displayName: 'Updated Since',
+				displayName: 'Updated since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
@@ -200,7 +200,7 @@ export const projectFields: INodeProperties[] = [
 		description: 'The ID of the client to associate this project with',
 	},
 	{
-		displayName: 'Is Billable',
+		displayName: 'Is billable',
 		name: 'isBillable',
 		type: 'boolean',
 		displayOptions: {
@@ -214,7 +214,7 @@ export const projectFields: INodeProperties[] = [
 		description: 'Whether the project is billable or not',
 	},
 	{
-		displayName: 'Bill By',
+		displayName: 'Bill by',
 		name: 'billBy',
 		type: 'options',
 		displayOptions: {
@@ -246,7 +246,7 @@ export const projectFields: INodeProperties[] = [
 		description: 'The method by which the project is invoiced',
 	},
 	{
-		displayName: 'Budget By',
+		displayName: 'Budget by',
 		name: 'budgetBy',
 		type: 'string',
 		displayOptions: {
@@ -261,10 +261,10 @@ export const projectFields: INodeProperties[] = [
 		description: 'The email of the user or "none"',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -284,21 +284,21 @@ export const projectFields: INodeProperties[] = [
 				description: 'The budget in hours for the project when budgeting by time',
 			},
 			{
-				displayName: 'Budget Is Monthly',
+				displayName: 'Budget is monthly',
 				name: 'budget_is_monthly',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the budget resets every month. Defaults to false.',
 			},
 			{
-				displayName: 'Cost Budget',
+				displayName: 'Cost budget',
 				name: 'cost_budget',
 				type: 'string',
 				default: '',
 				description: 'The monetary budget for the project when budgeting by money',
 			},
 			{
-				displayName: 'Cost Budget Include Expenses',
+				displayName: 'Cost budget include expenses',
 				name: 'cost_budget_include_expenses',
 				type: 'boolean',
 				default: false,
@@ -307,7 +307,7 @@ export const projectFields: INodeProperties[] = [
 					'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.',
 			},
 			{
-				displayName: 'Ends On',
+				displayName: 'Ends on',
 				name: 'ends_on',
 				type: 'dateTime',
 				default: '',
@@ -322,21 +322,21 @@ export const projectFields: INodeProperties[] = [
 					'The amount you plan to invoice for the project. Only used by fixed-fee projects.',
 			},
 			{
-				displayName: 'Hourly Rate',
+				displayName: 'Hourly rate',
 				name: 'hourly_rate',
 				type: 'string',
 				default: '',
 				description: 'Rate for projects billed by Project Hourly Rate',
 			},
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
 				description: 'Whether the project is active or archived. Defaults to true.',
 			},
 			{
-				displayName: 'Is Fixed Fee',
+				displayName: 'Is fixed fee',
 				name: 'is_fixed_fee',
 				type: 'boolean',
 				default: false,
@@ -350,7 +350,7 @@ export const projectFields: INodeProperties[] = [
 				description: 'Notes about the project',
 			},
 			{
-				displayName: 'Notify When Over Budget',
+				displayName: 'Notify when over budget',
 				name: 'notify_when_over_budget',
 				type: 'boolean',
 				default: false,
@@ -358,7 +358,7 @@ export const projectFields: INodeProperties[] = [
 					'Whether project managers should be notified when the project goes over budget. Defaults to false.',
 			},
 			{
-				displayName: 'Over Budget Notification Percentage',
+				displayName: 'Over budget notification percentage',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
@@ -366,7 +366,7 @@ export const projectFields: INodeProperties[] = [
 					'Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%.',
 			},
 			{
-				displayName: 'Show Budget To All',
+				displayName: 'Show budget to all',
 				name: 'show_budget_to_all',
 				type: 'boolean',
 				default: false,
@@ -374,7 +374,7 @@ export const projectFields: INodeProperties[] = [
 					'Whether to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
 			},
 			{
-				displayName: 'Starts On',
+				displayName: 'Starts on',
 				name: 'starts_on',
 				type: 'dateTime',
 				default: '',
@@ -401,10 +401,10 @@ export const projectFields: INodeProperties[] = [
 		description: 'The ID of the project want to update',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Update fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field',
 		displayOptions: {
 			show: {
 				operation: ['update'],
@@ -414,7 +414,7 @@ export const projectFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Bill By',
+				displayName: 'Bill by',
 				name: 'bill_by',
 				type: 'options',
 				options: [
@@ -446,14 +446,14 @@ export const projectFields: INodeProperties[] = [
 				description: 'The budget in hours for the project when budgeting by time',
 			},
 			{
-				displayName: 'Budget By',
+				displayName: 'Budget by',
 				name: 'budget_by',
 				type: 'string',
 				default: '',
 				description: 'The email of the user or "none"',
 			},
 			{
-				displayName: 'Budget Is Monthly',
+				displayName: 'Budget is monthly',
 				name: 'budget_is_monthly',
 				type: 'boolean',
 				default: false,
@@ -467,14 +467,14 @@ export const projectFields: INodeProperties[] = [
 				description: 'The ID of the client to associate this project with',
 			},
 			{
-				displayName: 'Cost Budget',
+				displayName: 'Cost budget',
 				name: 'cost_budget',
 				type: 'string',
 				default: '',
 				description: 'The monetary budget for the project when budgeting by money',
 			},
 			{
-				displayName: 'Cost Budget Include Expenses',
+				displayName: 'Cost budget include expenses',
 				name: 'cost_budget_include_expenses',
 				type: 'boolean',
 				default: false,
@@ -483,7 +483,7 @@ export const projectFields: INodeProperties[] = [
 					'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.',
 			},
 			{
-				displayName: 'Ends On',
+				displayName: 'Ends on',
 				name: 'ends_on',
 				type: 'dateTime',
 				default: '',
@@ -498,28 +498,28 @@ export const projectFields: INodeProperties[] = [
 					'The amount you plan to invoice for the project. Only used by fixed-fee projects.',
 			},
 			{
-				displayName: 'Hourly Rate',
+				displayName: 'Hourly rate',
 				name: 'hourly_rate',
 				type: 'string',
 				default: '',
 				description: 'Rate for projects billed by Project Hourly Rate',
 			},
 			{
-				displayName: 'Is Active',
+				displayName: 'Is active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
 				description: 'Whether the project is active or archived. Defaults to true.',
 			},
 			{
-				displayName: 'Is Billable',
+				displayName: 'Is billable',
 				name: 'is_billable',
 				type: 'boolean',
 				default: true,
 				description: 'Whether the project is billable or not',
 			},
 			{
-				displayName: 'Is Fixed Fee',
+				displayName: 'Is fixed fee',
 				name: 'is_fixed_fee',
 				type: 'boolean',
 				default: false,
@@ -540,7 +540,7 @@ export const projectFields: INodeProperties[] = [
 				description: 'Notes about the project',
 			},
 			{
-				displayName: 'Notify When Over Budget',
+				displayName: 'Notify when over budget',
 				name: 'notify_when_over_budget',
 				type: 'boolean',
 				default: false,
@@ -548,7 +548,7 @@ export const projectFields: INodeProperties[] = [
 					'Whether project managers should be notified when the project goes over budget. Defaults to false.',
 			},
 			{
-				displayName: 'Over Budget Notification Percentage',
+				displayName: 'Over budget notification percentage',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
@@ -556,7 +556,7 @@ export const projectFields: INodeProperties[] = [
 					'Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%.',
 			},
 			{
-				displayName: 'Show Budget To All',
+				displayName: 'Show budget to all',
 				name: 'show_budget_to_all',
 				type: 'boolean',
 				default: false,
@@ -564,7 +564,7 @@ export const projectFields: INodeProperties[] = [
 					'Whether to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
 			},
 			{
-				displayName: 'Starts On',
+				displayName: 'Starts on',
 				name: 'starts_on',
 				type: 'dateTime',
 				default: '',

@@ -20,7 +20,7 @@ export const portfolioCompanyOperations: INodeProperties[] = [
 				action: 'Add a portfolio company',
 			},
 			{
-				name: 'Get Many',
+				name: 'Get many',
 				value: 'getAll',
 				description: 'Get many companies in a portfolio',
 				action: 'Get many portfolio companies',
@@ -51,7 +51,7 @@ export const portfolioCompanyFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Return All',
+		displayName: 'Return all',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
@@ -91,7 +91,7 @@ export const portfolioCompanyFields: INodeProperties[] = [
 			},
 		},
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add filter',
 		default: {},
 		options: [
 			{
@@ -111,7 +111,7 @@ export const portfolioCompanyFields: INodeProperties[] = [
 				description: 'Industry filter',
 			},
 			{
-				displayName: 'Issue Type',
+				displayName: 'Issue type',
 				name: 'issueType',
 				type: 'string',
 				placeholder: '',

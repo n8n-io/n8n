@@ -10,7 +10,7 @@ import { throwIfChatUnsupported } from './sharedGuard';
 const properties: INodeProperties[] = [
 	chatRLC,
 	{
-		displayName: 'Content Type',
+		displayName: 'Content type',
 		name: 'contentType',
 		required: true,
 		type: 'options',
@@ -47,7 +47,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Include Link to Workflow',
+				displayName: 'Include link to workflow',
 				name: 'includeLinkToWorkflow',
 				type: 'boolean',
 				default: true,

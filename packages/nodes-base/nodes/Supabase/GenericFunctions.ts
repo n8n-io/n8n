@@ -160,7 +160,7 @@ export function getFilters(
 			options: [
 				...(includeNoneOption ? [{ name: 'None', value: 'none' }] : []),
 				{
-					name: 'Build Manually',
+					name: 'Build manually',
 					value: 'manual',
 				},
 				{
@@ -177,7 +177,7 @@ export function getFilters(
 			default: 'manual',
 		},
 		{
-			displayName: 'Must Match',
+			displayName: 'Must match',
 			name: 'matchType',
 			type: 'options',
 			options: mustMatchOptions,
@@ -205,14 +205,14 @@ export function getFilters(
 				},
 			},
 			default: {},
-			placeholder: 'Add Condition',
+			placeholder: 'Add condition',
 			options: [
 				{
 					displayName: 'Conditions',
 					name: 'conditions',
 					values: [
 						{
-							displayName: 'Field Name or ID',
+							displayName: 'Field name or ID',
 							name: 'keyName',
 							type: 'options',
 							description:
@@ -233,15 +233,15 @@ export function getFilters(
 									value: 'eq',
 								},
 								{
-									name: 'Full-Text',
+									name: 'Full-text',
 									value: 'fullText',
 								},
 								{
-									name: 'Greater Than',
+									name: 'Greater than',
 									value: 'gt',
 								},
 								{
-									name: 'Greater Than or Equal',
+									name: 'Greater than or equal',
 									value: 'gte',
 								},
 								{
@@ -255,11 +255,11 @@ export function getFilters(
 									description: 'Checking for exact equality (null,true,false,unknown)',
 								},
 								{
-									name: 'Less Than',
+									name: 'Less than',
 									value: 'lt',
 								},
 								{
-									name: 'Less Than or Equal',
+									name: 'Less than or equal',
 									value: 'lte',
 								},
 								{
@@ -268,14 +268,14 @@ export function getFilters(
 									description: 'Use * in place of %',
 								},
 								{
-									name: 'Not Equals',
+									name: 'Not equals',
 									value: 'neq',
 								},
 							],
 							default: '',
 						},
 						{
-							displayName: 'Search Function',
+							displayName: 'Search function',
 							name: 'searchFunction',
 							type: 'options',
 							displayOptions: {
@@ -304,7 +304,7 @@ export function getFilters(
 							default: '',
 						},
 						{
-							displayName: 'Field Value',
+							displayName: 'Field value',
 							name: 'keyValue',
 							type: 'string',
 							default: '',
@@ -329,7 +329,7 @@ export function getFilters(
 			default: '',
 		},
 		{
-			displayName: 'Filters (String)',
+			displayName: 'Filters (string)',
 			name: 'filterString',
 			type: 'string',
 			displayOptions: {

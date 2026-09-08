@@ -62,11 +62,11 @@ export class AirtableTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'API Key',
+						name: 'API key',
 						value: 'airtableApi',
 					},
 					{
-						name: 'Access Token',
+						name: 'Access token',
 						value: 'airtableTokenApi',
 					},
 					{
@@ -165,7 +165,7 @@ export class AirtableTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Trigger Field',
+				displayName: 'Trigger field',
 				name: 'triggerField',
 				type: 'string',
 				default: '',
@@ -174,14 +174,14 @@ export class AirtableTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Download Attachments',
+				displayName: 'Download attachments',
 				name: 'downloadAttachments',
 				type: 'boolean',
 				default: false,
-				description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
+				description: "Whether the attachment fields define in 'Download fields' will be downloaded",
 			},
 			{
-				displayName: 'Download Fields',
+				displayName: 'Download fields',
 				name: 'downloadFieldNames',
 				type: 'string',
 				required: true,
@@ -195,10 +195,10 @@ export class AirtableTrigger implements INodeType {
 					"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.",
 			},
 			{
-				displayName: 'Additional Fields',
+				displayName: 'Additional fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				default: {},
 				options: [
 					{

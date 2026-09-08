@@ -28,7 +28,7 @@ export const h3VideoProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Duration (Seconds)',
+		displayName: 'Duration (seconds)',
 		name: 'h3Duration',
 		type: 'options',
 		options: Array.from({ length: 12 }, (_, index) => {
