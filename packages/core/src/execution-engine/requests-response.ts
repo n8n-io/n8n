@@ -24,6 +24,7 @@ type NodeToBeExecuted = {
 	runIndex: number;
 	nodeRunIndex: number;
 	metadata?: ITaskMetadata;
+	omitSource?: boolean;
 };
 
 type ActionMetadata = { parentNodeName?: string; itemIndex?: number };
@@ -189,7 +190,8 @@ function prepareRequestingNodeForResuming(
 	request: EngineRequest,
 	executionData: IExecuteData,
 ) {
-	const parentNode = executionData.source?.main?.[0]?.previousNode ?? executionData.node.name;
+	const sourceNode = executionData.source?.main?.[0]?.previousNode;
+	const parentNode = sourceNode ?? executionData.node.name;
 	if (!parentNode) {
 		Container.get(ErrorReporter).error(
 			new UnexpectedError(
@@ -227,7 +229,7 @@ function prepareRequestingNodeForResuming(
 		index: 0,
 	};
 
-	return { connectionData, parentNode, metadata };
+	return { connectionData, parentNode, metadata, omitSource: sourceNode === undefined };
 }
 
 /**
@@ -282,6 +284,7 @@ export function handleRequest({
 		runIndex,
 		nodeRunIndex: runIndex,
 		metadata: { nodeWasResumed: true, subNodeExecutionData, ...result.metadata },
+		omitSource: result.omitSource,
 	});
 
 	return { nodesToBeExecuted };

@@ -446,6 +446,7 @@ export class WorkflowExecute {
 		runIndex: number,
 		newRunIndex?: number,
 		metadata?: ITaskMetadata,
+		omitSource?: boolean,
 	): void {
 		let stillDataMissing = false;
 		const enqueueFn = workflow.settings.executionOrder === 'v1' ? 'unshift' : 'push';
@@ -835,15 +836,17 @@ export class WorkflowExecute {
 				data: {
 					main: connectionDataArray,
 				},
-				source: {
-					main: [
-						{
-							previousNode: parentNodeName,
-							previousNodeOutput: outputIndex ?? undefined,
-							previousNodeRun: runIndex ?? undefined,
+				source: omitSource
+					? null
+					: {
+							main: [
+								{
+									previousNode: parentNodeName,
+									previousNodeOutput: outputIndex ?? undefined,
+									previousNodeRun: runIndex ?? undefined,
+								},
+							],
 						},
-					],
-				},
 				runIndex: newRunIndex,
 				metadata,
 			});
@@ -1607,6 +1610,7 @@ export class WorkflowExecute {
 				nodeData.runIndex,
 				nodeData.nodeRunIndex,
 				nodeData.metadata,
+				nodeData.omitSource,
 			);
 		}
 	}

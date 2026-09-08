@@ -853,9 +853,7 @@ describe('processRunExecutionData', () => {
 			expect(runData[nodeWithRequests.name][0].data?.main?.[0]?.[0]?.json).toMatchObject({
 				finalResult: 'Agent completed with tool results',
 			});
-			expect(runData[nodeWithRequests.name][0].source).toEqual([
-				expect.objectContaining({ previousNode: nodeWithRequests.name }),
-			]);
+			expect(runData[nodeWithRequests.name][0].source).toEqual([]);
 			expect(runData[nodeWithRequests.name][0].metadata?.subNodeExecutionData).toBeDefined();
 
 			expect(runData[tool1Node.name]).toHaveLength(1);
@@ -888,6 +886,82 @@ describe('processRunExecutionData', () => {
 				query: 'test input',
 				toolCallId: 'action_1',
 			});
+		});
+
+		test('never records the requesting node as its own previous node when it is the start node', async () => {
+			// ARRANGE
+			const toolNode = createNodeData({ name: 'tool1', type: types.passThrough });
+			const nodeTypeWithRequests = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: { query: 'first' },
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: { query: 'second' },
+							type: 'ai_tool',
+							id: 'action_2',
+							metadata: {},
+						},
+					],
+					metadata: {},
+				})
+				.return(() => [[{ json: { done: true } }]])
+				.done();
+
+			const nodeWithRequests = createNodeData({
+				name: 'nodeWithRequests',
+				type: 'nodeWithRequests',
+			});
+
+			const nodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				nodeWithRequests: { type: nodeTypeWithRequests, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(nodeWithRequests, toolNode)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: nodeWithRequests.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: { main: [[{ json: { prompt: 'test prompt' } }]] },
+							node: nodeWithRequests,
+							source: null,
+						},
+					],
+				},
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			const runData = result.data.resultData.runData;
+
+			expect(runData[nodeWithRequests.name][0].executionStatus).toBe('success');
+			expect(runData[toolNode.name]).toHaveLength(2);
+
+			const selfReferences = Object.entries(runData).flatMap(([nodeName, taskData]) =>
+				taskData.flatMap((task) =>
+					(task.source ?? [])
+						.filter((source) => source?.previousNode === nodeName)
+						.map(() => nodeName),
+				),
+			);
+			expect(selfReferences).toEqual([]);
 		});
 
 		test('resets responses between different node executions', async () => {
