@@ -40,6 +40,7 @@ import {
 } from 'n8n-workflow';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
@@ -183,6 +184,24 @@ export class WorkflowExecutionService {
 			return undefined;
 		}
 
+		try {
+			await this.workflowRunner.prepareNewExecution(runData, true);
+		} catch (error) {
+			if (error instanceof PreExecuteBlockedError) {
+				this.logger.error('Blocked a polled execution before its row was committed', {
+					workflowId: workflowData.id,
+					nodeName: node.name,
+					error: error.cause,
+				});
+
+				responsePromise?.reject(error.cause);
+
+				return undefined;
+			}
+
+			throw error;
+		}
+
 		const payload: CreateExecutionPayload = {
 			data: executionData,
 			mode,
@@ -221,7 +240,7 @@ export class WorkflowExecutionService {
 		try {
 			await this.workflowRunner.run(
 				runData,
-				true,
+				false,
 				undefined,
 				{ executionId, expectedStatus: 'new' },
 				responsePromise,
