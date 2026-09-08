@@ -228,10 +228,11 @@ async function loadMore() {
 		return;
 	}
 
-	const lastItem = props.executions.at(-1);
-
 	try {
-		await executionsStore.fetchExecutions(executionsStore.executionsFilters, lastItem?.id);
+		await executionsStore.fetchExecutions(
+			executionsStore.executionsFilters,
+			executionsStore.nextCursor ?? undefined,
+		);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.loadMore.title'));
 	}

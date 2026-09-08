@@ -237,6 +237,8 @@ export namespace ExecutionSummaries {
 	>; // parsed from query params
 
 	type AccessFields = {
+		/** Enables the editor's timestamp cursor and exact summary filters. */
+		restList?: boolean;
 		user?: User;
 		sharingOptions?: {
 			scopes?: Scope[];
@@ -250,6 +252,7 @@ export namespace ExecutionSummaries {
 			limit: number;
 			firstId?: string;
 			lastId?: string;
+			before?: { timestamp: string; id: string };
 		};
 	};
 

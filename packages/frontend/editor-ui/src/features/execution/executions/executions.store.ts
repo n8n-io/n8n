@@ -8,6 +8,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
+import { compareExecutionListItems } from '@n8n/api-types';
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
@@ -60,13 +61,14 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const executionsCount = ref(0);
 	const hasMoreExecutions = ref(true);
+	const nextCursor = ref<string | null>(null);
+	let loadedPages = 0;
+	let activeFilterKey: string | undefined;
 	const concurrentExecutionsCount = ref(0);
 	const executions = computed(() => {
 		const data = Object.values(executionsById.value);
 
-		data.sort((a, b) => {
-			return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-		});
+		data.sort(compareExecutionListItems);
 
 		return data;
 	});
@@ -157,9 +159,18 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function fetchExecutions(
 		filter = executionsFilters.value,
-		lastId?: string,
-		firstId?: string,
+		cursor?: string,
+		refresh = false,
 	) {
+		const filterKey = JSON.stringify(filter);
+		if (activeFilterKey !== filterKey) {
+			executionsById.value = {};
+			currentExecutionsById.value = {};
+			nextCursor.value = null;
+			loadedPages = 0;
+			activeFilterKey = filterKey;
+			cursor = undefined;
+		}
 		loading.value = true;
 		try {
 			const data = await makeRestApiRequest<IExecutionsListResponse>(
@@ -168,28 +179,28 @@ export const useExecutionsStore = defineStore('executions', () => {
 				'/executions',
 				{
 					...(filter ? { filter } : {}),
-					...(firstId ? { firstId } : {}),
-					...(lastId ? { lastId } : {}),
+					...(cursor ? { cursor } : {}),
 					limit: itemsPerPage.value,
 				},
 			);
 
-			currentExecutionsById.value = {};
+			if (activeFilterKey !== filterKey) return data;
+			if (!cursor || !filter.status?.length) currentExecutionsById.value = {};
 			data.results.forEach((execution) => {
 				if (['new', 'running'].includes(execution.status as string)) {
+					delete executionsById.value[execution.id];
 					addCurrentExecution(execution);
 				} else {
+					delete currentExecutionsById.value[execution.id];
 					addExecution(execution);
 				}
 			});
 
-			const isLoadMore = !!lastId;
-			const isFullPage = data.results.length >= itemsPerPage.value;
-			if (isLoadMore) {
-				hasMoreExecutions.value = isFullPage;
-			} else if (!isFullPage) {
-				hasMoreExecutions.value = false;
+			if (!refresh || loadedPages <= 1) {
+				nextCursor.value = data.nextCursor;
+				hasMoreExecutions.value = data.nextCursor !== null;
 			}
+			if (!refresh) loadedPages = cursor ? loadedPages + 1 : 1;
 
 			executionsCount.value = data.count;
 			concurrentExecutionsCount.value = data.concurrentExecutionsCount;
@@ -222,7 +233,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 		autoRefreshTimeout.value = setTimeout(async () => {
 			if (autoRefresh.value) {
-				await fetchExecutions(autoRefreshExecutionFilters);
+				await fetchExecutions(autoRefreshExecutionFilters, undefined, true);
 				void startAutoRefreshInterval(workflowId);
 			}
 		}, autoRefreshDelay.value);
@@ -342,6 +353,9 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executionsCount.value = 0;
 		concurrentExecutionsCount.value = 0;
 		hasMoreExecutions.value = true;
+		nextCursor.value = null;
+		loadedPages = 0;
+		activeFilterKey = undefined;
 	}
 
 	function reset() {
@@ -361,6 +375,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executions,
 		executionsCount,
 		hasMoreExecutions,
+		nextCursor,
 		concurrentExecutionsCount,
 		executionsByWorkflowId,
 		currentExecutions,

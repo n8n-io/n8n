@@ -1,4 +1,5 @@
-import type { NextFunction, Response } from 'express';
+import type { ExecutionSummaries } from '@n8n/db';
+import type { NextFunction, Request, Response } from 'express';
 import { validate } from 'jsonschema';
 import type { JsonObject } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -6,34 +7,36 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import * as ResponseHelper from '@/response-helper';
 
+import { parseExecutionCursor } from './execution-cursor';
+import { isExecutionIdV2 } from './execution-id';
 import {
 	allowedExecutionsQueryFilterFields as ALLOWED_FILTER_FIELDS,
 	schemaGetExecutionsQueryFilter as SCHEMA,
 } from './execution.service';
-import type { ExecutionRequest } from './execution.types';
 
 const isValid = (arg: JsonObject) => validate(arg, SCHEMA).valid;
 
 /**
  * Middleware to parse the query string in a request to retrieve a range of execution summaries.
  */
-export const parseRangeQuery = (
-	req: ExecutionRequest.GetMany,
-	res: Response,
-	next: NextFunction,
-) => {
+export const parseRangeQuery = (req: Request, res: Response, next: NextFunction) => {
 	const { limit, firstId, lastId } = req.query;
 
 	try {
-		req.rangeQuery = {
+		if (firstId !== undefined || lastId !== undefined)
+			throw new BadRequestError('Use cursor to load execution pages');
+		if (req.query.cursor !== undefined && typeof req.query.cursor !== 'string')
+			throw new BadRequestError('Invalid execution cursor');
+		parseExecutionCursor(req.query.cursor);
+		const pageLimit = limit === undefined ? 20 : Number(limit);
+		if (!Number.isInteger(pageLimit) || pageLimit < 1 || pageLimit > 100)
+			throw new BadRequestError('Execution limit must be between 1 and 100');
+		let rangeQuery: ExecutionSummaries.RangeQuery = {
 			kind: 'range',
 			range: {
-				limit: limit && typeof limit === 'string' ? Math.min(parseInt(limit, 10), 100) : 20,
+				limit: pageLimit,
 			},
 		};
-
-		if (firstId && typeof firstId === 'string') req.rangeQuery.range.firstId = firstId;
-		if (lastId && typeof lastId === 'string') req.rangeQuery.range.lastId = lastId;
 
 		if (typeof req.query.filter === 'string') {
 			const jsonFilter = jsonParse<JsonObject>(req.query.filter, {
@@ -47,10 +50,17 @@ export const parseRangeQuery = (
 			if (jsonFilter.waitTill) jsonFilter.waitTill = Boolean(jsonFilter.waitTill);
 
 			if (!isValid(jsonFilter)) throw new UnexpectedError('Query does not match schema');
+			if (
+				typeof jsonFilter.id === 'string' &&
+				!isExecutionIdV2(jsonFilter.id) &&
+				(!/^[1-9]\d*$/.test(jsonFilter.id) || Number(jsonFilter.id) > 2147483647)
+			)
+				throw new BadRequestError('Invalid execution ID');
 
-			req.rangeQuery = { ...req.rangeQuery, ...jsonFilter };
+			rangeQuery = { ...rangeQuery, ...jsonFilter };
 		}
 
+		Object.assign(req, { rangeQuery });
 		next();
 	} catch (error) {
 		if (error instanceof Error) {

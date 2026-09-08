@@ -23,6 +23,7 @@ describe('`parseRangeQuery` middleware', () => {
 
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: '{ "status": ["waiting }',
 					limit: undefined,
 					firstId: undefined,
@@ -41,6 +42,7 @@ describe('`parseRangeQuery` middleware', () => {
 
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: '{ "status": 123 }',
 					limit: undefined,
 					firstId: undefined,
@@ -59,6 +61,7 @@ describe('`parseRangeQuery` middleware', () => {
 		test('should parse status and mode fields', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: '{ "status": ["waiting"], "mode": "manual" }',
 					limit: undefined,
 					firstId: undefined,
@@ -76,6 +79,7 @@ describe('`parseRangeQuery` middleware', () => {
 		test('should parse date-related fields', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter:
 						'{ "startedBefore": "2021-01-01", "startedAfter": "2020-01-01", "waitTill": "true" }',
 					limit: undefined,
@@ -95,6 +99,7 @@ describe('`parseRangeQuery` middleware', () => {
 		test('should parse ID-related fields', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: '{ "id": "123", "workflowId": "456" }',
 					limit: undefined,
 					firstId: undefined,
@@ -112,6 +117,7 @@ describe('`parseRangeQuery` middleware', () => {
 		test('should parse `projectId` field', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: '{ "projectId": "123" }',
 					limit: undefined,
 					firstId: undefined,
@@ -128,6 +134,7 @@ describe('`parseRangeQuery` middleware', () => {
 		test('should delete invalid fields', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: '{ "id": "123", "test": "789" }',
 					limit: undefined,
 					firstId: undefined,
@@ -144,9 +151,10 @@ describe('`parseRangeQuery` middleware', () => {
 	});
 
 	describe('range', () => {
-		test('should parse first and last IDs', () => {
+		test('should reject first and last IDs', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: undefined,
 					limit: undefined,
 					firstId: '111',
@@ -156,14 +164,14 @@ describe('`parseRangeQuery` middleware', () => {
 
 			parseRangeQuery(req, res, nextFn);
 
-			expect(req.rangeQuery.range.firstId).toBe('111');
-			expect(req.rangeQuery.range.lastId).toBe('999');
-			expect(nextFn).toBeCalledTimes(1);
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(nextFn).not.toHaveBeenCalled();
 		});
 
 		test('should parse limit', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: undefined,
 					limit: '50',
 					firstId: undefined,
@@ -180,6 +188,7 @@ describe('`parseRangeQuery` middleware', () => {
 		test('should default limit to 20 if absent', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: undefined,
 					limit: undefined,
 					firstId: undefined,
