@@ -33,6 +33,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const ABANDON_GRACE_MS = 10_000;
 
 	let lifecycleLock: WorkflowPublicationLifecycleLock;
+	let instanceSettings: InstanceSettings;
 
 	function createConsumer(
 		useWorkflowPublicationService = true,
@@ -47,6 +48,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			publicationOutboxLeaseSeconds: leaseSeconds,
 		});
 		lifecycleLock = new WorkflowPublicationLifecycleLock();
+		instanceSettings = mock<InstanceSettings>({ isLeader });
 		return new WorkflowPublicationOutboxConsumer(
 			logger,
 			workflowsConfig,
@@ -54,7 +56,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			outboxRepository,
 			applier,
 			reporter,
-			mock<InstanceSettings>({ isLeader }),
+			instanceSettings,
 			lifecycleLock,
 			tracing,
 			eventService,
@@ -485,6 +487,28 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7);
 			expect(applier.apply).not.toHaveBeenCalled();
 			expect(reporter.report).not.toHaveBeenCalled();
+		});
+
+		test('returns the record to the queue when leadership is lost while waiting for the lock', async () => {
+			const record = makeRecord({ id: 8, workflowId: 'wf-held' });
+			void lifecycleLock.runExclusive('wf-held', async () => await new Promise<void>(() => {}));
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
+			consumer.startPolling();
+
+			const drain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(0);
+			// Stepdown while queued on the lock; the abort then fires on a former leader.
+			Object.assign(instanceSettings, { isLeader: false });
+			await vi.advanceTimersByTimeAsync(ABORT_AFTER_MS);
+			await drain;
+
+			// The new leader reprocesses it: not failed here, no outcome emitted.
+			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(8);
+			expect(reporter.report).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'workflow-publication-outbox-record-processed',
+				expect.anything(),
+			);
 		});
 	});
 
