@@ -85,7 +85,7 @@ vi.mock('../components/AgentInfoPanel.vue', () => ({
 		name: 'AgentInfoPanel',
 		template:
 			'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-		props: ['showModel', 'showInstructions', 'instructionsMaxHeight'],
+		props: ['showModel', 'showInstructions'],
 	},
 }));
 
@@ -193,7 +193,7 @@ async function mountColumn(
 					name: 'AgentInfoPanel',
 					template:
 						'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-					props: ['showModel', 'showInstructions', 'instructionsMaxHeight'],
+					props: ['showModel', 'showInstructions'],
 				},
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
@@ -416,14 +416,5 @@ describe('AgentBuilderEditorColumn', () => {
 			capabilities.element.compareDocumentPosition(memory.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
-	});
-
-	it('removes the instructions editor height limit in the main Agent tab', async () => {
-		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
-		await flushPromises();
-
-		const infoPanel = wrapper.findComponent({ name: 'AgentInfoPanel' });
-
-		expect(infoPanel.props('instructionsMaxHeight')).toBe('none');
 	});
 });

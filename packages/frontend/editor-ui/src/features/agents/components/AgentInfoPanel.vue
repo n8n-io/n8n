@@ -48,8 +48,6 @@ const props = withDefaults(
 		disabled?: boolean;
 		embedded?: boolean;
 		projectId?: string;
-		/** Cap for the instructions editor — compact hosts (NDV) pass a smaller value. */
-		instructionsMaxHeight?: string;
 		showModel?: boolean;
 		showInstructions?: boolean;
 		/**
@@ -62,7 +60,6 @@ const props = withDefaults(
 	{
 		disabled: false,
 		embedded: false,
-		instructionsMaxHeight: '360px',
 		showModel: true,
 		showInstructions: true,
 		immediateUpdates: false,
@@ -375,6 +372,7 @@ function onInstructionsInput(value: string) {
 		:header="i18n.baseText('agents.builder.agent.title')"
 		header-visibility="visually-hidden"
 		data-testid="agent-info-panel"
+		:container-class="$style.containerClass"
 	>
 		<div :class="$style.panels">
 			<div v-if="props.showModel" data-testid="agent-model-panel">
@@ -473,8 +471,8 @@ function onInstructionsInput(value: string) {
 					:class="$style.instructionsDocument"
 					:model-value="instructions"
 					:disabled="props.disabled"
-					:max-height="props.instructionsMaxHeight"
 					:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
+					is-collapsible
 					show-toolbar="floating"
 					variant="ghost"
 					data-testid="agent-instructions-document"
@@ -507,13 +505,6 @@ function onInstructionsInput(value: string) {
 
 .instructionsDocument:disabled {
 	opacity: 0.5;
-}
-
-/* Follow the editor's configured max-height and scroll within the cap. */
-.instructionsDocument :global(.n8n-markdown) {
-	max-height: var(--markdown-editor-max-height);
-	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));
-	overflow-y: auto;
 }
 
 .field {
@@ -550,5 +541,9 @@ function onInstructionsInput(value: string) {
 	height: 1px;
 	background-color: var(--border-color--subtle);
 	margin-inline: calc(var(--spacing--sm) * -1);
+}
+
+.containerClass {
+	padding-bottom: 0;
 }
 </style>

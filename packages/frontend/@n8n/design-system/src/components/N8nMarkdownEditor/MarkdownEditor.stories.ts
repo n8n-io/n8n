@@ -79,6 +79,9 @@ const meta: Meta<typeof N8nMarkdownEditor> = {
 		maxHeight: {
 			control: 'text',
 		},
+		isCollapsible: {
+			control: 'boolean',
+		},
 		disabled: {
 			control: 'boolean',
 		},
@@ -146,6 +149,7 @@ export const Default: Story = {
 		placeholder: 'Write Markdown...',
 		showToolbar: 'always',
 		maxHeight: '480px',
+		isCollapsible: false,
 		disabled: false,
 		readonly: false,
 	},
@@ -239,6 +243,15 @@ export const LongInstructions: Story = {
 		...Default.args,
 		modelValue: longInstructionsMarkdown,
 		variant: 'contained',
+	},
+};
+
+export const Collapsible: Story = {
+	args: {
+		...Default.args,
+		modelValue: longInstructionsMarkdown,
+		isCollapsible: true,
+		variant: 'ghost',
 	},
 };
 

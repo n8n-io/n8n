@@ -122,7 +122,6 @@ const i18n = useI18n();
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						:project-id="projectId"
-						instructions-max-height="none"
 						@update:config="emit('update:config', $event)"
 					/>
 
@@ -135,6 +134,7 @@ const i18n = useI18n();
 								variant="subtle"
 								icon="play"
 								size="medium"
+								:disabled="childrenDisabled"
 								:label="i18n.baseText('agents.builder.preview.button')"
 								data-testid="agent-triggers-preview-chat-button"
 								@click="emit('open-preview')"

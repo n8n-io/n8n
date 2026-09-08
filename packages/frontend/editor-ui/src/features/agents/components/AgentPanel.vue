@@ -7,6 +7,7 @@ interface AgentPanelProps {
 	header: string;
 	description?: string;
 	headerVisibility?: 'visible' | 'visually-hidden';
+	containerClass?: string;
 }
 
 const props = withDefaults(defineProps<AgentPanelProps>(), {
@@ -18,7 +19,7 @@ const headerId = useId();
 </script>
 
 <template>
-	<section :class="$style.panelContainer" :aria-labelledby="headerId">
+	<section :class="[$style.panelContainer, props.containerClass]" :aria-labelledby="headerId">
 		<AgentPanelHeader
 			:header-id="headerId"
 			:title="props.header"

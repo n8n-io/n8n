@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { N8nText } from '@n8n/design-system';
-import { VisuallyHidden } from 'reka-ui';
+import { N8nText, N8nVisuallyHidden } from '@n8n/design-system';
 
 withDefaults(
 	defineProps<{
@@ -21,9 +20,9 @@ withDefaults(
 			headerVisibility === 'visually-hidden' && !$slots.actions ? $style.headingOnly : $style.row
 		"
 	>
-		<VisuallyHidden v-if="headerVisibility === 'visually-hidden'" as-child>
+		<N8nVisuallyHidden v-if="headerVisibility === 'visually-hidden'" as-child>
 			<h3 :id="headerId">{{ title }}</h3>
-		</VisuallyHidden>
+		</N8nVisuallyHidden>
 		<div v-else :class="$style.copy">
 			<N8nText :id="headerId" tag="h3" step="sm" :bold="true">{{ title }}</N8nText>
 			<N8nText v-if="description" color="text-light">{{ description }}</N8nText>

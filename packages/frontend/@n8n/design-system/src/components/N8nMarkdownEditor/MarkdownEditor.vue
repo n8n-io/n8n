@@ -8,6 +8,11 @@ import { useMarkdownEditor } from './composables/useMarkdownEditor';
 import type { N8nMarkdownEditorEmits, N8nMarkdownEditorProps } from './MarkdownEditor.types';
 import MarkdownEditorToolbar from './MarkdownEditorToolbar.vue';
 import { setEditorContent } from './markdownEditorUtils';
+import { useI18n } from '../../composables/useI18n';
+import N8nButton from '../N8nButton';
+import N8nTooltip from '../N8nTooltip';
+
+const COLLAPSED_MAX_HEIGHT_OVERRIDE = 256;
 
 const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
 	modelValue: '',
@@ -17,15 +22,27 @@ const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
 	readonly: false,
 	showToolbar: 'always',
 	maxHeight: '480px',
+	isCollapsible: false,
 	containerClass: '',
 });
 
 const emit = defineEmits<N8nMarkdownEditorEmits>();
 
-const maxHeightStyle = computed(() => ({
-	'--markdown-editor-max-height':
-		typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight,
-}));
+const collapsed = ref(true);
+const { t } = useI18n();
+const explicitHeight = ref<string>();
+
+const maxHeight = computed(() =>
+	typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight,
+);
+
+const contentHeightStyle = computed(() =>
+	explicitHeight.value ? { height: explicitHeight.value } : undefined,
+);
+const expandButtonLabel = computed(() =>
+	collapsed.value ? t('markdownEditor.expand') : t('markdownEditor.collapse'),
+);
+const expandButtonIcon = computed(() => (collapsed.value ? 'arrow-down' : 'arrow-up'));
 
 const shouldShowInlineToolbar = computed(() => ['always', 'hover'].includes(props.showToolbar));
 const toolbarMode = computed(() => (props.showToolbar === 'always' ? 'always' : 'hover'));
@@ -37,6 +54,16 @@ const rawMarkdown = ref(props.modelValue);
 const container = ref<HTMLElement>();
 const rawEditor = ref<HTMLTextAreaElement>();
 const rawContentHeight = ref<string>();
+
+function getContentElement() {
+	return container.value?.querySelector<HTMLElement>('[data-markdown-editor-content-wrapper]');
+}
+
+function getScrollableElement() {
+	return isRawMode.value
+		? rawEditor.value
+		: container.value?.querySelector<HTMLElement>('.n8n-markdown');
+}
 
 watch(
 	() => props.modelValue,
@@ -55,6 +82,113 @@ function getRenderedContentHeight() {
 
 function getBubbleMenuContainer() {
 	return document.body;
+}
+
+const contentExceedsCollapsedHeight = ref(false);
+const shouldBeCollapsable = computed(function getShouldBeCollapsable() {
+	return props.isCollapsible && contentExceedsCollapsedHeight.value;
+});
+
+watch(
+	[
+		container,
+		editor,
+		isRawMode,
+		rawMarkdown,
+		function getModelValue() {
+			return props.modelValue;
+		},
+		function getIsCollapsible() {
+			return props.isCollapsible;
+		},
+		function getShowToolbar() {
+			return props.showToolbar;
+		},
+	],
+	function observeContentHeight(_value, _oldValue, onCleanup) {
+		if (!props.isCollapsible || !container.value) {
+			contentExceedsCollapsedHeight.value = false;
+			return;
+		}
+		const root = container.value;
+
+		function updateContentHeight() {
+			const scrollable = getScrollableElement();
+			if (!scrollable) {
+				contentExceedsCollapsedHeight.value = false;
+				return;
+			}
+
+			const { height, maxHeight } = scrollable.style;
+			const { scrollTop } = scrollable;
+
+			/** Measure the content without the fixed textarea or transition height. */
+			scrollable.style.height = isRawMode.value ? '0' : 'auto';
+			scrollable.style.maxHeight = `${COLLAPSED_MAX_HEIGHT_OVERRIDE}px`;
+			contentExceedsCollapsedHeight.value = scrollable.scrollHeight > COLLAPSED_MAX_HEIGHT_OVERRIDE;
+			scrollable.style.height = height;
+			scrollable.style.maxHeight = maxHeight;
+			scrollable.scrollTop = scrollTop;
+		}
+
+		const resizeObserver = new ResizeObserver(updateContentHeight);
+		function observeContentElements() {
+			resizeObserver.disconnect();
+			resizeObserver.observe(root);
+			const scrollable = getScrollableElement();
+			if (scrollable) {
+				resizeObserver.observe(scrollable);
+				for (const child of scrollable.children) {
+					resizeObserver.observe(child);
+				}
+			}
+			updateContentHeight();
+		}
+
+		/** Tiptap inserts the editor DOM after the parent component renders. */
+		const mutationObserver = new MutationObserver(observeContentElements);
+		mutationObserver.observe(root, { childList: true, characterData: true, subtree: true });
+		observeContentElements();
+
+		onCleanup(function stopObservingContent() {
+			resizeObserver.disconnect();
+			mutationObserver.disconnect();
+		});
+	},
+	{ flush: 'post', immediate: true },
+);
+
+/** Override maxHeight for collapsible state to ensure we properly trim the content */
+const setMaxHeight = computed(function getMaxHeightStyle() {
+	if (!props.isCollapsible) return `--markdown-editor-max-height: ${maxHeight.value}`;
+
+	const collapsibleMaxHeight = collapsed.value ? `${COLLAPSED_MAX_HEIGHT_OVERRIDE}px` : 'none';
+	return `--markdown-editor-max-height: ${collapsibleMaxHeight}`;
+});
+
+async function toggleCollapsed() {
+	const content = getContentElement();
+	const scrollable = getScrollableElement();
+	if (!content || !scrollable) return;
+
+	explicitHeight.value = `${content.getBoundingClientRect().height}px`;
+	await nextTick();
+	void content.offsetHeight;
+
+	collapsed.value = !collapsed.value;
+	emit('update:collapsed', collapsed.value);
+	await nextTick();
+
+	const targetHeight = collapsed.value
+		? scrollable.getBoundingClientRect().height
+		: scrollable.scrollHeight;
+	explicitHeight.value = `${targetHeight}px`;
+}
+
+function onHeightTransitionEnd(event: TransitionEvent) {
+	if (event.propertyName === 'height' && event.target === getContentElement()) {
+		explicitHeight.value = undefined;
+	}
 }
 
 const bubbleMenuOptions = computed(function getBubbleMenuOptions() {
@@ -145,11 +279,18 @@ defineExpose({
 			props.variant === 'ghost' ? $style.ghost : $style.contained,
 			props.containerClass,
 			props.disabled ? $style.disabled : '',
+			shouldBeCollapsable && collapsed ? $style.collapsed : '',
 		]"
-		:style="maxHeightStyle"
+		:style="setMaxHeight"
 		data-test-id="n8n-markdown-editor"
 	>
-		<div v-if="isRawMode" :class="[$style.content, shouldPadContentTop ? $style.padTop : '']">
+		<div
+			v-if="isRawMode"
+			data-markdown-editor-content-wrapper
+			:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
+			:style="contentHeightStyle"
+			@transitionend="onHeightTransitionEnd"
+		>
 			<textarea
 				ref="rawEditor"
 				:value="rawMarkdown"
@@ -166,8 +307,11 @@ defineExpose({
 		</div>
 		<EditorContent
 			v-else
+			data-markdown-editor-content-wrapper
 			:editor="editor"
 			:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
+			:style="contentHeightStyle"
+			@transitionend="onHeightTransitionEnd"
 		/>
 		<MarkdownEditorToolbar
 			v-if="shouldShowInlineToolbar && editor"
@@ -194,6 +338,20 @@ defineExpose({
 				@update:is-raw-mode="toggleRawMode"
 			/>
 		</BubbleMenu>
+		<div v-if="shouldBeCollapsable" :class="$style.expandButtonContainer">
+			<N8nTooltip :content="expandButtonLabel">
+				<N8nButton
+					size="small"
+					:icon="expandButtonIcon"
+					icon-only
+					icon-size="medium"
+					variant="subtle"
+					:class="$style.expandButton"
+					:aria-label="expandButtonLabel"
+					@click="toggleCollapsed"
+				/>
+			</N8nTooltip>
+		</div>
 	</div>
 </template>
 
@@ -204,6 +362,8 @@ defineExpose({
 <style lang="scss" module>
 @use '../../css/common/var';
 @use '../../css/mixins/focus';
+@use '../../css/mixins/motion';
+@use '../../css/mixins/mixins' as scrollMixins;
 
 .bubbleMenu {
 	z-index: var.$index-popper;
@@ -261,6 +421,7 @@ defineExpose({
 	}
 }
 .content {
+	@include motion.height-transition;
 	height: 100%;
 	max-height: var(--markdown-editor-max-height);
 	overflow: hidden;
@@ -300,6 +461,55 @@ defineExpose({
 	:global(.n8n-markdown > *:last-child) {
 		margin-bottom: 0;
 	}
+}
+
+.collapsed {
+	@include scrollMixins.scroll-mask(bottom);
+	overflow-y: hidden;
+
+	> *,
+	:global(.n8n-markdown) {
+		overflow-y: hidden;
+	}
+}
+
+.expandButtonContainer {
+	display: grid;
+	place-items: center;
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 2;
+	padding: var(--spacing--xs);
+	pointer-events: none;
+}
+
+.expandButton {
+	opacity: 0;
+	pointer-events: auto;
+	background-color: var(--color--neutral-black);
+	color: var(--color--neutral-white);
+
+	--button--color--background: var(--color--neutral-black);
+	--button--color: var(--color--neutral-white);
+
+	&:hover {
+		background-color: color-mix(
+			in oklch,
+			var(--color--neutral-black) 90%,
+			var(--color--neutral-white) 10%
+		);
+	}
+}
+.collapsed .expandButton {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.container:hover .expandButton {
+	opacity: 1;
+	transition: opacity var(--duration--snappy) var(--easing--ease-out);
 }
 
 .rawContent {

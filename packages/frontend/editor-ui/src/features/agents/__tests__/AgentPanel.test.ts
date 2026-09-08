@@ -1,7 +1,7 @@
 /** eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { VisuallyHidden } from 'reka-ui';
+import { N8nVisuallyHidden } from '@n8n/design-system';
 
 import AgentPanel from '../components/AgentPanel.vue';
 import AgentPanelHeader from '../components/AgentPanelHeader.vue';
@@ -43,7 +43,7 @@ describe('AgentPanel', function describeAgentPanel() {
 
 		await wrapper.setProps({ headerVisibility: 'visually-hidden' });
 
-		const hiddenHeading = wrapper.getComponent(VisuallyHidden);
+		const hiddenHeading = wrapper.getComponent(N8nVisuallyHidden);
 		expect(hiddenHeading.element).toBe(wrapper.get('h3').element);
 		expect(hiddenHeading.text()).toBe('Settings');
 		expect(wrapper.get('h3').attributes('id')).toBe(headerId);
@@ -54,7 +54,7 @@ describe('AgentPanel', function describeAgentPanel() {
 
 		await wrapper.setProps({ headerVisibility: 'visible' });
 
-		expect(wrapper.findComponent(VisuallyHidden).exists()).toBe(false);
+		expect(wrapper.findComponent(N8nVisuallyHidden).exists()).toBe(false);
 		expect(wrapper.get('h3').attributes('id')).toBe(headerId);
 		expect(wrapper.get('section').attributes('aria-labelledby')).toBe(headerId);
 		expect(wrapper.text()).toContain('Manage your settings.');

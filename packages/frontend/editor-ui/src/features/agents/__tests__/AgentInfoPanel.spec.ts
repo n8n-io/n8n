@@ -74,6 +74,7 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nVisuallyHidden: { template: '<slot />', props: ['asChild'] },
 	N8nMarkdownEditor: {
 		name: 'N8nMarkdownEditor',
 		props: ['modelValue', 'variant', 'showToolbar', 'placeholder', 'readonly', 'maxHeight'],
@@ -217,15 +218,18 @@ describe('AgentInfoPanel', () => {
 		defaultModelHolder.value = null;
 	});
 
-	it('names the Model & instructions card in the builder', function rendersCardHeader() {
+	it('keeps the card heading accessible in the builder', function rendersCardHeader() {
 		const wrapper = mountPanel(undefined, { showModel: true, embedded: false });
 		const header = wrapper.getComponent({ name: 'AgentPanelHeader' });
 
 		expect(header.props()).toMatchObject({
 			title: 'agents.builder.agent.title',
-			description: 'agents.builder.agent.description',
+			headerVisibility: 'visually-hidden',
+			description: undefined,
 		});
-		expect(wrapper.attributes('aria-labelledby')).toBe(header.props('headerId'));
+		expect(wrapper.get('h3').text()).toBe('agents.builder.agent.title');
+		expect(wrapper.attributes('aria-labelledby')).toBe(wrapper.get('h3').attributes('id'));
+		expect(wrapper.text()).not.toContain('agents.builder.agent.description');
 	});
 
 	it('keeps the card heading accessible in embedded controls', function hidesEmbeddedHeader() {
@@ -264,7 +268,7 @@ describe('AgentInfoPanel', () => {
 			modelValue: '# Role\nHelp users.',
 			variant: 'ghost',
 			showToolbar: 'floating',
-			maxHeight: '360px',
+			maxHeight: undefined,
 			placeholder: 'agents.builder.agent.instructions.placeholder',
 		});
 		expect(wrapper.find('[data-testid="agent-instructions-document"]').exists()).toBe(true);
