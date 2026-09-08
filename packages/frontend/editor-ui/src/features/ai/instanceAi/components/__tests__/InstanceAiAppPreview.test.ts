@@ -35,6 +35,15 @@ describe('InstanceAiAppPreview', () => {
 		expect(getByText('The assistant has not built this app yet.')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-app-preview-iframe')).not.toBeInTheDocument();
 		expect(queryByTestId('app-preview-refresh')).toHaveAttribute('aria-disabled', 'true');
+		expect(queryByTestId('app-preview-open-in-new-tab')).toHaveAttribute('aria-disabled', 'true');
+	});
+
+	it('enables open in new tab once a version exists', () => {
+		const { getByTestId } = renderComponent({
+			props: { ...baseProps, versionId: 'v-1' },
+		});
+
+		expect(getByTestId('app-preview-open-in-new-tab')).not.toHaveAttribute('aria-disabled');
 	});
 
 	it('changes the iframe src on refresh', async () => {

@@ -52,6 +52,7 @@ function refresh() {
 				icon="external-link"
 				variant="ghost"
 				size="small"
+				:disabled="!props.versionId"
 				:href="appUrl"
 				target="_blank"
 				:aria-label="i18n.baseText('instanceAi.appPreview.openInNewTab')"
