@@ -18,14 +18,14 @@ picks up the change, because none of them hardcode a color.
 Rules:
 
 - Build UI from shadcn-vue components first (catalog below), not hand-rolled
-  markup. None of them exist in a fresh app — call `apps(action:
-  "add-component", appId, component: "<name>")` for each one you need before
-  importing it. It runs the real `shadcn-vue` CLI (`components.json` and
-  `src/lib/utils.ts` are already in place) and installs the component's own
-  dependencies; it is safe to call again for a component you already added.
-  Do not hand-write a component shadcn-vue already provides. Reach for a
-  `reka-ui` primitive directly only for behavior no shadcn-vue component
-  covers.
+  markup. Only `button` and `switch` exist from `create` (Home.vue's own
+  demo) — for any other one, call `apps(action: "add-component", appId,
+  component: "<name>")` before importing it. It runs the real `shadcn-vue`
+  CLI (`components.json` and `src/lib/utils.ts` are already in place) and
+  installs the component's own dependencies; it is safe to call again for a
+  component you already added. Do not hand-write a component shadcn-vue
+  already provides. Reach for a `reka-ui` primitive directly only for
+  behavior no shadcn-vue component covers.
 - Style with the utility names below — they all resolve to the theme's CSS
   variables (`bg-primary`, `text-muted-foreground`, `rounded-lg`). No hex
   colors, no inline styles, no `dark:` variants: dark mode comes from the
@@ -54,25 +54,34 @@ then import it as `import { X } from '@/components/ui/<name>'`:
 | Tooltip | `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` | Wrap the tree in one `TooltipProvider`. |
 | DropdownMenu | `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuLabel`, `DropdownMenuSeparator`, `DropdownMenuGroup`, `DropdownMenuCheckboxItem`, `DropdownMenuRadioGroup`, `DropdownMenuRadioItem`, `DropdownMenuSub`, `DropdownMenuSubTrigger`, `DropdownMenuSubContent`, `DropdownMenuShortcut` | |
 
-## Recipe (after `add-component` for `card`, `button`, `switch`)
+## Recipe (from the template's own `Home.vue`)
+
+`apps(action="create")` already runs `add-component` for `button` and
+`switch` — the two the template's starter page uses — so a fresh app has them
+from the start:
 
 ```vue
-<Card>
-	<CardHeader><CardTitle>Clicked {{ count }} times</CardTitle></CardHeader>
-	<CardContent class="flex items-center justify-between gap-4">
+<script setup lang="ts">
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+</script>
+
+<template>
+	<section class="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+		<p class="text-sm">Clicked {{ count }} times</p>
 		<Button @click="count++">Click me</Button>
-		<label class="flex items-center gap-2 text-sm">
-			<Switch v-model="enabled" />
-			Notifications {{ enabled ? 'on' : 'off' }}
-		</label>
-	</CardContent>
-</Card>
+	</section>
+	<label class="mt-4 flex items-center gap-2 text-sm">
+		<Switch v-model="enabled" />
+		Notifications {{ enabled ? 'on' : 'off' }}
+	</label>
+</template>
 ```
 
-The template's own `Home.vue` predates any `add-component` call, so it styles
-its counter/switch demo with plain elements, utilities and a `reka-ui`
-`SwitchRoot`/`SwitchThumb` — the same pattern to fall back on for anything
-`add-component` doesn't cover.
+Everything else — `add-component` for `card`, `dialog`, whatever the app
+needs — follows the same shape: import from `@/components/ui/<name>` after
+adding it. Fall back to a `reka-ui` primitive directly, styled with the
+utilities above, only for behavior no shadcn-vue component covers.
 
 ## CSS-variable → utility reference
 

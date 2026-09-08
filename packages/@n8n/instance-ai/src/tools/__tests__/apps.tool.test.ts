@@ -172,11 +172,14 @@ describe('apps tool', () => {
 			);
 			expect(commands[1]).toContain('mv gitignore .gitignore');
 			expect(commands[1]).toContain("'greeter'");
-			expect(commands[2]).toContain(
+			expect(commands[2]).toBe(
+				"npx --yes shadcn-vue@latest add 'button' 'switch' --yes --overwrite",
+			);
+			expect(commands[3]).toContain(
 				"[ -f .gitignore ] || printf 'node_modules\\ndist\\n' > .gitignore",
 			);
-			expect(commands[2]).toContain('git init');
-			expect(commands[2]).toContain('commit -qm scaffold --allow-empty');
+			expect(commands[3]).toContain('git init');
+			expect(commands[3]).toContain('commit -qm scaffold --allow-empty');
 			expect(result).toEqual({
 				app: APP,
 				workspacePath: '/home/daytona/workspace/apps/greeter',
@@ -250,7 +253,7 @@ describe('apps tool', () => {
 			const calls = executeCommandMock(context).mock.calls as Array<
 				[string, string[], { abortSignal?: AbortSignal }]
 			>;
-			expect(calls).toHaveLength(3);
+			expect(calls).toHaveLength(4);
 			for (const call of calls) expect(call[2].abortSignal).toBe(abortSignal);
 		});
 	});

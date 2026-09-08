@@ -169,6 +169,12 @@ function resolveOutDir(raw: string | undefined): string | undefined {
 
 const q = (value: string) => `'${escapeSingleQuotes(value)}'`;
 
+/** Components the Vue template's own Home.vue demonstrates; added at create time so it never ships broken. */
+const STARTER_COMPONENTS = ['button', 'switch'];
+
+const shadcnAddCommand = (components: string[]) =>
+	`npx --yes shadcn-vue@latest add ${components.map(q).join(' ')} --yes --overwrite`;
+
 /**
  * Post-build check and packaging as one shell script. A failed check prints a
  * `APP_CHECK_FAIL:` line and exits non-zero; success prints `APP_CHECK_OK`.
@@ -321,6 +327,21 @@ async function handleCreate(
 			});
 			if (copy.exitCode !== 0) {
 				throw new Error(`Could not copy the ${template} template: ${tailLog(combinedLog(copy))}`);
+			}
+		}
+
+		// The Vue template's own Home.vue demonstrates real shadcn-vue components rather
+		// than hand-rolled markup, so it needs them to exist from the start. shadcn-vue add
+		// bootstraps its own npm install, so this also leaves node_modules ready for the
+		// first build.
+		if (template === 'vue') {
+			const addStarters = await run(shadcnAddCommand(STARTER_COMPONENTS), {
+				cwd: appDir,
+				env: { CI: 'true' },
+				timeout: COMMAND_TIMEOUT_MS,
+			});
+			if (addStarters.exitCode !== 0) {
+				throw new Error(`Could not add starter components: ${tailLog(combinedLog(addStarters))}`);
 			}
 		}
 
@@ -512,7 +533,7 @@ async function handleAddComponent(
 	const root = await getWorkspaceRoot(workspace);
 	const appDir = `${root}/${APPS_DIR}/${app.namespace}`;
 
-	const add = await run(`npx --yes shadcn-vue@latest add ${q(input.component)} --yes --overwrite`, {
+	const add = await run(shadcnAddCommand([input.component]), {
 		cwd: appDir,
 		env: { CI: 'true' },
 		timeout: COMMAND_TIMEOUT_MS,
@@ -578,7 +599,7 @@ export function createAppsTool(context: InstanceAiContext) {
 				'edit the files there, then call `build` to compile them and publish a new version. ' +
 				'`build` returns the live `url` on success, or `{ error, stage, message, log }` to fix and retry. ' +
 				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet. ' +
-				'`add-component` generates a shadcn-vue component into src/components/ui/ — the template ships none pre-generated.',
+				'`add-component` generates a shadcn-vue component into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too.',
 		)
 		.input(inputSchema)
 		.handler(async (input: AppsInput, ctx) => {
