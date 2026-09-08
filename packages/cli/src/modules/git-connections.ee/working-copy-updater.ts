@@ -9,17 +9,11 @@ import { z } from 'zod';
 import { N8N_VERSION } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
-import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import {
-	containerPlacement,
-	isUnder,
-	mergeManifests,
-	pinPath,
-	staleTargets,
-} from './manifest-merge';
-import type { BranchState, Placement } from './manifest-merge';
+import { containerPlacement, isUnder, pinPath, staleWorkflowTargets } from './branch-placement';
+import type { BranchState, Placement } from './branch-placement';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -28,6 +22,12 @@ const selectivePushOptionsSchema = z.object({
 });
 
 export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
+
+const ENTITY_FILES = {
+	'project.json': 'projects',
+	'folder.json': 'folders',
+	'workflow.json': 'workflows',
+} as const satisfies Record<string, keyof BranchState>;
 
 /**
  * Applies a selective export to the exported working copy of a branch. It only
@@ -78,41 +78,90 @@ export class WorkingCopyUpdater {
 		});
 	}
 
-	async readManifest(packageDir: string): Promise<PackageManifest> {
-		const manifest = await this.readManifestIfPresent(packageDir);
-		if (!manifest) throw new BadRequestError('The export has no manifest.json');
-		return manifest;
+	/**
+	 * What the branch holds, from `project.json`, `folder.json` and
+	 * `workflow.json`. Placement and guards only need those collections.
+	 */
+	async readBranchState(exportFolder: string): Promise<BranchState> {
+		const resolvedBase = await this.resolveContained(exportFolder, '.');
+		const state: Required<BranchState> = { projects: [], folders: [], workflows: [] };
+
+		const walk = async (absDir: string): Promise<void> => {
+			const entries = await fs.readdir(absDir, { withFileTypes: true });
+			for (const entry of entries) {
+				const fullPath = path.join(absDir, entry.name);
+				if (entry.isSymbolicLink()) {
+					throw new BadRequestError(
+						`"${path.relative(resolvedBase, fullPath) || '.'}" on the branch is a symbolic link. Remove it and retry.`,
+					);
+				}
+				if (entry.isDirectory()) {
+					await walk(fullPath);
+					continue;
+				}
+				if (!entry.isFile()) continue;
+
+				const kind = ENTITY_FILES[entry.name as keyof typeof ENTITY_FILES];
+				if (kind === undefined) continue;
+
+				const relativeFile = path.relative(resolvedBase, fullPath).split(path.sep).join('/');
+				const target = path.posix.dirname(relativeFile);
+				state[kind].push(await this.readEntityFile(fullPath, target));
+			}
+		};
+
+		await walk(resolvedBase);
+		this.assertUniqueEntityIds(state);
+		return {
+			...(state.projects.length > 0 ? { projects: state.projects } : {}),
+			...(state.folders.length > 0 ? { folders: state.folders } : {}),
+			...(state.workflows.length > 0 ? { workflows: state.workflows } : {}),
+		};
 	}
 
 	/**
-	 * What the branch holds, from the `manifest.json` it carries. Everything
-	 * downstream consumes `BranchState`, so when the manifest leaves the branch
-	 * only this method has to derive the same shape from the files.
+	 * Duplicate ids make the project-scope Map keep one target and the stale
+	 * walk delete every copy. The package schema already rejects this.
 	 */
-	async readBranchState(exportFolder: string): Promise<BranchState> {
-		const {
-			packageFormatVersion: _version,
-			exportedAt: _exportedAt,
-			sourceN8nVersion: _sourceVersion,
-			sourceId: _sourceId,
-			...state
-		} = await this.readManifest(exportFolder);
-		return state;
+	private assertUniqueEntityIds(state: BranchState): void {
+		for (const [label, entries] of [
+			['projects', state.projects],
+			['folders', state.folders],
+			['workflows', state.workflows],
+		] as const) {
+			const seen = new Map<string, string>();
+			for (const entry of entries ?? []) {
+				const previous = seen.get(entry.id);
+				if (previous !== undefined) {
+					throw new BadRequestError(
+						`The branch holds two ${label} with id "${entry.id}" (${previous} and ${entry.target}). Remove the duplicate and retry.`,
+					);
+				}
+				seen.set(entry.id, entry.target);
+			}
+		}
 	}
 
-	private async readManifestIfPresent(packageDir: string): Promise<PackageManifest | undefined> {
-		const file = await this.resolveContained(packageDir, MANIFEST_FILE);
-		const raw = await fs.readFile(file, 'utf-8').catch((error: NodeJS.ErrnoException) => {
-			if (error.code === 'ENOENT') return undefined;
-			throw error;
-		});
-		if (raw === undefined) return undefined;
+	private async readEntityFile(file: string, target: string): Promise<ManifestEntry> {
+		let parsed: unknown;
 		try {
-			return packageManifestSchema.parse(jsonParse(raw));
-		} catch (error) {
-			if (error instanceof BadRequestError) throw error;
-			throw new BadRequestError('Package manifest failed validation');
+			parsed = jsonParse(await fs.readFile(file, 'utf-8'));
+		} catch {
+			throw new BadRequestError(
+				`"${target}" on the branch is not valid JSON. Remove it and retry.`,
+			);
 		}
+		if (
+			typeof parsed !== 'object' ||
+			parsed === null ||
+			typeof (parsed as { id?: unknown }).id !== 'string' ||
+			typeof (parsed as { name?: unknown }).name !== 'string'
+		) {
+			throw new BadRequestError(
+				`"${target}" on the branch is missing an id or a name. Remove it and retry.`,
+			);
+		}
+		return { id: (parsed as { id: string }).id, name: (parsed as { name: string }).name, target };
 	}
 
 	/**
@@ -143,8 +192,8 @@ export class WorkingCopyUpdater {
 
 	/**
 	 * A selected workflow the branch holds under another project moved between
-	 * projects. Applying it would write outside the selected project and orphan
-	 * the dependencies it left, so a selective push refuses it.
+	 * projects. Applying it would write outside the selected project, so a
+	 * selective push refuses it.
 	 */
 	assertNoCrossProjectMoves(branch: BranchState, selection: SelectivePushOptions): void {
 		if (selection.workflowIds.length === 0) return;
@@ -162,9 +211,9 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * Merge the staging export into `exportFolder`. The merge runs first and can
-	 * reject the push. File work runs on a copy, then the copy replaces the
-	 * export, so a failed write leaves the working copy untouched.
+	 * Overlay the staging export onto `exportFolder`. Guards run first. File
+	 * work runs on a copy, then the copy replaces the export, so a failed write
+	 * leaves the working copy untouched.
 	 */
 	async applySelection(
 		exportFolder: string,
@@ -172,19 +221,19 @@ export class WorkingCopyUpdater {
 		staging: PackageManifest,
 		existing: BranchState,
 		selection: SelectivePushOptions,
-	): Promise<PackageManifest> {
+	): Promise<void> {
 		this.validateSelection(selection);
+		this.assertUniqueEntityIds(existing);
 		this.assertDeletionsOnBranch(existing, selection);
 		this.assertNoCrossProjectMoves(existing, selection);
 
 		const placement = containerPlacement(existing, staging);
-		const merged = mergeManifests(
-			existing,
-			staging,
-			new Set(selection.deletedWorkflowIds),
-			selection.projectId,
-			placement,
-		);
+		const remaining: BranchState = {
+			...existing,
+			workflows: (existing.workflows ?? []).filter(
+				(workflow) => !selection.deletedWorkflowIds.includes(workflow.id),
+			),
+		};
 		const parent = path.dirname(exportFolder);
 		const workFolder = await fs.mkdtemp(path.join(parent, `.${path.basename(exportFolder)}-`));
 		let backupFolder: string | undefined;
@@ -193,17 +242,18 @@ export class WorkingCopyUpdater {
 			await fs.rm(workFolder, { recursive: true, force: true });
 			await fs.cp(exportFolder, workFolder, { recursive: true, verbatimSymlinks: true });
 
-			for (const target of staleTargets(existing, merged, staging)) {
-				await fs.rm(await this.assertRemovableLeafTarget(workFolder, target, merged, staging), {
+			for (const target of staleWorkflowTargets(
+				existing,
+				staging,
+				new Set(selection.deletedWorkflowIds),
+			)) {
+				await fs.rm(await this.assertRemovableLeafTarget(workFolder, target, remaining, staging), {
 					recursive: true,
 					force: true,
 				});
 			}
 			await this.overlayDirectory(stagingFolder, workFolder, placement);
-			await fs.writeFile(
-				await this.resolveContained(workFolder, MANIFEST_FILE),
-				JSON.stringify(merged, null, '\t'),
-			);
+			await fs.rm(await this.resolveContained(workFolder, MANIFEST_FILE), { force: true });
 
 			const backupPath = `${exportFolder}.bak`;
 			await fs.rm(backupPath, { recursive: true, force: true });
@@ -233,8 +283,6 @@ export class WorkingCopyUpdater {
 		} finally {
 			await fs.rm(workFolder, { recursive: true, force: true });
 		}
-
-		return merged;
 	}
 
 	/**
@@ -245,7 +293,7 @@ export class WorkingCopyUpdater {
 	private async assertRemovableLeafTarget(
 		exportFolder: string,
 		target: string,
-		remaining: PackageManifest,
+		remaining: BranchState,
 		staging: PackageManifest,
 	): Promise<string> {
 		const segments = target.split(/[\\/]/).filter(Boolean);
@@ -262,20 +310,17 @@ export class WorkingCopyUpdater {
 			);
 		}
 
-		const leafKinds = ['workflows', 'credentials', 'dataTables', 'variables', 'tags'] as const;
-		for (const kind of leafKinds) {
-			const writtenIds = new Set((staging[kind] ?? []).map((entry) => entry.id));
-			for (const entry of remaining[kind] ?? []) {
-				if (isUnder(entry.target, target)) {
-					throw new BadRequestError(
-						`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
-					);
-				}
-				if (entry.target === target && !writtenIds.has(entry.id)) {
-					throw new BadRequestError(
-						`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
-					);
-				}
+		const writtenIds = new Set((staging.workflows ?? []).map((entry) => entry.id));
+		for (const entry of remaining.workflows ?? []) {
+			if (isUnder(entry.target, target)) {
+				throw new BadRequestError(
+					`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
+				);
+			}
+			if (entry.target === target && !writtenIds.has(entry.id)) {
+				throw new BadRequestError(
+					`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
+				);
 			}
 		}
 
