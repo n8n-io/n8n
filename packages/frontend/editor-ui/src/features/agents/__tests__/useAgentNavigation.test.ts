@@ -15,7 +15,11 @@ const { push, currentRoute } = vi.hoisted(() => ({
 vi.mock('vue-router', () => ({ useRouter: () => ({ push, currentRoute }) }));
 
 const workflowId = { value: '' };
-vi.mock('@/app/composables/useWorkflowId', () => ({ useWorkflowId: () => workflowId }));
+const routeWorkflowId = { value: '' };
+vi.mock('@/app/composables/useWorkflowId', () => ({
+	useRouteWorkflowId: () => routeWorkflowId,
+	useWorkflowId: () => workflowId,
+}));
 
 const workflowsStore = { workflowId: 'wf-1', isNewWorkflow: false };
 vi.mock('@/app/stores/workflows.store', () => ({ useWorkflowsStore: () => workflowsStore }));
@@ -29,6 +33,7 @@ describe('useAgentNavigation', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		workflowId.value = '';
+		routeWorkflowId.value = 'wf-1';
 		workflowsStore.workflowId = 'wf-1';
 		workflowsStore.isNewWorkflow = false;
 		currentRoute.value = {
@@ -69,6 +74,7 @@ describe('useAgentNavigation', () => {
 	it('falls back to the route workflow id when the store id is empty', async () => {
 		workflowsStore.workflowId = '';
 		workflowId.value = 'wf-route';
+		routeWorkflowId.value = 'wf-route';
 
 		await useAgentNavigation().openBuilder('proj-1', 'agent-9', 'node-1');
 
@@ -86,6 +92,7 @@ describe('useAgentNavigation', () => {
 			params: { threadId: 'thread-1' },
 		};
 		workflowId.value = 'artifact-workflow';
+		routeWorkflowId.value = '';
 		workflowsStore.workflowId = 'stale-workflow';
 
 		await useAgentNavigation().openBuilder('proj-1', 'agent-9');
@@ -95,6 +102,24 @@ describe('useAgentNavigation', () => {
 			nodeId: '',
 			agentId: 'agent-9',
 			returnPath: '/assistant/thread-1',
+		});
+	});
+
+	it('treats the execution debug canvas as a standalone workflow', async () => {
+		currentRoute.value = {
+			name: VIEWS.EXECUTION_DEBUG,
+			fullPath: '/workflow/wf-1/debug/execution-1',
+			params: { workflowId: 'wf-1', executionId: 'execution-1' },
+		};
+		workflowId.value = 'wf-1';
+		routeWorkflowId.value = 'wf-1';
+
+		await useAgentNavigation().openBuilder('proj-1', 'agent-9', 'node-1');
+
+		expect(returnContextStore.set).toHaveBeenCalledWith({
+			workflowId: 'wf-1',
+			nodeId: 'node-1',
+			agentId: 'agent-9',
 		});
 	});
 });

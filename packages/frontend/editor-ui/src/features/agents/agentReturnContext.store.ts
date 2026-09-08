@@ -19,13 +19,14 @@ export interface AgentReturnContext {
 	agentId: string;
 }
 
-/** History-state key used to restore the workflow artifact after the return navigation. */
-export const AGENT_RETURN_WORKFLOW_ID_STATE = 'agentReturnWorkflowId';
-/** History-state key used to reopen the artifact node after the return navigation. */
-export const AGENT_RETURN_NODE_ID_STATE = 'agentReturnNodeId';
+export interface PendingAgentArtifactReturn {
+	workflowId: string;
+	nodeId?: string;
+}
 
 export const useAgentReturnContextStore = defineStore('agentReturnContext', () => {
 	const context = ref<AgentReturnContext | null>(null);
+	const pendingArtifactReturn = ref<PendingAgentArtifactReturn | null>(null);
 
 	function set(ctx: AgentReturnContext) {
 		context.value = ctx;
@@ -35,5 +36,22 @@ export const useAgentReturnContextStore = defineStore('agentReturnContext', () =
 		context.value = null;
 	}
 
-	return { context, set, clear };
+	function setPendingArtifactReturn(pending: PendingAgentArtifactReturn) {
+		pendingArtifactReturn.value = pending;
+	}
+
+	function consumePendingArtifactReturn() {
+		const pending = pendingArtifactReturn.value;
+		pendingArtifactReturn.value = null;
+		return pending;
+	}
+
+	return {
+		context,
+		pendingArtifactReturn,
+		set,
+		clear,
+		setPendingArtifactReturn,
+		consumePendingArtifactReturn,
+	};
 });

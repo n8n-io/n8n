@@ -28,10 +28,7 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
-import {
-	AGENT_RETURN_NODE_ID_STATE,
-	AGENT_RETURN_WORKFLOW_ID_STATE,
-} from '@/features/agents/agentReturnContext.store';
+import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 } as Ref<number>,
@@ -1995,23 +1992,24 @@ describe('InstanceAiThreadView', () => {
 				attachments: [{ type: 'workflow', id: 'workflow-1', name: 'First workflow' }],
 			},
 		] as typeof thread.messages;
-		history.replaceState(
-			{
-				[AGENT_RETURN_WORKFLOW_ID_STATE]: 'workflow-2',
-				[AGENT_RETURN_NODE_ID_STATE]: 'node-2',
-				preserved: true,
-			},
-			'',
-		);
+		const returnContextStore = mockedStore(useAgentReturnContextStore);
+		returnContextStore.consumePendingArtifactReturn.mockReturnValueOnce({
+			workflowId: 'workflow-2',
+			nodeId: 'node-2',
+		});
 
-		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { findByTestId, unmount } = renderView({ props: { threadId: 'thread-1' } });
 		const workflowPreview = await findByTestId('instance-ai-workflow-preview-stub');
 
 		expect(workflowPreview).toHaveAttribute('data-workflow-id', 'workflow-2');
 		expect(workflowPreview).toHaveAttribute('data-initial-node-id', 'node-2');
-		expect(history.state).toMatchObject({ preserved: true });
-		expect(history.state[AGENT_RETURN_WORKFLOW_ID_STATE]).toBeUndefined();
-		expect(history.state[AGENT_RETURN_NODE_ID_STATE]).toBeUndefined();
+
+		unmount();
+		const reopenedView = renderView({ props: { threadId: 'thread-1' } });
+		const reopenedPreview = await reopenedView.findByTestId('instance-ai-workflow-preview-stub');
+
+		expect(reopenedPreview).toHaveAttribute('data-workflow-id', 'workflow-1');
+		expect(reopenedPreview).not.toHaveAttribute('data-initial-node-id');
 	});
 
 	describe('Fix with AI card', () => {

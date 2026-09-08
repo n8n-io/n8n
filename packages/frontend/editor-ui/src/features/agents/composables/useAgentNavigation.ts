@@ -1,6 +1,5 @@
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/app/constants';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useRouteWorkflowId, useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAgentReturnContextStore } from '../agentReturnContext.store';
 import { AGENT_BUILDER_VIEW, AGENT_VIEW } from '../constants';
@@ -12,6 +11,7 @@ import { AGENT_BUILDER_VIEW, AGENT_VIEW } from '../constants';
 export function useAgentNavigation() {
 	const router = useRouter();
 	const workflowId = useWorkflowId();
+	const routeWorkflowId = useRouteWorkflowId();
 	const workflowsStore = useWorkflowsStore();
 	const returnContext = useAgentReturnContextStore();
 
@@ -22,20 +22,20 @@ export function useAgentNavigation() {
 	 */
 	function rememberOrigin(agentId: string, originNodeId?: string) {
 		const currentRoute = router.currentRoute.value;
-		const isStandaloneWorkflow = currentRoute.name === VIEWS.WORKFLOW;
-
-		// Only a persisted standalone workflow has a real route to return to.
-		if (isStandaloneWorkflow && workflowsStore.isNewWorkflow) return;
 
 		// Prefer the injected id. Embedded workflow artifacts shadow the route id.
 		const wfId = workflowId.value || workflowsStore.workflowId;
 		if (!wfId) return;
+		const isEmbeddedWorkflow = wfId !== routeWorkflowId.value;
+
+		// Only a persisted standalone workflow has a real route to return to.
+		if (!isEmbeddedWorkflow && workflowsStore.isNewWorkflow) return;
 
 		returnContext.set({
 			workflowId: wfId,
 			nodeId: originNodeId ?? '',
 			agentId,
-			...(isStandaloneWorkflow ? {} : { returnPath: currentRoute.fullPath }),
+			...(isEmbeddedWorkflow ? { returnPath: currentRoute.fullPath } : {}),
 		});
 	}
 

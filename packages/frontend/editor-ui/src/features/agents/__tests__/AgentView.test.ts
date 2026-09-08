@@ -3,11 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import AgentView from '../views/AgentView.vue';
 import { VIEWS } from '@/app/constants';
-import {
-	AGENT_RETURN_NODE_ID_STATE,
-	AGENT_RETURN_WORKFLOW_ID_STATE,
-	type AgentReturnContext,
-} from '../agentReturnContext.store';
+import type { AgentReturnContext } from '../agentReturnContext.store';
 
 const { push, routeLeaveGuards } = vi.hoisted(() => ({
 	push: vi.fn(),
@@ -28,15 +24,20 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: vi.fn() }),
 }));
 
-const returnContextStore = reactive<{ context: AgentReturnContext | null; clear: () => void }>({
+const returnContextStore = reactive<{
+	context: AgentReturnContext | null;
+	clear: () => void;
+	setPendingArtifactReturn: ReturnType<typeof vi.fn>;
+	consumePendingArtifactReturn: ReturnType<typeof vi.fn>;
+}>({
 	context: null,
 	clear: vi.fn(() => {
 		returnContextStore.context = null;
 	}),
+	setPendingArtifactReturn: vi.fn(),
+	consumePendingArtifactReturn: vi.fn(),
 });
 vi.mock('../agentReturnContext.store', () => ({
-	AGENT_RETURN_NODE_ID_STATE: 'agentReturnNodeId',
-	AGENT_RETURN_WORKFLOW_ID_STATE: 'agentReturnWorkflowId',
 	useAgentReturnContextStore: () => returnContextStore,
 }));
 
@@ -106,13 +107,11 @@ describe('AgentView', () => {
 
 		await userEvent.click(getByRole('button'));
 
-		expect(push).toHaveBeenCalledWith({
-			path: '/assistant/thread-1',
-			state: {
-				[AGENT_RETURN_WORKFLOW_ID_STATE]: 'artifact-workflow',
-				[AGENT_RETURN_NODE_ID_STATE]: 'node-1',
-			},
+		expect(returnContextStore.setPendingArtifactReturn).toHaveBeenCalledWith({
+			workflowId: 'artifact-workflow',
+			nodeId: 'node-1',
 		});
+		expect(push).toHaveBeenCalledWith({ path: '/assistant/thread-1' });
 	});
 
 	it('omits the node id when returning to an embedded canvas', async () => {
@@ -126,10 +125,10 @@ describe('AgentView', () => {
 
 		await userEvent.click(getByRole('button'));
 
-		expect(push).toHaveBeenCalledWith({
-			path: '/assistant/thread-1',
-			state: { [AGENT_RETURN_WORKFLOW_ID_STATE]: 'artifact-workflow' },
+		expect(returnContextStore.setPendingArtifactReturn).toHaveBeenCalledWith({
+			workflowId: 'artifact-workflow',
 		});
+		expect(push).toHaveBeenCalledWith({ path: '/assistant/thread-1' });
 	});
 
 	it('clears the round-trip context on a real route-level exit', () => {

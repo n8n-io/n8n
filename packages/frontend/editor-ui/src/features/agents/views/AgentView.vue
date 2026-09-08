@@ -4,11 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
-import {
-	AGENT_RETURN_NODE_ID_STATE,
-	AGENT_RETURN_WORKFLOW_ID_STATE,
-	useAgentReturnContextStore,
-} from '@/features/agents/agentReturnContext.store';
+import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import BackToWorkflowBanner from '@/features/agents/components/BackToWorkflowBanner.vue';
 
 const documentTitle = useDocumentTitle();
@@ -42,13 +38,17 @@ async function onBackToWorkflow() {
 
 	returnContext.clear();
 	if (ctx.returnPath) {
-		await router.push({
-			path: ctx.returnPath,
-			state: {
-				[AGENT_RETURN_WORKFLOW_ID_STATE]: ctx.workflowId,
-				...(ctx.nodeId ? { [AGENT_RETURN_NODE_ID_STATE]: ctx.nodeId } : {}),
-			},
+		returnContext.setPendingArtifactReturn({
+			workflowId: ctx.workflowId,
+			...(ctx.nodeId ? { nodeId: ctx.nodeId } : {}),
 		});
+		try {
+			const failure = await router.push({ path: ctx.returnPath });
+			if (failure) returnContext.consumePendingArtifactReturn();
+		} catch (error) {
+			returnContext.consumePendingArtifactReturn();
+			throw error;
+		}
 		return;
 	}
 
