@@ -1,4 +1,5 @@
 import type {
+	InstanceAiAppAttachment,
 	InstanceAiNodesAttachment,
 	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
@@ -101,6 +102,60 @@ describe('buildContextResourcesBlock — nodes attachment', () => {
 	});
 });
 
+describe('buildContextResourcesBlock — app attachment', () => {
+	it('binds the thread to an existing app and steers the agent to build it', () => {
+		const attachment: InstanceAiAppAttachment = {
+			type: 'app',
+			appId: 'app-1',
+			projectId: 'proj-1',
+			name: 'Greeter',
+			namespace: 'greeter',
+		};
+
+		const block = buildContextResourcesBlock([attachment]);
+		const prose = block.split('\n\n').slice(1).join('\n\n');
+
+		expect(prose).toContain('from the apps page');
+		expect(prose).toContain(
+			'App "Greeter" (id: `app-1`, namespace `greeter`, in project `proj-1`)',
+		);
+		expect(prose).toContain('action `build` and `appId` `app-1`');
+		expect(prose).toContain('Do not call `apps` with action `create`');
+	});
+
+	it('tells the agent to create a pending app with the handed-off name and namespace', () => {
+		const attachment: InstanceAiAppAttachment = {
+			type: 'app',
+			projectId: 'proj-1',
+			name: 'Greeter',
+			namespace: 'greeter',
+			isNewApp: true,
+		};
+
+		const block = buildContextResourcesBlock([attachment]);
+		const prose = block.split('\n\n').slice(1).join('\n\n');
+
+		expect(prose).toContain('New app "Greeter", namespace `greeter` that does not exist yet');
+		expect(prose).toContain('in project `proj-1`');
+		expect(prose).toContain('first call `apps` with action `create`');
+		expect(prose).toContain('then build it with action `build`');
+		expect(prose).not.toContain('id: `');
+	});
+
+	it('keeps the attachment JSON on the leading line for reload', () => {
+		const attachment: InstanceAiAppAttachment = {
+			type: 'app',
+			appId: 'app-1',
+			projectId: 'proj-1',
+			name: 'Greeter',
+		};
+
+		const block = buildContextResourcesBlock([attachment]);
+
+		expect(block.split('\n')[1]).toBe(JSON.stringify([attachment]));
+	});
+});
+
 describe('InstanceAiService — resolveContextAttachments gating', () => {
 	type GatedService = {
 		canvasNodeContextFlagGate: { isEnabled: Mock };
@@ -142,6 +197,22 @@ describe('InstanceAiService — resolveContextAttachments gating', () => {
 		const result = await service.resolveContextAttachments([workflowAttachment], user);
 
 		expect(result).toEqual([workflowAttachment]);
+		expect(isEnabled).not.toHaveBeenCalled();
+	});
+
+	it('passes an app attachment through without asking the gate', async () => {
+		const isEnabled = vi.fn().mockResolvedValue(true);
+		const service = createService(isEnabled);
+		const appAttachment: InstanceAiAppAttachment = {
+			type: 'app',
+			appId: 'app-1',
+			projectId: 'proj-1',
+			name: 'Greeter',
+		};
+
+		const result = await service.resolveContextAttachments([appAttachment], user);
+
+		expect(result).toEqual([appAttachment]);
 		expect(isEnabled).not.toHaveBeenCalled();
 	});
 

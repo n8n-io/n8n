@@ -65,6 +65,12 @@ type PendingAgentTargetMetadata = {
 	name: string;
 };
 
+type AppBuilderTargetMetadata = {
+	appId: string;
+	projectId: string;
+	name?: string;
+};
+
 /**
  * Upsert a produced artifact. When an entry for the same `id` already exists,
  * optional fields provided by the new call win; fields it omits are preserved
@@ -397,8 +403,35 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				},
 				{ linkable: !attachment.pending },
 			);
+		} else if (attachment.type === 'app' && attachment.appId) {
+			recordProduced(col, {
+				type: 'app',
+				id: attachment.appId,
+				name: attachment.name,
+				projectId: attachment.projectId,
+				namespace: attachment.namespace,
+			});
 		}
 	}
+}
+
+/**
+ * Surface the app a thread is bound to before any message mentions it, so the
+ * preview tab exists as soon as the user lands from the apps page.
+ */
+function enrichAppFromBuilderTarget(
+	col: Collections,
+	target: AppBuilderTargetMetadata | undefined,
+): void {
+	if (!target) return;
+	const existing = col.produced.get(target.appId);
+	if (existing && existing.type !== 'app') return;
+	recordProduced(col, {
+		type: 'app',
+		id: target.appId,
+		name: existing?.name ?? target.name ?? 'Untitled',
+		projectId: target.projectId,
+	});
 }
 
 function enrichAgentFromBuilderTarget(
@@ -500,6 +533,7 @@ export function useResourceRegistry(
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
+	appBuilderTarget?: () => AppBuilderTargetMetadata | undefined,
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -526,6 +560,7 @@ export function useResourceRegistry(
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
+			enrichAppFromBuilderTarget(col, appBuilderTarget?.());
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);

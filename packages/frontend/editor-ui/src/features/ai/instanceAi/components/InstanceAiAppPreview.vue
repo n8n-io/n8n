@@ -1,21 +1,50 @@
 <script setup lang="ts">
+import { watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
+import { useToast } from '@n8n/composables/useToast';
+import AppDetailsView from '@/features/apps/AppDetailsView.vue';
+import { getAppBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
+import { useThread, useInstanceAiStore } from '../instanceAi.store';
+import { INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY } from '../constants';
 
-// `appId` and `projectId` are the artifact identity the thread view resolves this
-// preview by; the frame itself only needs the namespace.
 const props = defineProps<{
 	appId: string;
 	projectId: string;
-	namespace: string;
 	/** Latest built version; absent until the first `apps build` result arrives. */
 	versionId?: string;
 	/** An `apps build` call for this app is in flight. */
 	building?: boolean;
 }>();
 
+const thread = useThread();
+const instanceAiStore = useInstanceAiStore();
 const i18n = useI18n();
+const toast = useToast();
+
+// Showing an app binds the thread to it, so a later visit reopens this tab and
+// the agent keeps building the same app.
+async function syncAppTarget() {
+	const target = getAppBuilderTargetFromThreadMetadata(
+		instanceAiStore.getThreadMetadata(thread.id),
+	);
+	if (target?.appId === props.appId && target.projectId === props.projectId) return;
+
+	const name = thread.producedArtifacts.get(props.appId)?.name;
+	try {
+		await instanceAiStore.updateThreadMetadata(thread.id, {
+			[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
+				appId: props.appId,
+				projectId: props.projectId,
+				...(name ? { name } : {}),
+			},
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
+	}
+}
+
+watch(() => props.appId, syncAppTarget, { immediate: true });
 </script>
 
 <template>
@@ -33,7 +62,12 @@ const i18n = useI18n();
 				</span>
 			</div>
 		</Transition>
-		<AppPreviewFrame :namespace="props.namespace" :version-id="props.versionId" />
+		<AppDetailsView
+			artifact-mode
+			:project-id="props.projectId"
+			:app-id="props.appId"
+			:artifact-version-id="props.versionId"
+		/>
 	</div>
 </template>
 

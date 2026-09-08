@@ -458,7 +458,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		const artifactLink = getByRole('link', { name: 'Open Greeter' });
 		expect(artifactLink).toHaveAttribute('href', '/projects/proj-1/apps/app-1');
 		await waitFor(() => {
-			expect(artifactLink.querySelector('[data-icon="grid-2x2"]')).toBeInTheDocument();
+			expect(artifactLink.querySelector('[data-icon="app-window"]')).toBeInTheDocument();
 		});
 
 		const event = new MouseEvent('click', { bubbles: true, cancelable: true });

@@ -132,7 +132,7 @@ const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
-	app: 'grid-2x2',
+	app: 'app-window',
 };
 
 function artifactHref(artifact: ResourceEntry) {

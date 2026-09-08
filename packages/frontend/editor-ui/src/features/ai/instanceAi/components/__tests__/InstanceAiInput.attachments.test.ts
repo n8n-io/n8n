@@ -94,7 +94,17 @@ describe('InstanceAiInput — staged node attachments', () => {
 
 const renderAttachmentPreview = createComponentRenderer(AttachmentPreview);
 
-describe('AttachmentPreview — nodes attachment delegation', () => {
+describe('AttachmentPreview — resource chips', () => {
+	it('renders an app attachment as a named resource chip', () => {
+		const { getByTestId } = renderAttachmentPreview({
+			props: {
+				attachment: { type: 'app', projectId: 'proj-1', appId: 'app-1', name: 'Greeter' },
+			},
+		});
+
+		expect(getByTestId('attachment-preview-resource')).toHaveTextContent('Greeter');
+	});
+
 	it('delegates a nodes attachment to NodesAttachmentChips instead of the workflow/file branches', () => {
 		const { queryByTestId, getByTestId, container } = renderAttachmentPreview({
 			props: {

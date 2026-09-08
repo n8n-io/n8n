@@ -32,7 +32,7 @@ const iconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
-	app: 'grid-2x2',
+	app: 'app-window',
 };
 
 const icon = computed(() => iconMap[props.type] ?? 'file');

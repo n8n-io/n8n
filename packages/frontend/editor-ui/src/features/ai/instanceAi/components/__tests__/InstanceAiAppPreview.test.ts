@@ -1,96 +1,103 @@
-import { describe, it, expect } from 'vitest';
-import { createTestingPinia } from '@pinia/testing';
-import { fireEvent } from '@testing-library/vue';
-import { createComponentRenderer } from '@/__tests__/render';
+import { flushPromises, mount } from '@vue/test-utils';
+import { ref } from 'vue';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import InstanceAiAppPreview from '../InstanceAiAppPreview.vue';
 
-const renderComponent = createComponentRenderer(InstanceAiAppPreview, {
-	pinia: createTestingPinia(),
-});
+const threadState = {
+	id: 'thread-1',
+	producedArtifacts: new Map([
+		['app-1', { type: 'app', id: 'app-1', name: 'Greeter', projectId: 'proj-1' }],
+	]),
+};
+const metadataState = ref<Record<string, unknown>>();
+const updateThreadMetadataMock = vi.fn(
+	async (_threadId: string, metadata: Record<string, unknown>) => {
+		metadataState.value = { ...metadataState.value, ...metadata };
+	},
+);
 
-const baseProps = {
-	appId: 'app-1',
-	projectId: 'proj-1',
-	namespace: 'greeter',
+const showError = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
+}));
+
+vi.mock('../../instanceAi.store', () => ({
+	useThread: () => threadState,
+	useInstanceAiStore: () => ({
+		getThreadMetadata: () => metadataState.value,
+		updateThreadMetadata: updateThreadMetadataMock,
+	}),
+}));
+
+const AppDetailsViewStub = {
+	name: 'AppDetailsView',
+	props: {
+		artifactMode: Boolean,
+		projectId: String,
+		appId: String,
+		artifactVersionId: String,
+	},
+	template:
+		'<div data-test-id="app-details-view-stub" :data-artifact-mode="String(artifactMode)" :data-app-id="appId" :data-project-id="projectId" :data-version-id="artifactVersionId" />',
 };
 
+function mountPreview(props: Partial<InstanceType<typeof InstanceAiAppPreview>['$props']> = {}) {
+	return mount(InstanceAiAppPreview, {
+		props: { appId: 'app-1', projectId: 'proj-1', ...props },
+		global: { stubs: { AppDetailsView: AppDetailsViewStub } },
+	});
+}
+
 describe('InstanceAiAppPreview', () => {
-	it('renders the served app for the given version in an iframe', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
-			props: { ...baseProps, versionId: 'v-1' },
-		});
-
-		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
-			'src',
-			'/apps/greeter/?v=v-1',
-		);
-		expect(getByTestId('app-preview-open-in-new-tab')).toHaveAttribute('href', '/apps/greeter/');
-		expect(getByTestId('app-preview-open-in-new-tab')).toHaveAttribute('target', '_blank');
-		expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
+	beforeEach(() => {
+		metadataState.value = undefined;
+		updateThreadMetadataMock.mockClear();
+		showError.mockClear();
 	});
 
-	it('shows an empty state until the first build', () => {
-		const { getByText, queryByTestId } = renderComponent({ props: baseProps });
+	it('hosts the app details view in artifact mode with the built version', () => {
+		const wrapper = mountPreview({ versionId: 'v-1' });
 
-		expect(getByText('The assistant has not built this app yet.')).toBeInTheDocument();
-		expect(queryByTestId('instance-ai-app-preview-iframe')).not.toBeInTheDocument();
-		expect(queryByTestId('app-preview-refresh')).toHaveAttribute('aria-disabled', 'true');
-		expect(queryByTestId('app-preview-open-in-new-tab')).toHaveAttribute('aria-disabled', 'true');
+		const view = wrapper.get('[data-test-id="app-details-view-stub"]');
+		expect(view.attributes('data-artifact-mode')).toBe('true');
+		expect(view.attributes('data-app-id')).toBe('app-1');
+		expect(view.attributes('data-project-id')).toBe('proj-1');
+		expect(view.attributes('data-version-id')).toBe('v-1');
 	});
 
-	it('enables open in new tab once a version exists', () => {
-		const { getByTestId } = renderComponent({
-			props: { ...baseProps, versionId: 'v-1' },
-		});
+	it('binds the thread to the shown app when no target is recorded yet', async () => {
+		mountPreview();
+		await flushPromises();
 
-		expect(getByTestId('app-preview-open-in-new-tab')).not.toHaveAttribute('aria-disabled');
+		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
+			instanceAiAppBuilderTarget: { appId: 'app-1', projectId: 'proj-1', name: 'Greeter' },
+		});
 	});
 
-	it('changes the iframe src on refresh', async () => {
-		const { getByTestId } = renderComponent({
-			props: { ...baseProps, versionId: 'v-1' },
-		});
+	it('leaves the recorded target alone when it already points at this app', async () => {
+		metadataState.value = {
+			instanceAiAppBuilderTarget: { appId: 'app-1', projectId: 'proj-1', name: 'Greeter' },
+		};
 
-		await fireEvent.click(getByTestId('app-preview-refresh'));
+		mountPreview();
+		await flushPromises();
 
-		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
-			'src',
-			'/apps/greeter/?v=v-1&r=1',
-		);
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 	});
 
-	it('reloads the iframe with the new version after a build', async () => {
-		const { getByTestId, rerender } = renderComponent({
-			props: { ...baseProps, versionId: 'v-1' },
-		});
+	it('toasts instead of throwing when binding the thread fails', async () => {
+		const failure = new Error('offline');
+		updateThreadMetadataMock.mockRejectedValueOnce(failure);
 
-		await rerender({ ...baseProps, versionId: 'v-2' });
+		mountPreview();
+		await flushPromises();
 
-		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
-			'src',
-			'/apps/greeter/?v=v-2',
-		);
-	});
-
-	it('drops the manual refresh counter when a new version is built', async () => {
-		const { getByTestId, rerender } = renderComponent({
-			props: { ...baseProps, versionId: 'v-1' },
-		});
-
-		await fireEvent.click(getByTestId('app-preview-refresh'));
-		await rerender({ ...baseProps, versionId: 'v-2' });
-
-		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
-			'src',
-			'/apps/greeter/?v=v-2',
-		);
+		expect(showError).toHaveBeenCalledWith(failure, 'Something went wrong');
 	});
 
 	it('shows the building indicator while an apps build call is in flight', () => {
-		const { getByTestId } = renderComponent({
-			props: { ...baseProps, versionId: 'v-1', building: true },
-		});
+		const wrapper = mountPreview({ versionId: 'v-1', building: true });
 
-		expect(getByTestId('instance-ai-app-building-indicator')).toBeInTheDocument();
+		expect(wrapper.find('[data-test-id="instance-ai-app-building-indicator"]').exists()).toBe(true);
 	});
 });

@@ -37,16 +37,21 @@ const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
-	app: 'grid-2x2',
+	app: 'app-window',
 };
 
 interface UseCanvasPreviewOptions {
 	thread: ThreadRuntime;
 	threadId: () => string;
 	initialAgentId?: () => string | undefined;
+	initialAppId?: () => string | undefined;
 }
 
-export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({
+	thread,
+	initialAgentId,
+	initialAppId,
+}: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 	const isPreviewOpen = ref(false);
@@ -150,6 +155,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		for (const message of thread.messages) {
 			for (const attachment of message.attachments ?? []) {
 				if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
+				if (attachment.type === 'app' && attachment.appId) return attachment.appId;
 			}
 		}
 		return undefined;
@@ -165,8 +171,18 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		return allArtifactTabs.value.find((tab) => tab.type === 'agent' && tab.id === agentId)?.id;
 	});
 
+	const initialAppTabId = computed(() => {
+		const appId = initialAppId?.();
+		if (!appId) return undefined;
+		return allArtifactTabs.value.find((tab) => tab.type === 'app' && tab.id === appId)?.id;
+	});
+
 	const initialArtifactId = computed(
-		() => firstAttachedArtifactId.value ?? pendingAgentTabId.value ?? initialAgentTabId.value,
+		() =>
+			firstAttachedArtifactId.value ??
+			pendingAgentTabId.value ??
+			initialAgentTabId.value ??
+			initialAppTabId.value,
 	);
 
 	// Open the arriving resource. Only when nothing is open, so it never steals

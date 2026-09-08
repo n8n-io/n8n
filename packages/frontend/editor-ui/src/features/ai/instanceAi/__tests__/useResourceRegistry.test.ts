@@ -50,6 +50,7 @@ function setup(
 	workflowNameLookup?: (id: string) => string | undefined,
 	agentBuilderTarget?: () => { agentId: string; projectId: string; name?: string } | undefined,
 	pendingAgentTarget?: () => { agentId: string; projectId: string; name: string } | undefined,
+	appBuilderTarget?: () => { appId: string; projectId: string; name?: string } | undefined,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
@@ -58,6 +59,7 @@ function setup(
 		undefined,
 		agentBuilderTarget,
 		pendingAgentTarget,
+		appBuilderTarget,
 	);
 	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
 }
@@ -740,6 +742,50 @@ describe('useResourceRegistry', () => {
 				name: 'Greeter',
 				namespace: 'greeter',
 				versionId: 'v-1',
+			});
+		});
+
+		test('registers the persisted app-builder target when no event produced the app', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				() => ({ appId: 'app-1', projectId: 'project-1', name: 'Greeter' }),
+			);
+
+			messages.value = [makeMessage()];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toEqual({
+				type: 'app',
+				id: 'app-1',
+				name: 'Greeter',
+				projectId: 'project-1',
+			});
+			expect(linkableResourceNameIndex.get('greeter')?.id).toBe('app-1');
+		});
+
+		test('an apps create result keeps its namespace and name over the persisted target', async () => {
+			const { messages, producedArtifacts } = setup(undefined, undefined, undefined, () => ({
+				appId: 'app-1',
+				projectId: 'project-1',
+				name: 'Stale Metadata Name',
+			}));
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [makeToolCall({ toolName: 'apps', result: createResult })],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toMatchObject({
+				type: 'app',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'project-1',
 			});
 		});
 
