@@ -218,16 +218,16 @@ describe('Postgres, resourceMapping', () => {
 	);
 
 	it('should wrap a query failure as a warning-level NodeOperationError', async () => {
-		jest
-			.mocked(getTableSchema)
-			.mockRejectedValueOnce(new Error('relation "public.opinie_godzina" does not exist'));
+		vi.mocked(getTableSchema).mockRejectedValueOnce(
+			new Error('relation "public.missing_table" does not exist'),
+		);
 
 		const error = await getMappingColumns.call(loadOptionsFunctions).catch((e: unknown) => e);
 
 		expect(error).toBeInstanceOf(NodeOperationError);
 		expect((error as NodeOperationError).level).toBe('warning');
 		expect((error as NodeOperationError).message).toBe(
-			'relation "public.opinie_godzina" does not exist',
+			'relation "public.missing_table" does not exist',
 		);
 	});
 });

@@ -160,12 +160,12 @@ describe('Test PostgresV2, parseParameterLoadingError', () => {
 	it('should wrap a raw error as a warning-level NodeOperationError', () => {
 		const error = parseParameterLoadingError(
 			node,
-			new Error('relation "public.opinie_godzina" does not exist'),
+			new Error('relation "public.missing_table" does not exist'),
 		);
 
 		expect(error).toBeInstanceOf(NodeOperationError);
 		expect(error.level).toEqual('warning');
-		expect(error.message).toEqual('relation "public.opinie_godzina" does not exist');
+		expect(error.message).toEqual('relation "public.missing_table" does not exist');
 	});
 
 	it('should return an existing NodeOperationError unchanged', () => {
