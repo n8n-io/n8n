@@ -429,9 +429,9 @@ function toRecord(value: unknown): Record<string, unknown> {
 function truncateDraftRun(run: DraftRun): DraftRun {
 	return {
 		...run,
-		inputs: truncateRecord(run.inputs),
-		outputs: run.outputs ? truncateRecord(run.outputs) : undefined,
-		error: run.error ? truncateText(run.error) : undefined,
+		inputs: truncateRecord(sanitizeRecord(run.inputs)),
+		outputs: run.outputs ? truncateRecord(sanitizeRecord(run.outputs)) : undefined,
+		error: run.error ? truncateText(scrubText(run.error)) : undefined,
 	};
 }
 

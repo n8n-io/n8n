@@ -384,6 +384,36 @@ describe('AgentSessionLangSmithExportService', () => {
 		});
 	});
 
+	it('redacts run fields before applying their size limit', async () => {
+		const credential = `${'\0'.repeat(49_985)} sk-ant-${'a'.repeat(20)}`;
+		const { service } = setupSession(
+			makeExecution({
+				userMessage: credential,
+				error: credential,
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'credential-output',
+						toolCallId: 'credential-output',
+						input: { value: credential },
+						output: { message: credential },
+						startTime: 1,
+						endTime: 2,
+						success: false,
+					},
+				],
+			}),
+		);
+
+		await service.exportSession(input);
+
+		const exportedRuns = JSON.stringify(submittedRuns());
+		expect(exportedRuns).not.toContain('sk-ant-');
+		expect(exportedRuns).not.toContain('[truncated');
+		expect(exportedRuns.match(/\[REDACTED\]/g)).toHaveLength(5);
+	});
+
 	it('stops waiting for a stalled batch after 60 seconds', async () => {
 		vi.useFakeTimers();
 		try {
