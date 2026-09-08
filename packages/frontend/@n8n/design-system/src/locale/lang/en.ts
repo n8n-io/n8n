@@ -34,6 +34,8 @@ export default {
 	'codeDiff.replaceMyCode': 'Replace my code',
 	'codeDiff.replacing': 'Replacing...',
 	'codeDiff.undo': 'Undo',
+	'copyInput.copy': 'Copy',
+	'copyInput.copied': 'Copied to clipboard',
 	'previewTag.preview': 'Preview',
 	'askAssistantButton.askAssistant': 'n8n AI',
 	'assistantChat.builder.name': 'AI Builder',
