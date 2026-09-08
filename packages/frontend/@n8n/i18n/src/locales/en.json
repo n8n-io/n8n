@@ -7160,7 +7160,7 @@
 	"instanceAi.recordingPreview.title": "Recording",
 	"instanceAi.recordingPreview.status": "Recording your browser",
 	"instanceAi.recordingPreview.actionsRecorded": "Actions recorded: {count}",
-	"instanceAi.recordingPreview.stop": "Stop",
+	"instanceAi.recordingPreview.stop": "Stop & Build Workflow",
 	"instanceAi.recordingPreview.discard": "Discard",
 	"instanceAi.recordingPreview.stopError.title": "Could not stop the recording",
 	"instanceAi.recordingPreview.stopError.message": "Try again.",
