@@ -213,6 +213,48 @@ describe('mergeManifests', () => {
 			expect(staleTargets(existing, result, staging)).toContain(`${P}/variables/api-key-v1`);
 		});
 
+		it('drops a project-scoped variable when the selection switches to a global variable of the same name', () => {
+			const existing = makeManifest({
+				projects: [acme],
+				workflows: [entry('w1', 'W1', `${P}/workflows/w1`)],
+				variables: [entry('v1', 'API_KEY', `${P}/variables/api-key`)],
+				requirements: { variables: [{ name: 'API_KEY', usedByWorkflows: ['w1'] }] },
+			});
+			const staging = makeManifest({
+				projects: [acme],
+				workflows: [entry('w1', 'W1', `${P}/workflows/w1`)],
+				variables: [entry('v2', 'API_KEY', 'variables/api-key')],
+				requirements: { variables: [{ name: 'API_KEY', usedByWorkflows: ['w1'] }] },
+			});
+
+			const result = merge(existing, staging);
+
+			expect(result.variables).toEqual([entry('v2', 'API_KEY', 'variables/api-key')]);
+			expect(staleTargets(existing, result, staging)).toContain(`${P}/variables/api-key`);
+		});
+
+		it('keeps the project-scoped variable when an unselected workflow still uses the name', () => {
+			const existing = makeManifest({
+				projects: [acme],
+				workflows: [entry('w1', 'W1', `${P}/workflows/w1`), entry('w2', 'W2', `${P}/workflows/w2`)],
+				variables: [entry('v1', 'API_KEY', `${P}/variables/api-key`)],
+				requirements: { variables: [{ name: 'API_KEY', usedByWorkflows: ['w1', 'w2'] }] },
+			});
+			const staging = makeManifest({
+				projects: [acme],
+				workflows: [entry('w1', 'W1', `${P}/workflows/w1`)],
+				variables: [entry('v2', 'API_KEY', 'variables/api-key')],
+				requirements: { variables: [{ name: 'API_KEY', usedByWorkflows: ['w1'] }] },
+			});
+
+			const result = merge(existing, staging);
+
+			expect(result.variables).toEqual([
+				entry('v1', 'API_KEY', `${P}/variables/api-key`),
+				entry('v2', 'API_KEY', 'variables/api-key'),
+			]);
+		});
+
 		it('keeps a same-named variable that lives in another directory', () => {
 			const existing = makeManifest({
 				projects: [acme],

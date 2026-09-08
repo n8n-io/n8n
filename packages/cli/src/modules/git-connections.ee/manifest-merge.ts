@@ -133,6 +133,39 @@ function pruneEntries(
 }
 
 /**
+ * Names still used by workflows the selection did not replace. A selected
+ * workflow can switch from a project-scoped variable to a global one of the
+ * same name; the name stays referenced, but the old-scope file must leave
+ * unless an unselected workflow still uses it.
+ */
+function unselectedVariableNames(
+	existing: PackageManifest['requirements'],
+	replacedWorkflowIds: Set<string>,
+): Set<string> {
+	return new Set(
+		(existing?.variables ?? [])
+			.filter((item) => item.usedByWorkflows.some((id) => !replacedWorkflowIds.has(id)))
+			.map((item) => item.name),
+	);
+}
+
+function pruneVariables(
+	entries: ManifestEntry[] | undefined,
+	stagingIds: Set<string>,
+	unselectedNames: Set<string>,
+	scope: string | undefined,
+): ManifestEntry[] | undefined {
+	const kept = (entries ?? []).filter(
+		(entry) =>
+			stagingIds.has(entry.id) ||
+			unselectedNames.has(entry.name) ||
+			scope === undefined ||
+			!isUnder(entry.target, scope),
+	);
+	return kept.length > 0 ? kept : undefined;
+}
+
+/**
  * Merge one requirement list by key. Refs from replaced or deleted workflows go
  * first, so staging is the only source of truth for the workflows it carries.
  */
@@ -253,7 +286,6 @@ export function mergeManifests(
 
 	const scope = projectScope(existing, staging, projectId);
 	const byId = (entry: ManifestEntry) => entry.id;
-	const byName = (entry: ManifestEntry) => entry.name;
 
 	const merged = packageManifestSchema.parse({
 		packageFormatVersion: staging.packageFormatVersion,
@@ -275,10 +307,10 @@ export function mergeManifests(
 			keysOf(requirements.dataTables, (d) => d.id),
 			scope,
 		),
-		variables: pruneEntries(
+		variables: pruneVariables(
 			mergeEntries('variables', existing.variables, staging.variables, placement),
-			byName,
-			keysOf(requirements.variables, (v) => v.name),
+			new Set(entriesOf(staging, 'variables').map((entry) => entry.id)),
+			unselectedVariableNames(existing.requirements, replacedWorkflowIds),
 			scope,
 		),
 		tags: pruneEntries(

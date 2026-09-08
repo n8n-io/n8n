@@ -199,6 +199,24 @@ describe('WorkingCopyUpdater', () => {
 				'The export has no manifest.json',
 			);
 		});
+
+		it('rejects malformed JSON in the branch manifest as a bad request', async () => {
+			await writeTree(exportFolder, { 'manifest.json': '{not-json' });
+
+			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
+				'Package manifest failed validation',
+			);
+		});
+
+		it('rejects a schema-invalid branch manifest as a bad request', async () => {
+			await writeTree(exportFolder, {
+				'manifest.json': JSON.stringify({ packageFormatVersion: '1' }),
+			});
+
+			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
+				'Package manifest failed validation',
+			);
+		});
 	});
 
 	describe('assertDeletionsOnBranch', () => {
@@ -475,6 +493,91 @@ describe('WorkingCopyUpdater', () => {
 				credentialFile('c-beta'),
 			);
 			expect(merged.credentials).toEqual([betaCred]);
+		});
+
+		it('leaves the export untouched when a write is rejected', async () => {
+			await writeTree(exportFolder, {
+				'manifest.json': manifestFile(makeManifest({ projects: [alpha], workflows: [wf('w1')] })),
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+			await symlink(
+				path.join(root, 'outside'),
+				path.join(exportFolder, 'projects/alpha/workflows/w-new'),
+			);
+			const staging = makeManifest({ projects: [alpha], workflows: [wf('w-new')] });
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w-new/workflow.json': workflowFile('w-new'),
+			});
+
+			await expect(
+				updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					{ projects: [alpha], workflows: [wf('w1')] },
+					selection({ workflowIds: ['w-new'] }),
+				),
+			).rejects.toThrow(/symbolic link/);
+
+			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+				workflowFile('w1'),
+			);
+		});
+
+		it('refuses a leaf target that resolves to the export root', async () => {
+			await writeTree(exportFolder, {
+				'manifest.json': manifestFile(makeManifest({ projects: [alpha], workflows: [wf('w1')] })),
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+			const staging = makeManifest({ projects: [alpha] });
+			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
+
+			await expect(
+				updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					{ projects: [alpha], workflows: [{ id: 'w1', name: 'W1', target: '.' }] },
+					selection({ deletedWorkflowIds: ['w1'] }),
+				),
+			).rejects.toThrow('not a managed leaf directory');
+
+			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+				workflowFile('w1'),
+			);
+		});
+
+		it('refuses a leaf target that would remove a container the selection keeps', async () => {
+			await writeTree(exportFolder, {
+				'manifest.json': manifestFile(
+					makeManifest({ projects: [alpha], workflows: [wf('w1'), wf('w2')] }),
+				),
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
+			});
+			const staging = makeManifest({ projects: [alpha] });
+			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
+
+			await expect(
+				updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					{
+						projects: [alpha],
+						workflows: [wf('w1'), { id: 'w2', name: 'W2', target: 'projects/alpha' }],
+					},
+					selection({ deletedWorkflowIds: ['w2'] }),
+				),
+			).rejects.toThrow('would delete content the selection keeps');
+
+			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+				workflowFile('w1'),
+			);
 		});
 	});
 
