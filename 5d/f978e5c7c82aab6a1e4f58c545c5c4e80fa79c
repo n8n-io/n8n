@@ -1,0 +1,35 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/rlc.description.ts
+  s_ca5288cb603c79::t_c6600230027e79 412-419
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/utils.test.ts
+  s_ca5288cb603c79::t_58837b9aefac26 484-504
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
+  s_ca5288cb603c79::t_085160537475c9 133-137,139-143
+  s_ca5288cb603c79::t_f44d8cb4bf3bdd 131-132
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getUsers.test.ts
+  s_ca5288cb603c79::t_86695313cd0572 336-339,346
+  s_ca5288cb603c79::t_ebcf78992f45a3 340-345,347-356,358,360,365
+  s_ca5288cb603c79::t_03d5ed5d3cb8d8 212-219
+  s_ca5288cb603c79::t_c0bc06331378fc 357,359,361-364
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_ca5288cb603c79::t_9616349a801383 220-240
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getTags.test.ts
+  s_ca5288cb603c79::t_20b909e6a51f51 109-127,129-131,134-135,138
+  s_ca5288cb603c79::t_e67c2a2d5af2a8 88-101
+  s_ca5288cb603c79::t_ff18ca1f08dec0 128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5df978e5c7c82aab6a1e4f58c545c5c4e80fa79c",
+  "prompts": {},
+  "sessions": {
+    "s_ca5288cb603c79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fc9475a-de2c-4327-9534-1907a3f063d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
