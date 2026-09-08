@@ -308,14 +308,6 @@ export class WorkflowPublicationOutboxConsumer {
 	 * terminal-status write always lands before teardown proceeds. If leadership was lost
 	 * between claiming the record and entering the critical section, the record is returned
 	 * to the queue (so the new leader reprocesses it) and nothing is applied here.
-	 *
-	 * The wait for the lock is bounded by `signal`: a record whose deadline fires
-	 * before it could start applying is failed (outside the lock, since nothing was
-	 * applied) rather than left `in_progress`. The abort fires well inside the lease,
-	 * so the claim is still this worker's and the terminal write is safe. Leaving the
-	 * row would have it reclaimed once the lease expires, only to queue on the same
-	 * lock again — a record never reaching a terminal status while the lock holder
-	 * (e.g. an abandoned record's orphaned trigger operation) never releases.
 	 */
 	async processRecord(record: WorkflowPublicationOutbox, signal: AbortSignal): Promise<void> {
 		await this.tracing.startSpan(
