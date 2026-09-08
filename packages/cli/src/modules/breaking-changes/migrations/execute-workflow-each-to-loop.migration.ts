@@ -86,7 +86,11 @@ const makeLoopNode = (name: string, position: INode['position']): INode => ({
 	parameters: { batchSize: 1, options: {} },
 });
 
-/** Keeps only items whose JSON is not empty, i.e. drops the `alwaysOutputData` placeholders. */
+/**
+ * Drops the `alwaysOutputData` placeholders: items with neither JSON fields nor
+ * binary data. A file returned by the sub-workflow has empty JSON but binary
+ * data, so it passes.
+ */
 const makeFilterNode = (name: string, position: INode['position']): INode => ({
 	id: randomUUID(),
 	name,
@@ -99,9 +103,9 @@ const makeFilterNode = (name: string, position: INode['position']): INode => ({
 			conditions: [
 				{
 					id: randomUUID(),
-					leftValue: '={{ $json }}',
-					rightValue: '',
-					operator: { type: 'object', operation: 'notEmpty', singleValue: true },
+					leftValue: '={{ Object.keys($json).length + Object.keys($binary ?? {}).length }}',
+					rightValue: 0,
+					operator: { type: 'number', operation: 'gt' },
 				},
 			],
 			combinator: 'and',

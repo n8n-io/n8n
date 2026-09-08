@@ -59,8 +59,9 @@ describe('executeWorkflowEachToLoop migration', () => {
 					combinator: 'and',
 					conditions: [
 						{
-							leftValue: '={{ $json }}',
-							operator: { type: 'object', operation: 'notEmpty', singleValue: true },
+							leftValue: '={{ Object.keys($json).length + Object.keys($binary ?? {}).length }}',
+							rightValue: 0,
+							operator: { type: 'number', operation: 'gt' },
 						},
 					],
 				},
@@ -125,7 +126,7 @@ describe('executeWorkflowEachToLoop migration', () => {
 	it('handles several predecessors and several successors', () => {
 		const a = createNode('A', 'n8n-nodes-base.set');
 		const b = createNode('B', 'n8n-nodes-base.set');
-		const sub = createNode('Sub', EXECUTE_WORKFLOW, { mode: 'each', ...NO_WAIT });
+		const sub = createNode('Sub', EXECUTE_WORKFLOW, { mode: 'each' });
 		const c = createNode('C', 'n8n-nodes-base.set');
 		const d = createNode('D', 'n8n-nodes-base.set');
 		const connections: IConnections = {
@@ -140,6 +141,22 @@ describe('executeWorkflowEachToLoop migration', () => {
 			A: { main: [[edge('Loop Over Items')]] },
 			// B's edge to C is unrelated and stays.
 			B: { main: [[edge('Loop Over Items'), edge('C')]] },
+			'Loop Over Items': { main: [[edge('Drop empty results')], [edge('Sub')]] },
+			Sub: { main: [[edge('Loop Over Items')]] },
+			// All former successors, with their input indexes, hang off the filter.
+			'Drop empty results': { main: [[edge('C'), edge('D', 1)]] },
+		});
+	});
+
+	it('handles several successors in fire-and-forget mode without a filter', () => {
+		const sub = createNode('Sub', EXECUTE_WORKFLOW, { mode: 'each', ...NO_WAIT });
+		const c = createNode('C', 'n8n-nodes-base.set');
+		const d = createNode('D', 'n8n-nodes-base.set');
+		const connections: IConnections = { Sub: { main: [[edge('C'), edge('D', 1)]] } };
+
+		const result = migrate([sub, c, d], connections, [sub]);
+
+		expect(result.connections).toEqual({
 			'Loop Over Items': { main: [[edge('C'), edge('D', 1)], [edge('Sub')]] },
 			Sub: { main: [[edge('Loop Over Items')]] },
 		});
