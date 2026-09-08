@@ -746,7 +746,7 @@ export class WorkflowsPublicController {
 		}
 	}
 
-	@Get('/:workflowId/versions/:versionId')
+	@Get('/:workflowId/versions/:workflowVersionId')
 	@ApiKeyScope('workflow:read')
 	@ProjectScope('workflow:read')
 	@ApiSummary('Retrieve a workflow version')
@@ -758,13 +758,18 @@ export class WorkflowsPublicController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId') workflowId: string,
-		@Param('versionId') versionId: string,
+		@Param('workflowVersionId') workflowVersionId: string,
 	): Promise<WorkflowVersionPublicDto> {
 		let version: WorkflowHistory;
 		try {
-			version = await this.workflowHistoryService.getVersion(req.user, workflowId, versionId, {
-				includePublishHistory: false,
-			});
+			version = await this.workflowHistoryService.getVersion(
+				req.user,
+				workflowId,
+				workflowVersionId,
+				{
+					includePublishHistory: false,
+				},
+			);
 		} catch (error) {
 			if (error instanceof SharedWorkflowNotFoundError) {
 				throw new NotFoundError('Workflow not found');

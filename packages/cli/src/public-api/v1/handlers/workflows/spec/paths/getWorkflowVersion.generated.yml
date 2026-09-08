@@ -16,7 +16,7 @@ parameters:
   - schema:
       type: string
     required: true
-    name: versionId
+    name: workflowVersionId
     in: path
 responses:
   '200':
