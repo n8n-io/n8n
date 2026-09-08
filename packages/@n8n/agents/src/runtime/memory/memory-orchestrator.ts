@@ -23,6 +23,7 @@ import {
 	type ScopedMemoryTaskResult,
 } from './scoped-memory-task-runner';
 import { settleOrphanedToolMessages } from './strip-orphaned-tool-messages';
+import { raceWithAbort, throwIfAborted } from '../../sdk/abort';
 import { getCreatedAt } from '../../sdk/message';
 import type {
 	AgentExecutionCounter,
@@ -239,6 +240,7 @@ export class MemoryOrchestrator {
 	async loadInto(
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
+		abortSignal?: AbortSignal,
 	): Promise<void> {
 		this.resetRunState();
 		if (this.config.memory && options?.persistence?.threadId) {
@@ -247,6 +249,7 @@ export class MemoryOrchestrator {
 				options.persistence,
 				options.executionCounter,
 				telemetry,
+				abortSignal,
 			);
 			const memMessages = await this.loadHistoryMessages(options.persistence, telemetry);
 
@@ -787,6 +790,7 @@ export class MemoryOrchestrator {
 		persistence: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
+		abortSignal?: AbortSignal,
 	): Promise<void> {
 		const { memory, episodicMemory } = this.config;
 		if (
@@ -800,31 +804,39 @@ export class MemoryOrchestrator {
 		}
 		const scope = getEpisodicMemoryScope(persistence);
 		if (!scope) return;
-		await this.scheduleEpisodicMemoryTask(memory, scope.resourceId, async () => {
-			let result;
-			do {
-				result = await runEpisodicMemoryCandidateProcessor({
-					memory,
-					config: episodicMemory,
-					scope,
-					executionCounter,
-					telemetry,
-					agentName: this.config.name,
-				});
-			} while (result.status === 'ran');
-		});
+		await this.scheduleEpisodicMemoryTask(
+			memory,
+			scope.resourceId,
+			async () => {
+				let result;
+				do {
+					result = await runEpisodicMemoryCandidateProcessor({
+						memory,
+						config: episodicMemory,
+						scope,
+						executionCounter,
+						telemetry,
+						agentName: this.config.name,
+						abortSignal,
+					});
+				} while (result.status === 'ran');
+			},
+			abortSignal,
+		);
 	}
 
 	private async scheduleEpisodicMemoryTask(
 		memory: BuiltMemory,
 		resourceId: string,
 		task: () => Promise<void>,
+		abortSignal?: AbortSignal,
 	): Promise<void> {
 		const id = crypto.randomUUID();
 		const previous = this.episodicMemoryTasksByResource.get(resourceId) ?? Promise.resolve();
-		const done = previous
-			.catch(() => undefined)
-			.then(async () => await this.runEpisodicMemoryTask(memory, resourceId, id, task));
+		const done = raceWithAbort(async () => {
+			await previous.catch(() => undefined);
+			await this.runEpisodicMemoryTask(memory, resourceId, id, task, abortSignal);
+		}, abortSignal);
 		const queued = done.finally(() => {
 			if (this.episodicMemoryTasksByResource.get(resourceId) === queued) {
 				this.episodicMemoryTasksByResource.delete(resourceId);
@@ -840,19 +852,23 @@ export class MemoryOrchestrator {
 		resourceId: string,
 		holderId: string,
 		task: () => Promise<void>,
+		abortSignal?: AbortSignal,
 	): Promise<void> {
 		const taskLock = memory.episodic?.taskLock;
 		let lock: EpisodicMemoryTaskLockHandle | null = null;
 		try {
+			throwIfAborted(abortSignal);
 			if (taskLock) {
 				lock = await taskLock.acquire(resourceId, {
 					holderId,
 					ttlMs: this.config.observationalMemory?.lockTtlMs ?? DEFAULT_MEMORY_TASK_LOCK_TTL_MS,
 				});
 				if (!lock) return;
+				throwIfAborted(abortSignal);
 			}
 			await task();
 		} catch (error) {
+			if (abortSignal?.aborted) return;
 			const message = 'Episodic memory processing task failed';
 			logger.warn(message, { error, resourceId });
 			this.eventBus.emit({ type: AgentEvent.Error, message, error, source: 'episodic-memory' });

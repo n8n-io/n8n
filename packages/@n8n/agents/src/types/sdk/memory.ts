@@ -250,6 +250,7 @@ export interface EpisodicMemoryExtractorInput {
 	renderedCandidates: string;
 	existingEntries: RetrievedEpisodicMemoryEntry[];
 	executionCounter?: AgentExecutionCounter;
+	abortSignal?: AbortSignal;
 }
 
 export interface EpisodicMemoryExtraction {
@@ -277,6 +278,7 @@ export interface EpisodicMemoryReflectorInput {
 	entries: RetrievedEpisodicMemoryEntry[];
 	sources: EpisodicMemoryEntrySource[];
 	executionCounter?: AgentExecutionCounter;
+	abortSignal?: AbortSignal;
 }
 
 export type EpisodicMemoryReflectFn = (

@@ -70,30 +70,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerAn8yriEuY5NV4wWKQV\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01RaZTunngzAZ75eywM4q6Xd\",\"name\":\"flag_memory\",\"input\":{\"content\":\"Resource Alpha deployment codename is QUARTZ-RIVER-91.\",\"evidence\":\"the exact deployment codename is QUARTZ-RIVER-91\",\"kind\":\"fact\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1260,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":114,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerKixptCTcH4iXAD8MBS\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01GjCzkBEWmbc3hGPPDxZJTN\",\"name\":\"flag_memory\",\"input\":{\"content\":\"Resource Alpha deployment codename is QUARTZ-RIVER-91.\",\"evidence\":\"the exact deployment codename is QUARTZ-RIVER-91\",\"kind\":\"explicit_remember\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1260,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":116,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T14:58:22Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T16:55:38Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T14:58:22Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T16:55:38Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-08T14:58:18Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-08T16:55:36Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-08T14:58:22Z",
+			"anthropic-ratelimit-tokens-reset": "2026-09-08T16:55:38Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ecf7e5f255b30-VIE",
+			"cf-ray": "a37f7b540e36e34f-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:22 GMT",
-			"request-id": "req_011CerAn86HBGfFrMxEYnJkT",
+			"date": "Tue, 08 Sep 2026 16:55:39 GMT",
+			"request-id": "req_011CerKix4k9nw1rE2XwgSPC",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-75c802d7b7fc23ae883cf070813e4c62-b8a1b0bef658a578-01",
+			"traceresponse": "00-89c975e74bce25cc7b94034ce35e97bf-fd1c4b2113de2893-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -127,12 +127,12 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01RaZTunngzAZ75eywM4q6Xd",
+							"id": "toolu_01GjCzkBEWmbc3hGPPDxZJTN",
 							"name": "flag_memory",
 							"input": {
 								"content": "Resource Alpha deployment codename is QUARTZ-RIVER-91.",
 								"evidence": "the exact deployment codename is QUARTZ-RIVER-91",
-								"kind": "fact"
+								"kind": "explicit_remember"
 							},
 							"caller": {
 								"type": "direct"
@@ -145,7 +145,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01RaZTunngzAZ75eywM4q6Xd",
+							"tool_use_id": "toolu_01GjCzkBEWmbc3hGPPDxZJTN",
 							"content": "{\"status\":\"noted\"}"
 						}
 					]
@@ -198,30 +198,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerAnV4MC1q2T8jKbZnay\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Noted and flagged for future reference. The Resource Alpha deployment codename is **QUARTZ-RIVER-91**.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1391,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":29,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerKjAcJLdYjBLxW87oDT\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Noted and flagged for future reference. The Resource Alpha deployment codename is **QUARTZ-RIVER-91**.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1393,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":29,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T14:58:23Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T16:55:40Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T14:58:24Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T16:55:40Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-08T14:58:22Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-08T16:55:39Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-08T14:58:23Z",
+			"anthropic-ratelimit-tokens-reset": "2026-09-08T16:55:40Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ecf9be9e45b30-VIE",
+			"cf-ray": "a37f7b653d48e34f-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:24 GMT",
-			"request-id": "req_011CerAnUNRdNq5Jkm6bXw4m",
+			"date": "Tue, 08 Sep 2026 16:55:40 GMT",
+			"request-id": "req_011CerKj9nhAkWgiTRATRhWy",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-bda0c731031f19c93fc1228494c26355-5d3be07c8029f2ee-01",
+			"traceresponse": "00-b9dc2c1d7865d44c97442f1b8229e72f-2dd074ecdabbb9c0-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -289,37 +289,37 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Current timestamp: 2026-06-01T12:00:00.000Z\n\nScope: resource:resource-alpha-1\n\nFlagged candidate batch:\n[00000000-0000-4000-8000-000000000005] FACT 2026-06-01T12:00:00.000Z\nCandidate: Resource Alpha deployment codename is QUARTZ-RIVER-91.\nEvidence: the exact deployment codename is QUARTZ-RIVER-91\n\nExisting episodic entries for duplicate-awareness context:\n(none)"
+							"text": "Current timestamp: 2026-06-01T12:00:00.000Z\n\nScope: resource:resource-alpha-1\n\nFlagged candidate batch:\n[00000000-0000-4000-8000-000000000005] EXPLICIT_REMEMBER 2026-06-01T12:00:00.000Z\nCandidate: Resource Alpha deployment codename is QUARTZ-RIVER-91.\nEvidence: the exact deployment codename is QUARTZ-RIVER-91\n\nExisting episodic entries for duplicate-awareness context:\n(none)"
 						}
 					]
 				}
 			]
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerAnce1ZXoA9AKxQGfke\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"entries\\\":[{\\\"content\\\":\\\"Resource Alpha deployment codename is QUARTZ-RIVER-91.\\\",\\\"sources\\\":[{\\\"candidateId\\\":\\\"00000000-0000-4000-8000-000000000005\\\",\\\"evidence\\\":\\\"the exact deployment codename is QUARTZ-RIVER-91\\\"}]}]}\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":818,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":71,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerKjJGg9n2DBrJUSb4hA\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"entries\\\":[{\\\"content\\\":\\\"Resource Alpha deployment codename is QUARTZ-RIVER-91.\\\",\\\"sources\\\":[{\\\"candidateId\\\":\\\"00000000-0000-4000-8000-000000000005\\\",\\\"evidence\\\":\\\"the exact deployment codename is QUARTZ-RIVER-91\\\"}]}]}\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":821,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":71,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "15000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T14:58:29Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T16:55:45Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T14:58:29Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T16:55:46Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-08T14:58:24Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-08T16:55:41Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "18000000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-08T14:58:29Z",
+			"anthropic-ratelimit-tokens-reset": "2026-09-08T16:55:45Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ecfa608905b30-VIE",
+			"cf-ray": "a37f7b70992ae34f-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:29 GMT",
-			"request-id": "req_011CerAnbKt18KHginU1uAVR",
+			"date": "Tue, 08 Sep 2026 16:55:46 GMT",
+			"request-id": "req_011CerKjHbFG18yhYMS9d1jH",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-000b4a58c7add9871d65f0a319f70c12-dc709ad6fccebabe-01",
+			"traceresponse": "00-40bd984d2ac6ca341db615dd2dac4861-8483f99f2e64fc3e-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -340,12 +340,12 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ecfca0a1511d5-VIE",
+			"cf-ray": "a37f7b934ab75db9-VIE",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:30 GMT",
+			"date": "Tue, 08 Sep 2026 16:55:46 GMT",
 			"openai-organization": "n8n-1",
-			"openai-processing-ms": "63",
+			"openai-processing-ms": "64",
 			"openai-project": "proj_ZAEXttE86YHh0Pzmrnh9cBEf",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
@@ -355,10 +355,10 @@
 			"x-ratelimit-limit-requests": "10000",
 			"x-ratelimit-limit-tokens": "10000000",
 			"x-ratelimit-remaining-requests": "9999",
-			"x-ratelimit-remaining-tokens": "9999986",
+			"x-ratelimit-remaining-tokens": "9999987",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_ba3684792f784a44a8a1210fcf4bcbe8"
+			"x-request-id": "req_2374cb897eff41acbef6e70e2231cf8f"
 		},
 		"responseIsBinary": false
 	},
@@ -411,7 +411,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "You maintain source-backed episodic memory for cross-session recall.\n\nReturn JSON only:\n{\n  \"drop\": [\"memory_entry_id\"],\n  \"merge\": [\n    {\n      \"supersedes\": [\"memory_entry_id_1\", \"memory_entry_id_2\"],\n      \"content\": \"Merged replacement entry in 1-3 sentences\"\n    }\n  ]\n}\n\nDrop only obvious noise, unsupported claims, failed-recall diagnostics, or low-value duplicates. Merge only entries about the same case, entity, decision, or open thread when one replacement preserves their useful evidence more clearly. Preserve exact identifiers and uncertainty. Never merge merely related cases. Never drop durable user decisions, preferences, identities, commitments, or confirmed outcomes. An ID can appear in drop or merge, never both. Use only active entry IDs from the input.\n\nMost batches need no action. Return {\"drop\": [], \"merge\": []} when no clear lifecycle change is needed."
+					"text": "You maintain source-backed episodic memory for cross-session recall.\n\nReturn JSON only:\n{\n  \"drop\": [\"memory_entry_id\"],\n  \"merge\": [\n    {\n      \"supersedes\": [\"memory_entry_id_1\", \"memory_entry_id_2\"],\n      \"content\": \"Merged replacement entry in 1-3 sentences\"\n    }\n  ]\n}\n\nDrop only obvious noise, unsupported claims, failed-recall diagnostics, or low-value duplicates. Merge only entries about the same case, entity, decision, or open thread when one replacement preserves their useful evidence more clearly. Every merged entry must contain only information supported by the source entries it supersedes. Do not invent content, causation, dates, identifiers, commitments, or outcomes. Preserve exact identifiers and uncertainty. Never merge merely related cases. Never drop durable user decisions, preferences, identities, commitments, or confirmed outcomes. An ID can appear in drop or merge, never both. Use only active entry IDs from the input.\n\nMost batches need no action. Return {\"drop\": [], \"merge\": []} when no clear lifecycle change is needed."
 				}
 			],
 			"messages": [
@@ -427,30 +427,30 @@
 			]
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerAo4L6CcURYnT1zTDsk\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"drop\\\":[],\\\"merge\\\":[]}\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":740,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":12,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerKjj2hL6HijerxrnT5V\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"drop\\\":[],\\\"merge\\\":[]}\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":776,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":12,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "15000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T14:58:31Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T16:55:48Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T14:58:31Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T16:55:48Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-08T14:58:30Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-08T16:55:46Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "18000000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-08T14:58:31Z",
+			"anthropic-ratelimit-tokens-reset": "2026-09-08T16:55:48Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ecfcb8d9b5b30-VIE",
+			"cf-ray": "a37f7b9478aee34f-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:31 GMT",
-			"request-id": "req_011CerAo2vG2iJHyDMo1AA7K",
+			"date": "Tue, 08 Sep 2026 16:55:48 GMT",
+			"request-id": "req_011CerKjiBbhsc1A26HXEBeN",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-6432b109a1cd9b23b36466c3b1284f68-590cb45c20398e2d-01",
+			"traceresponse": "00-ef5f2990408b1a32153f1ee9fa4457eb-81270d51953418c5-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -471,12 +471,12 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ecfd9581a11d5-VIE",
+			"cf-ray": "a37f7ba4be5c5db9-VIE",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:32 GMT",
+			"date": "Tue, 08 Sep 2026 16:55:49 GMT",
 			"openai-organization": "n8n-1",
-			"openai-processing-ms": "66",
+			"openai-processing-ms": "63",
 			"openai-project": "proj_ZAEXttE86YHh0Pzmrnh9cBEf",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
@@ -489,7 +489,7 @@
 			"x-ratelimit-remaining-tokens": "9999988",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_57223a927586477ba29a899ae564cff4"
+			"x-request-id": "req_ff52c1e93a964653b6bc89ced83e0f95"
 		},
 		"responseIsBinary": false
 	},
@@ -508,12 +508,12 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ecfdccd2811d5-VIE",
+			"cf-ray": "a37f7ba5ea995db9-VIE",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:33 GMT",
+			"date": "Tue, 08 Sep 2026 16:55:49 GMT",
 			"openai-organization": "n8n-1",
-			"openai-processing-ms": "64",
+			"openai-processing-ms": "69",
 			"openai-project": "proj_ZAEXttE86YHh0Pzmrnh9cBEf",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
@@ -526,7 +526,7 @@
 			"x-ratelimit-remaining-tokens": "9999988",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_f5210c4995cb42489e2b6c29248470f0"
+			"x-request-id": "req_d8671b73b26845c3832801333a3bb0c2"
 		},
 		"responseIsBinary": false
 	},
@@ -601,30 +601,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerAoGjDaKoCV6ZBtyeuN\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01FwLsaXq9QZvYPuvcsN83Pt\",\"name\":\"recall_memory\",\"input\":{\"query\":\"deployment codename\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1241,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":56,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerKjwiBmASVo82C8kgTp\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01W6iVjxwuND3KaSTN2Fjh7t\",\"name\":\"recall_memory\",\"input\":{\"query\":\"deployment codename\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1241,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":56,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T14:58:35Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T16:55:51Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T14:58:35Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T16:55:51Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-08T14:58:33Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-08T16:55:49Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-08T14:58:35Z",
+			"anthropic-ratelimit-tokens-reset": "2026-09-08T16:55:51Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ecfdea8d65b30-VIE",
+			"cf-ray": "a37f7ba729d3e34f-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:35 GMT",
-			"request-id": "req_011CerAoG1Z9Q9vyZDzi38nv",
+			"date": "Tue, 08 Sep 2026 16:55:51 GMT",
+			"request-id": "req_011CerKjvxYWjy6NBAD2XtHe",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-10f415bdcfea4e6f38c69fafff2a96f3-072aff2d6b871bfa-01",
+			"traceresponse": "00-9454b0bbd5613e3fd6ca6d10aa2ebd7e-4225bfb923595a24-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -645,12 +645,12 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ecfea7b4b11d5-VIE",
+			"cf-ray": "a37f7bb1fe575db9-VIE",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:35 GMT",
+			"date": "Tue, 08 Sep 2026 16:55:51 GMT",
 			"openai-organization": "n8n-1",
-			"openai-processing-ms": "69",
+			"openai-processing-ms": "92",
 			"openai-project": "proj_ZAEXttE86YHh0Pzmrnh9cBEf",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
@@ -663,7 +663,7 @@
 			"x-ratelimit-remaining-tokens": "9999996",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_ca55b6a0b10f4a488949981342fb656d"
+			"x-request-id": "req_14ef16d00b014d9291a6f7ad5fd265f9"
 		},
 		"responseIsBinary": false
 	},
@@ -695,7 +695,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01FwLsaXq9QZvYPuvcsN83Pt",
+							"id": "toolu_01W6iVjxwuND3KaSTN2Fjh7t",
 							"name": "recall_memory",
 							"input": {
 								"query": "deployment codename"
@@ -711,7 +711,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01FwLsaXq9QZvYPuvcsN83Pt",
+							"tool_use_id": "toolu_01W6iVjxwuND3KaSTN2Fjh7t",
 							"content": "{\"entries\":[]}"
 						}
 					]
@@ -764,30 +764,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerAoSTcRsNiMZyjbt9pP\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I don't have any saved prior memory of a deployment codename you gave me. It's possible it was never flagged for memory, or it may have been from a session that wasn't captured. Could you remind me, and I can remember it going forward?\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1313,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":57,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerKk67huA1UB7vuqeuYL\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I don't have any saved prior memory of a deployment codename you gave me. No relevant entries were found. You're welcome to share it now, and I can remember it for future conversations!\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1313,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":43,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T14:58:36Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T16:55:52Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T14:58:37Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T16:55:53Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-08T14:58:35Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-08T16:55:51Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-08T14:58:36Z",
+			"anthropic-ratelimit-tokens-reset": "2026-09-08T16:55:52Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ecfec98605b30-VIE",
+			"cf-ray": "a37f7bb35bd6e34f-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:37 GMT",
-			"request-id": "req_011CerAoRbGQzvLxBNqtJE1W",
+			"date": "Tue, 08 Sep 2026 16:55:53 GMT",
+			"request-id": "req_011CerKk5KLNJeEnePaQcRH4",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-3b21f7de1b9300acaf7086f4f8bd873f-48237100d9c71e90-01",
+			"traceresponse": "00-4aabcc0b42ec85aeb31680a2c25ac8ac-45cb2a9cc3928dfa-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

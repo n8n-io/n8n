@@ -11,6 +11,7 @@ import {
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from './episodic-memory-defaults';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
+import { throwIfAborted } from '../../sdk/abort';
 import { redactText } from '../../sdk/guardrails';
 import { Tool } from '../../sdk/tool';
 import type {
@@ -93,6 +94,7 @@ export interface RunEpisodicMemoryCandidateProcessorOpts {
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
 	agentName?: string;
+	abortSignal?: AbortSignal;
 }
 
 export type RunEpisodicMemoryCandidateProcessorResult =
@@ -102,6 +104,7 @@ export type RunEpisodicMemoryCandidateProcessorResult =
 export async function runEpisodicMemoryCandidateProcessor(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 ): Promise<RunEpisodicMemoryCandidateProcessorResult> {
+	throwIfAborted(opts.abortSignal);
 	if (!isEpisodicMemoryEnabled(opts.config)) return { status: 'skipped', reason: 'disabled' };
 
 	const config = withEpisodicMemoryDefaults(opts.config);
@@ -110,6 +113,7 @@ export async function runEpisodicMemoryCandidateProcessor(
 	const captureCandidates = await opts.memory.episodic.getPendingCaptureCandidates(opts.scope, {
 		limit: config.maxEntriesPerRun,
 	});
+	throwIfAborted(opts.abortSignal);
 	if (captureCandidates.length === 0) return { status: 'skipped', reason: 'no-candidates' };
 
 	const candidateIds = captureCandidates.map((candidate) => candidate.id);
@@ -122,6 +126,7 @@ export async function runEpisodicMemoryCandidateProcessor(
 				.join('\n'),
 			{ topK: Math.max(config.topK, 20) },
 		);
+		throwIfAborted(opts.abortSignal);
 		const extraction = await config.extract({
 			scope: opts.scope,
 			now: opts.now ?? new Date(),
@@ -129,14 +134,18 @@ export async function runEpisodicMemoryCandidateProcessor(
 			renderedCandidates: renderCaptureCandidates(captureCandidates),
 			existingEntries,
 			executionCounter: opts.executionCounter,
+			abortSignal: opts.abortSignal,
 		});
+		throwIfAborted(opts.abortSignal);
 		const candidates = validateExtractionCandidates(extraction.entries, captureCandidates).slice(
 			0,
 			config.maxEntriesPerRun,
 		);
 		savedEntries = await saveExtractionCandidates(opts, config, candidates, captureCandidates);
+		throwIfAborted(opts.abortSignal);
 		await opts.memory.episodic.completeCaptureCandidates(candidateIds);
 	} catch (error) {
+		if (opts.abortSignal?.aborted) throw error;
 		await opts.memory.episodic.recordCaptureCandidateFailure(
 			candidateIds,
 			EPISODIC_MEMORY_CAPTURE_MAX_ATTEMPTS,
@@ -144,6 +153,7 @@ export async function runEpisodicMemoryCandidateProcessor(
 		throw error;
 	}
 
+	throwIfAborted(opts.abortSignal);
 	if (savedEntries.length > 0 && config.reflect) {
 		await runEpisodicMemoryReflection(opts, config, savedEntries, captureCandidates);
 	}
@@ -230,13 +240,17 @@ async function saveExtractionCandidates(
 			...inferMemoryStoreAttributes(opts.memory),
 		}),
 		async () => {
+			throwIfAborted(opts.abortSignal);
 			const { embedMany } = await import('ai');
 			const { embeddings, usage } = await embedMany({
 				model: config.embedder,
 				values: candidates.map((candidate) => candidate.content),
+				abortSignal: opts.abortSignal,
 			});
+			throwIfAborted(opts.abortSignal);
 			incrementTokenCountFromUsage(opts.executionCounter, usage);
 			for (const [index, candidate] of candidates.entries()) {
+				throwIfAborted(opts.abortSignal);
 				const now = opts.now ?? new Date();
 				const saved = await opts.memory.episodic.saveEntryWithSources(
 					{
@@ -282,10 +296,13 @@ async function runEpisodicMemoryReflection(
 	candidates: EpisodicMemoryCaptureCandidate[],
 ): Promise<void> {
 	if (!config.reflect) return;
+	throwIfAborted(opts.abortSignal);
 	const cluster = await buildReflectionCluster(opts, config, savedEntries, candidates);
+	throwIfAborted(opts.abortSignal);
 	if (cluster.length === 0) return;
 
 	const sources = await opts.memory.episodic.getEntrySources(cluster.map((entry) => entry.id));
+	throwIfAborted(opts.abortSignal);
 	const reflection = normalizeEpisodicMemoryReflection(
 		cluster,
 		await config.reflect({
@@ -295,8 +312,10 @@ async function runEpisodicMemoryReflection(
 			entries: cluster,
 			sources,
 			executionCounter: opts.executionCounter,
+			abortSignal: opts.abortSignal,
 		}),
 	);
+	throwIfAborted(opts.abortSignal);
 	if (reflection.drop.length === 0 && reflection.merge.length === 0) return;
 
 	const mergeContents = reflection.merge.map((entry) => entry.content);
@@ -306,10 +325,13 @@ async function runEpisodicMemoryReflection(
 		const { embeddings, usage } = await embedMany({
 			model: config.embedder,
 			values: mergeContents,
+			abortSignal: opts.abortSignal,
 		});
+		throwIfAborted(opts.abortSignal);
 		mergeEmbeddings = embeddings;
 		incrementTokenCountFromUsage(opts.executionCounter, usage);
 	}
+	throwIfAborted(opts.abortSignal);
 	await opts.memory.episodic.applyReflection(opts.scope, {
 		drop: reflection.drop,
 		merge: reflection.merge.map((merge, index) => ({
@@ -340,6 +362,7 @@ async function buildReflectionCluster(
 	const related = await opts.memory.episodic.searchEntries(opts.scope, query, {
 		topK: Math.max(config.topK, DEFAULT_EPISODIC_MEMORY_TOP_K, 20),
 	});
+	throwIfAborted(opts.abortSignal);
 	const relatedById = new Map(related.map((entry) => [entry.id, entry]));
 	for (const saved of savedEntries) {
 		if (saved.status !== 'active' || relatedById.has(saved.id)) continue;

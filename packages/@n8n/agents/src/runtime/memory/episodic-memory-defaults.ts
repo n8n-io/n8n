@@ -64,7 +64,7 @@ Return JSON only:
   ]
 }
 
-Drop only obvious noise, unsupported claims, failed-recall diagnostics, or low-value duplicates. Merge only entries about the same case, entity, decision, or open thread when one replacement preserves their useful evidence more clearly. Preserve exact identifiers and uncertainty. Never merge merely related cases. Never drop durable user decisions, preferences, identities, commitments, or confirmed outcomes. An ID can appear in drop or merge, never both. Use only active entry IDs from the input.
+Drop only obvious noise, unsupported claims, failed-recall diagnostics, or low-value duplicates. Merge only entries about the same case, entity, decision, or open thread when one replacement preserves their useful evidence more clearly. Every merged entry must contain only information supported by the source entries it supersedes. Do not invent content, causation, dates, identifiers, commitments, or outcomes. Preserve exact identifiers and uncertainty. Never merge merely related cases. Never drop durable user decisions, preferences, identities, commitments, or confirmed outcomes. An ID can appear in drop or merge, never both. Use only active entry IDs from the input.
 
 Most batches need no action. Return {"drop": [], "merge": []} when no clear lifecycle change is needed.`;
 
@@ -122,6 +122,7 @@ export function createEpisodicMemoryExtractFn(
 			instructions: options.extractionPrompt ?? DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 			prompt: buildEpisodicMemoryExtractorPrompt(input),
 			output: Output.object({ schema: EpisodicMemoryExtractionSchema }),
+			abortSignal: input.abortSignal,
 		});
 		incrementTokenCountFromUsage(input.executionCounter, response.usage);
 		return response.output;
@@ -148,6 +149,7 @@ export function createEpisodicMemoryReflectFn(
 			instructions: options.reflectionPrompt ?? DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 			prompt: buildEpisodicMemoryReflectorPrompt(input),
 			output: Output.object({ schema: EpisodicMemoryReflectionSchema }),
+			abortSignal: input.abortSignal,
 		});
 		incrementTokenCountFromUsage(input.executionCounter, response.usage);
 		return response.output;

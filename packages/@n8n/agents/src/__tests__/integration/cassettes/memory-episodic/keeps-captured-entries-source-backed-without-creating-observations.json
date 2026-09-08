@@ -70,30 +70,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerApD4jUGYz1MV2tttnv\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_019CpzoQa1xaNVnzDWCwbWgk\",\"name\":\"flag_memory\",\"input\":{\"content\":\"Customer name: Lumen Trail. Tracker title exactly: \\\"Lumen Trail Renewal Ledger\\\". Slack channel exactly: \\\"#lumen-renewals\\\". Owner rule exactly: \\\"Renewals Ops owns Renewal Review.\\\"\",\"evidence\":\"Customer: Lumen Trail.\\nTracker title exactly: Lumen Trail Renewal Ledger.\\nSlack channel exactly: #lumen-renewals.\\nOwner rule exactly: Renewals Ops owns Renewal Review.\",\"kind\":\"decision\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1317,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":187,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerKm8Pev4Wo6ALBYRRKb\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01XRWTJw4x4oMEpFNmSyNXgX\",\"name\":\"flag_memory\",\"input\":{\"content\":\"Customer name: Lumen Trail. Tracker title exactly: \\\"Lumen Trail Renewal Ledger\\\". Slack channel exactly: \\\"#lumen-renewals\\\". Owner rule exactly: \\\"Renewals Ops owns Renewal Review.\\\"\",\"evidence\":\"Customer: Lumen Trail.\\nTracker title exactly: Lumen Trail Renewal Ledger.\\nSlack channel exactly: #lumen-renewals.\\nOwner rule exactly: Renewals Ops owns Renewal Review.\",\"kind\":\"explicit_remember\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1317,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":189,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T14:58:48Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T16:56:07Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T14:58:49Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T16:56:08Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-08T14:58:46Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-08T16:56:05Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-08T14:58:48Z",
+			"anthropic-ratelimit-tokens-reset": "2026-09-08T16:56:07Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ed02e180c5b30-VIE",
+			"cf-ray": "a37f7c0bb9c3e34f-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:49 GMT",
-			"request-id": "req_011CerApCVWGNsuFjnH5f21s",
+			"date": "Tue, 08 Sep 2026 16:56:08 GMT",
+			"request-id": "req_011CerKm7mCn7LDsDpPJsTMx",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-b70da7419cbff721aa954a4385e92638-965ab9b3d36db2c2-01",
+			"traceresponse": "00-a0aeb42971d7feac1e50b74faa6e40b6-0d67db029c2282af-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -127,12 +127,12 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_019CpzoQa1xaNVnzDWCwbWgk",
+							"id": "toolu_01XRWTJw4x4oMEpFNmSyNXgX",
 							"name": "flag_memory",
 							"input": {
 								"content": "Customer name: Lumen Trail. Tracker title exactly: \"Lumen Trail Renewal Ledger\". Slack channel exactly: \"#lumen-renewals\". Owner rule exactly: \"Renewals Ops owns Renewal Review.\"",
 								"evidence": "Customer: Lumen Trail.\nTracker title exactly: Lumen Trail Renewal Ledger.\nSlack channel exactly: #lumen-renewals.\nOwner rule exactly: Renewals Ops owns Renewal Review.",
-								"kind": "decision"
+								"kind": "explicit_remember"
 							},
 							"caller": {
 								"type": "direct"
@@ -145,7 +145,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_019CpzoQa1xaNVnzDWCwbWgk",
+							"tool_use_id": "toolu_01XRWTJw4x4oMEpFNmSyNXgX",
 							"content": "{\"status\":\"noted\"}"
 						}
 					]
@@ -198,30 +198,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerApTFGPgpPyVdhniDZd\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Noted and flagged for future sessions. Here are the exact identifiers as saved:\\n\\n- **Customer:** Lumen Trail\\n- **Tracker title:** Lumen Trail Renewal Ledger\\n- **Slack channel:** #lumen-renewals\\n- **Owner rule:** Renewals Ops owns Renewal Review\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1521,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":74,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerKmN2T4CxeGSR5GaQsx\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Noted and flagged for durable memory. Here's a confirmation of the exact identifiers as stored:\\n\\n- **Customer:** Lumen Trail\\n- **Tracker title:** Lumen Trail Renewal Ledger\\n- **Slack channel:** #lumen-renewals\\n- **Owner rule:** Renewals Ops owns Renewal Review\\n\\nThese details are source-backed to this thread and will be available for future sessions.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1523,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":96,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T14:58:50Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T16:56:11Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T14:58:51Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T16:56:13Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-08T14:58:49Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-08T16:56:09Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-08T14:58:50Z",
+			"anthropic-ratelimit-tokens-reset": "2026-09-08T16:56:11Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ed042ad7c5b30-VIE",
+			"cf-ray": "a37f7c1f5d19e34f-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:51 GMT",
-			"request-id": "req_011CerApSUdMmC6bkGXWiWXD",
+			"date": "Tue, 08 Sep 2026 16:56:13 GMT",
+			"request-id": "req_011CerKmMEL4RsnsSFQJao1f",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-eaa8d4d9aeae2a8b3ee7313338e40c44-b775e517d1b8c8a4-01",
+			"traceresponse": "00-0a453e3d8ac29deef9c6c7d77a2f06ab-408483b45258978d-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -289,37 +289,37 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Current timestamp: 2026-06-01T12:00:00.000Z\n\nScope: resource:resource-source-backed-1\n\nFlagged candidate batch:\n[00000000-0000-4000-8000-000000000005] DECISION 2026-06-01T12:00:00.000Z\nCandidate: Customer name: Lumen Trail. Tracker title exactly: \"Lumen Trail Renewal Ledger\". Slack channel exactly: \"#lumen-renewals\". Owner rule exactly: \"Renewals Ops owns Renewal Review.\"\nEvidence: Customer: Lumen Trail.\nTracker title exactly: Lumen Trail Renewal Ledger.\nSlack channel exactly: #lumen-renewals.\nOwner rule exactly: Renewals Ops owns Renewal Review.\n\nExisting episodic entries for duplicate-awareness context:\n(none)"
+							"text": "Current timestamp: 2026-06-01T12:00:00.000Z\n\nScope: resource:resource-source-backed-1\n\nFlagged candidate batch:\n[00000000-0000-4000-8000-000000000005] EXPLICIT_REMEMBER 2026-06-01T12:00:00.000Z\nCandidate: Customer name: Lumen Trail. Tracker title exactly: \"Lumen Trail Renewal Ledger\". Slack channel exactly: \"#lumen-renewals\". Owner rule exactly: \"Renewals Ops owns Renewal Review.\"\nEvidence: Customer: Lumen Trail.\nTracker title exactly: Lumen Trail Renewal Ledger.\nSlack channel exactly: #lumen-renewals.\nOwner rule exactly: Renewals Ops owns Renewal Review.\n\nExisting episodic entries for duplicate-awareness context:\n(none)"
 						}
 					]
 				}
 			]
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerApe58nESW72GjrBHYg\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"entries\\\":[{\\\"content\\\":\\\"Customer: Lumen Trail. Tracker title exactly: \\\\\\\"Lumen Trail Renewal Ledger\\\\\\\". Slack channel exactly: #lumen-renewals. Owner rule exactly: Renewals Ops owns Renewal Review.\\\",\\\"sources\\\":[{\\\"candidateId\\\":\\\"00000000-0000-4000-8000-000000000005\\\",\\\"evidence\\\":\\\"Customer: Lumen Trail.\\\\nTracker title exactly: Lumen Trail Renewal Ledger.\\\\nSlack channel exactly: #lumen-renewals.\\\\nOwner rule exactly: Renewals Ops owns Renewal Review.\\\"}]}]}\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":893,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":144,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerKmhaw6w2p3KhNagMwz\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"entries\\\":[{\\\"content\\\":\\\"Customer: Lumen Trail. Tracker title exactly: \\\\\\\"Lumen Trail Renewal Ledger\\\\\\\". Slack channel exactly: #lumen-renewals. Owner rule exactly: Renewals Ops owns Renewal Review.\\\",\\\"sources\\\":[{\\\"candidateId\\\":\\\"00000000-0000-4000-8000-000000000005\\\",\\\"evidence\\\":\\\"Customer: Lumen Trail.\\\\nTracker title exactly: Lumen Trail Renewal Ledger.\\\\nSlack channel exactly: #lumen-renewals.\\\\nOwner rule exactly: Renewals Ops owns Renewal Review.\\\"}]}]}\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":896,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":144,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "15000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T14:58:56Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T16:56:15Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T14:58:58Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T16:56:16Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-08T14:58:52Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-08T16:56:13Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "18000000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-08T14:58:56Z",
+			"anthropic-ratelimit-tokens-reset": "2026-09-08T16:56:15Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ed0524d055b30-VIE",
+			"cf-ray": "a37f7c3c3bdfe34f-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:58 GMT",
-			"request-id": "req_011CerApd6bfLe2et1xGyxwY",
+			"date": "Tue, 08 Sep 2026 16:56:17 GMT",
+			"request-id": "req_011CerKmgvFXF6JuxUjGu7r9",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-a48e5e8c5bf97fda0bc3ec88e3c2a772-ff775ba2ef59f5bf-01",
+			"traceresponse": "00-2d7a7f7e6b2dd8316ab7dc985030a47a-b0187b708df36d8a-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -342,12 +342,12 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ed07dcbfc83f0-VIE",
+			"cf-ray": "a37f7c531a153258-VIE",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:58:59 GMT",
+			"date": "Tue, 08 Sep 2026 16:56:17 GMT",
 			"openai-organization": "n8n-1",
-			"openai-processing-ms": "68",
+			"openai-processing-ms": "80",
 			"openai-project": "proj_ZAEXttE86YHh0Pzmrnh9cBEf",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
@@ -360,7 +360,7 @@
 			"x-ratelimit-remaining-tokens": "9999958",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_d3ad07b9a5e94cc2b968fbe7e05b7664"
+			"x-request-id": "req_8a79d004cd1949caa3cfff6fd964be39"
 		},
 		"responseIsBinary": false
 	},
@@ -413,7 +413,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "You maintain source-backed episodic memory for cross-session recall.\n\nReturn JSON only:\n{\n  \"drop\": [\"memory_entry_id\"],\n  \"merge\": [\n    {\n      \"supersedes\": [\"memory_entry_id_1\", \"memory_entry_id_2\"],\n      \"content\": \"Merged replacement entry in 1-3 sentences\"\n    }\n  ]\n}\n\nDrop only obvious noise, unsupported claims, failed-recall diagnostics, or low-value duplicates. Merge only entries about the same case, entity, decision, or open thread when one replacement preserves their useful evidence more clearly. Preserve exact identifiers and uncertainty. Never merge merely related cases. Never drop durable user decisions, preferences, identities, commitments, or confirmed outcomes. An ID can appear in drop or merge, never both. Use only active entry IDs from the input.\n\nMost batches need no action. Return {\"drop\": [], \"merge\": []} when no clear lifecycle change is needed."
+					"text": "You maintain source-backed episodic memory for cross-session recall.\n\nReturn JSON only:\n{\n  \"drop\": [\"memory_entry_id\"],\n  \"merge\": [\n    {\n      \"supersedes\": [\"memory_entry_id_1\", \"memory_entry_id_2\"],\n      \"content\": \"Merged replacement entry in 1-3 sentences\"\n    }\n  ]\n}\n\nDrop only obvious noise, unsupported claims, failed-recall diagnostics, or low-value duplicates. Merge only entries about the same case, entity, decision, or open thread when one replacement preserves their useful evidence more clearly. Every merged entry must contain only information supported by the source entries it supersedes. Do not invent content, causation, dates, identifiers, commitments, or outcomes. Preserve exact identifiers and uncertainty. Never merge merely related cases. Never drop durable user decisions, preferences, identities, commitments, or confirmed outcomes. An ID can appear in drop or merge, never both. Use only active entry IDs from the input.\n\nMost batches need no action. Return {\"drop\": [], \"merge\": []} when no clear lifecycle change is needed."
 				}
 			],
 			"messages": [
@@ -429,30 +429,30 @@
 			]
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerAqBZxztRBAEL9Z3iVB\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"drop\\\":[],\\\"merge\\\":[]}\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":814,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":12,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CerKn1Dae4w2s18YZFmW7\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"drop\\\":[],\\\"merge\\\":[]}\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":850,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":12,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "15000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T14:59:00Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-08T16:56:19Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T14:59:00Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-08T16:56:19Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-08T14:58:59Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-08T16:56:17Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "18000000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-08T14:59:00Z",
+			"anthropic-ratelimit-tokens-reset": "2026-09-08T16:56:19Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ed080690c5b30-VIE",
+			"cf-ray": "a37f7c55bf81e34f-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:59:00 GMT",
-			"request-id": "req_011CerAqAfeFv3KMZkvyjdht",
+			"date": "Tue, 08 Sep 2026 16:56:19 GMT",
+			"request-id": "req_011CerKmzKkukdKGWiSHMb5m",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-bfa972ede806bdcd20d60e08298d34cd-96cded68f2739c40-01",
+			"traceresponse": "00-6302c4993c85211d6313311dbdb6f081-d128e66588722c85-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -473,12 +473,12 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a37ed08e3b1b83f0-VIE",
+			"cf-ray": "a37f7c663bce3258-VIE",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Tue, 08 Sep 2026 14:59:01 GMT",
+			"date": "Tue, 08 Sep 2026 16:56:20 GMT",
 			"openai-organization": "n8n-1",
-			"openai-processing-ms": "61",
+			"openai-processing-ms": "64",
 			"openai-project": "proj_ZAEXttE86YHh0Pzmrnh9cBEf",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
@@ -488,10 +488,10 @@
 			"x-ratelimit-limit-requests": "10000",
 			"x-ratelimit-limit-tokens": "10000000",
 			"x-ratelimit-remaining-requests": "9999",
-			"x-ratelimit-remaining-tokens": "9999986",
+			"x-ratelimit-remaining-tokens": "9999987",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_ef4c6586870e4cca8e684a793881b0a5"
+			"x-request-id": "req_7fac72a3ab2049fd93b7c451a1d56f28"
 		},
 		"responseIsBinary": false
 	}

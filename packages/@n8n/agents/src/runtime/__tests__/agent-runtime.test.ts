@@ -8,7 +8,11 @@ import { Agent } from '../../sdk/agent';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
-import type { CheckpointStore, SerializableAgentState } from '../../types';
+import type {
+	CheckpointStore,
+	EpisodicMemoryExtraction,
+	SerializableAgentState,
+} from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
@@ -6242,6 +6246,94 @@ describe('AgentRuntime — observation log jobs', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 		await runtime.dispose();
+	});
+
+	it('cancels pending episodic recovery without waiting for an unresponsive extractor', async () => {
+		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } });
+		const memory = new InMemoryMemory();
+		const candidate = await memory.episodic.enqueueCaptureCandidate({
+			resourceId: 'resource-1',
+			threadId: 'thread-1',
+			sourceMessageId: null,
+			toolCallId: 'tc-pending',
+			content: 'User chose Postgres for memory storage.',
+			evidenceText: 'User chose Postgres',
+			kind: 'decision',
+		});
+		let extractorStarted!: () => void;
+		const started = new Promise<void>((resolve) => (extractorStarted = resolve));
+		let resolveExtraction!: (value: EpisodicMemoryExtraction) => void;
+		const extraction = new Promise<EpisodicMemoryExtraction>(
+			(resolve) => (resolveExtraction = resolve),
+		);
+		let extractorSignal: AbortSignal | undefined;
+		const taskLock = memory.episodic.taskLock!;
+		const releaseLock = taskLock.release;
+		let taskFinished!: () => void;
+		const finished = new Promise<void>((resolve) => (taskFinished = resolve));
+		taskLock.release = async (handle) => {
+			await releaseLock(handle);
+			taskFinished();
+		};
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: {
+				embedder: { specificationVersion: 'v2' } as never,
+				extract: async (input) => {
+					extractorSignal = input.abortSignal;
+					extractorStarted();
+					return await extraction;
+				},
+			},
+		});
+
+		const run = runtime.generate('Hello.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await started;
+		runtime.abort();
+
+		let timeout: ReturnType<typeof setTimeout> | undefined;
+		const result = await Promise.race([
+			(async () => {
+				const generateResult = await run;
+				await runtime.dispose();
+				return generateResult;
+			})(),
+			new Promise<never>((_, reject) => {
+				timeout = setTimeout(
+					() => reject(new Error('Cancellation did not settle episodic recovery')),
+					500,
+				);
+			}),
+		]).finally(() => {
+			if (timeout) clearTimeout(timeout);
+		});
+
+		expect(result.finishReason).toBe('error');
+		expect(runtime.getState().status).toBe('cancelled');
+		expect(extractorSignal?.aborted).toBe(true);
+		expect(generateText).not.toHaveBeenCalled();
+
+		resolveExtraction({
+			entries: [
+				{
+					content: 'User chose Postgres for memory storage.',
+					sources: [{ candidateId: candidate.id, evidence: 'User chose Postgres' }],
+				},
+			],
+		});
+		await finished;
+
+		await expect(
+			memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
+		).resolves.toEqual([expect.objectContaining({ attemptCount: 0, status: 'pending' })]);
+		await expect(
+			memory.episodic.searchEntries({ resourceId: 'resource-1' }, 'Postgres storage'),
+		).resolves.toEqual([]);
 	});
 
 	it('exposes recall_memory without embedding until the tool is called', async () => {
