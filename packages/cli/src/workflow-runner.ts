@@ -2,6 +2,7 @@
 
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -74,10 +75,14 @@ const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
 const STREAMING_KEEPALIVE_CHUNK = '{"type":"keepalive"}\n';
 
 /** How long to keep rechecking the execution status after a max-stalled-count error before failing the run */
-const MAX_STALLED_COUNT_GRACE_WINDOW_MS = 30_000;
+const MAX_STALLED_COUNT_GRACE_WINDOW_MS = 30 * Time.seconds.toMilliseconds;
 
 /** Delay between execution status rechecks inside the max-stalled-count grace window */
-const MAX_STALLED_COUNT_RECHECK_INTERVAL_MS = 1_000;
+const MAX_STALLED_COUNT_RECHECK_INTERVAL_MS = 1 * Time.seconds.toMilliseconds;
+
+/** Rechecks that fit in the grace window, on top of the first read */
+const MAX_STALLED_COUNT_RECHECK_ATTEMPTS =
+	MAX_STALLED_COUNT_GRACE_WINDOW_MS / MAX_STALLED_COUNT_RECHECK_INTERVAL_MS;
 
 /**
  * Flush the response through the compression middleware.
@@ -146,16 +151,15 @@ export class WorkflowRunner {
 		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
 
 		if (isQueueMode) {
-			const recheckUntil =
-				Date.now() +
-				(error instanceof MaxStalledCountError ? MAX_STALLED_COUNT_GRACE_WINDOW_MS : 0);
+			const rechecks =
+				error instanceof MaxStalledCountError ? MAX_STALLED_COUNT_RECHECK_ATTEMPTS : 0;
 
-			for (;;) {
+			for (let recheck = 0; recheck <= rechecks; recheck++) {
 				const executionWithoutData = await this.executionRepository.findSingleExecution(
 					executionId,
 					{ includeData: false },
 				);
-				if (executionWithoutData?.finished === true && executionWithoutData?.status === 'success') {
+				if (executionWithoutData?.status === 'success') {
 					// false positive, execution was successful
 					let successRunData: IRun | undefined;
 
@@ -216,33 +220,33 @@ export class WorkflowRunner {
 					});
 				}
 
-				const runData: IRun = successRunData ?? {
-					data: createRunExecutionData({
-						resultData: {
-							error: new WorkflowOperationError(
-								`Execution ${executionId} succeeded, but its result could not be read`,
-							),
-							runData: {},
-						},
-					}),
-					finished: false,
-					mode: executionMode,
-					startedAt,
-					stoppedAt: new Date(),
-					status: 'error',
-					storedAt: this.storageConfig.modeTag,
-				};
+					const runData: IRun = successRunData ?? {
+						data: createRunExecutionData({
+							resultData: {
+								error: new WorkflowOperationError(
+									`Execution ${executionId} succeeded, but its result could not be read`,
+								),
+								runData: {},
+							},
+						}),
+						finished: false,
+						mode: executionMode,
+						startedAt,
+						stoppedAt: new Date(),
+						status: 'error',
+						storedAt: this.storageConfig.modeTag,
+					};
 
-				this.activeExecutions.resolveExecutionResponsePromise(executionId);
-				this.activeExecutions.finalizeExecution(executionId, runData);
+					this.activeExecutions.resolveExecutionResponsePromise(executionId);
+					this.activeExecutions.finalizeExecution(executionId, runData);
 
-				return;
+					return;
+				}
+
+				if (recheck === rechecks) break;
+
+				await sleep(MAX_STALLED_COUNT_RECHECK_INTERVAL_MS);
 			}
-
-			if (Date.now() >= recheckUntil) break;
-
-			await sleep(MAX_STALLED_COUNT_RECHECK_INTERVAL_MS);
-		}
 		}
 
 		const fullRunData: IRun = {
