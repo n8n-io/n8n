@@ -1,4 +1,8 @@
-import { resolveSystemTaskSchedule, type SystemTask, type SystemTaskSchedule } from '../system-task';
+import {
+	resolveSystemTaskSchedule,
+	type SystemTask,
+	type SystemTaskSchedule,
+} from '../system-task';
 
 const taskWith = (schedule: SystemTaskSchedule): SystemTask => ({
 	name: 'test-task',
