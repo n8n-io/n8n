@@ -5,7 +5,6 @@ import {
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
@@ -19,8 +18,6 @@ import type { PeriodUnit, TypeUnit, ByTimeInsightType } from './database/entitie
 import { NumberToType } from './database/entities/insights-shared';
 import type { InsightsAccessFilter } from './database/repositories/insights-by-period.repository';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
-import { InsightsCompactionService } from './insights-compaction.service';
-import { InsightsPruningService } from './insights-pruning.service';
 
 const BY_TIME_INSIGHT_TYPES: ByTimeInsightType[] = [
 	'time_saved_min',
@@ -41,8 +38,6 @@ type InsightsDateRangeQuery = {
 export class InsightsService {
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
-		private readonly compactionService: InsightsCompactionService,
-		private readonly pruningService: InsightsPruningService,
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
@@ -71,25 +66,10 @@ export class InsightsService {
 
 	async init() {
 		await this.toggleCollectionService(true);
-
-		if (this.instanceSettings.isLeader) this.startCompactionAndPruningTimers();
-	}
-
-	@OnLeaderTakeover()
-	startCompactionAndPruningTimers() {
-		this.compactionService.startCompactionTimer();
-		this.pruningService.startPruningTimer();
-	}
-
-	@OnLeaderStepdown()
-	async stopCompactionAndPruningTimers() {
-		this.pruningService.stopPruningTimer();
-		await this.compactionService.stopCompactionTimer();
 	}
 
 	async shutdown() {
 		await this.toggleCollectionService(false);
-		await this.stopCompactionAndPruningTimers();
 	}
 
 	/**
