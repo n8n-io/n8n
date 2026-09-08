@@ -1,0 +1,19 @@
+.agents/skills/create-agent-builder-eval/SKILL.md
+  s_a2999f6753c62b::t_7632d0ce190ac9 48-50,134-136,186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7b2c6163f5b99426e55983c80e9d0cc776e30dc8",
+  "prompts": {},
+  "sessions": {
+    "s_a2999f6753c62b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a080bf-405e-70f0-8af9-fbce616d04c3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
