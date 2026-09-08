@@ -71,6 +71,44 @@ describe('UserRepository', () => {
 			]);
 		});
 
+		test('pages by `before` in timestamp order, even without an explicit order', async () => {
+			// IDs ascend while timestamps descend, so an ID order would page these wrongly.
+			const now = DateTime.utc();
+			const workflow = await createWorkflow({}, owner);
+			const newest = await createExecution(
+				{ startedAt: now.plus({ minute: 3 }).toJSDate() },
+				workflow,
+			);
+			const middle = await createExecution(
+				{ startedAt: now.plus({ minute: 2 }).toJSDate() },
+				workflow,
+			);
+			const oldest = await createExecution(
+				{ startedAt: now.plus({ minute: 1 }).toJSDate() },
+				workflow,
+			);
+
+			const page = async (before: { timestamp: string; id: string }) =>
+				await executionRepository.findManyByRangeQuery({
+					workflowId: workflow.id,
+					user: owner,
+					kind: 'range',
+					range: { limit: 1, before },
+				});
+
+			const [first] = await page({
+				timestamp: now.plus({ minute: 3 }).toISO(),
+				id: newest.id,
+			});
+			expect(first.id).toBe(middle.id);
+
+			const [second] = await page({
+				timestamp: new Date(first.startedAt as unknown as string).toISOString(),
+				id: first.id,
+			});
+			expect(second.id).toBe(oldest.id);
+		});
+
 		test('exposes `jsonSizeBytes` and `binaryDataSizeBytes` as numbers and `workflowVersionId`', async () => {
 			const workflow = await createWorkflow({}, owner);
 			const execution = await createExecution(

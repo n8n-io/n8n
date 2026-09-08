@@ -6,6 +6,19 @@ import {
 
 const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 
+describe('parseExecutionCursor', () => {
+	it('returns no cursor when the caller asks for the first page', () => {
+		expect(parseExecutionCursor(undefined)).toBeUndefined();
+		expect(positionOf(parseExecutionCursor(undefined))).toBeUndefined();
+	});
+
+	it('rejects a cursor that carries no position', () => {
+		const encoded = Buffer.from(JSON.stringify({ version: 1 })).toString('base64url');
+
+		expect(() => parseExecutionCursor(encoded)).toThrow('Invalid execution cursor');
+	});
+});
+
 describe('encodeCursorForRow', () => {
 	it('round-trips a v1 execution row through parseExecutionCursor', () => {
 		const row = {

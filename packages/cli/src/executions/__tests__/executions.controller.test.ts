@@ -101,19 +101,7 @@ describe('ExecutionsController', () => {
 
 		const CURSOR_BEFORE = { timestamp: '2026-01-01T00:00:00.000Z', id: '999' };
 
-		const QUERIES_WITH_EITHER_STATUS_OR_RANGE: ExecutionSummaries.RangeQuery[] = [
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: undefined,
-				range: { limit: 20, before: CURSOR_BEFORE },
-			},
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: [],
-				range: { limit: 20, before: CURSOR_BEFORE },
-			},
+		const QUERIES_WITH_STATUS: ExecutionSummaries.RangeQuery[] = [
 			{
 				kind: 'range',
 				workflowId: undefined,
@@ -123,12 +111,12 @@ describe('ExecutionsController', () => {
 			{
 				kind: 'range',
 				workflowId: undefined,
-				status: [],
+				status: ['waiting'],
 				range: { limit: 20, before: CURSOR_BEFORE },
 			},
 		];
 
-		const QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED: ExecutionSummaries.RangeQuery[] = [
+		const QUERIES_WITHOUT_STATUS: ExecutionSummaries.RangeQuery[] = [
 			{
 				kind: 'range',
 				workflowId: undefined,
@@ -141,34 +129,43 @@ describe('ExecutionsController', () => {
 				status: [],
 				range: { limit: 20, before: undefined },
 			},
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: undefined,
+				range: { limit: 20, before: CURSOR_BEFORE },
+			},
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: [],
+				range: { limit: 20, before: CURSOR_BEFORE },
+			},
 		];
 
 		executionService.findRangeWithCount.mockResolvedValue(NO_EXECUTIONS);
 
-		describe('if either status or range provided', () => {
-			test.each(QUERIES_WITH_EITHER_STATUS_OR_RANGE)(
-				'should fetch executions per query',
-				async (rangeQuery) => {
-					executionService.buildSharingOptions.mockResolvedValue({
-						workflowRoles: [],
-						projectRoles: [],
-					});
-					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
+		describe('if a status filter is provided', () => {
+			test.each(QUERIES_WITH_STATUS)('should fetch executions per query', async (rangeQuery) => {
+				executionService.buildSharingOptions.mockResolvedValue({
+					workflowRoles: [],
+					projectRoles: [],
+				});
+				executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
-					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
+				const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
 
-					await executionsController.getMany(req);
+				await executionsController.getMany(req);
 
-					expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
-					expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
-					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
-				},
-			);
+				expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
+				expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
+				expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
+			});
 		});
 
-		describe('if neither status nor range provided', () => {
-			test.each(QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED)(
-				'should fetch executions per query',
+		describe('if no status filter is provided', () => {
+			test.each(QUERIES_WITHOUT_STATUS)(
+				'should fetch current and completed executions per query',
 				async (rangeQuery) => {
 					executionService.buildSharingOptions.mockResolvedValue({
 						workflowRoles: [],
