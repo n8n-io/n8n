@@ -2062,9 +2062,10 @@ export class InstanceAiService {
 	 * One prune pass: expire stale checkpoints, hard-delete tombstones past the
 	 * GC horizon, drop expired pending confirmations, and delete expired
 	 * conversation threads. A checkpoint failure propagates to the caller; the
-	 * GC, confirmation, and thread steps swallow their own errors.
+	 * GC, confirmation, and thread steps swallow their own errors. Stops before
+	 * the next step once `signal` aborts.
 	 */
-	async pruneExpiredData(now = Date.now()): Promise<void> {
+	async pruneExpiredData(now = Date.now(), signal?: AbortSignal): Promise<void> {
 		const olderThan = new Date(now - this.instanceAiConfig.snapshotRetention);
 
 		const count = await this.checkpointStore.markExpiredOlderThan(olderThan);
@@ -2073,9 +2074,12 @@ export class InstanceAiService {
 		} else {
 			this.logger.debug('No stale Instance AI checkpoints to expire');
 		}
+		if (signal?.aborted) return;
 		await this.hardDeleteExpiredCheckpoints(now);
+		if (signal?.aborted) return;
 		await this.suspendedThreads.pruneStalePendingConfirmations(now);
-		await this.pruneExpiredThreads();
+		if (signal?.aborted) return;
+		await this.pruneExpiredThreads(signal);
 	}
 
 	/**
@@ -2109,10 +2113,11 @@ export class InstanceAiService {
 	 * disrupts checkpoint pruning or the next scheduled run. No-op when
 	 * `threadTtlDays` is 0 (handled inside `cleanupExpiredThreads`).
 	 */
-	private async pruneExpiredThreads(): Promise<void> {
+	private async pruneExpiredThreads(signal?: AbortSignal): Promise<void> {
 		try {
 			await this.memoryService.cleanupExpiredThreads(
 				async (threadId) => await this.clearThreadState(threadId),
+				signal,
 			);
 		} catch (error: unknown) {
 			this.logger.warn('Failed to clean up expired Instance AI conversation threads', {

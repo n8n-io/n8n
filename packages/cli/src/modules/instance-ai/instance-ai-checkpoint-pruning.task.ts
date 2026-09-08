@@ -35,7 +35,7 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 		private readonly instanceAiService: InstanceAiService,
 	) {}
 
-	async run(): Promise<void> {
-		await this.instanceAiService.pruneExpiredData();
+	async run(signal: AbortSignal): Promise<void> {
+		await this.instanceAiService.pruneExpiredData(Date.now(), signal);
 	}
 }

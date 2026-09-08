@@ -501,11 +501,11 @@ function createCheckpointService(): ServiceInternals {
 }
 
 type CheckpointPruneServiceInternals = {
-	pruneExpiredData: (now?: number) => Promise<void>;
+	pruneExpiredData: (now?: number, signal?: AbortSignal) => Promise<void>;
 	suspendedThreads: {
 		pruneStalePendingConfirmations: MockedFunction<(now: number) => Promise<void>>;
 	};
-	pruneExpiredThreads: MockedFunction<() => Promise<void>>;
+	pruneExpiredThreads: MockedFunction<(signal?: AbortSignal) => Promise<void>>;
 	checkpointStore: {
 		markExpiredOlderThan: MockedFunction<(olderThan: Date) => Promise<number>>;
 		hardDeleteExpiredOlderThan: MockedFunction<(olderThan: Date) => Promise<number>>;
@@ -1765,6 +1765,33 @@ describe('InstanceAiService — expired data pruning', () => {
 		expect(service.pruneExpiredThreads).toHaveBeenCalled();
 	});
 
+	it('passes the signal to the thread sweep', async () => {
+		const service = createCheckpointPruneService();
+		const { signal } = new AbortController();
+
+		await service.pruneExpiredData(new Date('2026-05-13T12:00:00.000Z').getTime(), signal);
+
+		expect(service.pruneExpiredThreads).toHaveBeenCalledWith(signal);
+	});
+
+	it('stops before the next step once the signal is aborted', async () => {
+		const service = createCheckpointPruneService();
+		const controller = new AbortController();
+		service.checkpointStore.markExpiredOlderThan.mockImplementation(async () => {
+			controller.abort();
+			return 0;
+		});
+
+		await service.pruneExpiredData(
+			new Date('2026-05-13T12:00:00.000Z').getTime(),
+			controller.signal,
+		);
+
+		expect(service.checkpointStore.hardDeleteExpiredOlderThan).not.toHaveBeenCalled();
+		expect(service.suspendedThreads.pruneStalePendingConfirmations).not.toHaveBeenCalled();
+		expect(service.pruneExpiredThreads).not.toHaveBeenCalled();
+	});
+
 	it('skips hard-deleting tombstones when the GC retention is disabled', async () => {
 		const service = createCheckpointPruneService();
 		service.instanceAiConfig.checkpointGcRetention = 0;
@@ -1801,11 +1828,14 @@ describe('InstanceAiService — expired data pruning', () => {
 });
 
 type ExpiredThreadPruneServiceInternals = {
-	pruneExpiredThreads: () => Promise<void>;
+	pruneExpiredThreads: (signal?: AbortSignal) => Promise<void>;
 	clearThreadState: MockedFunction<(threadId: string) => Promise<void>>;
 	memoryService: {
 		cleanupExpiredThreads: MockedFunction<
-			(onThreadDeleted?: (threadId: string) => Promise<void>) => Promise<number>
+			(
+				onThreadDeleted?: (threadId: string) => Promise<void>,
+				signal?: AbortSignal,
+			) => Promise<number>
 		>;
 	};
 	logger: { warn: Mock };
@@ -1835,6 +1865,18 @@ describe('InstanceAiService — expired thread pruning', () => {
 
 		expect(service.memoryService.cleanupExpiredThreads).toHaveBeenCalledTimes(1);
 		expect(service.clearThreadState).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('passes the signal to the memory service', async () => {
+		const service = createExpiredThreadPruneService();
+		const { signal } = new AbortController();
+
+		await service.pruneExpiredThreads(signal);
+
+		expect(service.memoryService.cleanupExpiredThreads).toHaveBeenCalledWith(
+			expect.any(Function),
+			signal,
+		);
 	});
 
 	it('swallows errors so the recurring prune is not disrupted', async () => {

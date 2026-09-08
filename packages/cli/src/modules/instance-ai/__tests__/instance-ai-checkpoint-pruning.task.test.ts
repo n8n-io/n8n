@@ -37,9 +37,12 @@ describe('InstanceAiCheckpointPruningTask', () => {
 		},
 	);
 
-	it('should prune expired data on run', async () => {
-		await task.run();
+	it('should prune expired data on run and pass the signal through', async () => {
+		const { signal } = new AbortController();
+
+		await task.run(signal);
 
 		expect(instanceAiService.pruneExpiredData).toHaveBeenCalledTimes(1);
+		expect(instanceAiService.pruneExpiredData).toHaveBeenCalledWith(expect.any(Number), signal);
 	});
 });
