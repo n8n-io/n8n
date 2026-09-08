@@ -1,9 +1,3 @@
-import {
-	instanceAiVerificationClaimLevelSchema,
-	instanceAiVerificationClaimSchema,
-	type InstanceAiVerificationClaim,
-	type InstanceAiVerificationClaimLevel,
-} from '@n8n/api-types';
 import { z } from 'zod';
 
 import { resolvedCredentialSchema } from '../tools/workflows/resolved-credential.schema';
@@ -165,19 +159,40 @@ export const executionNodeErrorSchema = z.object({
 });
 
 /**
- * The deterministic verdict for one verification run, derived in
- * `tools/orchestration/verification/claim.ts` and carried through the loop so
- * the claim the user sees never depends on the model restating it correctly.
- *
- * Defined in `@n8n/api-types` because the same object is the payload of the
- * `verification-verdict` event the client renders. One schema, so the
- * persisted record and the wire format cannot drift.
+ * Strength of the claim a verification run supports. `verified` means every
+ * planned node ran for real; anything less must not be reported as verified.
+ * See `tools/orchestration/verification/claim.ts` for the derivation.
  */
-export const verificationClaimLevelSchema = instanceAiVerificationClaimLevelSchema;
-export const verificationClaimSchema = instanceAiVerificationClaimSchema;
+export const verificationClaimLevelSchema = z.enum(['verified', 'partial', 'unproven', 'failed']);
 
-export type VerificationClaimLevel = InstanceAiVerificationClaimLevel;
-export type VerificationClaim = InstanceAiVerificationClaim;
+export type VerificationClaimLevel = z.infer<typeof verificationClaimLevelSchema>;
+
+/**
+ * The deterministic verdict for one verification run. Backend-only: it shapes
+ * the tool result the model reads and gates the publish offer. It is
+ * deliberately not sent to the client — see INS-1308.
+ */
+export const verificationClaimSchema = z.object({
+	level: verificationClaimLevelSchema,
+	/** Nodes the verification plan covers. Excludes triggers the classifier skips. */
+	plannedNodeCount: z.number().int().min(0),
+	/** Planned nodes the run reached. Same set as `plannedNodeCount`. */
+	reachedNodeCount: z.number().int().min(0),
+	nodesNotReached: z.array(z.string()),
+	/** Reached nodes whose output was mocked, so the run proves nothing about them. */
+	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })),
+	/** Pin-fed subset of `simulatedNodes` — these need the pin removed for a live test. */
+	pinnedNodes: z.array(z.string()),
+	/**
+	 * Fix targets still unreached or simulated — the reason this run cannot
+	 * claim `verified` even when it ended without an error.
+	 */
+	unprovenTargets: z.array(z.string()),
+	publishReady: z.boolean(),
+	liveTestRecommended: z.boolean(),
+});
+
+export type VerificationClaim = z.infer<typeof verificationClaimSchema>;
 
 /**
  * Structured verification evidence the builder captures when it runs

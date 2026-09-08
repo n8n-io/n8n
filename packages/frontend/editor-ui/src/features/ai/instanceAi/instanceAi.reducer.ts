@@ -296,9 +296,6 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'confirmation-request':
 		case 'tasks-update':
 		case 'setup-items':
-		// The tree the message holds IS the root node, so folding the event
-		// through the shared reducer is enough to surface it live.
-		case 'verification-verdict':
 		case 'status': {
 			const { runState } = resolveTarget(state, event.runId);
 			if (runState) {

@@ -495,10 +495,9 @@ say:
 error, and a run with every write simulated also ends without an error. Read
 `claim.level`, not `success`.
 
-The user already sees a verdict card, generated from that same claim. Do not
-contradict it, and do not repeat its node lists — write around it. Add what it
-cannot know: what stays unconfigured, and what that means when the workflow
-runs.
+Nothing else tells the user how strong the claim is. Your message is the only
+place they learn it, so name the unreached and simulated nodes yourself, and say
+what stays unconfigured and what that means when the workflow runs.
 
 Without a claim, do not tell the user a workflow is "fixed", "verified",
 "tested", "working", or has "no errors" unless you have a passing

@@ -590,9 +590,6 @@ export type WorkflowTaskCoordinator = WorkflowLoopMod.WorkflowTaskCoordinator;
 export const WorkflowTaskCoordinator: typeof WorkflowLoopMod.WorkflowTaskCoordinator = lazyClass(
 	() => loadWorkflowLoop().WorkflowTaskCoordinator,
 );
-export const buildVerdictDisclosureEvent: typeof WorkflowLoopMod.buildVerdictDisclosureEvent =
-	lazyFunction(() => loadWorkflowLoop().buildVerdictDisclosureEvent);
-export type VerdictDisclosureRecord = WorkflowLoopMod.VerdictDisclosureRecord;
 export const deriveWorkflowVerificationObligation: typeof WorkflowLoopMod.deriveWorkflowVerificationObligation =
 	lazyFunction(() => loadWorkflowLoop().deriveWorkflowVerificationObligation);
 export const deriveWorkflowVerificationObligationFromOutcome: typeof WorkflowLoopMod.deriveWorkflowVerificationObligationFromOutcome =

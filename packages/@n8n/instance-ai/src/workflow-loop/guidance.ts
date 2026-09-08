@@ -14,8 +14,8 @@ function formatClaimLead(claim: VerificationClaim | undefined): string {
 	// Inline rather than via isVerifiedClaim: this branch must narrow `claim`.
 	if (claim === undefined || claim.level === 'verified') return 'Workflow verified successfully.';
 
-	// The verdict the user sees renders from this same claim, so the model must
-	// not write a stronger claim next to it.
+	// The claim is the only honest reading of the run, and nothing else tells
+	// the user how strong it is, so these rules carry the whole disclosure.
 	const rules = [
 		'Do NOT call the workflow verified, tested, working, or ready to publish.',
 		'Do NOT offer to publish it.',

@@ -2,8 +2,8 @@
  * User-facing wording for a verification claim.
  *
  * Every surface that discloses coverage renders from here, so the guidance the
- * model reads, the publish approval the user clicks, and the verdict block all
- * state the same facts. A claim at `verified` needs no disclosure.
+ * model reads and the publish approval the user clicks state the same facts.
+ * A claim at `verified` needs no disclosure.
  */
 
 import type { VerificationClaim } from './workflow-loop-state';

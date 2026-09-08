@@ -474,62 +474,6 @@ describe('instanceAi.reducer', () => {
 	// -----------------------------------------------------------------------
 	// Confirmation
 	// -----------------------------------------------------------------------
-	// -----------------------------------------------------------------------
-	// Verification verdict
-	// -----------------------------------------------------------------------
-	describe('verification verdict', () => {
-		const verdict: InstanceAiEvent = {
-			type: 'verification-verdict',
-			runId: 'run-1',
-			agentId: 'agent-root',
-			responseId: 'verdict-disclosure:wi_1:2026-09-08T09:59:59.996Z',
-			payload: {
-				claim: {
-					level: 'partial',
-					plannedNodeCount: 1,
-					reachedNodeCount: 1,
-					nodesNotReached: [],
-					simulatedNodes: [
-						{ nodeName: 'Send Telegram Message', reason: 'Credentials are not configured' },
-					],
-					pinnedNodes: [],
-					unprovenTargets: [],
-					publishReady: false,
-					liveTestRecommended: true,
-				},
-				workflowId: 'wf-1',
-			},
-		};
-
-		test('surfaces the verdict on the live message, not only after a reload', () => {
-			// The live reducer forwards an allowlist of types to the shared reducer.
-			// While this type was missing the card appeared only once the backend
-			// folded the durable log on refresh.
-			const state = makeState();
-			handleEvent(state, makeRunStartEvent('run-1', 'agent-root'));
-			handleEvent(state, verdict);
-
-			const msg = findMessageByRunId(state, 'run-1');
-			expect(msg?.agentTree?.timeline).toEqual([
-				expect.objectContaining({
-					type: 'verification-verdict',
-					claim: expect.objectContaining({ level: 'partial' }),
-					workflowId: 'wf-1',
-				}),
-			]);
-		});
-
-		test('does not render the verdict twice when the live emit is replayed', () => {
-			const state = makeState();
-			handleEvent(state, makeRunStartEvent('run-1', 'agent-root'));
-			handleEvent(state, verdict);
-			handleEvent(state, verdict);
-
-			const entries = findMessageByRunId(state, 'run-1')?.agentTree?.timeline ?? [];
-			expect(entries.filter((e) => e.type === 'verification-verdict')).toHaveLength(1);
-		});
-	});
-
 	describe('confirmation', () => {
 		test('confirmation-request sets confirmation on matching toolCallId', () => {
 			const state = stateWithRun('run-1', 'agent-root');

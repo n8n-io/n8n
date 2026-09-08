@@ -2,11 +2,9 @@ import type { InstanceAiErrorEvent, InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
-	buildVerdictDisclosureEvent,
 	InstanceAiTerminalResponseGuard,
 	orchestratorAgentId,
 	TerminalOutcomeStorage,
-	WorkflowLoopStorage,
 	type InstanceAiTraceContext,
 	type ManagedBackgroundTask,
 	type PatchableThreadMemory,
@@ -160,19 +158,17 @@ export class InstanceAiTerminalOutcomeService {
 			messageGroupId: options.messageGroupId,
 			correlationId: options.correlationId,
 		});
-		const events = await this.getTerminalGuardEvents(threadId, runId, options.messageGroupId);
-		const decision = guard.evaluateTerminal(events, status, {
-			workSummary: options.workSummary,
-			errorMessage: options.errorMessage,
-			errorCode: options.errorCode,
-			suppressCompletedFallback: options.suppressCompletedFallback,
-		});
+		const decision = guard.evaluateTerminal(
+			await this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
+			status,
+			{
+				workSummary: options.workSummary,
+				errorMessage: options.errorMessage,
+				errorCode: options.errorCode,
+				suppressCompletedFallback: options.suppressCompletedFallback,
+			},
+		);
 		this.handleTerminalResponseDecision(threadId, runId, decision, options.messageGroupId);
-		// Only on completion: a cancelled or errored run has its own outcome to
-		// show, and coverage on top of it is noise.
-		if (status === 'completed') {
-			await this.discloseVerificationVerdict(threadId, runId, events);
-		}
 		return decision;
 	}
 
@@ -188,46 +184,12 @@ export class InstanceAiTerminalOutcomeService {
 			messageGroupId: options.messageGroupId,
 			correlationId: options.correlationId,
 		});
-		const events = await this.getTerminalGuardEvents(threadId, runId, options.messageGroupId);
-		const decision = guard.evaluateWaiting(events, confirmationEvent);
+		const decision = guard.evaluateWaiting(
+			await this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
+			confirmationEvent,
+		);
 		this.handleTerminalResponseDecision(threadId, runId, decision, options.messageGroupId);
-		// A build summary often lands in the turn that suspends for the setup card,
-		// so waiting is a hand-back that needs the disclosure too.
-		await this.discloseVerificationVerdict(threadId, runId, events);
 		return decision;
-	}
-
-	/**
-	 * Publish the deterministic verdict block for the thread's latest
-	 * verification. Idempotent per verification, so repeated hand-backs disclose
-	 * once. Advisory: a read failure must not change the run's outcome.
-	 */
-	private async discloseVerificationVerdict(
-		threadId: string,
-		runId: string,
-		events: InstanceAiEvent[],
-	): Promise<void> {
-		try {
-			const records = await new WorkflowLoopStorage(this.agentMemory).listWorkItems(threadId);
-			const event = buildVerdictDisclosureEvent({
-				runId,
-				agentId: orchestratorAgentId(runId),
-				records,
-				events,
-			});
-			if (!event) return;
-			this.eventBus.publish(threadId, event);
-			this.telemetry.track('instance_ai_verification_verdict_disclosed', {
-				thread_id: threadId,
-				run_id: runId,
-			});
-		} catch (error) {
-			this.logger.warn('Failed to publish the verification verdict disclosure', {
-				threadId,
-				runId,
-				error: getErrorMessage(error),
-			});
-		}
 	}
 
 	private async getTerminalGuardEvents(

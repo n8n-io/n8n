@@ -732,63 +732,6 @@ describe('agent-run-reducer', () => {
 		});
 	});
 
-	describe('verification verdict', () => {
-		const claim = {
-			level: 'partial' as const,
-			plannedNodeCount: 11,
-			reachedNodeCount: 4,
-			nodesNotReached: ['Send Email', 'Log Row'],
-			simulatedNodes: [{ nodeName: 'Create Event', reason: 'Creates a record' }],
-			pinnedNodes: [],
-			unprovenTargets: [],
-			publishReady: false,
-			liveTestRecommended: true,
-		};
-
-		function makeVerdict(responseId?: string): InstanceAiEvent {
-			return {
-				type: 'verification-verdict',
-				runId: 'run-1',
-				agentId: 'root',
-				...(responseId ? { responseId } : {}),
-				payload: { claim, workflowId: 'wf-1' },
-			};
-		}
-
-		it('appends the verdict to the timeline so it keeps its place in the turn', () => {
-			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeVerdict('verdict-disclosure:wi_1:2026-09-03T10:00:00.000Z'));
-
-			const entry = state.agentsById.root.timeline.at(-1);
-			expect(entry).toMatchObject({
-				type: 'verification-verdict',
-				claim: { level: 'partial', nodesNotReached: ['Send Email', 'Log Row'] },
-				workflowId: 'wf-1',
-			});
-		});
-
-		it('renders the verdict once when a replay overlaps the live emit', () => {
-			const state = stateWithRun('run-1', 'root');
-			const responseId = 'verdict-disclosure:wi_1:2026-09-03T10:00:00.000Z';
-			reduceEvent(state, makeVerdict(responseId));
-			reduceEvent(state, makeVerdict(responseId));
-
-			expect(
-				state.agentsById.root.timeline.filter((e) => e.type === 'verification-verdict'),
-			).toHaveLength(1);
-		});
-
-		it('keeps distinct verifications apart', () => {
-			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeVerdict('verdict-disclosure:wi_1:2026-09-03T10:00:00.000Z'));
-			reduceEvent(state, makeVerdict('verdict-disclosure:wi_1:2026-09-03T11:00:00.000Z'));
-
-			expect(
-				state.agentsById.root.timeline.filter((e) => e.type === 'verification-verdict'),
-			).toHaveLength(2);
-		});
-	});
-
 	describe('confirmation', () => {
 		it('confirmation-request sets confirmation on tool call', () => {
 			const state = stateWithRun('run-1', 'root');

@@ -25,7 +25,6 @@ import TaskChecklist from './TaskChecklist.vue';
 import ThinkingBlock from './ThinkingBlock.vue';
 import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
-import VerificationVerdictCard from './VerificationVerdictCard.vue';
 
 const i18n = useI18n();
 const thread = useThread();
@@ -283,10 +282,6 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 			/>
 
 			<TaskChecklist v-else-if="block.type === 'tasks'" :tasks="props.agentNode.tasks" />
-			<VerificationVerdictCard
-				v-else-if="block.type === 'verification-verdict'"
-				:claim="block.entry.claim"
-			/>
 
 			<PlanReviewPanel
 				v-else-if="block.type === 'plan-review'"
