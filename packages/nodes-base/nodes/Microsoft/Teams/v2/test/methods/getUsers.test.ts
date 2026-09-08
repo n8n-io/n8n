@@ -210,6 +210,14 @@ describe('Microsoft Teams v2, mention picker wiring', () => {
 		return new RegExp(regex);
 	};
 
+	const optionsCollection = (resource: string, operation: string) =>
+		versionDescription.properties.find(
+			(property) =>
+				property.name === 'options' &&
+				property.displayOptions?.show?.resource?.includes(resource) &&
+				property.displayOptions?.show?.operation?.includes(operation),
+		);
+
 	it.each([
 		['channelMessage', 'create'],
 		['channelMessage', 'reply'],
@@ -326,7 +334,34 @@ describe('Microsoft Teams v2, mention picker wiring', () => {
 		expect(tagByIdRegex().test(value)).toBe(true);
 	});
 
-	// Blocked on the D7 live spike. The rows above use a synthetic id, so only an id captured
-	// from a real tenant can pin the charset and the length of a real one.
-	it.todo('accepts a real tag ID in the By ID mode');
+	// The rows above are 16 characters, so on their own they would still pass if the regex grew a
+	// length bound. A GUID-shaped `{groupId}##{tagId}##{token}` plaintext is 112 bytes, so 152
+	// base64 characters ending in `==`; this pins that the regex has no bound between the two.
+	// Derived, not captured from a tenant, so it pins the length class rather than a real id.
+	it('accepts a full-length tag ID in the By ID mode', () => {
+		const guid = '2433949a-3518-4640-97fe-87196e049492';
+		const tagId = Buffer.from([guid, guid, guid].join('##')).toString('base64');
+
+		expect(tagByIdRegex().test(tagId)).toBe(true);
+	});
+
+	// Execution reads `node.parameters` and never consults the description, so dropping this
+	// option from either operation leaves every other test green while the field disappears
+	// from the editor.
+	it.each([
+		['channelMessage', 'create'],
+		['channelMessage', 'reply'],
+	])('%s %s offers Mention Placement in its options', (resource, operation) => {
+		const options = (optionsCollection(resource, operation)?.options ?? []) as INodeProperties[];
+		const placement = options.find((option) => option.name === 'mentionPlacement');
+
+		expect(placement).toBeDefined();
+		expect(placement?.type).toBe('options');
+		// `prepareMessage` only branches on `end`, so `start` has to stay the default.
+		expect(placement?.default).toBe('start');
+		// Not the order: the items are display-name sorted, so a rename may legitimately flip them.
+		expect(
+			(placement?.options ?? []).map((option) => (option as { value: string }).value).sort(),
+		).toEqual(['end', 'start']);
+	});
 });

@@ -116,11 +116,19 @@ async function findUserByMail(
  * truthiness: the everyday "row added, nobody picked yet" state is the RLC default
  * `{ __rl: true, mode: 'list', value: '' }`, and unwrapping it on truthiness would pass the whole
  * object down and tell the user to remove slashes from an ID they never typed. One deliberate
- * delta from `extractValue`: `isResourceLocatorValue` also requires `__rl`, so a `{ mode, value }`
- * without it keeps today's rejection instead of becoming newly accepted.
+ * delta from `extractValue`: `isResourceLocatorValue` also requires `__rl`, which `extractValueRLC`
+ * does not, so a hand-authored `{ mode, value }` without it is stricter here than under the
+ * indexed read this replaced. That shape then lands on the object branch below, like
+ * `resolveMailbox` in `Microsoft/Outlook/v2/transport`: collapsing it reports "nothing selected"
+ * with no request, where stringifying it would send the literal `[object Object]` to Graph and
+ * spend a call to learn nothing. A number or a boolean still stringifies, because only an object
+ * is guaranteed useless as an ID.
  */
-const rlcValue = (value: unknown): string =>
-	String((isResourceLocatorValue(value) ? value.value : value) ?? '').trim();
+const rlcValue = (value: unknown): string => {
+	const raw = isResourceLocatorValue(value) ? value.value : value;
+	if (typeof raw === 'string') return raw.trim();
+	return typeof raw === 'number' || typeof raw === 'boolean' ? String(raw) : '';
+};
 
 /**
  * Looks a team tag up under the team that owns it. A foreign tag ID 404s under

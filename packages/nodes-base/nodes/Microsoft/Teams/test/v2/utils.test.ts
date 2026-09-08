@@ -474,6 +474,27 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		expect(mentions).toEqual([mention('guid-1', 'Jane Smith')]);
 	});
 
+	// `isResourceLocatorValue` needs `__rl`, so a hand-authored locator missing it is not
+	// unwrapped. Stringifying it would send the literal `[object Object]` to Graph, which
+	// `validateMicrosoftGraphId` does not reject, and burn a request to learn nothing.
+	it('names the empty row for a resource locator missing its __rl marker', async () => {
+		setMentionRows({ userId: { mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } });
+
+		await expect(resolveMentions.call(ctx, 0)).rejects.toThrow('No user selected for mention 1');
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	// The collapse above is for objects only. A number is a bad ID but not a guaranteed-useless
+	// one, so it keeps reaching the validator and its "not valid" wording.
+	it('still stringifies a non-string primitive', async () => {
+		setMentionRows({ userId: 12345 });
+
+		await expect(resolveMentions.call(ctx, 0)).rejects.toThrow(
+			'The user for mention 1 is not valid',
+		);
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
 	it('rejects a mention type it does not know', async () => {
 		// Reachable from imported JSON, the public API, the workflow builder, or a `$fromAI()`
 		// discriminator. Falling through to the user branch would report "No user selected" on a

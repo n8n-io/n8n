@@ -217,22 +217,29 @@ export async function getTags(
 		throw tagPermissionError(error, this.getNode(), 'Could not load team tags') ?? error;
 	}
 
-	const returnData: INodeListSearchItems[] = value.map((tag) => {
-		// A tag notifies everyone carrying it, and the dropdown renders only `name`, so the
-		// blast radius goes there. Graph sends `memberCount` as a number when listing and as a
-		// string when getting one tag.
-		const memberCount = Number(tag.memberCount);
-		const displayName = tag.displayName as string;
-		return {
-			name: Number.isFinite(memberCount)
-				? `${displayName} (${memberCount} ${memberCount === 1 ? 'member' : 'members'})`
-				: displayName,
-			value: tag.id as string,
-			description: tag.description as string,
-		};
+	// Graph sends `memberCount` as a number when listing and as a string when getting one tag.
+	const memberCounts = new Map(value.map((tag) => [tag.id as string, Number(tag.memberCount)]));
+	const returnData: INodeListSearchItems[] = value.map((tag) => ({
+		// Falls back like `getUsers`: a tag with no display name would otherwise set `name` to
+		// `undefined` and throw in the comparator below instead of listing the tags.
+		name: (tag.displayName as string) || (tag.id as string),
+		value: tag.id as string,
+		description: tag.description as string,
+	}));
+
+	// Filter and sort on the bare display name, then append the count. A tag notifies everyone
+	// carrying it and the dropdown renders only `name`, so the blast radius has to go in the
+	// label, but baking it in first makes every tag match any substring of "(4 members)".
+	const results = filterSortSearchListItems(returnData, filter).map((tag) => {
+		const memberCount = memberCounts.get(tag.value as string);
+		return memberCount !== undefined && Number.isFinite(memberCount)
+			? {
+					...tag,
+					name: `${tag.name} (${memberCount} ${memberCount === 1 ? 'member' : 'members'})`,
+				}
+			: tag;
 	});
 
-	const results = filterSortSearchListItems(returnData, filter);
 	return { results };
 }
 

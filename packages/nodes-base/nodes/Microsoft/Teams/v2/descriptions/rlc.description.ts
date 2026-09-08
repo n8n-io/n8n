@@ -410,13 +410,14 @@ export const teamworkTagRLC: INodeProperties = {
 					type: 'regex',
 					properties: {
 						// A tag ID is base64 of `{groupId}##{tagGuid}##{token}`. base64 emits `+` or
-						// `/` only for a plaintext byte of `>`, `~`, `?`, DEL or non-ASCII, and that
-						// plaintext is hex, `-`, `#` and alphanumerics, so only `[A-Za-z0-9]` and `=`
-						// padding can occur. No length check: the only sample available is provably
-						// malformed (117 characters ending in `==`), so no length invariant has been
-						// observed on a real ID at all. If Microsoft ever widens the token alphabet,
-						// a From List pick bypasses this regex and dies at `buildTeamsPath` with
-						// "remove any slashes" for a tag the user chose from a dropdown.
+						// `/` only for a plaintext byte of `>`, `~`, `?`, DEL or non-ASCII, and hex,
+						// `-`, `#` and alphanumerics contain none of those, so only `[A-Za-z0-9]`
+						// and `=` padding can occur. No length check: a GUID-shaped token gives 152
+						// characters (pinned in `v2/test/methods/getUsers.test.ts`), but nothing
+						// documents the token as a GUID, so both that length and the alphabet above
+						// rest on the assumed token shape. If Microsoft widens it, a From List pick
+						// bypasses this regex and dies at `buildTeamsPath` with "remove any slashes"
+						// for a tag the user chose from a dropdown.
 						regex: '^[A-Za-z0-9=]+[ \t]*$',
 						errorMessage: 'Not a valid Microsoft Teams tag ID',
 					},
