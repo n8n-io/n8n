@@ -86,7 +86,7 @@ const makeServer = (slug: string): McpRegistryServerResponse => ({
 	version: '1.0.0',
 	updatedAt: '2026-05-01T00:00:00.000Z',
 	icons: [],
-	credentialType: `${slug}McpOAuth2Api`,
+	credentials: [{ credentialType: `${slug}McpOAuth2Api`, name: 'OAuth2', value: 'oAuth2' }],
 	tools: [],
 	isOfficial: true,
 	status: 'active',
@@ -386,6 +386,67 @@ describe('useInstanceAiMcpStore', () => {
 			await vi.waitFor(() => {
 				expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'fresh_tool' }]);
 			});
+		});
+	});
+
+	describe('fetchConnectionTools', () => {
+		it('starts a fresh request and ignores an earlier response', async () => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			await store.fetchConnections();
+
+			const firstRequest = createDeferred<InstanceAiMcpConnectionToolsResponse>();
+			const secondRequest = createDeferred<InstanceAiMcpConnectionToolsResponse>();
+			mockFetchMcpConnectionTools
+				.mockReturnValueOnce(firstRequest.promise)
+				.mockReturnValueOnce(secondRequest.promise);
+
+			const firstFetch = store.fetchConnectionTools('conn-1');
+			const secondFetch = store.fetchConnectionTools('conn-1');
+
+			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(2);
+			firstRequest.resolve({
+				id: 'conn-1',
+				status: 'connected',
+				tools: [{ name: 'old_tool' }],
+			});
+			await firstFetch;
+			expect(store.connectionToolsById.get('conn-1')).toBeUndefined();
+
+			secondRequest.resolve({
+				id: 'conn-1',
+				status: 'connected',
+				tools: [{ name: 'fresh_tool' }],
+			});
+			await secondFetch;
+
+			expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'fresh_tool' }]);
+		});
+	});
+
+	describe('handleToolCallFailed', () => {
+		it('starts a fresh check when a connection check is already in flight', async () => {
+			store.connections = [{ ...makeConnection(), status: 'connected' }];
+			const initialRequest = createDeferred<InstanceAiMcpConnectionToolsResponse>();
+			const failureCheck = createDeferred<InstanceAiMcpConnectionToolsResponse>();
+			mockFetchMcpConnectionTools
+				.mockReturnValueOnce(initialRequest.promise)
+				.mockReturnValueOnce(failureCheck.promise);
+			const initialFetch = store.fetchConnectionTools('conn-1');
+
+			store.handleToolCallFailed('conn-1');
+
+			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(2);
+			initialRequest.resolve({ id: 'conn-1', status: 'connected', tools: [] });
+			await initialFetch;
+			expect(store.connections[0].status).toBe('connecting');
+
+			failureCheck.resolve({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'server_unavailable',
+			});
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));
 		});
 	});
 

@@ -124,7 +124,7 @@ describe('PollTriggerTaskHandler', () => {
 		pollFunctions = mock<IPollFunctions>() as PollFunctionsMock;
 		pollFunctions.__runPoll.mockImplementation(async (poll) => await poll());
 
-		triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(workflowData);
+		triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(workflowData);
 		triggerExecutionContextFactory.createPollExecutionContext.mockResolvedValue({
 			workflow,
 			pollFunctions,
@@ -149,7 +149,7 @@ describe('PollTriggerTaskHandler', () => {
 		// fire before the healer's corrected version replaces the jobs; resolving a
 		// duplicated id would poll the wrong node and write shared cursor state.
 		test('skips the occurrence when the published version has duplicate node ids', async () => {
-			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
 				buildWorkflowData({
 					nodes: [triggerNode, { ...triggerNode, name: 'Other Poll Trigger' }],
 				}),
@@ -162,7 +162,7 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		test('skips the occurrence when the published version has a node without an id', async () => {
-			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
 				buildWorkflowData({
 					nodes: [triggerNode, { ...triggerNode, id: '', name: 'Other Poll Trigger' }],
 				}),
@@ -218,7 +218,7 @@ describe('PollTriggerTaskHandler', () => {
 		test('reads workflow data fresh (non-cached) so the poll cursor is never stale', async () => {
 			await handler.execute(buildTask(), report);
 
-			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).toHaveBeenCalledWith(
+			expect(triggerExecutionContextFactory.findPublishedWorkflowData).toHaveBeenCalledWith(
 				'wf-1',
 				{
 					bypassCache: true,
@@ -503,23 +503,31 @@ describe('PollTriggerTaskHandler', () => {
 			await expect(handler.execute(task, report)).rejects.toThrow(
 				'Poll-trigger task payload is missing workflowId or nodeId',
 			);
-			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).not.toHaveBeenCalled();
+			expect(triggerExecutionContextFactory.findPublishedWorkflowData).not.toHaveBeenCalled();
 			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 		});
 
-		test('propagates a missing published workflow so the executor records the failure', async () => {
-			const error = new UnexpectedError('Published version not found for workflow');
-			triggerExecutionContextFactory.loadPublishedWorkflowData.mockRejectedValue(error);
+		test('reports no dispatch when the published workflow is gone', async () => {
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(null);
 
-			await expect(handler.execute(buildTask(), report)).rejects.toThrow(error);
+			const decision = await handler.execute(buildTask(), report);
+
+			// The workflow was unpublished after the claim: the occurrence completes as a
+			// no-op instead of retrying to dead-letter while the owner retires the job.
+			expect(decision).toBe(report.notDispatched());
 			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(scopedLogger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('no published version'),
+				expect.objectContaining({ taskId: 'task-1', workflowId: 'wf-1', nodeId: 'node-1' }),
+			);
 		});
 
 		test.each([
 			['gone from', [] as INode[]],
 			['disabled in', [{ ...triggerNode, disabled: true }]],
 		])('rejects a task whose trigger node is %s the published workflow', async (_case, nodes) => {
-			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
 				buildWorkflowData({ nodes }),
 			);
 
@@ -570,7 +578,7 @@ describe('PollTriggerTaskHandler', () => {
 			const decision = await handler.execute(buildTask(), report);
 
 			expect(decision).toBe(report.notDispatched());
-			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).not.toHaveBeenCalled();
+			expect(triggerExecutionContextFactory.findPublishedWorkflowData).not.toHaveBeenCalled();
 			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
 			expect(pollBackoffService.isBackingOff).toHaveBeenCalledWith(state, fixedNow);
@@ -702,11 +710,11 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		test('does not touch the failure counters when the published workflow is missing', async () => {
-			const error = new UnexpectedError('Published version not found for workflow');
-			triggerExecutionContextFactory.loadPublishedWorkflowData.mockRejectedValue(error);
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(null);
 
-			await expect(handler.execute(buildTask(), report)).rejects.toThrow(error);
+			const decision = await handler.execute(buildTask(), report);
 
+			expect(decision).toBe(report.notDispatched());
 			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
 			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
 		});

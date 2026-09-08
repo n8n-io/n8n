@@ -80,7 +80,14 @@ const registerTestWebhook = async (
 const mintTokenFor = async (resourceUrl: string, user: User) => {
 	const tokenService = Container.get(OAuthTokenService);
 	const pair = tokenService.generateTokenPair(user.id, clientId, resourceUrl, []);
-	await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, user.id, []);
+	await tokenService.saveTokenPair(
+		pair.accessToken,
+		pair.refreshToken,
+		clientId,
+		user.id,
+		[],
+		pair.audience,
+	);
 	return pair.accessToken;
 };
 

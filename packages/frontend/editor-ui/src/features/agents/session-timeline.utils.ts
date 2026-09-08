@@ -349,8 +349,8 @@ const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
 	agent: 'var(--color--purple-600)',
 	tool: 'var(--color--green-600)',
 	node: 'var(--color--neutral-600)',
-	workflow: 'var(--color--orange-600)',
-	'execution-error': 'var(--color--red-400)',
+	workflow: 'var(--color--pink-600)',
+	'execution-error': 'var(--color--red-600)',
 	suspension: 'var(--color--yellow-600)',
 	'hitl-response': 'var(--color--blue-600)',
 };

@@ -50,9 +50,9 @@ export const agentConfigValidationIssueSchema = z.object({
 	capability: agentConfigValidationCapabilityRefSchema,
 	/**
 	 * Stable, machine-readable sub-reason for `incompatible_reference` issues
-	 * (e.g. `'incompatible_nodes'`, `'no_supported_trigger'` for workflow tools).
-	 * Absent when the code itself is specific enough. Frontends map this to a
-	 * reason-specific i18n key; never display it raw.
+	 * (e.g. `'incompatible_nodes'`, `'no_supported_trigger'`, `'not_published'`
+	 * for workflow tools). Absent when the code itself is specific enough.
+	 * Frontends map this to a reason-specific i18n key; never display it raw.
 	 */
 	reason: z.string().optional(),
 });

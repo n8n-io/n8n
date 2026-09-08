@@ -27,9 +27,10 @@ a deployable engine worker) without touching core logic.
   (the `createScheduler(deps)` pattern).
 - **Core interfaces** — interfaces the core depends on, each defined in its own
   core module beside a default/reference use: `AdmittanceService` (`admittance/`),
-  `WorkQueue` (`queue/`), `ExecutionStore` (`execution/`). Adapters implement
-  them; the core never imports the interface from an adapter. Handed in at
-  construction.
+  `WorkQueue` (`queue/`), `ExecutionStore` / `StepStore` / `ExecutionViewStore`
+  (`execution/`), `LifecycleEventPublisher` (`lifecycle-events/`). Adapters
+  implement them; the core never imports the interface from an adapter. Handed
+  in at construction.
 - **Adapters (do)** — effectful implementations: `database/` (TypeORM entities,
   migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
   (in-memory default). The Postgres/ORM coupling lives *here only*.
@@ -81,6 +82,21 @@ executions and drives recovery (CAT-2938), not transactions spanning stores and
 queues. So when you find a partial-write window: make the resulting state
 legible to reconciliation, and don't reach for a cross-store transaction. It's a
 recurring review question — this is the standing answer.
+
+## Read path and execution path have their own types
+
+A row is not a type. `ExecutionRecord`/`StepRecord`/`StepSummary` are what
+running an execution needs; `ExecutionView`/`StepView`
+(`execution/execution-view-store.ts`) are what reporting one needs;
+`ExecutionSnapshot`/`StepDetail` (`server/api.types.ts`) are the wire. Put a
+field on the path that reads it. Keep value types (`StepStatus`, `StepError`,
+`StepSlots`, `WorkflowGraph`) shared.
+
+Reads go through `ExecutionViewStore`, so a reader's type cannot reach
+`claimStep` or `finishExecution`, and read-side logic has one seam
+(`ExecutionQueryService`). Name the columns in the query: these types are
+structural, so an adapter returning whole entities still type-checks and still
+ships every column.
 
 ## Known deviations — the seams to clean up on decomposition
 

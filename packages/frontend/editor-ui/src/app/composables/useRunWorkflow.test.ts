@@ -318,10 +318,10 @@ describe('useRunWorkflow({ router })', () => {
 
 	// Production reads run data from the execution-state store (keyed by document
 	// id), not the workflows store, so seed it to drive `activeExecutionRunData`.
-	function seedActiveRunData(runData: IRunData) {
+	function seedActiveRunData(runData: IRunData, executedNodes: INode[] = []) {
 		executionStateStore.setWorkflowExecutionData({
 			id: 'seeded-execution',
-			workflowData: { id: '123', nodes: [], connections: {} },
+			workflowData: { id: '123', nodes: executedNodes, connections: {} },
 			finished: true,
 			mode: 'manual',
 			status: 'success',
@@ -930,6 +930,58 @@ describe('useRunWorkflow({ router })', () => {
 			expect(setWorkflowExecutionData).toHaveBeenCalledTimes(1);
 			expect(setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
 			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
+		});
+
+		describe('run data of replaced nodes', () => {
+			async function runPartialExecutionWith({
+				executedNodeId,
+				currentNodeId,
+			}: {
+				executedNodeId: string;
+				currentNodeId: string;
+			}) {
+				const { runWorkflow } = useRunWorkflow({ router });
+				const runData = { 'Test node': [] };
+
+				vi.mocked(mockDocumentStore.getNodeByName).mockImplementation((name: string) =>
+					name === 'Test node' ? createTestNode({ id: currentNodeId, name: 'Test node' }) : null,
+				);
+				vi.mocked(pushConnectionStore).isConnected = true;
+				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({ executionId: '123' });
+
+				mockDocumentStore.hasNodeValidationIssues = false;
+				mockDocumentStore.serialize.mockReturnValue({
+					id: 'workflowId',
+					nodes: [createTestNode({ id: currentNodeId, name: 'Test node' })],
+					connections: {},
+				});
+
+				seedActiveRunData(runData, [createTestNode({ id: executedNodeId, name: 'Test node' })]);
+
+				await runWorkflow({
+					destinationNode: { nodeName: 'Test node', mode: 'inclusive' },
+				});
+
+				return vi.mocked(workflowsStore).runWorkflow.mock.calls.at(-1)?.[0];
+			}
+
+			it('drops the entry when the name now belongs to a different node', async () => {
+				const startRunData = await runPartialExecutionWith({
+					executedNodeId: 'executed-id',
+					currentNodeId: 'added-after-the-run',
+				});
+
+				expect(startRunData?.runData).toEqual({});
+			});
+
+			it('keeps the entry for the node that recorded it', async () => {
+				const startRunData = await runPartialExecutionWith({
+					executedNodeId: 'same-id',
+					currentNodeId: 'same-id',
+				});
+
+				expect(startRunData?.runData).toEqual({ 'Test node': [] });
+			});
 		});
 
 		it('retains the original run data', async () => {

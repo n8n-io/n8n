@@ -127,6 +127,9 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 	},
 ];
 
+const discoverableResource = async (resource?: ProtectedResource) =>
+	resource && ((await resource.isAvailable?.()) ?? true) ? resource : undefined;
+
 const wellKnownIpRateLimit = createIpRateLimit(
 	oauthServerConfig.rateLimitWellKnown,
 	5 * Time.minutes.toMilliseconds,
@@ -202,6 +205,31 @@ export class OAuthController {
 		res.json(metadata);
 	}
 
+	@Options('/.well-known/oauth-authorization-server/*issuerPath', {
+		skipAuth: true,
+		usesTemplates: true,
+		ipRateLimit: wellKnownIpRateLimit,
+	})
+	pathInsertedMetadataOptions(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.status(204).end();
+	}
+
+	/**
+	 * RFC 8414 path-inserted probes target issuers with a path component; this
+	 * instance's issuer is the bare origin, so answer with a machine-readable
+	 * 404 rather than letting the probe fall through to Express's HTML 404.
+	 */
+	@Get('/.well-known/oauth-authorization-server/*issuerPath', {
+		skipAuth: true,
+		usesTemplates: true,
+		ipRateLimit: wellKnownIpRateLimit,
+	})
+	pathInsertedMetadata(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.status(404).json({ message: 'Unknown authorization server' });
+	}
+
 	@Options('/.well-known/oauth-protected-resource/*resourcePath', {
 		skipAuth: true,
 		usesTemplates: true,
@@ -236,7 +264,9 @@ export class OAuthController {
 		const queryStart = req.originalUrl?.indexOf('?') ?? -1;
 		const search = queryStart === -1 ? '' : req.originalUrl.slice(queryStart);
 
-		const resource = await this.resourceRegistry.getByResourcePath(resourcePath + search);
+		const resource = await discoverableResource(
+			await this.resourceRegistry.getByResourcePath(resourcePath + search),
+		);
 		if (!resource) {
 			res.status(404).json({ message: 'Unknown protected resource' });
 			return;
@@ -270,17 +300,18 @@ export class OAuthController {
 	 *
 	 * Resolves to this instance's default protected resource (today, always
 	 * the single instance-wide MCP resource); returns 404 when no default is
-	 * registered so the caller can fall back to the resource-scoped URL.
+	 * registered, or when the registered one is currently unavailable, so the
+	 * caller can fall back to the resource-scoped URL.
 	 */
 	@Get('/.well-known/oauth-protected-resource', {
 		skipAuth: true,
 		usesTemplates: true,
 		ipRateLimit: wellKnownIpRateLimit,
 	})
-	defaultProtectedResourceMetadata(_req: Request, res: Response) {
+	async defaultProtectedResourceMetadata(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
 
-		const resource = this.resourceRegistry.getDefaultResource();
+		const resource = await discoverableResource(this.resourceRegistry.getDefaultResource());
 		if (!resource) {
 			res.status(404).json({ message: 'Unknown protected resource' });
 			return;

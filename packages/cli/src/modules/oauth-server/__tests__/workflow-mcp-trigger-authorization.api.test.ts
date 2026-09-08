@@ -82,13 +82,13 @@ const createProtectedWorkflow = async (workflowName: string, requireExecuteAcces
 	return { workflow, resourceUrl: productionResourceUrl(webhookPath) };
 };
 
-const registerClient = async () =>
+const registerClient = async (grantTypes: string[] = ['authorization_code']) =>
 	(
 		await oauthClientRepository.save({
 			id: `client-${randomUUID()}`,
 			name: 'Test OAuth Client',
 			redirectUris: ['https://example.com/callback'],
-			grantTypes: ['authorization_code'],
+			grantTypes,
 			tokenEndpointAuthMethod: 'none',
 		})
 	).id;
@@ -96,7 +96,14 @@ const registerClient = async () =>
 const mintAccessToken = async (userId: string, resourceUrl: string) => {
 	const clientId = await registerClient();
 	const pair = tokenService.generateTokenPair(userId, clientId, resourceUrl, []);
-	await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, userId, []);
+	await tokenService.saveTokenPair(
+		pair.accessToken,
+		pair.refreshToken,
+		clientId,
+		userId,
+		[],
+		pair.audience,
+	);
 	return pair.accessToken;
 };
 
@@ -220,5 +227,78 @@ describe('consent gate: workflow name and authorization code require execute acc
 			.expect(403);
 
 		expect(String(response.body.data?.redirectUrl ?? '')).not.toContain('code=');
+	});
+});
+
+/**
+ * A grant is approved for one protected resource, so every token the token endpoint
+ * mints from it — including after rotation — carries that resource as its audience.
+ */
+describe('token endpoint: refresh grants stay on their approved resource', () => {
+	const mintGrantFor = async (resourceUrl: string) => {
+		const clientId = await registerClient(['authorization_code', 'refresh_token']);
+		const pair = tokenService.generateTokenPair(owner.id, clientId, resourceUrl, []);
+		await tokenService.saveTokenPair(
+			pair.accessToken,
+			pair.refreshToken,
+			clientId,
+			owner.id,
+			[],
+			pair.audience,
+		);
+		return { clientId, refreshToken: pair.refreshToken };
+	};
+
+	const refresh = async (clientId: string, refreshToken: string, resource?: string) =>
+		await testServer.restlessAgent
+			.post('/oauth/token')
+			.type('form')
+			.send({
+				grant_type: 'refresh_token',
+				refresh_token: refreshToken,
+				client_id: clientId,
+				...(resource ? { resource } : {}),
+			});
+
+	test('refuses a resource the grant was not approved for, and keeps the token usable', async () => {
+		const { resourceUrl: resourceA } = await createProtectedWorkflow('Workflow A');
+		const { resourceUrl: resourceB } = await createProtectedWorkflow('Workflow B');
+		const { clientId, refreshToken } = await mintGrantFor(resourceA);
+
+		const denied = await refresh(clientId, refreshToken, resourceB);
+
+		expect(denied.statusCode).toBe(400);
+		expect(denied.body.error).toBe('invalid_target');
+
+		// The refused request must not have consumed the refresh token.
+		const retry = await refresh(clientId, refreshToken, resourceA);
+		expect(retry.statusCode).toBe(200);
+	});
+
+	test('reuses the approved resource when the request names none', async () => {
+		const { resourceUrl } = await createProtectedWorkflow('Workflow A');
+		const { clientId, refreshToken } = await mintGrantFor(resourceUrl);
+
+		const response = await refresh(clientId, refreshToken);
+
+		expect(response.statusCode).toBe(200);
+		expect(jwtService.decode(response.body.access_token).aud).toBe(resourceUrl);
+	});
+
+	test('keeps the resource on the rotated refresh token', async () => {
+		const { resourceUrl: resourceA } = await createProtectedWorkflow('Workflow A');
+		const { resourceUrl: resourceB } = await createProtectedWorkflow('Workflow B');
+		const { clientId, refreshToken } = await mintGrantFor(resourceA);
+
+		const rotated = await refresh(clientId, refreshToken, resourceA);
+		expect(rotated.statusCode).toBe(200);
+
+		const crossResource = await refresh(clientId, rotated.body.refresh_token, resourceB);
+		expect(crossResource.statusCode).toBe(400);
+		expect(crossResource.body.error).toBe('invalid_target');
+
+		const reused = await refresh(clientId, rotated.body.refresh_token);
+		expect(reused.statusCode).toBe(200);
+		expect(jwtService.decode(reused.body.access_token).aud).toBe(resourceA);
 	});
 });

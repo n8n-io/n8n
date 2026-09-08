@@ -15,6 +15,7 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IPinData,
+	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	ITaskStartedData,
@@ -64,6 +65,11 @@ const EMPTY_EXECUTION_STATUS_BY_NODE_ID = new Map<string, ComputedRef<ExecutionS
 const EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID = new Map<string, ComputedRef<ITaskData[] | null>>();
 const EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID = new Map<string, ExecutionOutputMap>();
 const EMPTY_EXECUTION_WAITING_BY_NODE_ID = new Map<string, ComputedRef<string | undefined>>();
+const EMPTY_EXECUTION_ISSUES_BY_NODE_ID = new Map<string, ComputedRef<string[]>>();
+const EMPTY_EXECUTION_PIN_DATA_BY_NODE_ID = new Map<
+	string,
+	ComputedRef<IPinData[string] | undefined>
+>();
 
 export type WorkflowExecutionStateChangePayload = {
 	documentId: WorkflowDocumentId;
@@ -338,14 +344,45 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				typeof displayedExecutionId.value === 'string',
 		);
 
+		// Drops the entries whose name now belongs to a different node than the one
+		// that produced them.
+		function dropRunDataOfReplacedNodes(
+			runData: IRunData | null,
+			executedNodes: ReadonlyArray<{ id: string; name: string }> | undefined,
+		): IRunData | null {
+			if (!runData || !executedNodes?.length) {
+				return runData;
+			}
+
+			const executedIdByName = new Map(executedNodes.map((node) => [node.name, node.id]));
+			const entries = Object.entries(runData);
+			const kept = entries.filter(([nodeName]) => {
+				const executedId = executedIdByName.get(nodeName);
+				const currentId = documentStore.getNodeByName(nodeName)?.id;
+
+				return !executedId || !currentId || executedId === currentId;
+			});
+
+			// Same object when nothing was dropped: this runs on every execution
+			// push and consumers downstream gate on reference identity.
+			return kept.length === entries.length ? runData : Object.fromEntries(kept);
+		}
+
 		const activeExecutionRunData = computed(() => {
 			const executionId = getResolvedActiveExecutionId();
-			if (!executionId) return null;
+			if (!executionId) {
+				return null;
+			}
+
 			const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
 			// Track the timestamp so in-place mutations to runData (which keep
 			// the runData object reference) still propagate.
 			void executionDataStore.executionResultDataLastUpdate;
-			return executionDataStore.executionRunData;
+
+			return dropRunDataOfReplacedNodes(
+				executionDataStore.executionRunData,
+				executionDataStore.execution?.workflowData?.nodes,
+			);
 		});
 
 		const activeExecutionExecutedNode = computed(() => {
@@ -440,6 +477,18 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			const executionId = getResolvedActiveExecutionId();
 			if (!executionId) return EMPTY_EXECUTION_WAITING_BY_NODE_ID;
 			return useExecutionDataStore(createExecutionDataId(executionId)).executionWaitingByNodeId;
+		});
+
+		const activeExecutionIssuesByNodeId = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_ISSUES_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionIssuesByNodeId;
+		});
+
+		const activeExecutionPinDataByNodeId = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_PIN_DATA_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionPinDataByNodeId;
 		});
 
 		const lastSuccessfulExecution = computed<IExecutionResponse | null>(() => {
@@ -1024,6 +1073,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			activeExecutionRunDataByNodeId,
 			activeExecutionRunDataOutputMapByNodeId,
 			activeExecutionWaitingByNodeId,
+			activeExecutionIssuesByNodeId,
+			activeExecutionPinDataByNodeId,
 			activeAgentCapabilityKeysByNodeId,
 			executionRunningByNodeId,
 			executionWaitingForNextByNodeId,

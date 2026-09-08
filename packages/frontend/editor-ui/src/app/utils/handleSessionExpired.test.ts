@@ -68,6 +68,21 @@ describe('handleSessionExpired', () => {
 		expect(hrefSpy).not.toHaveBeenCalled();
 	});
 
+	it('logs out when the public API rejects the session', async () => {
+		const logout = vi.fn().mockResolvedValue({ redirectUrl: null });
+		vi.mocked(useUsersStore).mockReturnValue({
+			currentUser: { id: '123' },
+			logout,
+		} as unknown as ReturnType<typeof useUsersStore>);
+		const router = createRouterMock();
+		const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+		await handleSessionExpired(router, '/api/v1');
+
+		expect(logout).toHaveBeenCalledTimes(1);
+		expect(hrefSpy).toHaveBeenCalledWith(SIGNIN_HREF);
+	});
+
 	it('logs out, skips the unsaved-changes prompt, and reloads to signin with the current path when a current user is present', async () => {
 		const logout = vi.fn().mockResolvedValue({ redirectUrl: null });
 		vi.mocked(useUsersStore).mockReturnValue({

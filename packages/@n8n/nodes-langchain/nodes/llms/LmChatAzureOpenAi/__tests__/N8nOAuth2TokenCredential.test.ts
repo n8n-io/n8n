@@ -131,5 +131,21 @@ describe('N8nOAuth2TokenCredential', () => {
 				resourceName: 'test-resource',
 			});
 		});
+
+		it('should return the Foundry endpoint when endpointType is foundry', async () => {
+			mockCredential.endpointType = 'foundry';
+			mockCredential.foundryEndpoint = 'https://test.services.ai.azure.com/openai/v1';
+			credential = new N8nOAuth2TokenCredential(mockNode, mockCredential);
+
+			const result = await credential.getDeploymentDetails();
+
+			expect(result).toEqual({
+				apiVersion: '2023-05-15',
+				endpoint: 'https://test.services.ai.azure.com/openai/v1',
+				resourceName: 'test-resource',
+				endpointType: 'foundry',
+				foundryEndpoint: 'https://test.services.ai.azure.com/openai/v1',
+			});
+		});
 	});
 });

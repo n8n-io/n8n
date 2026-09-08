@@ -13,18 +13,6 @@ export class AtlassianOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			// Named `domain` so existing Jira OAuth2 credentials, which store the value
-			// under this key, keep working.
-			displayName: 'Site URL',
-			name: 'domain',
-			type: 'string',
-			default: '',
-			placeholder: 'https://your-site.atlassian.net',
-			required: true,
-			description:
-				'The URL of your Atlassian site, e.g. https://your-site.atlassian.net. The scheme and any path (like /wiki) are ignored.',
-		},
-		{
 			displayName: 'Grant Type',
 			name: 'grantType',
 			type: 'hidden',

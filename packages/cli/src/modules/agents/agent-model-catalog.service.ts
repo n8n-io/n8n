@@ -16,20 +16,11 @@ import {
 } from './builder/builder-model-live-lookup.service';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
 import { stripSnapshotSuffix } from './utils/model-snapshot-alias';
-
-/** Google's models API returns ids as `models/<id>`; the AI SDK expects the bare id. */
-const GOOGLE_MODEL_ID_PREFIX = 'models/';
+import { normalizeProviderModelId } from './utils/provider-model-id';
 
 function getProviderCredentialType(provider: string): string | undefined {
 	if (!isModelDiscoveryProvider(provider)) return undefined;
 	return getAgentModelProviderCredentialTypes(provider)[0];
-}
-
-function normalizeLiveModelValue(provider: string, value: string): string {
-	if (provider === 'google' && value.startsWith(GOOGLE_MODEL_ID_PREFIX)) {
-		return value.slice(GOOGLE_MODEL_ID_PREFIX.length);
-	}
-	return value;
 }
 
 /**
@@ -138,13 +129,13 @@ export class AgentModelCatalogService {
 				provider,
 				verified: true,
 				models: liveModels.map((live) => {
-					const id = normalizeLiveModelValue(provider, live.value);
+					const id = normalizeProviderModelId(provider, live.value);
 					const catalogMatch = catalogModels[id] ?? catalogModels[stripSnapshotSuffix(id)];
 					return catalogMatch
 						? { ...catalogMatch, id }
 						: {
 								id,
-								name: normalizeLiveModelValue(provider, live.name) || id,
+								name: normalizeProviderModelId(provider, live.name) || id,
 								toolCall: true,
 							};
 				}),
@@ -153,7 +144,7 @@ export class AgentModelCatalogService {
 
 		const liveModelIds = new Set(
 			liveModels.flatMap((live) =>
-				liveModelIdVariants(normalizeLiveModelValue(provider, live.value)),
+				liveModelIdVariants(normalizeProviderModelId(provider, live.value)),
 			),
 		);
 		const catalogList = Object.values(catalogModels);
@@ -177,10 +168,10 @@ export class AgentModelCatalogService {
 			provider,
 			verified: true,
 			models: liveModels.map((live) => {
-				const id = normalizeLiveModelValue(provider, live.value);
+				const id = normalizeProviderModelId(provider, live.value);
 				return {
 					id,
-					name: normalizeLiveModelValue(provider, live.name) || id,
+					name: normalizeProviderModelId(provider, live.name) || id,
 					toolCall: true,
 				};
 			}),

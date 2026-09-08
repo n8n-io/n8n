@@ -197,6 +197,47 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 		});
 	});
 
+	describe('fresh install with no pre-existing directory', () => {
+		beforeEach(async () => {
+			// Nothing on disk and no ledger entry to fall back on, unlike the shared beforeEach.
+			await rm(packageDirectory, { recursive: true, force: true });
+			await writeFile(
+				path.join(nodesDownloadDir, 'package.json'),
+				JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }),
+				'utf-8',
+			);
+		});
+
+		test('drops the loader when saving the install to the database fails', async () => {
+			installedPackageRepository.saveInstalledPackageWithNodes.mockRejectedValueOnce(
+				new Error('DB unreachable'),
+			);
+
+			await expect(communityPackagesService.installPackage(PACKAGE_NAME)).rejects.toThrow(
+				'Failed to save installed package',
+			);
+
+			// The install is reported as failed with no database record and no directory left,
+			// so the loader for what it briefly loaded must go too.
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledTimes(2);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(1);
+			expect(await nodeModulesEntries()).toEqual([]);
+			expect(await ledgerDependencies()).toEqual({});
+		});
+
+		test('drops the loader when the downloaded package has no loadable nodes', async () => {
+			loadNodesAndCredentials.loadPackage.mockResolvedValueOnce(
+				mock<PackageDirectoryLoader>({ loadedNodes: [] }),
+			);
+
+			await expect(communityPackagesService.installPackage(PACKAGE_NAME)).rejects.toThrow();
+
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledTimes(2);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(1);
+			expect(await nodeModulesEntries()).toEqual([]);
+		});
+	});
+
 	describe('update with a missing or malformed ledger', () => {
 		test('restores the previous version from the database instead of dropping the entry', async () => {
 			// Unlike the shared beforeEach's valid ledger, this one can't be read at all.

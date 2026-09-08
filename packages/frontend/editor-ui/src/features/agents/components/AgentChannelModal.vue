@@ -333,6 +333,11 @@ function handleModalOpenUpdate(isOpen: boolean) {
 	emit('update:open', isOpen);
 }
 
+// Only block outside-close while the teleported credential modal is open.
+function handleInteractOutside(event: Event) {
+	if (credentialModalOpen.value) event.preventDefault();
+}
+
 async function persistAgent(): Promise<boolean> {
 	try {
 		await props.ensureAgentPersisted?.();
@@ -525,7 +530,7 @@ watch(
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
 		:show-close-button="false"
-		@interact-outside="(e) => e.preventDefault()"
+		@interact-outside="handleInteractOutside"
 		@update:open="handleModalOpenUpdate"
 	>
 		<FocusScope
