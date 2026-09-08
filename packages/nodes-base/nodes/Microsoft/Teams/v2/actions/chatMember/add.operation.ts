@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import {
 	type INodeProperties,
 	type IExecuteFunctions,
@@ -36,6 +37,7 @@ const properties: INodeProperties[] = [
 				displayName: 'History Start Date',
 				name: 'historyStartDate',
 				type: 'dateTime',
+				validateType: 'dateTime',
 				default: '',
 				description: 'Point in time from which the chat history is shared',
 				displayOptions: {
@@ -132,7 +134,11 @@ export async function execute(this: IExecuteFunctions, i: number) {
 				itemIndex: i,
 			});
 		}
-		body.visibleHistoryStartDateTime = options.historyStartDate;
+		// validateType hands back a luxon DateTime; Graph wants the ISO string.
+		body.visibleHistoryStartDateTime =
+			options.historyStartDate instanceof DateTime
+				? options.historyStartDate.toISO()
+				: options.historyStartDate;
 	}
 
 	await microsoftApiRequest.call(

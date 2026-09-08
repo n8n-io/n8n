@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type { IExecuteFunctions, INode, NodeParameterValueType } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -87,6 +88,25 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 			roles: ['owner'],
 			visibleHistoryStartDateTime: '2026-08-01T00:00:00Z',
 		});
+	});
+
+	it('serializes the DateTime that validateType hands back as an ISO string', async () => {
+		setParams(
+			addParams({
+				options: {
+					shareHistory: 'fromDate',
+					historyStartDate: DateTime.fromISO('2026-08-01T00:00:00Z', { zone: 'utc' }),
+				},
+			}),
+		);
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/v1.0/chats/19:abc@thread.v2/members',
+			expect.objectContaining({ visibleHistoryStartDateTime: '2026-08-01T00:00:00.000Z' }),
+		);
 	});
 
 	it('sends no visibleHistoryStartDateTime for an explicit None history', async () => {
