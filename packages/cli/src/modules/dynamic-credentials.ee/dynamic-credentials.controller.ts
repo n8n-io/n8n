@@ -108,6 +108,18 @@ export class DynamicCredentialsController {
 		this.dynamicCredentialCorsService.preflightHandler(req, res, ['delete', 'options']);
 	}
 
+	/**
+	 * DELETE /credentials/:id/revoke
+	 *
+	 * Deletes the caller's own stored connection for the given credential.
+	 *
+	 * Not gated by a scope on the credential: the resolver derives the storage key
+	 * from the caller's own identity, so the worst any caller can do is clear their
+	 * own entry. `credential:update` asks whether the caller may edit the shared
+	 * credential, which is the wrong question here — a project viewer who connected
+	 * their own account through a form or chat panel must still be able to
+	 * disconnect it. Same reasoning as `/my-connection` below.
+	 */
 	@Delete('/:id/revoke', {
 		allowUnauthenticated: true,
 		middlewares: getDynamicCredentialMiddlewares(),
@@ -119,8 +131,7 @@ export class DynamicCredentialsController {
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const user = isAuthenticatedRequest(req) ? req.user : undefined;
-		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:update');
+		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
@@ -134,6 +145,16 @@ export class DynamicCredentialsController {
 				configuration: resolverConfig,
 				resolverId: resolverEntity.id,
 				resolverName: resolverEntity.type,
+			});
+		}
+
+		// Static-token callers have no n8n user, and the event requires one, so they
+		// are skipped.
+		if (isAuthenticatedRequest(req)) {
+			this.eventService.emit('credentials-user-disconnected', {
+				user: req.user,
+				credentialId: credential.id,
+				credentialType: credential.type,
 			});
 		}
 

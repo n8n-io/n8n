@@ -1,19 +1,37 @@
 import { LicenseState } from '@n8n/backend-common';
-import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-utils';
-import type { CredentialsEntity, User } from '@n8n/db';
+import {
+	createTeamProject,
+	linkUserToProject,
+	mockInstance,
+	getPersonalProject,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { CredentialsEntity, Project, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Cipher } from 'n8n-core';
 import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsHelper } from '@/credentials-helper';
+import { EventService } from '@/events/event.service';
+import {
+	SYSTEM_RESOLVER_ID,
+	SYSTEM_RESOLVER_NAME,
+	SYSTEM_RESOLVER_TYPE,
+} from '@/modules/dynamic-credentials.ee/constants';
+import { DynamicCredentialEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-entry-storage';
+import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage';
 import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
+import { DynamicCredentialEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-entry.repository';
+import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository';
 import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
 import { Telemetry } from '@/telemetry';
 
 import { saveCredential } from '../shared/db/credentials';
-import { createUser } from '../shared/db/users';
+import { createMember, createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';
 
 mockInstance(Telemetry);
@@ -211,6 +229,28 @@ describe('Dynamic Credentials API', () => {
 					.set('X-Authorization', 'Bearer ')
 					.expect(401);
 			});
+
+			it('should not emit the disconnect event, which needs an n8n user', async () => {
+				const emitSpy = vi
+					.spyOn(Container.get(EventService), 'emit')
+					.mockImplementation(() => true);
+
+				try {
+					await testServer.authlessAgent
+						.delete(`/credentials/${savedCredential.id}/revoke`)
+						.query({ resolverId: resolver.id })
+						.set('X-Authorization', 'Bearer static-test-token')
+						.set('Authorization', 'Bearer test-token')
+						.expect(204);
+
+					expect(emitSpy).not.toHaveBeenCalledWith(
+						'credentials-user-disconnected',
+						expect.anything(),
+					);
+				} finally {
+					emitSpy.mockRestore();
+				}
+			});
 		});
 	});
 
@@ -283,15 +323,176 @@ describe('Dynamic Credentials API', () => {
 				expect(response.body?.data).toBeUndefined();
 			});
 
-			it('should not revoke a credential the member cannot access', async () => {
-				const response = await testServer
+			it("confines the delete to the caller's own entry", async () => {
+				// The resolver keys the entry on the caller's own identity, so the delete
+				// cannot reach another subject's entry. Revoke therefore needs no scope on
+				// the shared credential.
+				const entryStorage = Container.get(DynamicCredentialEntryStorage);
+				const entryRepository = Container.get(DynamicCredentialEntryRepository);
+
+				// 'user-123' is the subject the mocked introspection endpoint returns for
+				// the caller's bearer token.
+				await entryStorage.setCredentialData(
+					savedCredential.id,
+					'user-123',
+					resolver.id,
+					'caller-payload',
+					{},
+				);
+				await entryStorage.setCredentialData(
+					savedCredential.id,
+					'another-subject',
+					resolver.id,
+					'other-payload',
+					{},
+				);
+
+				await testServer
 					.authAgentFor(unrelatedMember)
 					.delete(`/credentials/${savedCredential.id}/revoke`)
 					.query({ resolverId: resolver.id })
-					.set('Authorization', 'Bearer test-token');
+					.set('Authorization', 'Bearer test-token')
+					.expect(204);
 
-				expect([403, 404]).toContain(response.status);
+				await expect(
+					entryRepository.findOne({
+						where: { credentialId: savedCredential.id, subjectId: 'user-123' },
+					}),
+				).resolves.toBeNull();
+				await expect(
+					entryRepository.findOne({
+						where: { credentialId: savedCredential.id, subjectId: 'another-subject' },
+					}),
+				).resolves.not.toBeNull();
 			});
+		});
+	});
+
+	// The connect panel shared by the Form, Chat and MCP triggers uses the system n8n
+	// resolver, which keys each entry on the caller's n8n user id.
+	describe('DELETE /credentials/:id/revoke with the system resolver', () => {
+		let teamProject: Project;
+		let viewer: User;
+		let secondViewer: User;
+		let userEntryStorage: DynamicCredentialUserEntryStorage;
+		let userEntryRepository: DynamicCredentialUserEntryRepository;
+
+		const seedUserEntry = async (credentialId: string, userId: string) =>
+			await userEntryStorage.setCredentialData(
+				credentialId,
+				userId,
+				SYSTEM_RESOLVER_ID,
+				'encrypted-payload',
+				{},
+			);
+
+		const saveResolvableCredential = async () =>
+			await saveCredential(
+				{
+					name: 'Panel Dynamic Credential',
+					type: 'oAuth2Api',
+					isResolvable: true,
+					data: {
+						clientId: 'test-client-id',
+						clientSecret: 'test-client-secret',
+						authUrl: 'https://test.domain/oauth2/auth',
+						accessTokenUrl: 'https://test.domain/oauth2/token',
+						grantType: 'authorizationCode',
+					},
+				},
+				{ project: teamProject, role: 'credential:owner' },
+			);
+
+		/** Matches how the panel calls the endpoint: session cookie, no bearer token. */
+		const disconnectAs = (user: User, credentialId: string) =>
+			testServer
+				.authAgentFor(user)
+				.delete(`/credentials/${credentialId}/revoke`)
+				.query({ resolverId: SYSTEM_RESOLVER_ID, authSource: 'cookie' });
+
+		beforeAll(async () => {
+			teamProject = await createTeamProject(undefined, owner);
+			viewer = await createMember();
+			secondViewer = await createMember();
+			await linkUserToProject(viewer, teamProject, 'project:viewer');
+			await linkUserToProject(secondViewer, teamProject, 'project:viewer');
+
+			userEntryStorage = Container.get(DynamicCredentialUserEntryStorage);
+			userEntryRepository = Container.get(DynamicCredentialUserEntryRepository);
+
+			// The outer setup truncates the resolver table, which drops the row the
+			// module seeds at init.
+			const resolverRepository = Container.get(DynamicCredentialResolverRepository);
+			await resolverRepository.save(
+				resolverRepository.create({
+					id: SYSTEM_RESOLVER_ID,
+					name: SYSTEM_RESOLVER_NAME,
+					type: SYSTEM_RESOLVER_TYPE,
+					config: await Container.get(Cipher).encryptV2({}),
+				}),
+			);
+		});
+
+		it('lets a project viewer disconnect their own connection', async () => {
+			const credential = await saveResolvableCredential();
+			await seedUserEntry(credential.id, viewer.id);
+
+			await disconnectAs(viewer, credential.id).expect(204);
+
+			const remaining = await userEntryRepository.find({
+				where: { credentialId: credential.id, userId: viewer.id },
+			});
+			expect(remaining).toHaveLength(0);
+		});
+
+		it("does not affect other users' connections on the same credential", async () => {
+			const credential = await saveResolvableCredential();
+			await seedUserEntry(credential.id, viewer.id);
+			await seedUserEntry(credential.id, secondViewer.id);
+
+			await disconnectAs(viewer, credential.id).expect(204);
+
+			const secondViewerEntries = await userEntryRepository.find({
+				where: { credentialId: credential.id, userId: secondViewer.id },
+			});
+			expect(secondViewerEntries).toHaveLength(1);
+		});
+
+		it('lets a user without project access clear their own connection', async () => {
+			// User had access in the past, connected, then lost project access.
+			// They must still be able to clear their own stored tokens.
+			const outsider = await createMember();
+			const credential = await saveResolvableCredential();
+			await seedUserEntry(credential.id, outsider.id);
+
+			await disconnectAs(outsider, credential.id).expect(204);
+
+			const remaining = await userEntryRepository.find({
+				where: { credentialId: credential.id, userId: outsider.id },
+			});
+			expect(remaining).toHaveLength(0);
+		});
+
+		it('emits credentials-user-disconnected audit event on success', async () => {
+			const credential = await saveResolvableCredential();
+			await seedUserEntry(credential.id, viewer.id);
+
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
+
+			try {
+				await disconnectAs(viewer, credential.id).expect(204);
+
+				expect(emitSpy).toHaveBeenCalledWith(
+					'credentials-user-disconnected',
+					expect.objectContaining({
+						credentialId: credential.id,
+						credentialType: credential.type,
+						user: expect.objectContaining({ id: viewer.id }),
+					}),
+				);
+			} finally {
+				emitSpy.mockRestore();
+			}
 		});
 	});
 });
