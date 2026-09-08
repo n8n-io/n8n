@@ -1,0 +1,27 @@
+.github/WORKFLOWS.md
+  s_b17f268f40d0da::t_33df7e9accfc69 1004-1012
+  s_b17f268f40d0da::t_7f9586cc448475 643
+.github/workflows/sec-sync-bundle-branches.yml
+  s_b17f268f40d0da::t_f8fe6bfdf05bf1 114,123
+  s_b17f268f40d0da::t_1459e3d91a119a 90-100,103-104
+.github/workflows/sec-sync-retarget-prs.yml
+  s_b17f268f40d0da::t_a64dbc33fd09fe 1-77
+.github/workflows/sec-sync-public-to-private.yml
+  s_b17f268f40d0da::t_27185cfa838c83 105-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "77a0d0437bc4f7719eeb6184f9ac9b701e1feaa7",
+  "prompts": {},
+  "sessions": {
+    "s_b17f268f40d0da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e36b37a7-0a61-49d3-bb68-6d0f7f24232d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
