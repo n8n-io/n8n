@@ -279,6 +279,9 @@ const agentNodeGeometry = useCanvasAgentNodeGeometry({
 	setNodePosition: (id, position) =>
 		workflowDocumentStore.value.setNodePositionById(id, [position.x, position.y]),
 	onNodesChange,
+	getSourcePosition: (id) => props.nodes.find((node) => node.id === id)?.position,
+	getRenderedNode: (id) => findNode(id),
+	setRenderedPosition: (id, position) => vueFlow.updateNode(id, { position }),
 });
 const {
 	getIncomingNodes,
