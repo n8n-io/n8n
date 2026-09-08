@@ -73,6 +73,22 @@ export class SettingsPersonalPage extends BasePage {
 		await this.saveSettings();
 	}
 
+	getPersonalSettingsPanel(): Locator {
+		return this.page.getByTestId('personal-settings-container');
+	}
+
+	getChangePasswordLink(): Locator {
+		return this.page.getByTestId('change-password-link');
+	}
+
+	getChangePasswordModal(): Locator {
+		return this.page.getByTestId('changePassword-modal');
+	}
+
+	async clickChangePassword(): Promise<void> {
+		await this.getChangePasswordLink().click();
+	}
+
 	getEnableMfaButton(): Locator {
 		return this.page.getByTestId('enable-mfa-button');
 	}

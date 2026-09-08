@@ -99,13 +99,22 @@ export class NavigationHelper {
 	 * - New workflow: /workflow/new
 	 * - Existing workflow: /workflow/{workflowId}
 	 * - New workflow in a project: /workflow/new?projectId={projectId}
+	 * - Deep link into the editor: /workflow/{workflowId}?settings=1
 	 */
-	async toWorkflow(workflowId: string = 'new', options?: { projectId?: string }): Promise<void> {
-		let url = `/workflow/${workflowId}`;
+	async toWorkflow(
+		workflowId: string = 'new',
+		options?: { projectId?: string; query?: Record<string, string> },
+	): Promise<void> {
+		const params = new URLSearchParams();
 		if (options?.projectId) {
-			url += `?projectId=${options.projectId}`;
+			params.set('projectId', options.projectId);
 		}
-		await this.page.goto(url);
+		for (const [key, value] of Object.entries(options?.query ?? {})) {
+			params.set(key, value);
+		}
+
+		const search = params.toString();
+		await this.page.goto(`/workflow/${workflowId}${search ? `?${search}` : ''}`);
 	}
 
 	/**

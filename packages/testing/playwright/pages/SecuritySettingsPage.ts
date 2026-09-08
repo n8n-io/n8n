@@ -1,4 +1,5 @@
 import type { Locator } from '@playwright/test';
+import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 
@@ -23,6 +24,10 @@ export class SecuritySettingsPage extends BasePage {
 		return this.page.getByTestId('enable-redaction-enforcement');
 	}
 
+	getEnforceMfaToggle(): Locator {
+		return this.page.getByTestId('enable-force-mfa');
+	}
+
 	getEnforcementScopeSelect(): Locator {
 		return this.page.getByTestId('redaction-enforcement-scope-select');
 	}
@@ -38,6 +43,21 @@ export class SecuritySettingsPage extends BasePage {
 	async enableEnforcement(): Promise<void> {
 		await this.getEnforcementToggle().click();
 		await this.getConfirmDialog().getByRole('button', { name: 'Enable' }).click();
+	}
+
+	/**
+	 * Turns instance-wide MFA enforcement on. The endpoint rejects a session
+	 * that did not authenticate with MFA, so sign in with a code first. Waits
+	 * for the write instead of the toast, so the caller can act on the new
+	 * instance state immediately.
+	 */
+	async enforceMfa(): Promise<void> {
+		const [response] = await Promise.all([
+			this.waitForRestResponse('/rest/mfa/enforce-mfa', 'POST'),
+			this.getEnforceMfaToggle().click(),
+		]);
+
+		expect(response.ok(), await response.text()).toBe(true);
 	}
 
 	async selectScope(scope: RedactionScope): Promise<void> {

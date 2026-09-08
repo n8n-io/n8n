@@ -1,4 +1,4 @@
-import type { BrowserContext, Route } from '@playwright/test';
+import type { APIResponse, BrowserContext, Route } from '@playwright/test';
 import cloneDeep from 'lodash/cloneDeep';
 import merge from 'lodash/merge';
 
@@ -27,12 +27,26 @@ export function getContextModuleSettings(context: BrowserContext) {
 	return contextModuleSettings.get(context);
 }
 
+/**
+ * Forwards an error response unchanged. The merge below reads `data` off the
+ * body, which an error response does not carry, so rewriting it would drop the
+ * fields the app reads instead — a 401 would lose `mfaRequired` and look like an
+ * expired session.
+ */
+async function passThrough(route: Route, response: APIResponse) {
+	await route.fulfill({ response });
+}
+
 export async function setupDefaultInterceptors(target: BrowserContext) {
 	// Global /rest/settings intercept - always active like Cypress
 	// TODO: Remove this as a global and move it per test
 	await target.route('**/rest/settings', async (route: Route) => {
 		try {
 			const originalResponse = await route.fetch();
+			if (!originalResponse.ok()) {
+				await passThrough(route, originalResponse);
+				return;
+			}
 			const originalJson = await originalResponse.json();
 
 			// Get settings stored for this specific context
@@ -63,6 +77,10 @@ export async function setupDefaultInterceptors(target: BrowserContext) {
 	await target.route('**/rest/module-settings', async (route: Route) => {
 		try {
 			const originalResponse = await route.fetch();
+			if (!originalResponse.ok()) {
+				await passThrough(route, originalResponse);
+				return;
+			}
 			const originalJson = await originalResponse.json();
 
 			const testModuleSettings = getContextModuleSettings(target);
