@@ -1,6 +1,8 @@
 packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
   s_aa4dc5d9a1db02::t_a61e45f1f010e6 6
   s_aa4dc5d9a1db02::t_750d045f211d85 48
+  s_aa4dc5d9a1db02::t_265f937eee18ee 106
+  s_aa4dc5d9a1db02::t_df47397abffdea 125
 packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getUsers.test.ts
   s_aa4dc5d9a1db02::t_22bae53df2792d 188-189,195-204,235-269,271-319
   s_aa4dc5d9a1db02::t_1661a1f20269e1 270
@@ -18,6 +20,7 @@ packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
   s_aa4dc5d9a1db02::t_1bdc480d5f828b 153-154
   s_aa4dc5d9a1db02::t_e1c7ee73392957 202-210
   s_aa4dc5d9a1db02::t_1661a1f20269e1 171-176
+  s_aa4dc5d9a1db02::t_253571a68d8b83 192,194,196-198,250-266,284-285,333
 packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.mentions.test.ts
   s_aa4dc5d9a1db02::t_20796b24e36a5f 131
   s_aa4dc5d9a1db02::t_1172d0275297b1 3,120,122
@@ -25,6 +28,7 @@ packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.men
 packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/common.description.ts
   s_aa4dc5d9a1db02::t_750d045f211d85 3,22-23,34,47-86
   s_aa4dc5d9a1db02::t_46261c92ff09ad 87-90
+  s_aa4dc5d9a1db02::t_df47397abffdea 43-46
 packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.mentions.test.ts
   s_aa4dc5d9a1db02::t_3b4a55574e40af 6-10,21-30,36,50-59,71,91-97
   s_aa4dc5d9a1db02::t_7cd6b80ea4a233 98-100
@@ -40,6 +44,7 @@ packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.ment
 packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/create.perItem.test.ts
   s_aa4dc5d9a1db02::t_53b2ef538d0d25 209
   s_aa4dc5d9a1db02::t_60e79fde9790a2 26-30,85-86,119,174-208
+  s_aa4dc5d9a1db02::t_70b3394f52fba6 173
 ---
 {
   "schema_version": "authorship/3.0.0",
