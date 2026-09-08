@@ -833,18 +833,18 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		const id = crypto.randomUUID();
 		const previous = this.episodicMemoryTasksByResource.get(resourceId) ?? Promise.resolve();
-		const done = raceWithAbort(async () => {
+		const queued = (async () => {
 			await previous.catch(() => undefined);
 			await this.runEpisodicMemoryTask(memory, resourceId, id, task, abortSignal);
-		}, abortSignal);
-		const queued = done.finally(() => {
+		})().finally(() => {
 			if (this.episodicMemoryTasksByResource.get(resourceId) === queued) {
 				this.episodicMemoryTasksByResource.delete(resourceId);
 			}
 		});
 		this.episodicMemoryTasksByResource.set(resourceId, queued);
-		this.backgroundTasks.track(queued);
-		return await queued;
+		const done = raceWithAbort(queued, abortSignal);
+		this.backgroundTasks.track(done);
+		return await done;
 	}
 
 	private async runEpisodicMemoryTask(

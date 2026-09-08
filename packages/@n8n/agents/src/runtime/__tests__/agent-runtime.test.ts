@@ -6248,9 +6248,10 @@ describe('AgentRuntime — observation log jobs', () => {
 		await runtime.dispose();
 	});
 
-	it('cancels pending episodic recovery without waiting for an unresponsive extractor', async () => {
+	it('cancels pending episodic recovery promptly without releasing its resource queue', async () => {
 		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } });
 		const memory = new InMemoryMemory();
+		delete memory.episodic.taskLock;
 		const candidate = await memory.episodic.enqueueCaptureCandidate({
 			resourceId: 'resource-1',
 			threadId: 'thread-1',
@@ -6260,21 +6261,21 @@ describe('AgentRuntime — observation log jobs', () => {
 			evidenceText: 'User chose Postgres',
 			kind: 'decision',
 		});
-		let extractorStarted!: () => void;
-		const started = new Promise<void>((resolve) => (extractorStarted = resolve));
-		let resolveExtraction!: (value: EpisodicMemoryExtraction) => void;
-		const extraction = new Promise<EpisodicMemoryExtraction>(
-			(resolve) => (resolveExtraction = resolve),
+		let firstExtractorStarted!: () => void;
+		const firstStarted = new Promise<void>((resolve) => (firstExtractorStarted = resolve));
+		let secondExtractorStarted!: () => void;
+		const secondStarted = new Promise<void>((resolve) => (secondExtractorStarted = resolve));
+		let resolveFirstExtraction!: (value: EpisodicMemoryExtraction) => void;
+		const firstExtraction = new Promise<EpisodicMemoryExtraction>(
+			(resolve) => (resolveFirstExtraction = resolve),
+		);
+		let resolveSecondExtraction!: (value: EpisodicMemoryExtraction) => void;
+		const secondExtraction = new Promise<EpisodicMemoryExtraction>(
+			(resolve) => (resolveSecondExtraction = resolve),
 		);
 		let extractorSignal: AbortSignal | undefined;
-		const taskLock = memory.episodic.taskLock!;
-		const releaseLock = taskLock.release;
-		let taskFinished!: () => void;
-		const finished = new Promise<void>((resolve) => (taskFinished = resolve));
-		taskLock.release = async (handle) => {
-			await releaseLock(handle);
-			taskFinished();
-		};
+		let extractionCount = 0;
+		const extractionOrder: string[] = [];
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',
 			model: 'openai/gpt-4o-mini',
@@ -6283,9 +6284,18 @@ describe('AgentRuntime — observation log jobs', () => {
 			episodicMemory: {
 				embedder: { specificationVersion: 'v2' } as never,
 				extract: async (input) => {
-					extractorSignal = input.abortSignal;
-					extractorStarted();
-					return await extraction;
+					extractionCount++;
+					if (extractionCount === 1) {
+						extractorSignal = input.abortSignal;
+						extractionOrder.push('first started');
+						firstExtractorStarted();
+						const result = await firstExtraction;
+						extractionOrder.push('first settled');
+						return result;
+					}
+					extractionOrder.push('second started');
+					secondExtractorStarted();
+					return await secondExtraction;
 				},
 			},
 		});
@@ -6293,7 +6303,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		const run = runtime.generate('Hello.', {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
-		await started;
+		await firstStarted;
 		runtime.abort();
 
 		let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -6317,8 +6327,21 @@ describe('AgentRuntime — observation log jobs', () => {
 		expect(runtime.getState().status).toBe('cancelled');
 		expect(extractorSignal?.aborted).toBe(true);
 		expect(generateText).not.toHaveBeenCalled();
+		await expect(memory.getMessages('thread-1', { resourceId: 'resource-1' })).resolves.toEqual([
+			expect.objectContaining({
+				role: 'user',
+				content: [{ type: 'text', text: 'Hello.' }],
+			}),
+		]);
 
-		resolveExtraction({
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const secondRun = runtime.generate('Hello again.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+		expect(extractionOrder).toEqual(['first started']);
+
+		resolveFirstExtraction({
 			entries: [
 				{
 					content: 'User chose Postgres for memory storage.',
@@ -6326,7 +6349,8 @@ describe('AgentRuntime — observation log jobs', () => {
 				},
 			],
 		});
-		await finished;
+		await secondStarted;
+		expect(extractionOrder).toEqual(['first started', 'first settled', 'second started']);
 
 		await expect(
 			memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
@@ -6334,6 +6358,10 @@ describe('AgentRuntime — observation log jobs', () => {
 		await expect(
 			memory.episodic.searchEntries({ resourceId: 'resource-1' }, 'Postgres storage'),
 		).resolves.toEqual([]);
+
+		resolveSecondExtraction({ entries: [] });
+		await expect(secondRun).resolves.toMatchObject({ finishReason: 'stop' });
+		await runtime.dispose();
 	});
 
 	it('exposes recall_memory without embedding until the tool is called', async () => {

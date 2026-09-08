@@ -615,7 +615,15 @@ export class AgentRuntime {
 		abortSignal?: AbortSignal,
 	): Promise<AgentMessageList> {
 		const list = new AgentMessageList();
-		await this.memory.loadInto(list, options, abortSignal);
+		try {
+			await this.memory.loadInto(list, options, abortSignal);
+		} catch (error) {
+			if (abortSignal?.aborted) {
+				list.addInput(input);
+				await this.memory.persistInputMessages(list, options);
+			}
+			throw error;
+		}
 		list.addInput(input);
 
 		// Persist input now (after history load, so the prompt isn't polluted) so it
