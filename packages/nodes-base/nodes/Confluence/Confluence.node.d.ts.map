@@ -1,1 +1,0 @@
-{"version":3,"file":"Confluence.node.d.ts","sourceRoot":"","sources":["Confluence.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,iBAAiB,EAAE,SAAS,EAAE,oBAAoB,EAAE,MAAM,cAAc,CAAC;AAIvF,OAAO,EAAE,UAAU,EAAE,MAAM,WAAW,CAAC;AAEvC,qBAAa,UAAW,YAAW,SAAS;IAC3C,WAAW,EAAE,oBAAoB,CAA6B;IAE9D,OAAO;;MAAkB;IAEnB,OAAO,CAAC,IAAI,EAAE,iBAAiB,0DAEpC;CACD"}

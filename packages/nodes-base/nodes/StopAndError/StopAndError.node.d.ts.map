@@ -1,1 +1,0 @@
-{"version":3,"file":"StopAndError.node.d.ts","sourceRoot":"","sources":["StopAndError.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAUtB,qBAAa,YAAa,YAAW,SAAS;IAC7C,WAAW,EAAE,oBAAoB,CA+D/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAUtE;CACD"}

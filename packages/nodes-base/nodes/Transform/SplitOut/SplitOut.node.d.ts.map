@@ -1,1 +1,0 @@
-{"version":3,"file":"SplitOut.node.d.ts","sourceRoot":"","sources":["SplitOut.node.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAGX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAKtB,qBAAa,QAAS,YAAW,SAAS;IACzC,WAAW,EAAE,oBAAoB,CA2G/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAiKtE;CACD"}

@@ -1,1 +1,0 @@
-{"version":3,"file":"SingletonFunctions.d.ts","sourceRoot":"","sources":["SingletonFunctions.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,iBAAiB,EAAE,qBAAqB,EAAE,MAAM,cAAc,CAAC;AAI7E,wBAAsB,YAAY,CACjC,IAAI,EAAE,iBAAiB,GAAG,qBAAqB,EAC/C,YAAY,EAAE,MAAM,GAClB,OAAO,CAAC,GAAG,CAAC,CAEd;AAED,wBAAsB,oBAAoB,CACzC,IAAI,EAAE,iBAAiB,GAAG,qBAAqB,GAC7C,OAAO,CAAC,MAAM,EAAE,CAAC,CAEnB"}

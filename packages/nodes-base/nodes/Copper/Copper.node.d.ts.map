@@ -1,1 +1,0 @@
-{"version":3,"file":"Copper.node.d.ts","sourceRoot":"","sources":["Copper.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AA8BtB,qBAAa,MAAO,YAAW,SAAS;IACvC,WAAW,EAAE,oBAAoB,CA+E/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAugBtE;CACD"}

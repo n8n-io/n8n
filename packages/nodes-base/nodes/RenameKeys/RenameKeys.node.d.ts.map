@@ -1,1 +1,0 @@
-{"version":3,"file":"RenameKeys.node.d.ts","sourceRoot":"","sources":["RenameKeys.node.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAMtB,qBAAa,UAAW,YAAW,SAAS;IAC3C,WAAW,EAAE,oBAAoB,CA+I/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAsGtE;CACD"}

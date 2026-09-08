@@ -1,1 +1,0 @@
-{"version":3,"file":"QuickChart.node.d.ts","sourceRoot":"","sources":["QuickChart.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAEX,iBAAiB,EAGjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAYtB,qBAAa,UAAW,YAAW,SAAS;IAC3C,WAAW,EAAE,oBAAoB,CAiS/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAsHtE;CACD"}

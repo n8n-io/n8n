@@ -1,1 +1,0 @@
-{"version":3,"file":"AzureStorage.node.d.ts","sourceRoot":"","sources":["AzureStorage.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,SAAS,EAAE,oBAAoB,EAAE,MAAM,cAAc,CAAC;AAIpE,OAAO,EAAE,QAAQ,EAAE,aAAa,EAAE,MAAM,oBAAoB,CAAC;AAE7D,qBAAa,YAAa,YAAW,SAAS;IAC7C,WAAW,EAAE,oBAAoB,CAgF/B;IAEF,OAAO;;;;;;MAOL;CACF"}

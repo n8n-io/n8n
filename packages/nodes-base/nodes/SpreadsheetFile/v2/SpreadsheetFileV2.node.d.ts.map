@@ -1,1 +1,0 @@
-{"version":3,"file":"SpreadsheetFileV2.node.d.ts","sourceRoot":"","sources":["SpreadsheetFileV2.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,wBAAwB,EACxB,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAOtB,qBAAa,iBAAkB,YAAW,SAAS;IAClD,WAAW,EAAE,oBAAoB,CAAC;IAElC,YAAY,eAAe,EAAE,wBAAwB,EAYpD;IAEK,OAAO,CAAC,IAAI,EAAE,iBAAiB,mCAcpC;CACD"}

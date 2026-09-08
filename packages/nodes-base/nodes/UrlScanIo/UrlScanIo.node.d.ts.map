@@ -1,1 +1,0 @@
-{"version":3,"file":"UrlScanIo.node.d.ts","sourceRoot":"","sources":["UrlScanIo.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAMtB,qBAAa,SAAU,YAAW,SAAS;IAC1C,WAAW,EAAE,oBAAoB,CAsC/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CA0FtE;CACD"}

@@ -1,1 +1,0 @@
-{"version":3,"file":"MessageBird.node.d.ts","sourceRoot":"","sources":["MessageBird.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EAEpB,MAAM,cAAc,CAAC;AAKtB,qBAAa,WAAY,YAAW,SAAS;IAC5C,WAAW,EAAE,oBAAoB,CA2Q/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAiHtE;CACD"}

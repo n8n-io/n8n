@@ -1,1 +1,0 @@
-{"version":3,"file":"WorkflowTrigger.node.d.ts","sourceRoot":"","sources":["WorkflowTrigger.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EACjB,SAAS,EACT,oBAAoB,EACpB,gBAAgB,EAChB,MAAM,cAAc,CAAC;AAMtB,qBAAa,eAAgB,YAAW,SAAS;IAChD,WAAW,EAAE,oBAAoB,CAmD/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,gBAAgB,CAAC,CAmChE;CACD"}

@@ -1,1 +1,0 @@
-{"version":3,"file":"AwsCertificateManager.node.d.ts","sourceRoot":"","sources":["AwsCertificateManager.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAOtB,qBAAa,qBAAsB,YAAW,SAAS;IACtD,WAAW,EAAE,oBAAoB,CAiC/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAqLtE;CACD"}

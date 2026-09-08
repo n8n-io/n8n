@@ -1,1 +1,0 @@
-{"version":3,"file":"UptimeRobot.node.d.ts","sourceRoot":"","sources":["UptimeRobot.node.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAYtB,qBAAa,WAAY,YAAW,SAAS;IAC5C,WAAW,EAAE,oBAAoB,CA8F/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAwTtE;CACD"}

@@ -1,1 +1,0 @@
-{"version":3,"file":"Disqus.node.d.ts","sourceRoot":"","sources":["Disqus.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EAEpB,MAAM,cAAc,CAAC;AAKtB,qBAAa,MAAO,YAAW,SAAS;IACvC,WAAW,EAAE,oBAAoB,CA4iB/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAkLtE;CACD"}

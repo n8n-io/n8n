@@ -1,1 +1,0 @@
-{"version":3,"file":"Rocketchat.node.d.ts","sourceRoot":"","sources":["Rocketchat.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAoDtB,qBAAa,UAAW,YAAW,SAAS;IAC3C,WAAW,EAAE,oBAAoB,CAqa/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAiLtE;CACD"}

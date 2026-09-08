@@ -1,1 +1,0 @@
-{"version":3,"file":"Bubble.node.d.ts","sourceRoot":"","sources":["Bubble.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAMtB,qBAAa,MAAO,YAAW,SAAS;IACvC,WAAW,EAAE,oBAAoB,CAqC/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAkItE;CACD"}

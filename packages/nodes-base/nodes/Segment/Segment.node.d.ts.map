@@ -1,1 +1,0 @@
-{"version":3,"file":"Segment.node.d.ts","sourceRoot":"","sources":["Segment.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAWtB,qBAAa,OAAQ,YAAW,SAAS;IACxC,WAAW,EAAE,oBAAoB,CAoD/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CA4iBtE;CACD"}

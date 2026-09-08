@@ -1,1 +1,0 @@
-{"version":3,"file":"QuestDb.node.d.ts","sourceRoot":"","sources":["QuestDb.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAQtB,qBAAa,OAAQ,YAAW,SAAS;IACxC,WAAW,EAAE,oBAAoB,CAyL/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CA0EtE;CACD"}

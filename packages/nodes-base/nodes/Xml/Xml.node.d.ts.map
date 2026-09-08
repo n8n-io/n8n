@@ -1,1 +1,0 @@
-{"version":3,"file":"Xml.node.d.ts","sourceRoot":"","sources":["Xml.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAItB,qBAAa,GAAI,YAAW,SAAS;IACpC,WAAW,EAAE,oBAAoB,CA0N/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CA2FtE;CACD"}

@@ -1,1 +1,0 @@
-{"version":3,"file":"deleteJob.operation.d.ts","sourceRoot":"","sources":["deleteJob.operation.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,eAAe,EAAE,iBAAiB,EAAE,WAAW,EAAE,MAAM,cAAc,CAAC;AAepF,eAAO,MAAM,WAAW;;;;;;;;;;;;;;;;;;;;;;;;;;;GAAmD,CAAC;AAE5E,wBAAsB,OAAO,CAC5B,IAAI,EAAE,iBAAiB,EACvB,CAAC,EAAE,MAAM,GACP,OAAO,CAAC,WAAW,GAAG,WAAW,EAAE,CAAC,CAStC"}

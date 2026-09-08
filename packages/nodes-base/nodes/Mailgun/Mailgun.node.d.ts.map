@@ -1,1 +1,0 @@
-{"version":3,"file":"Mailgun.node.d.ts","sourceRoot":"","sources":["Mailgun.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EAGpB,MAAM,cAAc,CAAC;AAItB,qBAAa,OAAQ,YAAW,SAAS;IACxC,WAAW,EAAE,oBAAoB,CA+I/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAyHtE;CACD"}

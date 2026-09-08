@@ -1,1 +1,0 @@
-{"version":3,"file":"Summarize.node.d.ts","sourceRoot":"","sources":["Summarize.node.ts"],"names":[],"mappings":"AAAA,OAAO,EACN,KAAK,iBAAiB,EACtB,KAAK,kBAAkB,EACvB,KAAK,SAAS,EACd,KAAK,oBAAoB,EAIzB,MAAM,cAAc,CAAC;AAatB,qBAAa,SAAU,YAAW,SAAS;IAC1C,WAAW,EAAE,oBAAoB,CA+Q/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAmFtE;CACD"}

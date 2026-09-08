@@ -1,1 +1,0 @@
-{"version":3,"file":"WhatsApp.node.d.ts","sourceRoot":"","sources":["WhatsApp.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,iBAAiB,EAAE,SAAS,EAAE,oBAAoB,EAAE,MAAM,cAAc,CAAC;AASvF,OAAO,EAIN,kBAAkB,EAClB,MAAM,+BAA+B,CAAC;AAIvC,qBAAa,QAAS,YAAW,SAAS;IACzC,WAAW,EAAE,oBAAoB,CAsD/B;IAEF,OAAO,4BAAsB;IAE7B,gBAAgB;;8BAEwB,iBAAiB;;oBAkBjC,KAAK;;;;MAW3B;CACF"}

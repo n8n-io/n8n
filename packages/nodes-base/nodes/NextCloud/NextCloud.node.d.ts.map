@@ -1,1 +1,0 @@
-{"version":3,"file":"NextCloud.node.d.ts","sourceRoot":"","sources":["NextCloud.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAGX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EAEpB,MAAM,cAAc,CAAC;AAatB,qBAAa,SAAU,YAAW,SAAS;IAC1C,WAAW,EAAE,oBAAoB,CA80B/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CA+mBtE;CACD"}

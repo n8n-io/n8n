@@ -1,1 +1,0 @@
-{"version":3,"file":"N8nTrigger.node.d.ts","sourceRoot":"","sources":["N8nTrigger.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EACjB,SAAS,EACT,oBAAoB,EACpB,gBAAgB,EAChB,MAAM,cAAc,CAAC;AAKtB,qBAAa,UAAW,YAAW,SAAS;IAC3C,WAAW,EAAE,oBAAoB,CAiD/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,gBAAgB,CAAC,CAsChE;CACD"}

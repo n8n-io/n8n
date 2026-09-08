@@ -1,1 +1,0 @@
-{"version":3,"file":"AiTransform.node.d.ts","sourceRoot":"","sources":["AiTransform.node.ts"],"names":[],"mappings":"AACA,OAAO,EAGN,KAAK,iBAAiB,EACtB,KAAK,SAAS,EACd,KAAK,oBAAoB,EAIzB,MAAM,cAAc,CAAC;AAItB,qBAAa,WAAY,YAAW,SAAS;IAC5C,WAAW,EAAE,oBAAoB,CAgE/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,0DAOpC;CACD"}

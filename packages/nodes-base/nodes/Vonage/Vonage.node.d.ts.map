@@ -1,1 +1,0 @@
-{"version":3,"file":"Vonage.node.d.ts","sourceRoot":"","sources":["Vonage.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAKtB,qBAAa,MAAO,YAAW,SAAS;IACvC,WAAW,EAAE,oBAAoB,CAoY/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CA6FtE;CACD"}

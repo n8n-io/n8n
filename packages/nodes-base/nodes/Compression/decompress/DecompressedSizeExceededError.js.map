@@ -1,1 +1,0 @@
-{"version":3,"file":"DecompressedSizeExceededError.js","sourceRoot":"","sources":["DecompressedSizeExceededError.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,SAAS,EAAE,MAAM,cAAc,CAAC;AAEzC,MAAM,OAAO,6BAA8B,SAAQ,SAAS;IAC3D,YAAY,aAAqB;QAChC,MAAM,OAAO,GAAG,IAAI,CAAC,KAAK,CAAC,aAAa,GAAG,CAAC,IAAI,GAAG,IAAI,CAAC,CAAC,CAAC;QAC1D,KAAK,CAAC,+DAA+D,OAAO,KAAK,CAAC,CAAC;IACpF,CAAC;CACD"}

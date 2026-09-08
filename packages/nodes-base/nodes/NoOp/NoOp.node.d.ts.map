@@ -1,1 +1,0 @@
-{"version":3,"file":"NoOp.node.d.ts","sourceRoot":"","sources":["NoOp.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAGtB,qBAAa,IAAK,YAAW,SAAS;IACrC,WAAW,EAAE,oBAAoB,CAc/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAItE;CACD"}

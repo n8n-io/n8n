@@ -1,1 +1,0 @@
-{"version":3,"file":"Mindee.node.d.ts","sourceRoot":"","sources":["Mindee.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAEX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAKtB,qBAAa,MAAO,YAAW,SAAS;IACvC,WAAW,EAAE,oBAAoB,CAuK/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAqLtE;CACD"}

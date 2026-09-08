@@ -1,1 +1,0 @@
-{"version":3,"file":"AwsComprehend.node.d.ts","sourceRoot":"","sources":["AwsComprehend.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAMtB,qBAAa,aAAc,YAAW,SAAS;IAC9C,WAAW,EAAE,oBAAoB,CA2K/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAuGtE;CACD"}

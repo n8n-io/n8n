@@ -1,1 +1,0 @@
-{"version":3,"file":"test-data-node.d.ts","sourceRoot":"","sources":["test-data-node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAEX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAGtB;;;;;;GAMG;AACH,qBAAa,YAAa,YAAW,SAAS;IAC7C,WAAW,EAAE,oBAAoB,CAkB/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAKtE;CACD"}

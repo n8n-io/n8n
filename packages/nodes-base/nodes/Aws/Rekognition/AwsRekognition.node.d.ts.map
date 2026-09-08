@@ -1,1 +1,0 @@
-{"version":3,"file":"AwsRekognition.node.d.ts","sourceRoot":"","sources":["AwsRekognition.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAEX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAMtB,qBAAa,cAAe,YAAW,SAAS;IAC/C,WAAW,EAAE,oBAAoB,CA0T/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAsItE;CACD"}

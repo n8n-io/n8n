@@ -1,1 +1,0 @@
-{"version":3,"file":"Dropbox.node.d.ts","sourceRoot":"","sources":["Dropbox.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAEX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAWtB,qBAAa,OAAQ,YAAW,SAAS;IACxC,WAAW,EAAE,oBAAoB,CAgqB/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CA4UtE;CACD"}

@@ -1,1 +1,0 @@
-{"version":3,"file":"LocalFileTrigger.node.d.ts","sourceRoot":"","sources":["LocalFileTrigger.node.ts"],"names":[],"mappings":"AAEA,OAAO,EACN,KAAK,iBAAiB,EAEtB,KAAK,SAAS,EACd,KAAK,oBAAoB,EACzB,KAAK,gBAAgB,EAErB,MAAM,cAAc,CAAC;AAEtB,qBAAa,gBAAiB,YAAW,SAAS;IACjD,WAAW,EAAE,oBAAoB,CAwN/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,gBAAgB,CAAC,CAyChE;CACD"}

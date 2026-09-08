@@ -1,1 +1,0 @@
-{"version":3,"file":"UnleashedSoftware.node.d.ts","sourceRoot":"","sources":["UnleashedSoftware.node.ts"],"names":[],"mappings":"AACA,OAAO,EACN,KAAK,iBAAiB,EAEtB,KAAK,kBAAkB,EACvB,KAAK,SAAS,EACd,KAAK,oBAAoB,EAEzB,MAAM,cAAc,CAAC;AAUtB,qBAAa,iBAAkB,YAAW,SAAS;IAClD,WAAW,EAAE,oBAAoB,CA6C/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAmItE;CACD"}

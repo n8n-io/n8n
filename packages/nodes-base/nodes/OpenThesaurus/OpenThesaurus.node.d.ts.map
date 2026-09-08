@@ -1,1 +1,0 @@
-{"version":3,"file":"OpenThesaurus.node.d.ts","sourceRoot":"","sources":["OpenThesaurus.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAKtB,qBAAa,aAAc,YAAW,SAAS;IAC9C,WAAW,EAAE,oBAAoB,CA+H/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CA+CtE;CACD"}

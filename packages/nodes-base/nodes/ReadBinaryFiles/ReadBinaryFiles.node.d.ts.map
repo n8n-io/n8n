@@ -1,1 +1,0 @@
-{"version":3,"file":"ReadBinaryFiles.node.d.ts","sourceRoot":"","sources":["ReadBinaryFiles.node.ts"],"names":[],"mappings":"AACA,OAAO,EAEN,KAAK,iBAAiB,EACtB,KAAK,kBAAkB,EACvB,KAAK,SAAS,EACd,KAAK,oBAAoB,EACzB,MAAM,cAAc,CAAC;AAItB,qBAAa,eAAgB,YAAW,SAAS;IAChD,WAAW,EAAE,oBAAoB,CAiC/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAoBtE;CACD"}
