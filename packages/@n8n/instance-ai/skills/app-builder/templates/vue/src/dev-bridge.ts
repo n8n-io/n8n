@@ -13,7 +13,8 @@ type PreviewDiagnostic = {
 	stack?: string;
 };
 
-// The document runs on an opaque origin but still knows its own URL, which is the editor's origin.
+// The document runs on an opaque origin (`location.origin` is "null") but still
+// knows its own URL, which is the editor's origin.
 const parentOrigin = new URL(location.href).origin;
 
 const post = (diagnostic: PreviewDiagnostic): void => {
@@ -24,27 +25,39 @@ const post = (diagnostic: PreviewDiagnostic): void => {
 	);
 };
 
-const clip = (value: unknown, max: number): string => String(value).slice(0, max);
+const clip = (value: string, max: number): string => value.slice(0, max);
+
+// The dev server's base is the preview's capability URL; script URLs in file
+// names and stack frames must not carry it into the reported diagnostics.
+const base = import.meta.env.BASE_URL;
+const secretPrefixes = base === '/' ? [] : [parentOrigin + base, base];
+const stripBase = (value: string): string =>
+	secretPrefixes.reduce((result, prefix) => result.split(prefix).join('/'), value);
+
+const messageOf = (value: unknown): string => clip(stripBase(String(value)), 2048);
+const fileOf = (value: string | undefined): string | undefined =>
+	value ? clip(stripBase(value), 512) : undefined;
+const stackOf = (value: string | undefined): string | undefined =>
+	value ? clip(stripBase(value), 4096) : undefined;
 
 import.meta.hot?.on('vite:error', (payload: ErrorPayload) => {
 	post({
 		kind: 'vite-error',
-		message: clip(payload.err.message, 2048),
-		file: payload.err.id ?? payload.err.loc?.file,
+		message: messageOf(payload.err.message),
+		file: fileOf(payload.err.id ?? payload.err.loc?.file),
 		line: payload.err.loc?.line,
 		column: payload.err.loc?.column,
 	});
 });
 
 window.addEventListener('error', (event) => {
-	const stack = event.error instanceof Error ? event.error.stack : undefined;
 	post({
 		kind: 'uncaught',
-		message: clip(event.message, 2048),
-		file: event.filename || undefined,
+		message: messageOf(event.message),
+		file: fileOf(event.filename || undefined),
 		line: event.lineno || undefined,
 		column: event.colno || undefined,
-		stack: stack ? clip(stack, 4096) : undefined,
+		stack: stackOf(event.error instanceof Error ? event.error.stack : undefined),
 	});
 });
 
@@ -53,7 +66,7 @@ window.addEventListener('unhandledrejection', (event) => {
 	const error = reason instanceof Error ? reason : undefined;
 	post({
 		kind: 'uncaught',
-		message: clip(error?.message ?? reason, 2048),
-		stack: error?.stack ? clip(error.stack, 4096) : undefined,
+		message: messageOf(error?.message ?? reason),
+		stack: stackOf(error?.stack),
 	});
 });
