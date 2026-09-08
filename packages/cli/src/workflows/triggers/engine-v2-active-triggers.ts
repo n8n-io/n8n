@@ -68,30 +68,11 @@ export class EngineV2ActiveTriggers {
 	 * the node's own output says whether it produced one, so this runs on the emit
 	 * rather than at activation. Email Read IMAP is the case that matters today:
 	 * it downloads attachments and passes no promise, so nothing else refuses it.
-	 */
-	async assertPayloadSupported(slots: Array<INodeExecutionData[] | null>): Promise<void> {
-		await this.payloadGuard.assertNoFiles(
-			slots,
-			'Engine 2.0 cannot receive files from a trigger yet.',
-		);
-	}
-
-	/**
-	 * Deletes the files of an emit refused for another reason, so a payload the
-	 * poll path turns away does not leave them behind. Never throws.
-	 */
-	async discardFiles(slots: Array<INodeExecutionData[] | null>): Promise<void> {
-		await this.payloadGuard.discardFiles(slots);
-	}
-
-	/**
-	 * Rejects a polled emit.
 	 *
-	 * A migrated poll node commits its cursor in the same transaction as the
-	 * execution row, which a v2 run does not create.
-	 * TODO(CAT-4078): commit the cursor against a data-plane execution instead.
+	 * Refuses synchronously, so a poll's `__emit` can call it before it takes the
+	 * staged cursor.
 	 */
-	assertPollSupported(): never {
-		throw new UserError('Engine 2.0 cannot run polling triggers yet.');
+	assertPayloadSupported(slots: Array<INodeExecutionData[] | null>): void {
+		this.payloadGuard.assertNoFiles(slots, 'Engine 2.0 cannot receive files from a trigger yet.');
 	}
 }

@@ -16,8 +16,7 @@ describe('EngineV2ActiveTriggers', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		payloadGuard.assertNoFiles.mockResolvedValue(undefined);
-		payloadGuard.discardFiles.mockResolvedValue(undefined);
+		payloadGuard.assertNoFiles.mockReturnValue(undefined);
 		engineV2ActiveTriggers = new EngineV2ActiveTriggers(dispatcher, payloadGuard);
 	});
 
@@ -60,10 +59,10 @@ describe('EngineV2ActiveTriggers', () => {
 	});
 
 	describe('assertPayloadSupported', () => {
-		it('asks the guard to refuse files, naming the trigger surface', async () => {
+		it('asks the guard to refuse files, naming the trigger surface', () => {
 			const slots = [[{ json: {}, binary: { data: mock<IBinaryData>() } }]];
 
-			await engineV2ActiveTriggers.assertPayloadSupported(slots);
+			engineV2ActiveTriggers.assertPayloadSupported(slots);
 
 			expect(payloadGuard.assertNoFiles).toHaveBeenCalledWith(
 				slots,
@@ -71,29 +70,12 @@ describe('EngineV2ActiveTriggers', () => {
 			);
 		});
 
-		it('surfaces the refusal the guard raises', async () => {
-			payloadGuard.assertNoFiles.mockRejectedValue(new UserError('nope'));
+		it('surfaces the refusal the guard raises, synchronously', () => {
+			payloadGuard.assertNoFiles.mockImplementation(() => {
+				throw new UserError('nope');
+			});
 
-			await expect(engineV2ActiveTriggers.assertPayloadSupported([[]])).rejects.toThrow('nope');
-		});
-	});
-
-	describe('discardFiles', () => {
-		it('hands the payload to the guard', async () => {
-			const slots = [[{ json: {} }]];
-
-			await engineV2ActiveTriggers.discardFiles(slots);
-
-			expect(payloadGuard.discardFiles).toHaveBeenCalledWith(slots);
-		});
-	});
-
-	describe('assertPollSupported', () => {
-		it('always refuses', () => {
-			expect(() => engineV2ActiveTriggers.assertPollSupported()).toThrow(UserError);
-			expect(() => engineV2ActiveTriggers.assertPollSupported()).toThrow(
-				'Engine 2.0 cannot run polling triggers yet.',
-			);
+			expect(() => engineV2ActiveTriggers.assertPayloadSupported([[]])).toThrow('nope');
 		});
 	});
 });

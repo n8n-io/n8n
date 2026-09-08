@@ -32,25 +32,19 @@ export class EngineV2PayloadGuard {
 	 *
 	 * `reason` names the surface, so the user hears which trigger could not be
 	 * served rather than a generic message.
+	 *
+	 * Refuses synchronously, so a caller that cannot await (a poll's `__emit`)
+	 * still refuses before doing anything that only makes sense for a run it is
+	 * about to start. The delete runs detached: nobody reads its result, and
+	 * {@link deleteStoredFiles} never throws.
 	 */
-	async assertNoFiles(slots: PayloadSlots, reason: string): Promise<void> {
+	assertNoFiles(slots: PayloadSlots, reason: string): void {
 		const files = this.filesIn(slots);
 		if (files.length === 0) return;
 
-		await this.deleteStoredFiles(files);
+		void this.deleteStoredFiles(files);
 
 		throw new UserError(reason);
-	}
-
-	/**
-	 * Deletes the files of a payload that is being discarded for some other
-	 * reason. Never throws: the caller's own refusal is the answer.
-	 */
-	async discardFiles(slots: PayloadSlots): Promise<void> {
-		const files = this.filesIn(slots);
-		if (files.length === 0) return;
-
-		await this.deleteStoredFiles(files);
 	}
 
 	/** An empty `binary` map carries no file, so it does not count. */
@@ -60,8 +54,9 @@ export class EngineV2PayloadGuard {
 
 	/**
 	 * Only stored modes give a file an id; in memory the data rides on the item and
-	 * there is nothing to delete. A failed delete leaks a file, which must not
-	 * replace the caller's reason with a storage error.
+	 * there is nothing to delete. Never throws: a failed delete leaks a file, which
+	 * must not replace the caller's reason with a storage error, and callers detach
+	 * this call.
 	 */
 	private async deleteStoredFiles(files: IBinaryData[]): Promise<void> {
 		const storedIds = files.map((file) => file.id).filter((id) => id !== undefined);
