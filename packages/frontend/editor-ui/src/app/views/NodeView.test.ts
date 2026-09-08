@@ -28,6 +28,9 @@ const routeMock = vi.hoisted(() => ({
 	meta: {},
 	params: {},
 	query: {} as Record<string, string>,
+	// The NDV subtree that the canvas slot renders reads `route.meta`, so the
+	// mock has to carry it — a missing `meta` throws while Vue renders.
+	meta: {} as Record<string, unknown>,
 }));
 
 vi.mock('vue-router', () => ({
