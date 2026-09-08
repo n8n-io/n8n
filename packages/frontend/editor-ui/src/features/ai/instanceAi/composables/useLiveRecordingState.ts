@@ -15,6 +15,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 export function useLiveRecordingState(threadId: () => string) {
 	const isRecording = ref(false);
 	const actionCount = ref(0);
+	const caption = ref<string>();
 	const startedAt = ref<number>();
 	const nowMs = ref(Date.now());
 
@@ -27,9 +28,11 @@ export function useLiveRecordingState(threadId: () => string) {
 			if (!isRecording.value) startedAt.value = Date.now();
 			isRecording.value = true;
 			actionCount.value = message.data.actionCount;
+			if (message.data.caption) caption.value = message.data.caption;
 		} else {
 			isRecording.value = false;
 			actionCount.value = 0;
+			caption.value = undefined;
 			startedAt.value = undefined;
 		}
 	});
@@ -47,5 +50,5 @@ export function useLiveRecordingState(threadId: () => string) {
 		startedAt.value === undefined ? 0 : Math.max(0, nowMs.value - startedAt.value),
 	);
 
-	return { isRecording, actionCount, elapsedMs };
+	return { isRecording, actionCount, caption, elapsedMs };
 }

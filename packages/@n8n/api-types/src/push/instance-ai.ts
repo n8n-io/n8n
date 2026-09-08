@@ -46,5 +46,8 @@ export type InstanceAiPushMessage =
 				 *  the frontend removes the live artifact on either. */
 				status: 'recording' | 'stopped' | 'discarded';
 				actionCount: number;
+				/** Latest running summary of what's been seen so far, once one has been
+				 *  generated. Absent until the first caption tick completes. */
+				caption?: string;
 			};
 	  };

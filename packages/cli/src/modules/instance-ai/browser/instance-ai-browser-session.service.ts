@@ -44,7 +44,7 @@ const CONNECT_TOKEN_TTL_MS = 5 * 60 * 1000;
 const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 /** How often to summarize actions accumulated so far, while a recording is in progress. */
-const CAPTION_INTERVAL_MS = 20_000;
+const CAPTION_INTERVAL_MS = 12_000;
 
 interface BrowserSession {
 	userId: string;
@@ -416,7 +416,10 @@ export class InstanceAiBrowserSessionService {
 		session.pendingCaptionActions = [];
 		try {
 			const caption = await handler({ userId: session.userId, actions });
-			if (caption) session.latestCaption = caption;
+			if (caption) {
+				session.latestCaption = caption;
+				this.pushRecordingState(session.userId, 'recording');
+			}
 		} catch (error) {
 			this.logger.warn('Failed to summarize in-progress recording', {
 				userId: session.userId,
@@ -432,7 +435,12 @@ export class InstanceAiBrowserSessionService {
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiRecordingStateChanged',
-				data: { threadId, status, actionCount: session.inProgressActionCount },
+				data: {
+					threadId,
+					status,
+					actionCount: session.inProgressActionCount,
+					...(session.latestCaption ? { caption: session.latestCaption } : {}),
+				},
 			},
 			[userId],
 		);

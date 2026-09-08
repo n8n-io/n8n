@@ -9,6 +9,7 @@ import { discardBrowserRecording, stopBrowserRecording } from '../instanceAi.api
 const props = defineProps<{
 	actionCount: number;
 	elapsedMs: number;
+	caption?: string;
 }>();
 
 const i18n = useI18n();
@@ -68,6 +69,9 @@ async function discard() {
 					})
 				}}
 			</N8nText>
+			<N8nText v-if="caption" color="text-light" size="small" :class="$style.caption">
+				{{ caption }}
+			</N8nText>
 			<div :class="$style.actions">
 				<N8nButton
 					variant="solid"
@@ -105,10 +109,17 @@ async function discard() {
 	justify-content: center;
 	gap: var(--spacing--xs);
 	height: 100%;
+	max-width: 320px;
+	margin: 0 auto;
+	text-align: center;
 }
 
 .recordingIcon {
 	color: var(--color--danger);
+}
+
+.caption {
+	font-style: italic;
 }
 
 .actions {

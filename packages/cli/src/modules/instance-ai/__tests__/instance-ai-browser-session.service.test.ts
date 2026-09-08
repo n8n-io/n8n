@@ -536,6 +536,35 @@ describe('InstanceAiBrowserSessionService', () => {
 			expect(captionHandler).toHaveBeenCalledTimes(1);
 		});
 
+		it('pushes the new caption live once a tick produces one', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			service.setActionCaptionHandler(vi.fn(async () => 'Opened Gmail and composed a message'));
+			service.startRecording(USER_ID, 'thread-1');
+			relay.onRecordingActionAppended?.('rec-1', {
+				id: 'a1',
+				type: 'click',
+				timestamp: 0,
+				url: 'https://mail.google.com',
+			});
+			push.sendToUsers.mockClear();
+
+			await vi.advanceTimersByTimeAsync(12_000);
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiRecordingStateChanged',
+					data: {
+						threadId: 'thread-1',
+						status: 'recording',
+						actionCount: 1,
+						caption: 'Opened Gmail and composed a message',
+					},
+				},
+				[USER_ID],
+			);
+		});
+
 		it('never throws the run when the caption handler fails', async () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
