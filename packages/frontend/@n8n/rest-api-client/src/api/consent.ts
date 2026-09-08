@@ -4,6 +4,13 @@ import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
 export interface ConsentDetails {
+	/**
+	 * Set when a prior consent already covers this request — e.g. the visitor only
+	 * authenticated as part of reaching this page. `redirectUrl` is then the only other
+	 * field present: there is nothing left to show a picker for.
+	 */
+	autoApproved?: boolean;
+	redirectUrl?: string;
 	clientName: string;
 	clientId: string;
 	redirectUri?: string;

@@ -17,8 +17,10 @@ import {
 import { UrlService } from '@/services/url.service';
 
 type ConsentDetailsResult =
+	| { ok: true; autoApproved: true; redirectUrl: string }
 	| {
 			ok: true;
+			autoApproved: false;
 			clientName: string;
 			clientId: string;
 			resourceName?: string;
@@ -73,6 +75,11 @@ export class OAuthConsentService {
 				return null;
 			}
 
+			const reuse = await this.tryReuseConsent(user, sessionPayload);
+			if (reuse) {
+				return { ok: true, autoApproved: true, redirectUrl: reuse.redirectUrl };
+			}
+
 			if (sessionPayload.resource) {
 				const resource = await this.protectedResourceRegistry.getByResourceUrl(
 					sessionPayload.resource,
@@ -92,6 +99,7 @@ export class OAuthConsentService {
 
 				return {
 					ok: true,
+					autoApproved: false,
 					clientName: client.name,
 					clientId: client.id,
 					resourceName: resource.displayName,
@@ -117,6 +125,7 @@ export class OAuthConsentService {
 
 			return {
 				ok: true,
+				autoApproved: false,
 				clientName: client.name,
 				clientId: client.id,
 				redirectUri: sessionPayload.redirectUri,

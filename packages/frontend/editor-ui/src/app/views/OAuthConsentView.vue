@@ -31,6 +31,10 @@ const telemetry = useTelemetry();
 
 // Success state:
 const waitingForRedirect = ref(false);
+// Set instead of `waitingForRedirect` when the server silently reused a prior consent:
+// the visitor never clicked anything here, so a "success" message would be confusing —
+// this renders the same blank state as the initial fetch, not a message that then flashes.
+const autoApprovedRedirect = ref(false);
 const redirectUriTrusted = ref(false);
 const selectedScopes = ref<string[]>([]);
 
@@ -139,7 +143,12 @@ const handleClose = () => {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('oauth.consentView.title'));
 	try {
-		await consentStore.fetchConsentDetails();
+		const details = await consentStore.fetchConsentDetails();
+		if (details?.autoApproved && details.redirectUrl) {
+			autoApprovedRedirect.value = true;
+			window.location.href = details.redirectUrl;
+			return;
+		}
 		telemetry.track('User viewed MCP consent screen', {
 			client_name: clientDetails.value?.clientName,
 			available_scopes_count: availableScopes.value.length,
@@ -213,6 +222,15 @@ onMounted(async () => {
 					:content="errorMessage ?? ''"
 				></N8nNotice>
 			</div>
+			<!-- Nothing resolved yet, or the server just silently reused a prior consent:
+				never guess at generic instance-wide copy, and never announce a "success"
+				the visitor didn't ask for — the header's own connector spinner already
+				signals activity while this redirects. -->
+			<div
+				v-else-if="autoApprovedRedirect || !clientDetails"
+				:class="$style.content"
+				data-test-id="consent-loading"
+			/>
 			<!-- Default content -->
 			<div v-else :class="$style.content" data-test-id="consent-content">
 				<N8nHeading v-if="clientDetails?.isFirstParty" tag="h2" size="large" :bold="true">
@@ -285,7 +303,7 @@ onMounted(async () => {
 					</ul>
 				</div>
 			</div>
-			<footer v-if="!waitingForRedirect" :class="$style.footer">
+			<footer v-if="!waitingForRedirect && !autoApprovedRedirect" :class="$style.footer">
 				<!-- Third-party clients: the redirect destination, with the trust acknowledgment
 				     below it in the action row so it reads as a step rather than banner small
 				     print. Both are gated on the same `trustRequired` as the Allow button, so the

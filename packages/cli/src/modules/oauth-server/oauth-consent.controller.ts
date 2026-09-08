@@ -44,6 +44,18 @@ export class OAuthConsentController {
 				return;
 			}
 
+			if (consentDetails.autoApproved) {
+				// The session's decision is already made — consume it, same as a manual approval.
+				this.oauthSessionService.clearSession(res);
+				res.json({
+					data: {
+						autoApproved: true,
+						redirectUrl: consentDetails.redirectUrl,
+					},
+				});
+				return;
+			}
+
 			res.json({
 				data: {
 					clientName: consentDetails.clientName,
