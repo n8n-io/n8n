@@ -25,6 +25,7 @@ const routerMock = vi.hoisted(() => ({
 
 const routeMock = vi.hoisted(() => ({
 	name: undefined as string | undefined,
+	meta: {},
 	params: {},
 	query: {} as Record<string, string>,
 }));
