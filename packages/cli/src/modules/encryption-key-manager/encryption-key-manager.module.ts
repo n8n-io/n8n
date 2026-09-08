@@ -6,25 +6,20 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'encryption-key-manager' })
 export class EncryptionKeyManagerModule implements ModuleInterface {
 	async init() {
-		// Loading and seeding run on every instance, independent of the rotation
-		// flag: the whole fleet must hold the keys before any instance turns the
-		// flag on and starts using them.
-		await import('./key-manager.service.js');
-		const { isKeyRotationEnabled } = await import('./key-rotation-flag.js');
+		// Key seeding and provider wiring run early in BaseCommand for every
+		// entrypoint (including one-off commands), so the module only registers
+		// the management API. The API (list + rotate) stays behind the flag:
+		// rotating keys only makes sense once the rotation write path is enabled.
+		const { isKeyRotationEnabled } = await import('@/encryption/key-rotation-flag.js');
 
-		// The management API (list + rotate) stays behind the flag: rotating keys
-		// only makes sense once the rotation write path is enabled.
 		if (isKeyRotationEnabled() && Container.get(InstanceSettings).instanceType === 'main') {
 			await import('./encryption-key.controller.js');
 		}
-
-		const { EncryptionBootstrapService } = await import('./encryption-bootstrap.service.js');
-		await Container.get(EncryptionBootstrapService).run();
 	}
 
 	/** Settings exposed to the frontend under `/rest/module-settings`. */
 	async settings() {
-		const { isKeyRotationEnabled } = await import('./key-rotation-flag.js');
+		const { isKeyRotationEnabled } = await import('@/encryption/key-rotation-flag.js');
 		return { rotationEnabled: isKeyRotationEnabled() };
 	}
 }

@@ -170,7 +170,7 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
-	async findCredentialIndexAgentIdsBatch(
+	async findDependencyIndexAgentIdsBatch(
 		afterId: string | null,
 		batchSize: number,
 	): Promise<Array<Pick<Agent, 'id'>>> {
