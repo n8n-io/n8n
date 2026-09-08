@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import { N8nButton, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIconButton,
+	N8nSegmentControl,
+	N8nTabs,
+	N8nText,
+	N8nToggle,
+	N8nToggleGroup,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import CopyInput from '@/app/components/CopyInput.vue';
@@ -10,17 +19,33 @@ import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
+import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { useAppDeletion } from '@/features/apps/useAppDeletion';
 import { ADD_PAGE_MODAL_KEY, APP_PAGE_DETAILS, PROJECT_APPS } from '@/features/apps/apps.constants';
 import type { App } from '@/features/apps/apps.types';
 import { getChildCounts } from '@/features/apps/pageTree.utils';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 
-const props = defineProps<{
-	projectId: string;
-	appId: string;
-}>();
+type BuilderMode = 'build' | 'preview';
+type PreviewDevice = 'desktop' | 'mobile';
+type BuildTab = 'pages' | 'code';
+
+const PREVIEW_WIDTHS: Record<PreviewDevice, string> = { desktop: '100%', mobile: '390px' };
+
+const props = withDefaults(
+	defineProps<{
+		projectId: string;
+		appId: string;
+		/** Embedded in the Instance AI preview tab: no page chrome, no navigation actions. */
+		artifactMode?: boolean;
+		/** Latest build the thread produced; overrides the stored active version while embedded. */
+		artifactVersionId?: string;
+	}>(),
+	{ artifactMode: false, artifactVersionId: undefined },
+);
 
 const i18n = useI18n();
 const toast = useToast();
@@ -28,21 +53,47 @@ const router = useRouter();
 const uiStore = useUIStore();
 const documentTitle = useDocumentTitle();
 const { confirmAndDeleteApp, confirmAndDeletePage } = useAppDeletion();
+const instanceAiAvailable = useInstanceAiAvailable();
+const { openAppArtifactThread } = useInstanceAiHandoff();
 
 const appsStore = useAppsStore();
 
 const app = ref<App | null>(null);
 const loading = ref(false);
+const mode = ref<BuilderMode>('build');
+const device = ref<PreviewDevice>('desktop');
+const buildTab = ref<BuildTab>('pages');
+const previewFrame = useTemplateRef<InstanceType<typeof AppPreviewFrame>>('previewFrame');
 
 const rootPages = computed(() => appsStore.pages.filter((page) => page.parentPageId === null));
 const childCounts = computed(() => getChildCounts(appsStore.pages));
 
 const appUrl = computed(() =>
-	app.value ? `${window.location.origin}/apps/${app.value.namespace}` : '',
+	app.value ? `${window.location.origin}/apps/${app.value.namespace}/` : '',
 );
+
+const versionId = computed(
+	() => props.artifactVersionId ?? app.value?.activeVersionId ?? undefined,
+);
+
+const modeOptions = computed(() => [
+	{ label: i18n.baseText('apps.builder.build'), value: 'build' as const },
+	{ label: i18n.baseText('apps.builder.preview'), value: 'preview' as const },
+]);
+
+const buildTabOptions = computed(() => [
+	{ value: 'pages' as const, label: i18n.baseText('apps.pages') },
+	{
+		value: 'code' as const,
+		label: i18n.baseText('apps.builder.code'),
+		disabled: true,
+		tooltip: i18n.baseText('apps.builder.codeComingSoon'),
+	},
+]);
 
 const showErrorAndGoBack = async (error: unknown) => {
 	toast.showError(error, i18n.baseText('apps.getDetails.error'));
+	if (props.artifactMode) return;
 	await router.push({ name: PROJECT_APPS, params: { projectId: props.projectId } });
 };
 
@@ -54,7 +105,10 @@ const initialize = async () => {
 			appsStore.fetchPages(props.projectId, props.appId),
 		]);
 		app.value = result;
-		documentTitle.set(`${i18n.baseText('apps.apps')} > ${result.name}`);
+		mode.value = versionId.value ? 'preview' : 'build';
+		if (!props.artifactMode) {
+			documentTitle.set(`${i18n.baseText('apps.apps')} > ${result.name}`);
+		}
 	} catch (error) {
 		await showErrorAndGoBack(error);
 	} finally {
@@ -86,70 +140,284 @@ const onDeletePage = async (pageId: string) => {
 	await confirmAndDeletePage(props.projectId, props.appId, pageId);
 };
 
+const onDeviceChange = (value: unknown) => {
+	if (value === 'desktop' || value === 'mobile') device.value = value;
+};
+
+const onOpenInAssistant = async () => {
+	if (!app.value) return;
+	await openAppArtifactThread(
+		{ type: 'app', appId: app.value.id, projectId: props.projectId, name: app.value.name },
+		{ source: 'app_builder_page', origin: 'internal', sourceContext: { appId: app.value.id } },
+	);
+};
+
 onMounted(initialize);
 
 // Navigating to a different app reuses this same route component instance —
 // onMounted only fires once, so re-run on an appId change.
 watch(() => props.appId, initialize);
+
+// The first build is what the user was waiting for while on Build.
+watch(versionId, (next, previous) => {
+	if (next && !previous) mode.value = 'preview';
+});
 </script>
 
 <template>
-	<PageViewLayout data-test-id="app-details-view">
-		<template #header>
-			<div :class="$style.breadcrumbsRow">
-				<AppBreadcrumbs v-if="app" :project-id="projectId" :app-id="appId" :app-name="app.name" />
-				<N8nButton
-					v-if="app"
-					icon-only
-					icon="trash-2"
-					variant="subtle"
-					:aria-label="i18n.baseText('generic.delete')"
-					data-test-id="app-delete"
-					@click="onDeleteApp"
+	<!-- The page layout only adds the page gutter, so a plain div stands in for it inside the assistant's preview tab. -->
+	<component
+		:is="props.artifactMode ? 'div' : PageViewLayout"
+		:class="{ [$style.artifactRoot]: props.artifactMode }"
+		data-test-id="app-details-view"
+	>
+		<div :class="$style.builder">
+			<div :class="$style.toolbar">
+				<div :class="$style.toolbarStart">
+					<AppBreadcrumbs
+						v-if="app && !props.artifactMode"
+						:project-id="projectId"
+						:app-id="appId"
+						:app-name="app.name"
+					/>
+				</div>
+				<N8nSegmentControl
+					v-model="mode"
+					:options="modeOptions"
+					size="small"
+					data-test-id="app-builder-mode"
 				/>
+				<div :class="$style.toolbarEnd">
+					<template v-if="app">
+						<CopyInput :class="$style.urlCopy" :value="appUrl" collapse data-test-id="app-url" />
+						<N8nButton
+							:href="appUrl"
+							target="_blank"
+							variant="subtle"
+							size="small"
+							icon="external-link"
+							:disabled="!versionId"
+							data-test-id="app-open"
+						>
+							{{ i18n.baseText('apps.builder.openApp') }}
+						</N8nButton>
+						<N8nButton
+							v-if="!props.artifactMode && instanceAiAvailable"
+							variant="subtle"
+							size="small"
+							icon="sparkles"
+							data-test-id="app-open-in-assistant"
+							@click="onOpenInAssistant"
+						>
+							{{ i18n.baseText('apps.builder.openInAssistant') }}
+						</N8nButton>
+						<N8nButton
+							v-if="!props.artifactMode"
+							icon-only
+							icon="trash-2"
+							variant="subtle"
+							size="small"
+							:aria-label="i18n.baseText('generic.delete')"
+							data-test-id="app-delete"
+							@click="onDeleteApp"
+						/>
+					</template>
+				</div>
 			</div>
-		</template>
 
-		<div :class="$style.container">
-			<div v-if="app" :class="$style.urlCard">
-				<CopyInput
-					:label="i18n.baseText('apps.url.label')"
-					:value="appUrl"
-					data-test-id="app-url"
+			<!-- The default mode depends on the fetched active version, so neither block renders before it. -->
+			<div
+				v-if="app && mode === 'preview'"
+				:class="$style.preview"
+				data-test-id="app-builder-preview"
+			>
+				<div :class="$style.previewBar">
+					<N8nToggleGroup
+						:model-value="device"
+						variant="ghost"
+						size="small"
+						data-test-id="app-preview-device"
+						@update:model-value="onDeviceChange"
+					>
+						<template #default="{ variant, size }">
+							<N8nToggle
+								value="desktop"
+								:label="i18n.baseText('apps.builder.desktop')"
+								icon="monitor"
+								:variant="variant"
+								:size="size"
+								data-test-id="app-preview-device-desktop"
+							/>
+							<N8nToggle
+								value="mobile"
+								:label="i18n.baseText('apps.builder.mobile')"
+								icon="smartphone"
+								:variant="variant"
+								:size="size"
+								data-test-id="app-preview-device-mobile"
+							/>
+						</template>
+					</N8nToggleGroup>
+					<N8nTooltip :content="i18n.baseText('apps.builder.refresh')">
+						<N8nIconButton
+							icon="refresh-cw"
+							variant="ghost"
+							size="small"
+							:disabled="!versionId"
+							:aria-label="i18n.baseText('apps.builder.refresh')"
+							data-test-id="app-preview-refresh"
+							@click="previewFrame?.refresh()"
+						/>
+					</N8nTooltip>
+				</div>
+				<AppPreviewFrame
+					v-if="app && versionId"
+					ref="previewFrame"
+					:namespace="app.namespace"
+					:version-id="versionId"
+					:width="PREVIEW_WIDTHS[device]"
 				/>
+				<div v-else-if="!loading" :class="$style.emptyState" data-test-id="app-preview-empty">
+					<N8nText tag="h2" size="medium" bold>{{
+						i18n.baseText('apps.builder.empty.title')
+					}}</N8nText>
+					<N8nText color="text-light">{{
+						i18n.baseText(
+							instanceAiAvailable
+								? 'apps.builder.empty.description'
+								: 'apps.builder.empty.descriptionNoAssistant',
+						)
+					}}</N8nText>
+					<N8nButton
+						v-if="!props.artifactMode && instanceAiAvailable"
+						size="small"
+						icon="sparkles"
+						data-test-id="app-preview-empty-open-in-assistant"
+						@click="onOpenInAssistant"
+					>
+						{{ i18n.baseText('apps.builder.openInAssistant') }}
+					</N8nButton>
+				</div>
 			</div>
 
-			<div :class="$style.header">
-				<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.pages') }}</N8nText>
-				<N8nButton size="small" data-test-id="app-page-add-root" @click="openAddPageModal(null)">
-					{{ i18n.baseText('apps.page.new') }}
-				</N8nButton>
-			</div>
-
-			<N8nText v-if="rootPages.length === 0" color="text-light">
-				{{ i18n.baseText('apps.pages.empty') }}
-			</N8nText>
-
-			<div :class="$style.pageGrid">
-				<PageCard
-					v-for="page in rootPages"
-					:key="page.id"
-					:page="page"
-					:child-count="childCounts.get(page.id) ?? 0"
-					@open="openPage"
-					@add-child="openAddPageModal"
-					@delete="onDeletePage"
+			<div v-else-if="app" :class="$style.build" data-test-id="app-builder-build">
+				<N8nTabs
+					v-model="buildTab"
+					:options="buildTabOptions"
+					size="small"
+					variant="modern"
+					data-test-id="app-builder-tabs"
 				/>
+				<div v-if="buildTab === 'pages'" :class="$style.container">
+					<div :class="$style.header">
+						<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.pages') }}</N8nText>
+						<N8nButton
+							size="small"
+							data-test-id="app-page-add-root"
+							@click="openAddPageModal(null)"
+						>
+							{{ i18n.baseText('apps.page.new') }}
+						</N8nButton>
+					</div>
+
+					<N8nText v-if="rootPages.length === 0" color="text-light">
+						{{ i18n.baseText('apps.pages.empty') }}
+					</N8nText>
+
+					<div :class="$style.pageGrid">
+						<PageCard
+							v-for="page in rootPages"
+							:key="page.id"
+							:page="page"
+							:child-count="childCounts.get(page.id) ?? 0"
+							@open="openPage"
+							@add-child="openAddPageModal"
+							@delete="onDeletePage"
+						/>
+					</div>
+				</div>
 			</div>
 		</div>
-	</PageViewLayout>
+	</component>
 </template>
 
 <style lang="scss" module>
-.breadcrumbsRow {
+.artifactRoot {
+	height: 100%;
+	min-height: 0;
+	padding: var(--spacing--xs) var(--spacing--sm);
+}
+
+.builder {
 	display: flex;
-	align-items: flex-start;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	gap: var(--spacing--sm);
+}
+
+.toolbar {
+	display: flex;
+	align-items: center;
 	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.toolbarStart,
+.toolbarEnd {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.toolbarEnd {
+	justify-content: flex-end;
+}
+
+.urlCopy {
+	max-width: 260px;
+	min-width: 0;
+}
+
+.preview {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	overflow: hidden;
+	background: var(--background--surface);
+}
+
+.previewBar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border-bottom: var(--border);
+}
+
+.emptyState {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--lg);
+	text-align: center;
+}
+
+.build {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	gap: var(--spacing--sm);
+	overflow: auto;
 }
 
 .container {
@@ -158,13 +426,6 @@ watch(() => props.appId, initialize);
 	gap: var(--spacing--sm);
 	width: 100%;
 	padding-bottom: var(--spacing--lg);
-}
-
-.urlCard {
-	background-color: var(--background--surface);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--md);
-	margin-bottom: var(--spacing--sm);
 }
 
 .header {

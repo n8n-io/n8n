@@ -32,6 +32,7 @@ import {
 	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	instanceAiEvalSeedAgentSchema,
+	instanceAiAppAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
@@ -1022,6 +1023,38 @@ describe('instanceAiAttachmentSchema — nodes attachment', () => {
 	it('is also accepted by instanceAiResourceAttachmentSchema', () => {
 		const result = instanceAiResourceAttachmentSchema.safeParse(nodesAttachment());
 		expect(result.success).toBe(true);
+	});
+});
+
+describe('instanceAiAppAttachmentSchema', () => {
+	const appAttachment = (overrides: Record<string, unknown> = {}) => ({
+		type: 'app',
+		projectId: 'proj-1',
+		name: 'Greeter',
+		...overrides,
+	});
+
+	it('accepts a new app with a slug namespace and no appId', () => {
+		const result = instanceAiAppAttachmentSchema.safeParse(
+			appAttachment({ namespace: 'my-greeter-2', isNewApp: true }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('applies the apps.create name and namespace rules', () => {
+		expect(
+			instanceAiAppAttachmentSchema.safeParse(appAttachment({ name: 'a'.repeat(129) })).success,
+		).toBe(false);
+		expect(
+			instanceAiAppAttachmentSchema.safeParse(appAttachment({ namespace: 'foo_bar' })).success,
+		).toBe(false);
+		expect(
+			instanceAiAppAttachmentSchema.safeParse(appAttachment({ namespace: 'a'.repeat(129) }))
+				.success,
+		).toBe(false);
+		expect(
+			instanceAiAppAttachmentSchema.safeParse(appAttachment({ namespace: 'Greeter' })).success,
+		).toBe(false);
 	});
 });
 
