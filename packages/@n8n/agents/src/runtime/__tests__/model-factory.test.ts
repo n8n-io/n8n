@@ -1,6 +1,7 @@
 import type { LanguageModel } from 'ai';
 
 import { createEmbeddingModel, createModel } from '../model/model-factory';
+import { forgetEndpointApiStyles } from '../model/openai-api-style';
 
 type ProviderOpts = {
 	apiKey?: string;
@@ -347,6 +348,9 @@ describe('createModel', () => {
 	});
 
 	describe('openai endpoint selection', () => {
+		// Endpoint answers are shared across model instances for the whole process.
+		beforeEach(forgetEndpointApiStyles);
+
 		const build = (creds: Record<string, unknown>, fetchFn: typeof globalThis.fetch) =>
 			createModel(
 				{ id: 'openai/gpt-5.6', apiKey: 'sk-fake', ...creds },

@@ -4,7 +4,7 @@ import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/m
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
-import { withChatCompletionsFallback } from './openai-api-style';
+import { guardHtmlCatchAll, withChatCompletionsFallback } from './openai-api-style';
 import {
 	PROVIDER_CREDENTIAL_SCHEMAS,
 	type ProviderId,
@@ -155,17 +155,28 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
 			const { apiStyle, ...providerCreds } = creds;
+			const { baseURL } = providerCreds;
 			const provider = createOpenAI({ ...providerCreds, fetch });
 			// `apiStyle` is the explicit override and wins over the automatic choice.
 			if (apiStyle === 'chat') return provider.chat(model);
 			// The official API serves /responses, which the provider's default model
-			// targets. OpenAI credentials also carry that base URL.
-			if (apiStyle === 'responses' || !isOpenAiCustomEndpoint(providerCreds.baseURL)) {
+			// targets. OpenAI credentials also carry that base URL. `isOpenAiCustomEndpoint`
+			// reads the model-discovery host list, so a host added there to fix a model
+			// dropdown also stops this endpoint from being probed.
+			if (apiStyle === 'responses' || baseURL === undefined || !isOpenAiCustomEndpoint(baseURL)) {
 				return provider(model);
 			}
 			// A custom baseURL is either a proxy for real OpenAI or an
 			// OpenAI-COMPATIBLE server. Only the endpoint knows which one it is.
-			return withChatCompletionsFallback(provider(model), provider.chat(model));
+			// The /responses side gets its own provider instance, on a guarded
+			// fetch: a reverse-proxy catch-all can answer 200 with an HTML page,
+			// which the SDK stream parser would otherwise accept as an empty
+			// stream instead of falling back to chat.
+			const guardedProvider = createOpenAI({
+				...providerCreds,
+				fetch: guardHtmlCatchAll(fetch ?? globalThis.fetch),
+			});
+			return withChatCompletionsFallback(baseURL, guardedProvider(model), provider.chat(model));
 		},
 	},
 	custom: {

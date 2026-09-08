@@ -11,13 +11,21 @@
 import { generateText } from 'ai';
 
 import { createModel } from '../model/model-factory';
+import { forgetEndpointApiStyles, withChatCompletionsFallback } from '../model/openai-api-style';
 
 /** The built model, with the call options left loose so a test can drive `doStream`. */
 type EndpointModel = {
 	doStream: (options: unknown) => Promise<{ stream: ReadableStream<unknown> }>;
 };
 
-type Route = { status?: number; body?: string; contentType?: string; throws?: Error };
+type Route = {
+	status?: number;
+	body?: string;
+	contentType?: string;
+	throws?: Error;
+	/** Holds the answer open, so a test can act while this request is in flight. */
+	wait?: Promise<void>;
+};
 type Call = { path: string; headers: Headers; body: Record<string, unknown> };
 
 const PROXY = 'https://proxy.example/v1';
@@ -111,6 +119,25 @@ function parseJsonBody(body: BodyInit | null | undefined): Record<string, unknow
 	}
 }
 
+const abortError = () =>
+	Object.assign(new Error('The operation was aborted'), { name: 'AbortError' });
+
+/** Resolves once the signal aborts, at once if it already has. Stays pending without one. */
+const untilAborted = async (signal: AbortSignal | null | undefined) =>
+	await new Promise<void>((resolve) => {
+		if (signal?.aborted) resolve();
+		else signal?.addEventListener('abort', () => resolve(), { once: true });
+	});
+
+/** A promise a test resolves by hand, to hold a route open. */
+function held() {
+	let release = () => {};
+	const promise = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	return { promise, release };
+}
+
 /** Mock HTTP: `routes` maps a request path to the answer the fake server gives. */
 function fakeEndpoint(routes: Record<string, Route>) {
 	const calls: Call[] = [];
@@ -124,6 +151,8 @@ function fakeEndpoint(routes: Record<string, Route>) {
 		// An unlisted path is a server that does not have that route at all.
 		const route = routes[pathname] ?? { status: 404 };
 		await Promise.resolve();
+		if (route.wait) await Promise.race([route.wait, untilAborted(init?.signal)]);
+		if (init?.signal?.aborted) throw abortError();
 		if (route.throws) throw route.throws;
 		return new Response(route.body ?? '', {
 			status: route.status ?? 404,
@@ -149,6 +178,9 @@ async function readStream(stream: ReadableStream<unknown>) {
 }
 
 describe('openai api-style selection (real SDK)', () => {
+	// Endpoint answers are shared across model instances for the whole process.
+	beforeEach(forgetEndpointApiStyles);
+
 	it('generates through /responses on a custom endpoint that serves it', async () => {
 		// The reported failure: a proxy in front of real OpenAI was pinned to
 		// /chat/completions, which rejects reasoning effort once tools are attached.
@@ -317,6 +349,190 @@ describe('openai api-style selection (real SDK)', () => {
 		expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
 	});
 
+	/** An unknown route in the OpenAI error format, at the statuses gateways use for it. */
+	const UNKNOWN_URL_STATUSES = [404, 400, 501];
+
+	it.each(UNKNOWN_URL_STATUSES)('falls back to chat on an unknown_url %i', async (status) => {
+		// Groq and OpenAI itself answer an unknown route in their normal error
+		// format, so the body parses and the status alone cannot decide.
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': {
+				status,
+				body: JSON.stringify({
+					error: {
+						message: 'Unknown request URL: POST /openai/v1/responses',
+						type: 'invalid_request_error',
+						code: 'unknown_url',
+					},
+				}),
+				contentType: 'application/json',
+			},
+			'/v1/chat/completions': CHAT_OK,
+		});
+
+		const { text } = await generateText({
+			model: build({ url: PROXY }, fetchFn),
+			prompt: 'hi',
+			maxRetries: 0,
+		});
+
+		expect(text).toBe('from chat');
+		expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
+	});
+
+	const CODE_NULL_MISSING_ROUTE_CASES: Array<[number, string]> = [
+		[404, 'Unknown request URL: POST /v1/responses'],
+		[400, 'Unknown request URL: POST /v1/responses'],
+		// A gateway can mount the route under an arbitrary prefix.
+		[501, 'Unknown request URL: POST /openai/v1/responses'],
+	];
+
+	it.each(CODE_NULL_MISSING_ROUTE_CASES)(
+		'falls back to chat on an unknown-route message with no unknown_url code, at %i',
+		async (status, message) => {
+			// Some gateways send this exact message with `code: null` instead of
+			// `unknown_url`. The message alone must name the /responses route.
+			const { fetchFn, calls } = fakeEndpoint({
+				'/v1/responses': {
+					status,
+					body: JSON.stringify({
+						error: { message, type: 'invalid_request_error', code: null },
+					}),
+					contentType: 'application/json',
+				},
+				'/v1/chat/completions': CHAT_OK,
+			});
+
+			const { text } = await generateText({
+				model: build({ url: PROXY }, fetchFn),
+				prompt: 'hi',
+				maxRetries: 0,
+			});
+
+			expect(text).toBe('from chat');
+			expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
+		},
+	);
+
+	it.each([401, 403, 429])(
+		'keeps a %i with an unknown_url body from a working /responses route',
+		async (status) => {
+			// Auth and rate-limit statuses never mean "no route", even if a gateway
+			// happens to reuse the unknown_url body shape while it is being throttled.
+			const { fetchFn, calls } = fakeEndpoint({
+				'/v1/responses': {
+					status,
+					body: JSON.stringify({
+						error: {
+							message: 'Unknown request URL: POST /v1/responses',
+							type: 'invalid_request_error',
+							code: 'unknown_url',
+						},
+					}),
+					contentType: 'application/json',
+				},
+				'/v1/chat/completions': CHAT_OK,
+			});
+
+			await expect(
+				generateText({ model: build({ url: PROXY }, fetchFn), prompt: 'hi', maxRetries: 0 }),
+			).rejects.toThrow('Unknown request URL');
+			expect(paths(calls)).toEqual(['/v1/responses']);
+		},
+	);
+
+	it('keeps a bad-parameter 400 from a working /responses route', async () => {
+		// Same `invalid_request_error` type as the unknown-route body above, but
+		// nothing here says the route is missing, so a retry would send the same
+		// prompt twice and hide the real error.
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': {
+				status: 400,
+				body: JSON.stringify({
+					error: {
+						message: "Unsupported parameter: 'temperature'",
+						type: 'invalid_request_error',
+						code: 'unsupported_parameter',
+					},
+				}),
+				contentType: 'application/json',
+			},
+			'/v1/chat/completions': CHAT_OK,
+		});
+
+		await expect(
+			generateText({ model: build({ url: PROXY }, fetchFn), prompt: 'hi', maxRetries: 0 }),
+		).rejects.toThrow('Unsupported parameter');
+		expect(paths(calls)).toEqual(['/v1/responses']);
+	});
+
+	it('falls back to chat on an HTML page answered with HTTP 200', async () => {
+		// A reverse proxy with a catch-all route answers the unknown path with its
+		// own page. The SDK reports that as `Invalid JSON response` at status 200.
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': {
+				status: 200,
+				body: '<!doctype html><title>n8n</title>',
+				contentType: 'text/html; charset=utf-8',
+			},
+			'/v1/chat/completions': CHAT_OK,
+		});
+
+		const { text } = await generateText({
+			model: build({ url: PROXY }, fetchFn),
+			prompt: 'hi',
+			maxRetries: 0,
+		});
+
+		expect(text).toBe('from chat');
+		expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
+	});
+
+	it('falls back to chat on doStream when an HTML page is answered with HTTP 200', async () => {
+		// The installed SDK's stream response handler accepts any 200 body with no
+		// content-type check, so without a guard this would silently produce a
+		// stream with no text instead of falling back.
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': {
+				status: 200,
+				body: '<!doctype html><title>n8n</title>',
+				contentType: 'text/html; charset=utf-8',
+			},
+			'/v1/chat/completions': CHAT_STREAM_OK,
+		});
+		const model = build({ url: PROXY }, fetchFn) as unknown as EndpointModel;
+
+		const parts = await readStream((await model.doStream({ prompt: PROMPT })).stream);
+
+		expect(parts).toContainEqual(
+			expect.objectContaining({ type: 'text-delta', delta: 'from chat' }),
+		);
+		expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
+
+		// The decision is remembered per endpoint, so a fresh instance skips the probe.
+		const second = build({ url: PROXY }, fetchFn) as unknown as EndpointModel;
+		await readStream((await second.doStream({ prompt: PROMPT })).stream);
+		expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions', '/v1/chat/completions']);
+	});
+
+	it('keeps a truncated JSON answer from a working /responses route', async () => {
+		// The parse fails the same way an HTML page does, but this route answered:
+		// the generation ran, so it must not run a second time on chat.
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': {
+				status: 200,
+				body: '{"id":"resp_1","out',
+				contentType: 'application/json',
+			},
+			'/v1/chat/completions': CHAT_OK,
+		});
+
+		await expect(
+			generateText({ model: build({ url: PROXY }, fetchFn), prompt: 'hi', maxRetries: 0 }),
+		).rejects.toThrow('Invalid JSON response');
+		expect(paths(calls)).toEqual(['/v1/responses']);
+	});
+
 	it('keeps the same error frame when it arrives as an HTTP 200 SSE stream instead', async () => {
 		// Same code and message, but as a stream frame: the content type and the
 		// frame's flat shape (no nested `error` record) both say this was
@@ -470,9 +686,8 @@ describe('openai api-style selection (real SDK)', () => {
 	});
 
 	it('reports an aborted /responses request without a second endpoint', async () => {
-		const aborted = Object.assign(new Error('The operation was aborted'), { name: 'AbortError' });
 		const { fetchFn, calls } = fakeEndpoint({
-			'/v1/responses': { throws: aborted },
+			'/v1/responses': { throws: abortError() },
 			'/v1/chat/completions': CHAT_OK,
 		});
 
@@ -480,5 +695,292 @@ describe('openai api-style selection (real SDK)', () => {
 			generateText({ model: build({ url: CHAT_ONLY }, fetchFn), prompt: 'hi' }),
 		).rejects.toThrow('The operation was aborted');
 		expect(paths(calls)).toEqual(['/v1/responses']);
+	});
+
+	describe('endpoint decision sharing', () => {
+		it('answers a fresh model instance from the endpoint decision', async () => {
+			// `RuntimeContextBuilder` builds a new model for every turn, so the
+			// decision must survive the instance that made it.
+			const { fetchFn, calls } = fakeEndpoint({ '/v1/chat/completions': CHAT_OK });
+
+			await generateText({ model: build({ url: CHAT_ONLY }, fetchFn), prompt: 'hi' });
+			await generateText({ model: build({ url: CHAT_ONLY }, fetchFn), prompt: 'hi' });
+			// A trailing slash spells the same endpoint.
+			await generateText({ model: build({ url: `${CHAT_ONLY}/` }, fetchFn), prompt: 'hi' });
+
+			expect(paths(calls)).toEqual([
+				'/v1/responses',
+				'/v1/chat/completions',
+				'/v1/chat/completions',
+				'/v1/chat/completions',
+			]);
+		});
+
+		it('keeps separate decisions for endpoints that differ only by query string', async () => {
+			// A gateway that routes by query parameter, not path, so the endpoint
+			// identity must include the query or two deployments collapse into one.
+			const fetchFn = (async (url: unknown) => {
+				const parsed = new URL(String(url));
+				const wantsResponses = parsed.searchParams.get('path') === '/responses';
+				const supportsResponses = parsed.searchParams.get('deployment') === 'responses';
+				if (wantsResponses !== supportsResponses)
+					return await Promise.resolve(new Response('', { status: 404 }));
+				return await Promise.resolve(
+					new Response((wantsResponses ? RESPONSES_OK : CHAT_OK).body, {
+						status: 200,
+						headers: { 'content-type': 'application/json' },
+					}),
+				);
+			}) as unknown as typeof globalThis.fetch;
+
+			const chatOnly = await generateText({
+				model: build({ url: 'https://query.test/openai?deployment=chat&path=' }, fetchFn),
+				prompt: 'hi',
+			});
+			const responsesOnly = await generateText({
+				model: build({ url: 'https://query.test/openai?deployment=responses&path=' }, fetchFn),
+				prompt: 'hi',
+			});
+
+			expect(chatOnly.text).toBe('from chat');
+			expect(responsesOnly.text).toBe('from responses');
+		});
+
+		it('decides for each endpoint on its own', async () => {
+			const chatOnly = fakeEndpoint({ '/v1/chat/completions': CHAT_OK });
+			const proxy = fakeEndpoint({ '/v1/responses': RESPONSES_OK });
+
+			const downgraded = await generateText({
+				model: build({ url: CHAT_ONLY }, chatOnly.fetchFn),
+				prompt: 'hi',
+			});
+			const direct = await generateText({
+				model: build({ url: PROXY }, proxy.fetchFn),
+				prompt: 'hi',
+			});
+
+			expect([downgraded.text, direct.text]).toEqual(['from chat', 'from responses']);
+			expect(paths(chatOnly.calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
+			expect(paths(proxy.calls)).toEqual(['/v1/responses']);
+		});
+
+		it('probes one time when parallel calls arrive before any answer', async () => {
+			const { fetchFn, calls } = fakeEndpoint({ '/v1/chat/completions': CHAT_OK });
+			const model = build({ url: CHAT_ONLY }, fetchFn);
+
+			const results = await Promise.all([
+				generateText({ model, prompt: 'hi' }),
+				generateText({ model, prompt: 'hi' }),
+				generateText({ model, prompt: 'hi' }),
+			]);
+
+			expect(results.map((r) => r.text)).toEqual(['from chat', 'from chat', 'from chat']);
+			// One probe, and every call still sends its own request.
+			expect(paths(calls)).toEqual([
+				'/v1/responses',
+				'/v1/chat/completions',
+				'/v1/chat/completions',
+				'/v1/chat/completions',
+			]);
+		});
+
+		it('lets a call that waited ask the endpoint itself when the probe failed', async () => {
+			// A 500 says nothing about the API style, so the waiting call must send
+			// its own request instead of inheriting the probe's failure.
+			const { fetchFn, calls } = fakeEndpoint({
+				'/v1/responses': {
+					status: 500,
+					body: '{"error":{"message":"boom","type":"server_error"}}',
+					contentType: 'application/json',
+				},
+				'/v1/chat/completions': CHAT_OK,
+			});
+			const model = build({ url: PROXY }, fetchFn);
+
+			const results = await Promise.allSettled([
+				generateText({ model, prompt: 'hi', maxRetries: 0 }),
+				generateText({ model, prompt: 'hi', maxRetries: 0 }),
+			]);
+
+			expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected']);
+			expect(paths(calls)).toEqual(['/v1/responses', '/v1/responses']);
+		});
+
+		it('reports an abort raised while a probe is still running', async () => {
+			const probeAnswer = held();
+			const { fetchFn, calls } = fakeEndpoint({
+				'/v1/responses': { ...RESPONSES_OK, wait: probeAnswer.promise },
+				'/v1/chat/completions': CHAT_OK,
+			});
+			const model = build({ url: PROXY }, fetchFn);
+			const controller = new AbortController();
+
+			// Proves the waiter actually registered its `abort` listener (instead of
+			// only relying on `controller.abort()` happening to fire after some
+			// unrelated microtask), so the abort below is known to race a listener
+			// that exists, not a listener that may not have been added yet.
+			const registered = new Promise<void>((resolve) => {
+				vi.spyOn(controller.signal, 'addEventListener').mockImplementation(
+					(type, listener, options) => {
+						if (type === 'abort') resolve();
+						return EventTarget.prototype.addEventListener.call(
+							controller.signal,
+							type,
+							listener,
+							options,
+						);
+					},
+				);
+			});
+
+			const probe = generateText({ model, prompt: 'hi' });
+			const waiting = generateText({
+				model,
+				prompt: 'hi',
+				abortSignal: controller.signal,
+				maxRetries: 0,
+			});
+			await registered;
+			controller.abort();
+
+			// The abort surfaces while the probe is still open, not after it.
+			await expect(waiting).rejects.toThrow('aborted');
+			// The waiter reports its own abort instead of sending a second,
+			// already-cancelled request while the leader's probe is still open.
+			expect(paths(calls)).toEqual(['/v1/responses']);
+			probeAnswer.release();
+			expect((await probe).text).toBe('from responses');
+		});
+
+		it('removes its abort listener once the leader completes, without waiting for an abort', async () => {
+			// The waiter's listener must come off even when it never fires — a
+			// leaked listener would otherwise accumulate on every call that shares a
+			// signal across turns.
+			const probeAnswer = held();
+			const { fetchFn } = fakeEndpoint({
+				'/v1/responses': { ...RESPONSES_OK, wait: probeAnswer.promise },
+				'/v1/chat/completions': CHAT_OK,
+			});
+			const model = build({ url: PROXY }, fetchFn);
+			const controller = new AbortController();
+			const removeSpy = vi.spyOn(controller.signal, 'removeEventListener');
+
+			const probe = generateText({ model, prompt: 'hi' });
+			const waiting = generateText({ model, prompt: 'hi', abortSignal: controller.signal });
+			probeAnswer.release();
+
+			expect((await Promise.all([probe, waiting])).map((r) => r.text)).toEqual([
+				'from responses',
+				'from responses',
+			]);
+			expect(removeSpy).toHaveBeenCalledWith('abort', expect.anything());
+		});
+
+		it('asks for /responses again once the decision has expired', async () => {
+			// A server that gains a /responses route must be used again without a
+			// restart, so the decision has a TTL.
+			vi.useFakeTimers({ toFake: ['Date'] });
+			try {
+				const { fetchFn, calls } = fakeEndpoint({ '/v1/chat/completions': CHAT_OK });
+				const model = build({ url: CHAT_ONLY }, fetchFn);
+
+				await generateText({ model, prompt: 'hi' });
+				vi.setSystemTime(Date.now() + 5 * 60 * 1000 + 1);
+				await generateText({ model, prompt: 'hi' });
+
+				expect(paths(calls)).toEqual([
+					'/v1/responses',
+					'/v1/chat/completions',
+					'/v1/responses',
+					'/v1/chat/completions',
+				]);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	it('normalizes the chat model the same way as the responses model', async () => {
+		// Both installed adapters are on v4, so only a stub can show this: a provider
+		// left on an older spec must come back converted through the fallback path,
+		// not in its own older result shape.
+		type Answer = () => unknown;
+		const stub = (specificationVersion: string, answer: Answer) =>
+			({
+				specificationVersion,
+				provider: 'stub',
+				modelId: 'stub',
+				supportedUrls: {},
+				doGenerate: async () => await Promise.resolve(answer()),
+				doStream: async () => await Promise.resolve(answer()),
+			}) as unknown as Parameters<typeof withChatCompletionsFallback>[1];
+
+		const model = withChatCompletionsFallback(
+			'https://stub.example/v1',
+			stub('v4', () => {
+				throw Object.assign(new Error('Not Found'), { statusCode: 404 });
+			}),
+			stub('v2', () => ({
+				content: [],
+				finishReason: 'stop',
+				usage: { inputTokens: 1, outputTokens: 2 },
+				warnings: [],
+			})),
+		) as unknown as {
+			doGenerate: (options: unknown) => Promise<{ finishReason: unknown; usage: unknown }>;
+		};
+
+		const { finishReason, usage } = await model.doGenerate({ prompt: PROMPT });
+
+		expect(finishReason).toEqual({ unified: 'stop', raw: undefined });
+		expect(usage).toMatchObject({ inputTokens: { total: 1 }, outputTokens: { total: 2 } });
+	});
+
+	it('normalizes a v3 chat model streaming through the fallback', async () => {
+		// The generation case above only exercises `doGenerate`. The installed
+		// SDK's `asLanguageModelV4` converts a v3 model by relabelling
+		// `specificationVersion` only — v3 and v4 stream chunks share the same
+		// shape, so a v3 stub's stream must reach the caller unchanged, not
+		// dropped or re-wrapped by `wrapLanguageModel`.
+		const chatChunks: Array<Record<string, unknown>> = [
+			{ type: 'stream-start', warnings: [] },
+			{ type: 'text-start', id: '1' },
+			{ type: 'text-delta', id: '1', delta: 'from chat' },
+			{ type: 'text-end', id: '1' },
+			{
+				type: 'finish',
+				finishReason: { unified: 'stop', raw: undefined },
+				usage: { inputTokens: { total: 1 }, outputTokens: { total: 2 } },
+			},
+		];
+		const stub = (specificationVersion: string, doStream: () => unknown) =>
+			({
+				specificationVersion,
+				provider: 'stub',
+				modelId: 'stub',
+				supportedUrls: {},
+				doGenerate: async () =>
+					await Promise.reject(Object.assign(new Error('Not Found'), { statusCode: 404 })),
+				doStream,
+			}) as unknown as Parameters<typeof withChatCompletionsFallback>[1];
+
+		const model = withChatCompletionsFallback(
+			'https://stub.example/v1',
+			stub('v4', () => {
+				throw Object.assign(new Error('Not Found'), { statusCode: 404 });
+			}),
+			stub('v3', () => ({
+				stream: new ReadableStream({
+					start(controller) {
+						for (const chunk of chatChunks) controller.enqueue(chunk);
+						controller.close();
+					},
+				}),
+			})),
+		) as unknown as EndpointModel;
+
+		const { stream } = await model.doStream({ prompt: PROMPT });
+
+		expect(await readStream(stream)).toEqual(chatChunks);
 	});
 });
