@@ -7,6 +7,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Client } from 'langsmith';
+import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
@@ -507,7 +508,7 @@ function batchRuns(runs: LangSmithRun[]): LangSmithRun[][] {
 		const separatorSize = batch.length > 0 ? 1 : 0;
 		const runSize = serializedSize(run);
 		if (emptyBatchSize + runSize > MAX_BATCH_SIZE_BYTES) {
-			throw new Error('LangSmith run exceeds maximum batch size');
+			throw new UserError('LangSmith run exceeds maximum batch size');
 		}
 		if (
 			batch.length > 0 &&
