@@ -62,4 +62,16 @@ export class ResourceMoveModal extends FloatingUiHelper {
 	async clickConfirmMoveButton(): Promise<void> {
 		await this.getMoveConfirmButton().click();
 	}
+
+	/**
+	 * Waits for the project select's remote search to settle after typing.
+	 * The search is debounced twice — element-plus's own remote-method
+	 * debounce and this component's own search debounce, 300ms each — so up
+	 * to ~600ms can pass between the last keystroke and the option list
+	 * actually reflecting it.
+	 */
+	async waitForDebounce(): Promise<void> {
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(800);
+	}
 }
