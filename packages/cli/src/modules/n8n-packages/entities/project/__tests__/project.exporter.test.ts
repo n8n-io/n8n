@@ -338,10 +338,15 @@ describe('ProjectExporter', () => {
 				projects: [project],
 			});
 			// Both belong to the project; the exporter drops the unpublished one under the policy.
-			workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue(['w-published', 'w-unpublished']);
+			workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue([
+				'w-published',
+				'w-unpublished',
+			]);
 			workflowFinder.findAllWorkflowIdsForUser.mockResolvedValue(['w-published', 'w-unpublished']);
 			workflowExporter.export.mockResolvedValue({
-				entries: [{ id: 'w-published', name: 'Published', target: 'projects/billing/workflows/pub' }],
+				entries: [
+					{ id: 'w-published', name: 'Published', target: 'projects/billing/workflows/pub' },
+				],
 				requirements: emptyRequirements,
 			});
 
