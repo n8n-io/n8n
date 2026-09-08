@@ -36,7 +36,7 @@ const maxHeight = computed(() =>
 	typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight,
 );
 
-const contentHeightStyle = computed(() =>
+const containerHeightStyle = computed(() =>
 	explicitHeight.value ? { height: explicitHeight.value } : undefined,
 );
 const expandButtonLabel = computed(() =>
@@ -54,10 +54,6 @@ const rawMarkdown = ref(props.modelValue);
 const container = ref<HTMLElement>();
 const rawEditor = ref<HTMLTextAreaElement>();
 const rawContentHeight = ref<string>();
-
-function getContentElement() {
-	return container.value?.querySelector<HTMLElement>('[data-markdown-editor-content-wrapper]');
-}
 
 function getScrollableElement() {
 	return isRawMode.value
@@ -85,6 +81,7 @@ function getBubbleMenuContainer() {
 }
 
 const contentExceedsCollapsedHeight = ref(false);
+const expandedContentHeight = ref(COLLAPSED_MAX_HEIGHT_OVERRIDE);
 const shouldBeCollapsable = computed(function getShouldBeCollapsable() {
 	return props.isCollapsible && contentExceedsCollapsedHeight.value;
 });
@@ -124,8 +121,10 @@ watch(
 
 			/** Measure the content without the fixed textarea or transition height. */
 			scrollable.style.height = isRawMode.value ? '0' : 'auto';
-			scrollable.style.maxHeight = `${COLLAPSED_MAX_HEIGHT_OVERRIDE}px`;
-			contentExceedsCollapsedHeight.value = scrollable.scrollHeight > COLLAPSED_MAX_HEIGHT_OVERRIDE;
+			scrollable.style.maxHeight = 'none';
+			expandedContentHeight.value = scrollable.scrollHeight;
+			contentExceedsCollapsedHeight.value =
+				expandedContentHeight.value > COLLAPSED_MAX_HEIGHT_OVERRIDE;
 			scrollable.style.height = height;
 			scrollable.style.maxHeight = maxHeight;
 			scrollable.scrollTop = scrollTop;
@@ -162,31 +161,57 @@ watch(
 const setMaxHeight = computed(function getMaxHeightStyle() {
 	if (!props.isCollapsible) return `--markdown-editor-max-height: ${maxHeight.value}`;
 
-	const collapsibleMaxHeight = collapsed.value ? `${COLLAPSED_MAX_HEIGHT_OVERRIDE}px` : 'none';
+	const collapsibleMaxHeight = collapsed.value
+		? `${COLLAPSED_MAX_HEIGHT_OVERRIDE}px`
+		: `${expandedContentHeight.value}px`;
 	return `--markdown-editor-max-height: ${collapsibleMaxHeight}`;
 });
 
-async function toggleCollapsed() {
-	const content = getContentElement();
-	const scrollable = getScrollableElement();
-	if (!content || !scrollable) return;
+function hasHeightTransition(element: HTMLElement) {
+	const styles = window.getComputedStyle(element);
+	const properties = styles.transitionProperty.split(',').map(function trimProperty(property) {
+		return property.trim();
+	});
+	const durations = styles.transitionDuration.split(',').map(function parseDuration(duration) {
+		const value = Number.parseFloat(duration);
+		return duration.trim().endsWith('ms') ? value : value * 1000;
+	});
 
-	explicitHeight.value = `${content.getBoundingClientRect().height}px`;
+	return properties.some(function isActiveHeightTransition(property, index) {
+		const duration = durations[index % durations.length];
+		return (property === 'height' || property === 'all') && duration > 0;
+	});
+}
+
+async function toggleCollapsed() {
+	const transitionElement = container.value;
+	const scrollable = getScrollableElement();
+	if (!transitionElement || !scrollable) return;
+
+	explicitHeight.value = `${transitionElement.getBoundingClientRect().height}px`;
 	await nextTick();
-	void content.offsetHeight;
+	void transitionElement.offsetHeight;
 
 	collapsed.value = !collapsed.value;
 	emit('update:collapsed', collapsed.value);
 	await nextTick();
 
-	const targetHeight = collapsed.value
+	const contentTargetHeight = collapsed.value
 		? scrollable.getBoundingClientRect().height
 		: scrollable.scrollHeight;
-	explicitHeight.value = `${targetHeight}px`;
+	if (isRawMode.value) {
+		rawContentHeight.value = `${contentTargetHeight}px`;
+		await nextTick();
+	}
+
+	explicitHeight.value = `${transitionElement.scrollHeight}px`;
+	if (!hasHeightTransition(transitionElement)) {
+		explicitHeight.value = undefined;
+	}
 }
 
 function onHeightTransitionEnd(event: TransitionEvent) {
-	if (event.propertyName === 'height' && event.target === getContentElement()) {
+	if (event.propertyName === 'height' && event.target === container.value) {
 		explicitHeight.value = undefined;
 	}
 }
@@ -281,15 +306,14 @@ defineExpose({
 			props.disabled ? $style.disabled : '',
 			shouldBeCollapsable && collapsed ? $style.collapsed : '',
 		]"
-		:style="setMaxHeight"
+		:style="[setMaxHeight, containerHeightStyle]"
 		data-test-id="n8n-markdown-editor"
+		@transitionend="onHeightTransitionEnd"
 	>
 		<div
 			v-if="isRawMode"
 			data-markdown-editor-content-wrapper
 			:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
-			:style="contentHeightStyle"
-			@transitionend="onHeightTransitionEnd"
 		>
 			<textarea
 				ref="rawEditor"
@@ -310,8 +334,6 @@ defineExpose({
 			data-markdown-editor-content-wrapper
 			:editor="editor"
 			:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
-			:style="contentHeightStyle"
-			@transitionend="onHeightTransitionEnd"
 		/>
 		<MarkdownEditorToolbar
 			v-if="shouldShowInlineToolbar && editor"
@@ -421,7 +443,7 @@ defineExpose({
 	}
 }
 .content {
-	@include motion.height-transition;
+	@include motion.max-height-transition;
 	height: 100%;
 	max-height: var(--markdown-editor-max-height);
 	overflow: hidden;
@@ -513,6 +535,7 @@ defineExpose({
 }
 
 .rawContent {
+	@include motion.max-height-transition;
 	display: block;
 	box-sizing: border-box;
 	width: 100%;

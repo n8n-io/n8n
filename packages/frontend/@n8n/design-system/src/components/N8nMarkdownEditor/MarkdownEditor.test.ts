@@ -202,7 +202,7 @@ describe('components/N8nMarkdownEditor', () => {
 		});
 
 		await waitFor(() => expect(getEditorElement(wrapper.container)).toBeInTheDocument());
-		expect(wrapper.queryByRole('button', { name: 'Collapse editor' })).not.toBeInTheDocument();
+		expect(wrapper.queryByRole('button', { name: 'Expand editor' })).not.toBeInTheDocument();
 	});
 
 	it('expands and collapses content that exceeds the collapsed height', async function toggleLongContent() {
