@@ -1,6 +1,7 @@
+import type { SerializableAgentState } from '@n8n/agents';
 import type { InstanceAiBuildMode } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import { RunStateRegistry, type SerializableAgentState } from '@n8n/instance-ai';
+import { RunStateRegistry } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiService } from '../instance-ai.service';

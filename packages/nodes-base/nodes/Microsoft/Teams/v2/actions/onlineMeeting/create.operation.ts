@@ -2,6 +2,7 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { applyMeetingSettings, withMeetingSettings } from './meetingSettings';
 import {
 	meetingRequest,
 	requiredText,
@@ -42,111 +43,7 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		default: {},
 		placeholder: 'Add option',
-		options: [
-			{
-				displayName: 'Allow Attendees to Enable Camera',
-				name: 'allowAttendeeToEnableCamera',
-				type: 'boolean',
-				default: true,
-				description: 'Whether attendees can turn on their camera',
-			},
-			{
-				displayName: 'Allow Attendees to Enable Microphone',
-				name: 'allowAttendeeToEnableMic',
-				type: 'boolean',
-				default: true,
-				description: 'Whether attendees can turn on their microphone',
-			},
-			{
-				displayName: 'Allow Meeting Chat',
-				name: 'allowMeetingChat',
-				type: 'options',
-				options: [
-					{
-						name: 'Disabled',
-						value: 'disabled',
-					},
-					{
-						name: 'Enabled',
-						value: 'enabled',
-					},
-					{
-						name: 'Limited',
-						value: 'limited',
-						description: 'Chat is available only during the meeting',
-					},
-				],
-				default: 'enabled',
-				description: 'The mode of the meeting chat',
-			},
-			{
-				displayName: 'Allow Teamwork Reactions',
-				name: 'allowTeamworkReactions',
-				type: 'boolean',
-				default: true,
-				description: 'Whether Teams reactions are enabled for the meeting',
-			},
-			{
-				displayName: 'Allowed Presenters',
-				name: 'allowedPresenters',
-				type: 'options',
-				options: [
-					{
-						name: 'Everyone',
-						value: 'everyone',
-					},
-					{
-						name: 'Organization',
-						value: 'organization',
-					},
-					{
-						name: 'Organizer',
-						value: 'organizer',
-					},
-				],
-				default: 'everyone',
-				description: 'Who can present in the meeting',
-			},
-			{
-				displayName: 'Announce Entry and Exit',
-				name: 'isEntryExitAnnounced',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to announce when callers join or leave the meeting',
-			},
-			{
-				displayName: 'Lobby Bypass Scope',
-				name: 'lobbyBypassScope',
-				type: 'options',
-				options: [
-					{
-						name: 'Everyone',
-						value: 'everyone',
-					},
-					{
-						name: 'Organization',
-						value: 'organization',
-					},
-					{
-						name: 'Organization and Federated',
-						value: 'organizationAndFederated',
-						description: 'People in the organization and guests from trusted organizations',
-					},
-					{
-						name: 'Organizer',
-						value: 'organizer',
-					},
-				],
-				default: 'organization',
-				description: 'Who can join the meeting without waiting in the lobby',
-			},
-			{
-				displayName: 'Record Automatically',
-				name: 'recordAutomatically',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to record the meeting automatically',
-			},
+		options: withMeetingSettings([
 			{
 				displayName: 'Require Passcode',
 				name: 'passcodeRequired',
@@ -155,7 +52,7 @@ const properties: INodeProperties[] = [
 				description:
 					'Whether a passcode is required to join the meeting by meeting ID. This setting cannot be changed after the meeting is created.',
 			},
-		],
+		]),
 	},
 ];
 
@@ -181,30 +78,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		startDateTime: toGraphUtc.call(this, this.getNodeParameter('startDateTime', i), 'Start Time'),
 		endDateTime: toGraphUtc.call(this, this.getNodeParameter('endDateTime', i), 'End Time'),
 	};
-	if (options.allowAttendeeToEnableCamera !== undefined) {
-		body.allowAttendeeToEnableCamera = options.allowAttendeeToEnableCamera as boolean;
-	}
-	if (options.allowAttendeeToEnableMic !== undefined) {
-		body.allowAttendeeToEnableMic = options.allowAttendeeToEnableMic as boolean;
-	}
-	if (options.allowMeetingChat) {
-		body.allowMeetingChat = options.allowMeetingChat as string;
-	}
-	if (options.allowTeamworkReactions !== undefined) {
-		body.allowTeamworkReactions = options.allowTeamworkReactions as boolean;
-	}
-	if (options.allowedPresenters) {
-		body.allowedPresenters = options.allowedPresenters as string;
-	}
-	if (options.isEntryExitAnnounced !== undefined) {
-		body.isEntryExitAnnounced = options.isEntryExitAnnounced as boolean;
-	}
-	if (options.lobbyBypassScope) {
-		body.lobbyBypassSettings = { scope: options.lobbyBypassScope as string };
-	}
-	if (options.recordAutomatically !== undefined) {
-		body.recordAutomatically = options.recordAutomatically as boolean;
-	}
+	applyMeetingSettings(body, options);
 	if (options.passcodeRequired !== undefined) {
 		body.joinMeetingIdSettings = { isPasscodeRequired: options.passcodeRequired };
 	}

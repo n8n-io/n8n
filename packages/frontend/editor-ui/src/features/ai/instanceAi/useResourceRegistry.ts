@@ -39,8 +39,15 @@ interface Collections {
 	linkableByName: Map<string, ResourceEntry>;
 }
 
+/**
+ * A blank string is treated as absent. Every caller uses the result as the head
+ * of a fallback chain, so a blank name from a patch call would otherwise beat
+ * the known name and re-key the indexes under an empty string.
+ */
 function optionalString(val: unknown): string | undefined {
-	return typeof val === 'string' ? val : undefined;
+	if (typeof val !== 'string') return undefined;
+	const trimmed = val.trim();
+	return trimmed === '' ? undefined : trimmed;
 }
 
 type RecordProducedOptions = {
@@ -190,9 +197,8 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		recordProduced(col, { type: 'workflow', id: workflowId, name });
 	}
 
-	// workflows action=get-json returns the workflow document itself, not under
-	// a `workflow` key. Surface it so existing workflows loaded for editing can
-	// be previewed even before a later update result is observed.
+	// Historical workflows action=get-json events return the workflow document itself,
+	// not under a `workflow` key. Keep them available when replaying stored threads.
 	if (tc.toolName === 'workflows' && Array.isArray(result.nodes)) {
 		const entry = entryFromListItem('workflow', result);
 		if (entry) recordProduced(col, entry);
