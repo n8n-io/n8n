@@ -9,6 +9,7 @@ import {
 	highEntropyCandidates,
 	isSensitiveInput,
 	isSecretLabelledCell,
+	opaqueFieldValues,
 	opaqueTokenCandidates,
 	getLabelTextByControlIdMap,
 	REVEAL_BUTTON_PATTERN,
@@ -85,6 +86,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		const hasCopyButton = hasButtonMatching(dialog, COPY_BUTTON_PATTERN);
 		if (!hasRevealPhrase && !hasCopyButton) continue;
 		for (const hit of highEntropyCandidates(text)) collectHit(hits, hit);
+		for (const hit of opaqueFieldValues(dialog)) collectHit(hits, hit);
 	}
 
 	// Product UIs frequently label secret containers with test IDs even when the
@@ -119,6 +121,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		if (!container || container.matches('[role="dialog"], dialog[open]')) continue;
 		if (!hasButtonMatching(container, REVEAL_BUTTON_PATTERN)) continue;
 		for (const hit of highEntropyCandidates(elementText(container))) collectHit(hits, hit);
+		for (const hit of opaqueFieldValues(container)) collectHit(hits, hit);
 	}
 
 	// Monospace tokens inside a nearby sensitive ancestor are common in API-key

@@ -400,6 +400,34 @@ describe('analyzeHtmlSensitivity', () => {
 		});
 	});
 
+	// A console renders the issued value into a readonly textbox, so the dialog's
+	// own text carries no token. `elementText` walks text nodes only, and the field
+	// is unnamed, so neither of the other passes reaches the value either.
+	it('finds an unlabelled input value in a reveal dialog', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p><input type="text" readonly value="${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
+	// A name the agent types is not a value the page issued. It can clear the
+	// opaque floor on length and entropy alone, so the field being editable is what
+	// keeps it out.
+	it('leaves an editable field in a reveal dialog alone', () => {
+		const typed = 'n8n-credential-prod-2026';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p><input type="text" value="${typed}"><input type="text" readonly value="${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+		expect(result.ok && result.hits.some((hit) => hit.value === typed)).toBe(false);
+	});
+
 	it('walks same-origin iframe and shadow-root bundle children', () => {
 		const result = analyzeHtmlSensitivity(
 			probe('<p>outer</p>', [
@@ -461,6 +489,21 @@ describe('analyzeHtmlSensitivity', () => {
 		);
 
 		expect(result.ok && result.hits).toContainEqual({ type: 'secret', value: OPAQUE });
+	});
+
+	it('finds an unlabelled input value in a reveal-button plus copy-button container', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`
+				<section>
+					<h2>API keys</h2>
+					<input type="text" readonly value="${OPAQUE}">
+					<button>Reveal key</button>
+					<button>Copy</button>
+				</section>
+			`),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
 	});
 
 	it('finds sensitive aria-label containers', () => {

@@ -276,6 +276,34 @@ export function opaqueTokenCandidates(el: Element): SecretHit[] {
 	];
 }
 
+/** True when the whole value is one opaque run, judged on the floor
+ *  `opaqueTokenCandidates` applies to a token it found in prose. */
+function isOpaqueValue(value: string): boolean {
+	const [token, ...rest] = opaqueTokens(value);
+	return rest.length === 0 && token === value;
+}
+
+/**
+ * Opaque values of the fields a container PRESENTS, for a container its own
+ * signals already confirmed. A value is not text content, so the passes that
+ * read `elementText` never reach one, and an unnamed field is not sensitive on
+ * its own either.
+ *
+ * Editable fields are excluded: the same dialog often takes a name for the
+ * credential, and a name long enough to clear the opaque floor would otherwise
+ * be masked out from under the caller that typed it.
+ */
+export function opaqueFieldValues(container: Element): SecretHit[] {
+	const hits: SecretHit[] = [];
+	for (const field of Array.from(container.querySelectorAll('input, textarea'))) {
+		if (!field.hasAttribute('readonly') && !field.hasAttribute('disabled')) continue;
+		for (const value of sensitiveInputValues(field)) {
+			if (isOpaqueValue(value)) hits.push({ type: 'password', value });
+		}
+	}
+	return hits;
+}
+
 // Scored on the inner match, reported as the whole token: a shape this class
 // misses must not be split into fragments.
 export function highEntropyCandidates(text: string): SecretHit[] {
