@@ -50,6 +50,7 @@ function setup(
 	workflowNameLookup?: (id: string) => string | undefined,
 	agentBuilderTarget?: () => { agentId: string; projectId: string; name?: string } | undefined,
 	pendingAgentTarget?: () => { agentId: string; projectId: string; name: string } | undefined,
+	appBuilderTarget?: () => { appId: string; projectId: string; name?: string } | undefined,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
@@ -58,6 +59,7 @@ function setup(
 		undefined,
 		agentBuilderTarget,
 		pendingAgentTarget,
+		appBuilderTarget,
 	);
 	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
 }
@@ -636,6 +638,184 @@ describe('useResourceRegistry', () => {
 				name: 'Support Bot',
 				projectId: 'project-1',
 			});
+		});
+	});
+
+	describe('producedArtifacts — app registration', () => {
+		const createResult = {
+			app: {
+				id: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'project-1',
+				createdAt: '2025-01-01T00:00:00.000Z',
+			},
+			workspacePath: '/workspace/apps/greeter',
+		};
+		const buildResult = {
+			appId: 'app-1',
+			name: 'Greeter',
+			namespace: 'greeter',
+			projectId: 'project-1',
+			versionId: 'v-1',
+			url: 'http://localhost:5678/apps/greeter/',
+			warnings: [],
+		};
+
+		test('registers an app with its namespace from an apps create result', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'apps',
+								args: { action: 'create', projectId: 'project-1', name: 'Greeter' },
+								result: createResult,
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toEqual({
+				type: 'app',
+				id: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'project-1',
+				createdAt: '2025-01-01T00:00:00.000Z',
+			});
+			expect(producedArtifacts.get('app-1')?.versionId).toBeUndefined();
+			expect(linkableResourceNameIndex.get('greeter')?.id).toBe('app-1');
+		});
+
+		test('an apps build result adds versionId and url to the same entry and keeps namespace', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({ toolCallId: 'tc-1', toolName: 'apps', result: createResult }),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'apps',
+								args: { action: 'build', appId: 'app-1' },
+								result: { ...buildResult, name: undefined, namespace: undefined },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(1);
+			expect(producedArtifacts.get('app-1')).toEqual({
+				type: 'app',
+				id: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'project-1',
+				createdAt: '2025-01-01T00:00:00.000Z',
+				versionId: 'v-1',
+				url: 'http://localhost:5678/apps/greeter/',
+			});
+		});
+
+		test('a build result alone registers the app from its own fields', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [makeToolCall({ toolName: 'apps', result: buildResult })],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toMatchObject({
+				type: 'app',
+				name: 'Greeter',
+				namespace: 'greeter',
+				versionId: 'v-1',
+			});
+		});
+
+		test('registers the persisted app-builder target when no event produced the app', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				() => ({ appId: 'app-1', projectId: 'project-1', name: 'Greeter' }),
+			);
+
+			messages.value = [makeMessage()];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toEqual({
+				type: 'app',
+				id: 'app-1',
+				name: 'Greeter',
+				projectId: 'project-1',
+			});
+			expect(linkableResourceNameIndex.get('greeter')?.id).toBe('app-1');
+		});
+
+		test('an apps create result keeps its namespace and name over the persisted target', async () => {
+			const { messages, producedArtifacts } = setup(undefined, undefined, undefined, () => ({
+				appId: 'app-1',
+				projectId: 'project-1',
+				name: 'Stale Metadata Name',
+			}));
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [makeToolCall({ toolName: 'apps', result: createResult })],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toMatchObject({
+				type: 'app',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'project-1',
+			});
+		});
+
+		test('error and denied results register nothing', async () => {
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-1',
+								toolName: 'apps',
+								args: { action: 'build', appId: 'app-1' },
+								result: { error: true, stage: 'build', message: 'vite failed', log: '' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'apps',
+								args: { action: 'create', name: 'Greeter' },
+								result: { denied: true, reason: 'Namespace "greeter" is taken.' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(0);
+			expect(resourceNameIndex.size).toBe(0);
 		});
 	});
 

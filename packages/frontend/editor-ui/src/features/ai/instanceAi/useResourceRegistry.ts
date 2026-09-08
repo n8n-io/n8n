@@ -6,12 +6,18 @@ import type {
 } from '@n8n/api-types';
 
 export type ResourceEntry = {
-	type: 'workflow' | 'credential' | 'data-table' | 'agent';
+	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'app';
 	id: string;
 	name: string;
 	createdAt?: string;
 	updatedAt?: string;
 	projectId?: string;
+	/** App artifacts: URL slug the app is served under (`/apps/<namespace>/`). */
+	namespace?: string;
+	/** App artifacts: id of the latest built version; absent until the first `apps build`. */
+	versionId?: string;
+	/** App artifacts: absolute URL of the latest build. */
+	url?: string;
 	/**
 	 * Set to true when the run-finish reap archived this workflow — a
 	 * stepping-stone the agent created but never promoted to the main
@@ -59,6 +65,12 @@ type PendingAgentTargetMetadata = {
 	name: string;
 };
 
+type AppBuilderTargetMetadata = {
+	appId: string;
+	projectId: string;
+	name?: string;
+};
+
 /**
  * Upsert a produced artifact. When an entry for the same `id` already exists,
  * optional fields provided by the new call win; fields it omits are preserved
@@ -85,6 +97,9 @@ function recordProduced(
 				createdAt: entry.createdAt ?? existing.createdAt,
 				updatedAt: entry.updatedAt ?? existing.updatedAt,
 				projectId: entry.projectId ?? existing.projectId,
+				namespace: entry.namespace ?? existing.namespace,
+				versionId: entry.versionId ?? existing.versionId,
+				url: entry.url ?? existing.url,
 			}
 		: entry;
 	col.produced.set(entry.id, merged);
@@ -128,6 +143,7 @@ const ARTIFACT_TOOLS = new Set([
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
+	'apps',
 ]);
 const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
 function entryFromAgentBuilderTarget(
@@ -227,6 +243,39 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			id: result.agentId,
 			name: optionalString(result.agentName) ?? existing?.name ?? 'Untitled',
 		});
+	}
+
+	// --- Apps ----------------------------------------------------------------
+	// apps action=create: { app: { id, name, namespace, projectId, createdAt } }.
+	// apps action=build: { appId, name, namespace, projectId, versionId, url }.
+	// `{ error }` / `{ denied }` results carry neither shape and register nothing.
+	if (tc.toolName === 'apps') {
+		if (result.app && typeof result.app === 'object') {
+			const obj = result.app as Record<string, unknown>;
+			if (typeof obj.id === 'string') {
+				const existing = col.produced.get(obj.id);
+				recordProduced(col, {
+					type: 'app',
+					id: obj.id,
+					name: optionalString(obj.name) ?? existing?.name ?? 'Untitled',
+					projectId: optionalString(obj.projectId),
+					namespace: optionalString(obj.namespace),
+					createdAt: optionalString(obj.createdAt),
+				});
+			}
+		}
+		if (typeof result.appId === 'string' && typeof result.versionId === 'string') {
+			const existing = col.produced.get(result.appId);
+			recordProduced(col, {
+				type: 'app',
+				id: result.appId,
+				name: optionalString(result.name) ?? existing?.name ?? 'Untitled',
+				projectId: optionalString(result.projectId),
+				namespace: optionalString(result.namespace),
+				versionId: result.versionId,
+				url: optionalString(result.url),
+			});
+		}
 	}
 
 	// --- Credentials -----------------------------------------------------
@@ -354,8 +403,35 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				},
 				{ linkable: !attachment.pending },
 			);
+		} else if (attachment.type === 'app' && attachment.appId) {
+			recordProduced(col, {
+				type: 'app',
+				id: attachment.appId,
+				name: attachment.name,
+				projectId: attachment.projectId,
+				namespace: attachment.namespace,
+			});
 		}
 	}
+}
+
+/**
+ * Surface the app a thread is bound to before any message mentions it, so the
+ * preview tab exists as soon as the user lands from the apps page.
+ */
+function enrichAppFromBuilderTarget(
+	col: Collections,
+	target: AppBuilderTargetMetadata | undefined,
+): void {
+	if (!target) return;
+	const existing = col.produced.get(target.appId);
+	if (existing && existing.type !== 'app') return;
+	recordProduced(col, {
+		type: 'app',
+		id: target.appId,
+		name: existing?.name ?? target.name ?? 'Untitled',
+		projectId: target.projectId,
+	});
 }
 
 function enrichAgentFromBuilderTarget(
@@ -457,6 +533,7 @@ export function useResourceRegistry(
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
+	appBuilderTarget?: () => AppBuilderTargetMetadata | undefined,
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -483,6 +560,7 @@ export function useResourceRegistry(
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
+			enrichAppFromBuilderTarget(col, appBuilderTarget?.());
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);

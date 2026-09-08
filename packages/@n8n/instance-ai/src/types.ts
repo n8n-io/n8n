@@ -1027,6 +1027,33 @@ export interface InstanceAiWorkspaceService {
 	): Promise<{ deletedCount: number }>;
 }
 
+// ── App service ──────────────────────────────────────────────────────────────
+
+export interface AppSummary {
+	id: string;
+	name: string;
+	namespace: string;
+	projectId: string;
+	createdAt: string;
+}
+
+export interface InstanceAiAppService {
+	/** `conflict` when the namespace is already taken instance-wide, so the tool can guide a retry. */
+	create(input: {
+		projectId: string;
+		name: string;
+		namespace: string;
+	}): Promise<{ app: AppSummary } | { conflict: true }>;
+	get(appId: string): Promise<Omit<AppSummary, 'createdAt'>>;
+	/** Gzipped source tarball of the active version (or the newest one); `null` when the app has no version. */
+	getSourceTarball(appId: string): Promise<{ versionId: string; data: Uint8Array } | null>;
+	/** Stores both gzipped tarballs as a new version and makes it the served one. */
+	storeVersion(
+		appId: string,
+		files: { source: Buffer; dist: Buffer },
+	): Promise<{ versionId: string; url: string }>;
+}
+
 // ── Workflow template service ────────────────────────────────────────────────
 
 export interface InstanceAiWorkflowTemplateService {
@@ -1227,6 +1254,9 @@ export interface InstanceAiContext {
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
 	conversationHistoryService?: InstanceAiConversationHistoryReader;
+	/** Optional — wired by the host when the `apps` module is active. Presence
+	 *  gates the `apps` tool. */
+	appService?: InstanceAiAppService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

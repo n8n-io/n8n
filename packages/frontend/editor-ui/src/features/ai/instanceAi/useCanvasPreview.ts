@@ -8,6 +8,7 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
+	getLatestAppBuildResult,
 	getLatestAgentConfigMutation,
 	getLatestAgentBuilderTarget,
 	getExecutionResultsByWorkflow,
@@ -18,10 +19,14 @@ import type { ThreadRuntime } from './instanceAi.store';
 
 export interface ArtifactTab {
 	id: string;
-	type: 'workflow' | 'data-table' | 'agent';
+	type: 'workflow' | 'data-table' | 'agent' | 'app';
 	name: string;
 	icon: IconName;
 	projectId?: string;
+	/** App artifacts: URL slug the app is served under. */
+	namespace?: string;
+	/** App artifacts: latest built version; absent until the first build. */
+	versionId?: string;
 	/** An agent artifact with no agent row behind it yet. */
 	pending?: boolean;
 	/** The AI is actively mutating this artifact right now. */
@@ -32,15 +37,21 @@ const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
+	app: 'app-window',
 };
 
 interface UseCanvasPreviewOptions {
 	thread: ThreadRuntime;
 	threadId: () => string;
 	initialAgentId?: () => string | undefined;
+	initialAppId?: () => string | undefined;
 }
 
-export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({
+	thread,
+	initialAgentId,
+	initialAppId,
+}: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 	const isPreviewOpen = ref(false);
@@ -51,7 +62,12 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 	const allArtifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
 		for (const entry of thread.producedArtifacts.values()) {
-			if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
+			if (
+				entry.type === 'workflow' ||
+				entry.type === 'data-table' ||
+				entry.type === 'agent' ||
+				entry.type === 'app'
+			) {
 				result.push({
 					id: entry.id,
 					type: entry.type,
@@ -60,6 +76,9 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 					projectId: entry.projectId,
 					pending: entry.pending,
 					building: buildingArtifactIds.value.has(entry.id),
+					...(entry.type === 'app'
+						? { namespace: entry.namespace, versionId: entry.versionId }
+						: {}),
 				});
 			}
 		}
@@ -98,6 +117,16 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		return tab?.type === 'agent' && tab.pending === true;
 	});
 
+	const activeAppTab = computed(() => {
+		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'app' ? tab : null;
+	});
+	const activeAppId = computed(() => activeAppTab.value?.id ?? null);
+	const activeAppProjectId = computed(() => activeAppTab.value?.projectId ?? null);
+	const activeAppNamespace = computed(() => activeAppTab.value?.namespace ?? null);
+	const activeAppVersionId = computed(() => activeAppTab.value?.versionId ?? null);
+	const activeAppBuilding = computed(() => activeAppTab.value?.building === true);
+
 	const executionResultsByWorkflow = computed(() => {
 		const results = new Map<string, ExecutionResult>();
 		for (const message of thread.messages) {
@@ -126,6 +155,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		for (const message of thread.messages) {
 			for (const attachment of message.attachments ?? []) {
 				if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
+				if (attachment.type === 'app' && attachment.appId) return attachment.appId;
 			}
 		}
 		return undefined;
@@ -141,8 +171,18 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		return allArtifactTabs.value.find((tab) => tab.type === 'agent' && tab.id === agentId)?.id;
 	});
 
+	const initialAppTabId = computed(() => {
+		const appId = initialAppId?.();
+		if (!appId) return undefined;
+		return allArtifactTabs.value.find((tab) => tab.type === 'app' && tab.id === appId)?.id;
+	});
+
 	const initialArtifactId = computed(
-		() => firstAttachedArtifactId.value ?? pendingAgentTabId.value ?? initialAgentTabId.value,
+		() =>
+			firstAttachedArtifactId.value ??
+			pendingAgentTabId.value ??
+			initialAgentTabId.value ??
+			initialAppTabId.value,
 	);
 
 	// Open the arriving resource. Only when nothing is open, so it never steals
@@ -200,6 +240,18 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 	function openAgentPreview(agentId: string, _projectId: string): boolean {
 		if (activeTabId.value === agentId && isPreviewOpen.value) return false;
 		activeTabId.value = agentId;
+		isPreviewOpen.value = true;
+		return true;
+	}
+
+	/**
+	 * Open or switch the preview to an app.
+	 * Returns true if the preview tab changed; false if the tab was already
+	 * active (so the caller can fall back to opening in a new tab instead).
+	 */
+	function openAppPreview(appId: string, _projectId: string): boolean {
+		if (activeTabId.value === appId && isPreviewOpen.value) return false;
+		activeTabId.value = appId;
 		isPreviewOpen.value = true;
 		return true;
 	}
@@ -399,6 +451,33 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		{ flush: 'sync' },
 	);
 
+	// --- Auto-open app preview when AI builds an app ---
+	// The registry already bumps `versionId` on the tab, which re-keys the iframe,
+	// so no refresh key is needed here.
+
+	const latestAppBuildResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestAppBuildResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestAppBuildResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestAppBuildResult.value) return;
+			if (thread.isHydratingThread) return;
+
+			activeTabId.value = latestAppBuildResult.value.appId;
+			isPreviewOpen.value = true;
+		},
+		{ flush: 'sync' },
+	);
+
 	// --- Close data table preview if the active table is deleted ---
 
 	const latestDeletedDataTableId = computed(() => {
@@ -460,6 +539,11 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		activeAgentId,
 		activeAgentProjectId,
 		activeAgentPending,
+		activeAppId,
+		activeAppProjectId,
+		activeAppNamespace,
+		activeAppVersionId,
+		activeAppBuilding,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,
@@ -469,5 +553,6 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		openWorkflowPreview,
 		openDataTablePreview,
 		openAgentPreview,
+		openAppPreview,
 	};
 }

@@ -40,6 +40,7 @@ const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
 const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
+const loadAppsTool = lazyMod(() => require('./apps.tool') as typeof import('./apps.tool'));
 const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
@@ -124,6 +125,11 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
 	}
 
+	// The adapter only wires appService when the `apps` module is active; the tool needs a sandbox to scaffold and build.
+	if (context.appService && context.workspace) {
+		tools.push([DOMAIN_TOOL_IDS.APPS, loadAppsTool().createAppsTool(context)]);
+	}
+
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
 		tools.push([DOMAIN_TOOL_IDS.PARSE_FILE, loadParseFileTool().createParseFileTool(context)]);
 	}
@@ -172,6 +178,11 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 			DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
 			loadConversationHistoryTool().createConversationHistoryTool(context),
 		]);
+	}
+
+	// The adapter only wires appService when the `apps` module is active; the tool needs a sandbox to scaffold and build.
+	if (context.appService && context.workspace) {
+		tools.push([DOMAIN_TOOL_IDS.APPS, loadAppsTool().createAppsTool(context)]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {

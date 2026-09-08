@@ -254,6 +254,35 @@ catalog:
 		expect(violations).toHaveLength(0);
 	});
 
+	it('ignores package.json under skills/*/templates (standalone app templates)', async () => {
+		writeFile(
+			tmpDir,
+			'pnpm-workspace.yaml',
+			`
+packages:
+  - packages/*
+catalog:
+  typescript: 5.9.2
+`,
+		);
+		writeFile(
+			tmpDir,
+			'packages/instance-ai/skills/app-builder/templates/vue/package.json',
+			JSON.stringify(
+				{
+					name: 'n8n-app',
+					devDependencies: { typescript: '~5.8.3' },
+				},
+				null,
+				2,
+			),
+		);
+
+		const violations = await rule.analyze(context());
+
+		expect(violations).toHaveLength(0);
+	});
+
 	it('does not flag cross-package when versions match', async () => {
 		writeFile(
 			tmpDir,

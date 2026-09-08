@@ -19,7 +19,7 @@ export const AppsModule: FrontendModuleDescription = {
 	id: 'apps',
 	name: 'Apps',
 	description: 'Build pages backed by your workflows.',
-	icon: 'grid-2x2',
+	icon: 'app-window',
 	modals: APPS_MODALS,
 	routes: [
 		{

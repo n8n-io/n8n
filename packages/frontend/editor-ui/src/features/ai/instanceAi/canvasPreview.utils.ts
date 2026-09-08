@@ -48,6 +48,12 @@ export interface DataTableResult {
 	toolCallId: string;
 }
 
+export interface AppBuildResult {
+	appId: string;
+	/** Unique per build — changes even when the same app is rebuilt. */
+	toolCallId: string;
+}
+
 export interface AgentArtifactResult {
 	agentId: string;
 	projectId?: string;
@@ -312,6 +318,23 @@ export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string):
 	return false;
 }
 
+/**
+ * Whether an `apps build` call for `appId` is in flight somewhere in this agent
+ * tree. Apps have no builder sub-agent, so the in-flight tool call is the only
+ * signal; `create` is excluded because the app id does not exist until it returns.
+ */
+export function isAgentBuildingApp(node: InstanceAiAgentNode, appId: string): boolean {
+	for (const tc of node.toolCalls) {
+		if (!tc.isLoading || tc.toolName !== 'apps') continue;
+		const args = tc.args as { action?: string; appId?: string } | undefined;
+		if (args?.action === 'build' && args.appId === appId) return true;
+	}
+	for (const child of node.children) {
+		if (isAgentBuildingApp(child, appId)) return true;
+	}
+	return false;
+}
+
 const DATA_TABLE_PREVIEW_ACTIONS = new Set([
 	'schema',
 	'query',
@@ -407,6 +430,28 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 			if (dataTableId) {
 				return { dataTableId, toolCallId: tc.toolCallId };
 			}
+		}
+	}
+	return undefined;
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the appId and
+ * toolCallId from the latest successful `apps build` tool result. Failed builds
+ * return `{ error: true }` and carry no `versionId`, so they are skipped.
+ */
+export function getLatestAppBuildResult(node: InstanceAiAgentNode): AppBuildResult | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestAppBuildResult(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		const args = tc.args as Record<string, unknown> | undefined;
+		if (tc.toolName !== 'apps' || args?.action !== 'build' || tc.isLoading) continue;
+		if (!isRecord(tc.result)) continue;
+		if (typeof tc.result.appId === 'string' && typeof tc.result.versionId === 'string') {
+			return { appId: tc.result.appId, toolCallId: tc.toolCallId };
 		}
 	}
 	return undefined;

@@ -698,6 +698,8 @@ export type {
 	WebSearchResponse,
 	InstanceAiWebResearchService,
 	InstanceAiWorkspaceService,
+	InstanceAiAppService,
+	AppSummary,
 	InstanceAiWorkflowTemplateService,
 	ProjectSummary,
 	FolderSummary,
