@@ -495,6 +495,15 @@ describe('GET /credentials/:id', () => {
 		expect(response.body).not.toHaveProperty('shared');
 	});
 
+	test('should reject an unknown query parameter', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}?bogus=1`);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe("Unknown query parameter 'bogus'");
+	});
+
 	test('should return owned credential for member', async () => {
 		const memberWithReadScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
 		const authMemberWithReadScopeAgent = testServer.publicApiAgentFor(memberWithReadScope);

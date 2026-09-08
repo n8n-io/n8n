@@ -5,7 +5,9 @@ import {
 	ControllerRegistryMetadata,
 	Deprecated,
 	Get,
+	Param,
 	Post,
+	Query,
 } from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -132,6 +134,99 @@ describe('PublicApiControllerRegistry', () => {
 				.expect(400);
 
 			expect(response.body.message).toBe('request/body/active is read-only');
+		});
+	});
+
+	describe('query parameters', () => {
+		class WidgetListQueryDto extends Z.class({ limit: z.coerce.number().optional() }) {}
+
+		function registerQueryRoute() {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				list(_req: express.Request, _res: express.Response, @Query query: WidgetListQueryDto) {
+					return { limit: query.limit };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		}
+
+		function registerRouteWithoutQuery() {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/:id')
+				@ApiResponse(200)
+				get(_req: express.Request, _res: express.Response, @Param('id') id: string) {
+					return { id };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		}
+
+		it('rejects an undeclared key on a route with a query DTO', async () => {
+			registerQueryRoute();
+
+			const response = await request(activate()).get('/widgets?bogus=1').expect(400);
+
+			expect(response.body.message).toBe("Unknown query parameter 'bogus'");
+		});
+
+		it('rejects an undeclared key next to a declared one', async () => {
+			registerQueryRoute();
+
+			const response = await request(activate()).get('/widgets?limit=1&bogus=1').expect(400);
+
+			expect(response.body.message).toBe("Unknown query parameter 'bogus'");
+		});
+
+		it('rejects any key on a route without a query DTO', async () => {
+			registerRouteWithoutQuery();
+
+			const response = await request(activate()).get('/widgets/abc?bogus=1').expect(400);
+
+			expect(response.body.message).toBe("Unknown query parameter 'bogus'");
+		});
+
+		it('passes a declared key to the handler parsed', async () => {
+			registerQueryRoute();
+
+			const response = await request(activate()).get('/widgets?limit=5').expect(200);
+
+			expect(response.body).toEqual({ limit: 5 });
+		});
+
+		it('accepts an empty query on a route with a query DTO', async () => {
+			registerQueryRoute();
+
+			await request(activate()).get('/widgets').expect(200);
+		});
+
+		it('accepts an empty query on a route without a query DTO', async () => {
+			registerRouteWithoutQuery();
+
+			const response = await request(activate()).get('/widgets/abc').expect(200);
+
+			expect(response.body).toEqual({ id: 'abc' });
+		});
+
+		it('leaves the body DTO strictness unchanged', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				create(_req: express.Request, _res: express.Response, @Body body: WidgetBodyDto) {
+					return body;
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/widgets')
+				.send({ name: 'w', bogus: 1 })
+				.expect(200);
+
+			expect(response.body).toEqual({ name: 'w' });
 		});
 	});
 

@@ -19,11 +19,21 @@ import {
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
-import { formatValidationError } from '@/public-api/public-api-validation-error';
+import {
+	formatValidationError,
+	unknownQueryParameterMessage,
+} from '@/public-api/public-api-validation-error';
 import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
+
+function assertNoQueryParameters(req: Request) {
+	const [unknownKey] = Object.keys(req.query);
+	if (unknownKey !== undefined) {
+		throw new BadRequestError(unknownQueryParameterMessage(unknownKey));
+	}
+}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -64,23 +74,28 @@ export class PublicApiControllerRegistry {
 
 			const bodyDto = resolvedArgs.find((arg) => isDtoArg(arg, 'body'))?.dto;
 			const bodyRequired = bodyDto ? isRequestBodyRequired(bodyDto) : false;
+			const hasQueryDto = resolvedArgs.some((arg) => isDtoArg(arg, 'query'));
+
+			const argReaders = resolvedArgs.map((arg): ((req: Request) => unknown) => {
+				if (arg.type === 'param') return (req) => req.params[arg.key];
+
+				// The legacy validator rejects unknown query keys; a lenient query DTO would strip them.
+				const schema = arg.type === 'query' ? arg.dto.schema.strict() : arg.dto;
+
+				return (req) => {
+					const output = schema.safeParse(req[arg.type]);
+					if (!output.success) {
+						throw new BadRequestError(formatValidationError(arg.type, output.error));
+					}
+					return output.data;
+				};
+			});
 
 			const handler = async (req: Request, res: Response) => {
 				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
+				if (!hasQueryDto) assertNoQueryParameters(req);
 
-				const args: unknown[] = [req, res];
-				for (const arg of resolvedArgs) {
-					if (arg.type === 'param') {
-						args.push(req.params[arg.key]);
-					} else {
-						const output = arg.dto.safeParse(req[arg.type]);
-						if (output.success) {
-							args.push(output.data);
-						} else {
-							throw new BadRequestError(formatValidationError(arg.type, output.error));
-						}
-					}
-				}
+				const args: unknown[] = [req, res, ...argReaders.map((read) => read(req))];
 
 				const result = await controller[handlerName](...args);
 
