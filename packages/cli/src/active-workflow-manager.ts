@@ -394,10 +394,8 @@ export class ActiveWorkflowManager {
 	 */
 	async addActiveWorkflows(activationMode: 'init' | 'leadershipChange') {
 		if (this.isActivationInProgress) {
-			// A leadership change must not be dropped. The in-flight pass may have
-			// already processed workflows while this instance was still a follower,
-			// i.e. with webhooks only and without schedule and poll triggers, and
-			// those workflows are never revisited. Queue a re-run instead.
+			// The in-flight pass registered its earlier workflows in the previous role,
+			// so a leadership change is queued rather than dropped.
 			if (activationMode === 'leadershipChange') {
 				this.logger.warn('Activation in progress, queueing re-run after leadership change');
 				this.queuedLeadershipActivation = true;
@@ -432,9 +430,8 @@ export class ActiveWorkflowManager {
 		} finally {
 			this.isActivationInProgress = false;
 
-			// Inside the `finally` on purpose: the body returns early when there are
-			// no active workflows, which would skip a block placed after the `try`.
-			// Never let this mask an error thrown by the pass itself.
+			// In the `finally` because the body returns early when no workflow is
+			// active, and caught so it cannot mask an error from the pass itself.
 			try {
 				await this.runQueuedLeadershipActivation();
 			} catch (error) {
@@ -444,13 +441,11 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
-	 * Re-run activation if this instance became leader while a previous pass was
-	 * still in flight.
+	 * Re-run activation if this instance became leader while a pass was in flight.
 	 *
-	 * The interleaved pass may already have registered non-webhook triggers for
-	 * the workflows it processed after the takeover, so tear them down first;
-	 * otherwise the re-run registers them a second time and the workflow fires
-	 * twice per schedule.
+	 * The non-webhook triggers that pass registered after the takeover are removed
+	 * first, so the re-run does not register them a second time and double every
+	 * schedule.
 	 */
 	private async runQueuedLeadershipActivation() {
 		if (!this.queuedLeadershipActivation) return;
