@@ -7,7 +7,7 @@ import type {
 	WorkflowEntity,
 	PollLeaseFence,
 } from '@n8n/db';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -42,6 +42,7 @@ import {
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { EventService } from '@/events/event.service';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -75,7 +76,7 @@ export class WorkflowExecutionService {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly pollCursorService: PollCursorService,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionCrashService: ExecutionCrashService,
 	) {}
 
 	async runWorkflow(
@@ -259,6 +260,53 @@ export class WorkflowExecutionService {
 	}
 
 	/**
+	 * Starts a polled execution on engine 2.0, then advances the cursor.
+	 *
+	 * The v2 path keeps no control-plane execution row, so the cursor cannot
+	 * commit in the same transaction as the run the way {@link runPolledWorkflow}
+	 * does. It commits after the data plane confirms the run started instead: a
+	 * crash between the two calls can duplicate a poll, never lose one.
+	 * TODO(CAT-4078): add a dedup key once `StartExecutionRequest` supports one.
+	 */
+	async runPolledWorkflowV2(
+		workflowData: IWorkflowBase,
+		node: INode,
+		data: INodeExecutionData[][],
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		cursor: PollCursor,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		fence?: PollLeaseFence,
+	): Promise<string> {
+		const executionId = await this.runWorkflow(
+			workflowData,
+			node,
+			data,
+			additionalData,
+			mode,
+			responsePromise,
+		);
+
+		const committed = await this.pollCursorService.commitCursorOnly({
+			workflowId: workflowData.id,
+			nodeId: node.id,
+			cursor,
+			fence,
+		});
+
+		if (!committed) {
+			// The run already started; the lease loss only means a concurrent
+			// poller may repeat the same window, not that anything was lost.
+			this.logger.warn(
+				'Poll cursor commit skipped after its execution already started: the poll no longer holds its lease',
+				{ workflowId: workflowData.id, nodeId: node.id, nodeName: node.name, executionId },
+			);
+		}
+
+		return executionId;
+	}
+
+	/**
 	 * Marks a committed row that failed to start as crashed, so it does not sit at
 	 * `new` indefinitely.
 	 */
@@ -275,7 +323,7 @@ export class WorkflowExecutionService {
 
 		responsePromise?.reject(ensureError(error));
 
-		await this.executionRepository.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashed(executionId);
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {
