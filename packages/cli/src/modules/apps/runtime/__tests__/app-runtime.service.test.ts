@@ -1,5 +1,5 @@
 import type { WorkflowEntity } from '@n8n/db';
-import type { IDeferredPromise } from 'n8n-workflow';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	type IExecuteResponsePromiseData,
