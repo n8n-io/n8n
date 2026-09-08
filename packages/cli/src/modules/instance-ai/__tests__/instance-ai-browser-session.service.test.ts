@@ -27,8 +27,8 @@ vi.mock('@n8n/mcp-browser', () => {
 		attachExtension = vi.fn();
 		attachController = vi.fn();
 		stop = vi.fn();
-		startRecording = vi.fn(async () => undefined);
-		stopAndSubmitRecording = vi.fn(async () => undefined);
+		startRecording = vi.fn(async () => ({ success: true }));
+		stopAndSubmitRecording = vi.fn(async () => ({ success: true }));
 		discardRecording = vi.fn(async () => undefined);
 		constructor() {
 			createdRelays.push(this);
@@ -408,8 +408,14 @@ describe('InstanceAiBrowserSessionService', () => {
 		it('returns false and sends nothing when the extension is not connected', async () => {
 			const { relay } = await createSession(service);
 
-			expect(service.startRecording(USER_ID, 'thread-1')).toBe(false);
-			expect(service.stopAndSubmitRecording(USER_ID)).toBe(false);
+			expect(await service.startRecording(USER_ID, 'thread-1')).toEqual({
+				started: false,
+				reason: expect.any(String),
+			});
+			expect(await service.stopAndSubmitRecording(USER_ID)).toEqual({
+				stopped: false,
+				reason: expect.any(String),
+			});
 			expect(relay.startRecording).not.toHaveBeenCalled();
 			expect(relay.stopAndSubmitRecording).not.toHaveBeenCalled();
 		});
@@ -418,23 +424,51 @@ describe('InstanceAiBrowserSessionService', () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
 
-			expect(service.startRecording(USER_ID, 'thread-1')).toBe(true);
+			expect(await service.startRecording(USER_ID, 'thread-1')).toEqual({ started: true });
 			expect(relay.startRecording).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports the extension-provided reason when it declines to start', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			relay.startRecording.mockResolvedValueOnce({
+				success: false,
+				error: 'Open a web page before recording.',
+			});
+
+			expect(await service.startRecording(USER_ID, 'thread-1')).toEqual({
+				started: false,
+				reason: 'Open a web page before recording.',
+			});
 		});
 
 		it('asks the connected extension to stop and submit', async () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
 
-			expect(service.stopAndSubmitRecording(USER_ID)).toBe(true);
+			expect(await service.stopAndSubmitRecording(USER_ID)).toEqual({ stopped: true });
 			expect(relay.stopAndSubmitRecording).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports the extension-provided reason when it declines to stop', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			relay.stopAndSubmitRecording.mockResolvedValueOnce({
+				success: false,
+				error: 'Record at least one action before sending.',
+			});
+
+			expect(await service.stopAndSubmitRecording(USER_ID)).toEqual({
+				stopped: false,
+				reason: 'Record at least one action before sending.',
+			});
 		});
 
 		it('pushes a live recording-started state, scoped to the requesting thread', async () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
 
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				{
@@ -458,7 +492,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		it('redacts and counts each streamed action, pushing the debounced update', async () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 			push.sendToUsers.mockClear();
 
 			relay.onRecordingActionAppended?.('rec-1', {
@@ -482,7 +516,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		it('coalesces a burst of actions into a single debounced push', async () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 			push.sendToUsers.mockClear();
 
 			for (let i = 0; i < 3; i++) {
@@ -521,7 +555,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		it('cleans up an in-progress recording if the extension disconnects mid-recording', async () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 			push.sendToUsers.mockClear();
 
 			relay.onExtensionDisconnect?.();
@@ -554,7 +588,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		it('discards, clears state, and pushes a terminal status with no thread message', async () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 			push.sendToUsers.mockClear();
 
 			expect(service.discardRecording(USER_ID)).toBe(true);
@@ -589,7 +623,7 @@ describe('InstanceAiBrowserSessionService', () => {
 			relay.onExtensionConnect?.();
 			const captionHandler = vi.fn(async () => 'Opened Gmail and composed a message');
 			service.setActionCaptionHandler(captionHandler);
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 
 			relay.onRecordingActionAppended?.('rec-1', {
 				id: 'a1',
@@ -611,7 +645,7 @@ describe('InstanceAiBrowserSessionService', () => {
 			relay.onExtensionConnect?.();
 			const captionHandler = vi.fn(async () => 'summary');
 			service.setActionCaptionHandler(captionHandler);
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 
 			relay.onRecordingActionAppended?.('rec-1', {
 				id: 'a1',
@@ -650,7 +684,7 @@ describe('InstanceAiBrowserSessionService', () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
 			service.setActionCaptionHandler(vi.fn(async () => 'Opened Gmail and composed a message'));
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 			relay.onRecordingActionAppended?.('rec-1', {
 				id: 'a1',
 				type: 'click',
@@ -679,7 +713,7 @@ describe('InstanceAiBrowserSessionService', () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
 			service.setActionCaptionHandler(vi.fn(async () => await Promise.reject(new Error('boom'))));
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 			relay.onRecordingActionAppended?.('rec-1', {
 				id: 'a1',
 				type: 'click',
@@ -701,7 +735,7 @@ describe('InstanceAiBrowserSessionService', () => {
 			const completionHandler = vi.fn(async () => ({ threadId: 'thread-1' }));
 			service.setRecordingCompletionHandler(completionHandler);
 
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 			relay.onRecordingActionAppended?.('rec-1', {
 				id: 'a1',
 				type: 'click',
@@ -726,7 +760,7 @@ describe('InstanceAiBrowserSessionService', () => {
 			const handler = vi.fn(async () => ({ threadId: 'thread-1' }));
 			service.setRecordingCompletionHandler(handler);
 
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 			await relay.onRecordingCompleted?.(recording);
 
 			expect(handler).toHaveBeenCalledWith({
@@ -759,7 +793,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		it('pushes a terminal "stopped" state for an AI-triggered recording completing', async () => {
 			const { relay } = await createConnectedSession(service, projectRepository);
 			service.setRecordingCompletionHandler(vi.fn(async () => ({ threadId: 'thread-1' })));
-			service.startRecording(USER_ID, 'thread-1');
+			await service.startRecording(USER_ID, 'thread-1');
 			push.sendToUsers.mockClear();
 
 			await relay.onRecordingCompleted?.(recording);

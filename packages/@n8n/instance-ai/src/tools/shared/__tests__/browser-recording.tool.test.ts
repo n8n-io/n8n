@@ -16,8 +16,8 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 		credentialService: {} as InstanceAiContext['credentialService'],
 		browserRecordingService: {
 			isConnected: vi.fn().mockReturnValue(true),
-			startRecording: vi.fn().mockReturnValue(true),
-			stopAndSubmitRecording: vi.fn().mockReturnValue(true),
+			startRecording: vi.fn().mockResolvedValue({ started: true }),
+			stopAndSubmitRecording: vi.fn().mockResolvedValue({ stopped: true }),
 		},
 		...overrides,
 	} as unknown as InstanceAiContext;
@@ -99,6 +99,28 @@ describe('createStartBrowserRecordingTool', () => {
 		expect(result).toEqual({ started: true });
 	});
 
+	it('propagates the reason when the extension fails to start', async () => {
+		const context = createMockContext({
+			browserRecordingService: {
+				isConnected: vi.fn().mockReturnValue(true),
+				startRecording: vi.fn().mockResolvedValue({
+					started: false,
+					reason: 'Open a web page before recording.',
+				}),
+				stopAndSubmitRecording: vi.fn(),
+			},
+		});
+		const tool = createStartBrowserRecordingTool(context);
+
+		const result = await executeTool<{ started: boolean; reason?: string }>(
+			tool,
+			{},
+			resumeCtx(true),
+		);
+
+		expect(result).toEqual({ started: false, reason: 'Open a web page before recording.' });
+	});
+
 	it('reports failure without a thread to resume into', async () => {
 		const context = createMockContext({ threadId: undefined });
 		const tool = createStartBrowserRecordingTool(context);
@@ -138,5 +160,30 @@ describe('createStopBrowserRecordingTool', () => {
 
 		expect(context.browserRecordingService!.stopAndSubmitRecording).toHaveBeenCalledWith('user-1');
 		expect(result.stopped).toBe(true);
+	});
+
+	it('propagates the reason when the extension fails to stop', async () => {
+		const context = createMockContext({
+			browserRecordingService: {
+				isConnected: vi.fn().mockReturnValue(true),
+				startRecording: vi.fn(),
+				stopAndSubmitRecording: vi.fn().mockResolvedValue({
+					stopped: false,
+					reason: 'Record at least one action before sending.',
+				}),
+			},
+		});
+		const tool = createStopBrowserRecordingTool(context);
+
+		const result = await executeTool<{ stopped: boolean; reason?: string }>(
+			tool,
+			{},
+			noSuspendCtx(),
+		);
+
+		expect(result).toEqual({
+			stopped: false,
+			reason: 'Record at least one action before sending.',
+		});
 	});
 });

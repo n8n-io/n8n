@@ -183,34 +183,57 @@ export class InstanceAiBrowserSessionService {
 		return session?.connected ? session.mcpServer : undefined;
 	}
 
-	/** Ask the paired extension to start recording, on behalf of the given thread. Returns
-	 *  false if there's no paired session to ask. */
-	startRecording(userId: string, threadId: string): boolean {
+	/** Ask the paired extension to start recording, on behalf of the given thread, and wait
+	 *  for it to confirm. Only arms the live state once the extension actually agreed —
+	 *  otherwise the model and the live artifact would believe a recording is running that
+	 *  never started. */
+	async startRecording(
+		userId: string,
+		threadId: string,
+	): Promise<{ started: boolean; reason?: string }> {
 		const session = this.sessions.get(userId);
-		if (!session?.connected) return false;
+		if (!session?.connected) {
+			return { started: false, reason: 'The browser extension is not connected.' };
+		}
+		const result = await this.callRelay(session.relay.startRecording(), 'start');
+		if (!result.success) {
+			this.logger.warn('Failed to start browser recording', { userId, error: result.error });
+			return { started: false, reason: result.error };
+		}
 		session.pendingRecordingThreadId = threadId;
 		this.startLiveRecordingState(session);
-		session.relay.startRecording().catch((error) => {
-			this.logger.warn('Failed to start browser recording', {
-				userId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		});
-		return true;
+		return { started: true };
 	}
 
-	/** Ask the paired extension to stop the active recording and submit it immediately.
-	 *  Returns false if there's no paired session to ask. */
-	stopAndSubmitRecording(userId: string): boolean {
+	/** Ask the paired extension to stop the active recording and submit it immediately, and
+	 *  wait for it to confirm — a stop can fail (e.g. nothing was recorded yet), and the
+	 *  caller needs to know rather than assume the recording is on its way. */
+	async stopAndSubmitRecording(userId: string): Promise<{ stopped: boolean; reason?: string }> {
 		const session = this.sessions.get(userId);
-		if (!session?.connected) return false;
-		session.relay.stopAndSubmitRecording().catch((error) => {
-			this.logger.warn('Failed to stop browser recording', {
-				userId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		});
-		return true;
+		if (!session?.connected) {
+			return { stopped: false, reason: 'The browser extension is not connected.' };
+		}
+		const result = await this.callRelay(session.relay.stopAndSubmitRecording(), 'stop');
+		if (!result.success) {
+			this.logger.warn('Failed to stop browser recording', { userId, error: result.error });
+		}
+		return { stopped: result.success, reason: result.error };
+	}
+
+	/** Await a relay call that reports `{success, error}`, folding a rejected promise (e.g. the
+	 *  extension disconnecting mid-call) into the same shape instead of throwing. */
+	private async callRelay(
+		promise: Promise<{ success: boolean; error?: string }>,
+		action: 'start' | 'stop',
+	): Promise<{ success: boolean; error?: string }> {
+		try {
+			return await promise;
+		} catch (error) {
+			return {
+				success: false,
+				error: `The browser extension disconnected before it could ${action}.`,
+			};
+		}
 	}
 
 	/** Ask the paired extension to discard the active recording, directly — no thread
@@ -392,9 +415,8 @@ export class InstanceAiBrowserSessionService {
 		session.latestCaption = undefined;
 	}
 
-	/** Arm live recording state and start the periodic caption tick. Called synchronously
-	 *  as soon as `startRecording()` asks the extension to start — no need to wait for the
-	 *  extension to confirm. */
+	/** Arm live recording state and start the periodic caption tick. Called once the
+	 *  extension has confirmed the recording actually started. */
 	private startLiveRecordingState(session: BrowserSession): void {
 		this.resetLiveRecordingState(session);
 		session.captionInterval = setInterval(() => {

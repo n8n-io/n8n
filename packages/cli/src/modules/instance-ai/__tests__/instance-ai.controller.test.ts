@@ -1875,25 +1875,28 @@ describe('InstanceAiController', () => {
 				});
 			});
 
-			it('stops and submits the recording for the requesting user', () => {
-				browserSessionService.stopAndSubmitRecording.mockReturnValue(true);
+			it('stops and submits the recording for the requesting user', async () => {
+				browserSessionService.stopAndSubmitRecording.mockResolvedValue({ stopped: true });
 
-				const result = controller.browserStopRecording(req);
+				const result = await controller.browserStopRecording(req);
 
 				expect(browserSessionService.stopAndSubmitRecording).toHaveBeenCalledWith(USER_ID);
 				expect(result).toEqual({ ok: true });
 			});
 
-			it('reports false when there was nothing to stop', () => {
-				browserSessionService.stopAndSubmitRecording.mockReturnValue(false);
+			it('throws when there was nothing to stop', async () => {
+				browserSessionService.stopAndSubmitRecording.mockResolvedValue({
+					stopped: false,
+					reason: 'Record at least one action before sending.',
+				});
 
-				expect(controller.browserStopRecording(req)).toEqual({ ok: false });
+				await expect(controller.browserStopRecording(req)).rejects.toThrow(BadRequestError);
 			});
 
-			it('throws when Browser Use is disabled', () => {
+			it('throws when Browser Use is disabled', async () => {
 				settingsService.isBrowserUseEnabled.mockReturnValue(false);
 
-				expect(() => controller.browserStopRecording(req)).toThrow(ForbiddenError);
+				await expect(controller.browserStopRecording(req)).rejects.toThrow(ForbiddenError);
 				expect(browserSessionService.stopAndSubmitRecording).not.toHaveBeenCalled();
 			});
 		});

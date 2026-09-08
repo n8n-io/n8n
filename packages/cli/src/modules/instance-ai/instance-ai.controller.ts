@@ -1390,10 +1390,14 @@ export class InstanceAiController {
 	 *  other stop. */
 	@Post('/browser/recording/stop')
 	@GlobalScope('instanceAi:gateway')
-	browserStopRecording(req: AuthenticatedRequest) {
+	async browserStopRecording(req: AuthenticatedRequest) {
 		this.requireInstanceAiEnabled();
 		this.assertBrowserChannelEnabled();
-		return { ok: this.browserSessionService.stopAndSubmitRecording(req.user.id) };
+		const { stopped, reason } = await this.browserSessionService.stopAndSubmitRecording(
+			req.user.id,
+		);
+		if (!stopped) throw new BadRequestError(reason ?? 'Failed to stop the recording.');
+		return { ok: true };
 	}
 
 	/** Direct action from the live recording artifact — cancels the in-progress recording,

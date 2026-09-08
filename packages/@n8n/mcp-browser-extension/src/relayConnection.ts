@@ -27,6 +27,13 @@ interface ProtocolResponse {
 	error?: string;
 }
 
+/** Outcome of a recording start/stop/discard, so the relay (and the user asking for it
+ *  from Instance AI) learns whether it actually happened, not just that the message arrived. */
+export interface RecordingCommandResult {
+	success: boolean;
+	error?: string;
+}
+
 const log = createLogger('relay');
 
 /** URL prefixes to exclude from auto-attach */
@@ -96,9 +103,9 @@ export class RelayConnection {
 	onclose?: () => void;
 	ontabcreated?: () => void;
 	onrecordingresult?: (recordingId: string, accepted: boolean, threadUrl?: string) => void;
-	onstartrecording?: () => void;
-	onstopandsubmitrecording?: () => void;
-	ondiscardrecording?: () => void;
+	onstartrecording?: () => Promise<RecordingCommandResult>;
+	onstopandsubmitrecording?: () => Promise<RecordingCommandResult>;
+	ondiscardrecording?: () => Promise<RecordingCommandResult>;
 
 	constructor(ws: WebSocket) {
 		this.ws = ws;
@@ -543,14 +550,11 @@ export class RelayConnection {
 				return {};
 			}
 			case 'startRecording':
-				this.onstartrecording?.();
-				return {};
+				return (await this.onstartrecording?.()) ?? {};
 			case 'stopAndSubmitRecording':
-				this.onstopandsubmitrecording?.();
-				return {};
+				return (await this.onstopandsubmitrecording?.()) ?? {};
 			case 'discardRecording':
-				this.ondiscardrecording?.();
-				return {};
+				return (await this.ondiscardrecording?.()) ?? {};
 			default:
 				log.debug(`unknown command: ${message.method}`);
 				return undefined;

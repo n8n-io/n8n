@@ -1008,11 +1008,11 @@ export interface InstanceAiBrowserRecordingService {
 	/** Whether this user's browser extension is currently paired and connected. */
 	isConnected(userId: string): boolean;
 	/** Ask the paired extension to start recording, attributed to `threadId` so
-	 *  completion resumes this conversation. Returns false if not connected. */
-	startRecording(userId: string, threadId: string): boolean;
+	 *  completion resumes this conversation. Resolves once the extension has confirmed. */
+	startRecording(userId: string, threadId: string): Promise<{ started: boolean; reason?: string }>;
 	/** Ask the paired extension to stop the active recording and submit it
-	 *  immediately. Returns false if not connected. */
-	stopAndSubmitRecording(userId: string): boolean;
+	 *  immediately. Resolves once the extension has confirmed. */
+	stopAndSubmitRecording(userId: string): Promise<{ stopped: boolean; reason?: string }>;
 }
 
 // ── Workspace service ───────────────────────────────────────────────────────

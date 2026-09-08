@@ -2617,10 +2617,10 @@ export class InstanceAiService {
 		if (browserUseEnabledGlobally) {
 			context.browserRecordingService = {
 				isConnected: (userId) => this.browserSessionService.isConnected(userId),
-				startRecording: (userId, recordingThreadId) =>
-					this.browserSessionService.startRecording(userId, recordingThreadId),
-				stopAndSubmitRecording: (userId) =>
-					this.browserSessionService.stopAndSubmitRecording(userId),
+				startRecording: async (userId, recordingThreadId) =>
+					await this.browserSessionService.startRecording(userId, recordingThreadId),
+				stopAndSubmitRecording: async (userId) =>
+					await this.browserSessionService.stopAndSubmitRecording(userId),
 			};
 		}
 

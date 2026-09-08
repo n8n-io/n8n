@@ -357,17 +357,18 @@ function submitRecording(): { success: boolean; error?: string } {
 
 /** Stop and submit in one step, for a recording n8n itself asked to start — skips the
  *  manual review screen, since Instance AI reviews the recording in chat instead. */
-async function stopAndSubmitRecordingNow(): Promise<void> {
+async function stopAndSubmitRecordingNow(): Promise<{ success: boolean; error?: string }> {
 	await stopRecording();
-	submitRecording();
+	return submitRecording();
 }
 
-async function discardRecording(): Promise<void> {
+async function discardRecording(): Promise<{ success: boolean }> {
 	if (recordingSubmitTimer) clearTimeout(recordingSubmitTimer);
 	recordingSubmitTimer = undefined;
 	await stopRecording();
 	recording = null;
 	broadcastRecordingChange();
+	return { success: true };
 }
 
 /** Append one action to the active recording, and forward it live to the relay. */
@@ -996,19 +997,22 @@ async function connectToRelay(
 			updateBadge(relay.getControlledIds().length);
 		};
 
-		relay.onstartrecording = () => {
-			if (activeConnection?.relay !== relay) return;
-			void startRecording();
+		relay.onstartrecording = async () => {
+			if (activeConnection?.relay !== relay)
+				return { success: false, error: 'Connection was replaced.' };
+			return await startRecording();
 		};
 
-		relay.onstopandsubmitrecording = () => {
-			if (activeConnection?.relay !== relay) return;
-			void stopAndSubmitRecordingNow();
+		relay.onstopandsubmitrecording = async () => {
+			if (activeConnection?.relay !== relay)
+				return { success: false, error: 'Connection was replaced.' };
+			return await stopAndSubmitRecordingNow();
 		};
 
-		relay.ondiscardrecording = () => {
-			if (activeConnection?.relay !== relay) return;
-			void discardRecording();
+		relay.ondiscardrecording = async () => {
+			if (activeConnection?.relay !== relay)
+				return { success: false, error: 'Connection was replaced.' };
+			return await discardRecording();
 		};
 
 		relay.onrecordingresult = (recordingId, accepted, threadUrl) => {

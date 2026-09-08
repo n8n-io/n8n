@@ -80,13 +80,12 @@ export function createStartBrowserRecordingTool(context: InstanceAiContext) {
 				};
 			}
 
-			const started = service.startRecording(context.userId, threadId);
+			const { started, reason } = await service.startRecording(context.userId, threadId);
 			return started
 				? { started: true }
 				: {
 						started: false,
-						reason:
-							'The browser extension disconnected before recording could start. Tell the user to reconnect it and try again.',
+						reason: reason ?? 'The browser extension disconnected before recording could start.',
 					};
 		})
 		.build();
@@ -117,17 +116,18 @@ export function createStopBrowserRecordingTool(context: InstanceAiContext) {
 			if (!service?.isConnected(context.userId)) {
 				return { stopped: false, reason: "The browser extension isn't connected." };
 			}
-			const stopped = service.stopAndSubmitRecording(context.userId);
-			return await Promise.resolve(
-				stopped
-					? {
-							stopped: true,
-							reason:
-								"The recording is submitted. It will arrive as this conversation's next turn — don't " +
-								'say anything further until then.',
-						}
-					: { stopped: false, reason: 'The browser extension disconnected before it could stop.' },
-			);
+			const { stopped, reason } = await service.stopAndSubmitRecording(context.userId);
+			return stopped
+				? {
+						stopped: true,
+						reason:
+							"The recording is submitted. It will arrive as this conversation's next turn — don't " +
+							'say anything further until then.',
+					}
+				: {
+						stopped: false,
+						reason: reason ?? 'The browser extension disconnected before it could stop.',
+					};
 		})
 		.build();
 }
