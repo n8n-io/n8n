@@ -158,6 +158,9 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.deprecated).toBeUndefined();
 		expect(operation.config.responses[415]).toBeUndefined();
 		expect(operation.config.responses[200]).toEqual({ description: 'Operation successful.' });
+		expect(operation.config.responses[400]).toEqual({
+			$ref: '../../../../shared/spec/responses/badRequest.yml',
+		});
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',
 		});
