@@ -350,6 +350,35 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(batches.flat()).toHaveLength(24);
 	});
 
+	it('rejects a run larger than five megabytes before submission', async () => {
+		// NUL uses six bytes in JSON, which keeps the source fixture compact.
+		const metadataValue = '\0'.repeat(875_000);
+		const { service } = setupSession(
+			makeExecution({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'node',
+						name: 'large-metadata',
+						toolCallId: 'large-metadata',
+						input: {},
+						output: {},
+						startTime: 1,
+						endTime: 2,
+						success: true,
+						nodeParameters: { note: metadataValue },
+					},
+				],
+			}),
+		);
+
+		await expect(service.exportSession(input)).rejects.toMatchObject({
+			message: "Session couldn't be sent to LangSmith. Try again.",
+			httpStatusCode: 503,
+		});
+		expect(batchIngestRunsMock).not.toHaveBeenCalled();
+	});
+
 	it('truncates large run fields without truncating metadata', async () => {
 		const largeValue = '\0'.repeat(60_000);
 		const metadataValue = '\0'.repeat(60_000);

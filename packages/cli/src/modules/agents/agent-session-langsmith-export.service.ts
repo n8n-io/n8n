@@ -93,10 +93,12 @@ export class AgentSessionLangSmithExportService {
 		const traceId = uuidv5(canonicalSerialize(draft), EXPORT_NAMESPACE);
 		const { convertToDottedOrderFormat } = await import('langsmith/run_trees');
 		const runs = materializeRuns(draft, traceId, convertToDottedOrderFormat);
-		const batches = batchRuns(runs);
 		const startedAt = Date.now();
+		let batchCount = 0;
 
 		try {
+			const batches = batchRuns(runs);
+			batchCount = batches.length;
 			const client = await this.createClient(input.user);
 			await sendBatchesWithTimeout(client, batches);
 		} catch (error) {
@@ -105,7 +107,7 @@ export class AgentSessionLangSmithExportService {
 				agentId: input.agentId,
 				threadId: input.threadId,
 				runCount: runs.length,
-				batchCount: batches.length,
+				batchCount,
 				elapsedMs: Date.now() - startedAt,
 				error: error instanceof Error ? error.message : String(error),
 			});
@@ -498,11 +500,15 @@ function materializeRuns(
 function batchRuns(runs: LangSmithRun[]): LangSmithRun[][] {
 	const batches: LangSmithRun[][] = [];
 	let batch: LangSmithRun[] = [];
-	let batchSize = serializedSize({ post: [], patch: [] });
+	const emptyBatchSize = serializedSize({ post: [], patch: [] });
+	let batchSize = emptyBatchSize;
 
 	for (const run of runs) {
 		const separatorSize = batch.length > 0 ? 1 : 0;
 		const runSize = serializedSize(run);
+		if (emptyBatchSize + runSize > MAX_BATCH_SIZE_BYTES) {
+			throw new Error('LangSmith run exceeds maximum batch size');
+		}
 		if (
 			batch.length > 0 &&
 			(batch.length >= MAX_RUNS_PER_BATCH ||
@@ -510,7 +516,7 @@ function batchRuns(runs: LangSmithRun[]): LangSmithRun[][] {
 		) {
 			batches.push(batch);
 			batch = [];
-			batchSize = serializedSize({ post: [], patch: [] });
+			batchSize = emptyBatchSize;
 		}
 
 		batch.push(run);
