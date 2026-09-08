@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { N8nButton } from '@n8n/design-system';
-import type { BrowserRecordingAction } from '@n8n/api-types';
+import type {
+	BrowserRecordingAction,
+	BrowserRecordingNetworkRequest,
+	BrowserRecordingScreenshot,
+} from '@n8n/api-types';
 
-defineProps<{ actions: BrowserRecordingAction[] }>();
+defineProps<{
+	actions: BrowserRecordingAction[];
+	screenshots: BrowserRecordingScreenshot[];
+	networkRequests: BrowserRecordingNetworkRequest[];
+}>();
 
 defineEmits<{
 	remove: [actionId: string];
 	mask: [actionId: string];
+	removeScreenshot: [screenshotId: string];
+	removeNetworkRequest: [requestId: string];
 }>();
 
 function actionTitle(action: BrowserRecordingAction): string {
@@ -71,6 +81,43 @@ function formatUrl(value: string): string {
 					<span v-if="action.value" class="value" :title="action.value">{{ action.value }}</span>
 					<span class="url" :title="action.url">{{ formatUrl(action.url) }}</span>
 				</div>
+				<template v-for="screenshot in screenshots" :key="screenshot.id">
+					<div v-if="screenshot.actionId === action.id" class="screenshot">
+						<img
+							:src="`data:${screenshot.mimeType};base64,${screenshot.data}`"
+							alt="Captured page after this action"
+						/>
+						<N8nButton
+							variant="ghost"
+							size="small"
+							@click="$emit('removeScreenshot', screenshot.id)"
+						>
+							Remove screenshot
+						</N8nButton>
+					</div>
+				</template>
+				<ul
+					v-if="networkRequests.some((request) => request.actionId === action.id)"
+					class="network-requests"
+				>
+					<li
+						v-for="request in networkRequests.filter((item) => item.actionId === action.id)"
+						:key="request.id"
+						class="network-request"
+					>
+						<span :title="request.url">
+							<strong>{{ request.method }}</strong> {{ request.status }} ·
+							{{ formatUrl(request.url) }}
+						</span>
+						<N8nButton
+							variant="ghost"
+							size="small"
+							@click="$emit('removeNetworkRequest', request.id)"
+						>
+							Remove
+						</N8nButton>
+					</li>
+				</ul>
 				<div class="action-buttons">
 					<N8nButton variant="ghost" size="small" @click="$emit('mask', action.id)">
 						Mask details
@@ -127,6 +174,48 @@ function formatUrl(value: string): string {
 	overflow-wrap: anywhere;
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 2;
+}
+
+.screenshot {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: var(--spacing--2xs);
+}
+
+.screenshot img {
+	display: block;
+	width: 100%;
+	max-height: 40vh;
+	object-fit: contain;
+	background: var(--background--subtle);
+	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	border-radius: var(--radius);
+}
+
+.network-requests {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	margin: 0;
+	padding: var(--spacing--2xs) 0 0;
+	border-top: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	list-style: none;
+}
+
+.network-request {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	font-size: var(--font-size--2xs);
+}
+
+.network-request > span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .value,

@@ -91,6 +91,16 @@ export interface MaskRecordingActionMessage {
 	actionId: string;
 }
 
+export interface RemoveRecordingScreenshotMessage {
+	type: 'removeRecordingScreenshot';
+	screenshotId: string;
+}
+
+export interface RemoveRecordingNetworkRequestMessage {
+	type: 'removeRecordingNetworkRequest';
+	requestId: string;
+}
+
 export interface RecordingActionMessage {
 	type: 'recordingAction';
 	action: {
@@ -116,6 +126,8 @@ export type ExtensionMessage =
 	| DiscardRecordingMessage
 	| RemoveRecordingActionMessage
 	| MaskRecordingActionMessage
+	| RemoveRecordingScreenshotMessage
+	| RemoveRecordingNetworkRequestMessage
 	| RecordingActionMessage;
 
 // ---------------------------------------------------------------------------

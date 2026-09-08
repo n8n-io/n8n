@@ -62,6 +62,14 @@ export function useRecording() {
 		await send({ type: 'maskRecordingAction', actionId });
 	}
 
+	async function removeScreenshot(screenshotId: string): Promise<void> {
+		await send({ type: 'removeRecordingScreenshot', screenshotId });
+	}
+
+	async function removeNetworkRequest(requestId: string): Promise<void> {
+		await send({ type: 'removeRecordingNetworkRequest', requestId });
+	}
+
 	function onMessage(message: BackgroundPushMessage): void {
 		if (message.type !== 'recordingChanged') return;
 		recording.value = message.recording;
@@ -87,5 +95,7 @@ export function useRecording() {
 		recordAgain,
 		removeAction,
 		maskAction,
+		removeScreenshot,
+		removeNetworkRequest,
 	};
 }

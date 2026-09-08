@@ -235,6 +235,16 @@ type TracedResourceAttachment = {
 	executionId?: string;
 };
 
+type BrowserRecordingScreenshotAttachment = InstanceAiFileAttachment & {
+	source: 'browser-recording';
+};
+
+function isBrowserRecordingScreenshot(
+	attachment: InstanceAiFileAttachment,
+): attachment is BrowserRecordingScreenshotAttachment {
+	return 'source' in attachment && attachment.source === 'browser-recording';
+}
+
 /** Root-run outputs for a suspended segment — keep the LangSmith turn readable (AGENT-371). */
 function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo | undefined) {
 	const rawMessage = suspension?.suspendPayload.message;
@@ -1523,10 +1533,28 @@ export class InstanceAiService {
 					'After you analyze the recording, use ask-user before building only when the intended outcome, trigger, changing inputs, branches, or failure behavior is materially unclear.',
 					neverAskForCredentials,
 				];
+		const screenshotAttachments: BrowserRecordingScreenshotAttachment[] = (
+			input.recording.screenshots ?? []
+		).map((screenshot, index) => ({
+			type: 'file',
+			source: 'browser-recording',
+			data: screenshot.data,
+			mimeType: screenshot.mimeType,
+			fileName: `browser-recording-${index + 1}-action-${screenshot.actionId}.jpg`,
+		}));
+		const recordingForContext = {
+			...input.recording,
+			screenshots: (input.recording.screenshots ?? []).map(
+				({ data: _data, ...screenshot }, index) => ({
+					...screenshot,
+					fileName: `browser-recording-${index + 1}-action-${screenshot.actionId}.jpg`,
+				}),
+			),
+		};
 		const recordingContext = redactString(
 			JSON.stringify({
 				instructions,
-				recording: input.recording,
+				recording: recordingForContext,
 				...(input.originThreadId && input.caption ? { progressSoFar: input.caption } : {}),
 			}),
 		);
@@ -1535,7 +1563,11 @@ export class InstanceAiService {
 			recordingContext,
 		);
 		try {
-			this.startRun(user, threadId, message);
+			if (screenshotAttachments.length > 0) {
+				this.startRun(user, threadId, message, screenshotAttachments);
+			} else {
+				this.startRun(user, threadId, message);
+			}
 		} catch (error) {
 			if (!input.originThreadId) await this.memoryService.deleteThread(threadId);
 			throw error;
@@ -3801,6 +3833,9 @@ export class InstanceAiService {
 		const fileAttachments = (attachments ?? []).filter(
 			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
 		);
+		const manifestFileAttachments = fileAttachments.filter(
+			(attachment) => !isBrowserRecordingScreenshot(attachment),
+		);
 
 		const contextAttachments = await this.resolveContextAttachments(attachments, user);
 
@@ -4126,11 +4161,13 @@ export class InstanceAiService {
 			let hasParseableAttachment = false;
 
 			if (fileAttachments.length > 0) {
-				const classifiedAttachments = classifyAttachments(fileAttachments);
 				nonStructuredAttachments = fileAttachments.filter(
 					(attachment) => !isParseableAttachment(attachment),
 				);
 				turnHadFileAttachments = nonStructuredAttachments.length > 0;
+			}
+			if (manifestFileAttachments.length > 0) {
+				const classifiedAttachments = classifyAttachments(manifestFileAttachments);
 				hasParseableAttachment = classifiedAttachments.some(
 					(attachment: { parseable: boolean }) => attachment.parseable,
 				);

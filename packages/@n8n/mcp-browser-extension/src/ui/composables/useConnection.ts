@@ -1,7 +1,9 @@
+import type { BrowserRecordingCaptureSettings } from '@n8n/api-types';
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 
 import { forgetApprovedHost, listApprovedHosts, rememberHost } from '../../approvedHosts';
 import { createLogger } from '../../logger';
+import { getRecordingSettings, saveRecordingSettings } from '../../recordingSettings';
 import { getRelayHostKey, isAllowedRelayUrl, isLocalhostRelay } from '../../relayAllowlist';
 import { isEligibleTab } from '../../relayConnection';
 import type {
@@ -41,6 +43,10 @@ export function useConnection() {
 	const rememberInstance = ref(false);
 	// Every stored host, so the drawer can revoke them without being connected.
 	const approvedHosts = ref<string[]>([]);
+	const recordingSettings = reactive<BrowserRecordingCaptureSettings>({
+		networkRequests: false,
+		screenshots: false,
+	});
 
 	// ── Single source of truth: reactive tab registry ─────────────────────────
 	// Maps chromeTabId → tab object. Kept in sync by Chrome tab event listeners.
@@ -181,6 +187,14 @@ export function useConnection() {
 		approvedHosts.value = await forgetApprovedHost(host);
 	}
 
+	async function updateRecordingSetting(
+		setting: keyof BrowserRecordingCaptureSettings,
+		enabled: boolean,
+	): Promise<void> {
+		recordingSettings[setting] = enabled;
+		await saveRecordingSettings({ ...recordingSettings });
+	}
+
 	async function decline(): Promise<void> {
 		log.debug('decline');
 		await chrome.runtime.sendMessage({ type: 'clearRelayUrl' });
@@ -278,8 +292,13 @@ export function useConnection() {
 			applyStatus(currentStatus);
 		}
 
-		const [storedHosts] = await Promise.all([listApprovedHosts(), initTabRegistry()]);
+		const [storedHosts, storedRecordingSettings] = await Promise.all([
+			listApprovedHosts(),
+			getRecordingSettings(),
+			initTabRegistry(),
+		]);
 		approvedHosts.value = storedHosts;
+		Object.assign(recordingSettings, storedRecordingSettings);
 
 		if (!mounted) return;
 
@@ -313,11 +332,13 @@ export function useConnection() {
 		relayHostKey,
 		rememberInstance,
 		approvedHosts,
+		recordingSettings,
 		controlledTabs: controlledTabDetails,
 		toggleTab,
 		connect,
 		decline,
 		disconnect,
 		forgetHost,
+		updateRecordingSetting,
 	};
 }

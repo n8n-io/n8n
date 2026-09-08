@@ -16,12 +16,14 @@ const state = {
 	relayHostKey: ref<string | null>('localhost:5678'),
 	rememberInstance: ref(false),
 	approvedHosts: ref<string[]>([]),
+	recordingSettings: reactive({ networkRequests: false, screenshots: false }),
 	controlledTabs: ref<chrome.tabs.Tab[]>([]),
 	toggleTab: vi.fn(),
 	connect: vi.fn(),
 	decline: vi.fn(),
 	disconnect: vi.fn(),
 	forgetHost: vi.fn(),
+	updateRecordingSetting: vi.fn(),
 };
 
 vi.mock('./composables/useConnection', () => ({ useConnection: () => state }));
@@ -47,6 +49,8 @@ beforeEach(() => {
 	state.isAutoConnect.value = false;
 	state.rememberInstance.value = false;
 	state.approvedHosts.value = [];
+	state.recordingSettings.networkRequests = false;
+	state.recordingSettings.screenshots = false;
 });
 
 describe('connect prompt', () => {

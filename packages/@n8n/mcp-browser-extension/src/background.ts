@@ -9,8 +9,9 @@ import type { BrowserRecordingAction } from '@n8n/api-types';
 
 import { isHostApproved } from './approvedHosts';
 import { createLogger } from './logger';
+import { getRecordingSettings } from './recordingSettings';
 import { getRelayHostKey, isAllowedPageOrigin, isAllowedRelayUrl } from './relayAllowlist';
-import { RelayConnection, isEligibleTab } from './relayConnection';
+import { RelayConnection, isEligibleTab, type CapturedNetworkRequest } from './relayConnection';
 import type {
 	BrowserRecording,
 	ExtensionMessage,
@@ -138,7 +139,7 @@ async function handleMessage(
 			return { success: true };
 
 		case 'getRecording':
-			return recording;
+			return getVisibleRecording();
 
 		case 'submitRecording':
 			return submitRecording();
@@ -150,6 +151,12 @@ async function handleMessage(
 		case 'removeRecordingAction':
 			if (recording?.status === 'review') {
 				recording.actions = recording.actions.filter((action) => action.id !== message.actionId);
+				recording.screenshots = recording.screenshots?.filter(
+					(screenshot) => screenshot.actionId !== message.actionId,
+				);
+				recording.networkRequests = recording.networkRequests?.filter(
+					(request) => request.actionId !== message.actionId,
+				);
 				broadcastRecordingChange();
 			}
 			return { success: true };
@@ -169,6 +176,30 @@ async function handleMessage(
 				} catch {
 					action.url = '';
 				}
+				recording.screenshots = recording.screenshots?.filter(
+					(screenshot) => screenshot.actionId !== message.actionId,
+				);
+				recording.networkRequests = recording.networkRequests?.filter(
+					(request) => request.actionId !== message.actionId,
+				);
+				broadcastRecordingChange();
+			}
+			return { success: true };
+
+		case 'removeRecordingScreenshot':
+			if (recording?.status === 'review') {
+				recording.screenshots = recording.screenshots?.filter(
+					(screenshot) => screenshot.id !== message.screenshotId,
+				);
+				broadcastRecordingChange();
+			}
+			return { success: true };
+
+		case 'removeRecordingNetworkRequest':
+			if (recording?.status === 'review') {
+				recording.networkRequests = recording.networkRequests?.filter(
+					(request) => request.id !== message.requestId,
+				);
 				broadcastRecordingChange();
 			}
 			return { success: true };
@@ -187,6 +218,10 @@ async function handleMessage(
 // ---------------------------------------------------------------------------
 
 const MAX_RECORDING_ACTIONS = 250;
+const MAX_RECORDING_NETWORK_REQUESTS = 500;
+const MAX_RECORDING_SCREENSHOTS = 20;
+const MAX_RECORDING_SCREENSHOT_BASE64_BYTES = 1024 * 1024;
+const MAX_RECORDING_SCREENSHOTS_BASE64_BYTES = 12 * 1024 * 1024;
 const RECORDING_SUBMIT_TIMEOUT_MS = 20_000;
 const SENSITIVE_FIELD_PATTERN =
 	/(?:password|passcode|secret|token|api[ _-]?key|access[ _-]?key|private[ _-]?key|authorization|credential|card[ _-]?number|security[ _-]?code|cvv|cvc|pin)/i;
@@ -201,6 +236,10 @@ let recordingSubmitTimer: ReturnType<typeof setTimeout> | undefined;
 const pendingRecordingTabIds = new Set<number>();
 const recordingTabIds = new Set<number>();
 const activatingRecordingTabIds = new Set<number>();
+const lastRecordingActionByTab = new Map<number, string>();
+let screenshotCaptureQueue = Promise.resolve();
+let queuedScreenshotCount = 0;
+let screenshotCaptureRecordingId: string | undefined;
 
 function isBlankTabUrl(url: string | undefined): boolean {
 	return (
@@ -266,30 +305,41 @@ async function injectRecorder(tabId: number, frameId?: number): Promise<void> {
 }
 
 async function startRecording(): Promise<{ success: boolean; error?: string }> {
-	if (!activeConnection)
-		return { success: false, error: 'Connect the extension before recording.' };
+	const relay = activeConnection?.relay;
+	if (!relay) return { success: false, error: 'Connect the extension before recording.' };
 
 	const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
 	const pendingTabId =
 		activeTab?.id !== undefined && isBlankTabUrl(activeTab.url) ? activeTab.id : undefined;
 	if (activeTab?.id !== undefined && isEligibleTab(activeTab)) {
-		await activeConnection.relay.addTab(activeTab.id, activeTab.title ?? '', activeTab.url ?? '');
+		await relay.addTab(activeTab.id, activeTab.title ?? '', activeTab.url ?? '');
 	}
 
-	const controlledTabs = activeConnection.relay.getControlledIds();
+	const controlledTabs = relay.getControlledIds();
 	if (controlledTabs.length === 0 && pendingTabId === undefined) {
 		return { success: false, error: 'Open a web page before recording.' };
 	}
 
+	const captureSettings = await getRecordingSettings();
+	if (activeConnection?.relay !== relay) {
+		return { success: false, error: 'The browser connection changed. Try again.' };
+	}
 	recording = {
 		id: crypto.randomUUID(),
 		startedAt: new Date().toISOString(),
 		status: 'recording',
 		actions: [],
+		captureSettings,
+		networkRequests: [],
+		screenshots: [],
 	};
 	pendingRecordingTabIds.clear();
 	recordingTabIds.clear();
 	activatingRecordingTabIds.clear();
+	lastRecordingActionByTab.clear();
+	screenshotCaptureQueue = Promise.resolve();
+	queuedScreenshotCount = 0;
+	screenshotCaptureRecordingId = recording.id;
 	if (pendingTabId !== undefined) {
 		pendingRecordingTabIds.add(pendingTabId);
 		recordingTabIds.add(pendingTabId);
@@ -297,6 +347,7 @@ async function startRecording(): Promise<{ success: boolean; error?: string }> {
 	await Promise.all(
 		controlledTabs.map(async ({ chromeTabId }) => await injectRecorder(chromeTabId)),
 	);
+	await relay.startRecordingCapture(captureSettings.networkRequests);
 	broadcastStatusChange();
 	broadcastRecordingChange();
 	return { success: true };
@@ -322,9 +373,13 @@ async function stopRecording(): Promise<void> {
 			}
 		}),
 	);
+	await screenshotCaptureQueue;
+	screenshotCaptureRecordingId = undefined;
+	activeConnection?.relay.stopRecordingCapture();
 	pendingRecordingTabIds.clear();
 	recordingTabIds.clear();
 	activatingRecordingTabIds.clear();
+	lastRecordingActionByTab.clear();
 	if (!recording || recording.status !== 'recording') return;
 	recording.status = 'review';
 	broadcastRecordingChange();
@@ -341,6 +396,9 @@ function submitRecording(): { success: boolean; error?: string } {
 		id: recording.id,
 		startedAt: recording.startedAt,
 		actions: recording.actions,
+		captureSettings: recording.captureSettings,
+		networkRequests: recording.networkRequests,
+		screenshots: recording.screenshots,
 	};
 	if (!activeConnection.relay.sendRecording(recordingData)) {
 		recording.status = 'review';
@@ -365,6 +423,7 @@ async function stopAndSubmitRecordingNow(): Promise<{ success: boolean; error?: 
 async function discardRecording(): Promise<{ success: boolean }> {
 	if (recordingSubmitTimer) clearTimeout(recordingSubmitTimer);
 	recordingSubmitTimer = undefined;
+	screenshotCaptureRecordingId = undefined;
 	await stopRecording();
 	recording = null;
 	broadcastRecordingChange();
@@ -372,11 +431,67 @@ async function discardRecording(): Promise<{ success: boolean }> {
 }
 
 /** Append one action to the active recording, and forward it live to the relay. */
-function pushRecordingAction(action: BrowserRecordingAction): void {
+function pushRecordingAction(action: BrowserRecordingAction, chromeTabId: number): void {
 	if (!recording) return;
 	recording.actions.push(action);
+	lastRecordingActionByTab.set(chromeTabId, action.id);
+	scheduleScreenshot(action.id, chromeTabId);
 	activeConnection?.relay.sendRecordingAction(recording.id, action);
 	broadcastRecordingChange();
+}
+
+function scheduleScreenshot(actionId: string, chromeTabId: number): void {
+	if (!recording?.captureSettings?.screenshots) return;
+	if (queuedScreenshotCount >= MAX_RECORDING_SCREENSHOTS) return;
+	const recordingId = recording.id;
+	const relay = activeConnection?.relay;
+	if (!relay) return;
+	queuedScreenshotCount++;
+	screenshotCaptureQueue = screenshotCaptureQueue.then(async () => {
+		if (screenshotCaptureRecordingId !== recordingId) return;
+		await new Promise((resolve) => setTimeout(resolve, 250));
+		if (
+			screenshotCaptureRecordingId !== recordingId ||
+			recording?.id !== recordingId ||
+			recording.status !== 'recording'
+		)
+			return;
+		const screenshots = recording.screenshots ?? [];
+		if (screenshots.length >= MAX_RECORDING_SCREENSHOTS) return;
+		const data = await relay.captureScreenshot(chromeTabId);
+		if (!data || data.length > MAX_RECORDING_SCREENSHOT_BASE64_BYTES) return;
+		const totalBytes = screenshots.reduce((total, screenshot) => total + screenshot.data.length, 0);
+		if (totalBytes + data.length > MAX_RECORDING_SCREENSHOTS_BASE64_BYTES) return;
+		screenshots.push({
+			id: crypto.randomUUID(),
+			actionId,
+			data,
+			mimeType: 'image/jpeg',
+			timestamp: Date.now() - Date.parse(recording.startedAt),
+		});
+		recording.screenshots = screenshots;
+	});
+}
+
+function appendNetworkRequest(request: CapturedNetworkRequest): void {
+	if (!recording || recording.status !== 'recording' || !recording.captureSettings?.networkRequests)
+		return;
+	const actionId = lastRecordingActionByTab.get(request.chromeTabId);
+	if (!actionId) return;
+	const url = sanitizeUrl(request.url);
+	if (!url) return;
+	const requests = recording.networkRequests ?? [];
+	if (requests.length >= MAX_RECORDING_NETWORK_REQUESTS) return;
+	requests.push({
+		id: crypto.randomUUID(),
+		actionId,
+		url,
+		method: sanitizeText(request.method.toUpperCase(), 20) ?? 'GET',
+		status: Math.max(0, Math.min(999, Math.trunc(request.status))),
+		contentType: sanitizeText(request.contentType, 100),
+		timestamp: Math.max(0, request.timestamp - Date.parse(recording.startedAt)),
+	});
+	recording.networkRequests = requests;
 }
 
 function appendRecordingAction(
@@ -415,17 +530,20 @@ function appendRecordingAction(
 		: action.type === 'context_menu'
 			? {}
 			: sanitizeValue(action.value, target);
-	pushRecordingAction({
-		id: crypto.randomUUID(),
-		type: action.type,
-		timestamp: Math.max(0, action.timestamp - Date.parse(recording.startedAt)),
-		url: sanitizeUrl(action.url),
-		target,
-		...value,
-	});
+	pushRecordingAction(
+		{
+			id: crypto.randomUUID(),
+			type: action.type,
+			timestamp: Math.max(0, action.timestamp - Date.parse(recording.startedAt)),
+			url: sanitizeUrl(action.url),
+			target,
+			...value,
+		},
+		tabId,
+	);
 }
 
-function appendNavigation(url: string): void {
+function appendNavigation(tabId: number, url: string): void {
 	if (
 		!recording ||
 		recording.status !== 'recording' ||
@@ -436,15 +554,18 @@ function appendNavigation(url: string): void {
 	if (!sanitizedUrl) return;
 	const previous = recording.actions.at(-1);
 	if (previous?.type === 'navigation' && previous.url === sanitizedUrl) return;
-	pushRecordingAction({
-		id: crypto.randomUUID(),
-		type: 'navigation',
-		timestamp: Date.now() - Date.parse(recording.startedAt),
-		url: sanitizedUrl,
-	});
+	pushRecordingAction(
+		{
+			id: crypto.randomUUID(),
+			type: 'navigation',
+			timestamp: Date.now() - Date.parse(recording.startedAt),
+			url: sanitizedUrl,
+		},
+		tabId,
+	);
 }
 
-function appendTabSwitch(url: string, title: string): void {
+function appendTabSwitch(tabId: number, url: string, title: string): void {
 	if (
 		!recording ||
 		recording.status !== 'recording' ||
@@ -455,16 +576,19 @@ function appendTabSwitch(url: string, title: string): void {
 	if (!sanitizedUrl) return;
 	const previous = recording.actions.at(-1);
 	if (previous?.type === 'tab_switch' && previous.url === sanitizedUrl) return;
-	pushRecordingAction({
-		id: crypto.randomUUID(),
-		type: 'tab_switch',
-		timestamp: Date.now() - Date.parse(recording.startedAt),
-		url: sanitizedUrl,
-		target: {
-			tag: 'tab',
-			label: sanitizeContextText(title, 160),
+	pushRecordingAction(
+		{
+			id: crypto.randomUUID(),
+			type: 'tab_switch',
+			timestamp: Date.now() - Date.parse(recording.startedAt),
+			url: sanitizedUrl,
+			target: {
+				tag: 'tab',
+				label: sanitizeContextText(title, 160),
+			},
 		},
-	});
+		tabId,
+	);
 }
 
 async function activatePendingRecordingTab(
@@ -482,8 +606,8 @@ async function activatePendingRecordingTab(
 		await injectRecorder(tabId);
 		await relay.addTab(tabId, title, url);
 		if (relay !== activeConnection?.relay || recording?.status !== 'recording') return;
-		if (action === 'tab_switch') appendTabSwitch(url, title);
-		else appendNavigation(url);
+		if (action === 'tab_switch') appendTabSwitch(tabId, url, title);
+		else appendNavigation(tabId, url);
 		broadcastStatusChange();
 		updateBadge(relay.getControlledIds().length);
 	} catch (error) {
@@ -497,7 +621,14 @@ async function activatePendingRecordingTab(
 }
 
 function broadcastRecordingChange(error?: string): void {
-	chrome.runtime.sendMessage({ type: 'recordingChanged', recording, error }).catch(() => {});
+	chrome.runtime
+		.sendMessage({ type: 'recordingChanged', recording: getVisibleRecording(), error })
+		.catch(() => {});
+}
+
+function getVisibleRecording(): BrowserRecording | null {
+	if (recording?.status !== 'recording') return recording;
+	return { ...recording, screenshots: [] };
 }
 
 async function openRecordingThread(threadUrl: string): Promise<void> {
@@ -845,7 +976,7 @@ chrome.webNavigation.onCommitted.addListener((details) => {
 		return;
 	}
 	if (recording?.status === 'recording' && activeConnection?.relay.isControlledTab(details.tabId)) {
-		if (details.frameId === 0) appendNavigation(details.url);
+		if (details.frameId === 0) appendNavigation(details.tabId, details.url);
 		void injectRecorder(details.tabId, details.frameId);
 	}
 });
@@ -857,7 +988,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 		return;
 	}
 	if (recording?.status === 'recording' && activeConnection.relay.isControlledTab(tabId)) {
-		if (changeInfo.url) appendNavigation(changeInfo.url);
+		if (changeInfo.url) appendNavigation(tabId, changeInfo.url);
 		if (changeInfo.status === 'complete') void injectRecorder(tabId);
 	}
 
@@ -895,7 +1026,7 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
 				return;
 			}
 			if (relay.isControlledTab(tabId)) {
-				appendTabSwitch(url, tab.title ?? '');
+				appendTabSwitch(tabId, url, tab.title ?? '');
 				return;
 			}
 			if (isBlankTabUrl(url)) {
@@ -1013,6 +1144,11 @@ async function connectToRelay(
 			if (activeConnection?.relay !== relay)
 				return { success: false, error: 'Connection was replaced.' };
 			return await discardRecording();
+		};
+
+		relay.onnetworkrequest = (request) => {
+			if (activeConnection?.relay !== relay) return;
+			appendNetworkRequest(request);
 		};
 
 		relay.onrecordingresult = (recordingId, accepted, threadUrl) => {

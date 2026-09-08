@@ -4,6 +4,7 @@ import { N8nButton, N8nCheckbox, N8nIcon, N8nIconButton, N8nLogo } from '@n8n/de
 import { useConnection } from './composables/useConnection';
 import { useRecording } from './composables/useRecording';
 import InfoRow from './components/InfoRow.vue';
+import RecordingCaptureSettings from './components/RecordingCaptureSettings.vue';
 import RecordingReview from './components/RecordingReview.vue';
 import RememberedHosts from './components/RememberedHosts.vue';
 import TabList from './components/TabList.vue';
@@ -19,12 +20,14 @@ const {
 	relayHostKey,
 	rememberInstance,
 	approvedHosts,
+	recordingSettings,
 	controlledTabs,
 	toggleTab,
 	connect,
 	decline,
 	disconnect,
 	forgetHost,
+	updateRecordingSetting,
 } = useConnection();
 
 const {
@@ -37,6 +40,8 @@ const {
 	recordAgain,
 	removeAction,
 	maskAction,
+	removeScreenshot,
+	removeNetworkRequest,
 } = useRecording();
 
 const showTabSelection = ref(false);
@@ -104,12 +109,31 @@ async function disconnectFromInstance() {
 						<TabList :tabs="controlledTabs" />
 					</template>
 				</div>
+				<div class="panel">
+					<InfoRow
+						icon="eye"
+						title="Recording data"
+						description="These settings apply when the next recording starts"
+					/>
+					<RecordingCaptureSettings
+						:settings="recordingSettings"
+						@update="updateRecordingSetting"
+					/>
+				</div>
 				<RememberedHosts show-empty :hosts="approvedHosts" @forget="forgetHost" />
 			</template>
 
 			<template v-else-if="isConnected && recording?.status === 'review'">
 				<h1 class="title">Review recording</h1>
-				<RecordingReview :actions="recording.actions" @remove="removeAction" @mask="maskAction" />
+				<RecordingReview
+					:actions="recording.actions"
+					:screenshots="recording.screenshots ?? []"
+					:network-requests="recording.networkRequests ?? []"
+					@remove="removeAction"
+					@mask="maskAction"
+					@remove-screenshot="removeScreenshot"
+					@remove-network-request="removeNetworkRequest"
+				/>
 			</template>
 
 			<template v-else-if="isConnected">
@@ -189,6 +213,16 @@ async function disconnectFromInstance() {
 							@toggle-tab="toggleTab"
 						/>
 					</template>
+					<hr class="divider" />
+					<InfoRow
+						icon="eye"
+						title="Recording data"
+						description="Choose the additional data that recordings can include"
+					/>
+					<RecordingCaptureSettings
+						:settings="recordingSettings"
+						@update="updateRecordingSetting"
+					/>
 				</div>
 			</template>
 
@@ -207,6 +241,17 @@ async function disconnectFromInstance() {
 						icon="eye-off"
 						title="Disconnected"
 						description="Connect Browser Use from AI Assistant to share browser access"
+					/>
+				</div>
+				<div class="panel">
+					<InfoRow
+						icon="eye"
+						title="Recording data"
+						description="These settings apply when the next recording starts"
+					/>
+					<RecordingCaptureSettings
+						:settings="recordingSettings"
+						@update="updateRecordingSetting"
 					/>
 				</div>
 				<RememberedHosts show-empty :hosts="approvedHosts" @forget="forgetHost" />

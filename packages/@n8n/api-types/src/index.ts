@@ -99,13 +99,23 @@ export { isValidTimeZone, StrictTimeZoneSchema, TimeZoneSchema } from './schemas
 
 export {
 	browserRecordingActionSchema,
+	browserRecordingCaptureSettingsSchema,
+	browserRecordingNetworkRequestSchema,
 	browserRecordingSchema,
+	browserRecordingScreenshotSchema,
 	browserRecordingTargetSchema,
+	MAX_BROWSER_RECORDING_SCREENSHOT_BASE64_BYTES,
+	MAX_BROWSER_RECORDING_NETWORK_REQUESTS,
+	MAX_BROWSER_RECORDING_SCREENSHOTS,
+	MAX_BROWSER_RECORDING_SCREENSHOTS_BASE64_BYTES,
 } from './schemas/browser-recording.schema';
 export type {
 	BrowserRecording,
 	BrowserRecordingAction,
 	BrowserRecordingActionType,
+	BrowserRecordingCaptureSettings,
+	BrowserRecordingNetworkRequest,
+	BrowserRecordingScreenshot,
 	BrowserRecordingTarget,
 } from './schemas/browser-recording.schema';
 

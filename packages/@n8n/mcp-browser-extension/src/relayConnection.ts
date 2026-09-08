@@ -34,6 +34,21 @@ export interface RecordingCommandResult {
 	error?: string;
 }
 
+export interface CapturedNetworkRequest {
+	chromeTabId: number;
+	url: string;
+	method: string;
+	status: number;
+	contentType?: string;
+	timestamp: number;
+}
+
+interface PendingNetworkRequest {
+	url: string;
+	method: string;
+	timestamp: number;
+}
+
 const log = createLogger('relay');
 
 /** URL prefixes to exclude from auto-attach */
@@ -58,7 +73,9 @@ interface TabEntry {
 
 const CDP_COMMAND_TIMEOUT_MS = 30_000;
 const ATTACH_TIMEOUT_MS = 5_000;
+const SCREENSHOT_TIMEOUT_MS = 5_000;
 const KEEPALIVE_INTERVAL_MS = 15_000;
+const MAX_PENDING_NETWORK_REQUESTS = 1_000;
 
 // ---------------------------------------------------------------------------
 // RelayConnection
@@ -88,6 +105,8 @@ export class RelayConnection {
 	private primaryId: string | undefined;
 	/** Cached Target.setAutoAttach params — reapplied to newly attached tabs for iframe support. */
 	private autoAttachParams: object | null = null;
+	private captureNetworkRequests = false;
+	private readonly pendingNetworkRequests = new Map<string, PendingNetworkRequest>();
 
 	private readonly ws: WebSocket;
 	private readonly eventListener: (
@@ -106,6 +125,7 @@ export class RelayConnection {
 	onstartrecording?: () => Promise<RecordingCommandResult>;
 	onstopandsubmitrecording?: () => Promise<RecordingCommandResult>;
 	ondiscardrecording?: () => Promise<RecordingCommandResult>;
+	onnetworkrequest?: (request: CapturedNetworkRequest) => void;
 
 	constructor(ws: WebSocket) {
 		this.ws = ws;
@@ -164,6 +184,7 @@ export class RelayConnection {
 
 		log.debug(`addTab: targetId=${targetId} chromeTabId=${chromeTabId} url=${url} (lazy)`);
 		this.sendMessage({ method: 'tabOpened', params: { id: targetId, title, url } });
+		if (this.captureNetworkRequests) await this.enableNetworkCapture(targetId);
 	}
 
 	/** Remove a closed tab and notify the relay. */
@@ -210,6 +231,52 @@ export class RelayConnection {
 
 	isAgentCreatedTab(chromeTabId: number): boolean {
 		return this.agentCreatedChromeTabIds.has(chromeTabId);
+	}
+
+	async startRecordingCapture(captureNetworkRequests: boolean): Promise<void> {
+		this.captureNetworkRequests = captureNetworkRequests;
+		this.pendingNetworkRequests.clear();
+		if (!captureNetworkRequests) return;
+		await Promise.all(
+			[...this.tabs.keys()].map(async (id) => {
+				try {
+					await this.enableNetworkCapture(id);
+				} catch (error) {
+					log.warn(`Failed to enable network capture for ${id}:`, error);
+				}
+			}),
+		);
+	}
+
+	stopRecordingCapture(): void {
+		this.captureNetworkRequests = false;
+		this.pendingNetworkRequests.clear();
+	}
+
+	async captureScreenshot(chromeTabId: number): Promise<string | undefined> {
+		const id = this.chromeTabIdToId.get(chromeTabId);
+		if (!id) return undefined;
+		try {
+			await this.explainDenials(chromeTabId, async () => await this.ensureAttached(id));
+			const result = (await Promise.race([
+				chrome.debugger.sendCommand({ tabId: chromeTabId }, 'Page.captureScreenshot', {
+					format: 'jpeg',
+					quality: 60,
+					captureBeyondViewport: false,
+					optimizeForSpeed: true,
+				}),
+				new Promise<never>((_resolve, reject) => {
+					setTimeout(
+						() => reject(new Error(`Screenshot timed out after ${SCREENSHOT_TIMEOUT_MS}ms`)),
+						SCREENSHOT_TIMEOUT_MS,
+					);
+				}),
+			])) as { data?: unknown };
+			return typeof result.data === 'string' ? result.data : undefined;
+		} catch (error) {
+			log.warn(`Failed to capture screenshot for ${id}:`, error);
+			return undefined;
+		}
 	}
 
 	sendRecording(recording: BrowserRecording): boolean {
@@ -277,6 +344,7 @@ export class RelayConnection {
 		this.chromeTabIdToId.clear();
 		this.pendingAttaches.clear();
 		this.agentCreatedChromeTabIds.clear();
+		this.stopRecordingCapture();
 		this.foreignFrames.clear();
 		this.onclose?.();
 	}
@@ -407,6 +475,13 @@ export class RelayConnection {
 		}
 	}
 
+	private async enableNetworkCapture(id: string): Promise<void> {
+		const entry = this.tabs.get(id);
+		if (!entry) return;
+		await this.explainDenials(entry.chromeTabId, async () => await this.ensureAttached(id));
+		await chrome.debugger.sendCommand({ tabId: entry.chromeTabId }, 'Network.enable');
+	}
+
 	// =========================================================================
 	// Internal — debugger events (chrome → relay)
 	// =========================================================================
@@ -415,6 +490,8 @@ export class RelayConnection {
 		if (!source.tabId) return;
 		const id = this.chromeTabIdToId.get(source.tabId);
 		if (!id) return;
+
+		if (this.captureNetworkRequests) this.captureNetworkEvent(source.tabId, method, params);
 
 		// Filter restricted child targets from auto-attach (extension pages, chrome://, etc.).
 		// Without this, Chrome's debugger API throws "Cannot access a chrome-extension:// URL
@@ -442,6 +519,52 @@ export class RelayConnection {
 		this.sendMessage({
 			method: 'forwardCDPEvent',
 			params: { method, params, id },
+		});
+	}
+
+	private captureNetworkEvent(chromeTabId: number, method: string, params?: object): void {
+		if (method === 'Network.requestWillBeSent') {
+			const event = params as
+				| { requestId?: string; request?: { url?: string; method?: string }; timestamp?: number }
+				| undefined;
+			if (
+				typeof event?.requestId !== 'string' ||
+				typeof event.request?.url !== 'string' ||
+				typeof event.request.method !== 'string'
+			) {
+				return;
+			}
+			this.pendingNetworkRequests.set(`${chromeTabId}:${event.requestId}`, {
+				url: event.request.url,
+				method: event.request.method,
+				timestamp: Date.now(),
+			});
+			if (this.pendingNetworkRequests.size > MAX_PENDING_NETWORK_REQUESTS) {
+				const oldestKey = this.pendingNetworkRequests.keys().next().value;
+				if (typeof oldestKey === 'string') this.pendingNetworkRequests.delete(oldestKey);
+			}
+			return;
+		}
+		if (method !== 'Network.responseReceived') return;
+		const event = params as
+			| {
+					requestId?: string;
+					response?: { url?: string; status?: number; mimeType?: string };
+			  }
+			| undefined;
+		if (typeof event?.requestId !== 'string' || typeof event.response?.status !== 'number') return;
+		const key = `${chromeTabId}:${event.requestId}`;
+		const request = this.pendingNetworkRequests.get(key);
+		this.pendingNetworkRequests.delete(key);
+		if (!request) return;
+		this.onnetworkrequest?.({
+			chromeTabId,
+			url: typeof event.response.url === 'string' ? event.response.url : request.url,
+			method: request.method,
+			status: event.response.status,
+			contentType:
+				typeof event.response.mimeType === 'string' ? event.response.mimeType : undefined,
+			timestamp: request.timestamp,
 		});
 	}
 
@@ -698,6 +821,7 @@ export class RelayConnection {
 		const targetId = await this.attachAndResolveTargetId(tab.id);
 		this.tabs.set(targetId, { chromeTabId: tab.id, attached: true });
 		this.chromeTabIdToId.set(tab.id, targetId);
+		if (this.captureNetworkRequests) await this.enableNetworkCapture(targetId);
 
 		// Apply cached auto-attach params so the new tab reports iframes immediately.
 		// ensureAttached() does this for lazily-attached tabs; we must do it here too
