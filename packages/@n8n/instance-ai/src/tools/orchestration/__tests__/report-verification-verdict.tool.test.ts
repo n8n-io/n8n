@@ -88,22 +88,29 @@ describe('report-verification-verdict tool', () => {
 		expect((result as { guidance: string }).guidance).toContain('wf-123');
 	});
 
-	it('does not claim verification for a verified verdict with no persisted claim', async () => {
-		// `getBuildOutcome` returns nothing here, so no run recorded a claim. The
-		// guidance used to answer "verified successfully" anyway, which is a
-		// verified claim with no run evidence behind it.
-		const context = createMockContext({
-			workflowTaskService: createWorkflowTaskService(
-				vi.fn().mockResolvedValue({ type: 'done', workflowId: 'wf-123', summary: 'All good' }),
-			),
-		});
+	it('forwards no claim when no run recorded one', async () => {
+		// `getBuildOutcome` returns nothing, so the tool must forward `claim:
+		// undefined` and let the controller decide. Asserting the guidance here
+		// would prove nothing: it is rendered from the mocked action, so it stays
+		// claimless even if the tool invented a verified claim. The wording for a
+		// missing claim is covered in `workflow-loop/__tests__/guidance.test.ts`.
+		const workflowTaskService = createWorkflowTaskService(
+			vi.fn().mockResolvedValue({ type: 'done', workflowId: 'wf-123', summary: 'All good' }),
+		);
+		const context = createMockContext({ workflowTaskService });
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = await executeTool(tool, baseInput, {} as never);
+		await executeTool(tool, baseInput, {} as never);
 
-		const { guidance } = result as { guidance: string };
-		expect(guidance).not.toContain('verified successfully');
-		expect(guidance).toContain('No automatic verification evidence is recorded');
+		expect(workflowTaskService.getBuildOutcome).toHaveBeenCalledWith('wi_test1234');
+		const [reported] = workflowTaskService.reportVerificationVerdict.mock.calls[0] as [
+			{ verdict: string; claim?: unknown },
+		];
+		expect(reported.claim).toBeUndefined();
+		// It does not refuse the verdict: a live run the model inspected is still
+		// valid evidence, so the controller settles and the guidance carries the
+		// caveat.
+		expect(reported.verdict).toBe('verified');
 	});
 
 	it('keeps the verified wording when a run recorded a verified claim', async () => {
