@@ -204,6 +204,42 @@ describe('isPhantomNpm (cdxgen image-scan noise)', () => {
 
 	const syftSrc = (p) => ({ properties: [{ name: 'syft:location:0:path', value: p }] });
 
+	it('flags an exports subpath whose syft path matches its own qualified name', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'genai/node',
+				group: '@google',
+				version: 'UNKNOWN',
+				purl: 'pkg:npm/%40google/genai%2Fnode',
+				...syftSrc('/usr/local/lib/node_modules/n8n/node_modules/@google/genai/node/package.json'),
+			}),
+			true,
+		);
+		assert.equal(
+			isPhantomNpm({
+				name: 'sdk/webhooks',
+				group: '@linear',
+				version: 'UNKNOWN',
+				purl: 'pkg:npm/%40linear/sdk%2Fwebhooks',
+				...syftSrc('/usr/local/lib/node_modules/n8n/node_modules/@linear/sdk/webhooks/package.json'),
+			}),
+			true,
+		);
+	});
+
+	it('keeps an unscoped package whose name is a prefix of a subpath', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'genai',
+				group: '@google',
+				version: '1.19.0',
+				purl: 'pkg:npm/%40google/genai@1.19.0',
+				...syftSrc('/usr/local/lib/node_modules/n8n/node_modules/@google/genai/package.json'),
+			}),
+			false,
+		);
+	});
+
 	it('keeps an application root outside node_modules (runners ship the task runner there)', () => {
 		assert.equal(
 			isPhantomNpm({

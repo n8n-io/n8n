@@ -18,6 +18,8 @@ export interface ProviderQuirks {
 	providerOptionsNamespace?: string;
 	/** providerMetadata keys on reasoning parts that must be copied to providerOptions and survive replay. */
 	reasoningReplayKeys?: string[];
+	/** Provider merges adjacent assistant messages into one; replayable reasoning may only survive on the last of them. */
+	mergesAdjacentAssistantMessages?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
@@ -98,6 +100,11 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// exposes them in providerMetadata, not providerOptions. Shim until the
 		// provider copies them itself on replay.
 		reasoningReplayKeys: ['signature', 'redactedData'],
+		// QUIRK(anthropic): the provider merges adjacent assistant messages into
+		// one API message. Thinking blocks are only valid inside the response
+		// that produced them, so a merged message with signed reasoning from two
+		// responses is rejected with "thinking blocks ... cannot be modified".
+		mergesAdjacentAssistantMessages: true,
 		// QUIRK(anthropic): defaults every function tool to eager_input_streaming,
 		// which forwards the model's raw argument tokens without server-side JSON
 		// validation — malformed inputs (e.g. unquoted string values) then reach

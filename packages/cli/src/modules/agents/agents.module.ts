@@ -35,8 +35,8 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsService } = await import('./agents.service.js');
 		Container.get(AgentsService);
 
-		const { AgentCredentialIndexListener } = await import('./agent-credential-index.listener.js');
-		Container.get(AgentCredentialIndexListener).init();
+		const { AgentDependencyIndexListener } = await import('./agent-dependency-index.listener.js');
+		Container.get(AgentDependencyIndexListener).init();
 
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
@@ -61,6 +61,9 @@ export class AgentsModule implements ModuleInterface {
 
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
 		registerFavoriteResolver();
+
+		const { registerAgentUsageProvider } = await import('./register-agent-usage-provider.js');
+		registerAgentUsageProvider();
 
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService);
@@ -114,6 +117,9 @@ export class AgentsModule implements ModuleInterface {
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		if (instanceSettings.instanceType === 'main') {
+			// Loaded for its pubsub decorator
+			await import('./background/agent-background-job.service.js');
+
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);
@@ -131,6 +137,7 @@ export class AgentsModule implements ModuleInterface {
 			);
 			this.interruptedExecutionSweepTimer.unref();
 		}
+
 		// Workers never receive inbound platform events: no webhook route, no polling
 		// loop. Holding channels there would connect adapters nothing reads and, now
 		// that startups are reported, publish status rows for a process that cannot
@@ -139,6 +146,9 @@ export class AgentsModule implements ModuleInterface {
 		if (instanceSettings.instanceType !== 'worker') {
 			channelReconciler.init();
 		}
+
+		// Tasks are leader-only: only the leader should run the cron and reconnect tasks on startup.
+		// TODO: migrate to the durable scheduler
 		if (instanceSettings.isLeader) {
 			void taskService.reconnectAll().catch((error) => {
 				logger.error('[Agents] Failed to reconnect tasks on startup', {
@@ -183,9 +193,13 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
+		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
+		);
+		const { AgentWorkflowDependency } = await import(
+			'./entities/agent-workflow-dependency.entity.js'
 		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
@@ -220,8 +234,10 @@ export class AgentsModule implements ModuleInterface {
 			AgentMessageEntity,
 			AgentExecutionThread,
 			AgentExecution,
+			AgentBackgroundJob,
 			AgentHistory,
 			AgentCredentialDependency,
+			AgentWorkflowDependency,
 			AgentTask,
 			AgentTaskRunLock,
 			AgentTaskSnapshot,

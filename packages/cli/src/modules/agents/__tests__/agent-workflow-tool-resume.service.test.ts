@@ -1,5 +1,5 @@
-import type { Logger } from '@n8n/backend-common';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { User, UserRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import type { InstanceSettings } from 'n8n-core';
@@ -13,6 +13,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
+import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
@@ -51,6 +52,7 @@ function setup() {
 		status: 'active',
 		checkpoint: { status: 'suspended' },
 	} as never);
+	const backgroundJobService = mock<AgentBackgroundJobService>();
 	const service = new AgentWorkflowToolResumeService(
 		logger,
 		userRepository,
@@ -61,6 +63,7 @@ function setup() {
 		checkpointStorage,
 		instanceSettings,
 		publisher,
+		backgroundJobService,
 	);
 	return {
 		service,
@@ -74,6 +77,7 @@ function setup() {
 		publisher,
 		instanceSettings,
 		messageContextService,
+		backgroundJobService,
 	};
 }
 
@@ -87,6 +91,8 @@ function afterContext(
 		executionId: 'exec-1',
 		runData: {
 			status,
+			// The engine stamps this only on runs that ended without error or wait.
+			finished: status === 'success',
 			data: { ...data, ...(parentAgentRun ? { parentAgentRun } : {}) },
 		} as IRun,
 	});
@@ -325,5 +331,81 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 			'Cannot resume preview chat run without its user',
 			expect.objectContaining({ runId: 'run-1' }),
 		);
+	});
+});
+
+describe('AgentWorkflowToolResumeService → background job settlement', () => {
+	/** Like {@link afterContext}, with node output the settle serializes. */
+	function afterContextWithOutput(status: IRun['status']): WorkflowExecuteAfterContext {
+		const ctx = afterContext(status, agentRun);
+		ctx.runData.data.resultData.runData = {
+			Fetch: [{ data: { main: [[{ json: { page: 1 } }]] } } as never],
+			Set: [{ data: { main: [[{ json: { ok: true } }]] } } as never],
+		};
+		return ctx;
+	}
+
+	it('settles the job with only the last node’s output serialized', async () => {
+		const { service, backgroundJobService } = setup();
+
+		await service.handleWorkflowExecuteAfter(afterContextWithOutput('success'));
+
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
+			status: 'completed',
+			result: '{"Set":[{"ok":true}]}',
+			error: null,
+		});
+	});
+
+	it('does not settle a success callback for a run that has not finished', async () => {
+		const { service, backgroundJobService } = setup();
+		const ctx = afterContextWithOutput('success');
+		Object.assign(ctx.runData, { finished: false });
+
+		await service.handleWorkflowExecuteAfter(ctx);
+
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).not.toHaveBeenCalled();
+	});
+
+	it('settles a failed execution with its error and no result', async () => {
+		const { service, backgroundJobService } = setup();
+		const ctx = afterContextWithOutput('error');
+		ctx.runData.data.resultData.error = { message: 'boom' } as never;
+
+		await service.handleWorkflowExecuteAfter(ctx);
+
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
+			status: 'failed',
+			result: null,
+			error: 'boom',
+		});
+	});
+
+	it('does not settle while the execution is still waiting', async () => {
+		const { service, backgroundJobService } = setup();
+
+		await service.handleWorkflowExecuteAfter(afterContext('waiting', agentRun));
+
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).not.toHaveBeenCalled();
+	});
+
+	it('still resumes a suspended run after settling — the two paths coexist', async () => {
+		const { service, bridge, chatIntegrationService, backgroundJobService } = setup();
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+
+		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
+
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalled();
+		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
+	});
+
+	it('never lets a failing settle disturb the resume path', async () => {
+		const { service, bridge, chatIntegrationService, backgroundJobService } = setup();
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+		backgroundJobService.settleWorkflowJobByExecutionId.mockRejectedValue(new Error('db down'));
+
+		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
+
+		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
 	});
 });

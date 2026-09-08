@@ -5,9 +5,11 @@ import {
 	GitConnectionProjectListPublicDto,
 	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
+	GitConnectionPullResultDto,
 	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
 	MAX_ITEMS_PER_PAGE,
+	PushGitConnectionDto,
 	UpdateGitConnectionDto,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -206,7 +208,7 @@ export class GitConnectionsPublicController {
 	@GlobalScope('gitConnection:push')
 	@ApiSummary('Push all team projects to a Git connection')
 	@ApiDescription(
-		'Work in progress. Exports all team projects to the local repository working copy; personal projects are ignored. It does not commit or push changes to the selected branch yet.',
+		'Exports all team projects, commits them, and pushes to the configured branch. Personal projects are ignored. Requires the repository to be cloned first.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionPushResultDto)
@@ -217,8 +219,9 @@ export class GitConnectionsPublicController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
+		@Body input: PushGitConnectionDto,
 	): Promise<GitConnectionPushResultDto> {
-		return await (await this.gitConnectionsService()).push(id, req.user);
+		return await (await this.gitConnectionsService()).push(id, req.user, input);
 	}
 
 	@Get('/:id/projects')
@@ -285,5 +288,28 @@ export class GitConnectionsPublicController {
 			connectionId: id,
 			projectId,
 		});
+	}
+
+	@Post('/:id/pull')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:pull')
+	@GlobalScope('gitConnection:pull')
+	@ApiSummary('Pull projects from a Git connection')
+	@ApiDescription(
+		'Resets the local clone to the configured branch tip and imports projects into the instance, overwriting to match. Requires the repository to be cloned first.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, GitConnectionPullResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
+	@ApiErrorResponse(503)
+	async pullGitConnectionProjects(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<GitConnectionPullResultDto> {
+		return await (await this.gitConnectionsService()).pull(id, req.user);
 	}
 }

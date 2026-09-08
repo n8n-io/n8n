@@ -201,6 +201,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private checkpointStore?: 'memory' | CheckpointStore;
 
+	private runStateManager?: RunStateManager;
+
 	private thinkingConfig?: ThinkingConfig;
 
 	private reasoningLevel?: ReasoningLevel;
@@ -432,6 +434,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * ```
 	 */
 	checkpoint(storage: 'memory' | CheckpointStore): this {
+		if (this.checkpointStore !== storage) {
+			this.runStateManager = undefined;
+		}
 		this.checkpointStore = storage;
 		return this;
 	}
@@ -876,16 +881,23 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	/**
 	 * @internal Lazy-build the agent on first use. Stores the promise so
-	 * concurrent callers share one build operation. On error the promise is
-	 * cleared so the caller can retry.
+	 * concurrent callers share one build operation. An error clears the promise.
+	 * An MCP connection failure also clears it so the next run can retry discovery.
 	 */
 	private async ensureBuilt(): Promise<AgentRuntimeConfig> {
 		if (!this.buildPromise) {
 			const p = this.build();
 			this.buildPromise = p;
-			p.catch(() => {
-				if (this.buildPromise === p) this.buildPromise = undefined;
-			});
+			void p.then(
+				(config) => {
+					if (config.mcpConnectionFailures?.length && this.buildPromise === p) {
+						this.buildPromise = undefined;
+					}
+				},
+				() => {
+					if (this.buildPromise === p) this.buildPromise = undefined;
+				},
+			);
 		}
 		return await this.buildPromise;
 	}
@@ -1073,7 +1085,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
 				? { topK: this.deferredToolSearchTopK }
 				: undefined;
-		const runState = new RunStateManager(this.checkpointStore);
+		const runState = (this.runStateManager ??= new RunStateManager(this.checkpointStore));
 
 		allTools = this.completeInlineDelegateTools(allTools, {
 			deferredTools: finalDeferredTools,

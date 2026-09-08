@@ -1,12 +1,16 @@
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, JsonValue } from 'n8n-workflow';
 
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
+import type {
+	PolicyAttachment,
+	PolicyRule,
+} from '@/modules/type-availability-policies/policy-rule.types';
 import { assertNever } from '@/utils';
 
 type WorkflowExecutedEvent = RelayEventMap['workflow-executed'];
@@ -27,6 +31,34 @@ function withoutExecutionMetadata(
 	delete trimmed.telemetryMetadata;
 
 	return trimmed;
+}
+
+/** Rebuilds a `readonly PolicyRule[]` as plain mutable JSON, for the audit payload. */
+function rulesToJson(rules: readonly PolicyRule[]): JsonValue {
+	return rules.map((rule) => ({
+		id: rule.id,
+		action: rule.action,
+		selector: { ...rule.selector },
+	}));
+}
+
+function policyContentToJson(content: { rules: readonly PolicyRule[]; version: number }) {
+	return { rules: rulesToJson(content.rules), version: content.version };
+}
+
+function attachmentsContentToJson(content: {
+	attachments: readonly PolicyAttachment[];
+	version: number;
+}) {
+	return {
+		attachments: content.attachments.map((attachment) => ({
+			policyId: attachment.policyId,
+			priority: attachment.priority,
+			isFloor: attachment.isFloor,
+			rules: rulesToJson(attachment.rules),
+		})) satisfies JsonValue,
+		version: content.version,
+	};
 }
 
 @Service()
@@ -85,6 +117,12 @@ export class LogStreamingEventRelay extends EventRelay {
 			'variable-created': (event) => this.variableCreated(event),
 			'variable-updated': (event) => this.variableUpdated(event),
 			'variable-deleted': (event) => this.variableDeleted(event),
+			'node-type-policy-scope-updated': (event) => this.nodeTypePolicyScopeUpdated(event),
+			'node-type-policy-document-created': (event) => this.nodeTypePolicyDocumentCreated(event),
+			'node-type-policy-document-updated': (event) => this.nodeTypePolicyDocumentUpdated(event),
+			'node-type-policy-document-deleted': (event) => this.nodeTypePolicyDocumentDeleted(event),
+			'node-type-policy-attachments-updated': (event) =>
+				this.nodeTypePolicyAttachmentsUpdated(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
@@ -167,6 +205,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		user,
 		counts,
 		credentialExportPolicy,
+		includeArchivedWorkflows,
 		...rest
 	}: RelayEventMap['n8n-package-exported']) {
 		void this.eventBus.sendAuditEvent({
@@ -645,19 +684,51 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #region Credentials
 
+	/**
+	 * These name every field they publish. The events they read carry more than the audit stream
+	 * should, and spreading the rest would widen it again the next time one gains a field.
+	 */
 	@Redactable()
-	private credentialsCreated({ user, ...rest }: RelayEventMap['credentials-created']) {
+	private credentialsCreated({
+		user,
+		credentialType,
+		credentialId,
+		publicApi,
+		projectId,
+		projectType,
+		isDynamic,
+		usesExternalSecrets,
+		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
+	}: RelayEventMap['credentials-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.created',
-			payload: { ...user, ...rest },
+			payload: {
+				...user,
+				credentialType,
+				credentialId,
+				publicApi,
+				projectId,
+				projectType,
+				isDynamic,
+				usesExternalSecrets,
+				jweEnabled,
+				supportsManagedAuth,
+				usesManagedAuth,
+			},
 		});
 	}
 
 	@Redactable()
-	private credentialsDeleted({ user, ...rest }: RelayEventMap['credentials-deleted']) {
+	private credentialsDeleted({
+		user,
+		credentialType,
+		credentialId,
+	}: RelayEventMap['credentials-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
-			payload: { ...user, ...rest },
+			payload: { ...user, credentialType, credentialId },
 		});
 	}
 
@@ -681,10 +752,28 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private credentialsUpdated({ user, ...rest }: RelayEventMap['credentials-updated']) {
+	private credentialsUpdated({
+		user,
+		credentialType,
+		credentialId,
+		isDynamic,
+		usesExternalSecrets,
+		jweEnabled,
+		supportsManagedAuth,
+		usesManagedAuth,
+	}: RelayEventMap['credentials-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.updated',
-			payload: { ...user, ...rest },
+			payload: {
+				...user,
+				credentialType,
+				credentialId,
+				isDynamic,
+				usesExternalSecrets,
+				jweEnabled,
+				supportsManagedAuth,
+				usesManagedAuth,
+			},
 		});
 	}
 
@@ -731,6 +820,77 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.variable.deleted',
 			payload: { ...user, ...rest },
+		});
+	}
+
+	// #endregion
+
+	// #region Node type policy
+
+	private nodeTypePolicyScopeUpdated(event: RelayEventMap['node-type-policy-scope-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.node-type-policy.scope.updated',
+			payload: {
+				updatedBy: event.updatedBy,
+				kind: event.kind,
+				projectId: event.projectId,
+				scopeId: event.scopeId,
+				before: event.before ? { ...event.before } : null,
+				after: { ...event.after },
+			},
+		});
+	}
+
+	private nodeTypePolicyDocumentCreated(event: RelayEventMap['node-type-policy-document-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.node-type-policy.document.created',
+			payload: {
+				updatedBy: event.updatedBy,
+				kind: event.kind,
+				policyId: event.policyId,
+				after: policyContentToJson(event.after),
+			},
+		});
+	}
+
+	private nodeTypePolicyDocumentUpdated(event: RelayEventMap['node-type-policy-document-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.node-type-policy.document.updated',
+			payload: {
+				updatedBy: event.updatedBy,
+				kind: event.kind,
+				policyId: event.policyId,
+				before: policyContentToJson(event.before),
+				after: policyContentToJson(event.after),
+			},
+		});
+	}
+
+	private nodeTypePolicyDocumentDeleted(event: RelayEventMap['node-type-policy-document-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.node-type-policy.document.deleted',
+			payload: {
+				updatedBy: event.updatedBy,
+				kind: event.kind,
+				policyId: event.policyId,
+				before: policyContentToJson(event.before),
+			},
+		});
+	}
+
+	private nodeTypePolicyAttachmentsUpdated(
+		event: RelayEventMap['node-type-policy-attachments-updated'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.node-type-policy.attachments.updated',
+			payload: {
+				updatedBy: event.updatedBy,
+				kind: event.kind,
+				projectId: event.projectId,
+				scopeId: event.scopeId,
+				before: attachmentsContentToJson(event.before),
+				after: attachmentsContentToJson(event.after),
+			},
 		});
 	}
 

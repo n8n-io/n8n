@@ -27,7 +27,6 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import {
 	canManageInstanceAi,
@@ -1077,8 +1076,10 @@ export const routes: RouteRecordRaw[] = [
 							scope: 'encryptionKey:manage',
 						},
 						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('ENCRYPTION_KEY_ROTATION');
+							const settingsStore = useSettingsStore();
+							return (
+								settingsStore.moduleSettings['encryption-key-manager']?.rotationEnabled === true
+							);
 						},
 					},
 					telemetry: {

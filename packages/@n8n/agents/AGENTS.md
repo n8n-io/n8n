@@ -134,6 +134,9 @@ instead, so every test must have a matching recording.
 **Rules:**
 - No random IDs or current timestamps in HTTP requests — the replay matcher
   must be able to match recorded requests deterministically
+- The integration scripts pin `TZ=UTC` because some request payloads render
+  local-time timestamps (e.g. observation log `(HH:MM)` markers); recording in
+  another timezone would produce cassettes that only replay on that machine
 - Run only the affected test files, not the full suite, unless changes affect all tests
 
 ## Documentation

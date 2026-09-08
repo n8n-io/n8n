@@ -590,6 +590,37 @@ describe('useWorkflowDocumentNodes', () => {
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
 
+		it('updateNodeProperties fires onStateDirty when a property changes', () => {
+			const dirtySpy = vi.fn();
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.updateNodeProperties({
+				name: 'Target',
+				properties: { disabled: true },
+			});
+
+			expect(dirtySpy).toHaveBeenCalledOnce();
+		});
+
+		it('updateNodeProperties with markDirty: false does not fire onStateDirty (server-mirror path)', () => {
+			const dirtySpy = vi.fn();
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.updateNodeProperties(
+				{ name: 'Target', properties: { disabled: true } },
+				{ markDirty: false },
+			);
+
+			expect(dirtySpy).not.toHaveBeenCalled();
+			expect(workflowDocumentNodes.getNodeByName('Target')?.disabled).toBe(true);
+		});
+
 		it('removeAllNodes does not fire onStateDirty (initialization path)', () => {
 			const dirtySpy = vi.fn();
 
