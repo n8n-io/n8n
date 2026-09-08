@@ -1,0 +1,64 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/branch-handler-utils.ts
+  s_554c5b2110274f::t_8ade290604e71d 45,53-75
+  s_554c5b2110274f::t_f604e76c40ad9d 76
+packages/@n8n/workflow-sdk/src/workflow-builder.test.ts
+  s_554c5b2110274f::t_50cea19ca4a793 1842-1853,1855-1858,1860,1866-1871,1873,1879-1885,1890,1900-1904,1908,1916-1921,1932,1938-1939
+packages/@n8n/workflow-sdk/src/workflow-builder/control-flow-builders/if-else.test.ts
+  s_554c5b2110274f::t_817cabcb4d7b29 699-706
+  s_554c5b2110274f::t_aa99002d4eeb68 652-657
+  s_554c5b2110274f::t_84df2817921a77 730,733-740
+  s_554c5b2110274f::t_b66a4dc49c6102 404-416
+  s_554c5b2110274f::t_3f36bc9a88da83 679-683
+  s_554c5b2110274f::t_9dc0fe6c51579a 523-528
+  s_554c5b2110274f::t_871a981d307315 630-634
+  s_554c5b2110274f::t_9264f2a5d6eb83 591-597
+  s_554c5b2110274f::t_726cc319e8f57e 502,504-509
+  s_554c5b2110274f::t_9e8ec89d9febe3 477-483
+  s_554c5b2110274f::t_9eb7412f178b75 549-550,552-556
+  s_554c5b2110274f::t_8645696524e240 571-575
+packages/@n8n/workflow-sdk/src/workflow-builder/node-builders/node-builder.ts
+  s_554c5b2110274f::t_4a75d48b9a6900 818,820
+  s_554c5b2110274f::t_231c8fa18e25ab 430-435
+  s_554c5b2110274f::t_8bf8f72fee8d37 574-593,604,618,632
+  s_554c5b2110274f::t_c32e405d48ce8f 887,889
+  s_38a97526681bca::t_254ee74ec53506 573
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/if-else-handler.ts
+  s_554c5b2110274f::t_dfe892e1261f2d 54,61-66,71
+  s_554c5b2110274f::t_7b97a5b5eeb563 9,11
+packages/@n8n/workflow-sdk/src/workflow-builder/control-flow-builders/switch-case.test.ts
+  s_554c5b2110274f::t_c8defb817eeef8 346,348-353
+  s_554c5b2110274f::t_b22ae9cd3a991b 369-373,378
+  s_554c5b2110274f::t_f50bfbfb6db604 393-398,403
+  s_554c5b2110274f::t_943c319196a6a4 416-417,419-423
+  s_554c5b2110274f::t_d41782d9f50bb0 308-320,322-326,330
+  s_554c5b2110274f::t_09419077d18187 441-447
+  s_554c5b2110274f::t_65ff73a1025de8 469-473
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/switch-case-handler.ts
+  s_554c5b2110274f::t_e1be47758abd43 54,61
+  s_554c5b2110274f::t_2e5bb3113fc7d0 79
+  s_554c5b2110274f::t_1b52a27e4793e3 9,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "224061d66df432c0ff0401fb823088bd40aa0623",
+  "prompts": {},
+  "sessions": {
+    "s_38a97526681bca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f790004-de0e-4d7a-ac99-8d7e1a2d6612",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_554c5b2110274f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccac9df1-112b-4981-a822-264dc8e8ab63",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

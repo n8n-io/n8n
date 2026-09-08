@@ -1,0 +1,32 @@
+packages/cli/src/modules/instance-registry/__tests__/stale-member-cleanup.task.test.ts
+  s_59d503d6c27f33::t_03660d7bc98437 45-47,49
+packages/cli/src/modules/instance-registry/stale-member-cleanup.task.ts
+  s_59d503d6c27f33::t_03660d7bc98437 19,36-38
+packages/cli/src/modules/instance-registry/__tests__/instance-registry-reconciliation.task.test.ts
+  s_59d503d6c27f33::t_03660d7bc98437 12,34-36,38
+packages/cli/src/modules/instance-registry/checks/instance-registry-reconciliation.task.ts
+  s_59d503d6c27f33::t_03660d7bc98437 19,28,31
+packages/cli/src/modules/instance-registry/__tests__/instance-registry.module.test.ts
+  s_59d503d6c27f33::t_03660d7bc98437 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "76eb6263466f8c32db2a3b2c83e992084ed1b834",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_59d503d6c27f33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82021133-747e-4bd4-911e-e343b1634a82",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

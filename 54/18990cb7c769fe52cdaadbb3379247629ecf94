@@ -1,0 +1,54 @@
+packages/@n8n/db/src/migrations/common/1788445119184-CreateInstanceMonitoringReportTable.ts
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 1-42
+packages/cli/src/modules/instance-reporting/README.md
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 11
+packages/cli/src/modules/instance-reporting/database/repositories/instance-monitoring-report.repository.ts
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 4-5,8,10,27,58
+packages/cli/src/modules/instance-reporting/database/repositories/__tests__/instance-monitoring-report.repository.integration.test.ts
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 1-198
+packages/cli/src/modules/instance-reporting/instance-reporting-scheduler.service.ts
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 9,44
+packages/cli/src/modules/instance-reporting/database/entities/instance-monitoring-report.ts
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 1-62
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.service.test.ts
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 16-17,68,78,83,90,338
+packages/cli/src/modules/instance-reporting/instance-reporting.module.ts
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 28-29,32
+packages/cli/src/modules/instance-reporting/LOCAL_VERIFICATION.md
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 159,187,201
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting-scheduler.service.test.ts
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 9,26,44
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 159
+packages/cli/src/modules/instance-reporting/instance-reporting.service.ts
+  s_79c9be6e8dc5ab::t_85c94bc424edf5 14-15,52
+docs/generated/postgres-schema/README.md
+  s_79c9be6e8dc5ab::t_9f2dcadfd7837d 91,1189-1199
+docs/generated/postgres-schema/public.instance_monitoring_report.md
+  s_79c9be6e8dc5ab::t_b98a53a502ac0e 1,21-28,34,42
+docs/generated/sqlite-schema/README.md
+  s_79c9be6e8dc5ab::t_fed12d12b79af0 91,1176-1186
+docs/generated/sqlite-schema/instance_monitoring_report.md
+  s_79c9be6e8dc5ab::t_b49bc7c16d6030 1,9,34,40,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5418990cb7c769fe52cdaadbb3379247629ecf94",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_79c9be6e8dc5ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "503a66e5-18e3-4891-a8f6-d3a3c34d2986",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
