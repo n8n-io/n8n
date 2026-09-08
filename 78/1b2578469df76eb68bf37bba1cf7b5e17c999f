@@ -1,0 +1,58 @@
+packages/@n8n/engine/src/execution/execution-query.service.ts
+  s_667c164ac76678::t_1dc4147bf059f2 16-20,22
+  s_d4538605bb58de::t_574e9c09364a92 5,21,23-32
+packages/@n8n/engine/src/server/api.types.ts
+  s_667c164ac76678::t_202e85b9ee506d 15-18
+  s_d4538605bb58de::t_cc8457432f469c 13
+  s_d4538605bb58de::t_574e9c09364a92 9,12,14,19-24
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_d4538605bb58de::t_574e9c09364a92 5-8,68
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_d4538605bb58de::t_7b9b9a4a3f2889 16,37,40-80,85-101,103-145,147
+  s_d4538605bb58de::t_1b03d0b0f42b51 38-39,102,146
+  ai_agent 81-84
+packages/@n8n/engine/src/server/routes/workflow-executions.handlers.ts
+  s_667c164ac76678::t_6ff4926f3ae13e 23-24,28,35-36,38
+  s_667c164ac76678::t_d78443e31c3b0d 56
+  s_d4538605bb58de::t_574e9c09364a92 25-27,29-34,37,39-55,57-59
+packages/@n8n/engine/src/execution/__tests__/execution-query.service.test.ts
+  s_d4538605bb58de::t_c64ef2d1de89cf 23-38,40-42
+  s_d4538605bb58de::t_75099028d6a31d 14-15
+  s_667c164ac76678::t_96895236c65d3d 39
+packages/@n8n/engine/src/server/index.ts
+  s_d4538605bb58de::t_574e9c09364a92 4-8
+packages/@n8n/engine/src/database/typeorm-execution-view-store.ts
+  s_667c164ac76678::t_7fa27ef8e365f5 42,53,56-63,67,70
+  s_d4538605bb58de::t_574e9c09364a92 10-11,41,43-52,54-55,64-66,68-69,71-83
+  ai_agent 18-21
+  s_667c164ac76678::t_4e1fa64d70236a 17,22-26
+packages/@n8n/engine/src/execution/execution-view-store.ts
+  s_d4538605bb58de::t_574e9c09364a92 22-30,33-35,94-95
+  s_667c164ac76678::t_c52dd497b3d375 11-21,31-32
+packages/@n8n/engine/src/index.ts
+  s_d4538605bb58de::t_574e9c09364a92 19-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "781b2578469df76eb68bf37bba1cf7b5e17c999f",
+  "prompts": {},
+  "sessions": {
+    "s_667c164ac76678": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a89ab19d-2c3d-40c2-95b1-da7a385e51d0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_d4538605bb58de": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07d32-9dcb-7211-9690-77633250ea37",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

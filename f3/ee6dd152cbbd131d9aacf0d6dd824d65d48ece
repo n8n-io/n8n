@@ -1,0 +1,19 @@
+packages/@n8n/engine/docs/adr/ADR-20260907-list-executions-with-cp-visibility-filters.md
+  s_d4538605bb58de::t_8b5caf7f892078 1-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f3ee6dd152cbbd131d9aacf0d6dd824d65d48ece",
+  "prompts": {},
+  "sessions": {
+    "s_d4538605bb58de": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07d32-9dcb-7211-9690-77633250ea37",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
