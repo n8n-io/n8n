@@ -182,24 +182,17 @@ describe('AgentAdvancedPanel', () => {
 		modelCatalog.value = makeCatalog();
 	});
 
-	it('renders the collapsible heading and toggles the advanced content', async () => {
+	it('renders both advanced sections without a collapsible heading', () => {
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config: makeConfig(), collapsible: true },
+			props: { config: makeConfig() },
 			global: { stubs: globalStubs },
 		});
 
-		const title = wrapper.find('[data-testid="agent-advanced-title"]');
-		const trigger = wrapper.find('[data-testid="agent-advanced-trigger"]');
-		const chevron = wrapper.find('[data-testid="agent-advanced-chevron"]');
-		const content = wrapper.find('[data-testid="agent-advanced-content"]');
-
-		expect(title.text()).toContain('agents.builder.advanced.title');
-		expect(chevron.exists()).toBe(true);
-		expect(content.isVisible()).toBe(false);
-
-		await trigger.trigger('click');
-
-		expect(content.isVisible()).toBe(true);
+		expect(wrapper.text()).toContain('agents.builder.advanced.webSearch.label');
+		expect(wrapper.text()).toContain('agents.builder.advanced.title');
+		expect(wrapper.find('[data-testid="agent-advanced-trigger"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-advanced-chevron"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-advanced-content"]').isVisible()).toBe(true);
 	});
 
 	it('treats sparse native web search config as disabled', async () => {

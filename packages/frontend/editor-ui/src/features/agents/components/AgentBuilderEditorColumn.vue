@@ -229,15 +229,13 @@ const i18n = useI18n();
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
-						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
-							<AgentSubAgentsPanel
-								:config="localConfig"
-								:disabled="childrenDisabled"
-								:project-id="projectId"
-								:agent-id="agentId"
-								@update:config="emit('update:config', $event)"
-							/>
-						</N8nCard>
+						<AgentSubAgentsPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							:agent-id="agentId"
+							@update:config="emit('update:config', $event)"
+						/>
 						<N8nCard
 							v-if="isMcpAvailable"
 							:class="$style.settingsCard"
@@ -250,15 +248,12 @@ const i18n = useI18n();
 								@toggle-mcp-access="emit('toggle-mcp-access', $event)"
 							/>
 						</N8nCard>
-						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
-							<AgentAdvancedPanel
-								:config="localConfig"
-								:disabled="childrenDisabled"
-								:project-id="projectId"
-								collapsible
-								@update:config="emit('update:config', $event)"
-							/>
-						</N8nCard>
+						<AgentAdvancedPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							@update:config="emit('update:config', $event)"
+						/>
 					</div>
 				</AgentBuilderTabPanel>
 
