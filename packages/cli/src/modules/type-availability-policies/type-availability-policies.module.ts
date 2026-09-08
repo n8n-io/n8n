@@ -4,8 +4,9 @@ import { BackendModule } from '@n8n/decorators';
 @BackendModule({ name: 'type-availability-policies' })
 export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 	async init() {
-		// Side-effecting import: registers the controller's routes via `@RestController`.
+		// Side-effecting imports: register the controllers' routes via `@RestController`.
 		await import('./type-availability-policy-instance.controller.js');
+		await import('./type-availability-policy-project.controller.js');
 	}
 
 	async entities() {

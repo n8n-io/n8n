@@ -106,6 +106,27 @@ describe('TypeAvailabilityPolicyService', () => {
 	});
 
 	describe('setDefaultAction', () => {
+		it('rejects a delegate defaultAction at project scope before opening a transaction', async () => {
+			await expect(
+				service.setDefaultAction(KIND, 'project-1', 'delegate', 0, 'user-1'),
+			).rejects.toThrow('defaultAction cannot be "delegate" at project scope');
+
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(scopeRepository.findScopeByKindAndProject).not.toHaveBeenCalled();
+		});
+
+		it('still allows a delegate defaultAction at instance scope', async () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+			scopeRepository.createScopeIfAbsent.mockResolvedValue({
+				scope: makeScope({ defaultAction: 'delegate', version: 1 }),
+				created: true,
+			});
+
+			await expect(
+				service.setDefaultAction(KIND, null, 'delegate', 0, 'user-1'),
+			).resolves.not.toThrow();
+		});
+
 		it('throws ConflictError on a stale version and writes nothing', async () => {
 			scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ version: 2 }));
 
@@ -466,6 +487,62 @@ describe('TypeAvailabilityPolicyService', () => {
 	});
 
 	describe('setEffectivePolicy', () => {
+		it('rejects a delegate defaultAction at project scope before opening a transaction', async () => {
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					'project-1',
+					{ rules: [], defaultAction: 'delegate' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow('defaultAction cannot be "delegate" at project scope');
+
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a delegate rule action at project scope before opening a transaction', async () => {
+			const delegateRule: PolicyRule = {
+				id: 'r1',
+				action: 'delegate',
+				selector: { kind: 'name', value: 'n8n-nodes-base.slack' },
+			};
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					'project-1',
+					{ rules: [delegateRule], defaultAction: 'allow' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow('A rule cannot use action "delegate" at project scope');
+
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('still allows delegate at instance scope', async () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+			scopeRepository.createScopeIfAbsent.mockResolvedValue({
+				scope: makeScope({ defaultAction: 'delegate', version: 1 }),
+				created: true,
+			});
+			policyRepository.createPolicy.mockResolvedValue(makePolicy({ rules: [], version: 1 }));
+			scopeRepository.findScopeById.mockResolvedValue(
+				makeScope({ defaultAction: 'delegate', version: 2 }),
+			);
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					null,
+					{ rules: [], defaultAction: 'delegate' },
+					0,
+					'user-1',
+				),
+			).resolves.not.toThrow();
+		});
+
 		it('throws ConflictError on a stale version and writes nothing', async () => {
 			scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ version: 2 }));
 
@@ -657,6 +734,63 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			expect(result.defaultAction).toBe('deny');
 			expect(result.version).toBe(1);
+		});
+	});
+
+	describe('evaluateComposedType', () => {
+		const PROJECT_ID = 'project-1';
+		const TYPE = 'n8n-nodes-base.slack';
+
+		it('reads the instance and project scopes and composes their verdicts', async () => {
+			const instanceScope = makeScope({ projectId: null, defaultAction: 'delegate', version: 1 });
+			const projectScope = makeScope({
+				id: 'scope-2',
+				projectId: PROJECT_ID,
+				defaultAction: 'deny',
+				version: 1,
+			});
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async (_kind, projectId) =>
+				projectId === null ? instanceScope : projectScope,
+			);
+			const projectAllowRule: PolicyRule = {
+				id: 'project-allow',
+				action: 'allow',
+				selector: { kind: 'name', value: TYPE },
+			};
+			attachmentRepository.listAttachmentsForScope.mockImplementation(async (scopeId) =>
+				scopeId === projectScope.id
+					? [{ policyId: 'p1', rules: [projectAllowRule], priority: 0, isFloor: false }]
+					: [],
+			);
+
+			const result = await service.evaluateComposedType(KIND, PROJECT_ID, TYPE);
+
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledWith(KIND, null, ROOT);
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledWith(
+				KIND,
+				PROJECT_ID,
+				ROOT,
+			);
+			expect(result).toEqual({ action: 'allow', scope: 'project', matchedRuleId: 'project-allow' });
+		});
+
+		it('lets an instance deny win over an unconfigured project', async () => {
+			const denyRule: PolicyRule = {
+				id: 'instance-deny',
+				action: 'deny',
+				selector: { kind: 'name', value: TYPE },
+			};
+			const instanceScope = makeScope({ projectId: null, defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async (_kind, projectId) =>
+				projectId === null ? instanceScope : null,
+			);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: 'p1', rules: [denyRule], priority: 0, isFloor: false },
+			]);
+
+			const result = await service.evaluateComposedType(KIND, PROJECT_ID, TYPE);
+
+			expect(result).toEqual({ action: 'deny', scope: 'instance', matchedRuleId: 'instance-deny' });
 		});
 	});
 });

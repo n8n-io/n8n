@@ -11,7 +11,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(entry).toBeDefined();
 	});
 
-	it('registers the instance controller on init', async () => {
+	it('registers the instance and project controllers on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
@@ -19,11 +19,17 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		const { TypeAvailabilityPolicyInstanceController } = await import(
 			'../type-availability-policy-instance.controller.js'
 		);
-		const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-			TypeAvailabilityPolicyInstanceController as never,
+		const { TypeAvailabilityPolicyProjectController } = await import(
+			'../type-availability-policy-project.controller.js'
 		);
+		const registry = Container.get(ControllerRegistryMetadata);
 
-		expect(metadata.routes.size).toBeGreaterThan(0);
+		expect(
+			registry.getControllerMetadata(TypeAvailabilityPolicyInstanceController as never).routes.size,
+		).toBeGreaterThan(0);
+		expect(
+			registry.getControllerMetadata(TypeAvailabilityPolicyProjectController as never).routes.size,
+		).toBeGreaterThan(0);
 	});
 
 	it('exposes its entities so the datasource picks them up', async () => {

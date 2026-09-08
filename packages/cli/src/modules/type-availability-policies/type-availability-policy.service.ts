@@ -11,7 +11,7 @@ import { TypeAvailabilityPolicyScopeRepository } from './database/repositories/t
 import { TypeAvailabilityPolicyRepository } from './database/repositories/type-availability-policy.repository';
 import type { TypeAvailabilityPolicy } from './database/entities/type-availability-policy.entity';
 import type { TypeAvailabilityPolicyScope } from './database/entities/type-availability-policy-scope.entity';
-import { orderedAttachments } from './policy-evaluator';
+import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
 import type { PolicyAction, PolicyAttachment, PolicyRule } from './policy-rule.types';
 import { lintRulesForShadowing, type ShadowWarning } from './policy-shadow-lint';
 
@@ -53,6 +53,29 @@ type PolicyDocumentWrite = {
 
 function flattenRules(attachments: readonly PolicyAttachment[]): PolicyRule[] {
 	return orderedAttachments(attachments).flatMap((attachment) => [...attachment.rules]);
+}
+
+/**
+ * `delegate` is only satisfiable at instance scope. A project write never accepts it — not in
+ * a rule's `action` (already rejected by `PutProjectPolicyDto`'s schema) and not in
+ * `defaultAction`, which lives on the `policy_scope` row rather than in the policy document, so
+ * the DTO's rule-level check does not cover it on its own. Defense in depth: a future caller
+ * reaching this service directly, not only through the project controller, still can't write an
+ * unsatisfiable `delegate` on a project row.
+ */
+function assertNoDelegateAtProjectScope(
+	projectId: string | null,
+	defaultAction: PolicyAction,
+	rules: readonly PolicyRule[] = [],
+): void {
+	if (projectId === null) return;
+
+	if (defaultAction === 'delegate') {
+		throw new UserError('defaultAction cannot be "delegate" at project scope');
+	}
+	if (rules.some((rule) => rule.action === 'delegate')) {
+		throw new UserError('A rule cannot use action "delegate" at project scope');
+	}
 }
 
 /** Mirrors the DTO-level check in `ReplaceAttachmentsDto`, as a defensive service-level guard. */
@@ -142,6 +165,8 @@ export class TypeAvailabilityPolicyService {
 		expectedVersion: number,
 		updatedBy: string,
 	): Promise<TypeAvailabilityPolicyScope> {
+		assertNoDelegateAtProjectScope(projectId, defaultAction);
+
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const scope = await this.scopeRepository.findScopeByKindAndProject(
 				kind,
@@ -442,6 +467,8 @@ export class TypeAvailabilityPolicyService {
 		rules: PolicyRule[];
 		warnings: readonly ShadowWarning[];
 	}> {
+		assertNoDelegateAtProjectScope(projectId, input.defaultAction, input.rules);
+
 		const warnings = lintRulesForShadowing(input.rules);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
@@ -581,5 +608,23 @@ export class TypeAvailabilityPolicyService {
 			rules: [...result.documentAfter.rules],
 			warnings,
 		};
+	}
+
+	/**
+	 * Composes the instance and project verdicts for one type, per `evaluateComposedType`. Reads
+	 * both scopes' effective policies in parallel — point-in-time snapshots, not one transaction,
+	 * which is fine for an evaluation path (unlike a write).
+	 */
+	async evaluateComposedType(
+		kind: string,
+		projectId: string,
+		typeName: string,
+	): Promise<ComposedVerdict> {
+		const [instance, project] = await Promise.all([
+			this.getEffectivePolicy(kind, null),
+			this.getEffectivePolicy(kind, projectId),
+		]);
+
+		return evaluateComposedType(instance, project, typeName);
 	}
 }
