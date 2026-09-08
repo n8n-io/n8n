@@ -417,7 +417,6 @@ export interface VerificationAnalysis {
 	success: boolean;
 	reachedNames: Set<string>;
 	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>;
-	/** The pin-fed subset of `reachedSimulatedNodes`, by node name. */
 	workflowPinnedNodeNames: string[];
 	nodesNotReached: string[];
 	remediation?: RemediationMetadata;

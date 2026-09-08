@@ -82,10 +82,6 @@ export const workflowLoopStateSchema = z.object({
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
-	/**
-	 * Node the last verdict sent for repair. Carried forward so the next run's
-	 * claim can tell whether the node the change was about was actually proven.
-	 */
 	lastFailedNodeName: z.string().optional(),
 	lastWorkflowInspection: z.string().optional(),
 	rebuildAttempts: z.number().int().min(0),
@@ -205,11 +201,6 @@ export const workflowVerificationEvidenceSchema = z.object({
 	executionId: z.string().optional(),
 	status: z.enum(['success', 'error', 'waiting', 'running', 'unknown']).optional(),
 	failureSignature: z.string().optional(),
-	/**
-	 * How strong a claim this run supports, and the facts behind it. Derived from
-	 * the run, so the user-facing verdict never depends on the model agreeing
-	 * with it. Self-contained: a later turn renders from this without the run.
-	 */
 	claim: verificationClaimSchema.optional(),
 	evidence: z
 		.object({
@@ -501,10 +492,6 @@ export const verificationResultSchema = z.object({
 	workflowId: z.string(),
 	executionId: z.string().optional(),
 	verdict: verificationVerdictSchema,
-	/**
-	 * Deterministic claim for the run this verdict reports on. When present it
-	 * outranks `verdict`: the model cannot upgrade a partial run to verified.
-	 */
 	claim: verificationClaimSchema.optional(),
 	workflowInspection: z.string().optional(),
 	failureSignature: z.string().optional(),
@@ -537,7 +524,6 @@ export type WorkflowLoopAction =
 			type: 'done';
 			workflowId?: string;
 			summary: string;
-			/** Deterministic verdict for the verifying run, when one ran. */
 			claim?: VerificationClaim;
 			mockedCredentialTypes?: string[];
 			hasUnresolvedPlaceholders?: boolean;

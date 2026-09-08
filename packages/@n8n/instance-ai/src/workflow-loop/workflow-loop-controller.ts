@@ -474,8 +474,6 @@ function escalateToRepair(
 			status: 'active',
 			rebuildAttempts: state.rebuildAttempts + 1,
 			lastFailureSignature: verdict.failureSignature,
-			// Keep the previous target when a rebuild names no node: the change is
-			// still about that node until a run proves it.
 			lastFailedNodeName: verdict.failedNodeName ?? state.lastFailedNodeName,
 			lastExecutionId: verdict.executionId,
 			lastWorkflowInspection: verdict.workflowInspection,
