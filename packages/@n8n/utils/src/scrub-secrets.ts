@@ -39,7 +39,8 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// as "a Bearer token" or "basic usage" readable. Scheme values are opaque
 	// in practice (`id|secret`, `user:key`), so they run to the next delimiter
 	// rather than a token68 character class.
-	/(?<=\bauthorization\s*[:=]\s*["']?)(?:Bearer|Basic|Token)\s+[^\s"',;]+/gi,
+	// An escaped character inside the value is part of the value.
+	/(?<=\bauthorization\s*[:=]\s*["']?)(?:Bearer|Basic|Token)\s+(?:\\.|[^\s"',;\\])+/gi,
 	/\b(?:Bearer\s+[^\s"',;]{12,}|(?:Basic|Token)\s+[A-Za-z0-9._~+/=-]{12,})/gi,
 	// OpenAI / Anthropic API keys
 	/\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}/g,
