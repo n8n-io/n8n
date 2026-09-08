@@ -17,7 +17,10 @@ import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 
 import {
+	managedSlackAppCacheKey,
+	SLACK_APP_SETUP_TTL_MS,
 	SLACK_BOT_SCOPES,
+	SLACK_CREDENTIAL_TYPE,
 	type SlackAppSetupSession,
 	slackSetupCacheKey,
 } from './slack-setup.types';
@@ -26,10 +29,7 @@ import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import { stringProperty } from '../../integration-helpers';
 
-const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
-const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
 const DEFAULT_SLACK_APP_NAME = 'n8n Agent';
-const SLACK_CREDENTIAL_TYPE = 'slackApi';
 
 const REQUIRED_BOT_EVENTS = [
 	'app_mention',
@@ -273,7 +273,13 @@ export class SlackMethodsService {
 	private async clearManagedAppSession(session: SlackAppSetupSession): Promise<void> {
 		if (session.managerCredentialId && session.teamId) {
 			await this.cacheService.delete(
-				`${SLACK_MANAGED_APP_CACHE_PREFIX}${session.projectId}:${session.agentId}:${session.managerCredentialId}:${session.teamId}:${session.userId}`,
+				managedSlackAppCacheKey({
+					projectId: session.projectId,
+					agentId: session.agentId,
+					managerCredentialId: session.managerCredentialId,
+					workspaceId: session.teamId,
+					userId: session.userId,
+				}),
 			);
 		}
 	}

@@ -327,7 +327,7 @@ const groupExpansionMode = computed<GroupExpansionMode | undefined>(() => {
 });
 
 const canExecuteOnCanvas = computed(() => {
-	// Precedes the demo branch: a protected instance blocks manual runs, executable previews too.
+	// A protected instance blocks every manual run, even a demo canvas that requests ?canExecute=true.
 	if (isReadOnlyEnvironment.value) return false;
 	if (isDemoRoute.value) {
 		return route.query.canExecute === 'true';

@@ -320,7 +320,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(modalAttrs.open).toBe(true);
 	});
 
-	it('assigns each available item the category tab it belongs to', async () => {
+	it('puts native and other node tools in the n8n nodes category', async () => {
 		const recommended: INodeTypeDescription = {
 			...WIKIPEDIA,
 			displayName: 'Gmail',
@@ -342,7 +342,8 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		const categoryById = new Map(getItems().map((item) => [item.id, item.category]));
 
 		expect(categoryById.get(`nodeType:${SLACK.name}`)).toBe('app-action');
-		expect(categoryById.get('nodeType:n8n-nodes-base.gmail')).toBe('n8n');
+		expect(categoryById.get('nodeType:n8n-nodes-base.gmail')).toBe('app-action');
+		expect(modalAttrs.categories).toEqual(['all', 'mcp', 'app-action', 'workflows']);
 	});
 
 	it('assigns workflows to the workflows category', async () => {

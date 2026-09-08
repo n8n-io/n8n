@@ -439,7 +439,8 @@ export class LmChatAnthropic implements INodeType {
 						name: 'thinkingMode',
 						type: 'options',
 						default: 'disabled',
-						description: 'How extended thinking should be configured for the model',
+						description:
+							'How extended thinking is configured. Leave the option unset to use the model default.',
 						options: [
 							{
 								name: 'Disabled',
@@ -600,6 +601,11 @@ export class LmChatAnthropic implements INodeType {
 				: options.thinking
 					? 'manual'
 					: 'disabled';
+		// langchain no longer defaults `thinking` to disabled, and Sonnet 5 / Opus 5 think adaptively
+		// when the field is absent. Only a Disabled the user added is sent; an unset option leaves the
+		// field out so the model default applies (models such as Fable reject an explicit disabled).
+		const thinkingExplicitlyDisabled =
+			version >= 1.5 ? options.thinkingMode === 'disabled' : options.thinking === false;
 
 		if (thinkingMode === 'manual' && isOpus47Model) {
 			throw new NodeOperationError(
@@ -637,6 +643,8 @@ export class LmChatAnthropic implements INodeType {
 				top_p: undefined,
 				temperature: undefined,
 			};
+		} else if (thinkingExplicitlyDisabled) {
+			invocationKwargs = { thinking: { type: 'disabled' } };
 		}
 
 		if (options.promptCaching && options.promptCaching !== 'disabled') {
@@ -718,9 +726,10 @@ export class LmChatAnthropic implements INodeType {
 		// Same shape as the sampling-parameter backstop above, for the same reason: newer Claude
 		// generations drop the legacy manual thinking mode, and the pre-flight check below only
 		// recognises the models we have confirmed. This catches the rest — including gateway
-		// traffic, whose capabilities we cannot infer from the model name.
-		const manualThinkingErrorHandler = (error: unknown) => {
-			if (thinkingMode !== 'manual') return;
+		// traffic, whose capabilities we cannot infer from the model name. Models that always think
+		// (Fable, Mythos) reject an explicit disabled the same way.
+		const thinkingErrorHandler = (error: unknown) => {
+			if (thinkingMode !== 'manual' && !thinkingExplicitlyDisabled) return;
 			const message = error instanceof Error ? error.message : String(error);
 			const mentionsThinking = /thinking|budget_tokens/i.test(message);
 			// Match the verb stem rather than the participle: providers phrase this both ways
@@ -731,9 +740,25 @@ export class LmChatAnthropic implements INodeType {
 					message,
 				);
 			if (mentionsThinking && isRejection) {
+				// Node versions below 1.5 have the Enable Thinking toggle instead of Thinking Mode.
+				const guidance =
+					version >= 1.5
+						? {
+								manual: 'Set Thinking Mode to Adaptive and choose an Effort level.',
+								disabled:
+									'Set Thinking Mode to Adaptive, or remove the Thinking Mode option to use the model default.',
+							}
+						: {
+								manual:
+									'Turn off Enable Thinking, or add a new Anthropic Chat Model node to use Adaptive thinking.',
+								disabled:
+									'Remove the Enable Thinking option, or add a new Anthropic Chat Model node to use Adaptive thinking.',
+							};
 				throw new NodeOperationError(
 					this.getNode(),
-					`The model "${modelName}" does not support the legacy Manual thinking mode. Set Thinking Mode to Adaptive and choose an Effort level.`,
+					thinkingMode === 'manual'
+						? `The model "${modelName}" does not support the legacy Manual thinking mode. ${guidance.manual}`
+						: `The model "${modelName}" does not support disabling thinking. ${guidance.disabled}`,
 					{ itemIndex },
 				);
 			}
@@ -742,7 +767,7 @@ export class LmChatAnthropic implements INodeType {
 		const failedAttemptHandler = (error: unknown) => {
 			gatewayErrorHandler?.(error);
 			deprecatedSamplingParamErrorHandler(error);
-			manualThinkingErrorHandler(error);
+			thinkingErrorHandler(error);
 		};
 
 		const chatAnthropicParams: ChatAnthropicInput = {
