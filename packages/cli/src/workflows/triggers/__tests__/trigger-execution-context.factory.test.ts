@@ -947,6 +947,47 @@ describe('TriggerExecutionContextFactory', () => {
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
 
+		test('routes to runPolledWorkflowV2, not the transactional runPolledWorkflow, on engine 2.0', async () => {
+			engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
+			workflowExecutionService.runPolledWorkflowV2.mockResolvedValue('exec-v2');
+			const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+
+			await context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+				context.__emit(pollData, responsePromise);
+			});
+			await sleep(0);
+
+			expect(workflowExecutionService.runPolledWorkflowV2).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				node,
+				pollData,
+				additionalData,
+				mode,
+				{ lastItemId: 'a' },
+				responsePromise,
+				undefined,
+			);
+			expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('refuses a migrated poll that carries a file, and commits no cursor, on engine 2.0', async () => {
+			engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
+			const storedFile = mock<IBinaryData>({ id: 'filesystem:abc', mimeType: 'text/plain' });
+			const fileData: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+
+			await context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+				expect(() => context.__emit(fileData)).toThrow(
+					'Engine 2.0 cannot receive files from a trigger yet.',
+				);
+			});
+
+			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
+			expect(workflowExecutionService.runPolledWorkflowV2).not.toHaveBeenCalled();
+		});
+
 		// A poll that neither emitted nor committed leaves its mutation behind; the next
 		// poll must not pick it up and commit an advance past items nobody carried.
 		const abandonedStaging = [
@@ -1823,15 +1864,57 @@ describe('TriggerExecutionContextFactory', () => {
 				]);
 			});
 
-			test('refuses the emit and commits no cursor', () => {
-				expect(() => pollContext().__emit([[{ json: {} }]])).toThrow(
-					'Engine 2.0 cannot run polling triggers yet.',
+			test('refuses an emit carrying a file, and commits no cursor', () => {
+				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+
+				expect(() => pollContext().__emit(data)).toThrow(
+					'Engine 2.0 cannot receive files from a trigger yet.',
 				);
 				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
-				expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+				expect(workflowExecutionService.runPolledWorkflowV2).not.toHaveBeenCalled();
 				expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
 				expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
 				expect(workflowStaticDataService.saveStaticData).not.toHaveBeenCalled();
+			});
+
+			test('hands an unmigrated emit to the plain runner, which dispatches it', async () => {
+				pollContext().__emit([[{ json: {} }]]);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalled();
+				expect(workflowExecutionService.runPolledWorkflowV2).not.toHaveBeenCalled();
+			});
+
+			test('re-checks the payload against fresh data when the registration snapshot missed the transition to engine 2.0', async () => {
+				const staleWorkflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const freshWorkflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				// The registration snapshot still says v1; only the fresh read reflects
+				// the workflow having since been republished onto engine 2.0.
+				engineV2Dispatcher.handlesWorkflow.mockImplementation((wf) => wf === freshWorkflowData);
+
+				const getPollFunctions = factory.getExecutePollFunctions(
+					staleWorkflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => freshWorkflowData,
+				);
+				const context = getPollFunctions(
+					workflow,
+					mock<INode>({ name: 'Poll Node' }),
+					additionalData,
+					mode,
+					activation,
+				);
+
+				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+				context.__emit(data);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
+					'filesystem:abc',
+				]);
 			});
 		});
 

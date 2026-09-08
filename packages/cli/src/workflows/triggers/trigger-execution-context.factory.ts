@@ -116,15 +116,15 @@ export class TriggerExecutionContextFactory {
 	 * The done promise needs no help here: {@link settleDonePromise} rejects it
 	 * from the returned promise chain.
 	 */
-	private async assertEngineV2Supported(
+	private assertEngineV2Supported(
 		data: INodeExecutionData[][],
 		emit: EngineV2ActiveTriggerEmit,
-	): Promise<void> {
+	): void {
 		try {
 			// Files first, because this check deletes what it refuses: a refusal for
 			// any other reason would otherwise leave the stored files behind, owned by
 			// no execution.
-			await this.engineV2ActiveTriggers.assertPayloadSupported(data);
+			this.engineV2ActiveTriggers.assertPayloadSupported(data);
 			this.engineV2ActiveTriggers.assertSupported(emit);
 		} catch (error) {
 			emit.responsePromise?.reject(ensureError(error));
@@ -209,7 +209,7 @@ export class TriggerExecutionContextFactory {
 						// Checked against the fresh data, so this agrees with the dispatcher,
 						// which decides on the same copy.
 						if (this.engineV2ActiveTriggers.handles(freshWorkflowData, mode)) {
-							await this.assertEngineV2Supported(data, { responsePromise, donePromise });
+							this.assertEngineV2Supported(data, { responsePromise, donePromise });
 						}
 
 						return await this.workflowExecutionService.runWorkflow(
@@ -372,12 +372,7 @@ export class TriggerExecutionContextFactory {
 				// retried. Reads the registration's copy of the workflow rather than the
 				// fresh one for the same reason: the fresh read comes too late.
 				if (this.engineV2ActiveTriggers.handles(workflowData, mode)) {
-					// Detached because `__emit` is synchronous. The poll may have stored
-					// attachments, and no execution will ever own them.
-					void this.engineV2ActiveTriggers
-						.discardFiles(data)
-						.catch((error: unknown) => this.logTriggerExecutionFailure(error, workflowData, node));
-					this.engineV2ActiveTriggers.assertPollSupported();
+					this.engineV2ActiveTriggers.assertPayloadSupported(data);
 				}
 
 				const cursor = takeStagedCursor();
@@ -390,15 +385,42 @@ export class TriggerExecutionContextFactory {
 				// TODO(CAT-3202): resolves workflow data via callback so we
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
-				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) =>
-					cursor === null
-						? await this.workflowExecutionService.runWorkflow(
+				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) => {
+					// The registration snapshot above can be stale by the time this
+					// resolves (e.g. the workflow was just republished onto engine 2.0),
+					// so a payload that slipped past that check is guarded again here,
+					// against the copy that actually decides where this run goes.
+					const routesToV2 = this.engineV2ActiveTriggers.handles(freshWorkflowData, mode);
+					if (routesToV2) {
+						try {
+							this.engineV2ActiveTriggers.assertPayloadSupported(data);
+						} catch (error) {
+							responsePromise?.reject(ensureError(error));
+							throw error;
+						}
+					}
+
+					if (cursor === null) {
+						return await this.workflowExecutionService.runWorkflow(
+							freshWorkflowData,
+							node,
+							data,
+							additionalData,
+							mode,
+							responsePromise,
+						);
+					}
+
+					return routesToV2
+						? await this.workflowExecutionService.runPolledWorkflowV2(
 								freshWorkflowData,
 								node,
 								data,
 								additionalData,
 								mode,
+								cursor,
 								responsePromise,
+								fence,
 							)
 						: await this.workflowExecutionService.runPolledWorkflow(
 								freshWorkflowData,
@@ -409,8 +431,8 @@ export class TriggerExecutionContextFactory {
 								cursor,
 								responsePromise,
 								fence,
-							),
-				);
+							);
+				});
 
 				if (donePromise) this.settleDonePromise(executePromise, donePromise);
 
