@@ -17,6 +17,13 @@ import { AgentRepository } from '../repositories/agent.repository';
  * minutes, far more than the lease of the occurrence, and nothing renews the
  * lease during the run. So the handler must not wait for the run. The
  * `agent_task_run_lock` that the run holds bounds overlap and redelivery.
+ *
+ * The handoff also ends the crash protection of the scheduler. A main that
+ * dies after the lock and before the run records its `agent_execution` row
+ * leaves no trace, and the lock blocks the next ticks until its TTL ends. The
+ * in-memory scheduler has the same gap. Once `@n8n/scheduler` can renew the
+ * lease during a handler, the handler can await the run instead, and the
+ * reaper then covers a crash at any point of the run.
  */
 @Service()
 export class AgentTaskTaskHandler implements TaskHandler {
