@@ -443,9 +443,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const { WorkflowPublicationOutboxConsumer } = await import(
 				'@/workflows/publication/workflow-publication-outbox-consumer.js'
 			);
-			const { WorkflowPublicationOutboxCleanupService } = await import(
-				'@/workflows/publication/workflow-publication-outbox-cleanup.service.js'
-			);
 			const { WorkflowPublicationReconciler } = await import(
 				'@/workflows/publication/workflow-publication-reconciler.service.js'
 			);
@@ -467,7 +464,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 					this.errorReporter.error(error, { shouldBeLogged: true });
 				});
 
-			Container.get(WorkflowPublicationOutboxCleanupService).init();
 			Container.get(WorkflowPublicationReconciler).init();
 		} else {
 			await this.activeWorkflowManager.init();

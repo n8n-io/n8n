@@ -421,7 +421,6 @@ export default defineConfig(
 			'./src/modules/instance-reporting/instance-reporting-scheduler.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',
 			'./src/services/workflow-statistics-rollup.service.ts',
-			'./src/workflows/publication/workflow-publication-outbox-cleanup.service.ts',
 		],
 		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},

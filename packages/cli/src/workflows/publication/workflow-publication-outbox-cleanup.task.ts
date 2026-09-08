@@ -21,12 +21,15 @@ export class WorkflowPublicationOutboxCleanupTask implements SystemTask {
 
 	readonly durable = false;
 
+	/** A new leader enqueues one terminal row per active workflow, so a backlog is waiting. */
+	readonly runOnTakeover = true;
+
 	constructor(
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly cleanupService: WorkflowPublicationOutboxCleanupService,
 	) {}
 
-	async run(): Promise<void> {
-		await this.cleanupService.cleanup();
+	async run(signal: AbortSignal): Promise<void> {
+		await this.cleanupService.cleanup(signal);
 	}
 }
