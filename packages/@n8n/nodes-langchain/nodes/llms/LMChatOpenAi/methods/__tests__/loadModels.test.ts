@@ -143,6 +143,8 @@ describe('searchModels', () => {
 				headers: expect.objectContaining({
 					Authorization: `Bearer ${accessToken}`,
 					'chatgpt-account-id': 'account-id',
+					originator: 'n8n',
+					'User-Agent': 'n8n',
 				}),
 			},
 			lookup: secureLookup,

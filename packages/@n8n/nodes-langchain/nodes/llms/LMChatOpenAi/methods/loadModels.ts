@@ -14,6 +14,7 @@ import {
 
 import { mergeCustomHeaders } from '../../../../utils/helpers';
 import { assertOpenAiCredentialAllowsUrl } from '../../../vendors/OpenAi/helpers/credentials';
+import { N8N_ORIGINATOR } from '../OpenAiAccountChatModel';
 
 const OPENAI_ACCOUNT_MODELS_URL =
 	'https://chatgpt.com/backend-api/codex/models?client_version=1.0.0';
@@ -59,6 +60,8 @@ async function searchOpenAiAccountModels(
 	const headers: Record<string, string> = {
 		Authorization: `Bearer ${accessToken}`,
 		'Content-Type': 'application/json',
+		originator: N8N_ORIGINATOR,
+		'User-Agent': N8N_ORIGINATOR,
 	};
 	const accountId = extractChatGptAccountId(accessToken);
 

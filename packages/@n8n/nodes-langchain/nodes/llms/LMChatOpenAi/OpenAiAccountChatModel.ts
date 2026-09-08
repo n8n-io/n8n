@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import os from 'node:os';
 
 import type { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager';
 import {
@@ -26,7 +25,10 @@ import type { ZodSchema } from 'zod';
 
 const OPENAI_ACCOUNT_CODEX_RESPONSES_URL = 'https://chatgpt.com/backend-api/codex/responses';
 const JWT_ACCOUNT_CLAIM = 'https://api.openai.com/auth';
-const CODEX_ORIGINATOR = 'codex_cli_rs';
+// OpenAI issues no client id to third-party apps, so this credential signs in with the
+// public Codex one. The originator is what tells OpenAI who actually makes the call, so
+// it stays 'n8n' instead of a Codex value.
+export const N8N_ORIGINATOR = 'n8n';
 const DEFAULT_CODEX_INSTRUCTIONS = 'You are a helpful assistant.';
 const DEFAULT_TIMEOUT_MS = 600_000;
 
@@ -625,8 +627,8 @@ export class OpenAiAccountChatModel extends BaseChatModel<OpenAiAccountChatCallO
 				Authorization: `Bearer ${this.accessToken}`,
 				'chatgpt-account-id': accountId,
 				'OpenAI-Beta': 'responses=experimental',
-				originator: CODEX_ORIGINATOR,
-				'User-Agent': buildCodexUserAgent(),
+				originator: N8N_ORIGINATOR,
+				'User-Agent': N8N_ORIGINATOR,
 				'x-client-request-id': codexIdentity.requestId,
 				'x-codex-window-id': codexIdentity.windowId,
 				'x-codex-installation-id': codexIdentity.installationId,
@@ -956,10 +958,6 @@ function buildCodexIdentity(
 			'x-codex-window-id': windowId,
 		},
 	};
-}
-
-function buildCodexUserAgent(): string {
-	return `${CODEX_ORIGINATOR}/0.0.0 (${os.platform()} ${os.release()}; ${os.arch()}) n8n`;
 }
 
 function buildAbortSignal(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
