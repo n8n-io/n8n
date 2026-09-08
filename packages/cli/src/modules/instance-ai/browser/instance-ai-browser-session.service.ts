@@ -351,6 +351,7 @@ export class InstanceAiBrowserSessionService {
 
 		session.completedRecordingIds.add(recording.id);
 		const originThreadId = session.pendingRecordingThreadId;
+		if (originThreadId) this.pushRecordingState(userId, 'stopped');
 		session.pendingRecordingThreadId = undefined;
 		const caption = session.latestCaption;
 		this.stopLiveRecordingState(session);
@@ -424,7 +425,7 @@ export class InstanceAiBrowserSessionService {
 		}
 	}
 
-	private pushRecordingState(userId: string, status: 'recording' | 'discarded'): void {
+	private pushRecordingState(userId: string, status: 'recording' | 'stopped' | 'discarded'): void {
 		const session = this.sessions.get(userId);
 		const threadId = session?.pendingRecordingThreadId;
 		if (!threadId) return;

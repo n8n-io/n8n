@@ -42,7 +42,9 @@ export type InstanceAiPushMessage =
 				/** The thread that asked for this recording — the frontend only reacts when
 				 *  this matches the thread it's currently viewing. */
 				threadId: string;
-				status: 'recording' | 'discarded';
+				/** 'recording' is the only live state; 'stopped' and 'discarded' are terminal —
+				 *  the frontend removes the live artifact on either. */
+				status: 'recording' | 'stopped' | 'discarded';
 				actionCount: number;
 			};
 	  };

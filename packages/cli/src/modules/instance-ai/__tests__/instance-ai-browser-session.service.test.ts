@@ -628,5 +628,40 @@ describe('InstanceAiBrowserSessionService', () => {
 
 			expect(handler).toHaveBeenCalledWith(expect.objectContaining({ originThreadId: undefined }));
 		});
+
+		it('pushes a terminal "stopped" state for an AI-triggered recording completing', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'project-1',
+			} as never);
+			service.setRecordingCompletionHandler(vi.fn(async () => ({ threadId: 'thread-1' })));
+			service.startRecording(USER_ID, 'thread-1');
+			push.sendToUsers.mockClear();
+
+			await relay.onRecordingCompleted?.(recording);
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiRecordingStateChanged',
+					data: { threadId: 'thread-1', status: 'stopped', actionCount: 0 },
+				},
+				[USER_ID],
+			);
+		});
+
+		it('pushes nothing for a manually completed recording (no origin thread to notify)', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'project-1',
+			} as never);
+			service.setRecordingCompletionHandler(vi.fn(async () => ({ threadId: 'thread-1' })));
+			push.sendToUsers.mockClear();
+
+			await relay.onRecordingCompleted?.(recording);
+
+			expect(push.sendToUsers).not.toHaveBeenCalled();
+		});
 	});
 });
