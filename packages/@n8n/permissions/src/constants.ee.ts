@@ -106,7 +106,7 @@ export const API_KEY_RESOURCES = {
 	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
 	testRun: ['read', 'list', 'create', 'cancel'] as const,
-	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
+	credential: ['create', 'read', 'update', 'move', 'delete', 'list', 'share', 'unshare'] as const,
 	eventBusDestination: ['test', 'create', 'read', 'update', 'delete', 'list'] as const,
 	sourceControl: ['pull', 'push', 'read'] as const,
 	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,

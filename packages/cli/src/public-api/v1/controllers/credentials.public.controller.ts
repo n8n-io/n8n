@@ -2,6 +2,7 @@ import {
 	CredentialListPublicDto,
 	CredentialPublicDto,
 	ListCredentialsQueryDto,
+	ShareCredentialPublicDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, CredentialsEntity } from '@n8n/db';
 import {
@@ -11,22 +12,28 @@ import {
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
 	Get,
+	Licensed,
 	Param,
 	ProjectScope,
+	Put,
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { apiKeyScopesSatisfy } from '@/public-api/public-api-route-resolver';
 import { buildSharedForCredential } from '@/public-api/v1/handlers/credentials/credentials.utils';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
 
 function toCredentialPublicDto(credential: CredentialsEntity): CredentialPublicDto {
 	return {
@@ -63,6 +70,7 @@ export class CredentialsPublicController {
 	constructor(
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 	) {}
 
 	@Get('/')
@@ -120,5 +128,53 @@ export class CredentialsPublicController {
 		}
 
 		return toCredentialPublicDto(credential);
+	}
+
+	@Put('/:credentialId/share')
+	@Licensed('feat:sharing')
+	@ApiKeyScope({ anyOf: ['credential:share', 'credential:unshare'] })
+	@ProjectScope('credential:read')
+	@ApiSummary('Share a credential with projects')
+	@ApiDescription(
+		'Replaces the set of projects a credential is shared with. Projects in `shareWithIds` that the credential is not yet shared with are added, and projects it is currently shared with that are absent from `shareWithIds` are removed. The owning project is unaffected. Adding projects requires the `credential:share` scope, removing them requires `credential:unshare`.',
+	)
+	@ApiTags(['Credential'])
+	@ApiResponse(204)
+	@ApiErrorResponse(403)
+	@ApiErrorResponse(404)
+	async shareCredential(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('credentialId') credentialId: string,
+		@Body body: ShareCredentialPublicDto,
+	): Promise<void> {
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			req.user,
+			['credential:read'],
+		);
+
+		if (!credential) {
+			throw new NotFoundError('Credential not found');
+		}
+
+		const diff = this.enterpriseCredentialsService.getSharedWithProjectsDiff(
+			credential,
+			body.shareWithIds,
+		);
+
+		// `@ApiKeyScope` only gates entry with `anyOf`, so each direction of the diff
+		// is authorized against the API key separately here.
+		const apiKeyScopes = req.tokenGrant?.apiKeyScopes ?? [];
+
+		if (diff.toShare.length > 0 && !apiKeyScopesSatisfy(apiKeyScopes, 'credential:share')) {
+			throw new ForbiddenError();
+		}
+
+		if (diff.toUnshare.length > 0 && !apiKeyScopesSatisfy(apiKeyScopes, 'credential:unshare')) {
+			throw new ForbiddenError();
+		}
+
+		await this.enterpriseCredentialsService.setSharedWithProjects(req.user, credential, diff);
 	}
 }

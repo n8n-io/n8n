@@ -1,29 +1,41 @@
 import type { CredentialConnectionStatus } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import type { CredentialsEntity as CredentialsEntityType, User } from '@n8n/db';
 import {
 	CredentialsEntity,
 	Project,
+	ProjectRelationRepository,
 	SharedCredentials,
 	SharedCredentialsRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
+import { EventService } from '@/events/event.service';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { UserManagementMailer } from '@/user-management/email';
+import * as utils from '@/utils';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { validateAccessToReferencedSecretProviders } from './validation';
+
+/** Projects to add to, and remove from, a credential's `credential:user` sharings. */
+export type CredentialSharingDiff = {
+	toShare: string[];
+	toUnshare: string[];
+};
 
 @Service()
 export class EnterpriseCredentialsService {
@@ -38,7 +50,92 @@ export class EnterpriseCredentialsService {
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly licenseState: LicenseState,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
+		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly eventService: EventService,
+		private readonly userManagementMailer: UserManagementMailer,
 	) {}
+
+	/**
+	 * Diff a credential's current `credential:user` sharings against the requested set of
+	 * project ids. Pure: callers can inspect the result to authorize each direction
+	 * separately before any mutation happens.
+	 */
+	getSharedWithProjectsDiff(
+		credential: CredentialsEntityType,
+		shareWithIds: string[],
+	): CredentialSharingDiff {
+		const currentProjectIds = credential.shared
+			.filter((sc) => sc.role === 'credential:user')
+			.map((sc) => sc.projectId);
+
+		return {
+			toShare: utils.rightDiff([currentProjectIds, (id) => id], [shareWithIds, (id) => id]),
+			toUnshare: utils.rightDiff([shareWithIds, (id) => id], [currentProjectIds, (id) => id]),
+		};
+	}
+
+	/**
+	 * Apply a sharing diff to a credential: verify the user holds the scope for each
+	 * direction being changed, persist both directions in a single transaction, then
+	 * emit the sharing event and notify the new sharees.
+	 */
+	async setSharedWithProjects(
+		user: User,
+		credential: CredentialsEntityType,
+		{ toShare, toUnshare }: CredentialSharingDiff,
+	) {
+		const credentialId = credential.id;
+
+		if (toShare.length > 0) {
+			const canShare = await userHasScopes(user, ['credential:share'], false, { credentialId });
+			if (!canShare) throw new ForbiddenError();
+		}
+
+		if (toUnshare.length > 0) {
+			const canUnshare = await userHasScopes(user, ['credential:unshare'], false, { credentialId });
+			if (!canUnshare) throw new ForbiddenError();
+		}
+
+		let amountRemoved: number | null = null;
+
+		const { manager: dbManager } = this.sharedCredentialsRepository;
+		await dbManager.transaction(async (trx) => {
+			const deleteResult = await trx.delete(SharedCredentials, {
+				credentialsId: credentialId,
+				projectId: In(toUnshare),
+			});
+			await this.shareWithProjects(user, credentialId, toShare, trx);
+
+			if (deleteResult.affected) {
+				amountRemoved = deleteResult.affected;
+				await this.connectionStatusProxy.cleanupOrphanedEntriesForProjects(
+					credentialId,
+					toUnshare,
+					trx,
+				);
+			}
+		});
+
+		this.eventService.emit('credentials-shared', {
+			user,
+			credentialType: credential.type,
+			credentialId,
+			userIdSharer: user.id,
+			userIdsShareesAdded: toShare,
+			shareesRemoved: amountRemoved,
+		});
+
+		const projectsRelations = await this.projectRelationRepository.findBy({
+			projectId: In(toShare),
+			role: { slug: PROJECT_OWNER_ROLE_SLUG },
+		});
+
+		await this.userManagementMailer.notifyCredentialsShared({
+			sharer: user,
+			newShareeIds: projectsRelations.map((pr) => pr.userId),
+			credentialsName: credential.name,
+		});
+	}
 
 	async shareWithProjects(
 		user: User,
