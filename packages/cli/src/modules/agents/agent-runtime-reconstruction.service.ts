@@ -6,6 +6,7 @@ import {
 	ModelConfig,
 	ToolDescriptor,
 } from '@n8n/agents';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	N8N_CHAT_ACTION_TOOL_NAME,
 	N8N_CHAT_CONTEXT_TOOL_NAME,
@@ -973,9 +974,11 @@ export class AgentRuntimeReconstructionService {
 		// never match a row — inline agents get their file input via workflow
 		// items instead.
 		if (runtimeProfile !== 'inline') {
-			const provider = config.model.split('/')[0];
 			agent.fileStore(
-				this.agentChatAttachmentService.getFileStore({ agentId, projectId }, provider),
+				this.agentChatAttachmentService.getFileStore(
+					{ agentId, projectId },
+					getProviderPrefix(config.model),
+				),
 			);
 		}
 	}
