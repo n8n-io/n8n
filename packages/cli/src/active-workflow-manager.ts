@@ -386,39 +386,86 @@ export class ActiveWorkflowManager {
 
 	private isActivationInProgress = false;
 
+	private queuedLeadershipActivation = false;
+
 	/**
 	 * Register as active in memory all workflows stored as `active`,
 	 * only on instance init or (in multi-main setup) on leadership change.
 	 */
 	async addActiveWorkflows(activationMode: 'init' | 'leadershipChange') {
 		if (this.isActivationInProgress) {
-			this.logger.debug(`Skipping activation - already in progress for mode: ${activationMode}`);
+			// The in-flight pass registered its earlier workflows in the previous role,
+			// so a leadership change is queued rather than dropped.
+			if (activationMode === 'leadershipChange') {
+				this.logger.warn('Activation in progress, queueing re-run after leadership change');
+				this.queuedLeadershipActivation = true;
+			} else {
+				this.logger.debug(`Skipping activation - already in progress for mode: ${activationMode}`);
+			}
+
 			return;
 		}
 
 		this.isActivationInProgress = true;
 		try {
-			const dbWorkflowIds = await this.workflowRepository.getAllActiveIds();
-
-			if (dbWorkflowIds.length === 0) return;
-
-			if (this.instanceSettings.isLeader) {
-				this.logger.info('Start Active Workflows:');
-			}
-
-			const batches = chunk(dbWorkflowIds, this.workflowsConfig.activationBatchSize);
-
-			for (const batch of batches) {
-				const activationPromises = batch.map(async (dbWorkflowId) => {
-					await this.activateWorkflow(dbWorkflowId, activationMode);
-				});
-
-				await Promise.all(activationPromises);
-			}
-
-			this.logger.debug('Finished activating all workflows');
+			await this.runActivationPass(activationMode);
 		} finally {
-			this.isActivationInProgress = false;
+			// Also when the pass above failed: this instance is the leader either way,
+			// and nothing else registers the triggers it is missing.
+			try {
+				await this.runQueuedLeadershipActivations();
+			} finally {
+				this.isActivationInProgress = false;
+			}
+		}
+	}
+
+	private async runActivationPass(activationMode: 'init' | 'leadershipChange') {
+		const dbWorkflowIds = await this.workflowRepository.getAllActiveIds();
+
+		if (dbWorkflowIds.length === 0) return;
+
+		if (this.instanceSettings.isLeader) {
+			this.logger.info('Start Active Workflows:');
+		}
+
+		const batches = chunk(dbWorkflowIds, this.workflowsConfig.activationBatchSize);
+
+		for (const batch of batches) {
+			const activationPromises = batch.map(async (dbWorkflowId) => {
+				await this.activateWorkflow(dbWorkflowId, activationMode);
+			});
+
+			await Promise.all(activationPromises);
+		}
+
+		this.logger.debug('Finished activating all workflows');
+	}
+
+	/**
+	 * Run the passes for the leadership changes that arrived while a pass was in
+	 * flight. Runs while `isActivationInProgress` is still set, so a change
+	 * arriving during a re-run is queued for the next turn instead of racing it.
+	 *
+	 * The non-webhook triggers an earlier pass registered are removed first, so a
+	 * re-run does not register them a second time and double every schedule.
+	 */
+	private async runQueuedLeadershipActivations() {
+		while (this.queuedLeadershipActivation) {
+			this.queuedLeadershipActivation = false;
+
+			if (!this.instanceSettings.isLeader) return;
+
+			try {
+				await this.activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows();
+				await this.runActivationPass('leadershipChange');
+			} catch (error) {
+				// Nothing else revisits these workflows, so keep the request for the
+				// next pass rather than leaving them without their triggers.
+				this.queuedLeadershipActivation = true;
+				this.errorReporter.error(error);
+				return;
+			}
 		}
 	}
 
