@@ -1,5 +1,5 @@
 #!/bin/sh
-# n8n-shadow-shim-version: 3
+# n8n-shadow-shim-version: 2
 #
 # n8n dev metrics — binary shim (template). setup.mjs renders this per shadowed
 # CLI and installs it in place of the real binary (the original is saved next to
