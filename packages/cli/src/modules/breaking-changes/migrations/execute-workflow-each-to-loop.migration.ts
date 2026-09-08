@@ -90,6 +90,14 @@ const makeLoopNode = (name: string, position: INode['position']): INode => ({
  * Drops the `alwaysOutputData` placeholders: items with neither JSON fields nor
  * binary data. A file returned by the sub-workflow has empty JSON but binary
  * data, so it passes.
+ *
+ * A real item with empty JSON and no binary is indistinguishable from the
+ * placeholder and is dropped too. This is deliberate: the engine fixes the
+ * placeholder shape, and no downstream node runs when the wrapped node emits
+ * nothing, so there is no way to tag the placeholder. We also do not report it
+ * as a drift note, because nearly every each-mode node waits for the
+ * sub-workflow and a note would block one-click publish for almost all
+ * migrations to protect an item that carries no data.
  */
 const makeFilterNode = (name: string, position: INode['position']): INode => ({
 	id: randomUUID(),
