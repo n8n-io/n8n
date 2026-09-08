@@ -4,6 +4,12 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 	createScopedWorkspace: vi.fn((workspace: unknown) => workspace),
 }));
 
+vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents/sandbox')>()),
+	getPromptWorkspaceRoot: vi.fn(() => '/home/daytona/workspace'),
+	getWorkspaceRoot: vi.fn(async () => '/home/daytona/workspace'),
+}));
+
 vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
 	return {
@@ -43,8 +49,6 @@ vi.mock('@n8n/instance-ai', async () => {
 			}),
 		),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
-		getPromptWorkspaceRoot: vi.fn(() => '/home/daytona/workspace'),
-		getWorkspaceRoot: vi.fn(async () => '/home/daytona/workspace'),
 		setupSandboxWorkspace: vi.fn(),
 		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
 			registry: {
@@ -304,22 +308,16 @@ function createStartRunService(): StartRunServiceInternals {
 }
 
 type CheckpointPruneServiceInternals = {
-	startCheckpointPruning: () => void;
-	stopCheckpointPruning: () => void;
-	runScheduledPrune: (now?: number) => Promise<void>;
+	pruneExpiredData: (now?: number, signal?: AbortSignal) => Promise<void>;
 	suspendedThreads: {
 		pruneStalePendingConfirmations: MockedFunction<(now: number) => Promise<void>>;
 	};
-	pruneExpiredThreads: MockedFunction<() => Promise<void>>;
-	scheduleCheckpointPrune: MockedFunction<(delayMs?: number) => void>;
+	pruneExpiredThreads: MockedFunction<(signal?: AbortSignal) => Promise<void>>;
 	checkpointStore: {
 		markExpiredOlderThan: MockedFunction<(olderThan: Date) => Promise<number>>;
 		hardDeleteExpiredOlderThan: MockedFunction<(olderThan: Date) => Promise<number>>;
 	};
-	checkpointPruneTimer?: NodeJS.Timeout;
-	checkpointPruningStopped: boolean;
 	instanceAiConfig: {
-		pruneInterval: number;
 		snapshotRetention: number;
 		checkpointGcRetention: number;
 	};
@@ -330,7 +328,6 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 	const service = Object.create(
 		InstanceAiService.prototype,
 	) as unknown as CheckpointPruneServiceInternals;
-	service.scheduleCheckpointPrune = vi.fn();
 	service.suspendedThreads = {
 		pruneStalePendingConfirmations: vi.fn(async (_now: number) => undefined),
 	};
@@ -339,9 +336,7 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 		markExpiredOlderThan: vi.fn(async (_olderThan: Date) => 0),
 		hardDeleteExpiredOlderThan: vi.fn(async (_olderThan: Date) => 0),
 	};
-	service.checkpointPruningStopped = true;
 	service.instanceAiConfig = {
-		pruneInterval: 60 * 60 * 1000,
 		snapshotRetention: 24 * 60 * 60 * 1000,
 		checkpointGcRetention: 7 * 24 * 60 * 60 * 1000,
 	};
@@ -408,7 +403,6 @@ function createInstanceAiErrorReporterMock() {
 
 type ShutdownServiceInternals = {
 	shutdown: () => Promise<void>;
-	stopCheckpointPruning: MockedFunction<() => void>;
 	liveness: { shutdown: MockedFunction<() => void> };
 	runState: {
 		shutdown: MockedFunction<
@@ -1106,7 +1100,6 @@ describe('InstanceAiService — shutdown', () => {
 		const service = Object.create(
 			InstanceAiService.prototype,
 		) as unknown as ShutdownServiceInternals;
-		service.stopCheckpointPruning = vi.fn();
 		service.liveness = { shutdown: vi.fn() };
 		service.runState = {
 			shutdown: vi.fn(() => ({ activeRuns: [], suspendedRuns: [] })),
@@ -1372,12 +1365,12 @@ describe('InstanceAiService — run start', () => {
 	});
 });
 
-describe('InstanceAiService — scheduled pruning', () => {
+describe('InstanceAiService — expired data pruning', () => {
 	it('marks checkpoints expired older than the retention window', async () => {
 		const service = createCheckpointPruneService();
 		const now = new Date('2026-05-13T12:00:00.000Z').getTime();
 
-		await service.runScheduledPrune(now);
+		await service.pruneExpiredData(now);
 
 		// snapshotRetention = 24h → tombstone anything untouched since 05-12
 		expect(service.checkpointStore.markExpiredOlderThan).toHaveBeenCalledWith(
@@ -1389,59 +1382,98 @@ describe('InstanceAiService — scheduled pruning', () => {
 		);
 		expect(service.suspendedThreads.pruneStalePendingConfirmations).toHaveBeenCalledWith(now);
 		expect(service.pruneExpiredThreads).toHaveBeenCalled();
-		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
+	});
+
+	it('passes the signal to the thread sweep', async () => {
+		const service = createCheckpointPruneService();
+		const { signal } = new AbortController();
+
+		await service.pruneExpiredData(new Date('2026-05-13T12:00:00.000Z').getTime(), signal);
+
+		expect(service.pruneExpiredThreads).toHaveBeenCalledWith(signal);
+	});
+
+	it('stops before the next step once the signal is aborted', async () => {
+		const service = createCheckpointPruneService();
+		const controller = new AbortController();
+		service.checkpointStore.markExpiredOlderThan.mockImplementation(async () => {
+			controller.abort();
+			return 0;
+		});
+
+		await service.pruneExpiredData(
+			new Date('2026-05-13T12:00:00.000Z').getTime(),
+			controller.signal,
+		);
+
+		expect(service.checkpointStore.hardDeleteExpiredOlderThan).not.toHaveBeenCalled();
+		expect(service.suspendedThreads.pruneStalePendingConfirmations).not.toHaveBeenCalled();
+		expect(service.pruneExpiredThreads).not.toHaveBeenCalled();
+		expect(service.logger.debug).toHaveBeenCalledWith(
+			'Stopped the Instance AI prune pass early because the run was aborted',
+		);
+	});
+
+	it('logs an early stop when the signal aborts during the thread sweep', async () => {
+		const service = createCheckpointPruneService();
+		const controller = new AbortController();
+		service.pruneExpiredThreads.mockImplementation(async () => controller.abort());
+
+		await service.pruneExpiredData(
+			new Date('2026-05-13T12:00:00.000Z').getTime(),
+			controller.signal,
+		);
+
+		expect(service.pruneExpiredThreads).toHaveBeenCalledTimes(1);
+		expect(service.logger.debug).toHaveBeenCalledWith(
+			'Stopped the Instance AI prune pass early because the run was aborted',
+		);
 	});
 
 	it('skips hard-deleting tombstones when the GC retention is disabled', async () => {
 		const service = createCheckpointPruneService();
 		service.instanceAiConfig.checkpointGcRetention = 0;
 
-		await service.runScheduledPrune(new Date('2026-05-13T12:00:00.000Z').getTime());
+		await service.pruneExpiredData(new Date('2026-05-13T12:00:00.000Z').getTime());
 
 		expect(service.checkpointStore.hardDeleteExpiredOlderThan).not.toHaveBeenCalled();
-		// The rest of the cycle still runs.
+		// The rest of the pass still runs.
 		expect(service.checkpointStore.markExpiredOlderThan).toHaveBeenCalled();
-		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
+	});
+
+	it('propagates a checkpoint expiry failure to the caller', async () => {
+		const service = createCheckpointPruneService();
+		service.checkpointStore.markExpiredOlderThan.mockRejectedValueOnce(new Error('db down'));
+
+		await expect(
+			service.pruneExpiredData(new Date('2026-05-13T12:00:00.000Z').getTime()),
+		).rejects.toThrow('db down');
+
+		expect(service.suspendedThreads.pruneStalePendingConfirmations).not.toHaveBeenCalled();
 	});
 
 	it('continues the prune cycle when hard-deleting tombstones fails', async () => {
 		const service = createCheckpointPruneService();
 		service.checkpointStore.hardDeleteExpiredOlderThan.mockRejectedValueOnce(new Error('db down'));
 
-		await service.runScheduledPrune(new Date('2026-05-13T12:00:00.000Z').getTime());
+		await service.pruneExpiredData(new Date('2026-05-13T12:00:00.000Z').getTime());
 
-		// A GC failure is swallowed and never forces the short retry cadence.
+		// A GC failure is swallowed and never interrupts the rest of the pass.
 		expect(service.suspendedThreads.pruneStalePendingConfirmations).toHaveBeenCalled();
 		expect(service.pruneExpiredThreads).toHaveBeenCalled();
-		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
 		expect(service.logger.warn).toHaveBeenCalled();
-	});
-
-	it('starts checkpoint pruning when configured', () => {
-		const service = createCheckpointPruneService();
-
-		service.startCheckpointPruning();
-
-		expect(service.checkpointPruningStopped).toBe(false);
-		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith(0);
-	});
-
-	it('does not start checkpoint pruning when disabled', () => {
-		const service = createCheckpointPruneService();
-		service.instanceAiConfig.pruneInterval = 0;
-
-		service.startCheckpointPruning();
-
-		expect(service.scheduleCheckpointPrune).not.toHaveBeenCalled();
 	});
 });
 
 type ExpiredThreadPruneServiceInternals = {
-	pruneExpiredThreads: () => Promise<void>;
+	pruneExpiredThreads: (signal?: AbortSignal) => Promise<void>;
 	clearThreadState: MockedFunction<(threadId: string) => Promise<void>>;
 	memoryService: {
 		cleanupExpiredThreads: MockedFunction<
-			(onThreadDeleted?: (threadId: string) => Promise<void>) => Promise<number>
+			(
+				onThreadDeleted?: (threadId: string) => Promise<void>,
+				signal?: AbortSignal,
+			) => Promise<number>
 		>;
 	};
 	logger: { warn: Mock };
@@ -1471,6 +1503,18 @@ describe('InstanceAiService — expired thread pruning', () => {
 
 		expect(service.memoryService.cleanupExpiredThreads).toHaveBeenCalledTimes(1);
 		expect(service.clearThreadState).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('passes the signal to the memory service', async () => {
+		const service = createExpiredThreadPruneService();
+		const { signal } = new AbortController();
+
+		await service.pruneExpiredThreads(signal);
+
+		expect(service.memoryService.cleanupExpiredThreads).toHaveBeenCalledWith(
+			expect.any(Function),
+			signal,
+		);
 	});
 
 	it('swallows errors so the recurring prune is not disrupted', async () => {

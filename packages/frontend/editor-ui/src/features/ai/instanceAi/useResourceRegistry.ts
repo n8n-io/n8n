@@ -39,8 +39,15 @@ interface Collections {
 	linkableByName: Map<string, ResourceEntry>;
 }
 
+/**
+ * A blank string is treated as absent. Every caller uses the result as the head
+ * of a fallback chain, so a blank name from a patch call would otherwise beat
+ * the known name and re-key the indexes under an empty string.
+ */
 function optionalString(val: unknown): string | undefined {
-	return typeof val === 'string' ? val : undefined;
+	if (typeof val !== 'string') return undefined;
+	const trimmed = val.trim();
+	return trimmed === '' ? undefined : trimmed;
 }
 
 type RecordProducedOptions = {

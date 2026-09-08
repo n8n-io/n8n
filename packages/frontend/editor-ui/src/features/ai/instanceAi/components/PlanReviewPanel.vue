@@ -89,12 +89,20 @@ function isTaskExpandedByDefault(task: PlannedTaskArg): boolean {
 	return !isVerificationTask(task);
 }
 
+/**
+ * Plans saved before titles were required can hold a blank one, which would
+ * render a task row with a number and no label.
+ */
+function getTitle(task: PlannedTaskArg): string {
+	return task.title.trim() || i18n.baseText('instanceAi.tasks.untitled');
+}
+
 function getDescription(task: PlannedTaskArg): string {
 	let text = task.spec;
 	if (task.deps.length) {
 		const depNames = task.deps.map((depId) => {
 			const dep = props.plannedTasks.find((t) => t.id === depId);
-			return dep?.title ?? depId;
+			return dep ? getTitle(dep) : depId;
 		});
 		text += `\nDepends on: ${depNames.join(', ')}`;
 	}
@@ -193,7 +201,7 @@ function handleDeny() {
 						<button type="button" :class="$style.taskRow">
 							<span :class="$style.taskNumber">{{ idx + 1 }}</span>
 							<span :class="$style.taskTitleGroup">
-								<N8nText bold size="large" :class="$style.taskTitle">{{ task.title }}</N8nText>
+								<N8nText bold size="large" :class="$style.taskTitle">{{ getTitle(task) }}</N8nText>
 								<N8nIcon
 									icon="chevron-right"
 									size="medium"

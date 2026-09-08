@@ -6,6 +6,7 @@ import type {
 	AgentEventData,
 	MemoryTaskUsageReport,
 } from '@n8n/agents';
+import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
@@ -30,15 +31,13 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
 	MAX_STEPS,
 	createInstanceAgent,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
-	getPromptWorkspaceRoot,
-	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
@@ -138,6 +137,11 @@ import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
+import {
+	INSTANCE_CONTEXT_CURSOR,
+	InstanceContextService,
+	readInstanceContextCursor,
+} from './instance-context.service';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';
@@ -390,7 +394,6 @@ function isTelemetryConfigurableAgent(
 	);
 }
 
-const INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS = 30 * 1000;
 const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
 
 const CONFIRMATION_EXPIRED_MESSAGE =
@@ -777,10 +780,6 @@ export class InstanceAiService {
 
 	private readonly taskProjector: WorkflowVerificationTaskProjector;
 
-	private checkpointPruneTimer: NodeJS.Timeout | undefined;
-
-	private checkpointPruningStopped = true;
-
 	/**
 	 * In-flight `executeRun` / `processResumedStream` promises. Tracked so
 	 * `shutdown()` can drain them before n8n closes the DB connection — the
@@ -835,6 +834,7 @@ export class InstanceAiService {
 		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
 		private readonly push: Push,
 		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
+		private readonly instanceContext: InstanceContextService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -945,7 +945,6 @@ export class InstanceAiService {
 		});
 
 		this.liveness.start();
-		if (this.instanceSettings.isLeader) this.startCheckpointPruning();
 	}
 
 	private async createProxyRunConfig(user: User): Promise<{
@@ -1896,7 +1895,6 @@ export class InstanceAiService {
 	}
 
 	async shutdown(): Promise<void> {
-		this.stopCheckpointPruning();
 		this.liveness.shutdown();
 
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
@@ -1995,28 +1993,6 @@ export class InstanceAiService {
 		this.logger.debug('Instance AI service shut down');
 	}
 
-	@OnLeaderTakeover()
-	startCheckpointPruning(): void {
-		if (this.checkpointPruneTimer || this.instanceAiConfig.pruneInterval <= 0) return;
-		this.checkpointPruningStopped = false;
-		this.scheduleCheckpointPrune(0);
-	}
-
-	@OnLeaderStepdown()
-	stopCheckpointPruning(): void {
-		this.checkpointPruningStopped = true;
-		clearTimeout(this.checkpointPruneTimer);
-		this.checkpointPruneTimer = undefined;
-	}
-
-	private scheduleCheckpointPrune(delayMs = this.instanceAiConfig.pruneInterval): void {
-		if (this.checkpointPruningStopped) return;
-		this.checkpointPruneTimer = setTimeout(() => {
-			void this.runScheduledPrune();
-		}, delayMs);
-		this.checkpointPruneTimer.unref();
-	}
-
 	/**
 	 * Track a fire-and-forget run so `shutdown()` can wait for its cleanup
 	 * (finally block + SDK `cleanupRun`) to finish before the DB closes.
@@ -2079,32 +2055,26 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * One tick of the recurring leader prune cycle: expire stale checkpoints,
-	 * hard-delete tombstones past the GC horizon, drop expired pending
-	 * confirmations, and delete expired conversation threads, then schedule the
-	 * next run. A checkpoint failure reschedules with a shorter retry delay; the
-	 * confirmation and thread steps swallow their own errors so they never
-	 * disrupt the cycle.
+	 * One prune pass: expire stale checkpoints, hard-delete tombstones past the
+	 * GC horizon, drop expired pending confirmations, and delete expired
+	 * conversation threads. A checkpoint failure propagates to the caller; the
+	 * GC, confirmation, and thread steps swallow their own errors. Stops before
+	 * the next step once `signal` aborts.
 	 */
-	private async runScheduledPrune(now = Date.now()): Promise<void> {
+	async pruneExpiredData(now = Date.now(), signal?: AbortSignal): Promise<void> {
 		const olderThan = new Date(now - this.instanceAiConfig.snapshotRetention);
 
-		try {
-			const count = await this.checkpointStore.markExpiredOlderThan(olderThan);
-			if (count > 0) {
-				this.logger.info('Expired stale Instance AI checkpoints', { count });
-			} else {
-				this.logger.debug('No stale Instance AI checkpoints to expire');
-			}
-			await this.hardDeleteExpiredCheckpoints(now);
-			await this.suspendedThreads.pruneStalePendingConfirmations(now);
-			await this.pruneExpiredThreads();
-			this.scheduleCheckpointPrune();
-		} catch (error: unknown) {
-			this.logger.warn('Failed to expire stale Instance AI checkpoints', {
-				error: getErrorMessage(error),
-			});
-			this.scheduleCheckpointPrune(INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS);
+		const count = await this.checkpointStore.markExpiredOlderThan(olderThan);
+		if (count > 0) {
+			this.logger.info('Expired stale Instance AI checkpoints', { count });
+		} else {
+			this.logger.debug('No stale Instance AI checkpoints to expire');
+		}
+		if (!signal?.aborted) await this.hardDeleteExpiredCheckpoints(now);
+		if (!signal?.aborted) await this.suspendedThreads.pruneStalePendingConfirmations(now);
+		if (!signal?.aborted) await this.pruneExpiredThreads(signal);
+		if (signal?.aborted) {
+			this.logger.debug('Stopped the Instance AI prune pass early because the run was aborted');
 		}
 	}
 
@@ -2133,16 +2103,12 @@ export class InstanceAiService {
 		}
 	}
 
-	/**
-	 * Delete conversation threads older than the configured TTL as part of the
-	 * recurring leader prune. Has its own try/catch so a failure here never
-	 * disrupts checkpoint pruning or the next scheduled run. No-op when
-	 * `threadTtlDays` is 0 (handled inside `cleanupExpiredThreads`).
-	 */
-	private async pruneExpiredThreads(): Promise<void> {
+	/** Deletes conversation threads past their TTL and logs instead of throwing on failure. */
+	private async pruneExpiredThreads(signal?: AbortSignal): Promise<void> {
 		try {
 			await this.memoryService.cleanupExpiredThreads(
 				async (threadId) => await this.clearThreadState(threadId),
+				signal,
 			);
 		} catch (error: unknown) {
 			this.logger.warn('Failed to clean up expired Instance AI conversation threads', {
@@ -2594,7 +2560,10 @@ export class InstanceAiService {
 
 		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
 		// preserved) so every derived skill source inherits the exclusion.
-		const flagDisabledSkillIds = disabledInstanceAiSkillIds({ configEvalsEnabled });
+		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
+			configEvalsEnabled,
+			instanceContextEnabled: this.instanceAiConfig.instanceContextEnabled,
+		});
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0
 				? filterRuntimeSkillSource(loadInstanceAiRuntimeSkillSource(), flagDisabledSkillIds)
@@ -3957,6 +3926,20 @@ export class InstanceAiService {
 				});
 			}
 
+			// Sent in full on a thread's first turn and as additions after that: the earlier block
+			// stays in the conversation, so re-sending it pays for the same context twice.
+			//
+			// Skipped entirely on a machine follow-up. A checkpoint or a planned-build turn is the
+			// agent continuing its own task, where nobody is reading the user's intent, so the whole
+			// block would be paid for unread.
+			const instanceContext = await this.instanceContext.buildBlock({
+				user,
+				...(context.projectId !== undefined ? { projectId: context.projectId } : {}),
+				cursor: readInstanceContextCursor(thread?.metadata),
+				isMachineFollowUp:
+					checkpoint?.isCheckpointFollowUp === true ||
+					plannedBuild?.isPlannedBuildFollowUp === true,
+			});
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {
 				this.eventBus.publish(threadId, {
@@ -3993,10 +3976,13 @@ export class InstanceAiService {
 			// The context block (an editor hand-off) leads the message so the agent
 			// knows what the user is looking at. On an empty-text hand-off it is the
 			// entire prompt, and the agent greets rather than investigating.
+			// Instance context sits last of the leading blocks, nearest the user's own words: it is
+			// background for reading their intent, not a statement of what they are looking at now.
 			const messageWithContext = [
 				contextResourcesBlock,
 				handoffContextBlock,
 				setupStateBlock,
+				instanceContext?.block ?? '',
 				messageBody,
 			]
 				.filter(Boolean)
@@ -4115,6 +4101,26 @@ export class InstanceAiService {
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
 
 			streamReached = true;
+			// Stored here, not where the block was built: the SDK persists the input on receipt, so
+			// only from this point is the block actually in the conversation. Advancing the cursor
+			// any earlier would let a failure between the two mark the opening context as shown
+			// when it never was, and the next turn would send a delta against nothing.
+			//
+			// Best-effort on purpose. The cursor is an optimisation — losing it re-sends a window,
+			// which is recoverable — so a metadata write must not fail the user's turn.
+			if (instanceContext) {
+				try {
+					await patchThread(memory, {
+						threadId,
+						update: ({ metadata }) => ({
+							metadata: { ...metadata, [INSTANCE_CONTEXT_CURSOR]: instanceContext.cursor },
+						}),
+					});
+				} catch (error) {
+					this.logger.warn('Failed to store the instance-context cursor', { error });
+				}
+			}
+
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
 						return await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
