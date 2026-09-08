@@ -28,6 +28,7 @@ const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 const config = mock<WorkflowsConfig>({
 	useWorkflowPublicationService: true,
 	publicationReconcileIntervalSeconds: 5,
+	publicationOutboxLeaseSeconds: 120,
 });
 const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
 const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
@@ -59,6 +60,7 @@ beforeEach(() => {
 	Object.assign(config, {
 		useWorkflowPublicationService: true,
 		publicationReconcileIntervalSeconds: 5,
+		publicationOutboxLeaseSeconds: 120,
 	});
 	triggerStatusRepository.findActivatedInMemoryTriggers.mockResolvedValue([]);
 	outboxRepository.enqueueByWorkflowIds.mockResolvedValue();
@@ -373,7 +375,9 @@ describe('WorkflowPublicationReconciler', () => {
 
 			await service.reconcile('reconcile');
 
-			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-ghost', expect.any(Function));
+			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-ghost', expect.any(Function), {
+				signal: expect.any(AbortSignal),
+			});
 			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-ghost');
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-reconciliation',

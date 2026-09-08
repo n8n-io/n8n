@@ -116,6 +116,10 @@ export class WorkflowPublicationReconciler {
 		this.reconcileInterval = undefined;
 	}
 
+	private get leaseMs(): number {
+		return this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
+	}
+
 	/**
 	 * One tick of the loop, gated by the instance's role at this moment. On the
 	 * leader: diff the triggers that should be active in memory against what is
@@ -241,15 +245,21 @@ export class WorkflowPublicationReconciler {
 			}
 
 			try {
-				await this.lifecycleLock.runExclusive(workflowId, async () => {
-					const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+				await this.lifecycleLock.runExclusive(
+					workflowId,
+					async () => {
+						const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
 
-					if (workflow?.activeVersionId) return;
-					if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) return;
+						if (workflow?.activeVersionId) return;
+						if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) return;
 
-					await this.activeWorkflowTriggers.remove(workflowId);
-					surplusRepairs++;
-				});
+						await this.activeWorkflowTriggers.remove(workflowId);
+						surplusRepairs++;
+					},
+					// The lock was free a moment ago; a holder that took it since is a
+					// record in flight, which settles within its lease.
+					{ signal: AbortSignal.timeout(this.leaseMs) },
+				);
 			} catch (error) {
 				this.errorReporter.error(error, { shouldBeLogged: true });
 			}

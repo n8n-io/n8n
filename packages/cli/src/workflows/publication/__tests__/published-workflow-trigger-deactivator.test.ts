@@ -30,6 +30,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 		const workflowsConfig = mock<WorkflowsConfig>({
 			useWorkflowPublicationService,
 			publicationReconcileIntervalSeconds: RECONCILE_INTERVAL_SECONDS,
+			publicationOutboxLeaseSeconds: 120,
 		});
 		return new PublishedWorkflowTriggerDeactivator(
 			logger,
@@ -69,8 +70,12 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 			await createDeactivator().deactivateAllNonWebhookTriggers();
 
 			expect(outboxConsumer.stopPolling).toHaveBeenCalledTimes(1);
-			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-1', expect.any(Function));
-			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-2', expect.any(Function));
+			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-1', expect.any(Function), {
+				signal: expect.any(AbortSignal),
+			});
+			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-2', expect.any(Function), {
+				signal: expect.any(AbortSignal),
+			});
 			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-1');
 			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-2');
 			expect(errorReporter.error).not.toHaveBeenCalled();
@@ -95,6 +100,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 			expect(lifecycleLock.runExclusive).not.toHaveBeenCalledWith(
 				'wf-locked',
 				expect.any(Function),
+				expect.anything(),
 			);
 		});
 
@@ -151,8 +157,12 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 				const removed = await createDeactivator().sweepGhostTriggers();
 
 				expect(removed).toBe(2);
-				expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-1', expect.any(Function));
-				expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-2', expect.any(Function));
+				expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-1', expect.any(Function), {
+					signal: expect.any(AbortSignal),
+				});
+				expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-2', expect.any(Function), {
+					signal: expect.any(AbortSignal),
+				});
 				expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-1');
 				expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-2');
 				// A ghost on a follower is evidence of a zombie writer — loud, not debug.
@@ -187,6 +197,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 				expect(lifecycleLock.runExclusive).not.toHaveBeenCalledWith(
 					'wf-busy',
 					expect.any(Function),
+					expect.anything(),
 				);
 			});
 

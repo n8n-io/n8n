@@ -1,9 +1,13 @@
 import { Service } from '@n8n/di';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 interface WorkflowLockState {
 	locked: boolean;
 	waiters: Array<() => void>;
+}
+
+interface RunExclusiveOptions {
+	/** Bounds the wait for the lock: an abort while waiting rejects with its reason. */
+	signal: AbortSignal;
 }
 
 /**
@@ -34,11 +38,11 @@ export class WorkflowPublicationLifecycleLock {
 		return this.stateByWorkflowId.has(workflowId);
 	}
 
-	/** Runs `fn` under the workflow's lock. Waits indefinitely, or until the abort signal fires. */
+	/** Runs `fn` under the workflow's lock, waiting until the lock is free or `signal` aborts. */
 	async runExclusive<T>(
 		workflowId: string,
 		fn: () => Promise<T>,
-		signal?: AbortSignal,
+		{ signal }: RunExclusiveOptions,
 	): Promise<T> {
 		await this.acquire(workflowId, signal);
 		try {
@@ -57,8 +61,8 @@ export class WorkflowPublicationLifecycleLock {
 		return state;
 	}
 
-	private async acquire(workflowId: string, signal?: AbortSignal): Promise<void> {
-		if (signal?.aborted) throw ensureError(signal.reason);
+	private async acquire(workflowId: string, signal: AbortSignal): Promise<void> {
+		signal.throwIfAborted();
 
 		const state = this.getOrCreateState(workflowId);
 		if (!state.locked) {
@@ -68,7 +72,7 @@ export class WorkflowPublicationLifecycleLock {
 
 		await new Promise<void>((resolve, reject) => {
 			const waiter = () => {
-				signal?.removeEventListener('abort', onAbort);
+				signal.removeEventListener('abort', onAbort);
 				resolve();
 			};
 			// Drop the waiter so a later release hands the lock to the next live
@@ -76,10 +80,10 @@ export class WorkflowPublicationLifecycleLock {
 			const onAbort = () => {
 				const index = state.waiters.indexOf(waiter);
 				if (index !== -1) state.waiters.splice(index, 1);
-				reject(ensureError(signal?.reason));
+				reject(signal.reason);
 			};
 			state.waiters.push(waiter);
-			signal?.addEventListener('abort', onAbort, { once: true });
+			signal.addEventListener('abort', onAbort, { once: true });
 		});
 	}
 

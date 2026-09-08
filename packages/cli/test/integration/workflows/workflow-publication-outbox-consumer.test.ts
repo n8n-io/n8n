@@ -338,6 +338,7 @@ describe('leader stepdown (integration)', () => {
 				await new Promise<void>((resolve) => {
 					releaseHolder = resolve;
 				}),
+			{ signal: new AbortController().signal },
 		);
 
 		// The instance was demoted; the stepdown teardown must neither wait on the

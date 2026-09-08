@@ -2,12 +2,15 @@ import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workfl
 
 const flushMacrotasks = async () => await new Promise((resolve) => setImmediate(resolve));
 
+/** A signal that never aborts, for callers that want the unbounded wait. */
+const never = () => ({ signal: new AbortController().signal });
+
 describe('WorkflowPublicationLifecycleLock', () => {
 	describe('runExclusive', () => {
 		test('returns the result of the wrapped function', async () => {
 			const lock = new WorkflowPublicationLifecycleLock();
 
-			await expect(lock.runExclusive('wf-1', async () => 42)).resolves.toBe(42);
+			await expect(lock.runExclusive('wf-1', async () => 42, never())).resolves.toBe(42);
 		});
 
 		test('serializes concurrent callers for the same workflow in FIFO order', async () => {
@@ -15,16 +18,24 @@ describe('WorkflowPublicationLifecycleLock', () => {
 			const events: string[] = [];
 			let releaseFirst!: () => void;
 
-			const first = lock.runExclusive('wf-1', async () => {
-				events.push('first-acquired');
-				await new Promise<void>((resolve) => {
-					releaseFirst = resolve;
-				});
-				events.push('first-released');
-			});
-			const second = lock.runExclusive('wf-1', async () => {
-				events.push('second-acquired');
-			});
+			const first = lock.runExclusive(
+				'wf-1',
+				async () => {
+					events.push('first-acquired');
+					await new Promise<void>((resolve) => {
+						releaseFirst = resolve;
+					});
+					events.push('first-released');
+				},
+				never(),
+			);
+			const second = lock.runExclusive(
+				'wf-1',
+				async () => {
+					events.push('second-acquired');
+				},
+				never(),
+			);
 
 			await flushMacrotasks();
 			// The second caller cannot enter while the first holds the same lock.
@@ -41,10 +52,18 @@ describe('WorkflowPublicationLifecycleLock', () => {
 			const events: string[] = [];
 
 			// Hold wf-1 indefinitely; wf-2 must still run.
-			const held = lock.runExclusive('wf-1', async () => await new Promise<void>(() => {}));
-			await lock.runExclusive('wf-2', async () => {
-				events.push('wf-2-ran');
-			});
+			const held = lock.runExclusive(
+				'wf-1',
+				async () => await new Promise<void>(() => {}),
+				never(),
+			);
+			await lock.runExclusive(
+				'wf-2',
+				async () => {
+					events.push('wf-2-ran');
+				},
+				never(),
+			);
 
 			expect(events).toEqual(['wf-2-ran']);
 			void held;
@@ -54,16 +73,20 @@ describe('WorkflowPublicationLifecycleLock', () => {
 			const lock = new WorkflowPublicationLifecycleLock();
 
 			await expect(
-				lock.runExclusive('wf-1', async () => {
-					throw new Error('boom');
-				}),
+				lock.runExclusive(
+					'wf-1',
+					async () => {
+						throw new Error('boom');
+					},
+					never(),
+				),
 			).rejects.toThrow('boom');
 
 			// A subsequent caller can still acquire the same workflow's lock.
-			await expect(lock.runExclusive('wf-1', async () => 'ok')).resolves.toBe('ok');
+			await expect(lock.runExclusive('wf-1', async () => 'ok', never())).resolves.toBe('ok');
 		});
 
-		describe('with an abort signal', () => {
+		describe('abort signal', () => {
 			test('rejects with the abort reason when aborted while waiting, without running the function', async () => {
 				const lock = new WorkflowPublicationLifecycleLock();
 				const reason = new Error('deadline');
@@ -71,13 +94,13 @@ describe('WorkflowPublicationLifecycleLock', () => {
 				let ran = false;
 
 				// Hold wf-1 indefinitely, then queue an abortable waiter behind it.
-				void lock.runExclusive('wf-1', async () => await new Promise<void>(() => {}));
+				void lock.runExclusive('wf-1', async () => await new Promise<void>(() => {}), never());
 				const waiting = lock.runExclusive(
 					'wf-1',
 					async () => {
 						ran = true;
 					},
-					controller.signal,
+					{ signal: controller.signal },
 				);
 				await flushMacrotasks();
 
@@ -94,7 +117,7 @@ describe('WorkflowPublicationLifecycleLock', () => {
 				controller.abort(reason);
 
 				await expect(
-					lock.runExclusive('wf-1', async () => 'unreachable', controller.signal),
+					lock.runExclusive('wf-1', async () => 'unreachable', { signal: controller.signal }),
 				).rejects.toBe(reason);
 				// Nothing was acquired, so nothing is held.
 				expect(lock.isLocked('wf-1')).toBe(false);
@@ -106,21 +129,29 @@ describe('WorkflowPublicationLifecycleLock', () => {
 				const controller = new AbortController();
 				let releaseFirst!: () => void;
 
-				const first = lock.runExclusive('wf-1', async () => {
-					await new Promise<void>((resolve) => {
-						releaseFirst = resolve;
-					});
-				});
+				const first = lock.runExclusive(
+					'wf-1',
+					async () => {
+						await new Promise<void>((resolve) => {
+							releaseFirst = resolve;
+						});
+					},
+					never(),
+				);
 				const aborted = lock.runExclusive(
 					'wf-1',
 					async () => {
 						events.push('aborted-ran');
 					},
-					controller.signal,
+					{ signal: controller.signal },
 				);
-				const third = lock.runExclusive('wf-1', async () => {
-					events.push('third-ran');
-				});
+				const third = lock.runExclusive(
+					'wf-1',
+					async () => {
+						events.push('third-ran');
+					},
+					never(),
+				);
 				await flushMacrotasks();
 
 				controller.abort(new Error('deadline'));
@@ -134,16 +165,18 @@ describe('WorkflowPublicationLifecycleLock', () => {
 				expect(lock.isLocked('wf-1')).toBe(false);
 			});
 
-			test('acquiring normally with a signal that never fires leaves no dangling listener', async () => {
+			test('acquiring normally leaves no dangling listener', async () => {
 				const lock = new WorkflowPublicationLifecycleLock();
 				const controller = new AbortController();
 
-				await expect(lock.runExclusive('wf-1', async () => 'ok', controller.signal)).resolves.toBe(
-					'ok',
-				);
+				await expect(
+					lock.runExclusive('wf-1', async () => 'ok', { signal: controller.signal }),
+				).resolves.toBe('ok');
 				// Aborting after the fact must be a no-op.
 				controller.abort(new Error('late'));
-				await expect(lock.runExclusive('wf-1', async () => 'still ok')).resolves.toBe('still ok');
+				await expect(lock.runExclusive('wf-1', async () => 'still ok', never())).resolves.toBe(
+					'still ok',
+				);
 			});
 		});
 	});
@@ -154,11 +187,15 @@ describe('WorkflowPublicationLifecycleLock', () => {
 			expect(lock.isLocked('wf-1')).toBe(false);
 
 			let release!: () => void;
-			const held = lock.runExclusive('wf-1', async () => {
-				await new Promise<void>((resolve) => {
-					release = resolve;
-				});
-			});
+			const held = lock.runExclusive(
+				'wf-1',
+				async () => {
+					await new Promise<void>((resolve) => {
+						release = resolve;
+					});
+				},
+				never(),
+			);
 			// Let the wrapped function start so `release` is assigned.
 			await flushMacrotasks();
 

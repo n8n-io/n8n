@@ -491,7 +491,9 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 		test('returns the record to the queue when leadership is lost while waiting for the lock', async () => {
 			const record = makeRecord({ id: 8, workflowId: 'wf-held' });
-			void lifecycleLock.runExclusive('wf-held', async () => await new Promise<void>(() => {}));
+			void lifecycleLock.runExclusive('wf-held', async () => await new Promise<void>(() => {}), {
+				signal: new AbortController().signal,
+			});
 			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
 			consumer.startPolling();
 
@@ -646,7 +648,9 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		test('fails a record that times out waiting for the workflow lock, instead of leaving it in progress', async () => {
 			const record = makeRecord({ id: 1, workflowId: 'wf-held' });
 			// Another holder (e.g. an abandoned earlier record) never releases the lock.
-			void lifecycleLock.runExclusive('wf-held', async () => await new Promise<void>(() => {}));
+			void lifecycleLock.runExclusive('wf-held', async () => await new Promise<void>(() => {}), {
+				signal: new AbortController().signal,
+			});
 			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
 			consumer.startPolling();
 
