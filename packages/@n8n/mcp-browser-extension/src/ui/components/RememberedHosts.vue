@@ -2,18 +2,19 @@
 import { N8nIcon } from '@n8n/design-system';
 import InfoRow from './InfoRow.vue';
 
-defineProps<{ hosts: string[] }>();
+withDefaults(defineProps<{ hosts: string[]; showEmpty?: boolean }>(), { showEmpty: false });
 defineEmits<{ forget: [host: string] }>();
 </script>
 
 <template>
-	<div v-if="hosts.length" class="panel">
+	<div v-if="hosts.length || showEmpty" class="panel">
 		<InfoRow
 			icon="badge-check"
 			title="Allowed instances"
-			description="These instances connect without asking"
+			description="These n8n instances can connect without asking"
 		>
-			<ul class="host-list">
+			<p v-if="hosts.length === 0" class="empty">No allowed instances</p>
+			<ul v-else class="host-list">
 				<li v-for="host in hosts" :key="host" class="host">
 					<span class="host-name">{{ host }}</span>
 					<button
@@ -38,6 +39,12 @@ defineEmits<{ forget: [host: string] }>();
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.empty {
+	margin: var(--spacing--sm) 0 0;
+	font-size: var(--font-size--xs);
+	color: var(--text-color--subtler);
 }
 
 .host {

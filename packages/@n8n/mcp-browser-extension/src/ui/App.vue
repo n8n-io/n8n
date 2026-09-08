@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nButton, N8nCheckbox, N8nIcon, N8nLogo } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nIconButton, N8nLogo } from '@n8n/design-system';
 import { useConnection } from './composables/useConnection';
 import { useRecording } from './composables/useRecording';
 import InfoRow from './components/InfoRow.vue';
@@ -40,6 +40,7 @@ const {
 } = useRecording();
 
 const showTabSelection = ref(false);
+const showSettings = ref(false);
 
 const isConnected = computed(() => status.value === 'connected');
 const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.value);
@@ -47,60 +48,103 @@ const recordingTitle = computed(() => {
 	if (!recording.value) return '';
 	if (recording.value.status === 'recording') {
 		const actionCount = recording.value.actions.length;
-		return `Recording · ${actionCount} ${actionCount === 1 ? 'action' : 'actions'}`;
+		return `Recording task · ${actionCount} ${actionCount === 1 ? 'action' : 'actions'}`;
 	}
 	if (recording.value.status === 'submitted') return 'Recording sent';
 	if (recording.value.status === 'submitting') return 'Sending recording…';
 	return 'Review recording';
 });
+
+async function disconnectFromInstance() {
+	await disconnect();
+	showSettings.value = false;
+}
 </script>
 
 <template>
 	<div class="card">
 		<div class="content">
-			<N8nLogo class="logo" size="small" :collapsed="false" />
+			<div class="header">
+				<N8nLogo class="logo" size="small" :collapsed="false" />
+				<N8nIconButton
+					v-if="showSettings && (isConnected || !hasRelayUrl)"
+					icon="arrow-left"
+					variant="ghost"
+					size="small"
+					title="Back"
+					aria-label="Back"
+					@click="showSettings = false"
+				/>
+				<N8nIconButton
+					v-else-if="
+						(isConnected && (!recording || recording.status === 'submitted')) || !hasRelayUrl
+					"
+					icon="settings"
+					variant="ghost"
+					size="small"
+					title="Settings"
+					aria-label="Settings"
+					@click="showSettings = true"
+				/>
+			</div>
 
-			<template v-if="isConnected">
-				<h1 class="title">
-					<span class="status-dot" />
-					Connected to n8n
-				</h1>
+			<template v-if="isConnected && showSettings">
+				<h1 class="title">Settings</h1>
 				<div class="panel">
 					<InfoRow
 						icon="shield"
 						:title="
 							relayHostKey ? `Connected to ${relayHostKey}` : 'Connected to your n8n instance'
 						"
-					/>
-					<InfoRow
-						icon="lock"
-						title="Browser access"
-						description="Tabs n8n opens will appear below"
+						description="AI Assistant can use the browser tabs shown below"
 					/>
 					<template v-if="controlledTabs.length">
 						<hr class="divider" />
 						<TabList :tabs="controlledTabs" />
 					</template>
 				</div>
-				<div v-if="recording" class="recording-panel">
-					<h2 class="recording-title">{{ recordingTitle }}</h2>
-					<p v-if="recording.status === 'recording'" class="subtitle">
-						Use the browser as usual. Passwords and detected secrets are redacted.
+				<RememberedHosts show-empty :hosts="approvedHosts" @forget="forgetHost" />
+			</template>
+
+			<template v-else-if="isConnected && recording?.status === 'review'">
+				<h1 class="title">Review recording</h1>
+				<RecordingReview :actions="recording.actions" @remove="removeAction" @mask="maskAction" />
+			</template>
+
+			<template v-else-if="isConnected">
+				<h1 v-if="recording" class="title">
+					<span class="status-dot" />
+					{{ recordingTitle }}
+				</h1>
+				<template v-if="!recording">
+					<h1 class="title">Record a browser task</h1>
+					<p class="subtitle">
+						Show AI Assistant how you complete a task. Browser Use records your clicks, typing, and
+						navigation so AI Assistant can build a workflow.
 					</p>
-					<p v-else-if="recording.status === 'submitted'" class="subtitle">
-						The AI Assistant is processing your recording in a new conversation.
-					</p>
-					<p v-else-if="recording.status === 'submitting'" class="subtitle">
-						Keep this extension open while n8n starts the conversation.
-					</p>
-					<RecordingReview
-						v-else-if="recording.status === 'review'"
-						:actions="recording.actions"
-						@remove="removeAction"
-						@mask="maskAction"
+				</template>
+				<div v-if="!recording" class="panel">
+					<InfoRow
+						icon="mouse-pointer"
+						title="Demonstrate the task"
+						description="Complete the task in your browser as you usually do"
+					/>
+					<InfoRow
+						icon="shield"
+						title="Review before sharing"
+						description="Passwords and detected secrets are redacted. You can remove or mask other details before you send the recording."
 					/>
 				</div>
-				<RememberedHosts :hosts="approvedHosts" @forget="forgetHost" />
+				<p v-else-if="recording.status === 'recording'" class="subtitle">
+					Complete the task in your browser. Return here when you're ready to review the recorded
+					actions.
+				</p>
+				<p v-else-if="recording.status === 'submitted'" class="subtitle">
+					AI Assistant is processing your recording in a new conversation.
+				</p>
+				<p v-else-if="recording.status === 'submitting'" class="subtitle">
+					Keep this extension open while n8n starts the conversation.
+				</p>
 			</template>
 
 			<template v-else-if="showConnectPrompt">
@@ -155,16 +199,41 @@ const recordingTitle = computed(() => {
 				</p>
 			</template>
 
-			<template v-else>
-				<h1 class="title">n8n Browser Use extension</h1>
+			<template v-else-if="showSettings">
+				<h1 class="title">Settings</h1>
 				<div class="panel">
 					<InfoRow
 						icon="eye-off"
 						title="Disconnected"
-						description="Initiate the connection from your n8n instance to get started"
+						description="Connect Browser Use from AI Assistant to share browser access"
 					/>
 				</div>
-				<RememberedHosts :hosts="approvedHosts" @forget="forgetHost" />
+				<RememberedHosts show-empty :hosts="approvedHosts" @forget="forgetHost" />
+			</template>
+
+			<template v-else>
+				<h1 class="title">Turn browser actions into a workflow</h1>
+				<p class="subtitle">
+					Connect Browser Use to AI Assistant. Then record a task and send it to n8n to build a
+					workflow.
+				</p>
+				<div class="panel">
+					<InfoRow
+						icon="plug"
+						title="Connect from AI Assistant"
+						description="Open AI Assistant in n8n and select Connect browser from the input menu"
+					/>
+					<InfoRow
+						icon="mouse-pointer"
+						title="Record the task"
+						description="Return here and select Start recording"
+					/>
+					<InfoRow
+						icon="sparkles"
+						title="Build the workflow"
+						description="Review the recorded actions, then send them to AI Assistant"
+					/>
+				</div>
 			</template>
 
 			<p v-if="errorMessage || recordingError" class="error">
@@ -172,7 +241,12 @@ const recordingTitle = computed(() => {
 			</p>
 		</div>
 
-		<div v-if="isConnected" class="footer">
+		<div v-if="isConnected && showSettings" class="footer">
+			<N8nButton variant="outline" size="large" @click="disconnectFromInstance">
+				Disconnect
+			</N8nButton>
+		</div>
+		<div v-else-if="isConnected" class="footer">
 			<template v-if="recording?.status === 'recording'">
 				<N8nButton variant="outline" size="large" @click="discardRecording">Cancel</N8nButton>
 				<N8nButton size="large" @click="stopRecording">Stop recording</N8nButton>
@@ -184,11 +258,9 @@ const recordingTitle = computed(() => {
 				</N8nButton>
 			</template>
 			<template v-else-if="recording?.status === 'submitted'">
-				<N8nButton variant="outline" size="large" @click="disconnect">Disconnect</N8nButton>
 				<N8nButton size="large" @click="recordAgain">Record again</N8nButton>
 			</template>
 			<template v-else>
-				<N8nButton variant="outline" size="large" @click="disconnect">Disconnect</N8nButton>
 				<N8nButton v-if="!recording" size="large" @click="startRecording"
 					>Start recording</N8nButton
 				>
@@ -239,9 +311,15 @@ const recordingTitle = computed(() => {
 	padding-bottom: var(--spacing--xs);
 }
 
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--spacing--lg);
+}
+
 .logo {
 	display: block;
-	margin-bottom: var(--spacing--lg);
 
 	:deep(svg) {
 		margin-left: 0;
@@ -272,24 +350,6 @@ const recordingTitle = computed(() => {
 	font-size: var(--font-size--sm);
 	color: var(--text-color--subtler);
 	margin: 0 0 var(--spacing--sm);
-}
-
-.recording-panel {
-	display: flex;
-	flex-shrink: 0;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	margin-top: var(--spacing--md);
-	padding: var(--spacing--md);
-	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
-	border-radius: var(--radius--lg);
-	background: var(--background--base);
-}
-
-.recording-title {
-	margin: 0;
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
 }
 
 .divider {
