@@ -143,7 +143,7 @@ describe('Confluence page:delete operation', () => {
 
 		await expect(promise).rejects.toThrow(NodeOperationError);
 		await expect(promise).rejects.toThrow('Confluence could not delete the page');
-		await expect(promise).rejects.not.toThrow('was moved to trash');
+		await expect(promise).rejects.not.toThrow('in the trash, but could not be purged');
 		expect(apiRequest).toHaveBeenCalledTimes(2);
 	});
 
@@ -160,7 +160,26 @@ describe('Confluence page:delete operation', () => {
 		const promise = execute.call(ctx, 0);
 
 		await expect(promise).rejects.toThrow(NodeOperationError);
-		await expect(promise).rejects.toThrow('The page was moved to trash, but could not be purged');
+		await expect(promise).rejects.toThrow('The page is in the trash, but could not be purged');
+	});
+
+	// A 403 says the page exists, so it is already trashed. The message must not
+	// claim this run trashed it, because the plain delete never succeeded.
+	it('does not claim to have trashed the page when only the purge was forbidden', async () => {
+		apiRequest
+			.mockRejectedValueOnce(
+				new NodeApiError(mockNode, { message: 'Not found' }, { httpCode: '404' }),
+			)
+			.mockRejectedValueOnce(forbidden());
+		const ctx = createContext({ page: { mode: 'id', value: '123' }, purge: true });
+
+		const promise = execute.call(ctx, 0);
+
+		await expect(promise).rejects.toThrow('The page is in the trash, but could not be purged');
+		await expect(promise).rejects.not.toThrow('was moved to trash');
+		await expect(promise).rejects.toMatchObject({
+			description: expect.stringContaining('admin permission'),
+		});
 	});
 
 	it('rethrows an unexpected purge-step failure untouched', async () => {
@@ -225,7 +244,7 @@ describe('Confluence page:delete operation', () => {
 		const promise = execute.call(ctx, 0);
 
 		await expect(promise).rejects.toThrow(NodeOperationError);
-		await expect(promise).rejects.toThrow('The page was moved to trash, but could not be purged');
+		await expect(promise).rejects.toThrow('The page is in the trash, but could not be purged');
 		await expect(promise).rejects.toMatchObject({
 			description: expect.stringContaining('admin permission'),
 		});

@@ -82,15 +82,16 @@ export const execute: ConfluenceOperation = async function (
 		} catch (error) {
 			const forbidden = error instanceof NodeApiError && error.httpCode === '403';
 			const notFound = error instanceof NodeApiError && error.httpCode === '404';
-			// Only an unconfirmed trash means the page was never there to delete
+			// A 403 means the page exists, so it sits in the trash whether or not this
+			// run is what put it there
 			if (forbidden || (notFound && trashConfirmed)) {
 				throw new NodeOperationError(
 					this.getNode(),
-					'The page was moved to trash, but could not be purged',
+					'The page is in the trash, but could not be purged',
 					{
 						itemIndex,
 						description:
-							'Permanently deleting a page requires admin permission in its space. The page remains in the trash and can be restored from the Confluence UI.',
+							'Permanently deleting a page requires admin permission in its space. The page can be restored from the Confluence UI.',
 					},
 				);
 			}
