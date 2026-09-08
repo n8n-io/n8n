@@ -1,0 +1,150 @@
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import type { AppTheme } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
+import { Service } from '@n8n/di';
+import {
+	buildApp,
+	restoreApp,
+	type AppSandboxContext,
+	type InstanceAiAppService,
+} from '@n8n/instance-ai';
+import { ErrorReporter } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
+
+import { InstanceAiSandboxService } from '@/modules/instance-ai/sandbox';
+import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
+import { AiService } from '@/services/ai.service';
+import { UrlService } from '@/services/url.service';
+
+import { AppsService } from './apps.service';
+
+/** Deterministic per-app sandbox id: repeated theme saves for the same app reuse a warm sandbox. */
+const sandboxIdForApp = (appId: string) => `app-theme-${appId}`;
+
+type ThemeBuildResult =
+	| { versionId: string; url: string }
+	| { error: true; message: string; log?: string };
+
+function themeOverridesCss(theme: AppTheme): string {
+	const entries = Object.entries(theme.vars);
+	if (entries.length === 0) return '';
+	const declarations = entries.map(([key, value]) => `\t${key}: ${value};`).join('\n');
+	return `:root {\n${declarations}\n}\n`;
+}
+
+function themeModeTs(theme: AppTheme): string {
+	return `export const THEME_MODE: 'light' | 'dark' | 'system' = '${theme.mode}';\n`;
+}
+
+/**
+ * Applies a saved app theme by writing it into the app's own source and
+ * rebuilding it — the served app is a plain static file stream with no
+ * per-request templating, so a theme change only takes effect through a real
+ * rebuild. Runs outside any Instance AI conversation: it acquires its own
+ * one-shot sandbox, keyed by app id rather than a thread id.
+ */
+@Service()
+export class AppThemeBuildService {
+	private sandboxService: InstanceAiSandboxService | undefined;
+
+	constructor(
+		private readonly appsService: AppsService,
+		private readonly urlService: UrlService,
+		private readonly settingsService: InstanceAiSettingsService,
+		private readonly aiService: AiService,
+		private readonly globalConfig: GlobalConfig,
+		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
+	) {}
+
+	/** Protected so tests can override it with a mock sandbox rather than provisioning a real one. */
+	protected getSandboxService(): InstanceAiSandboxService {
+		this.sandboxService ??= new InstanceAiSandboxService({
+			config: this.globalConfig.instanceAi,
+			logger: this.logger,
+			errorReporter: this.errorReporter,
+			// A headless theme rebuild has no live run or background task of its own;
+			// the sandbox's own idle TTL is what reclaims the cache entry.
+			runState: { getActiveRunId: () => undefined, hasSuspendedRun: () => false },
+			backgroundTasks: { getRunningTasks: () => [] },
+			settingsService: this.settingsService,
+			aiService: this.aiService,
+		});
+		return this.sandboxService;
+	}
+
+	/** Thin, unscoped adapter: the controller already checked the caller's project scope. */
+	private createAppServiceAdapter(): InstanceAiAppService {
+		const { appsService, urlService } = this;
+		return {
+			create() {
+				throw new UnexpectedError('create is not supported by the theme rebuild pipeline');
+			},
+			async get(appId) {
+				const app = await appsService.getApp(appId);
+				return { id: app.id, name: app.name, namespace: app.namespace, projectId: app.projectId };
+			},
+			async getSourceTarball(appId) {
+				return await appsService.getSourceTarball(appId);
+			},
+			async storeVersion(appId, files) {
+				const [version, app] = await Promise.all([
+					appsService.createVersion(appId, files.source, files.dist),
+					appsService.getApp(appId),
+				]);
+				return {
+					versionId: version.id,
+					url: `${urlService.getInstanceBaseUrl()}/apps/${app.namespace}/`,
+				};
+			},
+		};
+	}
+
+	async applyTheme(appId: string, theme: AppTheme, user: User): Promise<ThemeBuildResult> {
+		const app = await this.appsService.getApp(appId);
+		if (!app.activeVersionId) {
+			return { error: true, message: 'Build the app once before applying a theme.' };
+		}
+
+		const entry = await this.getSandboxService().getOrCreateWorkspaceEntry(
+			sandboxIdForApp(appId),
+			user,
+		);
+		const executeCommand = entry?.workspace.sandbox?.executeCommand;
+		const filesystem = entry?.workspace.filesystem;
+		if (!entry || !executeCommand || !filesystem) {
+			return { error: true, message: 'The sandbox is not available on this instance.' };
+		}
+		const { workspace } = entry;
+		const sandboxContext: AppSandboxContext = {
+			appService: this.createAppServiceAdapter(),
+			workspace,
+		};
+
+		const root = await getWorkspaceRoot(workspace);
+		const appDirRelative = `apps/${app.namespace}`;
+		const occupied = await executeCommand(
+			`[ -d '${root}/${appDirRelative}' ] && [ -n "$(ls -A '${root}/${appDirRelative}')" ]`,
+			[],
+			{},
+		);
+		if (occupied.exitCode !== 0) {
+			const restored = await restoreApp(sandboxContext, { action: 'restore', appId });
+			if ('denied' in restored) return { error: true, message: restored.reason };
+			if ('error' in restored) return { error: true, message: restored.message };
+		}
+
+		await filesystem.writeFile(
+			`${appDirRelative}/src/theme-overrides.css`,
+			themeOverridesCss(theme),
+		);
+		await filesystem.writeFile(`${appDirRelative}/src/theme-mode.ts`, themeModeTs(theme));
+
+		const built = await buildApp(sandboxContext, { action: 'build', appId });
+		if ('denied' in built) return { error: true, message: built.reason };
+		if ('error' in built) return { error: true, message: built.message, log: built.log };
+		return { versionId: built.versionId, url: built.url };
+	}
+}

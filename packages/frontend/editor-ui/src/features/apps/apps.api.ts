@@ -3,6 +3,7 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 
 import type {
 	App,
+	AppTheme,
 	DataWorkflowOption,
 	Page,
 	UpdateAppInput,
@@ -38,6 +39,21 @@ export const updateAppApi = async (
 	return await makeRestApiRequest<App>(context, 'PATCH', `/projects/${projectId}/apps/${appId}`, {
 		...updates,
 	});
+};
+
+/** Persists the theme and rebuilds the app so the served version carries it; can take a while on a cold sandbox. */
+export const applyAppThemeApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	theme: AppTheme,
+) => {
+	return await makeRestApiRequest<App>(
+		context,
+		'POST',
+		`/projects/${projectId}/apps/${appId}/theme`,
+		{ theme },
+	);
 };
 
 export const deleteAppApi = async (context: IRestApiContext, projectId: string, appId: string) => {

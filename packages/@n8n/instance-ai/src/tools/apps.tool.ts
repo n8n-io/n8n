@@ -18,6 +18,17 @@ import { NPM_INSTALL_FLAGS } from '../workspace/sandbox-setup';
 
 export { APPS_TOOL_ID };
 
+/**
+ * The slice of `InstanceAiContext` the create/build/restore handlers actually
+ * touch. Narrow and exported so a headless caller (e.g. the Theme tab's
+ * rebuild pipeline) can reuse `handleBuild`/`handleRestore` without
+ * constructing — or faking — a full `InstanceAiContext`.
+ */
+export type AppSandboxContext = Pick<
+	InstanceAiContext,
+	'appService' | 'workspace' | 'workspaceRoot'
+>;
+
 export const APP_BUILDER_SKILL_DIR = 'app-builder';
 export const MAX_APP_TARBALL_BYTES = 20 * 1024 * 1024;
 const APPS_DIR = 'apps';
@@ -91,12 +102,48 @@ const DEFAULT_OUT_DIR = 'dist';
 
 type BuildStage = 'install' | 'build' | 'check' | 'store';
 
-interface BuildFailure {
+export interface BuildFailure {
 	error: true;
 	stage: BuildStage;
 	message: string;
 	log: string;
 }
+
+/** `denied` is a literal so callers can discriminate it from a same-shaped success field left `undefined`. */
+export interface AppActionDenied {
+	denied: true;
+	reason: string;
+}
+
+export interface AppBuildSuccess {
+	appId: string;
+	name: string;
+	namespace: string;
+	projectId: string;
+	versionId: string;
+	url: string;
+	warnings: string[];
+}
+
+export type AppBuildResult = AppActionDenied | BuildFailure | AppBuildSuccess;
+
+export interface AppRestoreSuccess {
+	appId: string;
+	name: string;
+	namespace: string;
+	projectId: string;
+	versionId: string;
+	workspacePath: string;
+	warnings: string[];
+}
+
+export interface AppRestoreFailure {
+	error: true;
+	stage: 'restore';
+	message: string;
+}
+
+export type AppRestoreResult = AppActionDenied | AppRestoreFailure | AppRestoreSuccess;
 
 export function slugifyNamespace(name: string): string {
 	return name
@@ -191,7 +238,7 @@ type SandboxRunner = (
 ) => Promise<{ exitCode: number; stdout: string; stderr: string }>;
 
 function requireSandbox(
-	context: InstanceAiContext,
+	context: AppSandboxContext,
 	abortSignal?: AbortSignal,
 ): {
 	workspace: NonNullable<InstanceAiContext['workspace']>;
@@ -233,7 +280,7 @@ function requireFilesystem(
 }
 
 async function handleCreate(
-	context: InstanceAiContext,
+	context: AppSandboxContext,
 	input: CreateInput,
 	abortSignal?: AbortSignal,
 ) {
@@ -293,11 +340,11 @@ async function handleCreate(
 	}
 }
 
-async function handleBuild(
-	context: InstanceAiContext,
+export async function handleBuild(
+	context: AppSandboxContext,
 	input: BuildInput,
 	abortSignal?: AbortSignal,
-) {
+): Promise<AppBuildResult> {
 	const appService = requireAppService(context);
 	const { workspace, run } = requireSandbox(context, abortSignal);
 	const app = await appService.get(input.appId);
@@ -379,11 +426,11 @@ async function handleBuild(
  * Rehydrate `apps/<namespace>/` from the stored source tarball. Needed when a
  * thread starts in a fresh sandbox that never held the app's files.
  */
-async function handleRestore(
-	context: InstanceAiContext,
+export async function handleRestore(
+	context: AppSandboxContext,
 	input: RestoreInput,
 	abortSignal?: AbortSignal,
-) {
+): Promise<AppRestoreResult> {
 	const appService = requireAppService(context);
 	const { workspace, run } = requireSandbox(context, abortSignal);
 	const app = await appService.get(input.appId);
@@ -453,7 +500,7 @@ async function handleRestore(
  * which would otherwise leave a component's own new dependency unresolved.
  */
 async function handleAddComponent(
-	context: InstanceAiContext,
+	context: AppSandboxContext,
 	input: AddComponentInput,
 	abortSignal?: AbortSignal,
 ) {
@@ -507,7 +554,7 @@ async function readTarball(
 }
 
 function requireAppService(
-	context: InstanceAiContext,
+	context: AppSandboxContext,
 ): NonNullable<InstanceAiContext['appService']> {
 	if (!context.appService) {
 		throw new Error('Apps are not available on this instance.');
