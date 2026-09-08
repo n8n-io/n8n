@@ -3,7 +3,21 @@
 Use Node.js 24 and pnpm. Keep secrets in a gitignored environment file. Do not
 put secrets in command arguments.
 
-## One-time environment
+## Required LangTracer access
+
+Generate a key on the
+[LangTracer API keys page](https://lang-tracer.n8n-maintenance.workers.dev/account?section=api).
+Add it to `.env.local` at the repository root:
+
+```env
+LANGTRACER_URL=https://lang-tracer.n8n-maintenance.workers.dev
+LANGTRACER_API_KEY=<generated-key>
+```
+
+Do not paste the key into chat or put it in a command. The main skill checks
+that both variables exist before it creates an eval.
+
+## Remaining environment
 
 Create `.env.local` at the repository root. Use one Instance AI model provider
 and one sandbox provider.
@@ -21,14 +35,7 @@ DAYTONA_API_KEY=<daytona-key>
 
 N8N_EVAL_EMAIL=nathan@n8n.io
 N8N_EVAL_PASSWORD=PlaywrightTest123
-
-# Required only to publish or read a LangTracer suite.
-LANGTRACER_URL=https://lang-tracer.n8n-maintenance.workers.dev
-LANGTRACER_API_KEY=<langtracer-key>
 ```
-
-Generate the LangTracer key on the
-[API keys page](https://lang-tracer.n8n-maintenance.workers.dev/account?section=api).
 
 Use the n8n sandbox service instead of Daytona when it is available. Set
 `N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox`,

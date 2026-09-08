@@ -5,14 +5,40 @@ description: >-
   Agents through Agent Builder. Use when a change under
   packages/cli/src/modules/agents affects build-agent routing, Agent setup,
   model or credential selection, tools, MCP servers, integrations, skills,
-  tasks, testing, or user-facing build responses. LangTracer access is only
-  required to publish the finished case.
+  tasks, testing, or user-facing build responses. Requires LangTracer access
+  before authoring so each finished case can be published.
 ---
 
 # Create an Agent Builder eval
 
 Use the shared Instance AI eval harness. Agent cases use an Agent-specific
 authoring directory, dataset, and LangTracer suite.
+
+## Required LangTracer preflight
+
+Run this check before sourcing, drafting, or writing an eval. Run it from
+`packages/@n8n/instance-ai`:
+
+```bash
+pnpm exec dotenvx run -f ../../../.env.local -- \
+  sh -c 'test -n "${LANGTRACER_URL:-}" && test -n "${LANGTRACER_API_KEY:-}"'
+```
+
+If the check fails, stop before creating an eval file. Ask the user to:
+
+1. Generate a key on the
+   [LangTracer API page](https://lang-tracer.n8n-maintenance.workers.dev/account?section=api).
+2. Add these variables to the repository root `.env.local` file:
+
+   ```env
+   LANGTRACER_URL=https://lang-tracer.n8n-maintenance.workers.dev
+   LANGTRACER_API_KEY=<generated-key>
+   ```
+
+3. Confirm when the environment is ready.
+
+Do not ask the user to paste the key into chat. Do not print or inspect its
+value. Rerun the check after the user confirms. Continue only when it passes.
 
 ## Non-negotiable routing
 
@@ -148,6 +174,7 @@ after a successful push.
 
 ## Completion checklist
 
+- The LangTracer environment preflight passed before authoring.
 - The case is in `data/agents/` and uses the `agents` dataset.
 - The strict loader accepts it.
 - A local run captures a standalone Agent.
