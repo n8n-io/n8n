@@ -55,9 +55,15 @@ vi.mock('@/app/stores/workflows.store', () => ({
 	}),
 }));
 
+// Returns `undefined` for ids the list store never paged in - the runtime
+// behaviour that its `IWorkflowDb` return type hides.
+const mockGetWorkflowById = vi.hoisted(() =>
+	vi.fn((_id: string) => ({ activeVersion: null }) as { activeVersion: unknown } | undefined),
+);
+
 vi.mock('@/app/stores/workflowsList.store', () => ({
 	useWorkflowsListStore: vi.fn().mockReturnValue({
-		getWorkflowById: vi.fn().mockReturnValue({ activeVersion: null }),
+		getWorkflowById: mockGetWorkflowById,
 		fetchWorkflow: vi.fn(),
 	}),
 }));
@@ -139,6 +145,7 @@ describe('useWorkflowActivate', () => {
 		mockDocumentStore.hydrated = false;
 		mockDocumentStore.checksum = undefined;
 		otherDocumentStore.hydrated = false;
+		mockGetWorkflowById.mockReturnValue({ activeVersion: null });
 	});
 
 	describe('publishWorkflow()', () => {
@@ -230,6 +237,17 @@ describe('useWorkflowActivate', () => {
 			expect(mockSetChecksum).not.toHaveBeenCalled();
 		});
 
+		it('publishes when the workflow is not in the list store cache', async () => {
+			mockGetWorkflowById.mockReturnValue(undefined);
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: true });
+			expect(mockPublishWorkflow).toHaveBeenCalled();
+		});
+
 		it('resolves the document store by the published workflow id, not by the editor in the route', async () => {
 			// wf-1 is the routed editor, wf-2 is an embedded (artifact) editor; publish wf-2
 			mockDocumentStore.hydrated = true;
@@ -257,6 +275,15 @@ describe('useWorkflowActivate', () => {
 	});
 
 	describe('unpublishWorkflowFromHistory()', () => {
+		it('unpublishes when the workflow is not in the list store cache', async () => {
+			mockGetWorkflowById.mockReturnValue(undefined);
+			mockDeactivateWorkflow.mockResolvedValueOnce(undefined);
+
+			const { unpublishWorkflowFromHistory } = useWorkflowActivate();
+
+			expect(await unpublishWorkflowFromHistory(WORKFLOW_ID)).toBe(true);
+		});
+
 		it('sends the document checksum when the document is open in an editor', async () => {
 			mockDocumentStore.hydrated = true;
 			mockDocumentStore.checksum = 'after-publish';

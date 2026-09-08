@@ -92,8 +92,7 @@ export function useWorkflowActivate() {
 
 		collaborationStore.requestWriteAccess();
 
-		const workflow = workflowsListStore.getWorkflowById(workflowId);
-		const hadPublishedVersion = !!workflow.activeVersion;
+		const hadPublishedVersion = !!workflowsListStore.getWorkflowById(workflowId)?.activeVersion;
 
 		if (!hadPublishedVersion) {
 			const telemetryPayload = {
@@ -190,8 +189,7 @@ export function useWorkflowActivate() {
 
 		collaborationStore.requestWriteAccess();
 
-		const workflow = workflowsListStore.getWorkflowById(workflowId);
-		const wasPublished = !!workflow.activeVersion;
+		const wasPublished = !!workflowsListStore.getWorkflowById(workflowId)?.activeVersion;
 
 		const telemetryPayload = {
 			workflow_id: workflowId,

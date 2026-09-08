@@ -319,7 +319,7 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 
 				if (success) {
 					// Refresh the published workflow to get the latest publishedVersion from workflowPublishHistory
-					publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
+					publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value) ?? null;
 
 					// Update the history list with the new name, description, and workflowPublishHistory
 					const historyItem = workflowHistory.value.find(
@@ -377,7 +377,7 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 			return;
 		}
 
-		publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
+		publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value) ?? null;
 
 		toast.showMessage({
 			title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
