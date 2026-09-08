@@ -697,6 +697,7 @@ export type {
 	WebSearchResult,
 	WebSearchResponse,
 	InstanceAiWebResearchService,
+	InstanceAiBrowserRecordingService,
 	InstanceAiWorkspaceService,
 	InstanceAiWorkflowTemplateService,
 	ProjectSummary,
