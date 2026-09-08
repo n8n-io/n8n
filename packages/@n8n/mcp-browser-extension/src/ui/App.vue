@@ -45,10 +45,18 @@ const {
 } = useRecording();
 
 const showTabSelection = ref(false);
+const showRecordingSettings = ref(false);
 const showSettings = ref(false);
 
 const isConnected = computed(() => status.value === 'connected');
 const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.value);
+const recordingDataSelection = computed(() => {
+	const enabled = [
+		recordingSettings.networkRequests ? 'Network requests' : '',
+		recordingSettings.screenshots ? 'Screenshots' : '',
+	].filter(Boolean);
+	return enabled.length > 0 ? enabled.join(', ') : 'None selected';
+});
 const recordingTitle = computed(() => {
 	if (!recording.value) return '';
 	if (recording.value.status === 'recording') {
@@ -218,8 +226,21 @@ async function disconnectFromInstance() {
 						icon="eye"
 						title="Recording data"
 						description="Choose the additional data that recordings can include"
-					/>
+					>
+						<button
+							class="tabs-toggle"
+							:aria-expanded="showRecordingSettings"
+							@click="showRecordingSettings = !showRecordingSettings"
+						>
+							{{ recordingDataSelection }}
+							<N8nIcon
+								:icon="showRecordingSettings ? 'chevron-up' : 'chevron-down'"
+								size="medium"
+							/>
+						</button>
+					</InfoRow>
 					<RecordingCaptureSettings
+						v-if="showRecordingSettings"
 						:settings="recordingSettings"
 						@update="updateRecordingSetting"
 					/>
