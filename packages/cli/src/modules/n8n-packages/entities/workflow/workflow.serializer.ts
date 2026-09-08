@@ -52,6 +52,21 @@ const serializePayload = definePackageSerializationPayload<
 	WorkflowPackageKeyHandling
 >();
 
+/** The same decisions from the lifecycle file's side. */
+type WorkflowLifecycleKeyHandling = Record<
+	Exclude<keyof WorkflowPackageKeyHandling, 'isArchived' | 'activeVersionId'>,
+	'exclude'
+> & {
+	isArchived: 'copy';
+	activeVersionId: 'transform';
+};
+
+const serializeLifecyclePayload = definePackageSerializationPayload<
+	WorkflowEntity,
+	SerializedWorkflowLifecycle,
+	WorkflowLifecycleKeyHandling
+>();
+
 @Service()
 export class WorkflowSerializer {
 	serialize(workflow: WorkflowEntity, options: { includeTags: boolean }): SerializedWorkflow {
@@ -77,10 +92,12 @@ export class WorkflowSerializer {
 	}
 
 	serializeLifecycle(workflow: WorkflowEntity): SerializedWorkflowLifecycle {
-		return serializedWorkflowLifecycleSchema.parse({
-			publishedVersionId: workflow.activeVersionId,
-			isArchived: workflow.isArchived,
-		});
+		return serializedWorkflowLifecycleSchema.parse(
+			serializeLifecyclePayload({
+				publishedVersionId: workflow.activeVersionId,
+				isArchived: workflow.isArchived,
+			}),
+		);
 	}
 
 	/**
