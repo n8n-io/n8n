@@ -5,6 +5,8 @@
  * and tracks tab lifecycle for agent-created tabs only.
  */
 
+import type { BrowserRecordingAction } from '@n8n/api-types';
+
 import { isHostApproved } from './approvedHosts';
 import { createLogger } from './logger';
 import { getRelayHostKey, isAllowedPageOrigin, isAllowedRelayUrl } from './relayAllowlist';
@@ -368,6 +370,14 @@ async function discardRecording(): Promise<void> {
 	broadcastRecordingChange();
 }
 
+/** Append one action to the active recording, and forward it live to the relay. */
+function pushRecordingAction(action: BrowserRecordingAction): void {
+	if (!recording) return;
+	recording.actions.push(action);
+	activeConnection?.relay.sendRecordingAction(recording.id, action);
+	broadcastRecordingChange();
+}
+
 function appendRecordingAction(
 	action: Extract<ExtensionMessage, { type: 'recordingAction' }>['action'],
 	sender: chrome.runtime.MessageSender,
@@ -404,7 +414,7 @@ function appendRecordingAction(
 		: action.type === 'context_menu'
 			? {}
 			: sanitizeValue(action.value, target);
-	recording.actions.push({
+	pushRecordingAction({
 		id: crypto.randomUUID(),
 		type: action.type,
 		timestamp: Math.max(0, action.timestamp - Date.parse(recording.startedAt)),
@@ -412,7 +422,6 @@ function appendRecordingAction(
 		target,
 		...value,
 	});
-	broadcastRecordingChange();
 }
 
 function appendNavigation(url: string): void {
@@ -426,13 +435,12 @@ function appendNavigation(url: string): void {
 	if (!sanitizedUrl) return;
 	const previous = recording.actions.at(-1);
 	if (previous?.type === 'navigation' && previous.url === sanitizedUrl) return;
-	recording.actions.push({
+	pushRecordingAction({
 		id: crypto.randomUUID(),
 		type: 'navigation',
 		timestamp: Date.now() - Date.parse(recording.startedAt),
 		url: sanitizedUrl,
 	});
-	broadcastRecordingChange();
 }
 
 function appendTabSwitch(url: string, title: string): void {
@@ -446,7 +454,7 @@ function appendTabSwitch(url: string, title: string): void {
 	if (!sanitizedUrl) return;
 	const previous = recording.actions.at(-1);
 	if (previous?.type === 'tab_switch' && previous.url === sanitizedUrl) return;
-	recording.actions.push({
+	pushRecordingAction({
 		id: crypto.randomUUID(),
 		type: 'tab_switch',
 		timestamp: Date.now() - Date.parse(recording.startedAt),
@@ -456,7 +464,6 @@ function appendTabSwitch(url: string, title: string): void {
 			label: sanitizeContextText(title, 160),
 		},
 	});
-	broadcastRecordingChange();
 }
 
 async function activatePendingRecordingTab(
@@ -997,6 +1004,11 @@ async function connectToRelay(
 		relay.onstopandsubmitrecording = () => {
 			if (activeConnection?.relay !== relay) return;
 			void stopAndSubmitRecordingNow();
+		};
+
+		relay.ondiscardrecording = () => {
+			if (activeConnection?.relay !== relay) return;
+			void discardRecording();
 		};
 
 		relay.onrecordingresult = (recordingId, accepted, threadUrl) => {
