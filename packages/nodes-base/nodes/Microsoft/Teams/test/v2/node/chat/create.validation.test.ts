@@ -175,7 +175,7 @@ describe('Microsoft Teams V2, chat create participant rows', () => {
 
 	// Graph requires the `guest` role for an in-tenant guest, so a guest caller cannot be added
 	// as the owner the node would otherwise default them to.
-	it('adds a guest signed-in user with the guest role', async () => {
+	it('gives a guest caller the guest role', async () => {
 		respond({ [`/v1.0/users/${JANE}`]: { id: JANE } }, { userType: 'Guest' });
 
 		await run({ chatType: 'oneOnOne', ...rows({ userId: JANE, role: 'owner' }) });

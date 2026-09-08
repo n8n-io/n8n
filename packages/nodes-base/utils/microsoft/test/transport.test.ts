@@ -98,8 +98,16 @@ describe('Microsoft Graph transport kernel', () => {
 						json: true,
 					}),
 				);
-				// The base URL is read through `getGraphBaseUrl`, which must not add a
-				// second credential read to every request.
+			});
+
+			// The base URL is read through `getGraphBaseUrl`, which must not add a
+			// second credential read to every request.
+			it('reads the credential once per request', async () => {
+				mockRequestOAuth2.mockResolvedValue({ data: 'test' });
+				mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
+
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
 			});
 		});
