@@ -12,12 +12,10 @@ function registrationEqual(base: INode | undefined, target: INode | undefined): 
 	return isEqual(pick(base, registrationProps), pick(target, registrationProps));
 }
 
-// Triggers whose node code observes the publication itself instead of an
-// external event: the n8n Trigger (and its deprecated predecessor) emits
-// "Published Workflow Updated" from `trigger()`, so it only fires when it is
-// (re)registered. The legacy path re-registered every trigger on every publish;
-// keep that for these types on every version change, even when their own
-// registration did not change. Stop-gap until nodes can declare this themselves.
+// Before the workflow publication service, we re-registered every trigger on
+// publication. With the new flow, we only re-register triggers that have been
+// modified. However, some triggers relied on the old behaviour, so we force it
+// for those triggers.
 const ALWAYS_REREGISTER_TRIGGER_TYPES: ReadonlySet<string> = new Set([
 	'n8n-nodes-base.n8nTrigger',
 	'n8n-nodes-base.workflowTrigger',
