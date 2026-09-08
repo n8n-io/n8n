@@ -5,8 +5,8 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
 import { isRecord } from '@n8n/utils/is-record';
+import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
 import type { Client } from 'langsmith';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
@@ -19,14 +19,16 @@ import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
-import type { AgentExecution } from './entities/agent-execution.entity';
-import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
-import type { TimelineEvent } from './execution-recorder';
 import { AgentExecutionService, type ThreadDetail } from './agent-execution.service';
+import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
+import type { AgentExecution } from './entities/agent-execution.entity';
+import type { TimelineEvent } from './execution-recorder';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 
 const LANGSMITH_PROJECT = 'n8n-user-agents-debug';
 const EXPORT_NAMESPACE = uuidv5('n8n-agent-session-langsmith-export', uuidv5.URL);
+// `detect` includes `crypto-wallet`, so `redactText`/`redactDeep` stay on
+// `@n8n/agents`, which binds the Node-only Base58Check validator.
 const REDACTION_OPTIONS = {
 	secrets: true,
 	detect: SUPPORTED_PII_CATEGORIES,
