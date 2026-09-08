@@ -82,8 +82,19 @@ export class DeprecationService {
 		{
 			envVar: 'N8N_SSRF_PROTECTION_ENABLED',
 			message:
-				'The default blocked IP ranges will expand in a future version to include the shared address space (100.64.0.0/10) and IPv6 transition ranges. Set N8N_SSRF_BLOCKED_IP_RANGES explicitly to keep your current block list.',
+				"The built-in blocked IP ranges will expand in a future version to include the shared address space (100.64.0.0/10) and IPv6 transition ranges. To keep the current list, set N8N_SSRF_BLOCKED_IP_RANGES to the literal ranges instead of the `default` keyword, which always expands to the running version's built-in list.",
 			checkValue: (value?: string) => ['true', '1'].includes(value?.toLowerCase() ?? ''),
+			// Literal block lists without the `default` keyword do not pick up the expanded built-in list.
+			disableIf: () => {
+				const ranges = process.env.N8N_SSRF_BLOCKED_IP_RANGES;
+				return (
+					ranges !== undefined &&
+					!ranges
+						.toLowerCase()
+						.split(',')
+						.some((r) => r.trim() === 'default')
+				);
+			},
 		},
 		{
 			envVar: 'N8N_RUNNERS_TASK_TIMEOUT',

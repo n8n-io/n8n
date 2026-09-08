@@ -29,7 +29,16 @@ export class SsrfDefaultBlockedRangesRule implements IBreakingChangeInstanceRule
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async detect(): Promise<InstanceDetectionReport> {
-		if (!this.globalConfig.ssrfProtection.enabled) {
+		// Instances that enumerate literal ranges do not pick up the expanded built-in list.
+		const ranges = process.env.N8N_SSRF_BLOCKED_IP_RANGES;
+		const usesDefaultList =
+			ranges === undefined ||
+			ranges
+				.toLowerCase()
+				.split(',')
+				.some((r) => r.trim() === 'default');
+
+		if (!this.globalConfig.ssrfProtection.enabled || !usesDefaultList) {
 			return { isAffected: false, instanceIssues: [], recommendations: [] };
 		}
 
@@ -37,9 +46,9 @@ export class SsrfDefaultBlockedRangesRule implements IBreakingChangeInstanceRule
 			isAffected: true,
 			instanceIssues: [
 				{
-					title: 'SSRF protection uses the default blocked IP ranges',
+					title: 'SSRF protection uses the built-in blocked IP ranges',
 					description:
-						'N8N_SSRF_PROTECTION_ENABLED is true. After the update, the default block list also covers 100.64.0.0/10 and IPv6 transition ranges, so workflows calling hosts in these ranges fail.',
+						'N8N_SSRF_PROTECTION_ENABLED is true and N8N_SSRF_BLOCKED_IP_RANGES relies on the built-in list, either because it is not set or because it contains the `default` keyword. After the update, that list also covers 100.64.0.0/10 and IPv6 transition ranges, so workflows calling hosts in these ranges fail.',
 					level: 'warning',
 				},
 			],
@@ -47,7 +56,7 @@ export class SsrfDefaultBlockedRangesRule implements IBreakingChangeInstanceRule
 				{
 					action: 'Review internal hosts in the newly blocked ranges',
 					description:
-						'Check if any workflow calls hosts in 100.64.0.0/10 or IPv6 transition ranges. Add the ones you still need to N8N_SSRF_ALLOWED_IP_RANGES or N8N_SSRF_ALLOWED_HOSTNAMES, or set N8N_SSRF_BLOCKED_IP_RANGES explicitly to keep the current list.',
+						"Check if any workflow calls hosts in 100.64.0.0/10 or IPv6 transition ranges. Add the ones you still need to N8N_SSRF_ALLOWED_IP_RANGES or N8N_SSRF_ALLOWED_HOSTNAMES. To keep the current list exactly, set N8N_SSRF_BLOCKED_IP_RANGES to the literal ranges; the `default` keyword always expands to the running version's built-in list.",
 				},
 			],
 		};
