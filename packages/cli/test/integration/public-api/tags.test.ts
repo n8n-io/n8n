@@ -58,6 +58,13 @@ describe('GET /tags', () => {
 		}
 	});
 
+	test('should reject an unknown query parameter', async () => {
+		const response = await authMemberAgent.get('/tags?bogus=1');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe("Unknown query parameter 'bogus'");
+	});
+
 	test('should return all tags with pagination', async () => {
 		await Promise.all([createTag({}), createTag({}), createTag({})]);
 

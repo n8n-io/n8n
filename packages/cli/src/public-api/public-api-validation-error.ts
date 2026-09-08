@@ -9,6 +9,10 @@ export function formatValidationError(location: 'body' | 'query', error: ZodErro
 	const issue = error.errors[0];
 	if (!issue) return 'Invalid request';
 
+	if (location === 'query' && issue.code === 'unrecognized_keys') {
+		return unknownQueryParameterMessage(issue.keys[0]);
+	}
+
 	// A missing field is the one case where Zod and Ajv disagree on more than wording: Ajv blames
 	// the containing object and names the field in the message, Zod blames the field. Two public
 	// API tests already pin Ajv's form, so keep it.
@@ -23,4 +27,9 @@ export function formatValidationError(location: 'body' | 'query', error: ZodErro
 	const path = issue.path.length > 0 ? `/${issue.path.join('/')}` : '';
 
 	return `request/${location}${path} ${issue.message}`;
+}
+
+/** The legacy validator's wording for a query key the route does not declare. */
+export function unknownQueryParameterMessage(key: string): string {
+	return `Unknown query parameter '${key}'`;
 }

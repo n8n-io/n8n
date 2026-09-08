@@ -190,9 +190,10 @@ export function buildRequestBodyJsonSchema(
 /**
  * Response set is derived from what `PublicApiControllerRegistry` actually does at runtime, not
  * invented: the success status is the one `@ApiResponse` declares (and the same one the registry
- * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
- * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
- * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`.
+ * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and every route 400s on an
+ * unknown query parameter or a body/query DTO that fails to parse. Anything else - like a 404 from
+ * a business-rule lookup that isn't visible in decorator metadata - has to be declared explicitly
+ * via `@ApiErrorResponse`.
  */
 function buildResponses(
 	route: ResolvedPublicApiRoute,
@@ -213,12 +214,9 @@ function buildResponses(
 		},
 	};
 
-	// If the route has a request body or query, we add an HTTP 400 as a possible response
-	// Every @PublicApiController decorated route has an HTTP 401 response for missing or invalid API key
+	// Every route answers 400 to an unknown query parameter, and 401 to a missing or invalid API key
 	// If the route has an @ApiKeyScope decorator, we add an HTTP 403 as a possible response
-	if (route.requestBodyDto ?? route.requestQueryDto) {
-		responses[400] = ERROR_RESPONSE_REFS[400];
-	}
+	responses[400] = ERROR_RESPONSE_REFS[400];
 	if (route.requestBodyDto) {
 		responses[415] = ERROR_RESPONSE_REFS[415];
 	}
