@@ -133,18 +133,26 @@ function pruneEntries(
 }
 
 /**
- * Names still used by workflows the selection did not replace. A selected
- * workflow can switch from a project-scoped variable to a global one of the
- * same name; the name stays referenced, but the old-scope file must leave
- * unless an unselected workflow still uses it.
+ * Names still used by unselected workflows in the selected project. A leftover
+ * `$vars.API_KEY` in another project must not keep this project's scoped file.
  */
 function unselectedVariableNames(
-	existing: PackageManifest['requirements'],
+	existing: BranchState,
 	replacedWorkflowIds: Set<string>,
+	scope: string | undefined,
 ): Set<string> {
+	const unselectedInScope = new Set(
+		(existing.workflows ?? [])
+			.filter(
+				(workflow) =>
+					!replacedWorkflowIds.has(workflow.id) &&
+					(scope === undefined || isUnder(workflow.target, scope)),
+			)
+			.map((workflow) => workflow.id),
+	);
 	return new Set(
-		(existing?.variables ?? [])
-			.filter((item) => item.usedByWorkflows.some((id) => !replacedWorkflowIds.has(id)))
+		(existing.requirements?.variables ?? [])
+			.filter((item) => item.usedByWorkflows.some((id) => unselectedInScope.has(id)))
 			.map((item) => item.name),
 	);
 }
@@ -310,7 +318,7 @@ export function mergeManifests(
 		variables: pruneVariables(
 			mergeEntries('variables', existing.variables, staging.variables, placement),
 			new Set(entriesOf(staging, 'variables').map((entry) => entry.id)),
-			unselectedVariableNames(existing.requirements, replacedWorkflowIds),
+			unselectedVariableNames(existing, replacedWorkflowIds, scope),
 			scope,
 		),
 		tags: pruneEntries(

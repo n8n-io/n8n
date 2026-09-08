@@ -1,8 +1,26 @@
 import type { InstanceSettings } from 'n8n-core';
-import { mkdir, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import {
+	mkdir,
+	mkdtemp,
+	readdir,
+	readFile,
+	rename,
+	rm,
+	stat,
+	symlink,
+	writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:fs/promises')>();
+	return {
+		...actual,
+		rename: vi.fn((from: string, to: string) => actual.rename(from, to)),
+	};
+});
 
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
@@ -574,6 +592,74 @@ describe('WorkingCopyUpdater', () => {
 					selection({ deletedWorkflowIds: ['w2'] }),
 				),
 			).rejects.toThrow('would delete content the selection keeps');
+
+			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+				workflowFile('w1'),
+			);
+		});
+
+		it('refuses a stale target occupied by an unselected leaf', async () => {
+			const shared = 'projects/alpha/workflows/shared';
+			await writeTree(exportFolder, {
+				'manifest.json': manifestFile(
+					makeManifest({
+						projects: [alpha],
+						workflows: [
+							{ id: 'w1', name: 'W1', target: shared },
+							{ id: 'w2', name: 'W2', target: shared },
+						],
+					}),
+				),
+				'projects/alpha/project.json': projectFile,
+				[`${shared}/workflow.json`]: workflowFile('w2'),
+			});
+			const staging = makeManifest({ projects: [alpha] });
+			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
+
+			await expect(
+				updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					{
+						projects: [alpha],
+						workflows: [
+							{ id: 'w1', name: 'W1', target: shared },
+							{ id: 'w2', name: 'W2', target: shared },
+						],
+					},
+					selection({ deletedWorkflowIds: ['w1'] }),
+				),
+			).rejects.toThrow('would delete content the selection keeps');
+
+			expect(await readExported(`${shared}/workflow.json`)).toBe(workflowFile('w2'));
+		});
+
+		it('leaves the export in place when moving it aside fails', async () => {
+			await writeTree(exportFolder, {
+				'manifest.json': manifestFile(makeManifest({ projects: [alpha], workflows: [wf('w1')] })),
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+			const staging = makeManifest({
+				projects: [alpha],
+				workflows: [wf('w1')],
+			});
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
+			});
+			vi.mocked(rename).mockRejectedValueOnce(new Error('EACCES'));
+
+			await expect(
+				updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					{ projects: [alpha], workflows: [wf('w1')] },
+					selection({ workflowIds: ['w1'] }),
+				),
+			).rejects.toThrow('EACCES');
 
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1'),
