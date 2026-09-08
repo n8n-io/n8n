@@ -135,11 +135,11 @@ describe('buildStatus', () => {
 		assert.match(status.description, /2 teams/);
 	});
 
-	it('fails with the missing team slugs', () => {
+	it('stays pending with the missing team slugs', () => {
 		const status = buildStatus(['@n8n-io/qa-dx', '@n8n-io/migrations-review'], 2);
 
-		assert.equal(status.state, 'failure');
-		assert.equal(status.description, 'Missing approval from: qa-dx, migrations-review');
+		assert.equal(status.state, 'pending');
+		assert.equal(status.description, 'Waiting for approval from: qa-dx, migrations-review');
 	});
 });
 
@@ -181,7 +181,7 @@ describe('run', () => {
 		assert.equal(status.state, 'success');
 	});
 
-	it('sets a failure status when a required team has not approved', async () => {
+	it('sets a pending status when a required team has not approved', async () => {
 		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
 		getPrReviewsImpl = async () => [
 			{ user: { login: 'outsider' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
@@ -191,8 +191,8 @@ describe('run', () => {
 		await run();
 
 		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
-		assert.equal(status.state, 'failure');
-		assert.match(status.description, /Missing approval from: qa-dx/);
+		assert.equal(status.state, 'pending');
+		assert.match(status.description, /Waiting for approval from: qa-dx/);
 	});
 
 	it('sets an error status and rethrows when the evaluation fails', async () => {
@@ -250,7 +250,7 @@ describe('run', () => {
 
 		assert.equal(isTeamMember.mock.calls.length, 0);
 		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
-		assert.equal(status.state, 'failure');
+		assert.equal(status.state, 'pending');
 	});
 
 	it('does not count an approval that was later dismissed', async () => {
@@ -264,7 +264,7 @@ describe('run', () => {
 		await run();
 
 		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
-		assert.equal(status.state, 'failure');
+		assert.equal(status.state, 'pending');
 	});
 
 	it('skips PRs that do not target master without setting a status', async () => {
