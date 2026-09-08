@@ -71,6 +71,47 @@ describe('UserRepository', () => {
 			]);
 		});
 
+		test('pages in timestamp order, even without an explicit order', async () => {
+			// IDs ascend while timestamps descend, so an ID order would page these wrongly.
+			const now = DateTime.utc();
+			const workflow = await createWorkflow({}, owner);
+			const newest = await createExecution(
+				{ startedAt: now.plus({ minute: 3 }).toJSDate() },
+				workflow,
+			);
+			const middle = await createExecution(
+				{ startedAt: now.plus({ minute: 2 }).toJSDate() },
+				workflow,
+			);
+			const oldest = await createExecution(
+				{ startedAt: now.plus({ minute: 1 }).toJSDate() },
+				workflow,
+			);
+
+			const page = async (before?: { timestamp: string; id: string }) =>
+				await executionRepository.findManyByRangeQuery({
+					workflowId: workflow.id,
+					user: owner,
+					kind: 'range',
+					range: { limit: 1, before },
+				});
+
+			// Walk the pages the way the cursor does: the first page has no cursor.
+			const cursorFor = (row: { id: string; startedAt: unknown }) => ({
+				timestamp: new Date(row.startedAt as string).toISOString(),
+				id: row.id,
+			});
+
+			const [first] = await page();
+			expect(first.id).toBe(newest.id);
+
+			const [second] = await page(cursorFor(first));
+			expect(second.id).toBe(middle.id);
+
+			const [third] = await page(cursorFor(second));
+			expect(third.id).toBe(oldest.id);
+		});
+
 		test('exposes `jsonSizeBytes` and `binaryDataSizeBytes` as numbers and `workflowVersionId`', async () => {
 			const workflow = await createWorkflow({}, owner);
 			const execution = await createExecution(

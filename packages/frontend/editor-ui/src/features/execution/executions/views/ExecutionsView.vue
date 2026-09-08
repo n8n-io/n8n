@@ -118,7 +118,8 @@ function onDocumentVisibilityChange() {
 
 async function onRefreshData() {
 	try {
-		await executionsStore.fetchExecutions();
+		// Refresh the first page only, and keep the cursor of the pages already loaded.
+		await executionsStore.fetchExecutions(undefined, undefined, true);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.refreshData.title'));
 	}

@@ -1056,24 +1056,35 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}
 
 		if (query.kind === 'range') {
-			const { limit, firstId, lastId } = query.range;
+			const { limit, before } = query.range;
 
 			qb.limit(limit);
 
-			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
-			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
+			if (before) {
+				const { timestamp, id } = before;
+				qb.andWhere(
+					'(COALESCE(execution.startedAt, execution.createdAt) < :cursorTime OR (COALESCE(execution.startedAt, execution.createdAt) = :cursorTime AND execution.id < :cursorId))',
+					{
+						cursorTime: DateUtils.mixedDateToUtcDatetimeString(new Date(timestamp)),
+						cursorId: id,
+					},
+				);
+			}
 
-			if (query.order?.startedAt === 'DESC') {
-				qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' });
-			} else if (query.order?.top) {
+			// Every page is ordered by the key the cursor encodes, so that a cursor page
+			// cannot skip or repeat rows at its boundary. `top` never pages by cursor.
+			if (query.order?.top && !before) {
 				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 			} else {
-				qb.orderBy({ 'execution.id': 'DESC' });
+				qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' });
 			}
+			qb.addOrderBy('execution.id', 'DESC');
 		}
 
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
-		if (finished) qb.andWhere({ finished });
+		if (query.id) qb.andWhere('execution.id = :filterId', { filterId: query.id });
+		if (query.mode) qb.andWhere('execution.mode = :filterMode', { filterMode: query.mode });
+		if (finished !== undefined) qb.andWhere({ finished });
 		if (workflowId) qb.andWhere({ workflowId });
 		const startedAt = startedAtCondition({ startedAfter, startedBefore });
 		if (startedAt) qb.andWhere({ startedAt });
@@ -1178,16 +1189,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		// postgres returned to the natural order again, listing executions in the
 		// order they were created.
 		if (query.kind === 'range') {
-			if (query.order?.startedAt === 'DESC') {
+			if (query.order?.top && !query.range.before) {
+				qb.orderBy(`(CASE WHEN e.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
+			} else {
 				const table = qb.escape('e');
 				const startedAt = qb.escape('startedAt');
 				const createdAt = qb.escape('createdAt');
 				qb.orderBy({ [`COALESCE(${table}.${startedAt}, ${table}.${createdAt})`]: 'DESC' });
-			} else if (query.order?.top) {
-				qb.orderBy(`(CASE WHEN e.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
-			} else {
-				qb.orderBy({ 'e.id': 'DESC' });
 			}
+			qb.addOrderBy('e.id', 'DESC');
 		}
 
 		return qb;
