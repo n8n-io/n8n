@@ -501,7 +501,8 @@ export function createDeclarativeWebhook(
 		if (output?.includeMeta) {
 			const headers = this.getHeaderData();
 			const query = this.getQueryData();
-			items = items.map((item) => ({ json: { body: item.json, headers, query } }));
+			// Spread keeps binary attached by a postReceive action.
+			items = items.map((item) => ({ ...item, json: { body: item.json, headers, query } }));
 		}
 
 		return { workflowData: [items] };

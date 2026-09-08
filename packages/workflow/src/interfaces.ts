@@ -2823,8 +2823,10 @@ export interface IDeclarativePollingTrigger {
 	routing: INodePropertyRouting;
 	cursor: DeclarativePollingCursor;
 	/**
-	 * Manual runs skip the cursor and return the last `maxResults` items
-	 * (default 1). Clamped to a non-negative integer; `0` returns nothing.
+	 * Manual runs return the last `maxResults` items (default 1), and never store
+	 * a cursor. A function cursor still runs, so it can shape the items; the
+	 * built-in strategies are skipped. Clamped to a non-negative integer; `0`
+	 * returns nothing.
 	 */
 	manual?: { maxResults?: number };
 }

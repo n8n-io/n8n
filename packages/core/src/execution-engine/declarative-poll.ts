@@ -64,7 +64,7 @@ async function applyCursor(
  * Contract (matches the shipped programmatic pollers): read cursor → request via
  * `RoutingNode` with `$cursor` exposed → derive new items + next cursor → store
  * the cursor even when nothing is emitted → return items or `null`. The first
- * production poll only seeds the cursor. Manual runs never touch the cursor and
+ * production poll only seeds the cursor. Manual runs never store a cursor and
  * return the last `manual.maxResults` items.
  */
 export function createDeclarativePoll(

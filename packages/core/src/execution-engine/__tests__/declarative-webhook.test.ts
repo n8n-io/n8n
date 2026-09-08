@@ -798,6 +798,28 @@ describe('createDeclarativeWebhook', () => {
 				],
 			});
 		});
+
+		test('includeMeta keeps binary attached by a postReceive action', async () => {
+			const binary = { file: { data: 'ZGF0YQ==', mimeType: 'text/plain' } };
+			const trigger: IDeclarativeWebhookTrigger = {
+				...registryTrigger,
+				handler: {
+					output: {
+						includeMeta: true,
+						postReceive: [
+							async function (items) {
+								return items.map((item) => ({ ...item, binary }));
+							},
+						],
+					},
+				},
+			};
+			const { run } = webhookSetup(trigger, { event: 'created' });
+
+			expect(await run()).toEqual({
+				workflowData: [[{ json: { body: { event: 'created' }, headers: {}, query: {} }, binary }]],
+			});
+		});
 	});
 
 	describe('verification', () => {
