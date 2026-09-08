@@ -123,6 +123,7 @@ jobs:
               packages/frontend/@n8n/frontend-vite-config/**
               turbo.json
               .github/workflows/test-frontend-declarations-reusable.yml
+              .github/actions/setup-nodejs/**
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
