@@ -16,6 +16,8 @@ type CredentialSeed = {
 	id: string;
 	name: string;
 	usageScope: 'instance' | 'project';
+	/** Instance AI credential use this credential is assigned to, if any. */
+	assignedTo?: string;
 };
 
 describe('RenameInstanceAiCredentials Migration', () => {
@@ -43,10 +45,10 @@ describe('RenameInstanceAiCredentials Migration', () => {
 		context: TestMigrationContext,
 		credential: CredentialSeed,
 	): Promise<void> {
-		const tableName = context.escape.tableName('credentials_entity');
+		const credentials = context.escape.tableName('credentials_entity');
 		const now = new Date();
 		await context.runQuery(
-			`INSERT INTO ${tableName} ("id", "name", "data", "type", "usageScope", "createdAt", "updatedAt")
+			`INSERT INTO ${credentials} ("id", "name", "data", "type", "usageScope", "createdAt", "updatedAt")
 			 VALUES (:id, :name, :data, :type, :usageScope, :createdAt, :updatedAt)`,
 			{
 				id: credential.id,
@@ -54,6 +56,19 @@ describe('RenameInstanceAiCredentials Migration', () => {
 				data: 'encrypted',
 				type: 'openAiApi',
 				usageScope: credential.usageScope,
+				createdAt: now,
+				updatedAt: now,
+			},
+		);
+		if (!credential.assignedTo) return;
+
+		const assignments = context.escape.tableName('instance_credential_assignment');
+		await context.runQuery(
+			`INSERT INTO ${assignments} ("credentialUseId", "credentialId", "createdAt", "updatedAt")
+			 VALUES (:credentialUseId, :credentialId, :createdAt, :updatedAt)`,
+			{
+				credentialUseId: credential.assignedTo,
+				credentialId: credential.id,
 				createdAt: now,
 				updatedAt: now,
 			},
@@ -70,58 +85,92 @@ describe('RenameInstanceAiCredentials Migration', () => {
 
 	async function getName(id: string): Promise<string | undefined> {
 		const context = createTestMigrationContext(dataSource);
-		const tableName = context.escape.tableName('credentials_entity');
+		const credentials = context.escape.tableName('credentials_entity');
 		const rows: Array<{ name: string }> = await context.runQuery(
-			`SELECT "name" AS "name" FROM ${tableName} WHERE "id" = :id`,
+			`SELECT "name" AS "name" FROM ${credentials} WHERE "id" = :id`,
 			{ id },
 		);
 		await context.queryRunner.release();
 		return rows[0]?.name;
 	}
 
-	it('renames instance credentials that carry the old product name', async () => {
+	it('renames the credentials assigned to the Instance AI credential uses', async () => {
 		const model = randomUUID();
 		const search = randomUUID();
-		const sandbox = randomUUID();
+		const daytonaSandbox = randomUUID();
+		const n8nSandbox = randomUUID();
 		await seed([
-			{ id: model, name: 'AI Assistant model', usageScope: 'instance' },
-			{ id: search, name: 'AI Assistant web search', usageScope: 'instance' },
-			{ id: sandbox, name: 'AI Assistant sandbox', usageScope: 'instance' },
+			{
+				id: model,
+				name: 'AI Assistant model',
+				usageScope: 'instance',
+				assignedTo: 'instance-ai:model',
+			},
+			{
+				id: search,
+				name: 'AI Assistant web search',
+				usageScope: 'instance',
+				assignedTo: 'instance-ai:search',
+			},
+			{
+				id: daytonaSandbox,
+				name: 'AI Assistant sandbox',
+				usageScope: 'instance',
+				assignedTo: 'instance-ai:sandbox:daytona',
+			},
+			{
+				id: n8nSandbox,
+				name: 'AI Assistant sandbox',
+				usageScope: 'instance',
+				assignedTo: 'instance-ai:sandbox:n8n',
+			},
 		]);
 
 		await runSingleMigration(MIGRATION_NAME);
-		dataSource = Container.get(DataSource);
 
 		expect(await getName(model)).toBe('n8n Assistant model');
 		expect(await getName(search)).toBe('n8n Assistant web search');
-		expect(await getName(sandbox)).toBe('n8n Assistant sandbox');
+		expect(await getName(daytonaSandbox)).toBe('n8n Assistant sandbox');
+		expect(await getName(n8nSandbox)).toBe('n8n Assistant sandbox');
 	});
 
-	it('leaves project credentials and other instance credentials untouched', async () => {
+	it('leaves credentials that Instance AI does not use untouched', async () => {
+		const unassignedInstanceCredential = randomUUID();
 		const projectCredential = randomUUID();
-		const otherInstanceCredential = randomUUID();
+		const assignedWithOwnName = randomUUID();
 		await seed([
+			{ id: unassignedInstanceCredential, name: 'AI Assistant model', usageScope: 'instance' },
 			{ id: projectCredential, name: 'AI Assistant model', usageScope: 'project' },
-			{ id: otherInstanceCredential, name: 'My provider key', usageScope: 'instance' },
+			{
+				id: assignedWithOwnName,
+				name: 'My provider key',
+				usageScope: 'instance',
+				assignedTo: 'instance-ai:model',
+			},
 		]);
 
 		await runSingleMigration(MIGRATION_NAME);
-		dataSource = Container.get(DataSource);
 
+		expect(await getName(unassignedInstanceCredential)).toBe('AI Assistant model');
 		expect(await getName(projectCredential)).toBe('AI Assistant model');
-		expect(await getName(otherInstanceCredential)).toBe('My provider key');
+		expect(await getName(assignedWithOwnName)).toBe('My provider key');
 	});
 
 	it('restores the old names on rollback', async () => {
 		const model = randomUUID();
-		await seed([{ id: model, name: 'AI Assistant model', usageScope: 'instance' }]);
+		await seed([
+			{
+				id: model,
+				name: 'AI Assistant model',
+				usageScope: 'instance',
+				assignedTo: 'instance-ai:model',
+			},
+		]);
 
 		await runSingleMigration(MIGRATION_NAME);
-		dataSource = Container.get(DataSource);
 		expect(await getName(model)).toBe('n8n Assistant model');
 
 		await undoLastSingleMigration();
-		dataSource = Container.get(DataSource);
 
 		expect(await getName(model)).toBe('AI Assistant model');
 	});

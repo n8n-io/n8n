@@ -73,7 +73,7 @@ type InstanceScopeGroups = {
 
 export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 	settings: {
-		// Grants access to every instance Settings page, including MCP and AI
+		// Grants access to every instance Settings page, including MCP and n8n
 		// Assistant management. MCP and n8n Assistant also have their own narrower
 		// use/manage options below so a role can be given just those without the
 		// rest of instance Settings — Manage's bundle is a strict superset of all

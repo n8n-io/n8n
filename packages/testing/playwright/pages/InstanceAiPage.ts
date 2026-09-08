@@ -88,7 +88,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async enableInstanceAiIfPrompted(): Promise<void> {
-		const dialog = this.page.getByRole('dialog').filter({ hasText: 'Try n8n Assistant' });
+		const dialog = this.page.getByRole('dialog').filter({ hasText: 'Try new n8n Assistant' });
 		try {
 			await dialog.waitFor({ state: 'visible', timeout: 3_000 });
 		} catch {
