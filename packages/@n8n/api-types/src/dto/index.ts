@@ -286,6 +286,7 @@ export { UpdateAppDto } from './app/update-app.dto';
 export { ApplyAppThemeDto } from './app/apply-app-theme.dto';
 export { CreatePageDto } from './app/create-page.dto';
 export { UpdatePageDto } from './app/update-page.dto';
+export { EnsureAppPreviewDto } from './app/ensure-app-preview.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
