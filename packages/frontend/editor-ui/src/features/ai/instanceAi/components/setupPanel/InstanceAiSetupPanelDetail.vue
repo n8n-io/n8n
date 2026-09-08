@@ -119,6 +119,16 @@ const usedByNodesLabel = computed(() =>
 
 const editedParameters = ref<INodeParameters>();
 const displayParameters = computed(() => ({ ...props.node.parameters, ...editedParameters.value }));
+const parameterRoots = computed(
+	() =>
+		new Set([
+			...(parametersItem.value?.parameterNames ?? []).map(
+				(name) => name.split(/[.[\]]/)[0] ?? name,
+			),
+			// A saved value can resolve an issue while a newer edit still needs confirmation.
+			...Object.keys(editedParameters.value ?? {}),
+		]),
+);
 
 watch(
 	() => props.node.parameters,
@@ -149,8 +159,7 @@ function onConfirm() {
 	if (!item || !edited) return;
 	// The apply path merges top-level keys — send only the item's own roots.
 	const values: INodeParameters = {};
-	for (const name of item.parameterNames) {
-		const root = name.split(/[.[\]]/)[0] ?? name;
+	for (const root of parameterRoots.value) {
 		if (edited[root] !== undefined) values[root] = edited[root];
 	}
 	emit('applyParameters', item.nodeName, values);
@@ -163,8 +172,7 @@ const nodeType = computed(() =>
 const parameterDefinitions = computed<INodeProperties[]>(() => {
 	const item = parametersItem.value;
 	if (!item || !nodeType.value) return [];
-	const roots = new Set(item.parameterNames.map((name) => name.split(/[.[\]]/)[0] ?? name));
-	return nodeType.value.properties.filter((property) => roots.has(property.name));
+	return nodeType.value.properties.filter((property) => parameterRoots.value.has(property.name));
 });
 
 // --- Per-item document/NDV store scaffolding ---

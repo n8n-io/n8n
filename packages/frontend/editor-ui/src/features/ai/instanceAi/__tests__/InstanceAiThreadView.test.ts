@@ -402,6 +402,15 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 			[SidebarStateKey as symbol]: { collapsed: mockSidebarCollapsed, toggle: vi.fn() },
 		},
 		stubs: {
+			InstanceAiSetupPanel: defineComponent({
+				props: { workflowId: String, projectId: String },
+				setup: (props) => () =>
+					h('div', {
+						'data-test-id': 'setup-panel',
+						'data-workflow-id': props.workflowId,
+						'data-project-id': props.projectId,
+					}),
+			}),
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
 			InstanceAiAgentPreview: InstanceAiAgentPreviewStub,
@@ -617,6 +626,84 @@ describe('InstanceAiThreadView', () => {
 	it('does not pass suggestions to its composer', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
+	});
+
+	describe('setup panel', () => {
+		function seedSetupArtifacts(enabled = true) {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': { ...defaultModuleSettings, instanceAiSetupPanelEnabled: enabled },
+			};
+			thread.hasMessages = true;
+			thread.messages = [
+				{
+					id: 'setup-message',
+					role: 'user',
+					content: 'Configure these workflows',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-04-01T00:00:00.000Z',
+				},
+			];
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'First workflow', projectId: 'project-1' }],
+				['wf-2', { type: 'workflow', id: 'wf-2', name: 'Second workflow', projectId: 'project-2' }],
+				['agent-1', { type: 'agent', id: 'agent-1', name: 'Agent', projectId: 'project-3' }],
+				['table-1', { type: 'data-table', id: 'table-1', name: 'Table', projectId: 'project-4' }],
+			]);
+		}
+
+		it('uses the latest workflow and its project when no tab is selected', async () => {
+			seedSetupArtifacts();
+			const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-workflow-id', 'wf-2');
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-project-id', 'project-2');
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				undefined,
+				expect.any(String),
+				undefined,
+			);
+		});
+
+		it('follows the selected workflow and project when tabs change', async () => {
+			seedSetupArtifacts();
+			thread.messages[0].attachments = [{ type: 'workflow', id: 'wf-1', name: 'First workflow' }];
+			const { getByTestId, container } = renderView({ props: { threadId: 'thread-1' } });
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-workflow-id', 'wf-1');
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-project-id', 'project-1');
+
+			const secondTab = container.querySelector<HTMLElement>('[data-tab-id="wf-2"]');
+			expect(secondTab).not.toBeNull();
+			await userEvent.click(secondTab!);
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-workflow-id', 'wf-2');
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-project-id', 'project-2');
+		});
+
+		it.each(['agent-1', 'table-1'])(
+			'hides the panel when the %s tab is selected',
+			async (tabId) => {
+				seedSetupArtifacts();
+				thread.messages[0].attachments = [{ type: 'workflow', id: 'wf-1', name: 'First workflow' }];
+				const { getByTestId, queryByTestId, container } = renderView({
+					props: { threadId: 'thread-1' },
+				});
+				expect(getByTestId('setup-panel')).toBeInTheDocument();
+				const tab = container.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);
+				expect(tab).not.toBeNull();
+				await userEvent.click(tab!);
+				expect(queryByTestId('setup-panel')).not.toBeInTheDocument();
+				expect(getByTestId('instance-ai-input-submit')).toBeEnabled();
+			},
+		);
+
+		it('does not mount the panel when the flag is off', () => {
+			seedSetupArtifacts(false);
+			const { queryByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			expect(queryByTestId('setup-panel')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-input-submit')).toBeEnabled();
+		});
 	});
 
 	it('restores the canonical agent preview session when view metadata is unavailable', async () => {
