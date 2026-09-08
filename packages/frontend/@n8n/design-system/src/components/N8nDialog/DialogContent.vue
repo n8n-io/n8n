@@ -260,4 +260,11 @@ function handleInteractOutside(e: Event) {
 .el-popper {
 	pointer-events: auto;
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.content[data-state='open'],
+	.content[data-state='closed'] {
+		animation: none;
+	}
+}
 </style>

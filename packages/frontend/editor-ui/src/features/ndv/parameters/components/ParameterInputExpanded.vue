@@ -255,6 +255,7 @@ defineExpose({
 </style>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .fixed-collection-wrapper {
 	.icon-button {
 		position: absolute;
@@ -265,6 +266,7 @@ defineExpose({
 		Button {
 			color: var(--icon--color);
 		}
+		@include motion.reduced-motion;
 	}
 	.icon-button > Button:hover {
 		color: var(--icon--color--hover);

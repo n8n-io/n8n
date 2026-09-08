@@ -252,6 +252,10 @@ function optionSelected(action: string) {
 				:class="$style.dropAreaWrapper"
 				data-test-id="assignment-collection-drop-area"
 				@click="addAssignment"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="addAssignment"
+				@keydown.space.self.prevent="addAssignment"
 			>
 				<DropArea ref="dropArea" :sticky-offset="empty ? [-4, 32] : [92, 0]" @drop="dropAssignment">
 					<template #default="{ active, droppable }">

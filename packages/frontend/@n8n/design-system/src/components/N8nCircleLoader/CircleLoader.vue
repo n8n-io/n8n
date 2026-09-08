@@ -56,4 +56,10 @@ const style = computed(() => ({
 	transform: rotate(-90deg);
 	transform-origin: 50% 50%;
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.progressRingCircle {
+		transition: none;
+	}
+}
 </style>

@@ -32,7 +32,11 @@ const handleMouseLeave = () => {
 		:key="item.id"
 		:data-item-id="item.id"
 		:class="[$style.item, { [$style.selected]: isSelected }]"
+		role="option"
+		:aria-selected="isSelected"
 		@click.stop="handleSelect"
+		@keydown.enter.stop="handleSelect"
+		@keydown.space.prevent.stop="handleSelect"
 		@mouseenter="handleMouseEnter"
 		@mouseleave="handleMouseLeave"
 	>
@@ -118,5 +122,11 @@ const handleMouseLeave = () => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.item {
+		transition: none;
+	}
 }
 </style>

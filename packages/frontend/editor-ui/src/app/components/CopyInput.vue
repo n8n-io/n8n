@@ -61,6 +61,10 @@ function copy() {
 				}"
 				data-test-id="copy-input"
 				@click="copy"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="copy"
+				@keydown.space.self.prevent="copy"
 			>
 				<span ref="copyInputValue">{{ value }}</span>
 				<div v-if="!disableCopy" :class="$style.copyButton">

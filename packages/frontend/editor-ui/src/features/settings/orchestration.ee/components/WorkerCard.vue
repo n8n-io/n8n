@@ -107,6 +107,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	width: 100%;
 }
@@ -120,6 +121,7 @@ onBeforeUnmount(() => {
 	&:hover {
 		box-shadow: var(--shadow--card-hover);
 	}
+	@include motion.reduced-motion;
 }
 
 .cardHeading {

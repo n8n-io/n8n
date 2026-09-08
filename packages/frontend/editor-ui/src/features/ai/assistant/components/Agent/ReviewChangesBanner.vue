@@ -73,6 +73,7 @@ const i18n = useI18n();
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .container {
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-bottom: none;
@@ -103,6 +104,7 @@ const i18n = useI18n();
 	transition: transform 0.2s ease;
 	color: var(--color--text--shade-1);
 	flex-shrink: 0;
+	@include motion.reduced-motion;
 }
 
 .chevronExpanded {
@@ -119,6 +121,7 @@ const i18n = useI18n();
 	max-height: 0;
 	overflow: hidden;
 	transition: max-height 0.2s ease;
+	@include motion.reduced-motion;
 }
 
 .bodyExpanded {

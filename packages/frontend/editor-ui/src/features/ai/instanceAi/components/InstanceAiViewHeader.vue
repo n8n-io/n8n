@@ -104,6 +104,7 @@ const threadCreditsUsed = computed(() =>
 </style>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 // Entry-point icon button: fade in slightly after the sidebar has begun
 // collapsing, fade out quickly when the sidebar starts opening — so the
 // crossover feels intentional rather than abrupt.
@@ -114,9 +115,11 @@ const threadCreditsUsed = computed(() =>
 
 .sidebar-toggle-fade-enter-active {
 	transition: opacity 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 .sidebar-toggle-fade-leave-active {
 	transition: opacity 0.1s ease;
+	@include motion.reduced-motion;
 }
 </style>

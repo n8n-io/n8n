@@ -112,7 +112,15 @@ const onInputScroll = (event: WheelEvent) => {
 		:style="{ ...styles, ...customColorStyles }"
 		@keydown.prevent
 	>
-		<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
+		<div
+			v-show="!editMode"
+			:class="$style.wrapper"
+			:role="readOnly ? undefined : 'button'"
+			:tabindex="readOnly ? undefined : 0"
+			@dblclick.stop="onDoubleClick"
+			@keydown.enter.stop="onDoubleClick"
+			@keydown.space.prevent.stop="onDoubleClick"
+		>
 			<N8nMarkdown
 				theme="sticky"
 				:content="modelValue"

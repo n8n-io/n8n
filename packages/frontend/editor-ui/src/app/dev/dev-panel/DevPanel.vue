@@ -682,7 +682,8 @@ async function copyAllAnnotations() {
 	</div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .dev-panel-root {
 	position: fixed;
 	z-index: 2147483645;
@@ -702,6 +703,7 @@ async function copyAllAnnotations() {
 	border: 2px solid var(--color--blue-500);
 	border-radius: var(--radius--sm);
 	transition: all 40ms linear;
+	@include motion.reduced-motion;
 }
 
 .dev-panel-pending-outline {
@@ -743,6 +745,7 @@ async function copyAllAnnotations() {
 	cursor: pointer;
 	user-select: none;
 	transition: transform 80ms ease;
+	@include motion.reduced-motion;
 }
 
 .dev-panel-marker:hover {
@@ -808,6 +811,7 @@ async function copyAllAnnotations() {
 	justify-content: center;
 	box-shadow: 0 6px 20px var(--color--black-alpha-400);
 	transition: transform 120ms ease;
+	@include motion.reduced-motion;
 }
 
 .dev-panel-fab:hover {
@@ -864,6 +868,7 @@ async function copyAllAnnotations() {
 	transition:
 		background-color 180ms ease,
 		color 180ms ease;
+	@include motion.reduced-motion;
 }
 
 .dev-panel-toolbar-button svg {
@@ -880,6 +885,7 @@ async function copyAllAnnotations() {
 	transition:
 		opacity 160ms ease,
 		transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+	@include motion.reduced-motion;
 }
 
 .dev-panel-icon-swap-enter-from {
@@ -897,6 +903,7 @@ async function copyAllAnnotations() {
 	transition:
 		opacity 160ms ease,
 		transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+	@include motion.reduced-motion;
 }
 
 .dev-panel-badge-fade-enter-from,

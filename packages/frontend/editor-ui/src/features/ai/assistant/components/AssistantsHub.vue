@@ -185,6 +185,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .slideWrapper {
 	overflow: hidden;
 	height: 100%;
@@ -192,10 +193,12 @@ onBeforeUnmount(() => {
 
 .slideEnterActive {
 	transition: width v-bind(slideInDuration) ease-in-out;
+	@include motion.reduced-motion;
 }
 
 .slideLeaveActive {
 	transition: width v-bind(slideOutDuration) ease-in-out;
+	@include motion.reduced-motion;
 }
 
 .slideFrom {

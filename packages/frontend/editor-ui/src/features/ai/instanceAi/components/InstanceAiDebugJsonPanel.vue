@@ -32,6 +32,7 @@ const summaryLabel = computed(() => props.label ?? i18n.baseText('instanceAi.deb
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .root {
 	border: 1px solid var(--color--foreground--tint-2);
 	border-radius: var(--radius);
@@ -57,6 +58,7 @@ const summaryLabel = computed(() => props.label ?? i18n.baseText('instanceAi.deb
 		flex-shrink: 0;
 		color: var(--color--text--tint-1);
 		transition: transform var(--duration--fast) ease;
+		@include motion.reduced-motion;
 	}
 }
 

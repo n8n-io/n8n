@@ -2023,6 +2023,7 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .canvas {
 	width: 100%;
 	height: 100%;
@@ -2053,13 +2054,16 @@ defineExpose({
 		height: var(--canvas-selection-box--height) !important;
 	}
 	/* stylelint-enable declaration-no-important */
+	@include motion.reduced-motion;
 }
 </style>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 .minimap-enter-active,
 .minimap-leave-active {
 	transition: opacity 0.3s ease;
+	@include motion.reduced-motion;
 }
 
 .minimap-enter-from,
@@ -2071,11 +2075,13 @@ defineExpose({
 	:deep(.vue-flow__edges) {
 		opacity: 0.2;
 		transition: opacity 0.5s ease;
+		@include motion.reduced-motion;
 	}
 
 	:deep(.vue-flow__node) {
 		opacity: 0.4;
 		transition: opacity 0.5s ease;
+		@include motion.reduced-motion;
 	}
 
 	:deep(.vue-flow__node:has(.highlighted)) {

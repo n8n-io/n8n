@@ -658,6 +658,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .inlineItem {
 	display: flex;
 	align-items: center;
@@ -742,6 +743,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 	top: -3px;
 	left: calc(-0.5 * var(--spacing--xs));
 	transition: opacity 100ms ease-in;
+	@include motion.reduced-motion;
 }
 
 .parameterItem {

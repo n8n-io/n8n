@@ -271,6 +271,7 @@ watch(runningTestRun, (run) => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .evaluationsView {
 	width: 100%;
 }
@@ -380,7 +381,9 @@ watch(runningTestRun, (run) => {
 
 	svg {
 		transition: transform var(--duration--snappy) ease;
+		@include motion.reduced-motion;
 	}
+	@include motion.reduced-motion;
 }
 
 // Open state: rotate the caret 180° for an unmistakable open/closed cue.

@@ -393,7 +393,14 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 				<N8nText tag="p" class="mb-s">
 					<template v-if="initialState?.usedByProjects">
 						{{ i18n.baseText('projectRoles.action.delete.useWarning.before') }}
-						<a :class="$style.assignmentsLink" @click="activeTab = 'assignments'">
+						<a
+							:class="$style.assignmentsLink"
+							@click="activeTab = 'assignments'"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="activeTab = 'assignments'"
+							@keydown.space.self.prevent="activeTab = 'assignments'"
+						>
 							{{
 								i18n.baseText('projectRoles.action.delete.useWarning.linkText', {
 									adjustToNumber: initialState.usedByProjects,

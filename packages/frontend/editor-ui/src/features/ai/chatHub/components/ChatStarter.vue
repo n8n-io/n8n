@@ -264,9 +264,11 @@ function handleUpgradeClick() {
 </style>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .welcome-fade-enter-active,
 .welcome-fade-leave-active {
 	transition: opacity 0.2s ease;
+	@include motion.reduced-motion;
 }
 
 .welcome-fade-enter-from,

@@ -142,14 +142,14 @@ function updateSettings(wfSettings: IWorkflowSettings): void {
 			: (wfSettings.saveManualExecutions as boolean);
 }
 
-function onAccordionClick(event: MouseEvent): void {
+function onAccordionClick(event: MouseEvent | KeyboardEvent): void {
 	if (event.target instanceof HTMLAnchorElement) {
 		event.preventDefault();
 		uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	}
 }
 
-function onItemTooltipClick(item: string, event: MouseEvent): void {
+function onItemTooltipClick(item: string, event: MouseEvent | KeyboardEvent): void {
 	if (item === 'productionExecutions' && event.target instanceof HTMLAnchorElement) {
 		event.preventDefault();
 		uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);

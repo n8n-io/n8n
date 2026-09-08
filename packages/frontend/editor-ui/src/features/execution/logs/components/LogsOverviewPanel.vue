@@ -167,6 +167,7 @@ function handleSwitchView(value: 'overview' | 'details') {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 @use '@/app/css/variables' as vars;
 
 .container {
@@ -226,5 +227,6 @@ function handleSwitchView(value: 'overview' | 'details') {
 		visibility: visible;
 		opacity: 1;
 	}
+	@include motion.reduced-motion;
 }
 </style>

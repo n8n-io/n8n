@@ -29,6 +29,8 @@ const buttonTypeClass = computed(() => {
 	</span>
 </template>
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion' as motion;
+
 .chat-button-wrapper-disabled {
 	cursor: not-allowed;
 }
@@ -47,6 +49,7 @@ const buttonTypeClass = computed(() => {
 		background-color var(--chat--transition-duration) ease-in-out,
 		border-color var(--chat--transition-duration) ease-in-out,
 		box-shadow var(--chat--transition-duration) ease-in-out;
+	@include motion.reduced-motion;
 	cursor: pointer;
 	text-decoration: none;
 

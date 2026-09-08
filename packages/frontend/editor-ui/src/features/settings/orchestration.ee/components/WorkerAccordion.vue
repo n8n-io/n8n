@@ -26,7 +26,14 @@ function toggle() {
 
 <template>
 	<div :class="['accordion', $style.container]">
-		<div :class="{ [$style.header]: true, [$style.expanded]: expanded }" @click="toggle">
+		<div
+			:class="{ [$style.header]: true, [$style.expanded]: expanded }"
+			@click="toggle"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="toggle"
+			@keydown.space.self.prevent="toggle"
+		>
 			<N8nIcon :icon="icon" :color="iconColor" size="small" class="mr-2xs" />
 			<N8nText :class="$style.headerText" color="text-base" size="small" align="left" bold>
 				<slot name="title"></slot>

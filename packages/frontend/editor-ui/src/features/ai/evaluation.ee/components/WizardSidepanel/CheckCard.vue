@@ -68,6 +68,7 @@ defineEmits<{
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .card {
 	display: grid;
 	grid-template-columns: 1fr auto;
@@ -87,6 +88,7 @@ defineEmits<{
 	&:focus-visible {
 		border-color: var(--border-color--strong);
 	}
+	@include motion.reduced-motion;
 }
 
 .cardSelected,

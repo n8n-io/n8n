@@ -408,6 +408,10 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						<span
 							data-test-id="execution-debug-button"
 							@click="executionDebugging.handleDebugLinkClick"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="executionDebugging.handleDebugLinkClick"
+							@keydown.space.self.prevent="executionDebugging.handleDebugLinkClick"
 						>
 							{{ debugButtonData.text }}
 						</span>
@@ -478,6 +482,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .previewContainer {
 	position: relative;
 	height: 100%;
@@ -505,6 +510,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 	& * {
 		pointer-events: all;
 	}
+	@include motion.reduced-motion;
 }
 
 .executionDetailsLeft {

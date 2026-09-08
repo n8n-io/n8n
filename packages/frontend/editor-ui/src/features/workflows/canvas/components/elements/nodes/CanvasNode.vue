@@ -461,10 +461,12 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .canvasNode {
 	.canvasNodeToolbarItems {
 		transition: opacity 0.1s ease-in;
 		opacity: 0;
+		@include motion.reduced-motion;
 	}
 
 	&:hover:not(:has(> .trigger:hover)), // exclude .trigger which has extended hit zone

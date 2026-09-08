@@ -282,6 +282,7 @@ function toggleSuggestions() {
 	animation-delay: var(--suggestion-enter-delay, 0ms);
 	/* Hold the start state during the stagger delay so toggling doesn't flicker. */
 	animation-fill-mode: backwards;
+	@include motion.reduced-motion;
 }
 
 .suggestionButton:disabled {
@@ -391,6 +392,7 @@ function toggleSuggestions() {
 	border-radius: var(--radius--3xs);
 	cursor: pointer;
 	transition: color var(--duration--snappy) var(--easing--ease-out);
+	@include motion.reduced-motion;
 }
 
 .seeMoreButton:not(:disabled):hover {

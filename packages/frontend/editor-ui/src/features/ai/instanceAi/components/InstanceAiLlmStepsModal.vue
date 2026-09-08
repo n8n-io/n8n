@@ -244,6 +244,7 @@ function formatStepCount(count: number): string {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .shell {
 	display: flex;
 	flex-direction: column;
@@ -357,6 +358,7 @@ function formatStepCount(count: number): string {
 		background: var(--background--surface);
 		border-color: var(--color--foreground--tint-2);
 	}
+	@include motion.reduced-motion;
 }
 
 .runButtonSelected,

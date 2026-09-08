@@ -65,6 +65,8 @@ const emit = defineEmits<{
 	resizeend: [];
 }>();
 
+const resizeHandleRole = 'separator';
+
 const enabledDirections = computed((): Direction[] => {
 	const availableDirections = Object.keys(directionsCursorMaps) as Direction[];
 
@@ -163,6 +165,36 @@ onBeforeUnmount(() => {
 	cleanupResize();
 });
 
+const resizeWithKeyboard = (direction: Direction, event: KeyboardEvent) => {
+	const horizontalDelta =
+		event.key === 'ArrowRight' ? props.gridSize : event.key === 'ArrowLeft' ? -props.gridSize : 0;
+	const verticalDelta =
+		event.key === 'ArrowDown' ? props.gridSize : event.key === 'ArrowUp' ? -props.gridSize : 0;
+	if (horizontalDelta === 0 && verticalDelta === 0) return;
+
+	event.preventDefault();
+	let width = props.width;
+	let height = props.height;
+	if (direction.toLowerCase().includes('right')) width += horizontalDelta;
+	if (direction.toLowerCase().includes('left')) width -= horizontalDelta;
+	if (direction.toLowerCase().includes('bottom')) height += verticalDelta;
+	if (direction.toLowerCase().includes('top')) height -= verticalDelta;
+	width = Math.min(props.maxWidth, Math.max(props.minWidth, width));
+	height = Math.min(props.maxHeight, Math.max(props.minHeight, height));
+
+	emit('resizestart');
+	emit('resize', {
+		width,
+		height,
+		dX: direction.toLowerCase().includes('left') ? props.width - width : 0,
+		dY: direction.toLowerCase().includes('top') ? props.height - height : 0,
+		x: 0,
+		y: 0,
+		direction,
+	});
+	emit('resizeend');
+};
+
 const resizerMove = (event: MouseEvent) => {
 	event.preventDefault();
 	event.stopPropagation();
@@ -202,7 +234,10 @@ const resizerMove = (event: MouseEvent) => {
 				[$style.active]: activeDirection === direction.toLowerCase(),
 			}"
 			data-test-id="resize-handle"
+			:role="resizeHandleRole"
+			tabindex="0"
 			@mousedown="resizerMove"
+			@keydown="resizeWithKeyboard(direction, $event)"
 		/>
 		<slot></slot>
 	</div>
@@ -344,5 +379,14 @@ const resizerMove = (event: MouseEvent) => {
 <style lang="scss">
 body.n8n-resizing iframe {
 	pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.right::after,
+	.left::after,
+	.top::after,
+	.bottom::after {
+		transition: none;
+	}
 }
 </style>

@@ -63,4 +63,10 @@ withDefaults(defineProps<SpinnerProps>(), {
 		transform: rotate(360deg);
 	}
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.lds-ring div {
+		animation: none;
+	}
+}
 </style>

@@ -211,4 +211,10 @@ defineExpose({ forceFocus, forceCancel });
 	font-weight: inherit;
 	letter-spacing: inherit;
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.inlineRenameArea::after {
+		transition: none;
+	}
+}
 </style>

@@ -322,4 +322,12 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 		transform: none;
 	}
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.bar,
+	:global(.n8n-settings-save-bar-enter-active),
+	:global(.n8n-settings-save-bar-leave-active) {
+		transition: none;
+	}
+}
 </style>

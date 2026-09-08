@@ -457,10 +457,11 @@ onMounted(async () => {
 					</N8nCallout>
 
 					<div v-if="isEditMode && hasNonNameChanges" :class="$style.formGroup">
-						<label :class="$style.label">
+						<label for="credential-resolver-clear-credentials" :class="$style.label">
 							{{ i18n.baseText('credentialResolverEdit.clearCredentials.label') }}
 						</label>
 						<N8nSelect
+							id="credential-resolver-clear-credentials"
 							v-model="clearCredentials"
 							:placeholder="i18n.baseText('credentialResolverEdit.clearCredentials.placeholder')"
 							data-test-id="credential-resolver-clear-credentials-select"
@@ -494,10 +495,11 @@ onMounted(async () => {
 					</N8nCallout>
 
 					<div :class="$style.formGroup">
-						<label :class="$style.label">
+						<label for="credential-resolver-type" :class="$style.label">
 							{{ i18n.baseText('credentialResolverEdit.type.label') }}
 						</label>
 						<N8nSelect
+							id="credential-resolver-type"
 							v-model="resolverType"
 							:placeholder="i18n.baseText('credentialResolverEdit.type.placeholder')"
 							data-test-id="credential-resolver-type-select"
@@ -531,9 +533,9 @@ onMounted(async () => {
 				</div>
 				<div v-if="activeTab === 'details'" :class="$style.mainContent">
 					<div :class="$style.formGroup">
-						<label :class="$style.label">
+						<div :class="$style.label">
 							{{ i18n.baseText('credentialResolverEdit.details.id') }}
-						</label>
+						</div>
 						<N8nText v-if="props.data?.resolverId" color="text-base">
 							{{ props.data.resolverId }}
 						</N8nText>

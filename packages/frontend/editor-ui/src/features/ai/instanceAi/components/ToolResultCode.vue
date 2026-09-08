@@ -33,6 +33,7 @@ async function handleCopy() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .wrapper {
 	position: relative;
 }
@@ -47,6 +48,7 @@ async function handleCopy() {
 	.wrapper:hover & {
 		opacity: 1;
 	}
+	@include motion.reduced-motion;
 }
 
 .code {

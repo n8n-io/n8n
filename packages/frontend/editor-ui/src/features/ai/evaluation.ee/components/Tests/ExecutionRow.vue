@@ -164,6 +164,7 @@ const outputEntries = computed(() => toEntries(items.value.output));
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .row {
 	border-bottom: var(--border);
 
@@ -214,6 +215,7 @@ const outputEntries = computed(() => toEntries(items.value.output));
 	flex-shrink: 0;
 	opacity: 0;
 	transition: opacity var(--duration--snappy) ease;
+	@include motion.reduced-motion;
 }
 
 .createButtonVisible {

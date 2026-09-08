@@ -265,6 +265,7 @@ function formatJson(value: unknown): string {
 	color: var(--color--text--tint-1);
 	padding: var(--spacing--4xs) 0;
 	animation: status-fade-in 0.2s ease;
+	@include motion.reduced-motion;
 }
 
 .cancelledIndicator {
@@ -302,6 +303,7 @@ function formatJson(value: unknown): string {
 	background: var(--color--text);
 	animation: cursor-blink 1s step-end infinite;
 	vertical-align: text-bottom;
+	@include motion.reduced-motion;
 }
 
 @keyframes cursor-blink {

@@ -38,9 +38,12 @@ function handleEditClick() {
 <template>
 	<li
 		:class="$style.nodeIssue"
-		role="listitem"
 		:aria-label="`Edit ${issue.node} node`"
 		@click="handleEditClick"
+		role="button"
+		tabindex="0"
+		@keydown.enter.self="handleEditClick"
+		@keydown.space.self.prevent="handleEditClick"
 	>
 		<!-- Node icon with tooltip -->
 		<NodeIcon

@@ -515,6 +515,7 @@ const redirectToDataTables = () => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .header {
 	margin-bottom: var(--spacing--xs);
 }
@@ -704,6 +705,7 @@ const redirectToDataTables = () => {
 		&:hover {
 			background-color: var(--color--background);
 		}
+		@include motion.reduced-motion;
 	}
 
 	:global(input[type='file']) {

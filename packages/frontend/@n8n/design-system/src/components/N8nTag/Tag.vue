@@ -64,4 +64,10 @@ withDefaults(defineProps<TagProps>(), {
 	--tag--padding: var(--spacing--4xs) var(--spacing--2xs);
 	--tag--font-size: var(--font-size--xs);
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.tag {
+		transition: none;
+	}
+}
 </style>

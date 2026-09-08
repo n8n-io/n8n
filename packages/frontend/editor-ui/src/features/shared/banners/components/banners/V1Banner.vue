@@ -23,6 +23,10 @@ const hasOwnerPermission = computed(() => hasPermission(['instanceOwner']));
 				:class="$style.link"
 				data-test-id="banner-confirm-v1"
 				@click="dismissPermanently"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="dismissPermanently"
+				@keydown.space.self.prevent="dismissPermanently"
 			>
 				<span v-n8n-html="locale.baseText('generic.dontShowAgain')"></span>
 			</a>

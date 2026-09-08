@@ -654,6 +654,7 @@ const resizable = computed(() => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .composer {
 	display: flex;
 	flex-direction: column;
@@ -715,12 +716,14 @@ const resizable = computed(() => {
 	transition:
 		opacity 0.15s ease,
 		transform 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 :global(.suggestions-fade-leave-active) {
 	transition:
 		opacity 0.18s ease,
 		transform 0.18s ease;
+	@include motion.reduced-motion;
 }
 
 :global(.suggestions-fade-enter-from) {
