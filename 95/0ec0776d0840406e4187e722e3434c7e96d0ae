@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentNavigation.test.ts
+  s_19c108ca02ed6d::t_087f8d02c5923d 18-22,36,95,107-122
+  s_19c108ca02ed6d::t_a3fa4064521c88 77
+  s_19c108ca02ed6d::t_dc46e236e082ec 123-124
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_19c108ca02ed6d::t_087f8d02c5923d 31,1995-1999,2001,2006-2012
+packages/frontend/editor-ui/src/features/agents/agentReturnContext.store.ts
+  s_19c108ca02ed6d::t_b43786d8238a4a 22-25,29,39-56
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentView.test.ts
+  s_19c108ca02ed6d::t_087f8d02c5923d 6,27-32,37-38,110-112,114,128-129,131
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_19c108ca02ed6d::t_b43786d8238a4a 109,295-298
+packages/frontend/editor-ui/src/features/agents/__tests__/agentReturnContext.store.test.ts
+  s_19c108ca02ed6d::t_a3fa4064521c88 22-31
+packages/frontend/editor-ui/src/features/agents/views/AgentView.vue
+  s_19c108ca02ed6d::t_b43786d8238a4a 7,41-43,45-51
+packages/frontend/editor-ui/src/features/agents/composables/useAgentNavigation.ts
+  s_19c108ca02ed6d::t_b43786d8238a4a 2,14,29-32,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "950ec0776d0840406e4187e722e3434c7e96d0ae",
+  "prompts": {},
+  "sessions": {
+    "s_19c108ca02ed6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c92-b5f8-7720-8bf6-29b2466e189a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

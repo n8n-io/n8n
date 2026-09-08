@@ -1,0 +1,54 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/create.group.workflow.json
+  s_6a7d5f1a01d9ec::t_4b657308f4c311 54-62
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/getAll.clamp.test.ts
+  s_6a7d5f1a01d9ec::t_adb7b110b9f785 21
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/create.operation.ts
+  s_6a7d5f1a01d9ec::t_0c8a6bc62a0b59 8,62,81,125-127,129-132,137-147,157,198-200,203,228-237,241
+  s_6a7d5f1a01d9ec::t_e580e464ee7ab5 128
+  s_6a7d5f1a01d9ec::t_7fa58e0ab48ca3 12
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/getAll.operation.ts
+  s_6a7d5f1a01d9ec::t_31e62b30ae779c 29,33,36-37
+packages/nodes-base/utils/microsoft/test/transport.test.ts
+  s_6a7d5f1a01d9ec::t_e862943726aab3 101-103,469,471-472,474-475,479-482
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/create.validation.test.ts
+  s_6a7d5f1a01d9ec::t_cab0c57ffac9be 93-103
+  s_6a7d5f1a01d9ec::t_785d5f3dfb3bd9 53,56-58,71-72,176-231
+  s_6a7d5f1a01d9ec::t_adb7b110b9f785 31
+  s_6a7d5f1a01d9ec::t_a0336a8040ce5b 232
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/create.oneOnOne.test.ts
+  s_6a7d5f1a01d9ec::t_4b657308f4c311 14-15
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/create.group.test.ts
+  s_6a7d5f1a01d9ec::t_4b657308f4c311 9-10,12-14,20-21,47-48,101,111-117
+  s_6a7d5f1a01d9ec::t_688e300c3bc185 118
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/create.perItem.test.ts
+  s_6a7d5f1a01d9ec::t_adb7b110b9f785 85
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/index.ts
+  s_6a7d5f1a01d9ec::t_31e62b30ae779c 13-14
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/utils.test.ts
+  s_6a7d5f1a01d9ec::t_f8db3ea27b7302 409-421
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/get.validation.test.ts
+  s_6a7d5f1a01d9ec::t_adb7b110b9f785 20
+packages/nodes-base/utils/microsoft/transport.ts
+  s_6a7d5f1a01d9ec::t_997f81eea4f672 213-214,219,225-229,254
+  s_6a7d5f1a01d9ec::t_6ea300eb43abad 230
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/get.operation.ts
+  s_6a7d5f1a01d9ec::t_31e62b30ae779c 30
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
+  s_6a7d5f1a01d9ec::t_caac2e3a63234c 9-10,84-88,96-102,132-136,155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b023d9891e8b9305c863a806694f41677303c707",
+  "prompts": {},
+  "sessions": {
+    "s_6a7d5f1a01d9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a07b1d9-b11c-42d1-9e09-61ac14d5005c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

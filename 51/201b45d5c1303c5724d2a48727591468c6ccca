@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 285
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 431
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 816,827,859
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsList.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 121
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryContent.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 225
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/ColumnHeader.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 299
+packages/frontend/editor-ui/src/app/components/layouts/PageViewLayout.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 27
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 356
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableCard.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 203
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatStarter.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 181,195,214,226
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 2186
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 691
+packages/frontend/editor-ui/vite.config.mts
+  s_8be088cc1af255::t_6445e9e868c2ee 201
+  s_8be088cc1af255::t_c535c2613c099d 98
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_8be088cc1af255::t_ae86aa8701fb2e 881,901
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "51201b45d5c1303c5724d2a48727591468c6ccca",
+  "prompts": {},
+  "sessions": {
+    "s_8be088cc1af255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97428d43-1d21-4a8a-b7f0-2fce5c621a88",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

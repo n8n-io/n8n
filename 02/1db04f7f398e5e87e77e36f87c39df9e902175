@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_af721e3366faac::t_4db4a42d5905b6 18-21,1768-1772
+  s_af721e3366faac::t_c25b4f0d6778bc 1710-1712
+  s_af721e3366faac::t_91e565838c021c 1773-1774
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_af721e3366faac::t_c25b4f0d6778bc 30-31
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiSettings.store.ts
+  s_af721e3366faac::t_4db4a42d5905b6 167,170,174,256,271,586-587
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_af721e3366faac::t_4db4a42d5905b6 28,40-44,495-496,526-528,578,580,1472-1473
+  s_af721e3366faac::t_ceb64e7e562ffd 497-499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "021db04f7f398e5e87e77e36f87c39df9e902175",
+  "prompts": {},
+  "sessions": {
+    "s_af721e3366faac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbbde3a5-cbc5-4486-a4b8-414f4b03fb7b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

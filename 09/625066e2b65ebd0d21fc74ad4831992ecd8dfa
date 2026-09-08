@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_bd2c53981ea354::t_258818ec23af0d 962-977
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_bd2c53981ea354::t_16c666a35f1849 817
+  s_bd2c53981ea354::t_3978da3eedba7a 786-804
+  s_bd2c53981ea354::t_28c46c055889dc 759
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "09625066e2b65ebd0d21fc74ad4831992ecd8dfa",
+  "prompts": {},
+  "sessions": {
+    "s_bd2c53981ea354": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dae65258-6737-4a15-af4b-bbcfa1bd9afd",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

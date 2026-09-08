@@ -1,0 +1,25 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/structured-output-parser-validator.ts
+  s_5d7dcde052ad34::t_8e5d551ffe9027 51,53-58
+  s_5d7dcde052ad34::t_35d658c620d409 65
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/structured-output-parser-validator.test.ts
+  s_5d7dcde052ad34::t_8e5d551ffe9027 138-146,151-168
+  s_5d7dcde052ad34::t_0ac0b10ee5d43a 169
+packages/@n8n/workflow-sdk/test-fixtures/real-workflows/manifest.json
+  s_5d7dcde052ad34::t_1ce2f3dda378a2 8351-8361,17354-17360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "fa3394deb90e3eac631c56792d1910ad60b3eab8",
+  "prompts": {},
+  "sessions": {
+    "s_5d7dcde052ad34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b21e0ff-3d00-45f6-af8d-3275d26a74df",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

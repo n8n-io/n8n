@@ -1,0 +1,53 @@
+packages/@n8n/agents/src/runtime/telemetry/runtime-telemetry.ts
+  s_b370a35485f958::t_02cfb6a8c36bc7 1,59
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_b370a35485f958::t_1fc80220c55bae 1-2,65,96,175,178
+packages/@n8n/agents/src/utils/zod.ts
+  s_b370a35485f958::t_dbc5c2235aad81 1
+packages/@n8n/ai-utilities/src/converters/tool.ts
+  s_b370a35485f958::t_40c0747bf45b7c 7,56
+packages/@n8n/ai-utilities/src/json-schema/index.ts
+  s_b370a35485f958::t_ed10c13a69ebcc 2,7,19
+packages/@n8n/ai-utilities/src/json-schema/zod-to-json-schema.test.ts
+  s_b370a35485f958::t_b43f68081064f4 1-42
+packages/@n8n/ai-utilities/src/json-schema/zod-to-json-schema.ts
+  s_b370a35485f958::t_6d52da11b1fa3a 1-29
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_b370a35485f958::t_4bf58bcdd61770 1-2
+packages/@n8n/instance-ai/src/tools/mcp-servers.tool.test.ts
+  s_b370a35485f958::t_bd465dde9e744b 1-2
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_b370a35485f958::t_0fc9822e254f03 7
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_b370a35485f958::t_79201f8a5b281b 11
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_b370a35485f958::t_c1d15c66cae17f 13
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_b370a35485f958::t_6c8234ca6e9a66 1,71
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_b370a35485f958::t_1eef3afdf85514 2,8
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_b370a35485f958::t_12b89af5e3f7ab 1-2
+packages/cli/src/modules/instance-ai/browser/browser-local-mcp-server.ts
+  s_b370a35485f958::t_5d3c74f541918a 1,54
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_b370a35485f958::t_0e8eef6765f2ad 1
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_b370a35485f958::t_03c0e9076b5394 8,135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "def56421750ace4b0f0975403ee9aed7e61c25e1",
+  "prompts": {},
+  "sessions": {
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

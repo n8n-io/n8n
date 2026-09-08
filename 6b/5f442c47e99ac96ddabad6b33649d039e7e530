@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_83d849f9d96f1b::t_9267e0974b0139 1072
+  s_83d849f9d96f1b::t_0f3b60a54097c1 961
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_83d849f9d96f1b::t_ee32ecc92e6276 136-138
+  s_83d849f9d96f1b::t_f0e4e9a247e81f 60-65
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_83d849f9d96f1b::t_6dd971bf1a86b4 22-23,26-31
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_83d849f9d96f1b::t_bfe1fdbd5cf9f1 121-133
+  s_83d849f9d96f1b::t_47d223b7918e06 6
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_83d849f9d96f1b::t_a1107e17303dc2 928-975
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "6b5f442c47e99ac96ddabad6b33649d039e7e530",
+  "prompts": {},
+  "sessions": {
+    "s_83d849f9d96f1b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e9a7df39-9086-49f7-a010-ddc0bb8a5b1c",
+        "model": "cursor-grok-4.6-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

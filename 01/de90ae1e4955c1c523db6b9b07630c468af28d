@@ -1,0 +1,51 @@
+packages/@n8n/utils/src/redaction/sanitize-error-detail.ts
+  s_b370a35485f958::t_7d6ed757628299 5
+packages/@n8n/ai-utilities/src/llm-output/extract-json.ts
+  s_b370a35485f958::t_f7b5f6185b3175 2,8-23,25,27-33
+packages/@n8n/utils/src/redaction/sensitive-key.ts
+  s_b370a35485f958::t_b09378b831534c 1-3,5
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_b370a35485f958::t_e958ef2d783c15 22-25
+  s_b370a35485f958::t_6fd085ff0651c6 116,120-122
+  s_b370a35485f958::t_86d78f26cf67d8 161-167
+  s_b370a35485f958::t_4038bf32828f68 168-169
+packages/@n8n/instance-ai/src/__tests__/error-formatting.test.ts
+  s_b370a35485f958::t_71b15ade7a8943 23-24
+packages/@n8n/utils/src/redaction/redact-text.ts
+  s_b370a35485f958::t_6f4e3588cd8436 49-56
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_b370a35485f958::t_e87f9cc2a07a6c 62-64,68,80
+  s_b370a35485f958::t_b13876c9ce6cf3 33-36
+  s_b370a35485f958::t_d70568a023d134 20-23
+packages/@n8n/ai-utilities/src/llm-output/extract-json.test.ts
+  s_b370a35485f958::t_df8024d8718e1e 16-28,32-36,43
+  s_b370a35485f958::t_fdc29f99ede22f 40-42
+packages/@n8n/utils/src/redaction/sanitize-error-detail.test.ts
+  s_b370a35485f958::t_f174c0d7804459 9-11
+packages/@n8n/utils/src/redaction/redact-text.test.ts
+  s_b370a35485f958::t_c62c2e94b54549 57,60
+packages/@n8n/utils/src/redaction/sensitive-headers.ts
+  s_b370a35485f958::t_2443d44c6b9d7b 4
+packages/@n8n/instance-ai/src/error-formatting.ts
+  s_b370a35485f958::t_28cd0c88266d64 39-44
+packages/cli/src/modules/instance-ai/eval/llm-completion-mock.ts
+  s_b370a35485f958::t_bb2e788d4e9ad4 8
+packages/cli/src/modules/instance-ai/eval/mock-handler.ts
+  s_b370a35485f958::t_ca89e258a7e590 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "01de90ae1e4955c1c523db6b9b07630c468af28d",
+  "prompts": {},
+  "sessions": {
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

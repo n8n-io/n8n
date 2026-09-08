@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/VerificationVerdictCard.vue
+  s_5da2fe073f2f3a::t_944f4e87b9987f 117
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/VerificationVerdictCard.test.ts
+  s_5da2fe073f2f3a::t_629bc6a8015cdf 39-44,79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b12fec926b7ca2606a8c57b4a44741b54824a3d1",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5da2fe073f2f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c08877c-0969-4b5a-9bc2-3d40e58743ff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
