@@ -1,4 +1,4 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { ModulePubSubPublisher, ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,8 +11,6 @@ import type {
 } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
 import type { OtelService } from '../otel.service';
-
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 const req = mock<AuthenticatedRequest>();
 const res = mock<Response>();
@@ -38,7 +36,7 @@ describe('OtelSettingsController', () => {
 	let otelService: ReturnType<typeof mock<OtelService>>;
 	let otelLifecycleHandler: ReturnType<typeof mock<OtelLifecycleHandler>>;
 	let moduleRegistry: ReturnType<typeof mock<ModuleRegistry>>;
-	let publisher: ReturnType<typeof mock<Publisher>>;
+	let publisher: ReturnType<typeof mock<ModulePubSubPublisher>>;
 	let controller: OtelSettingsController;
 
 	beforeEach(() => {
@@ -47,7 +45,7 @@ describe('OtelSettingsController', () => {
 		otelService = mock<OtelService>();
 		otelLifecycleHandler = mock<OtelLifecycleHandler>();
 		moduleRegistry = mock<ModuleRegistry>();
-		publisher = mock<Publisher>();
+		publisher = mock<ModulePubSubPublisher>();
 		controller = new OtelSettingsController(
 			otelSettingsService,
 			otelService,

@@ -18,6 +18,7 @@ import type {
 } from 'n8n-workflow';
 import path from 'path';
 
+import { bindModulePorts } from '@/modules/module-ports';
 import { WorkflowRunner } from '@/workflow-runner';
 import * as utils from '@test-integration/utils';
 
@@ -49,6 +50,7 @@ function loadNodesFromDist(nodeNames: string[]): INodeTypeData {
 export async function initOtelTestEnvironment() {
 	const otel = OtelTestProvider.create();
 
+	bindModulePorts();
 	await testModules.loadModules(['otel']);
 	await testDb.init();
 	await Container.get(ModuleRegistry).initModules('main');

@@ -1,4 +1,4 @@
-import type { LicenseState, Logger } from '@n8n/backend-common';
+import type { LicenseState, Logger, WorkflowProjectLookup } from '@n8n/backend-common';
 import type {
 	NodeExecuteAfterContext,
 	NodeExecuteBeforeContext,
@@ -8,8 +8,6 @@ import type {
 import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
-
-import type { OwnershipService } from '@/services/ownership.service';
 
 import type { ExecutionLevelTracer } from '../execution-level-tracer';
 import { OtelLifecycleHandler, countInputItems, countOutputItems } from '../otel-lifecycle-handler';
@@ -66,7 +64,7 @@ describe('OtelLifecycleHandler', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
 		let otelSettingsService = makeOtelSettingsService();
-		const ownershipService = mock<OwnershipService>();
+		const workflowProjectLookup = mock<WorkflowProjectLookup>();
 		const logger = mock<Logger>();
 		const licenseState = mock<LicenseState>();
 		let handler: OtelLifecycleHandler;
@@ -106,22 +104,26 @@ describe('OtelLifecycleHandler', () => {
 				traceContextService,
 				mock<OtelService>(),
 				otelSettingsService,
-				ownershipService,
+				workflowProjectLookup,
 				logger,
 				licenseState,
 			);
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 			tracer.startWorkflow.mockReturnValue(generatedSpanContext);
-			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-default' } as never);
+			workflowProjectLookup.getWorkflowProjectCached.mockResolvedValue({
+				id: 'proj-default',
+			} as never);
 		});
 
-		it('should look up project via OwnershipService and pass id to the tracer', async () => {
+		it('should look up project via WorkflowProjectLookup and pass id to the tracer', async () => {
 			traceContextService.get.mockResolvedValueOnce(undefined);
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({ id: 'proj-1' } as never);
+			workflowProjectLookup.getWorkflowProjectCached.mockResolvedValueOnce({
+				id: 'proj-1',
+			} as never);
 
 			await handler.onWorkflowStart(baseCtx);
 
-			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
+			expect(workflowProjectLookup.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ project: { id: 'proj-1' } }),
 			);
@@ -129,7 +131,7 @@ describe('OtelLifecycleHandler', () => {
 
 		it('should pass project customAttributes to the tracer when project has telemetry tags', async () => {
 			traceContextService.get.mockResolvedValueOnce(undefined);
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+			workflowProjectLookup.getWorkflowProjectCached.mockResolvedValueOnce({
 				id: 'proj-1',
 				customTelemetryTags: [
 					{ key: 'env', value: 'production' },
@@ -152,7 +154,7 @@ describe('OtelLifecycleHandler', () => {
 		it('should omit project and workflow customAttributes when custom OTel span attributes are not licensed', async () => {
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(false);
 			traceContextService.get.mockResolvedValueOnce(undefined);
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+			workflowProjectLookup.getWorkflowProjectCached.mockResolvedValueOnce({
 				id: 'proj-1',
 				customTelemetryTags: [{ key: 'env', value: 'production' }],
 			} as never);
@@ -177,7 +179,7 @@ describe('OtelLifecycleHandler', () => {
 
 		it('should pass undefined customAttributes when project has no telemetry tags', async () => {
 			traceContextService.get.mockResolvedValueOnce(undefined);
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+			workflowProjectLookup.getWorkflowProjectCached.mockResolvedValueOnce({
 				id: 'proj-empty',
 				customTelemetryTags: [],
 			} as never);
@@ -193,7 +195,7 @@ describe('OtelLifecycleHandler', () => {
 
 		it('should start workflow span without project if project lookup fails', async () => {
 			traceContextService.get.mockResolvedValueOnce(undefined);
-			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('DB error'));
+			workflowProjectLookup.getWorkflowProjectCached.mockRejectedValueOnce(new Error('DB error'));
 
 			await expect(handler.onWorkflowStart(baseCtx)).resolves.not.toThrow();
 
@@ -402,7 +404,7 @@ describe('OtelLifecycleHandler', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
 		let otelSettingsService = makeOtelSettingsService();
-		const ownershipService = mock<OwnershipService>();
+		const workflowProjectLookup = mock<WorkflowProjectLookup>();
 		const logger = mock<Logger>();
 		const licenseState = mock<LicenseState>();
 		let handler: OtelLifecycleHandler;
@@ -422,18 +424,20 @@ describe('OtelLifecycleHandler', () => {
 				traceContextService,
 				mock<OtelService>(),
 				otelSettingsService,
-				ownershipService,
+				workflowProjectLookup,
 				logger,
 				licenseState,
 			);
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 			tracer.startWorkflow.mockReturnValue(resumedSpanContext);
-			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-default' } as never);
+			workflowProjectLookup.getWorkflowProjectCached.mockResolvedValue({
+				id: 'proj-default',
+			} as never);
 		});
 
-		it('should look up project via OwnershipService on resume', async () => {
+		it('should look up project via WorkflowProjectLookup on resume', async () => {
 			traceContextService.get.mockResolvedValueOnce(undefined);
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+			workflowProjectLookup.getWorkflowProjectCached.mockResolvedValueOnce({
 				id: 'resume-proj',
 			} as never);
 
@@ -445,7 +449,7 @@ describe('OtelLifecycleHandler', () => {
 				executionId: 'exec-resume',
 			} as never);
 
-			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
+			expect(workflowProjectLookup.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ project: { id: 'resume-proj' } }),
 			);
@@ -453,7 +457,7 @@ describe('OtelLifecycleHandler', () => {
 
 		it('should pass project customAttributes on resume when project has telemetry tags', async () => {
 			traceContextService.get.mockResolvedValueOnce(undefined);
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+			workflowProjectLookup.getWorkflowProjectCached.mockResolvedValueOnce({
 				id: 'resume-proj-tags',
 				customTelemetryTags: [{ key: 'env', value: 'staging' }],
 			} as never);
@@ -479,7 +483,7 @@ describe('OtelLifecycleHandler', () => {
 		it('should omit project customAttributes on resume when custom OTel span attributes are not licensed', async () => {
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(false);
 			traceContextService.get.mockResolvedValueOnce(undefined);
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+			workflowProjectLookup.getWorkflowProjectCached.mockResolvedValueOnce({
 				id: 'resume-proj-tags',
 				customTelemetryTags: [{ key: 'env', value: 'staging' }],
 			} as never);
@@ -511,7 +515,7 @@ describe('OtelLifecycleHandler', () => {
 		});
 
 		it('should start workflow span without project if project lookup fails on resume', async () => {
-			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('DB error'));
+			workflowProjectLookup.getWorkflowProjectCached.mockRejectedValueOnce(new Error('DB error'));
 
 			await expect(
 				handler.onWorkflowResume({
@@ -576,7 +580,7 @@ describe('OtelLifecycleHandler', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
 		let otelSettingsService = makeOtelSettingsService();
-		const ownershipService = mock<OwnershipService>();
+		const workflowProjectLookup = mock<WorkflowProjectLookup>();
 		const logger = mock<Logger>();
 		const licenseState = mock<LicenseState>();
 		let handler: OtelLifecycleHandler;
@@ -589,7 +593,7 @@ describe('OtelLifecycleHandler', () => {
 				traceContextService,
 				mock<OtelService>(),
 				otelSettingsService,
-				ownershipService,
+				workflowProjectLookup,
 				logger,
 				licenseState,
 			);
@@ -654,7 +658,7 @@ describe('OtelLifecycleHandler', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
 		let otelSettingsService = makeOtelSettingsService();
-		const ownershipService = mock<OwnershipService>();
+		const workflowProjectLookup = mock<WorkflowProjectLookup>();
 		const logger = mock<Logger>();
 		const licenseState = mock<LicenseState>();
 		let handler: OtelLifecycleHandler;
@@ -700,7 +704,7 @@ describe('OtelLifecycleHandler', () => {
 				traceContextService,
 				mock<OtelService>(),
 				otelSettingsService,
-				ownershipService,
+				workflowProjectLookup,
 				logger,
 				licenseState,
 			);
@@ -714,7 +718,7 @@ describe('OtelLifecycleHandler', () => {
 				traceContextService,
 				mock<OtelService>(),
 				otelSettingsService,
-				ownershipService,
+				workflowProjectLookup,
 				logger,
 				licenseState,
 			);
@@ -811,7 +815,7 @@ describe('productionExecutionsOnly filter', () => {
 	const tracer = mock<ExecutionLevelTracer>();
 	const traceContextService = mock<TraceContextService>();
 	let otelSettingsService = makeOtelSettingsService();
-	const ownershipService = mock<OwnershipService>();
+	const workflowProjectLookup = mock<WorkflowProjectLookup>();
 	const logger = mock<Logger>();
 	const licenseState = mock<LicenseState>();
 	let handler: OtelLifecycleHandler;
@@ -910,14 +914,14 @@ describe('productionExecutionsOnly filter', () => {
 			productionExecutionsOnly: true,
 			includeNodeSpans: true,
 		});
-		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+		workflowProjectLookup.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
 		traceContextService.get.mockResolvedValue(undefined);
 		handler = new OtelLifecycleHandler(
 			tracer,
 			traceContextService,
 			mock<OtelService>(),
 			otelSettingsService,
-			ownershipService,
+			workflowProjectLookup,
 			logger,
 			licenseState,
 		);
@@ -1009,7 +1013,7 @@ describe('onReloadOtelConfig', () => {
 			mock<TraceContextService>(),
 			otelService,
 			makeOtelSettingsService(),
-			mock<OwnershipService>(),
+			mock<WorkflowProjectLookup>(),
 			mock<Logger>(),
 			licenseState,
 		);

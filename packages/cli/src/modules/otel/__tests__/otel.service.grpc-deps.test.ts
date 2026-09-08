@@ -48,6 +48,7 @@ describe('OtelService with real gRPC dependencies', () => {
 		service = new OtelService(
 			mock<OtelSettingsService>(),
 			mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' }),
+			{ version: '1.2.3' },
 			logger,
 			mock<OutboundHttp>(),
 		);

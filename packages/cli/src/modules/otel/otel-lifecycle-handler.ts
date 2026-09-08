@@ -1,4 +1,4 @@
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { LicenseState, Logger, WorkflowProjectLookup } from '@n8n/backend-common';
 import { OnLifecycleEvent, OnPubSubEvent } from '@n8n/decorators';
 import type {
 	WorkflowExecuteBeforeContext,
@@ -15,7 +15,6 @@ import type { CustomAttributes } from './execution-level-tracer.types';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelService } from './otel.service';
 import { TraceContextService } from './tracing-context';
-import { OwnershipService } from '../../services/ownership.service';
 
 const isCustomTelemetryTag = (value: unknown): value is ICustomTelemetryTag =>
 	typeof value === 'object' &&
@@ -43,7 +42,7 @@ export class OtelLifecycleHandler {
 		private readonly traceContextService: TraceContextService,
 		private readonly otelService: OtelService,
 		private readonly otelSettingsService: OtelSettingsService,
-		private readonly ownershipService: OwnershipService,
+		private readonly workflowProjectLookup: WorkflowProjectLookup,
 		private readonly logger: Logger,
 		private readonly licenseState: LicenseState,
 	) {}
@@ -75,7 +74,7 @@ export class OtelLifecycleHandler {
 			: // This will return "null" if there is no traceparent header in the trigger node. (e.g. webhook)
 				await this.traceContextService.get(ctx.executionId);
 
-		const project = await this.ownershipService
+		const project = await this.workflowProjectLookup
 			.getWorkflowProjectCached(ctx.workflow.id)
 			.catch((error: unknown) => {
 				this.logger.warn('Failed to fetch project for OTEL span', {
@@ -115,7 +114,7 @@ export class OtelLifecycleHandler {
 
 		const previousWorkflowExecution = await this.traceContextService.get(ctx.executionId);
 
-		const project = await this.ownershipService
+		const project = await this.workflowProjectLookup
 			.getWorkflowProjectCached(ctx.workflow.id)
 			.catch((error: unknown) => {
 				this.logger.warn('Failed to fetch project for OTEL span', {

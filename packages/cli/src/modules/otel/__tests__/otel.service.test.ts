@@ -197,7 +197,13 @@ describe('OtelService', () => {
 		waitForReady.mockImplementation((_deadline: number, callback: (error?: Error) => void) =>
 			callback(),
 		);
-		service = new OtelService(otelSettingsService, instanceSettings, logger, outboundHttp);
+		service = new OtelService(
+			otelSettingsService,
+			instanceSettings,
+			{ version: '1.2.3' },
+			logger,
+			outboundHttp,
+		);
 	});
 
 	describe('init', () => {

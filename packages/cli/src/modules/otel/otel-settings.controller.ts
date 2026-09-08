@@ -1,13 +1,11 @@
 import { TestOtelTraceDto, UpdateOtelSettingsDto } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
+import { ModulePubSubPublisher, ModuleRegistry } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Post, Put, RestController } from '@n8n/decorators';
 
 import { OtelLifecycleHandler } from './otel-lifecycle-handler';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelService } from './otel.service';
-
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 @RestController('/otel')
 export class OtelSettingsController {
@@ -16,7 +14,7 @@ export class OtelSettingsController {
 		private readonly otelService: OtelService,
 		private readonly otelLifecycleHandler: OtelLifecycleHandler,
 		private readonly moduleRegistry: ModuleRegistry,
-		private readonly publisher: Publisher,
+		private readonly publisher: ModulePubSubPublisher,
 	) {}
 
 	@Get('/settings')

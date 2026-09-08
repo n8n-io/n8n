@@ -15,6 +15,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
+import { bindModulePorts } from '@/modules/module-ports';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
@@ -148,6 +149,8 @@ export const setupTestServer = ({
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
+		// Mirrors the production order: the ports are bound before modules load.
+		bindModulePorts();
 		if (modules) await testModules.loadModules(modules);
 		await testDb.init();
 

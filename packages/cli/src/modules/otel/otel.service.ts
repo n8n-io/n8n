@@ -1,5 +1,5 @@
 import type { Metadata } from '@grpc/grpc-js';
-import { Logger } from '@n8n/backend-common';
+import { InstanceVersion, Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import type { DiagLogger } from '@opentelemetry/api';
@@ -22,8 +22,6 @@ import { OtelSettingsService } from './otel-settings.service';
 import { OtelConfig } from './otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
 
-import { N8N_VERSION } from '@/constants';
-
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
 
 const stripEmptyResolutionNote = (message: string) =>
@@ -37,6 +35,7 @@ export class OtelService {
 	constructor(
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly instanceVersion: InstanceVersion,
 		private readonly logger: Logger,
 		private readonly outboundHttp: OutboundHttp,
 	) {}
@@ -86,7 +85,7 @@ export class OtelService {
 					provider = new BasicTracerProvider({
 						resource: resourceFromAttributes({
 							[ATTR.OTEL_SERVICE_NAME]: connection.exporterServiceName,
-							[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
+							[ATTR.OTEL_SERVICE_VERSION]: this.instanceVersion.version,
 							[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
 							[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
 						}),
@@ -153,7 +152,7 @@ export class OtelService {
 		this.sdk = new NodeSDK({
 			resource: resourceFromAttributes({
 				[ATTR.OTEL_SERVICE_NAME]: settings.exporterServiceName,
-				[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
+				[ATTR.OTEL_SERVICE_VERSION]: this.instanceVersion.version,
 				[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
 				[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
 			}),

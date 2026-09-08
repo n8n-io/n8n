@@ -7,6 +7,7 @@ import path from 'node:path';
 import picocolors from 'picocolors';
 import { z, ZodError } from 'zod';
 
+import { bindModulePorts } from './modules/module-ports';
 import './zod-alias-support';
 
 /**
@@ -27,6 +28,9 @@ export class CommandRegistry {
 	}
 
 	async execute() {
+		// Before any module is loaded, so no module can resolve an unbound port.
+		bindModulePorts();
+
 		if (this.commandName === '--help' || this.commandName === '-h') {
 			await this.listAllCommands();
 			return process.exit(0);
