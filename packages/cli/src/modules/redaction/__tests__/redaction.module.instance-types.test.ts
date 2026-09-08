@@ -2,6 +2,7 @@ import type { LicenseState, ModulesConfig } from '@n8n/backend-common';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { INSTANCE_TYPES } from '@n8n/constants';
+import type { SystemTaskMetadata } from '@n8n/decorators';
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
@@ -40,6 +41,7 @@ describe('RedactionModule instance-type eligibility', () => {
 			mock<LicenseState>(),
 			mock<Logger>(),
 			mock<ModulesConfig>(),
+			mock<SystemTaskMetadata>(),
 		);
 	};
 

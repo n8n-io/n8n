@@ -1,6 +1,7 @@
 import type { LicenseState, ModulesConfig } from '@n8n/backend-common';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { SystemTaskMetadata } from '@n8n/decorators';
 import { ContextEstablishmentHookMetadata, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -31,6 +32,7 @@ describe('RedactionModule hook registration', () => {
 			mock<LicenseState>(),
 			mock<Logger>(),
 			mock<ModulesConfig>(),
+			mock<SystemTaskMetadata>(),
 		);
 
 		await registry.initModules('worker');
