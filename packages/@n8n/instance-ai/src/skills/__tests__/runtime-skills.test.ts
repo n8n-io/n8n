@@ -232,14 +232,20 @@ describe('Instance AI runtime skills', () => {
 			name: 'n8n-docs-assistant',
 			recommendedTools: ['n8n-docs', 'credentials', 'nodes'],
 		});
-		expect(skill?.description).toContain('Load n8n-docs via load_tool before calling it');
 		expect(skill?.description).toContain(
-			'credential setup questions opened from the credential modal',
+			'credential setup questions — including which OAuth scopes or permissions a provider app needs',
 		);
 		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('n8n-docs-assistant');
-		expect(loaded?.instructions).toContain('Before calling `n8n-docs`, load it via `load_tool`');
+		expect(loaded?.instructions).toContain(
+			'`n8n-docs` is always loaded — call it directly, with no `load_tool` step',
+		);
+		// `n8n-docs` is in ALWAYS_LOADED_TOOL_NAMES, so a `load_tool` prerequisite is
+		// stale and prices the docs route above web search — the failure INS-749 fixed
+		// structurally and AGENT-743 hit again through this text.
+		expect(loaded?.instructions).not.toContain('load it via `load_tool`');
+		expect(skill?.description).not.toContain('load_tool');
 		expect(loaded?.instructions).toContain('n8n-docs(action="lookup")');
 		expect(loaded?.instructions).toContain('intent: "credential-setup"');
 		expect(loaded?.instructions).toContain('oauthRedirectUrl');

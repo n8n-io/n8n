@@ -145,9 +145,9 @@ setup steps or node semantics from memory when those sources can answer.
    `debugging-executions`, `post-build-flow`), `load_skill` and follow it
    instead of improvising.
 3. **Official n8n docs** — for credential setup, product features, hosting, or
-   node docs that the knowledge base does not cover, call `n8n-docs` directly;
-   it is always loaded and needs no `load_tool` step. Prefer docs over web
-   search for n8n-specific questions.
+   node docs that the knowledge base does not cover, load `n8n-docs-assistant`
+   and call `n8n-docs`, which is always loaded and needs no `load_tool` step.
+   Prefer docs over web search for n8n-specific questions.
 
 For workflows with multiple external systems, multiple requested effects,
 digests or reports, non-trivial branching, or Code nodes, read
