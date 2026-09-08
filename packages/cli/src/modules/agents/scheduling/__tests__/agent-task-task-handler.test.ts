@@ -140,7 +140,11 @@ describe('AgentTaskTaskHandler', () => {
 	it('reports dispatched after handing the run off', async () => {
 		const decision = await handler.execute(buildTask(), report);
 
-		expect(agentTaskService.startScheduledRun).toHaveBeenCalledWith(AGENT_ID, TASK_ID);
+		expect(agentTaskService.startScheduledRun).toHaveBeenCalledWith(
+			AGENT_ID,
+			TASK_ID,
+			scheduledFor,
+		);
 		expect(onDispatch).toHaveBeenCalledTimes(1);
 		expect(decision).toBe(report.dispatched());
 	});

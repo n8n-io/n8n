@@ -214,6 +214,8 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_128_ cronExpression
   varchar_32_ id
+  integer misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_128_ name
   text objective
   varchar_64_ timezone

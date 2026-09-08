@@ -1,4 +1,8 @@
-import { AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH, AGENT_TASK_ID_MAX_LENGTH } from '@n8n/api-types';
+import {
+	AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH,
+	AGENT_TASK_ID_MAX_LENGTH,
+	type AgentTaskMisfirePolicy,
+} from '@n8n/api-types';
 import { WithTimestamps } from '@n8n/db';
 import {
 	Column,
@@ -58,4 +62,19 @@ export class AgentTask extends WithTimestamps {
 		comment: 'IANA timezone the cron is evaluated in; null falls back to the instance timezone',
 	})
 	timezone: string | null;
+
+	@Column({
+		type: 'varchar',
+		length: 16,
+		nullable: true,
+		comment: 'Missed-run policy; null keeps the scheduler default behavior',
+	})
+	misfirePolicy: AgentTaskMisfirePolicy | null;
+
+	@Column({
+		type: 'int',
+		nullable: true,
+		comment: 'Per-task misfire grace in seconds; null or zero uses the instance setting',
+	})
+	misfireGraceSeconds: number | null;
 }

@@ -6,6 +6,10 @@ export const AGENT_TASK_NAME_MAX_LENGTH = 128;
 export const AGENT_TASK_ID_MAX_LENGTH = 32;
 export const AGENT_TASK_OBJECTIVE_MAX_LENGTH = 10_000;
 export const AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH = 128;
+export const AGENT_TASK_MISFIRE_GRACE_MAX_SECONDS = 30 * 24 * 60 * 60;
+
+export const AGENT_TASK_MISFIRE_POLICIES = ['skip', 'coalesce'] as const;
+export type AgentTaskMisfirePolicy = (typeof AGENT_TASK_MISFIRE_POLICIES)[number];
 
 /**
  * Persisted, user-editable body of a task. Membership + enabled state live in
@@ -23,6 +27,8 @@ export const agentTaskSchema = z.object({
 	timezone: StrictTimeZoneSchema.describe(
 		'IANA timezone the cron is evaluated in, for example "Europe/London". Omit to use the instance timezone.',
 	).nullish(),
+	misfirePolicy: z.enum(AGENT_TASK_MISFIRE_POLICIES).optional(),
+	misfireGraceSeconds: z.number().int().min(0).max(AGENT_TASK_MISFIRE_GRACE_MAX_SECONDS).optional(),
 });
 
 export type AgentTaskConfig = z.infer<typeof agentTaskSchema>;

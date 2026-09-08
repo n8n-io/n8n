@@ -39,6 +39,8 @@ function makeTask(overrides: Partial<AgentTask> = {}): AgentTask {
 		cronExpression: '0 9 * * *',
 		// Null is the pre-existing shape: the cron runs on the instance timezone.
 		timezone: null,
+		misfirePolicy: null,
+		misfireGraceSeconds: null,
 		createdAt: new Date('2026-01-01T08:00:00.000Z'),
 		updatedAt: new Date('2026-01-02T08:00:00.000Z'),
 		...overrides,
@@ -89,6 +91,8 @@ function makeSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTaskSnap
 		objective: 'Summarize messages',
 		cronExpression: '0 9 * * *',
 		timezone: null,
+		misfirePolicy: null,
+		misfireGraceSeconds: null,
 		createdAt: new Date('2026-01-01T08:00:00.000Z'),
 		updatedAt: new Date('2026-01-02T08:00:00.000Z'),
 		...overrides,
@@ -116,11 +120,13 @@ async function runTaskOf(
 	service: AgentTaskService,
 	agentId: string,
 	taskId: string,
+	scheduledFor?: Date,
 ): Promise<void> {
-	await (service as unknown as { runTask(agentId: string, taskId: string): Promise<void> }).runTask(
-		agentId,
-		taskId,
-	);
+	await (
+		service as unknown as {
+			runTask(agentId: string, taskId: string, scheduledFor?: Date): Promise<void>;
+		}
+	).runTask(agentId, taskId, scheduledFor);
 }
 
 async function runScheduledTaskOf(
@@ -142,6 +148,11 @@ describe('AgentTaskService', () => {
 	const globalConfig = {
 		generic: { timezone: 'UTC' },
 		multiMainSetup: { enabled: false },
+		scheduler: {
+			misfireGraceSeconds: 60,
+			executorIntervalSeconds: 5,
+			materializationWindowSeconds: 60,
+		},
 	} as unknown as GlobalConfig;
 	let taskRepository: ReturnType<typeof mock<AgentTaskRepository>>;
 	let taskSnapshotRepository: ReturnType<typeof mock<AgentTaskSnapshotRepository>>;
@@ -971,6 +982,52 @@ describe('AgentTaskService', () => {
 			expect(message).toContain('This task is scheduled in Asia/Tokyo.');
 		});
 
+		it('adds the scheduled time when a run starts later than its effective grace', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-08-04T10:02:00.000Z'));
+			try {
+				(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
+				(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
+					makeSnapshot({ timezone: 'Asia/Tokyo', misfireGraceSeconds: 60 }),
+				);
+				(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
+					emptyStream(),
+				);
+
+				await runTaskOf(service, AGENT_ID, 'task-1', new Date('2026-08-04T10:00:00.000Z'));
+
+				const { message } = (agentExecutionOrchestratorService.executeForTaskPublished as Mock).mock
+					.calls[0][0] as { message: string };
+				expect(message).toContain(
+					'This run was scheduled for 2026-08-04T19:00:00.000+09:00 and starts late.',
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('does not add a late hint while a run is inside its effective grace', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-08-04T10:01:30.000Z'));
+			try {
+				(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
+				(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
+					makeSnapshot({ misfireGraceSeconds: 120 }),
+				);
+				(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
+					emptyStream(),
+				);
+
+				await runTaskOf(service, AGENT_ID, 'task-1', new Date('2026-08-04T10:00:00.000Z'));
+
+				const { message } = (agentExecutionOrchestratorService.executeForTaskPublished as Mock).mock
+					.calls[0][0] as { message: string };
+				expect(message).not.toContain('and starts late.');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('skips when the agent is unpublished', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null }));
 
@@ -1164,6 +1221,9 @@ describe('AgentTaskService', () => {
 					memory: expect.objectContaining({ resourceId: 'task:task-1' }),
 				}),
 			);
+			const { message } = (agentExecutionOrchestratorService.executeForTaskNow as Mock).mock
+				.calls[0][0] as { message: string };
+			expect(message).not.toContain('and starts late.');
 		});
 
 		it('throws NotFoundError when the task does not exist', async () => {

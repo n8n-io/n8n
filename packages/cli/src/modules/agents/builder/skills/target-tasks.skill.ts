@@ -103,6 +103,10 @@ Initial Build rules in your system prompt. Never create a placeholder or
 - Set \`timezone\` to the IANA zone whenever the user names a timezone or a
   location ("9am in Tokyo" -> "Asia/Tokyo"); omit it to run on the instance
   timezone.
+- Set \`misfirePolicy\` to \`skip\` to drop missed executions. Set it to
+  \`coalesce\` to run the most recent missed execution after downtime. Use
+  \`misfireGraceSeconds\` to set how late an execution can start before the
+  policy applies. Set it to 0 or omit it to use the instance setting.
 - Call \`create_tasks\` once with a \`tasks\` array containing every task you
   currently know how to write — do not spread multiple fully-specified tasks
   across separate calls. A single task is still a one-item array.

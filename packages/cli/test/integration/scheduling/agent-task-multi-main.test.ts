@@ -63,7 +63,10 @@ describe('agent tasks across two mains over one database', () => {
 	};
 
 	/** A published agent with one task on the given cron. */
-	const publishAgentWithTask = async (cronExpression = '* * * * *') => {
+	const publishAgentWithTask = async (
+		cronExpression = '* * * * *',
+		misfire: { policy?: 'skip' | 'coalesce'; graceSeconds?: number } = {},
+	) => {
 		const versionId = uuid();
 		// Task ids are capped at 32 characters.
 		const taskId = uuid().replaceAll('-', '');
@@ -97,6 +100,8 @@ describe('agent tasks across two mains over one database', () => {
 				objective: 'Report',
 				cronExpression,
 				timezone: null,
+				misfirePolicy: misfire.policy ?? null,
+				misfireGraceSeconds: misfire.graceSeconds ?? null,
 			},
 		]);
 		await agentRepo.update({ id: agent.id }, { activeVersionId: versionId });
@@ -127,7 +132,7 @@ describe('agent tasks across two mains over one database', () => {
 		registrar = Container.get(AgentTaskJobRegistrar);
 		mainA = buildMain('main-a');
 		mainB = buildMain('main-b');
-	});
+	}, 120_000);
 
 	beforeEach(async () => {
 		startScheduledRun.mockReset();
@@ -141,8 +146,8 @@ describe('agent tasks across two mains over one database', () => {
 	});
 
 	afterAll(async () => {
-		await mainA.stop();
-		await mainB.stop();
+		await mainA?.stop();
+		await mainB?.stop();
 		await testDb.terminate();
 	});
 
@@ -158,7 +163,36 @@ describe('agent tasks across two mains over one database', () => {
 			expect(occurrence.status).toBe('succeeded');
 		});
 		expect(startScheduledRun).toHaveBeenCalledTimes(1);
-		expect(startScheduledRun).toHaveBeenCalledWith(agentId, taskId);
+		expect(startScheduledRun).toHaveBeenCalledWith(agentId, taskId, expect.any(Date));
+	}, 15_000);
+
+	it('coalesces a backlog into one late run and advances the job clock', async () => {
+		const { agentId, taskId } = await publishAgentWithTask('0 0 * * *', {
+			policy: 'coalesce',
+			graceSeconds: 60,
+		});
+		await registrar.reconcile(agentId);
+		const job = await jobRepo.findOneByOrFail({ ownerId: agentId, taskType: AGENT_TASK_TASK_TYPE });
+		await taskRepo.delete({ jobId: job.id });
+		await jobRepo.update(
+			{ id: job.id },
+			{ nextRunAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
+		);
+
+		await mainA.materialize();
+		const occurrences = await taskRepo.findBy({ jobId: job.id });
+		expect(occurrences).toHaveLength(1);
+		expect(occurrences[0].scheduledFor.getTime()).toBeLessThan(Date.now() - 60_000);
+
+		await mainA.execute();
+		await retryUntil(async () => {
+			expect((await taskRepo.findOneByOrFail({ id: occurrences[0].id })).status).toBe('succeeded');
+		});
+
+		expect(startScheduledRun).toHaveBeenCalledTimes(1);
+		expect(startScheduledRun).toHaveBeenCalledWith(agentId, taskId, occurrences[0].scheduledFor);
+		const advancedJob = await jobRepo.findOneByOrFail({ id: job.id });
+		expect(advancedJob.nextRunAt?.getTime()).toBeGreaterThan(Date.now());
 	}, 15_000);
 
 	it('does not run a task unpublished on another main after its occurrence was recorded, and removes its job', async () => {

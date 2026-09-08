@@ -23,9 +23,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
-| [agent_task_definition](agent_task_definition.md) | 8 |  | table |
+| [agent_task_definition](agent_task_definition.md) | 10 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
-| [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
+| [agent_task_snapshot](agent_task_snapshot.md) | 11 |  | table |
 | [agent_workflow_dependency](agent_workflow_dependency.md) | 3 |  | table |
 | [agents](agents.md) | 14 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
@@ -554,6 +554,8 @@ erDiagram
   datetime_3_ createdAt
   varchar_128_ cronExpression
   varchar_32_ id PK
+  INTEGER misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_128_ name
   TEXT objective
   varchar_64_ timezone
@@ -571,6 +573,8 @@ erDiagram
   datetime_3_ createdAt
   varchar_128_ cronExpression
   boolean enabled
+  INTEGER misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_128_ name
   TEXT objective
   varchar_32_ taskId PK

@@ -7,6 +7,8 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | cronExpression | varchar(128) |  | false |  |  | Cron schedule evaluated using the instance timezone |
 | enabled | boolean |  | false |  |  | Published enabled state for this task at publish time |
+| misfireGraceSeconds | integer |  | true |  |  | Per-task grace in seconds; null or zero uses the instance setting |
+| misfirePolicy | varchar(16) |  | true |  |  | Missed-run policy; null keeps the current skip behavior |
 | name | varchar(128) |  | false |  |  |  |
 | objective | text |  | false |  |  | User-authored instruction sent to the agent when this task runs |
 | taskId | varchar(32) |  | false |  |  | Stable task ID referenced from the published agent JSON config |
@@ -18,6 +20,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_agent_task_snapshot_misfirePolicy | CHECK | CHECK ((("misfirePolicy")::text = ANY ((ARRAY['skip'::character varying, 'coalesce'::character varying])::text[]))) |
 | FK_1acedce6690392ef1611cca8b88 | FOREIGN KEY | FOREIGN KEY ("versionId") REFERENCES agent_history("versionId") ON DELETE CASCADE |
 | PK_2142a8bcda2360c3c5e34f82640 | PRIMARY KEY | PRIMARY KEY ("versionId", "taskId") |
 | agent_task_snapshot_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -46,6 +49,8 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_128_ cronExpression
   boolean enabled
+  integer misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_128_ name
   text objective
   varchar_32_ taskId

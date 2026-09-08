@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
+import { type ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type {
 	EntityManager,
 	NewScheduledJob,
@@ -28,16 +28,11 @@ import type {
 import { Tracing } from 'n8n-core';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
+import { MAX_MISFIRE_GRACE_SECONDS, resolveMisfireGraceSeconds } from './misfire-grace';
 import { rowSchedule, scheduleColumns } from './schedule-columns';
 import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
 import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
-
-/**
- * Ceiling for a resolved misfire grace: the cap the config value carries, and well
- * inside the column's `int` range.
- */
-const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
 
 /** One provisioning call: whose jobs to reconcile, and what to stamp on new rows. */
 export interface ProvisionRequest {
@@ -308,31 +303,15 @@ export class DurableJobProvisioner {
 	}
 
 	private resolveMisfireGraceSeconds(requested: unknown, owner: ScheduledJobOwner): number {
-		const { misfireGraceSeconds, executorIntervalSeconds, materializationWindowSeconds } =
-			this.globalConfig.scheduler;
-
 		const numeric = Number(requested);
-		if (!Number.isFinite(numeric)) {
-			return misfireGraceSeconds;
-		}
-
 		const truncated = Math.trunc(numeric);
-		if (truncated < 1) {
-			return misfireGraceSeconds;
-		}
+		const effective = resolveMisfireGraceSeconds(requested, this.globalConfig.scheduler);
 
-		const floor = Math.min(
-			Math.max(executorIntervalSeconds + 1, materializationWindowSeconds),
-			MAX_MISFIRE_GRACE_SECONDS,
-		);
-
-		if (!Number.isFinite(floor)) {
-			return misfireGraceSeconds;
-		}
-
-		const effective = Math.min(Math.max(truncated, floor), MAX_MISFIRE_GRACE_SECONDS);
-
-		if (effective !== truncated || numeric > MAX_MISFIRE_GRACE_SECONDS) {
+		if (
+			Number.isFinite(numeric) &&
+			truncated >= 1 &&
+			(effective !== truncated || numeric > MAX_MISFIRE_GRACE_SECONDS)
+		) {
 			this.logger.warn(
 				effective > truncated
 					? "Raised a node's misfire grace to the scheduler's minimum"

@@ -7,6 +7,7 @@ export const defaultSettings: FrontendSettings = {
 	inE2ETests: false,
 	databaseType: 'sqlite',
 	isDocker: false,
+	scheduler: { agentTasksEnabled: false },
 	pruning: {
 		isEnabled: false,
 		maxAge: 0,

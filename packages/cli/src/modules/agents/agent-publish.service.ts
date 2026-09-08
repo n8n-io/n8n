@@ -686,6 +686,8 @@ export class AgentPublishService {
 					objective: body.objective,
 					cronExpression: body.cronExpression,
 					timezone: body.timezone,
+					misfirePolicy: body.misfirePolicy,
+					misfireGraceSeconds: body.misfireGraceSeconds,
 				};
 			}),
 			trx,
@@ -714,8 +716,7 @@ export class AgentPublishService {
 
 	/**
 	 * Bring the draft task definition rows back in line with a published snapshot
-	 * on revert. Returns whether task bodies changed (name/objective/cron/timezone
-	 * only).
+	 * on revert. Returns whether task bodies changed.
 	 */
 	private async restoreTasksFromSnapshot(
 		trx: EntityManager,
@@ -734,6 +735,8 @@ export class AgentPublishService {
 					objective: row.objective,
 					cronExpression: row.cronExpression,
 					timezone: row.timezone,
+					misfirePolicy: row.misfirePolicy,
+					misfireGraceSeconds: row.misfireGraceSeconds,
 				},
 			]),
 		);
@@ -745,6 +748,8 @@ export class AgentPublishService {
 					objective: snapshot.objective,
 					cronExpression: snapshot.cronExpression,
 					timezone: snapshot.timezone,
+					misfirePolicy: snapshot.misfirePolicy,
+					misfireGraceSeconds: snapshot.misfireGraceSeconds,
 				},
 			]),
 		);
@@ -763,6 +768,8 @@ export class AgentPublishService {
 					objective: snapshot.objective,
 					cronExpression: snapshot.cronExpression,
 					timezone: snapshot.timezone,
+					misfirePolicy: snapshot.misfirePolicy,
+					misfireGraceSeconds: snapshot.misfireGraceSeconds,
 				});
 			} else {
 				await repo.insert({
@@ -772,6 +779,8 @@ export class AgentPublishService {
 					objective: snapshot.objective,
 					cronExpression: snapshot.cronExpression,
 					timezone: snapshot.timezone,
+					misfirePolicy: snapshot.misfirePolicy,
+					misfireGraceSeconds: snapshot.misfireGraceSeconds,
 				});
 			}
 		}

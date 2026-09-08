@@ -434,6 +434,10 @@ export class FrontendService {
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly,
+			scheduler: {
+				agentTasksEnabled:
+					this.globalConfig.scheduler.enabled && this.globalConfig.scheduler.enabledForAgentTasks,
+			},
 			collaboration: {
 				crdt: this.globalConfig.collaboration.crdt,
 			},

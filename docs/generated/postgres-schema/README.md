@@ -23,9 +23,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
-| [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
+| [public.agent_task_definition](public.agent_task_definition.md) | 10 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
-| [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
+| [public.agent_task_snapshot](public.agent_task_snapshot.md) | 11 |  | BASE TABLE |
 | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) | 3 |  | BASE TABLE |
 | [public.agents](public.agents.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
@@ -567,6 +567,8 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_128_ cronExpression
   varchar_32_ id
+  integer misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_128_ name
   text objective
   varchar_64_ timezone
@@ -584,6 +586,8 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_128_ cronExpression
   boolean enabled
+  integer misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_128_ name
   text objective
   varchar_32_ taskId

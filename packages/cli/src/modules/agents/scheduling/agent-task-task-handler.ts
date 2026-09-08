@@ -62,7 +62,11 @@ export class AgentTaskTaskHandler implements TaskHandler {
 			return report.notDispatched();
 		}
 
-		const outcome = await this.agentTaskService.startScheduledRun(agentId, taskId);
+		const outcome = await this.agentTaskService.startScheduledRun(
+			agentId,
+			taskId,
+			task.scheduledFor,
+		);
 		if (outcome === 'skipped-active') {
 			// The previous run still holds the lock. The handler skips this tick,
 			// the same as the in-memory scheduler. The occurrence completes, and

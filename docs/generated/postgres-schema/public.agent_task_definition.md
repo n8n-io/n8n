@@ -8,6 +8,8 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | cronExpression | varchar(128) |  | false |  |  | Cron schedule evaluated using the instance timezone |
 | id | varchar(32) |  | false |  |  | Application-generated task ID referenced from agent JSON config |
+| misfireGraceSeconds | integer |  | true |  |  | Per-task grace in seconds; null or zero uses the instance setting |
+| misfirePolicy | varchar(16) |  | true |  |  | Missed-run policy; null keeps the current skip behavior |
 | name | varchar(128) |  | false |  |  |  |
 | objective | text |  | false |  |  | User-authored instruction sent to the agent when this task runs |
 | timezone | varchar(64) |  | true |  |  | IANA timezone the cron is evaluated in; null falls back to the instance timezone |
@@ -17,6 +19,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_agent_task_definition_misfirePolicy | CHECK | CHECK ((("misfirePolicy")::text = ANY ((ARRAY['skip'::character varying, 'coalesce'::character varying])::text[]))) |
 | FK_f45d0535a2ed59b6c2dd6da98a0 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_1756c11c637903e97629a7a784a | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_task_definition_agentId_not_null | n | NOT NULL "agentId" |
@@ -46,6 +49,8 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_128_ cronExpression
   varchar_32_ id
+  integer misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_128_ name
   text objective
   varchar_64_ timezone

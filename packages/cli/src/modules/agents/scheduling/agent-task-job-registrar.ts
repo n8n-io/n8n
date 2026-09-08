@@ -90,7 +90,11 @@ export class AgentTaskJobRegistrar {
 				taskType: AGENT_TASK_TASK_TYPE,
 				payload: { ...payload },
 				desired: desired ? [desired] : [],
-				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfirePolicy:
+					snapshot.misfirePolicy === 'coalesce'
+						? ScheduledJobMisfirePolicy.Coalesce
+						: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: snapshot.misfireGraceSeconds ?? undefined,
 			});
 			keptTaskIds.add(snapshot.taskId);
 		}

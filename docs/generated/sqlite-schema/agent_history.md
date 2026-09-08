@@ -119,6 +119,8 @@ erDiagram
   datetime_3_ createdAt
   varchar_128_ cronExpression
   boolean enabled
+  INTEGER misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_128_ name
   TEXT objective
   varchar_32_ taskId PK

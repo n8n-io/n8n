@@ -177,6 +177,8 @@ const updateTaskFieldsSchema = z
 		timezone: agentTaskSchema.shape.timezone.describe(
 			'IANA zone the cron runs in. Pass null to move the task back to the instance timezone.',
 		),
+		misfirePolicy: agentTaskSchema.shape.misfirePolicy.optional(),
+		misfireGraceSeconds: agentTaskSchema.shape.misfireGraceSeconds,
 	})
 	.strict()
 	.refine((updates) => Object.keys(updates).length > 0, {
@@ -1180,7 +1182,7 @@ export class AgentsBuilderToolsService {
 			.description(
 				'List the target agent scheduled tasks, including each persisted body and whether its ' +
 					'current config reference is enabled. Use this to identify a task before updating it. Returns ' +
-					'{ ok: true, tasks: [{ id, name, objective, cronExpression, timezone, enabled }] } or ' +
+					'{ ok: true, tasks: [{ id, name, objective, cronExpression, timezone, misfirePolicy, misfireGraceSeconds, enabled }] } or ' +
 					'{ ok: false, errors }.',
 			)
 			.input(z.object({}).strict())
@@ -1195,15 +1197,27 @@ export class AgentsBuilderToolsService {
 					);
 					return {
 						ok: true,
-						tasks: tasks.map(({ id, name, objective, cronExpression, timezone }) => ({
-							id,
-							name,
-							objective,
-							cronExpression,
-							// Null means the task runs on the instance timezone.
-							timezone,
-							enabled: enabledByTaskId.get(id) ?? false,
-						})),
+						tasks: tasks.map(
+							({
+								id,
+								name,
+								objective,
+								cronExpression,
+								timezone,
+								misfirePolicy,
+								misfireGraceSeconds,
+							}) => ({
+								id,
+								name,
+								objective,
+								cronExpression,
+								// Null means the task runs on the instance timezone.
+								timezone,
+								misfirePolicy,
+								misfireGraceSeconds,
+								enabled: enabledByTaskId.get(id) ?? false,
+							}),
+						),
 					};
 				} catch (e) {
 					return {
@@ -1275,6 +1289,12 @@ export class AgentsBuilderToolsService {
 								timezone: agentTaskSchema.shape.timezone.describe(
 									'IANA timezone the cron runs in, e.g. "Europe/London". Set it when the user names a timezone or a location; omit it to use the instance timezone.',
 								),
+								misfirePolicy: agentTaskSchema.shape.misfirePolicy.describe(
+									'Use "skip" to drop missed executions, or "coalesce" to run the most recent missed execution.',
+								),
+								misfireGraceSeconds: agentTaskSchema.shape.misfireGraceSeconds.describe(
+									'How late an execution can start before it is missed. Set 0 or omit it to use the instance setting.',
+								),
 							}),
 						)
 						.min(1)
@@ -1291,6 +1311,8 @@ export class AgentsBuilderToolsService {
 						objective: string;
 						cronExpression: string;
 						timezone?: string | null;
+						misfirePolicy?: 'skip' | 'coalesce';
+						misfireGraceSeconds?: number;
 					}>;
 				}) => {
 					// Each task is already validated against `.input()` (agentTaskSchema

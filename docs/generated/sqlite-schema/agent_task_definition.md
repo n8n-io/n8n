@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_task_definition" ("id" varchar(32) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "name" varchar(128) NOT NULL, "objective" text NOT NULL, "cronExpression" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "timezone" varchar(64), CONSTRAINT "FK_f45d0535a2ed59b6c2dd6da98a0" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_task_definition" ("id" varchar(32) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "name" varchar(128) NOT NULL, "objective" text NOT NULL, "cronExpression" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "timezone" varchar(64), "misfirePolicy" varchar(16), "misfireGraceSeconds" integer, CONSTRAINT "CHK_agent_task_definition_misfirePolicy" CHECK ("misfirePolicy" IN ('skip', 'coalesce')), CONSTRAINT "FK_f45d0535a2ed59b6c2dd6da98a0" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -19,6 +19,8 @@ CREATE TABLE "agent_task_definition" ("id" varchar(32) PRIMARY KEY NOT NULL, "ag
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | cronExpression | varchar(128) |  | false |  |  |  |
 | id | varchar(32) |  | false |  |  |  |
+| misfireGraceSeconds | INTEGER |  | true |  |  |  |
+| misfirePolicy | varchar(16) |  | true |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | objective | TEXT |  | false |  |  |  |
 | timezone | varchar(64) |  | true |  |  |  |
@@ -28,6 +30,7 @@ CREATE TABLE "agent_task_definition" ("id" varchar(32) PRIMARY KEY NOT NULL, "ag
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("misfirePolicy" IN ('skip', 'coalesce')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_task_definition_1 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -51,6 +54,8 @@ erDiagram
   datetime_3_ createdAt
   varchar_128_ cronExpression
   varchar_32_ id PK
+  INTEGER misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_128_ name
   TEXT objective
   varchar_64_ timezone

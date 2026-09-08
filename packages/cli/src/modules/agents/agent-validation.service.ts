@@ -15,6 +15,7 @@ import {
 	type AgentConfigValidationResponse,
 	type AgentIntegrationConfig,
 	type AgentTaskConfig,
+	type AgentTaskMisfirePolicy,
 	type AgentJsonConfig,
 	type AgentJsonNodeToolConfig,
 	type AgentJsonWorkflowToolConfig,
@@ -47,7 +48,10 @@ type FindCredential = (
 ) => Promise<Awaited<ReturnType<CredentialProvider['list']>>[number] | undefined>;
 
 type CustomToolEntries = Record<string, { code: string; descriptor: ToolDescriptor }>;
-type TaskBody = AgentTaskConfig;
+type TaskBody = Omit<AgentTaskConfig, 'misfirePolicy' | 'misfireGraceSeconds'> & {
+	misfirePolicy?: AgentTaskMisfirePolicy | null;
+	misfireGraceSeconds?: number | null;
+};
 
 interface ConfigurationValidationContext {
 	agentId: string;
@@ -465,7 +469,15 @@ export class AgentValidationService {
 				continue;
 			}
 			if (!ref.enabled) continue;
-			if (!agentTaskSchema.safeParse(task).success || !isValidCronExpression(task.cronExpression)) {
+			const normalizedTask = {
+				...task,
+				misfirePolicy: task.misfirePolicy ?? undefined,
+				misfireGraceSeconds: task.misfireGraceSeconds ?? undefined,
+			};
+			if (
+				!agentTaskSchema.safeParse(normalizedTask).success ||
+				!isValidCronExpression(task.cronExpression)
+			) {
 				issues.push(issue('invalid_value', `tasks.${index}`, { kind: 'task', id: ref.id, index }));
 			}
 		}

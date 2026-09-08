@@ -1,4 +1,8 @@
-import { AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH, AGENT_TASK_ID_MAX_LENGTH } from '@n8n/api-types';
+import {
+	AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH,
+	AGENT_TASK_ID_MAX_LENGTH,
+	type AgentTaskMisfirePolicy,
+} from '@n8n/api-types';
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, type Relation } from '@n8n/typeorm';
 
@@ -55,4 +59,19 @@ export class AgentTaskSnapshot extends WithTimestamps {
 		comment: 'IANA timezone the cron is evaluated in; null falls back to the instance timezone',
 	})
 	timezone: string | null;
+
+	@Column({
+		type: 'varchar',
+		length: 16,
+		nullable: true,
+		comment: 'Missed-run policy captured when the agent was published',
+	})
+	misfirePolicy: AgentTaskMisfirePolicy | null;
+
+	@Column({
+		type: 'int',
+		nullable: true,
+		comment: 'Misfire grace in seconds captured when the agent was published',
+	})
+	misfireGraceSeconds: number | null;
 }

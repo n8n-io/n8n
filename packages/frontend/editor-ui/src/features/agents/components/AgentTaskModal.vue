@@ -2,7 +2,9 @@
 import {
 	AGENT_TASK_NAME_MAX_LENGTH,
 	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
+	AGENT_TASK_MISFIRE_GRACE_MAX_SECONDS,
 	StrictTimeZoneSchema,
+	type AgentTaskMisfirePolicy,
 	type AgentTaskDto,
 } from '@n8n/api-types';
 import {
@@ -91,6 +93,8 @@ const dayOfMonth = ref(DEFAULT_SCHEDULE_PARTS.dayOfMonth);
 const customCron = ref('');
 const timezone = ref(browserTimezone());
 const timezoneOptions = ref<Array<{ value: string; label: string }>>([]);
+const misfirePolicy = ref<AgentTaskMisfirePolicy>('skip');
+const misfireGraceSeconds = ref(0);
 // A task stored without a timezone follows the instance timezone. The selector has
 // to show a concrete zone, so remember that the task was on the default and keep
 // it there unless the user picks one — otherwise saving an unrelated edit would
@@ -139,6 +143,8 @@ function applyTask() {
 	// Absent and null both mean "no zone stored", so treat them alike.
 	followsInstanceTimezone.value = current !== null && !current.timezone;
 	timezone.value = current ? (current.timezone ?? rootStore.timezone) : browserTimezone();
+	misfirePolicy.value = current?.misfirePolicy ?? 'skip';
+	misfireGraceSeconds.value = current?.misfireGraceSeconds ?? 0;
 
 	const parts = current ? parseCron(current.cronExpression) : { ...DEFAULT_SCHEDULE_PARTS };
 	if (parts) {
@@ -183,9 +189,38 @@ const frequencyOptions = computed<Array<{ label: string; value: FrequencyOption 
 	{ value: 'custom', label: i18n.baseText('agents.builder.tasks.schedule.frequency.custom') },
 ]);
 
+const misfirePolicyOptions = computed<Array<{ label: string; value: AgentTaskMisfirePolicy }>>(
+	() => [
+		{
+			value: 'skip',
+			label: i18n.baseText('agents.builder.tasks.misfire.policy.skip' as BaseTextKey),
+		},
+		{
+			value: 'coalesce',
+			label: i18n.baseText('agents.builder.tasks.misfire.policy.coalesce' as BaseTextKey),
+		},
+	],
+);
+
+const showMisfireSettings = computed(
+	() => settingsStore.settings.scheduler?.agentTasksEnabled === true,
+);
+
 function onFrequencyChange(value: unknown) {
 	const match = frequencyOptions.value.find((option) => option.value === value);
 	if (match) frequency.value = match.value;
+}
+
+function onMisfirePolicyChange(value: unknown) {
+	const match = misfirePolicyOptions.value.find((option) => option.value === value);
+	if (match) misfirePolicy.value = match.value;
+}
+
+function onMisfireGraceInput(value: string) {
+	const parsed = Number(value);
+	misfireGraceSeconds.value = Number.isFinite(parsed)
+		? Math.min(AGENT_TASK_MISFIRE_GRACE_MAX_SECONDS, Math.max(0, Math.trunc(parsed)))
+		: 0;
 }
 
 const dayOfWeekOptions = computed(() =>
@@ -368,6 +403,8 @@ async function onSave() {
 		objective: objective.value.trim(),
 		cronExpression: cronExpression.value,
 		timezone: followsInstanceTimezone.value ? null : timezone.value,
+		misfirePolicy: misfirePolicy.value,
+		misfireGraceSeconds: misfireGraceSeconds.value,
 	};
 
 	try {
@@ -616,6 +653,44 @@ async function onSave() {
 					</N8nText>
 				</div>
 
+				<div v-if="showMisfireSettings" :class="$style.misfireFields">
+					<div :class="$style.field">
+						<N8nText size="small" bold>
+							{{ i18n.baseText('agents.builder.tasks.misfire.policy.label' as BaseTextKey) }}
+						</N8nText>
+						<N8nSelect
+							:model-value="misfirePolicy"
+							:teleported="false"
+							data-testid="agent-task-misfire-policy"
+							@update:model-value="onMisfirePolicyChange"
+						>
+							<N8nOption
+								v-for="option in misfirePolicyOptions"
+								:key="option.value"
+								:value="option.value"
+								:label="option.label"
+							/>
+						</N8nSelect>
+					</div>
+
+					<div :class="$style.field">
+						<N8nText size="small" bold>
+							{{ i18n.baseText('agents.builder.tasks.misfire.grace.label' as BaseTextKey) }}
+						</N8nText>
+						<N8nInput
+							type="number"
+							:min="0"
+							:max="AGENT_TASK_MISFIRE_GRACE_MAX_SECONDS"
+							:model-value="String(misfireGraceSeconds)"
+							data-testid="agent-task-misfire-grace"
+							@update:model-value="onMisfireGraceInput"
+						/>
+						<N8nText size="small" :class="$style.help">
+							{{ i18n.baseText('agents.builder.tasks.misfire.grace.help' as BaseTextKey) }}
+						</N8nText>
+					</div>
+				</div>
+
 				<N8nText
 					v-if="showRepublishHint"
 					:class="$style.help"
@@ -699,6 +774,12 @@ async function onSave() {
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.misfireFields {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--spacing--sm);
 }
 
 .frequencySelect {

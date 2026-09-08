@@ -57,6 +57,8 @@ describe('AgentTaskJobRegistrar', () => {
 			enabled: true,
 			cronExpression: '0 9 * * *',
 			timezone: null,
+			misfirePolicy: null,
+			misfireGraceSeconds: null,
 			...overrides,
 		});
 
@@ -95,6 +97,7 @@ describe('AgentTaskJobRegistrar', () => {
 				taskType: AGENT_TASK_TASK_TYPE,
 				payload: { agentId: AGENT_ID, taskId: 'task-1' },
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: undefined,
 				desired: [
 					{
 						name: `agent-task:${AGENT_ID}:task-1`,
@@ -108,6 +111,7 @@ describe('AgentTaskJobRegistrar', () => {
 				taskType: AGENT_TASK_TASK_TYPE,
 				payload: { agentId: AGENT_ID, taskId: 'task-2' },
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: undefined,
 				desired: [
 					{
 						name: `agent-task:${AGENT_ID}:task-2`,
@@ -116,6 +120,21 @@ describe('AgentTaskJobRegistrar', () => {
 					},
 				],
 			});
+		});
+
+		it('passes each snapshot policy and grace to the provisioner', async () => {
+			taskSnapshotRepository.findEnabledByVersionId.mockResolvedValue([
+				snapshot({ misfirePolicy: 'coalesce', misfireGraceSeconds: 900 }),
+			]);
+
+			await makeRegistrar().reconcile(AGENT_ID);
+
+			expect(provisioner.provision).toHaveBeenCalledWith(
+				expect.objectContaining({
+					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+					misfireGraceSeconds: 900,
+				}),
+			);
 		});
 
 		it('removes the jobs of tasks that left the published config, keeping the ones still enabled', async () => {

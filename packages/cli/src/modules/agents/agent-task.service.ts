@@ -14,6 +14,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { resolveMisfireGraceSeconds } from '@/scheduling/misfire-grace';
 
 import {
 	AgentModificationTelemetryService,
@@ -156,6 +157,8 @@ export class AgentTaskService {
 				objective: dto.objective,
 				cronExpression: dto.cronExpression,
 				timezone: dto.timezone ?? null,
+				misfirePolicy: dto.misfirePolicy ?? 'skip',
+				misfireGraceSeconds: dto.misfireGraceSeconds ?? null,
 			});
 		});
 
@@ -230,6 +233,17 @@ export class AgentTaskService {
 		}
 		if (dto.objective !== undefined && dto.objective !== task.objective) {
 			task.objective = dto.objective;
+			changed = true;
+		}
+		if (dto.misfirePolicy !== undefined && dto.misfirePolicy !== task.misfirePolicy) {
+			task.misfirePolicy = dto.misfirePolicy;
+			changed = true;
+		}
+		if (
+			dto.misfireGraceSeconds !== undefined &&
+			dto.misfireGraceSeconds !== task.misfireGraceSeconds
+		) {
+			task.misfireGraceSeconds = dto.misfireGraceSeconds;
 			changed = true;
 		}
 
@@ -522,7 +536,11 @@ export class AgentTaskService {
 	 * continuation logs run errors. It also renews the lock while the run lasts,
 	 * and releases the lock after the run.
 	 */
-	async startScheduledRun(agentId: string, taskId: string): Promise<'started' | 'skipped-active'> {
+	async startScheduledRun(
+		agentId: string,
+		taskId: string,
+		scheduledFor?: Date,
+	): Promise<'started' | 'skipped-active'> {
 		const holderId = randomUUID();
 		const lock = await this.taskRunLockRepository.acquire(agentId, taskId, {
 			holderId,
@@ -539,7 +557,7 @@ export class AgentTaskService {
 		const renewInterval = this.startTaskRunLockRenewal(lock);
 		void (async () => {
 			try {
-				await this.runTask(agentId, taskId);
+				await this.runTask(agentId, taskId, scheduledFor);
 			} catch (error) {
 				this.logger.error('[AgentTaskService] Scheduled task run failed', {
 					taskId,
@@ -582,7 +600,7 @@ export class AgentTaskService {
 		}, TASK_RUN_LOCK_RENEW_MS);
 	}
 
-	private async runTask(agentId: string, taskId: string): Promise<void> {
+	private async runTask(agentId: string, taskId: string, scheduledFor?: Date): Promise<void> {
 		let projectId: string | undefined;
 
 		try {
@@ -623,6 +641,8 @@ export class AgentTaskService {
 				taskId,
 				snapshot.objective,
 				snapshot.timezone,
+				scheduledFor,
+				snapshot.misfireGraceSeconds,
 			);
 
 			this.logger.info('[AgentTaskService] Task fired', {
@@ -664,6 +684,8 @@ export class AgentTaskService {
 		taskId: string,
 		objective: string,
 		taskTimezone: string | null,
+		scheduledFor?: Date,
+		misfireGraceSeconds?: number | null,
 	): { message: string; threadId: string } {
 		// Timestamped in the instance timezone so it agrees with the `get_environment`
 		// tool the agent also reads "today" from; the schedule's own zone is named
@@ -673,7 +695,21 @@ export class AgentTaskService {
 		const scheduleTimezone = this.resolveTaskTimezone(taskTimezone, taskId);
 		const scheduleNote =
 			scheduleTimezone === timezone ? '' : `\nThis task is scheduled in ${scheduleTimezone}.`;
-		const message = `${objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})${scheduleNote}`;
+		const graceSeconds = resolveMisfireGraceSeconds(
+			misfireGraceSeconds,
+			this.globalConfig.scheduler,
+		);
+		const startsLate =
+			scheduledFor !== undefined && Date.now() - scheduledFor.getTime() > graceSeconds * 1000;
+		const scheduledForIso = scheduledFor
+			? (DateTime.fromJSDate(scheduledFor).setZone(scheduleTimezone).toISO() ??
+				scheduledFor.toISOString())
+			: null;
+		const lateNote =
+			startsLate && scheduledForIso
+				? `\nThis run was scheduled for ${scheduledForIso} and starts late.`
+				: '';
+		const message = `${objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})${scheduleNote}${lateNote}`;
 		const threadId = `task-${taskId}-${randomUUID()}`;
 		return { message, threadId };
 	}
@@ -794,6 +830,8 @@ export class AgentTaskService {
 			objective: task.objective,
 			cronExpression: task.cronExpression,
 			timezone: task.timezone,
+			misfirePolicy: task.misfirePolicy ?? 'skip',
+			misfireGraceSeconds: task.misfireGraceSeconds ?? 0,
 			createdAt: task.createdAt.toISOString(),
 			updatedAt: task.updatedAt.toISOString(),
 		};

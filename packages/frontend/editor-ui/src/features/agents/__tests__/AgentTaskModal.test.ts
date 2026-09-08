@@ -205,6 +205,7 @@ describe('AgentTaskModal', () => {
 		mockedStore(useSettingsStore).getTimezones = vi
 			.fn()
 			.mockResolvedValue({ 'Asia/Tokyo': 'Asia/Tokyo', 'Europe/London': 'Europe/London' });
+		mockedStore(useSettingsStore).settings.scheduler = { agentTasksEnabled: false };
 		uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
@@ -318,6 +319,32 @@ describe('AgentTaskModal', () => {
 			'task-9',
 			expect.objectContaining({ name: 'Renamed' }),
 		);
+	});
+
+	it('shows and saves misfire settings when durable agent scheduling is enabled', async () => {
+		mockedStore(useSettingsStore).settings.scheduler = { agentTasksEnabled: true };
+		updateAgentTaskSpy.mockResolvedValue({});
+		const { getByTestId } = renderModal({ task: makeTask() });
+
+		await fireEvent.update(getByTestId('agent-task-misfire-policy'), 'coalesce');
+		await fireEvent.update(getByTestId('agent-task-misfire-grace'), '900');
+		await fireEvent.click(getByTestId('agent-task-save'));
+
+		await waitFor(() => expect(updateAgentTaskSpy).toHaveBeenCalled());
+		expect(updateAgentTaskSpy).toHaveBeenCalledWith(
+			{},
+			'p1',
+			'a1',
+			'task-9',
+			expect.objectContaining({ misfirePolicy: 'coalesce', misfireGraceSeconds: 900 }),
+		);
+	});
+
+	it('hides misfire settings while durable agent scheduling is disabled', () => {
+		const { queryByTestId } = renderModal({ task: makeTask() });
+
+		expect(queryByTestId('agent-task-misfire-policy')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-task-misfire-grace')).not.toBeInTheDocument();
 	});
 
 	it('toggles an existing task through the modal callback', async () => {

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_task_snapshot" ("versionId" varchar(36) NOT NULL, "taskId" varchar(32) NOT NULL, "enabled" boolean NOT NULL, "name" varchar(128) NOT NULL, "objective" text NOT NULL, "cronExpression" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "timezone" varchar(64), CONSTRAINT "FK_1acedce6690392ef1611cca8b88" FOREIGN KEY ("versionId") REFERENCES "agent_history" ("versionId") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("versionId", "taskId"))
+CREATE TABLE "agent_task_snapshot" ("versionId" varchar(36) NOT NULL, "taskId" varchar(32) NOT NULL, "enabled" boolean NOT NULL, "name" varchar(128) NOT NULL, "objective" text NOT NULL, "cronExpression" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "timezone" varchar(64), "misfirePolicy" varchar(16), "misfireGraceSeconds" integer, CONSTRAINT "CHK_agent_task_snapshot_misfirePolicy" CHECK ("misfirePolicy" IN ('skip', 'coalesce')), CONSTRAINT "FK_1acedce6690392ef1611cca8b88" FOREIGN KEY ("versionId") REFERENCES "agent_history" ("versionId") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("versionId", "taskId"))
 ```
 
 </details>
@@ -18,6 +18,8 @@ CREATE TABLE "agent_task_snapshot" ("versionId" varchar(36) NOT NULL, "taskId" v
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | cronExpression | varchar(128) |  | false |  |  |  |
 | enabled | boolean |  | false |  |  |  |
+| misfireGraceSeconds | INTEGER |  | true |  |  |  |
+| misfirePolicy | varchar(16) |  | true |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | objective | TEXT |  | false |  |  |  |
 | taskId | varchar(32) |  | false |  |  |  |
@@ -29,6 +31,7 @@ CREATE TABLE "agent_task_snapshot" ("versionId" varchar(36) NOT NULL, "taskId" v
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("misfirePolicy" IN ('skip', 'coalesce')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | sqlite_autoindex_agent_task_snapshot_1 | PRIMARY KEY | PRIMARY KEY (versionId, taskId) |
 | taskId | PRIMARY KEY | PRIMARY KEY (taskId) |
@@ -51,6 +54,8 @@ erDiagram
   datetime_3_ createdAt
   varchar_128_ cronExpression
   boolean enabled
+  INTEGER misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_128_ name
   TEXT objective
   varchar_32_ taskId PK

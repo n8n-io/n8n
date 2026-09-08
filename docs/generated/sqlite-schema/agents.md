@@ -216,6 +216,8 @@ erDiagram
   datetime_3_ createdAt
   varchar_128_ cronExpression
   varchar_32_ id PK
+  INTEGER misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_128_ name
   TEXT objective
   varchar_64_ timezone
