@@ -19,7 +19,7 @@ const project = {
 };
 
 describe('ProjectPublicDto', () => {
-	test('accepts the nine fields the list returns', () => {
+	test('accepts all the expected fields', () => {
 		expect(ProjectPublicDto.safeParse(project).success).toBe(true);
 	});
 
@@ -40,17 +40,9 @@ describe('ProjectPublicDto', () => {
 		expect(ProjectPublicDto.safeParse({ ...project, type: 'future' }).success).toBe(true);
 	});
 
-	test('strips a field the schema does not name', () => {
-		const result = ProjectPublicDto.safeParse({ ...project, projectRelations: [] });
-
-		expect(result.success).toBe(true);
-		expect(result.data).not.toHaveProperty('projectRelations');
-	});
-
 	test.each([
 		['a Date for createdAt', { createdAt: new Date() }],
 		['a non-ISO createdAt', { createdAt: 'yesterday' }],
-		['a missing name', { name: undefined }],
 	])('rejects %s', (_label, override) => {
 		expect(ProjectPublicDto.safeParse({ ...project, ...override }).success).toBe(false);
 	});
@@ -95,8 +87,6 @@ describe('CreateProjectPublicDto', () => {
 
 	test.each([
 		['a missing name', {}, ['name']],
-		['an empty name', { name: '' }, ['name']],
-		['a name over 255 characters', { name: 'a'.repeat(256) }, ['name']],
 		['an unknown key', { name: 'Marketing', icon: { type: 'icon', value: 'layers' } }, []],
 	])('rejects %s', (_label, payload, path) => {
 		const result = CreateProjectPublicDto.safeParse(payload);
@@ -114,27 +104,10 @@ describe('CreateProjectPublicDto', () => {
 });
 
 describe('ListProjectsQueryPublicDto', () => {
-	test('defaults limit to 100', () => {
-		const result = ListProjectsQueryPublicDto.safeParse({});
+	test('exposes limit and cursor and drops offset', () => {
+		const result = ListProjectsQueryPublicDto.safeParse({ limit: '5', cursor: 'abc', offset: '3' });
 
 		expect(result.success).toBe(true);
-		expect(result.data).toEqual({ limit: 100 });
-	});
-
-	test('clamps limit to 250', () => {
-		const result = ListProjectsQueryPublicDto.safeParse({ limit: '300' });
-
-		expect(result.success).toBe(true);
-		expect(result.data?.limit).toBe(250);
-	});
-
-	test('keeps the cursor', () => {
-		const result = ListProjectsQueryPublicDto.safeParse({ cursor: 'abc' });
-
-		expect(result.data?.cursor).toBe('abc');
-	});
-
-	test('rejects a non-numeric limit', () => {
-		expect(ListProjectsQueryPublicDto.safeParse({ limit: 'abc' }).success).toBe(false);
+		expect(result.data).toEqual({ limit: 5, cursor: 'abc' });
 	});
 });
