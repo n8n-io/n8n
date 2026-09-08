@@ -125,6 +125,21 @@ export class DataTableDDLService {
 		});
 	}
 
+	async fillColumn(
+		dataTableId: string,
+		columnName: string,
+		value: string,
+		trx?: EntityManager,
+	): Promise<void> {
+		await withTransaction(this.dataSource.manager, trx, async (em) => {
+			await em
+				.createQueryBuilder()
+				.update(toTableName(dataTableId))
+				.set({ [columnName]: value })
+				.execute();
+		});
+	}
+
 	async dropColumnFromTable(
 		dataTableId: string,
 		columnName: string,

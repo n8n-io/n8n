@@ -122,6 +122,14 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 			await em.insert(DataTableColumn, column);
 
 			await this.ddlService.addColumn(dataTableId, column, em.connection.options.type, em);
+			if (column.type === 'enum' && column.defaultValue !== null) {
+				await this.ddlService.fillColumn(
+					dataTableId,
+					column.name,
+					column.defaultValue,
+					em,
+				);
+			}
 			return column;
 		});
 	}
