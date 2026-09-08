@@ -138,6 +138,7 @@ import {
 	NodeHelpers,
 	TelemetryHelpers,
 	isCommunityPackageName,
+	isGroupPlaceholderNode,
 	isHitlToolType,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
@@ -572,7 +573,7 @@ export function useCanvasOperations() {
 		{ trackHistory = false } = {},
 	): boolean {
 		const group = workflowDocumentStore.value.getGroupForNode(node.id);
-		if (!group || node.type === GROUP_PLACEHOLDER_NODE_TYPE) {
+		if (!group || isGroupPlaceholderNode(node)) {
 			return false;
 		}
 		// Stickies can't be connected, so they don't keep a group alive: a group

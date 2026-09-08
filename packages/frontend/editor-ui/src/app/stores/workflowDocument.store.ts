@@ -12,7 +12,7 @@ import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocume
 import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
 import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
 import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
-import { GROUP_PLACEHOLDER_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
@@ -40,7 +40,7 @@ import { assignNodeId, serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { INode, ProjectSharingData } from 'n8n-workflow';
-import { deepCopy, nodeIssuesToString } from 'n8n-workflow';
+import { deepCopy, isGroupPlaceholderNode, nodeIssuesToString } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
@@ -286,7 +286,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				.filter((node) => node !== undefined && node.type !== STICKY_NODE_TYPE);
 			if (connectableMembers.length !== 1) return undefined;
 			const [node] = connectableMembers;
-			return node?.type === GROUP_PLACEHOLDER_NODE_TYPE ? node : undefined;
+			return node && isGroupPlaceholderNode(node) ? node : undefined;
 		}
 
 		function isEmptyGroup(groupId: string): boolean {

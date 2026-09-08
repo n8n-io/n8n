@@ -30,6 +30,7 @@ import {
 	nodeIssuesToString,
 	findDisplayedProperty,
 	isTriggerNodeType,
+	isGroupPlaceholderNode,
 	getCredentialActivationParameters,
 	resolveSupportedCredentialActivation,
 } from '../src/node-helpers';
@@ -4602,6 +4603,17 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.expected);
 			});
 		}
+	});
+
+	describe('isGroupPlaceholderNode', () => {
+		test('returns true for the group placeholder node type', () => {
+			expect(isGroupPlaceholderNode({ type: 'n8n-nodes-base.groupPlaceholder' })).toBe(true);
+		});
+
+		test('returns false for any other node type', () => {
+			expect(isGroupPlaceholderNode({ type: 'n8n-nodes-base.set' })).toBe(false);
+			expect(isGroupPlaceholderNode({ type: 'n8n-nodes-base.stickyNote' })).toBe(false);
+		});
 	});
 
 	describe('getNodeOutputs', () => {
