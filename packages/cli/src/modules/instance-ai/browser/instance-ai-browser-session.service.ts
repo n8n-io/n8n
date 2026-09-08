@@ -46,6 +46,10 @@ const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 /** How often to summarize actions accumulated so far, while a recording is in progress. */
 const CAPTION_INTERVAL_MS = 12_000;
 
+/** Coalesces a burst of streamed actions (e.g. fast clicking) into one live push,
+ *  instead of one push per action. */
+const ACTION_PUSH_DEBOUNCE_MS = 300;
+
 interface BrowserSession {
 	userId: string;
 	sessionId: string;
@@ -71,6 +75,8 @@ interface BrowserSession {
 	/** Latest running summary produced from `pendingCaptionActions`, consumed at completion. */
 	latestCaption?: string;
 	captionInterval?: ReturnType<typeof setInterval>;
+	/** Pending debounced live-state push, see `ACTION_PUSH_DEBOUNCE_MS`. */
+	pushDebounceTimer?: ReturnType<typeof setTimeout>;
 }
 
 interface BrowserRecordingCompletion {
@@ -212,8 +218,8 @@ export class InstanceAiBrowserSessionService {
 	discardRecording(userId: string): boolean {
 		const session = this.sessions.get(userId);
 		if (!session?.connected || !session.pendingRecordingThreadId) return false;
-		this.pushRecordingState(userId, 'discarded');
-		this.stopLiveRecordingState(session);
+		this.pushRecordingState(session, 'discarded');
+		this.resetLiveRecordingState(session);
 		session.pendingRecordingThreadId = undefined;
 		session.relay.discardRecording().catch((error) => {
 			this.logger.warn('Failed to discard browser recording', {
@@ -338,7 +344,7 @@ export class InstanceAiBrowserSessionService {
 		session.connectedAt = null;
 		session.completedRecordingIds.clear();
 		session.pendingRecordingThreadId = undefined;
-		this.stopLiveRecordingState(session);
+		this.resetLiveRecordingState(session);
 	}
 
 	private async handleRecordingCompleted(
@@ -351,10 +357,10 @@ export class InstanceAiBrowserSessionService {
 
 		session.completedRecordingIds.add(recording.id);
 		const originThreadId = session.pendingRecordingThreadId;
-		if (originThreadId) this.pushRecordingState(userId, 'stopped');
+		if (originThreadId) this.pushRecordingState(session, 'stopped');
 		session.pendingRecordingThreadId = undefined;
 		const caption = session.latestCaption;
-		this.stopLiveRecordingState(session);
+		this.resetLiveRecordingState(session);
 		try {
 			const project = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 			const { threadId } = await handler({
@@ -373,28 +379,28 @@ export class InstanceAiBrowserSessionService {
 		}
 	}
 
-	/** Reset the in-progress recording state and start the periodic caption tick.
-	 *  Called synchronously as soon as `startRecording()` asks the extension to start —
-	 *  no need to wait for the extension to confirm. */
-	private startLiveRecordingState(session: BrowserSession): void {
+	/** Reset the in-progress recording state — clears the caption tick, pending debounced
+	 *  push, action buffer, and count. Idempotent; used both to arm a fresh recording and
+	 *  to tear one down (completion, discard, teardown, disconnect). */
+	private resetLiveRecordingState(session: BrowserSession): void {
 		if (session.captionInterval) clearInterval(session.captionInterval);
+		session.captionInterval = undefined;
+		if (session.pushDebounceTimer) clearTimeout(session.pushDebounceTimer);
+		session.pushDebounceTimer = undefined;
 		session.inProgressActionCount = 0;
 		session.pendingCaptionActions = [];
 		session.latestCaption = undefined;
+	}
+
+	/** Arm live recording state and start the periodic caption tick. Called synchronously
+	 *  as soon as `startRecording()` asks the extension to start — no need to wait for the
+	 *  extension to confirm. */
+	private startLiveRecordingState(session: BrowserSession): void {
+		this.resetLiveRecordingState(session);
 		session.captionInterval = setInterval(() => {
 			void this.runCaptionTick(session);
 		}, CAPTION_INTERVAL_MS);
-		this.pushRecordingState(session.userId, 'recording');
-	}
-
-	/** Stop the caption tick and clear in-progress state — called on completion, discard,
-	 *  or teardown. Idempotent. */
-	private stopLiveRecordingState(session: BrowserSession): void {
-		if (session.captionInterval) clearInterval(session.captionInterval);
-		session.captionInterval = undefined;
-		session.inProgressActionCount = 0;
-		session.pendingCaptionActions = [];
-		session.latestCaption = undefined;
+		this.pushRecordingState(session, 'recording');
 	}
 
 	private handleRecordingActionAppended(userId: string, action: BrowserRecordingAction): void {
@@ -403,7 +409,11 @@ export class InstanceAiBrowserSessionService {
 		const redacted = redactAction(action);
 		session.pendingCaptionActions.push(redacted);
 		session.inProgressActionCount += 1;
-		this.pushRecordingState(userId, 'recording');
+		if (session.pushDebounceTimer) return;
+		session.pushDebounceTimer = setTimeout(() => {
+			session.pushDebounceTimer = undefined;
+			this.pushRecordingState(session, 'recording');
+		}, ACTION_PUSH_DEBOUNCE_MS);
 	}
 
 	/** Summarize whatever has accumulated since the last tick. Skips the call — and its
@@ -418,7 +428,7 @@ export class InstanceAiBrowserSessionService {
 			const caption = await handler({ userId: session.userId, actions });
 			if (caption) {
 				session.latestCaption = caption;
-				this.pushRecordingState(session.userId, 'recording');
+				this.pushRecordingState(session, 'recording');
 			}
 		} catch (error) {
 			this.logger.warn('Failed to summarize in-progress recording', {
@@ -428,9 +438,11 @@ export class InstanceAiBrowserSessionService {
 		}
 	}
 
-	private pushRecordingState(userId: string, status: 'recording' | 'stopped' | 'discarded'): void {
-		const session = this.sessions.get(userId);
-		const threadId = session?.pendingRecordingThreadId;
+	private pushRecordingState(
+		session: BrowserSession,
+		status: 'recording' | 'stopped' | 'discarded',
+	): void {
+		const threadId = session.pendingRecordingThreadId;
 		if (!threadId) return;
 		this.push.sendToUsers(
 			{
@@ -442,7 +454,7 @@ export class InstanceAiBrowserSessionService {
 					...(session.latestCaption ? { caption: session.latestCaption } : {}),
 				},
 			},
-			[userId],
+			[session.userId],
 		);
 	}
 
@@ -478,6 +490,14 @@ export class InstanceAiBrowserSessionService {
 
 		session.connected = false;
 		session.connectedAt = null;
+		if (session.pendingRecordingThreadId) {
+			// The extension dropped mid-recording (browser closed, sleep, network blip) rather
+			// than the user stopping/discarding — clean up the same way discard does, so the
+			// live artifact and the caption timer don't outlive the connection.
+			this.pushRecordingState(session, 'discarded');
+			this.resetLiveRecordingState(session);
+			session.pendingRecordingThreadId = undefined;
+		}
 		this.logger.info('Browser Use extension disconnected', { userId });
 		this.pushState(userId);
 	}
@@ -557,25 +577,27 @@ export class InstanceAiBrowserSessionService {
 	}
 }
 
+function redactOptional(value: string | undefined): string | undefined {
+	return value === undefined ? undefined : redactString(value);
+}
+
 /** Redact an action's free-text fields again, server-side — defense in depth on top of
  *  the extension's own sanitization, since the action now leaves the trusted extension
  *  boundary independently of the final reviewed submission. */
 function redactAction(action: BrowserRecordingAction): BrowserRecordingAction {
 	return {
 		...action,
-		...(action.value !== undefined ? { value: redactString(action.value) } : {}),
 		url: redactString(action.url),
-		...(action.target
+		value: redactOptional(action.value),
+		target: action.target
 			? {
-					target: {
-						...action.target,
-						...(action.target.label !== undefined
-							? { label: redactString(action.target.label) }
-							: {}),
-						...(action.target.name !== undefined ? { name: redactString(action.target.name) } : {}),
-					},
+					...action.target,
+					role: redactOptional(action.target.role),
+					label: redactOptional(action.target.label),
+					name: redactOptional(action.target.name),
+					inputType: redactOptional(action.target.inputType),
 				}
-			: {}),
+			: action.target,
 	};
 }
 

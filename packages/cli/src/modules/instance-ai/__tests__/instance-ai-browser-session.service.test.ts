@@ -43,7 +43,9 @@ vi.mock('@n8n/mcp-browser', () => {
 		})),
 		buildExtensionConnectUrl: (endpoint: string) =>
 			`chrome-extension://ext-id/connect.html?mcpRelayUrl=${encodeURIComponent(endpoint)}`,
-		redactString: (value: string) => value,
+		// A visible marker (rather than the identity function) so tests can tell a field
+		// actually went through redaction, not just that it was passed along unchanged.
+		redactString: (value: string) => `redacted(${value})`,
 	};
 });
 
@@ -119,6 +121,18 @@ async function createSession(service: InstanceAiBrowserSessionService) {
 	];
 	const relay = mcpBrowserMock.__createdRelays.at(-1)!;
 	return { sessionId, extToken, cdpToken, relay, relayEndpoint, connectUrl };
+}
+
+/** `createSession` plus the extension-connect and personal-project lookup every
+ *  recording-completion/caption test needs before it can call `startRecording`. */
+async function createConnectedSession(
+	service: InstanceAiBrowserSessionService,
+	projectRepository: ReturnType<typeof mock<ProjectRepository>>,
+) {
+	const session = await createSession(service);
+	session.relay.onExtensionConnect?.();
+	projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({ id: 'project-1' } as never);
+	return session;
 }
 
 describe('InstanceAiBrowserSessionService', () => {
@@ -433,7 +447,15 @@ describe('InstanceAiBrowserSessionService', () => {
 	});
 
 	describe('streamed actions', () => {
-		it('redacts and counts each streamed action, pushing the updated count', async () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('redacts and counts each streamed action, pushing the debounced update', async () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
 			service.startRecording(USER_ID, 'thread-1');
@@ -446,12 +468,36 @@ describe('InstanceAiBrowserSessionService', () => {
 				url: 'https://example.com?token=sk-live-abcdef1234567890',
 				value: 'my api key is sk-live-abcdef1234567890',
 			});
+			await vi.advanceTimersByTimeAsync(300);
 
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				{
 					type: 'instanceAiRecordingStateChanged',
 					data: { threadId: 'thread-1', status: 'recording', actionCount: 1 },
 				},
+				[USER_ID],
+			);
+		});
+
+		it('coalesces a burst of actions into a single debounced push', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			service.startRecording(USER_ID, 'thread-1');
+			push.sendToUsers.mockClear();
+
+			for (let i = 0; i < 3; i++) {
+				relay.onRecordingActionAppended?.('rec-1', {
+					id: `a${i}`,
+					type: 'click',
+					timestamp: 0,
+					url: 'https://example.com',
+				});
+			}
+			await vi.advanceTimersByTimeAsync(300);
+
+			expect(push.sendToUsers).toHaveBeenCalledTimes(1);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({ data: expect.objectContaining({ actionCount: 3 }) }),
 				[USER_ID],
 			);
 		});
@@ -467,8 +513,32 @@ describe('InstanceAiBrowserSessionService', () => {
 				timestamp: 0,
 				url: 'https://example.com',
 			});
+			await vi.advanceTimersByTimeAsync(300);
 
 			expect(push.sendToUsers).not.toHaveBeenCalled();
+		});
+
+		it('cleans up an in-progress recording if the extension disconnects mid-recording', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			service.startRecording(USER_ID, 'thread-1');
+			push.sendToUsers.mockClear();
+
+			relay.onExtensionDisconnect?.();
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({ threadId: 'thread-1', status: 'discarded' }),
+				}),
+				[USER_ID],
+			);
+
+			// The caption timer must not keep firing for a session with no recording left.
+			relay.onExtensionConnect?.();
+			const captionHandler = vi.fn(async () => 'summary');
+			service.setActionCaptionHandler(captionHandler);
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(captionHandler).not.toHaveBeenCalled();
 		});
 	});
 
@@ -536,6 +606,46 @@ describe('InstanceAiBrowserSessionService', () => {
 			expect(captionHandler).toHaveBeenCalledTimes(1);
 		});
 
+		it('redacts every free-text field of a streamed action before it reaches the caption handler', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			const captionHandler = vi.fn(async () => 'summary');
+			service.setActionCaptionHandler(captionHandler);
+			service.startRecording(USER_ID, 'thread-1');
+
+			relay.onRecordingActionAppended?.('rec-1', {
+				id: 'a1',
+				type: 'input',
+				timestamp: 0,
+				url: 'https://example.com?token=secret',
+				value: 'my api key',
+				target: {
+					tag: 'input',
+					role: 'textbox',
+					label: 'API key',
+					name: 'apiKey',
+					inputType: 'password',
+				},
+			});
+			await vi.advanceTimersByTimeAsync(20_000);
+
+			expect(captionHandler).toHaveBeenCalledWith({
+				userId: USER_ID,
+				actions: [
+					expect.objectContaining({
+						url: 'redacted(https://example.com?token=secret)',
+						value: 'redacted(my api key)',
+						target: expect.objectContaining({
+							role: 'redacted(textbox)',
+							label: 'redacted(API key)',
+							name: 'redacted(apiKey)',
+							inputType: 'redacted(password)',
+						}),
+					}),
+				],
+			});
+		});
+
 		it('pushes the new caption live once a tick produces one', async () => {
 			const { relay } = await createSession(service);
 			relay.onExtensionConnect?.();
@@ -586,11 +696,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		});
 
 		it('passes the latest caption into the completion handler, then clears it', async () => {
-			const { relay } = await createSession(service);
-			relay.onExtensionConnect?.();
-			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: 'project-1',
-			} as never);
+			const { relay } = await createConnectedSession(service, projectRepository);
 			service.setActionCaptionHandler(vi.fn(async () => 'Opened Gmail'));
 			const completionHandler = vi.fn(async () => ({ threadId: 'thread-1' }));
 			service.setRecordingCompletionHandler(completionHandler);
@@ -616,11 +722,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		const recording = { id: 'rec-1' } as never;
 
 		it('passes the origin thread from startRecording through to the completion handler, then clears it', async () => {
-			const { relay } = await createSession(service);
-			relay.onExtensionConnect?.();
-			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: 'project-1',
-			} as never);
+			const { relay } = await createConnectedSession(service, projectRepository);
 			const handler = vi.fn(async () => ({ threadId: 'thread-1' }));
 			service.setRecordingCompletionHandler(handler);
 
@@ -645,11 +747,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		});
 
 		it('passes no origin thread for a recording started manually (from the extension popup)', async () => {
-			const { relay } = await createSession(service);
-			relay.onExtensionConnect?.();
-			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: 'project-1',
-			} as never);
+			const { relay } = await createConnectedSession(service, projectRepository);
 			const handler = vi.fn(async () => ({ threadId: 'thread-1' }));
 			service.setRecordingCompletionHandler(handler);
 
@@ -659,11 +757,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		});
 
 		it('pushes a terminal "stopped" state for an AI-triggered recording completing', async () => {
-			const { relay } = await createSession(service);
-			relay.onExtensionConnect?.();
-			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: 'project-1',
-			} as never);
+			const { relay } = await createConnectedSession(service, projectRepository);
 			service.setRecordingCompletionHandler(vi.fn(async () => ({ threadId: 'thread-1' })));
 			service.startRecording(USER_ID, 'thread-1');
 			push.sendToUsers.mockClear();
@@ -680,11 +774,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		});
 
 		it('pushes nothing for a manually completed recording (no origin thread to notify)', async () => {
-			const { relay } = await createSession(service);
-			relay.onExtensionConnect?.();
-			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-				id: 'project-1',
-			} as never);
+			const { relay } = await createConnectedSession(service, projectRepository);
 			service.setRecordingCompletionHandler(vi.fn(async () => ({ threadId: 'thread-1' })));
 			push.sendToUsers.mockClear();
 
