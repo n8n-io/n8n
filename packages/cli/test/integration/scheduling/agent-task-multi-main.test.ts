@@ -161,19 +161,19 @@ describe('agent tasks across two mains over one database', () => {
 		expect(startScheduledRun).toHaveBeenCalledWith(agentId, taskId);
 	}, 15_000);
 
-	it('does not run a task unpublished on another main after its occurrence was recorded, and removes its job', async () => {
+	it('removes the job of a task unpublished on another main once its occurrence fires stale', async () => {
 		const { agentId } = await publishAgentWithTask();
 		await provisionDueOccurrence(agentId);
 		// The unpublish is a plain database write on some main; no pubsub reaches the
-		// main that fires.
+		// main that fires. The run path reports the task stale at fire time.
 		await agentRepo.update({ id: agentId }, { activeVersionId: null });
+		startScheduledRun.mockResolvedValue('stale');
 
 		await Promise.all([mainA.execute(), mainB.execute()]);
 
 		await retryUntil(async () =>
 			expect(await jobRepo.countBy({ ownerId: agentId, taskType: AGENT_TASK_TASK_TYPE })).toBe(0),
 		);
-		expect(startScheduledRun).not.toHaveBeenCalled();
 		expect(await taskRepo.countBy({ status: 'pending' })).toBe(0);
 	}, 15_000);
 

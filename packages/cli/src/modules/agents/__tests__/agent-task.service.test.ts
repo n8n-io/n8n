@@ -112,27 +112,6 @@ async function* throwingStream(): AsyncGenerator<never> {
 	throw new Error('execution failed');
 }
 
-async function runTaskOf(
-	service: AgentTaskService,
-	agentId: string,
-	taskId: string,
-): Promise<void> {
-	await (service as unknown as { runTask(agentId: string, taskId: string): Promise<void> }).runTask(
-		agentId,
-		taskId,
-	);
-}
-
-async function runScheduledTaskOf(
-	service: AgentTaskService,
-	agentId: string,
-	taskId: string,
-): Promise<void> {
-	await (
-		service as unknown as { runScheduledTask(agentId: string, taskId: string): Promise<void> }
-	).runScheduledTask(agentId, taskId);
-}
-
 async function flushAsyncWork(): Promise<void> {
 	await new Promise((resolve) => setImmediate(resolve));
 }
@@ -911,15 +890,21 @@ describe('AgentTaskService', () => {
 		});
 	});
 
-	describe('runTask', () => {
-		it('runs the published agent with the objective', async () => {
+	describe('startScheduledRun', () => {
+		/** The fire-time reads: a published agent whose `task-1` snapshot is enabled. */
+		const arrangePublishedTask = (snapshot = makeSnapshot()) => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
+			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(snapshot);
+		};
+
+		it('runs the published agent with the objective', async () => {
+			arrangePublishedTask();
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
 			);
 
-			await runTaskOf(service, AGENT_ID, 'task-1');
+			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).resolves.toBe('started');
+			await flushAsyncWork();
 
 			expect(agentExecutionOrchestratorService.executeForTaskPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -935,15 +920,13 @@ describe('AgentTaskService', () => {
 		});
 
 		it('uses the published snapshot body, not the live draft row', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
-				makeSnapshot({ objective: 'Published objective' }),
-			);
+			arrangePublishedTask(makeSnapshot({ objective: 'Published objective' }));
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
 			);
 
-			await runTaskOf(service, AGENT_ID, 'task-1');
+			await service.startScheduledRun(AGENT_ID, 'task-1');
+			await flushAsyncWork();
 
 			expect(agentExecutionOrchestratorService.executeForTaskPublished).toHaveBeenCalledWith(
 				expect.objectContaining({ message: expect.stringContaining('Published objective') }),
@@ -953,15 +936,13 @@ describe('AgentTaskService', () => {
 		});
 
 		it('names the schedule timezone without moving the timestamp off the instance zone', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
-				makeSnapshot({ timezone: 'Asia/Tokyo' }),
-			);
+			arrangePublishedTask(makeSnapshot({ timezone: 'Asia/Tokyo' }));
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
 			);
 
-			await runTaskOf(service, AGENT_ID, 'task-1');
+			await service.startScheduledRun(AGENT_ID, 'task-1');
+			await flushAsyncWork();
 
 			// The timestamp has to agree with the `get_environment` tool, which reports
 			// the instance zone, so the schedule's zone is named instead of substituted.
@@ -971,33 +952,37 @@ describe('AgentTaskService', () => {
 			expect(message).toContain('This task is scheduled in Asia/Tokyo.');
 		});
 
-		it('skips when the agent is unpublished', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null }));
+		it.each([
+			['the agent is gone', () => (agentRepository.findOne as Mock).mockResolvedValue(null)],
+			[
+				'the agent is unpublished',
+				() =>
+					(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null })),
+			],
+			[
+				'the published task snapshot is not enabled',
+				() => arrangePublishedTask(makeSnapshot({ enabled: false })),
+			],
+		])("returns 'stale' without taking the lock when %s", async (_, arrange) => {
+			arrange();
+			agentTaskScheduler.hasTarget.mockReturnValue(true);
 
-			await runTaskOf(service, AGENT_ID, 'task-1');
+			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).resolves.toBe('stale');
 
+			expect(taskRunLockRepository.acquire).not.toHaveBeenCalled();
 			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
-		});
-
-		it('skips when the published task snapshot is not enabled', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
-				makeSnapshot({ enabled: false }),
-			);
-
-			await runTaskOf(service, AGENT_ID, 'task-1');
-
-			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
+			// The in-memory cron of a stale task goes with it.
+			expect(agentTaskScheduler.deregisterTarget).toHaveBeenCalledWith(agentTaskGroup(), 'task-1');
 		});
 
 		it('logs when execution throws', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
+			arrangePublishedTask();
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				throwingStream(),
 			);
 
-			await runTaskOf(service, AGENT_ID, 'task-1');
+			await service.startScheduledRun(AGENT_ID, 'task-1');
+			await flushAsyncWork();
 
 			expect(taskRepository.update).not.toHaveBeenCalled();
 			expect(logger.error).toHaveBeenCalledWith(
@@ -1007,15 +992,14 @@ describe('AgentTaskService', () => {
 		});
 
 		it('allows a later scheduled run after a failed execution completes', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
+			arrangePublishedTask();
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock)
 				.mockReturnValueOnce(throwingStream())
 				.mockReturnValueOnce(emptyStream());
 
-			await runScheduledTaskOf(service, AGENT_ID, 'task-1');
+			await service.startScheduledRun(AGENT_ID, 'task-1');
 			await flushAsyncWork();
-			await runScheduledTaskOf(service, AGENT_ID, 'task-1');
+			await service.startScheduledRun(AGENT_ID, 'task-1');
 			await flushAsyncWork();
 
 			expect(agentExecutionOrchestratorService.executeForTaskPublished).toHaveBeenCalledTimes(2);
@@ -1032,16 +1016,12 @@ describe('AgentTaskService', () => {
 						finishRun = resolve;
 					});
 				}
-				(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
-				(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
+				arrangePublishedTask();
 				(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 					blockingStream(),
 				);
 
-				const run = runScheduledTaskOf(service, AGENT_ID, 'task-1');
-				await Promise.resolve();
-				await Promise.resolve();
-
+				await service.startScheduledRun(AGENT_ID, 'task-1');
 				await vi.advanceTimersByTimeAsync(60_000);
 
 				expect(taskRunLockRepository.renew).toHaveBeenCalledWith(
@@ -1050,15 +1030,13 @@ describe('AgentTaskService', () => {
 				);
 
 				finishRun();
-				await run;
 			} finally {
 				vi.useRealTimers();
 			}
 		});
-	});
 
-	describe('startScheduledRun', () => {
 		it('propagates a lock-acquisition error without starting a run', async () => {
+			arrangePublishedTask();
 			taskRunLockRepository.acquire.mockRejectedValue(new Error('db down'));
 
 			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).rejects.toThrow('db down');
@@ -1067,18 +1045,8 @@ describe('AgentTaskService', () => {
 			expect(taskRunLockRepository.release).not.toHaveBeenCalled();
 		});
 
-		it('logs when the in-memory cron cannot take the lock', async () => {
-			taskRunLockRepository.acquire.mockRejectedValue(new Error('db down'));
-
-			await runScheduledTaskOf(service, AGENT_ID, 'task-1');
-
-			expect(logger.error).toHaveBeenCalledWith(
-				'[AgentTaskService] Scheduled task lock failed',
-				expect.objectContaining({ taskId: 'task-1', agentId: AGENT_ID, error: 'db down' }),
-			);
-		});
-
 		it("returns 'skipped-active' without running when the lock is held", async () => {
+			arrangePublishedTask();
 			taskRunLockRepository.acquire.mockResolvedValue(null);
 
 			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).resolves.toBe('skipped-active');
@@ -1095,8 +1063,7 @@ describe('AgentTaskService', () => {
 					finishRun = resolve;
 				});
 			}
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
+			arrangePublishedTask();
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				blockingStream(),
 			);
@@ -1111,8 +1078,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('releases the lock when the run fails', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask());
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
+			arrangePublishedTask();
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				throwingStream(),
 			);

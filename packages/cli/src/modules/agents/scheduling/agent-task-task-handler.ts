@@ -6,8 +6,6 @@ import { UnexpectedError } from 'n8n-workflow';
 import { AgentTaskService } from '../agent-task.service';
 import { AGENT_TASK_TASK_TYPE, isAgentTaskJobPayload } from './agent-task-job';
 import { AgentTaskJobRegistrar } from './agent-task-job-registrar';
-import { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
-import { AgentRepository } from '../repositories/agent.repository';
 
 /**
  * Runs a due agent-task occurrence.
@@ -31,8 +29,6 @@ export class AgentTaskTaskHandler implements TaskHandler {
 
 	constructor(
 		private logger: Logger,
-		private readonly agentRepository: AgentRepository,
-		private readonly taskSnapshotRepository: AgentTaskSnapshotRepository,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly registrar: AgentTaskJobRegistrar,
 	) {
@@ -47,12 +43,11 @@ export class AgentTaskTaskHandler implements TaskHandler {
 		}
 		const { agentId, taskId } = task.payload;
 
-		// The published config is the source of truth at fire time. If the task
-		// no longer qualifies, the occurrence is stale. Then the handler completes
-		// it without effect and reconciles again, so that the job that produced
-		// it goes away.
-		const runnable = await this.isRunnable(agentId, taskId);
-		if (!runnable) {
+		const outcome = await this.agentTaskService.startScheduledRun(agentId, taskId);
+		if (outcome === 'stale') {
+			// The task no longer qualifies under the published config. The handler
+			// completes the occurrence without effect and reconciles again, so
+			// that the job that produced it goes away.
 			this.logger.warn('Dropping occurrence of an agent task that is no longer scheduled', {
 				agentId,
 				taskId,
@@ -61,8 +56,6 @@ export class AgentTaskTaskHandler implements TaskHandler {
 			this.selfHeal(agentId);
 			return report.notDispatched();
 		}
-
-		const outcome = await this.agentTaskService.startScheduledRun(agentId, taskId);
 		if (outcome === 'skipped-active') {
 			// The previous run still holds the lock. The handler skips this tick,
 			// the same as the in-memory scheduler. The occurrence completes, and
@@ -76,15 +69,6 @@ export class AgentTaskTaskHandler implements TaskHandler {
 			jobId: task.jobId,
 		});
 		return report.dispatched();
-	}
-
-	/** Whether the task is still part of the published, enabled config of the agent. */
-	private async isRunnable(agentId: string, taskId: string): Promise<boolean> {
-		const versionId = await this.agentRepository.findActiveVersionId(agentId);
-		if (!versionId) return false;
-
-		const snapshot = await this.taskSnapshotRepository.findByVersionAndTaskId(versionId, taskId);
-		return snapshot?.enabled === true;
 	}
 
 	/** Removes the stale job behind this occurrence. Best-effort, off the hot path. */

@@ -49,18 +49,10 @@ export class AgentTaskJobRegistrar {
 	/**
 	 * Makes the durable jobs of an agent match its published config. Enabled
 	 * snapshots of the active version become jobs. All other jobs are removed.
-	 * An unpublished or deleted agent keeps no jobs. With the flag off, an agent
-	 * keeps no agent-task jobs whatever it publishes.
+	 * An unpublished or deleted agent keeps no jobs. Callers gate on
+	 * `isEnabled()`.
 	 */
 	async reconcile(agentId: string): Promise<void> {
-		if (!this.isEnabled()) {
-			await this.provisioner.deprovisionOwnerTaskType(
-				this.owner.ref(agentId),
-				AGENT_TASK_TASK_TYPE,
-			);
-			return;
-		}
-
 		// Reconciles take no lock, so two can interleave: two publishes, or a
 		// publish and a delete. The one that acted on a stale read can undo the
 		// newer one. Each repeats until the version it applied is still the active
@@ -75,12 +67,10 @@ export class AgentTaskJobRegistrar {
 	}
 
 	private async applyVersion(agentId: string, versionId: string | null): Promise<void> {
-		if (!versionId) {
-			await this.deprovisionAgent(agentId);
-			return;
-		}
-
-		const snapshots = await this.taskSnapshotRepository.findEnabledByVersionId(versionId);
+		// No active version (unpublished, deleted) means no desired jobs.
+		const snapshots = versionId
+			? await this.taskSnapshotRepository.findEnabledByVersionId(versionId)
+			: [];
 		const keptTaskIds = new Set<string>();
 		for (const snapshot of snapshots) {
 			const desired = this.desiredJobFor(agentId, snapshot);
@@ -95,9 +85,9 @@ export class AgentTaskJobRegistrar {
 			keptTaskIds.add(snapshot.taskId);
 		}
 
-		// Tasks that left the published config (removed, or disabled) can still
-		// hold jobs from an earlier reconcile. The loop above did not touch their
-		// members.
+		// Tasks that left the published config (removed, disabled, or the whole
+		// version gone) can still hold jobs from an earlier reconcile. The loop
+		// above did not touch their members.
 		const memberIds = await this.scheduledJobRepository.findOwnerMemberIds(
 			this.owner.ref(agentId),
 			AGENT_TASK_TASK_TYPE,
@@ -105,14 +95,6 @@ export class AgentTaskJobRegistrar {
 		for (const taskId of memberIds) {
 			if (keptTaskIds.has(taskId)) continue;
 			await this.provisioner.deprovisionOwnerMember(this.owner.member(agentId, taskId));
-		}
-	}
-
-	/** Removes all durable task jobs of an agent. Their occurrences cascade. */
-	async deprovisionAgent(agentId: string): Promise<void> {
-		const { removed } = await this.provisioner.deprovisionOwner(this.owner.ref(agentId));
-		if (removed > 0) {
-			this.logger.info('Removed durable jobs of an agent', { agentId, removed });
 		}
 	}
 
@@ -190,6 +172,7 @@ export class AgentTaskJobRegistrar {
 	private desiredJobFor(agentId: string, snapshot: AgentTaskSnapshot): DesiredJob | null {
 		const { taskId, cronExpression } = snapshot;
 
+		// Also the type guard that narrows the stored string to a `CronExpression`.
 		if (!isValidCronExpression(cronExpression)) {
 			this.logger.warn('Skipping task with invalid cron', { taskId, agentId });
 			return null;

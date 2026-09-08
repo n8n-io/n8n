@@ -74,7 +74,6 @@ describe('AgentTaskJobRegistrar', () => {
 			unchanged: [],
 			removed: [],
 		});
-		provisioner.deprovisionOwner.mockResolvedValue({ removed: 0 });
 		provisioner.deprovisionOwnerMember.mockResolvedValue({ removed: 0 });
 		provisioner.deprovisionOwnerTaskType.mockResolvedValue({ removed: 0 });
 	});
@@ -131,14 +130,22 @@ describe('AgentTaskJobRegistrar', () => {
 			expect(provisioner.deprovisionOwnerMember).toHaveBeenCalledWith(owner('task-gone'));
 		});
 
-		it('removes every remaining job when the published version has no enabled task', async () => {
-			taskSnapshotRepository.findEnabledByVersionId.mockResolvedValue([]);
+		it.each([
+			[
+				'the published version has no enabled task',
+				() => taskSnapshotRepository.findEnabledByVersionId.mockResolvedValue([]),
+			],
+			[
+				'the agent is deleted or unpublished',
+				() => agentRepository.findActiveVersionId.mockResolvedValue(null),
+			],
+		])('removes every remaining agent-task job when %s', async (_, arrange) => {
+			arrange();
 			scheduledJobRepository.findOwnerMemberIds.mockResolvedValue(['task-1']);
 
 			await makeRegistrar().reconcile(AGENT_ID);
 
 			expect(provisioner.provision).not.toHaveBeenCalled();
-			expect(provisioner.deprovisionOwner).not.toHaveBeenCalled();
 			expect(provisioner.deprovisionOwnerMember).toHaveBeenCalledWith(owner('task-1'));
 		});
 
@@ -180,15 +187,6 @@ describe('AgentTaskJobRegistrar', () => {
 			);
 		});
 
-		it('deprovisions every job the agent holds when the agent is deleted or unpublished', async () => {
-			agentRepository.findActiveVersionId.mockResolvedValue(null);
-
-			await makeRegistrar().reconcile(AGENT_ID);
-
-			expect(provisioner.deprovisionOwner).toHaveBeenCalledWith(OWNER_REF);
-			expect(provisioner.provision).not.toHaveBeenCalled();
-		});
-
 		it('applies the version published while it ran, so the newest config wins', async () => {
 			// version-1 has task-1, version-2 has task-2. The publish of version-2 lands
 			// between the first read and the re-read.
@@ -210,17 +208,6 @@ describe('AgentTaskJobRegistrar', () => {
 			});
 			expect(provisioner.deprovisionOwnerMember.mock.calls.at(-1)?.[0]).toEqual(owner('task-1'));
 		});
-
-		it('removes the agent-task jobs instead of provisioning when the flag is off', async () => {
-			await makeRegistrar({ enabledForAgentTasks: false }).reconcile(AGENT_ID);
-
-			expect(provisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
-				OWNER_REF,
-				AGENT_TASK_TASK_TYPE,
-			);
-			expect(provisioner.provision).not.toHaveBeenCalled();
-			expect(agentRepository.findActiveVersionId).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('reconcileAll', () => {
@@ -228,7 +215,6 @@ describe('AgentTaskJobRegistrar', () => {
 			await makeRegistrar({ enabled: false }).reconcileAll();
 
 			expect(scheduledJobRepository.findOwnerIds).not.toHaveBeenCalled();
-			expect(provisioner.deprovisionOwner).not.toHaveBeenCalled();
 			expect(provisioner.provision).not.toHaveBeenCalled();
 			expect(agentRepository.findPublishedAgentIds).not.toHaveBeenCalled();
 		});
@@ -263,7 +249,6 @@ describe('AgentTaskJobRegistrar', () => {
 				{ ownerType: 'agent', ownerId: 'agent-b' },
 				AGENT_TASK_TASK_TYPE,
 			);
-			expect(provisioner.deprovisionOwner).not.toHaveBeenCalled();
 			expect(provisioner.provision).not.toHaveBeenCalled();
 		});
 

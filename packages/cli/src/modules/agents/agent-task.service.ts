@@ -476,7 +476,13 @@ export class AgentTaskService {
 				timezone,
 			},
 			() => {
-				void this.runScheduledTask(agentId, taskId);
+				void this.startScheduledRun(agentId, taskId).catch((error: unknown) => {
+					this.logger.error('[AgentTaskService] Scheduled task lock failed', {
+						taskId,
+						agentId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
 			},
 		);
 		if (!registered) return;
@@ -499,30 +505,37 @@ export class AgentTaskService {
 
 	// ── Run ───────────────────────────────────────────────────────────────
 
-	private async runScheduledTask(agentId: string, taskId: string): Promise<void> {
-		try {
-			await this.startScheduledRun(agentId, taskId);
-		} catch (error) {
-			this.logger.error('[AgentTaskService] Scheduled task lock failed', {
+	/**
+	 * Checks that the task is still published and enabled, takes the run lock,
+	 * and starts the task run in the background. Resolves as soon as the lock
+	 * decision is made. Both schedulers enter here: the in-memory cron and the
+	 * durable handler. The handler must report its dispatch decision within the
+	 * lease of the occurrence, so it cannot wait for a run that takes minutes.
+	 *
+	 * A `stale` task drops its in-memory cron here; the durable handler removes
+	 * its own job. A lock-acquisition error propagates to the caller. The
+	 * background continuation logs run errors. It also renews the lock while the
+	 * run lasts, and releases the lock after the run.
+	 */
+	async startScheduledRun(
+		agentId: string,
+		taskId: string,
+	): Promise<'started' | 'skipped-active' | 'stale'> {
+		// Body comes from the PUBLISHED snapshot row, so name/objective/cron
+		// reflect publish time rather than live draft edits.
+		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+		const snapshot = agent?.activeVersionId
+			? await this.taskSnapshotRepository.findByVersionAndTaskId(agent.activeVersionId, taskId)
+			: null;
+		if (!agent?.activeVersionId || !snapshot?.enabled) {
+			this.logger.warn('[AgentTaskService] Task fired but is no longer published and enabled', {
 				taskId,
 				agentId,
-				error: error instanceof Error ? error.message : String(error),
 			});
+			this.deregister(agentId, taskId);
+			return 'stale';
 		}
-	}
 
-	/**
-	 * Takes the run lock and starts the task run in the background. Resolves as
-	 * soon as the lock decision is made. Both schedulers enter here: the
-	 * in-memory cron through `runScheduledTask`, and the durable handler
-	 * directly. The handler must report its dispatch decision within the lease
-	 * of the occurrence, so it cannot wait for a run that takes minutes.
-	 *
-	 * A lock-acquisition error propagates to the caller. The background
-	 * continuation logs run errors. It also renews the lock while the run lasts,
-	 * and releases the lock after the run.
-	 */
-	async startScheduledRun(agentId: string, taskId: string): Promise<'started' | 'skipped-active'> {
 		const holderId = randomUUID();
 		const lock = await this.taskRunLockRepository.acquire(agentId, taskId, {
 			holderId,
@@ -539,7 +552,7 @@ export class AgentTaskService {
 		const renewInterval = this.startTaskRunLockRenewal(lock);
 		void (async () => {
 			try {
-				await this.runTask(agentId, taskId);
+				await this.runTask(agent, snapshot);
 			} catch (error) {
 				this.logger.error('[AgentTaskService] Scheduled task run failed', {
 					taskId,
@@ -582,77 +595,35 @@ export class AgentTaskService {
 		}, TASK_RUN_LOCK_RENEW_MS);
 	}
 
-	private async runTask(agentId: string, taskId: string): Promise<void> {
-		let projectId: string | undefined;
+	private async runTask(agent: Agent, snapshot: AgentTaskSnapshot): Promise<void> {
+		const { id: agentId, projectId } = agent;
+		const { taskId } = snapshot;
+		const { message, threadId } = this.buildTaskRunMessage(
+			taskId,
+			snapshot.objective,
+			snapshot.timezone,
+		);
 
-		try {
-			const agent = await this.agentRepository.findOne({
-				where: { id: agentId },
-				relations: { activeVersion: true },
-			});
-			if (!agent) {
-				this.deregister(agentId, taskId);
-				return;
-			}
-			projectId = agent.projectId;
+		this.logger.info('[AgentTaskService] Task fired', {
+			taskId,
+			agentId,
+			projectId,
+			cronExpression: snapshot.cronExpression,
+			timezone: snapshot.timezone,
+		});
 
-			if (!agent.activeVersionId) {
-				this.logger.warn('[AgentTaskService] Task fired for unpublished agent', {
-					taskId,
-					agentId,
-				});
-				this.deregister(agentId, taskId);
-				return;
-			}
-			// Body comes from the PUBLISHED snapshot row, so name/objective/cron
-			// reflect publish time rather than live draft edits.
-			const snapshot = await this.taskSnapshotRepository.findByVersionAndTaskId(
-				agent.activeVersionId,
-				taskId,
-			);
-			if (!snapshot?.enabled) {
-				this.logger.warn('[AgentTaskService] Task fired but has no enabled published snapshot', {
-					taskId,
-					agentId,
-				});
-				this.deregister(agentId, taskId);
-				return;
-			}
-
-			const { message, threadId } = this.buildTaskRunMessage(
-				taskId,
-				snapshot.objective,
-				snapshot.timezone,
-			);
-
-			this.logger.info('[AgentTaskService] Task fired', {
-				taskId,
+		await this.consumeTaskRun(
+			'Task run',
+			{ taskId, agentId, projectId },
+			this.agentExecutionOrchestratorService.executeForTaskPublished({
 				agentId,
 				projectId,
-				cronExpression: snapshot.cronExpression,
-				timezone: snapshot.timezone,
-			});
-
-			await this.consumeTaskRun(
-				'Task run',
-				{ taskId, agentId, projectId },
-				this.agentExecutionOrchestratorService.executeForTaskPublished({
-					agentId: agent.id,
-					projectId: agent.projectId,
-					message,
-					memory: { threadId, resourceId: taskRunMemoryResourceId(taskId) },
-					taskId,
-					taskVersionId: agent.activeVersionId,
-				}),
-			);
-		} catch (error) {
-			this.logger.error('[AgentTaskService] Task run failed', {
+				message,
+				memory: { threadId, resourceId: taskRunMemoryResourceId(taskId) },
 				taskId,
-				agentId,
-				projectId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
+				taskVersionId: snapshot.versionId,
+			}),
+		);
 	}
 
 	/**
