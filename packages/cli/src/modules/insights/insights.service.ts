@@ -295,8 +295,8 @@ export class InsightsService {
 					total,
 					succeeded,
 					failed,
-					failureRate: total ? failed / total : 0,
-					averageRunTime: total ? runTime / total : 0,
+					failureRate: total > 0 ? failed / total : 0,
+					averageRunTime: total > 0 ? runTime / total : 0,
 					timeSaved: r.timeSaved ?? 0,
 				},
 			};
