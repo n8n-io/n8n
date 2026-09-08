@@ -607,6 +607,69 @@ describe('apps tool', () => {
 		});
 	});
 
+	describe('add-component', () => {
+		async function runAddComponent(context: InstanceAiContext, component = 'accordion') {
+			const tool = createAppsTool(context);
+			const parsed: unknown = inputSchema(tool).parse({
+				action: 'add-component',
+				appId: 'app-1',
+				component,
+			});
+			return await executeTool<Record<string, unknown>>(tool, parsed);
+		}
+
+		it('rejects a component name that is not a lowercase slug', () => {
+			const tool = createAppsTool(createMockContext());
+			const parsed = inputSchema(tool).safeParse({
+				action: 'add-component',
+				appId: 'app-1',
+				component: '../evil',
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		it('runs the shadcn-vue CLI then npm install, in that order', async () => {
+			const context = createMockContext();
+
+			const result = await runAddComponent(context, 'alert-dialog');
+
+			const commands = commandsRun(context);
+			expect(commands[0]).toBe("npx --yes shadcn-vue@latest add 'alert-dialog' --yes --overwrite");
+			expect(commands[1]).toContain('npm install');
+			expect(result).toEqual({ appId: 'app-1', component: 'alert-dialog' });
+		});
+
+		it('reports a failure without running npm install when the CLI fails', async () => {
+			const context = createMockContext();
+			executeCommandMock(context).mockResolvedValue(fail('not found in registry'));
+
+			const result = await runAddComponent(context);
+
+			expect(result).toEqual({
+				error: true,
+				message: expect.stringContaining('accordion'),
+				log: expect.stringContaining('not found in registry'),
+			});
+			expect(commandsRun(context)).toHaveLength(1);
+		});
+
+		it('reports a failure when npm install fails after the CLI succeeds', async () => {
+			const context = createMockContext();
+			executeCommandMock(context).mockImplementation(
+				async (command: string) =>
+					await Promise.resolve(command.includes('npm install') ? fail('ERESOLVE') : ok()),
+			);
+
+			const result = await runAddComponent(context);
+
+			expect(result).toEqual({
+				error: true,
+				message: 'npm install failed after adding the component.',
+				log: expect.stringContaining('ERESOLVE'),
+			});
+		});
+	});
+
 	describe('buildCheckScript', () => {
 		it('matches the snapshot', () => {
 			expect(

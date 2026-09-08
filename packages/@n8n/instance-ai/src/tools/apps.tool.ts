@@ -68,10 +68,20 @@ const restoreSchema = z.object({
 	appId: z.string(),
 });
 
+const addComponentSchema = z.object({
+	action: z.literal('add-component'),
+	appId: z.string(),
+	component: z
+		.string()
+		.regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'lowercase letters, digits and single hyphens only')
+		.describe('shadcn-vue component name, e.g. "accordion" or "alert-dialog"'),
+});
+
 type CreateInput = z.infer<typeof createSchema>;
 type BuildInput = z.infer<typeof buildSchema>;
 type RestoreInput = z.infer<typeof restoreSchema>;
-type AppsInput = CreateInput | BuildInput | RestoreInput;
+type AddComponentInput = z.infer<typeof addComponentSchema>;
+type AppsInput = CreateInput | BuildInput | RestoreInput | AddComponentInput;
 
 // Defaults live here, not in the schema: the flattened union schema the model
 // sees wraps every field in `.optional()`, which skips Zod defaults at parse time.
@@ -435,6 +445,54 @@ async function handleRestore(
 	}
 }
 
+/**
+ * Pulls an extra shadcn-vue component into an app beyond the curated set the
+ * template ships with, via the real CLI (so it never drifts from upstream).
+ * Runs npm install right away rather than leaving it to the next build:
+ * `handleBuild` skips `npm install` whenever `node_modules` already exists,
+ * which would otherwise leave a component's own new dependency unresolved.
+ */
+async function handleAddComponent(
+	context: InstanceAiContext,
+	input: AddComponentInput,
+	abortSignal?: AbortSignal,
+) {
+	const appService = requireAppService(context);
+	const { workspace, run } = requireSandbox(context, abortSignal);
+	const app = await appService.get(input.appId);
+
+	const root = await getWorkspaceRoot(workspace);
+	const appDir = `${root}/${APPS_DIR}/${app.namespace}`;
+
+	const add = await run(`npx --yes shadcn-vue@latest add ${q(input.component)} --yes --overwrite`, {
+		cwd: appDir,
+		env: { CI: 'true' },
+		timeout: COMMAND_TIMEOUT_MS,
+	});
+	if (add.exitCode !== 0) {
+		return {
+			error: true,
+			message: `Adding the "${input.component}" component failed. It may not exist in the registry, or its name is misspelled.`,
+			log: tailLog(combinedLog(add)),
+		};
+	}
+
+	const install = await run(`${NO_CORE_DUMPS} npm install ${NPM_INSTALL_FLAGS}`, {
+		cwd: appDir,
+		env: { CI: 'true' },
+		timeout: COMMAND_TIMEOUT_MS,
+	});
+	if (install.exitCode !== 0) {
+		return {
+			error: true,
+			message: 'npm install failed after adding the component.',
+			log: tailLog(combinedLog(install)),
+		};
+	}
+
+	return { appId: app.id, component: input.component };
+}
+
 async function readTarball(
 	workspace: NonNullable<InstanceAiContext['workspace']>,
 	relativePath: string,
@@ -461,7 +519,7 @@ function requireAppService(
 
 export function createAppsTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(
-		z.discriminatedUnion('action', [createSchema, buildSchema, restoreSchema]),
+		z.discriminatedUnion('action', [createSchema, buildSchema, restoreSchema, addComponentSchema]),
 	);
 
 	return new Tool(APPS_TOOL_ID)
@@ -471,7 +529,8 @@ export function createAppsTool(context: InstanceAiContext) {
 				'`create` registers the app and copies a starter template into apps/<namespace>/ in the workspace; ' +
 				'edit the files there, then call `build` to compile them and publish a new version. ' +
 				'`build` returns the live `url` on success, or `{ error, stage, message, log }` to fix and retry. ' +
-				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet.',
+				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet. ' +
+				'`add-component` pulls an extra shadcn-vue component into src/components/ui/ beyond the ones the template already has.',
 		)
 		.input(inputSchema)
 		.handler(async (input: AppsInput, ctx) => {
@@ -482,6 +541,8 @@ export function createAppsTool(context: InstanceAiContext) {
 					return await handleBuild(context, input, ctx.abortSignal);
 				case 'restore':
 					return await handleRestore(context, input, ctx.abortSignal);
+				case 'add-component':
+					return await handleAddComponent(context, input, ctx.abortSignal);
 			}
 		})
 		.build();
