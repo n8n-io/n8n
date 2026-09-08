@@ -1,7 +1,18 @@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { copyFile, lstat, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+	copyFile,
+	cp,
+	lstat,
+	mkdir,
+	mkdtemp,
+	readdir,
+	readFile,
+	rename,
+	rm,
+	writeFile,
+} from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 
@@ -13,6 +24,8 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 
 import { containerPlacement, mergeManifests, pinPath, staleTargets } from './manifest-merge';
 import type { BranchState, Placement } from './manifest-merge';
+
+const isUnder = (target: string, prefix: string) => target.startsWith(`${prefix}/`);
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -94,7 +107,13 @@ export class WorkingCopyUpdater {
 			if (error.code === 'ENOENT') return undefined;
 			throw error;
 		});
-		return raw === undefined ? undefined : packageManifestSchema.parse(jsonParse(raw));
+		if (raw === undefined) return undefined;
+		try {
+			return packageManifestSchema.parse(jsonParse(raw));
+		} catch (error) {
+			if (error instanceof BadRequestError) throw error;
+			throw new BadRequestError('Package manifest failed validation');
+		}
 	}
 
 	/**
@@ -144,7 +163,8 @@ export class WorkingCopyUpdater {
 
 	/**
 	 * Merge the staging export into `exportFolder`. The merge runs first and can
-	 * reject the push, so a refused selection leaves the working copy untouched.
+	 * reject the push. File work runs on a copy, then the copy replaces the
+	 * export, so a failed write leaves the working copy untouched.
 	 */
 	async applySelection(
 		exportFolder: string,
@@ -159,21 +179,98 @@ export class WorkingCopyUpdater {
 			new Set(selection.deletedWorkflowIds),
 			selection.projectId,
 		);
+		const placement = containerPlacement(existing, staging);
+		const parent = path.dirname(exportFolder);
+		const workFolder = await mkdtemp(path.join(parent, `.${path.basename(exportFolder)}-`));
+		let backupFolder: string | undefined;
 
-		for (const target of staleTargets(existing, merged, staging)) {
-			await rm(await this.resolveContained(exportFolder, target), {
-				recursive: true,
-				force: true,
-			});
+		try {
+			await rm(workFolder, { recursive: true, force: true });
+			await cp(exportFolder, workFolder, { recursive: true, verbatimSymlinks: true });
+
+			for (const target of staleTargets(existing, merged, staging)) {
+				await rm(await this.assertRemovableLeafTarget(workFolder, target, merged), {
+					recursive: true,
+					force: true,
+				});
+			}
+			await this.overlayDirectory(stagingFolder, workFolder, placement);
+			await writeFile(
+				await this.resolveContained(workFolder, MANIFEST_FILE),
+				JSON.stringify(merged, null, '\t'),
+			);
+
+			backupFolder = `${exportFolder}.bak`;
+			await rm(backupFolder, { recursive: true, force: true });
+			await rename(exportFolder, backupFolder);
+			await rename(workFolder, exportFolder);
+			await rm(backupFolder, { recursive: true, force: true });
+			backupFolder = undefined;
+		} catch (error) {
+			if (backupFolder !== undefined) {
+				await rm(exportFolder, { recursive: true, force: true }).catch(() => undefined);
+				await rename(backupFolder, exportFolder).catch(() => undefined);
+			}
+			throw error;
+		} finally {
+			await rm(workFolder, { recursive: true, force: true });
 		}
-		await this.overlayDirectory(stagingFolder, exportFolder, containerPlacement(existing, staging));
-
-		await writeFile(
-			await this.resolveContained(exportFolder, MANIFEST_FILE),
-			JSON.stringify(merged, null, '\t'),
-		);
 
 		return merged;
+	}
+
+	/**
+	 * A stale target must be a leaf directory inside the export. The branch is
+	 * remote content, so a target of `.` or a container ancestor must not wipe
+	 * the working copy or unselected workflows.
+	 */
+	private async assertRemovableLeafTarget(
+		exportFolder: string,
+		target: string,
+		remaining: PackageManifest,
+	): Promise<string> {
+		const segments = target.split(/[\\/]/).filter(Boolean);
+		if (segments.length === 0 || segments.includes('.') || segments.includes('..')) {
+			throw new BadRequestError(
+				`Manifest target "${target}" is not a managed leaf directory. Remove it and retry.`,
+			);
+		}
+
+		const resolved = await this.resolveContained(exportFolder, target);
+		if (resolved === path.resolve(exportFolder)) {
+			throw new BadRequestError(
+				`Manifest target "${target}" is not a managed leaf directory. Remove it and retry.`,
+			);
+		}
+
+		const descendants = [
+			remaining.projects,
+			remaining.folders,
+			remaining.workflows,
+			remaining.credentials,
+			remaining.dataTables,
+			remaining.variables,
+			remaining.tags,
+		]
+			.flatMap((entries) => entries ?? [])
+			.map((entry) => entry.target);
+
+		if (descendants.some((keptTarget) => isUnder(keptTarget, target))) {
+			throw new BadRequestError(
+				`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
+			);
+		}
+
+		const containers = [...(remaining.projects ?? []), ...(remaining.folders ?? [])].map(
+			(entry) => entry.target,
+		);
+		if (containers.includes(target)) {
+			throw new BadRequestError(
+				`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
+			);
+		}
+
+		return resolved;
 	}
 
 	/**
