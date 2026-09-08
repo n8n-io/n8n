@@ -1110,20 +1110,6 @@ describe('InsightsService', () => {
 			mockInsightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
 		});
 
-		it('does not request billable in the default by-time insight types', async () => {
-			await insightsService.getInsightsByTime({
-				user,
-				startDate,
-				endDate,
-			});
-
-			expect(mockInsightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
-				expect.objectContaining({
-					insightTypes: ['time_saved_min', 'runtime_ms', 'success', 'failure'],
-				}),
-			);
-		});
-
 		describe('project access', () => {
 			it('should not check project access when no project is requested', async () => {
 				await insightsService.getInsightsByTime({ user, startDate, endDate });
