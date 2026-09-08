@@ -83,6 +83,30 @@ describe('formatValidationError', () => {
 		});
 	});
 
+	describe('an unknown query key keeps the legacy shape', () => {
+		it("renders 'Unknown query parameter' and names the key", () => {
+			const limit = z.object({ limit: z.coerce.number().optional() }).strict();
+
+			const message = formatValidationError('query', errorFrom(limit, { bogus: '1' }));
+
+			expect(message).toBe("Unknown query parameter 'bogus'");
+		});
+
+		it('names only the first key when several are unknown', () => {
+			const limit = z.object({ limit: z.coerce.number().optional() }).strict();
+
+			const message = formatValidationError('query', errorFrom(limit, { bogus: '1', other: '2' }));
+
+			expect(message).toBe("Unknown query parameter 'bogus'");
+		});
+
+		it('does not apply to an unknown body key', () => {
+			const message = formatValidationError('body', errorFrom(widget, { name: 'w', bogus: 1 }));
+
+			expect(message).toBe("request/body Unrecognized key(s) in object: 'bogus'");
+		});
+	});
+
 	it('falls back when the error carries no issues', () => {
 		expect(formatValidationError('body', new ZodError([]))).toBe('Invalid request');
 	});
