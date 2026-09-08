@@ -1,4 +1,3 @@
-import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -10,6 +9,8 @@ import {
 import { logWrapper, getConnectionHintNoticeField, proxyFetch } from '@n8n/ai-utilities';
 
 import { getRequiredApiKey } from '@utils/helpers';
+
+import { GeminiEmbeddings } from './helpers';
 
 export class EmbeddingsGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,7 +55,7 @@ export class EmbeddingsGoogleGemini implements INodeType {
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName:
-					'Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings.',
+					'Each model uses a different embedding dimensionality. Make sure your vector store is configured for the same dimensionality. The default model (gemini-embedding-001) returns 3072-dimensional embeddings unless the Output Dimensionality option is set.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -113,6 +114,25 @@ export class EmbeddingsGoogleGemini implements INodeType {
 				},
 				default: 'models/gemini-embedding-001',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				description: 'Additional options to add',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Output Dimensionality',
+						name: 'outputDimensionality',
+						default: undefined,
+						description:
+							'The number of dimensions the returned embeddings should have, e.g. 768, 1536 or 3072 for gemini-embedding-001. Leave unset to use the model default.',
+						type: 'number',
+						typeOptions: { minValue: 1 },
+					},
+				],
+			},
 		],
 	};
 
@@ -123,9 +143,17 @@ export class EmbeddingsGoogleGemini implements INodeType {
 			itemIndex,
 			'models/gemini-embedding-001',
 		) as string;
+		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			outputDimensionality?: number;
+		};
+		const outputDimensionality =
+			options.outputDimensionality && options.outputDimensionality > 0
+				? options.outputDimensionality
+				: undefined;
+
 		const credentials = await this.getCredentials('googlePalmApi');
 		const egressFilter = this.helpers.getSecureEgressFilter();
-		const embeddings = new GoogleGenerativeAIEmbeddings({
+		const embeddings = new GeminiEmbeddings({
 			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			baseUrl: credentials.host as string,
 			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
@@ -133,6 +161,7 @@ export class EmbeddingsGoogleGemini implements INodeType {
 			model: modelName,
 			// LangChain defaults to 6 retries, so a failing connection surfaced only after minutes
 			maxRetries: 2,
+			outputDimensionality,
 		});
 
 		return {
