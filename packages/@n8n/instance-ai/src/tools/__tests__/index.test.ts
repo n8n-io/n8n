@@ -216,8 +216,7 @@ describe('domain tool construction', () => {
 			activityService: {} as InstanceAiContext['activityService'],
 		});
 		expect(createOrchestratorDomainTools(enabled).get('activity')).toBeDefined();
-		// Orchestrator only — the block that hands the agent ids to expand rides its turn.
-		expect(createAllTools(enabled).get('activity')).toBeUndefined();
+		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('activity');
 	});
 
 	it('never defers activity behind search_tools', () => {

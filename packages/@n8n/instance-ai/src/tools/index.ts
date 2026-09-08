@@ -145,7 +145,7 @@ function getOrchestratorDomainToolFactories(
 	// presence is the flag as far as the tool layer is concerned. Orchestrator only, because the
 	// block that hands the agent ids to expand rides the orchestrator's turn.
 	if (context.activityService) {
-		tools.push([DOMAIN_TOOL_IDS.ACTIVITY, loadActivityTool().createActivityTool(context)]);
+		tools.push([DOMAIN_TOOL_IDS.ACTIVITY, () => loadActivityTool().createActivityTool(context)]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
