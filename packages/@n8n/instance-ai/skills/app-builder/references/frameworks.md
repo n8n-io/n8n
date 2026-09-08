@@ -25,12 +25,16 @@ or 137 (killed) means you exceeded it. For every framework:
 
 ## Styling in another framework
 
-The Vue template's `src/style.css` (theme import + Tailwind + `@theme` token
-mapping) is plain CSS and portable: copy it into any Vite project, add
-`@tailwindcss/vite` to the plugins and `@n8n/design-system` + `tailwindcss` +
-`@tailwindcss/vite` to `package.json`, import the file once in the entry
-module. The utility names in `references/design-system.md` then work the same.
-For non-Vite frameworks use `@tailwindcss/postcss` instead of the Vite plugin.
+The Vue template's `src/style.css` (Tailwind + the shadcn-vue `:root`/`.dark`
+CSS-variable block) is plain CSS and portable: copy it into any Vite project,
+add `@tailwindcss/vite` to the plugins and `tailwindcss` + `@tailwindcss/vite`
+to `package.json`, import the file once in the entry module. The utility
+names in `references/design-system.md` then work the same, but the
+pre-generated components under `src/components/ui/` do not — those are
+Vue-specific. Use that framework's own shadcn CLI/registry (`shadcn` for
+React, `shadcn-svelte` for Svelte) to generate matching components against
+the same CSS variables, or hand-style with the utilities directly. For
+non-Vite frameworks use `@tailwindcss/postcss` instead of the Vite plugin.
 `reka-ui` is Vue-only; in React use `radix-ui` primitives with the same
 utilities.
 - Prefer Vite for small apps. If another framework's build dies with 134/137,
