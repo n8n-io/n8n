@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Github/__tests__/node/GithubTrigger.node.test.ts
+  s_2a1c69d003515b::t_b0497be392f4ee 74-79,96-101,297,311,320,328,366,374,408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2a0aff0a9afae2ecb042ccaaf4fb4159ac0e5c78",
+  "prompts": {},
+  "sessions": {
+    "s_2a1c69d003515b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d877d31-e0fb-4643-abbc-d84c31b962b3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

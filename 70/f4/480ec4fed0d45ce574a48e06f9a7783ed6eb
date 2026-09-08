@@ -1,0 +1,29 @@
+packages/cli/src/modules/instance-ai/__tests__/stream-transport-error.test.ts
+  s_9dfc80eb009710::t_b0c81043697f1d 1-2,15-18
+packages/cli/src/modules/instance-ai/stream-transport-error.ts
+  s_a655aa7146362b::t_d5bc254706865a 1,8,14-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "70f4480ec4fed0d45ce574a48e06f9a7783ed6eb",
+  "prompts": {},
+  "sessions": {
+    "s_9dfc80eb009710": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a8c62fdb-035b-49d2-a90c-fa20686798ca",
+        "model": "claude-fable-5-1-thinking-max"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a655aa7146362b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fced894e-1e43-48a4-8824-934e8a5a0646",
+        "model": "unknown"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

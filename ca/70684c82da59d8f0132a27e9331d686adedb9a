@@ -1,0 +1,50 @@
+packages/cli/src/executions/execution-cursor.ts
+  s_d78c9bcad353a9::t_c569e0d14d88de 45-46
+  s_d78c9bcad353a9::t_a6f4d545210d91 20,25,27-29
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_d78c9bcad353a9::t_8d3943f6259166 11
+  s_d78c9bcad353a9::t_a308df05fce4b6 1045-1049
+  s_d78c9bcad353a9::t_d80ca5dc1ac81a 1039-1044,1050-1058
+packages/cli/test/integration/execution.repository.test.ts
+  s_d78c9bcad353a9::t_6715e3012d162d 78-89
+  s_d78c9bcad353a9::t_06b3a95cabf8f2 74-77,90-104,109-111
+  s_d78c9bcad353a9::t_d7cf57605c1d06 105-108
+packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.test.ts
+  s_d78c9bcad353a9::t_dc42b32625aa7f 32-34
+  s_d78c9bcad353a9::t_9f28f2ca4e97ef 9
+  s_d78c9bcad353a9::t_8feda886af94ba 122-134
+packages/cli/src/executions/__tests__/execution-cursor.test.ts
+  s_d78c9bcad353a9::t_fd797d774c4bea 9-21
+packages/cli/src/executions/executions.controller.ts
+  s_d78c9bcad353a9::t_0567bd8bd654b5 48-50
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_d78c9bcad353a9::t_03ba4f092c29dc 1005-1007
+  s_d78c9bcad353a9::t_7a4493dfde07a7 1125
+packages/cli/src/executions/execution.service.ts
+  s_d78c9bcad353a9::t_25c5766d7da827 548-549,552-553
+packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.vue
+  s_d78c9bcad353a9::t_6a8d87feb104d1 121-122
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_d78c9bcad353a9::t_6715e3012d162d 149-154,156,158,160-163
+  s_d78c9bcad353a9::t_31817878781167 104,108-109,114,117-119,123,130,136,142
+  s_d78c9bcad353a9::t_190f493efae321 148
+  s_d78c9bcad353a9::t_544b57ae3d1e4e 166-168
+packages/frontend/editor-ui/src/features/execution/executions/views/WorkflowExecutionsView.vue
+  s_d78c9bcad353a9::t_a980a6835728ed 176-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ca70684c82da59d8f0132a27e9331d686adedb9a",
+  "prompts": {},
+  "sessions": {
+    "s_d78c9bcad353a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03879d46-9565-461d-833f-8b25e2a6e97b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
