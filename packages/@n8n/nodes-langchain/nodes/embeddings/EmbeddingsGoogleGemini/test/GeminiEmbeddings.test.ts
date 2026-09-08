@@ -79,16 +79,18 @@ describe('GeminiEmbeddings', () => {
 			expect(result).toEqual([[0], [1], [0]]);
 		});
 
-		it('returns empty vectors for a failed batch to keep positions aligned with the input', async () => {
-			const { embeddings, ownClient } = buildEmbeddings({ outputDimensionality: 768 });
+		it('rejects when a batch request fails instead of returning empty vectors', async () => {
+			// maxRetries: 0 keeps the AsyncCaller from retrying the rejected mock with backoff.
+			const { embeddings, ownClient } = buildEmbeddings({
+				outputDimensionality: 768,
+				maxRetries: 0,
+			});
 			embeddings.maxBatchSize = 1;
 			ownClient.batchEmbedContents
 				.mockRejectedValueOnce(new Error('quota exceeded'))
 				.mockResolvedValueOnce({ embeddings: [{ values: [0.5] }] });
 
-			const result = await embeddings.embedDocuments(['a', 'b']);
-
-			expect(result).toEqual([[], [0.5]]);
+			await expect(embeddings.embedDocuments(['a', 'b'])).rejects.toThrow('quota exceeded');
 		});
 
 		it('honours stripNewLines, taskType and title in the request it builds', async () => {
