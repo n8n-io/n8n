@@ -31,6 +31,11 @@ export class AppServingController {
 	@Get('/:namespace{/*path}', { skipAuth: true, usesTemplates: true })
 	async serve(req: Request, res: Response) {
 		const segments = pathSegments(req.params.path);
+		// Reserved for the runtime API; a built app must not get its index.html here.
+		if (segments[0] === 'api') {
+			res.status(404).json({ code: 'not_found', message: 'Not found' });
+			return;
+		}
 		const resolved = await this.appServingService.resolve(req.params.namespace, segments);
 
 		if (resolved?.kind === 'static') {

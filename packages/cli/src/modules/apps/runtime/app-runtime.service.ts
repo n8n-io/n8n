@@ -1,0 +1,244 @@
+import type { WorkflowEntity } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type {
+	IDataObject,
+	IExecuteResponsePromiseData,
+	INode,
+	IPinData,
+	IRun,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
+import { createRunExecutionData } from 'n8n-workflow';
+
+import { ActiveExecutions } from '@/active-executions';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import {
+	detectTriggerNode,
+	extractResult,
+	formatResult,
+	inferInputSchema,
+	validateCompatibility,
+} from '@/modules/agents/tools/workflow-tool-factory';
+import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
+import { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
+import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
+import { WorkflowRunner } from '@/workflow-runner';
+
+import { AppRepository } from '../app.repository';
+import { AppRuntimeError } from './app-runtime.error';
+
+/**
+ * How long a call blocks on the execution. Longer than a browser should hold a request,
+ * shorter than the 120 s the agents tool waits; past it the caller gets a 202 and the
+ * execution keeps running, so a slow workflow is not killed by a page timeout.
+ */
+const SYNC_WAIT_MS = 60_000;
+
+export type AppRuntimeRunResult =
+	| { executionId: string; status: 'running'; principal: null }
+	| {
+			executionId: string;
+			status: string;
+			output: unknown;
+			/** Set when a Respond to Webhook node answered with binary, which v1 does not stream. */
+			outputTruncated?: true;
+			error?: string;
+			principal: null;
+	  };
+
+/** The input arrived as a JSON body, so a parsed object is JSON-compatible. */
+function isDataObject(value: unknown): value is IDataObject {
+	return isRecord(value);
+}
+
+function isWebhookResponse(value: unknown): value is IExecuteResponsePromiseData {
+	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);
+}
+
+@Service()
+export class AppRuntimeService {
+	constructor(
+		private readonly appRepository: AppRepository,
+		private readonly workflowLoader: WorkflowToolWorkflowLoader,
+		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly workflowRunner: WorkflowRunner,
+		private readonly activeExecutions: ActiveExecutions,
+		private readonly webhookResponseRelay: WebhookResponseRelay,
+	) {}
+
+	/**
+	 * Runs the published workflow bound to `key` as the app's project, the way an agent
+	 * tool does. Each refusal has its own code so the app can tell a missing binding from
+	 * an unpublished workflow.
+	 */
+	async runWorkflow(namespace: string, key: string, body: unknown): Promise<AppRuntimeRunResult> {
+		const app = await this.appRepository.findByNamespace(namespace);
+		if (!app) {
+			throw new AppRuntimeError(404, 'app_not_found', `No app is served at /apps/${namespace}.`);
+		}
+
+		const binding = app.bindings.find((b) => b.key === key && b.kind === 'workflow');
+		if (!binding) {
+			throw new AppRuntimeError(
+				404,
+				'binding_not_found',
+				`App "${app.namespace}" has no workflow bound as "${key}".`,
+			);
+		}
+
+		const workflow = await this.loadPublishedWorkflow(app.projectId, binding.workflowId);
+
+		try {
+			validateCompatibility(workflow);
+		} catch (error) {
+			if (error instanceof WorkflowToolUnavailableError) {
+				throw new AppRuntimeError(409, 'workflow_incompatible', error.message);
+			}
+			throw error;
+		}
+
+		try {
+			await this.subworkflowPolicyChecker.checkForProject(workflow, app.projectId);
+		} catch (error) {
+			if (error instanceof SubworkflowPolicyDenialError) {
+				throw new AppRuntimeError(
+					403,
+					'workflow_not_callable',
+					`Workflow "${workflow.name}" does not allow this app to call it. Check its "This workflow can be called by" setting.`,
+				);
+			}
+			throw error;
+		}
+
+		const trigger = detectTriggerNode(workflow);
+		const parsed = inferInputSchema(trigger.node, trigger.triggerType).safeParse(body);
+		if (!parsed.success || !isDataObject(parsed.data)) {
+			throw new AppRuntimeError(
+				400,
+				'invalid_input',
+				'The request body does not match the workflow inputs.',
+				parsed.success ? undefined : parsed.error.issues,
+			);
+		}
+
+		return await this.execute(workflow, trigger.node, parsed.data);
+	}
+
+	private async loadPublishedWorkflow(projectId: string, workflowId: string) {
+		try {
+			const workflow = await this.workflowLoader.loadWorkflow(
+				projectId,
+				{ workflowId, workflowName: '' },
+				{ usePublishedVersion: true },
+			);
+			if (!workflow) {
+				throw new AppRuntimeError(
+					404,
+					'workflow_not_found',
+					'The bound workflow no longer exists in the app’s project.',
+				);
+			}
+			return workflow;
+		} catch (error) {
+			if (error instanceof WorkflowToolUnavailableError && error.reason === 'not_published') {
+				throw new AppRuntimeError(
+					409,
+					'workflow_not_published',
+					'The bound workflow is not published. Publish it to make it callable from the app.',
+				);
+			}
+			throw error;
+		}
+	}
+
+	/** Same run setup as `executeWorkflow` in the workflow tool factory: the input is pinned on the trigger. */
+	private async execute(
+		workflow: WorkflowEntity,
+		triggerNode: INode,
+		input: IDataObject,
+	): Promise<AppRuntimeRunResult> {
+		const pinData: IPinData = { [triggerNode.name]: [{ json: input }] };
+		const runData: IWorkflowExecutionDataProcess = {
+			executionMode: 'integrated',
+			workflowData: workflow,
+			startNodes: [{ name: triggerNode.name, sourceData: null }],
+			pinData,
+			executionData: createRunExecutionData({
+				startData: {},
+				resultData: { pinData, runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: [
+						{
+							node: triggerNode,
+							data: { main: [pinData[triggerNode.name]] },
+							source: null,
+						},
+					],
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			}),
+		};
+
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		let webhookResponse: IExecuteResponsePromiseData | undefined;
+		void responsePromise.promise
+			.then((response) => {
+				webhookResponse = response;
+			})
+			.catch(() => {});
+
+		const executionId = await this.workflowRunner.run(
+			runData,
+			undefined,
+			undefined,
+			undefined,
+			responsePromise,
+		);
+
+		const run = await this.waitForRun(executionId);
+		if (run === 'running') return { executionId, status: 'running', principal: null };
+
+		const result = run
+			? formatResult(executionId, run.status, run.data, false)
+			: await extractResult(executionId, false);
+		const base = { executionId, status: result.status, error: result.error, principal: null };
+
+		if (isWebhookResponse(webhookResponse)) {
+			const { body } = await this.webhookResponseRelay.restoreOffloadedBody(webhookResponse, {
+				reclaim: true,
+				context: { workflowId: workflow.id, executionId },
+			});
+			return Buffer.isBuffer(body)
+				? { ...base, output: null, outputTruncated: true }
+				: { ...base, output: body };
+		}
+
+		// `collectResultData` keys the last node's items by its name; the app only wants the items.
+		const output = result.data ? Object.values(result.data)[0] : [];
+		return { ...base, output };
+	}
+
+	/** `undefined` when the execution already left the active set (e.g. it failed before starting). */
+	private async waitForRun(executionId: string): Promise<IRun | 'running' | undefined> {
+		if (!this.activeExecutions.has(executionId)) return undefined;
+
+		let timeoutId: NodeJS.Timeout | undefined;
+		const timeout = new Promise<'running'>((resolve) => {
+			timeoutId = setTimeout(() => resolve('running'), SYNC_WAIT_MS);
+		});
+		try {
+			return await Promise.race([
+				this.activeExecutions.getPostExecutePromise(executionId),
+				timeout,
+			]);
+		} finally {
+			clearTimeout(timeoutId);
+		}
+	}
+}
