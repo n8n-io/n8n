@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_af721e3366faac::t_d6425a1452872f 28-29
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_af721e3366faac::t_f15f3e2932827d 25,301-306,313
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_af721e3366faac::t_8ca2e95c51bf6d 1598,1938-1940
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a96378c4b8ae5e2bfca824c62629959551bc8181",
+  "prompts": {},
+  "sessions": {
+    "s_af721e3366faac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbbde3a5-cbc5-4486-a4b8-414f4b03fb7b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
