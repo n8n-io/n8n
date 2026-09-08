@@ -51,11 +51,12 @@ export class AgentIntegrationsController {
 			...(payload.replaces
 				? { replaces: { type: payload.type, credentialId: payload.replaces.credentialId } }
 				: {}),
+			onPersisted: () =>
+				this.agentUpdateBroadcaster.notify(
+					{ projectId: req.params.projectId, agentId },
+					req.headers?.['push-ref'],
+				),
 		});
-		this.agentUpdateBroadcaster.notify(
-			{ projectId: req.params.projectId, agentId },
-			req.headers?.['push-ref'],
-		);
 		return { status: savedAgent.activeVersionId === null ? 'configured' : 'connected' };
 	}
 
@@ -76,12 +77,12 @@ export class AgentIntegrationsController {
 			type,
 			credentialId,
 			deleteExternalResource,
+			onPersisted: () =>
+				this.agentUpdateBroadcaster.notify(
+					{ projectId: req.params.projectId, agentId },
+					req.headers?.['push-ref'],
+				),
 		});
-
-		this.agentUpdateBroadcaster.notify(
-			{ projectId: req.params.projectId, agentId },
-			req.headers?.['push-ref'],
-		);
 		return { status: 'disconnected', ...(warning ? { warning } : {}) };
 	}
 
