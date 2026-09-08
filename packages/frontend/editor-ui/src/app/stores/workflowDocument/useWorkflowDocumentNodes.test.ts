@@ -21,6 +21,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { NodeConnectionTypes, type INodeTypeDescription, type Workflow } from 'n8n-workflow';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
 import {
 	useWorkflowDocumentNodes,
@@ -116,6 +117,22 @@ describe('useWorkflowDocumentNodes', () => {
 			workflowDocumentNodes.setNodes([createNode({ name: 'X' }), createNode({ name: 'Y' })]);
 
 			expect(workflowDocumentNodes.canvasNames.value).toEqual(new Set(['X', 'Y']));
+		});
+
+		it('setNodes snaps every node position to the grid, including agent cards', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({
+					name: 'Agent',
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+					position: [95, 57],
+				}),
+				createNode({ name: 'Regular', position: [110, 110] }),
+			]);
+
+			expect(workflowDocumentNodes.getNodeByName('Agent')?.position).toEqual([96, 64]);
+			expect(workflowDocumentNodes.getNodeByName('Regular')?.position).toEqual([112, 112]);
 		});
 
 		it('getNodesByIds returns matching nodes', () => {

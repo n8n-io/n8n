@@ -625,12 +625,6 @@ export function useCanvasLayout(
 			})
 			.filter(isPresent);
 
-		const agentNodeIds = new Set(
-			nodes
-				.filter((node) => node.data?.render?.type === CanvasNodeRenderType.Agent)
-				.map((node) => node.id),
-		);
-
 		// Snap by the connection handle, not the top-left: dagre aligns node
 		// centers, and snapping each corner on its own can leave nodes on one row
 		// a grid cell apart. Handles sit at half the node height, except on the
@@ -639,9 +633,10 @@ export function useCanvasLayout(
 		const finalNodes = positionedNodes
 			.map(({ id, boundingBox }) => {
 				const handleX = boundingBox.width / 2;
-				const handleY = agentNodeIds.has(id)
-					? getAgentNodeHandleOffset(boundingBox.height)
-					: boundingBox.height / 2;
+				const handleY =
+					findNode<CanvasNodeData>(id)?.data?.render?.type === CanvasNodeRenderType.Agent
+						? getAgentNodeHandleOffset(boundingBox.height)
+						: boundingBox.height / 2;
 				return {
 					id,
 					x: snapToGrid(boundingBox.x - anchor.x + handleX) - handleX,

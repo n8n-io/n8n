@@ -394,9 +394,10 @@ describe('useCanvasLayout', () => {
 		const groupId = 'g1';
 		const chipId = `group:${groupId}`;
 
-		function createCollapsedGroupSetup() {
+		function createCollapsedGroupSetup(
+			m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } }),
+		) {
 			// Use a grid-aligned gap so snap-to-grid preserves the relative spacing
-			const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } });
 			const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 1104, y: 1008 } });
 			const before = createCanvasGraphNode({ id: 'before', position: { x: 0, y: 0 } });
 			const after = createCanvasGraphNode({ id: 'after', position: { x: 2000, y: 0 } });
@@ -436,6 +437,22 @@ describe('useCanvasLayout', () => {
 			expect(rm2.x - rm1.x).toBe(96);
 			expect(rm2.y - rm1.y).toBe(0);
 			expect(matchesGrid(result)).toBe(true);
+		});
+
+		test('keeps a collapsed agent card on the grid when restoring group members', () => {
+			const agent = createCanvasGraphNode({
+				id: 'm1',
+				data: { render: { type: CanvasNodeRenderType.Agent, options: {} } },
+				dimensions: { width: AGENT_NODE_SIZE[0], height: 356 },
+				position: { x: 1008, y: 1008 },
+				hidden: true,
+			});
+			const { layout } = createCollapsedGroupSetup(agent);
+			const result = layout('all');
+			const positionedAgent = result.nodes.find(({ id }) => id === agent.id);
+
+			assert(positionedAgent);
+			expect(positionedAgent.y % GRID_SIZE).toBe(0);
 		});
 
 		test('keeps a collapsed group clustered between its external neighbours', () => {

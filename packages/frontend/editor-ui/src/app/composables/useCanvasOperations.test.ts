@@ -694,31 +694,38 @@ describe('useCanvasOperations', () => {
 			]);
 		});
 
-		it('centers a node after an agent using the agent measured height', () => {
-			const uiStore = mockedStore(useUIStore);
-			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
-			const nodeTypesStore = mockedStore(useNodeTypesStore);
-			const node = createTestNode({ id: 'target', type: SET_NODE_TYPE, typeVersion: 1 });
-			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE, version: 1 });
-			const agent = createTestNode({
-				id: 'agent',
-				position: [112, 64],
-				type: MESSAGE_AN_AGENT_NODE_TYPE,
-				typeVersion: 2,
-			});
+		it.each([
+			['measured', 206, 96],
+			['unmeasured', undefined, 64],
+		])(
+			'centers a node after an agent using the %s height (%s) with handle offset %s',
+			(_measurement, measuredHeight, expectedHandleOffset) => {
+				const uiStore = mockedStore(useUIStore);
+				const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				const node = createTestNode({ id: 'target', type: SET_NODE_TYPE, typeVersion: 1 });
+				const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE, version: 1 });
+				const agent = createTestNode({
+					id: 'agent',
+					position: [112, 64],
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+				});
 
-			uiStore.lastInteractedWithNodeId = agent.id;
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(agent as INodeUi);
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(agent as INodeUi);
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
-			geometryStore.getNodeHeight.mockReturnValue(206);
+				uiStore.lastInteractedWithNodeId = agent.id;
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(agent as INodeUi);
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(agent as INodeUi);
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+				geometryStore.getNodeHeight.mockReturnValue(measuredHeight);
 
-			const { resolveNodePosition } = useCanvasOperations();
-			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+				const { resolveNodePosition } = useCanvasOperations();
+				const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			// The 206px card's handle sits on the grid line at 96px, not at 103px.
-			expect(position[1] + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.position[1] + 96);
-		});
+				expect(position[1] + DEFAULT_NODE_SIZE[1] / 2).toBe(
+					agent.position[1] + expectedHandleOffset,
+				);
+			},
+		);
 
 		it('should place the node below the last interacted with node if it has non-main outputs', () => {
 			const uiStore = mockedStore(useUIStore);
