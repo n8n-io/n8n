@@ -98,6 +98,27 @@ export class HookRegistryServer {
 		return { delivered: statuses.length, statuses };
 	}
 
+	/**
+	 * Delivers a payload to one target with a caller-supplied signature, for
+	 * asserting that a forged or absent signature is rejected.
+	 */
+	async fireWithSignature(
+		targetUrl: string,
+		payload: Record<string, unknown>,
+		signature?: string,
+	): Promise<{ status: number }> {
+		const body = JSON.stringify(payload);
+		const headers: Record<string, string> = { 'content-type': 'application/json' };
+		if (signature !== undefined) headers['x-registry-signature'] = signature;
+
+		const response = await fetch(targetUrl, { method: 'POST', headers, body });
+		this.log(
+			`fired ${body} (signature: ${signature ?? 'none'}) → ${targetUrl} (${response.status})`,
+		);
+
+		return { status: response.status };
+	}
+
 	private async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
 		const method = req.method ?? 'GET';
 		const path = (req.url ?? '/').split('?')[0];

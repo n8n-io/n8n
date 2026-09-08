@@ -75,14 +75,11 @@ test.describe(
 			expect(filtered.statuses).toEqual([200]);
 
 			// A delivery with a bad signature is rejected outright.
-			const tampered = await fetch(hook.target_url, {
-				method: 'POST',
-				headers: {
-					'content-type': 'application/json',
-					'x-registry-signature': 'sha256=deadbeef',
-				},
-				body: JSON.stringify({ event: 'created', note: 'forged, must not run' }),
-			});
+			const tampered = await registry.fireWithSignature(
+				hook.target_url,
+				{ event: 'created', note: 'forged, must not run' },
+				'sha256=deadbeef',
+			);
 			expect(tampered.status).toBe(401);
 
 			await registry.fire({ event: 'created', note: 'must run' });
