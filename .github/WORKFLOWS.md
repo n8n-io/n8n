@@ -640,6 +640,7 @@ Workflows with `workflow_call` trigger:
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag`, `create_attestations` | Docker build |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
+| `sec-sync-retarget-prs.yml`        | none                                          | Move bundle PRs back onto `bundle/*` |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
 | `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
@@ -999,6 +1000,15 @@ merged into one (and on `workflow_dispatch`). It **merges the base into** the bu
 via [`scripts/sync-bundle-branch.mjs`](scripts/sync-bundle-branch.mjs) and pushes without
 forcing. Every push is verified to carry exactly the tree a merge of the two sides would
 produce (`git merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing.
+
+Deleting a bundle branch takes its open PRs with it: GitHub moves each one onto the deleted
+branch's own base, and re-creating the branch does not move them back. So the sync then calls
+[`sec-sync-retarget-prs.yml`](workflows/sec-sync-retarget-prs.yml), which moves every open PR
+on `master` onto `bundle/2.x` and every one on `1.x` onto `bundle/1.x`. It skips a bundle
+branch that does not exist, and skips PRs whose *head* is `bundle/*` — those are the
+`chore: Bundle/*` cut PRs, which target the base on purpose. It is also dispatchable on its
+own. `sec-sync-public-to-private.yml` only *dispatches* the bundle sync when it finds a branch
+missing; the retarget runs inside that dispatched run, once the branch exists.
 
 **`bundle/*` is append-only — never rebase it, never force-push it.** These branches receive
 PRs, and rewriting a branch that receives PRs orphans the copies of its commits that the open
