@@ -34,6 +34,9 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 		storeVersion: vi
 			.fn()
 			.mockResolvedValue({ versionId: 'v-1', url: 'http://localhost:5678/apps/greeter/' }),
+		setBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [] }),
+		getBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [] }),
+		getSdkTarball: vi.fn().mockResolvedValue({ filename: 'n8n-app-sdk.tgz', data: SOURCE_TARBALL }),
 	};
 	return {
 		userId: 'user-1',

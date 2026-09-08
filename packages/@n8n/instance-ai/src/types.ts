@@ -15,7 +15,9 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
+	AppBinding,
 	ChatIntegrationDescriptor,
+	DescribedBinding,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
@@ -1052,6 +1054,14 @@ export interface InstanceAiAppService {
 		appId: string,
 		files: { source: Buffer; dist: Buffer },
 	): Promise<{ versionId: string; url: string }>;
+	/** Replaces the app's bindings; `warnings` covers bindings that work only after a follow-up (e.g. publish). */
+	setBindings(
+		appId: string,
+		bindings: AppBinding[],
+	): Promise<{ bindings: DescribedBinding[]; warnings: string[] }>;
+	getBindings(appId: string): Promise<{ bindings: DescribedBinding[]; warnings: string[] }>;
+	/** `@n8n/app-sdk` as an npm tarball for the app's `vendor/` dir; same bytes on every call. */
+	getSdkTarball(): Promise<{ filename: string; data: Uint8Array }>;
 }
 
 // ── Workflow template service ────────────────────────────────────────────────
