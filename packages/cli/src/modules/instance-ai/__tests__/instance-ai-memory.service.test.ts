@@ -1280,6 +1280,33 @@ describe('InstanceAiMemoryService.cleanupExpiredThreads', () => {
 
 		dateNow.mockRestore();
 	});
+
+	it('stops before the next thread once the signal is aborted', async () => {
+		const dateNow = vi
+			.spyOn(Date, 'now')
+			.mockReturnValue(new Date('2026-05-15T00:00:00.000Z').getTime());
+		const first = makeThread('expired-1', '2026-05-01T00:00:00.000Z');
+		const second = makeThread('expired-2', '2026-05-02T00:00:00.000Z');
+		const controller = new AbortController();
+
+		mockListThreads.mockResolvedValue({
+			threads: [first, second],
+			total: 2,
+			page: 0,
+			hasMore: false,
+		});
+		mockDeleteThread.mockImplementation(async () => controller.abort());
+
+		const service = createService({ threadTtlDays: 7 });
+		const deletedCount = await service.cleanupExpiredThreads(undefined, controller.signal);
+
+		expect(deletedCount).toBe(1);
+		expect(mockDeleteThread).toHaveBeenCalledTimes(1);
+		expect(mockDeleteThread).toHaveBeenCalledWith(first.id);
+		expect(mockListThreads).toHaveBeenCalledTimes(1);
+
+		dateNow.mockRestore();
+	});
 });
 
 describe('bindAgentBuilderTarget', () => {
