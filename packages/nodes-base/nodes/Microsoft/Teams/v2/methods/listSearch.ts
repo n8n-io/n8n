@@ -319,7 +319,7 @@ export async function getMembers(
 /**
  * Org-wide user picker on Graph `/v1.0/users`, shared by every Teams field that targets a
  * person. Deliberately generic: no resource/operation reads, no team scoping. Filtering is
- * `$search` (word-prefix, so `unc` will not find `Tuncsik`) and ordering is `$orderby`, both
+ * `$search` (word-prefix, so `dun` will not find `Verdun`) and ordering is `$orderby`, both
  * server-side, hence no `filterSortSearchListItems` call unlike its siblings above: filtering
  * again client-side would delete legitimate results and break pagination.
  */
@@ -336,10 +336,8 @@ export async function getUsers(
 
 	// Graph rejects the whole $search expression for four characters, so drop them rather than
 	// let the picker error: `"` unterminates the quoted term, `\` starts a KQL escape sequence,
-	// and `&`/`#` split the query string because Graph re-splits it AFTER percent-decoding (so
-	// encoding them is not enough). Verified against a live tenant 2026-09-02. Dropping them
-	// degrades to a broader match instead of "Could not load list"; $search is word-prefix
-	// anyway, so "Jones & Co" still finds the user by "Jones".
+	// and `&`/`#` split the query string because Graph re-splits it AFTER percent-decoding, so
+	// encoding them is not enough. Dropping them degrades to a broader match.
 	const term = (filter ?? '').replace(/["\\&#]/g, '').trim();
 	if (term) {
 		qs.$search = `"displayName:${term}" OR "mail:${term}" OR "userPrincipalName:${term}"`;
@@ -364,12 +362,9 @@ export async function getUsers(
 		return { results: [], paginationToken: undefined };
 	}
 
-	// Display names are not unique (a real tenant showed 135 unique names across 136 users), so the
-	// UPN has to disambiguate. It goes in `name`, not `description` alone, because the
-	// resource-locator dropdown renders only `name` (see ResourceLocatorDropdown.vue), so a
-	// `description`-only UPN would be invisible and two identical names indistinguishable. Same
-	// pattern as `Gong.node.ts`. `description` stays populated for consumers that do read it.
-	// Falls back like `resolveMentions`, so a nameless directory object still shows a label.
+	// Display names are not unique, so the UPN has to disambiguate. It goes in `name`, not
+	// `description`, because the resource-locator dropdown renders only `name`. Falls back so a
+	// nameless directory object still shows a label rather than a blank row.
 	const results: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => {
 		const displayName = user.displayName as string;
 		const upn = user.userPrincipalName as string;

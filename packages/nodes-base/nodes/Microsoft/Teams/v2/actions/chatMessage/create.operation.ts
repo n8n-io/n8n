@@ -2,8 +2,12 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { chatRLC, mentionPlacementOption, mentionsField } from '../../descriptions';
-import type { MentionPlacement } from '../../helpers/utils';
+import {
+	chatRLC,
+	includeLinkToWorkflowOption,
+	mentionPlacementOption,
+	mentionsField,
+} from '../../descriptions';
 import { prepareMessage, resolveMentions } from '../../helpers/utils';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChatUnsupported } from './sharedGuard';
@@ -47,17 +51,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		description: 'Other options to set',
 		placeholder: 'Add option',
-		options: [
-			{
-				displayName: 'Include Link to Workflow',
-				name: 'includeLinkToWorkflow',
-				type: 'boolean',
-				default: true,
-				description:
-					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending messages.',
-			},
-			mentionPlacementOption,
-		],
+		options: [includeLinkToWorkflowOption, mentionPlacementOption],
 	},
 ];
 
@@ -86,6 +80,10 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 
 	const includeLinkToWorkflow = options.includeLinkToWorkflow !== false;
 
+	// Built before the mentions are resolved, so a malformed chat ID fails without spending a
+	// Graph call on `GET /users/{id}` first.
+	const endpoint = buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/messages']);
+
 	const mentions = await resolveMentions.call(this, i);
 
 	const body: IDataObject = prepareMessage.call(
@@ -95,13 +93,8 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 		includeLinkToWorkflow,
 		instanceId,
 		mentions,
-		(options.mentionPlacement as MentionPlacement) || 'start',
+		options.mentionPlacement === 'end' ? 'end' : 'start',
 	);
 
-	return await microsoftApiRequest.call(
-		this,
-		'POST',
-		buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/messages']),
-		body,
-	);
+	return await microsoftApiRequest.call(this, 'POST', endpoint, body);
 }

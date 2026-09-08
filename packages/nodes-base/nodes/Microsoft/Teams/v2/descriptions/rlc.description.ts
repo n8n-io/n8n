@@ -324,7 +324,8 @@ export const userRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
-	description: 'Select a user from your organization, by principal name, or by email address',
+	description:
+		'Select the user from the list, by ID, or by email address (a sign-in or principal name also works)',
 	modes: [
 		{
 			displayName: 'From List',

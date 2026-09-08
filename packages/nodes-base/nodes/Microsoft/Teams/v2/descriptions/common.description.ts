@@ -3,9 +3,11 @@ import type { INodeProperties } from 'n8n-workflow';
 import { userRLC } from './rlc.description';
 
 /**
- * Shared by `channelMessage:create` and `channelMessage:reply`. Both read it with
- * the same destructuring default (unset means on), so one definition keeps the
- * two operations from drifting apart on when the link is appended.
+ * Shared by `channelMessage:create`, `channelMessage:reply` and `chatMessage:create`. One
+ * definition keeps the three from drifting apart on the field itself. They do NOT agree on the
+ * unset fallback, and that is deliberate: `chatMessage:create` and `channelMessage:reply` treat
+ * unset as on, while `channelMessage:create` treats it as on only from `nodeVersion >= 1.1`,
+ * because v1 shipped without the link.
  */
 export const includeLinkToWorkflowOption: INodeProperties = {
 	displayName: 'Include Link to Workflow',
@@ -30,7 +32,7 @@ export const mentionsField: INodeProperties = {
 		multipleValues: true,
 	},
 	description:
-		'People to @mention. The Mention Placement option decides whether the tokens go before or after the message text, and adding a mention makes the message render as HTML even when Content Type is Text.',
+		'People to @mention. Mention Placement puts the mentions before or after the message text. A mention makes the message render as HTML, even if Content Type is Text.',
 	options: [
 		{
 			displayName: 'Mention',
@@ -50,7 +52,10 @@ export const mentionPlacementOption: INodeProperties = {
 	name: 'mentionPlacement',
 	type: 'options',
 	default: 'start',
-	description: 'Whether the mentions go before or after the message text',
+	// Repeats the HTML note from `mentionsField`, because the collection-overhaul UI does not
+	// render a fixedCollection's own description and this is the only other mention-specific copy.
+	description:
+		'Whether the mentions go before or after the message text. A mention makes the message render as HTML, even if Content Type is Text.',
 	options: [
 		{
 			name: 'Start of Message',

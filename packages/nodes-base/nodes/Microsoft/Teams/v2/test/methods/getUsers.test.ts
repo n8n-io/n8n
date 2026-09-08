@@ -167,17 +167,18 @@ describe('Microsoft Teams v2, getUsers', () => {
 	it('keeps the result set and ordering Graph returned', async () => {
 		apiRequest.mockResolvedValue({
 			value: [
-				{ id: 'guid-z', displayName: 'Zoe Quinn', userPrincipalName: 'jan.smith@example.com' },
+				// Graph matched Zoe on `mail`, which appears in neither `name` nor `description`, so
+				// appending `filterSortSearchListItems` would drop her. Its sort would also flip the
+				// pair. Both halves of the pin stay live only while the term is absent from `name`.
+				{ id: 'guid-z', displayName: 'Zoe Quinn', userPrincipalName: 'zq@example.com' },
 				{ id: 'guid-a', displayName: 'Ackerman, Janet', userPrincipalName: 'janet@example.com' },
 			],
 		});
 
 		const { results } = await getUsers.call(ctx, 'jan');
 
-		// Zoe Quinn only matches server-side through her UPN, so appending
-		// `filterSortSearchListItems` would drop her; its sort would also flip the pair.
 		expect(results.map((r) => r.name)).toEqual([
-			'Zoe Quinn (jan.smith@example.com)',
+			'Zoe Quinn (zq@example.com)',
 			'Ackerman, Janet (janet@example.com)',
 		]);
 	});

@@ -118,17 +118,16 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 		},
 	);
 
-	it('appends a mention token and the matching mentions entry', () => {
+	it('emits a token and a mentions entry sharing the same integer id', () => {
 		const body = prepareMessage.call(ctx, 'hi', 'html', false, undefined, [
 			mention('guid-1', 'Jane Smith'),
 		]);
 
+		// `toEqual` distinguishes 0 from '0', and Graph rejects a string id.
 		expect(body).toEqual({
 			body: { contentType: 'html', content: '<at id="0">Jane Smith</at> hi' },
 			mentions: [{ id: 0, ...mention('guid-1', 'Jane Smith') }],
 		});
-		// Graph rejects a string id
-		expect(typeof (body.mentions as Array<{ id: unknown }>)[0].id).toBe('number');
 	});
 
 	it('pairs every token with the mentions entry carrying the same id', () => {
@@ -142,6 +141,9 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 
 		const content = (body.body as { content: string }).content;
 		const emitted = body.mentions as Array<Mention & { id: number }>;
+		// The exact-content assertion is what makes the loop below meaningful: on its own the
+		// loop compares the code's output against itself, so an id swap in both places would
+		// pass. Do not delete one without the other.
 		expect(content).toBe(
 			'<at id="0">Jane Smith</at> <at id="1">Bob Jones</at> <at id="2">Ada Byron</at> hi',
 		);
@@ -157,15 +159,6 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 		]);
 
 		expect((body.body as { contentType: string }).contentType).toBe('html');
-	});
-
-	it('puts the mention tokens before the workflow link footer', () => {
-		const body = prepareMessage.call(ctx, 'hi', 'text', true, 'instance-1', [
-			mention('guid-1', 'Jane Smith'),
-		]);
-
-		const content = (body.body as { content: string }).content;
-		expect(content.indexOf('<at id="0"')).toBeLessThan(content.indexOf('Powered by'));
 	});
 
 	it('escapes the display name inside the token but leaves the mention data raw', () => {

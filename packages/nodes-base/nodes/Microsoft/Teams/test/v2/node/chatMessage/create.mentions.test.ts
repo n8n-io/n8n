@@ -1,4 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import isEqual from 'lodash/isEqual';
 import nock from 'nock';
 
 import { credentials } from '../../../credentials';
@@ -31,8 +32,12 @@ describe('Test MicrosoftTeamsV2, chatMessage => create with mentions', () => {
 				mentions.length === 1 &&
 				mentions[0].id === 0 &&
 				mentions[0].mentionText === 'Ada Byron' &&
-				JSON.stringify((mentions[0].mentioned as { user: unknown }).user) ===
-					JSON.stringify({ id: ADA, displayName: 'Ada Byron', userIdentityType: 'aadUser' })
+				// Key-order insensitive, so reordering the literal in `resolveMentions` stays a no-op.
+				isEqual((mentions[0].mentioned as { user: unknown }).user, {
+					id: ADA,
+					displayName: 'Ada Byron',
+					userIdentityType: 'aadUser',
+				})
 			);
 		})
 		.reply(200, {

@@ -22,30 +22,18 @@ export type Mention = {
 	mentioned: { user: { id: string; displayName: string; userIdentityType: 'aadUser' } };
 };
 
-const MENTION_TEXT_ESCAPES: Record<string, string> = {
-	'&': '&amp;',
-	'<': '&lt;',
-	'>': '&gt;',
-};
-
 /**
- * Escapes the `<at>` inner text. A B2B guest's display name is set in their home tenant, so it is
- * third-party input, and an unescaped angle bracket breaks the token, which Graph answers with a
- * 400 or a silently stripped mention. NOT `escapeHtml` from `utils/utilities.ts`: that one decodes.
+ * Escapes the `<at>` inner text. A B2B guest's display name is third-party input, and an
+ * unescaped angle bracket breaks the token. NOT `escapeHtml` from `utils/utilities.ts`: that
+ * one decodes. Graph validates this text against `mentions[].mentionText` and compares the two
+ * decoded, so escaping only one side is safe and the two cannot be decoupled.
  *
- * Graph validates the `<at>` inner text against `mentions[].mentionText` and 400s on a mismatch
- * ("Neither Body nor adaptive card content contains marker for mention with Id '0'"), so the two
- * cannot be decoupled. It compares them DECODED: the error quotes the raw display name while the
- * escaped form is accepted, which is why escaping here is safe. Live-verified 2026-09-02.
- *
- * Known Microsoft-side ceiling: a display name containing `&` makes Teams render a stray `/at>`
- * after the mention chip. Verified byte-identical whether we send `&` raw, as `&amp;` or as
- * `&#38;`, and absent on the same endpoint for a name without `&`, so it is a Teams defect we
- * cannot influence from here. The mention still resolves and notifies (`tenantId` present in the
- * echo). Escaping stays because it is correct HTML and costs nothing.
+ * Known Teams defect: a display name containing `&` renders a stray `/at>` after the chip. The
+ * mention still resolves and notifies, and no encoding of `&` avoids it, so it is not fixable
+ * from here.
  */
 function escapeMentionText(text: string): string {
-	return text.replace(/[&<>]/g, (char) => MENTION_TEXT_ESCAPES[char]);
+	return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
 // `row` is the node-generated row number (loop index + 1), never a user-supplied value, so
@@ -67,19 +55,10 @@ const mentionMessages = (row: number): UserTargetMessages => ({
 });
 
 /**
- * Resolves every mention row to a Graph user. Graph stores `mentions[].mentioned.user` verbatim
- * and resolves nothing: a UPN or a well-formed but nonexistent GUID is accepted with a 200 and a
- * mention that notifies nobody. So each row goes through `GET /users/{idOrUpn}` first, which also
- * yields the authoritative display name.
- *
- * Rows are walked in order, one request each: a realistic list is 1-3 entries, and sequential
- * keeps a failing row unambiguous and the resolved array in row order.
- */
-/**
- * `GET /users/{id}` resolves an object id or a principal name, never a `mail` address, and the two
- * differ for every guest (27 of 137 users on the QA tenant). So a 404 on something that looks like
- * an address gets one more try against `mail` before we give up, which keeps By Email agreeing
- * with From List, whose `$search` already matches on mail. Live-verified 2026-09-03.
+ * `GET /users/{id}` resolves an object id or a principal name, never a `mail` address, and the
+ * two differ for every guest. So a 404 on something that looks like an address gets one more try
+ * against `mail` before we give up, which keeps By Email agreeing with From List, whose `$search`
+ * already matches on mail.
  */
 async function findUserByMail(
 	this: IExecuteFunctions,
@@ -100,6 +79,24 @@ async function findUserByMail(
 	return found.length === 1 ? found[0] : undefined;
 }
 
+/**
+ * One Graph lookup per distinct user for the whole run, not one per item. The router calls
+ * `resolveMentions` once per input item with the same execute context, so a static mention on a
+ * 500-item fan-out would otherwise repeat the same `GET /users/{id}` 500 times, sequentially.
+ * Keyed on the context object, so the cache is collected with the execution and never crosses
+ * runs or tenants. Only successes are stored, so a throttled row is retried on the next item.
+ */
+const resolvedPerRun = new WeakMap<IExecuteFunctions, Map<string, Mention>>();
+
+/**
+ * Resolves every mention row to a Graph user. Graph stores `mentions[].mentioned.user` verbatim
+ * and resolves nothing: a UPN or a well-formed but nonexistent GUID is accepted with a 200 and a
+ * mention that notifies nobody. So each row goes through `GET /users/{idOrUpn}` first, which also
+ * yields the authoritative display name.
+ *
+ * Rows are walked in order, one request each: a realistic list is 1-3 entries, and sequential
+ * keeps a failing row unambiguous and the resolved array in row order.
+ */
 export async function resolveMentions(
 	this: IExecuteFunctions,
 	itemIndex: number,
@@ -109,6 +106,12 @@ export async function resolveMentions(
 	const node = this.getNode();
 	const mentions: Mention[] = [];
 
+	let cache = resolvedPerRun.get(this);
+	if (!cache) {
+		cache = new Map<string, Mention>();
+		resolvedPerRun.set(this, cache);
+	}
+
 	for (let index = 0; index < rowCount; index++) {
 		const raw = this.getNodeParameter(`mentions.mention[${index}].userId`, itemIndex, '', {
 			extractValue: true,
@@ -116,6 +119,13 @@ export async function resolveMentions(
 		// Validate the shape before encoding (`encodeURIComponent` leaves `..` intact) and encode
 		// the same trimmed string, since the validator is anchored and callers trim.
 		const value = String(raw ?? '').trim();
+
+		const cached = cache.get(value);
+		if (cached) {
+			// Safe to share by reference: `prepareMessage` spreads rather than mutates.
+			mentions.push(cached);
+			continue;
+		}
 
 		let user: IDataObject;
 		try {
@@ -152,12 +162,14 @@ export async function resolveMentions(
 		const label =
 			(user.displayName as string) || (user.userPrincipalName as string) || (user.id as string);
 
-		mentions.push({
+		const mention: Mention = {
 			mentionText: label,
 			mentioned: {
 				user: { id: user.id as string, displayName: label, userIdentityType: 'aadUser' },
 			},
-		});
+		};
+		cache.set(value, mention);
+		mentions.push(mention);
 	}
 
 	return mentions;
@@ -169,7 +181,9 @@ export function prepareMessage(
 	contentType: string,
 	includeLinkToWorkflow: boolean,
 	instanceId?: string,
-	mentions: Mention[] = [],
+	// Read-only on purpose. `resolveMentions` caches these per run, so the same object can arrive
+	// for several items and mutating one here would corrupt every later item in the run.
+	mentions: readonly Mention[] = [],
 	mentionPlacement: MentionPlacement = 'start',
 ) {
 	if (mentions.length) {

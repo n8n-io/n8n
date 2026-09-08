@@ -9,7 +9,6 @@ import {
 	mentionsField,
 	teamRLC,
 } from '../../descriptions';
-import type { MentionPlacement } from '../../helpers/utils';
 import { prepareMessage, resolveMentions } from '../../helpers/utils';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChannelMessageSendUnsupported } from './sharedGuard';
@@ -103,6 +102,26 @@ export async function execute(
 		includeLinkToWorkflow = nodeVersion >= 1.1;
 	}
 
+	// Built before the mentions are resolved, so a malformed team, channel or reply ID fails
+	// without spending a Graph call on `GET /users/{id}` first.
+	const endpoint = options.makeReply
+		? buildTeamsPath.call(this, [
+				'/beta/teams/',
+				{ id: teamId },
+				'/channels/',
+				{ id: channelId },
+				'/messages/',
+				{ id: options.makeReply as string },
+				'/replies',
+			])
+		: buildTeamsPath.call(this, [
+				'/beta/teams/',
+				{ id: teamId },
+				'/channels/',
+				{ id: channelId },
+				'/messages',
+			]);
+
 	const mentions = await resolveMentions.call(this, i);
 
 	const body: IDataObject = prepareMessage.call(
@@ -112,37 +131,8 @@ export async function execute(
 		includeLinkToWorkflow as boolean,
 		instanceId,
 		mentions,
-		(options.mentionPlacement as MentionPlacement) || 'start',
+		options.mentionPlacement === 'end' ? 'end' : 'start',
 	);
 
-	if (options.makeReply) {
-		const replyToId = options.makeReply as string;
-		return await microsoftApiRequest.call(
-			this,
-			'POST',
-			buildTeamsPath.call(this, [
-				'/beta/teams/',
-				{ id: teamId },
-				'/channels/',
-				{ id: channelId },
-				'/messages/',
-				{ id: replyToId },
-				'/replies',
-			]),
-			body,
-		);
-	} else {
-		return await microsoftApiRequest.call(
-			this,
-			'POST',
-			buildTeamsPath.call(this, [
-				'/beta/teams/',
-				{ id: teamId },
-				'/channels/',
-				{ id: channelId },
-				'/messages',
-			]),
-			body,
-		);
-	}
+	return await microsoftApiRequest.call(this, 'POST', endpoint, body);
 }
