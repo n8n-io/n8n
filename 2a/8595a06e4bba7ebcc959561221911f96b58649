@@ -6,6 +6,7 @@ packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.men
   s_aa4dc5d9a1db02::t_193877f7ef5f46 114-117
 packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
   s_aa4dc5d9a1db02::t_3c3c0cdc4b443f 61-63,65-68,119-120,143-144,151-152,156,233,244-251,280-283
+  s_aa4dc5d9a1db02::t_9e80fccd49a3f6 69
 packages/nodes-base/nodes/Microsoft/Teams/v2/actions/versionDescription.ts
   s_aa4dc5d9a1db02::t_426d19aca95fad 73
 packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/create.perItem.test.ts
