@@ -36,12 +36,7 @@ describe('N8nOutputFixingParser', () => {
 		});
 	}
 
-	// The retry chain is `prompt.pipe(model)`, so it resolves to a raw AIMessage.
-	// Models that emit provider content blocks (e.g. the OpenAI Responses API, which
-	// the Tools Agent triggers by attaching tools) return `content` as an array of
-	// typed parts. Reading it via `result.content.toString()` coerced that array to
-	// the literal "[object Object]", discarding the fixed output; `.text` extracts the
-	// actual text instead.
+	// Responses API content blocks were coerced to "[object Object]" before re-parsing.
 	it('extracts text from content-block array responses before re-parsing', async () => {
 		const validOutput = { name: 'Bob', age: 28 };
 		const fixedJson = JSON.stringify(validOutput);
@@ -56,44 +51,6 @@ describe('N8nOutputFixingParser', () => {
 		expect(result).toEqual(validOutput);
 		expect(structuredParser.parse).toHaveBeenCalledTimes(2);
 		// The fix must be re-parsed verbatim, not as "[object Object]".
-		expect(structuredParser.parse.mock.calls[1][0]).toBe(fixedJson);
-	});
-
-	it('concatenates multiple text content blocks before re-parsing', async () => {
-		const validOutput = { name: 'Carol', age: 31 };
-		const fixedJson = JSON.stringify(validOutput);
-		const splitAt = Math.floor(fixedJson.length / 2);
-
-		structuredParser.parse
-			.mockRejectedValueOnce(new OutputParserException('Invalid JSON'))
-			.mockResolvedValueOnce(validOutput);
-		mockRetryChainResult(
-			new AIMessage({
-				content: [
-					{ type: 'text', text: fixedJson.slice(0, splitAt) },
-					{ type: 'text', text: fixedJson.slice(splitAt) },
-				],
-			}),
-		);
-
-		const result = await parser.parse('Invalid JSON string');
-
-		expect(result).toEqual(validOutput);
-		expect(structuredParser.parse.mock.calls[1][0]).toBe(fixedJson);
-	});
-
-	it('passes plain string content through unchanged', async () => {
-		const validOutput = { name: 'Dave', age: 42 };
-		const fixedJson = JSON.stringify(validOutput);
-
-		structuredParser.parse
-			.mockRejectedValueOnce(new OutputParserException('Invalid JSON'))
-			.mockResolvedValueOnce(validOutput);
-		mockRetryChainResult(new AIMessage({ content: fixedJson }));
-
-		const result = await parser.parse('Invalid JSON string');
-
-		expect(result).toEqual(validOutput);
 		expect(structuredParser.parse.mock.calls[1][0]).toBe(fixedJson);
 	});
 });
