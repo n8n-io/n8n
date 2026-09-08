@@ -92,6 +92,8 @@ describe('scrubSecretsInText', () => {
 		expect(
 			scrubSecretsInText('webhook_secret=whsec_x and account_password=hunter2 and bot_token=abc'),
 		).toBe('[REDACTED] and [REDACTED] and [REDACTED]');
+		expect(scrubSecretsInText('webhook_secret="alpha beta" next=1')).toBe('[REDACTED] next=1');
+		expect(scrubSecretsInText("password='it\\'s a b' rest")).toBe('[REDACTED] rest');
 		expect(scrubSecretsInText('max_tokens=500')).toBe('max_tokens=500');
 	});
 

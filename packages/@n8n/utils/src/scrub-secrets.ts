@@ -107,9 +107,10 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// substring is preceded by `_` (snake_case type slug) or a digit, so no word
 	// boundary opens there. The value lookahead skips values that are already a
 	// redaction placeholder (bracketed, typed, or URL-safe bare form) — the same
-	// idempotency convention as the quoted forms.
+	// idempotency convention as the quoted forms. A quoted value is consumed as
+	// a whole, including escapes, so `secret="alpha beta"` does not leave a tail.
 	new RegExp(
-		`(?<!\\[(?:redacted|REDACTED):)\\b${BOUNDED_KEY_PREFIX}(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`,
+		`(?<!\\[(?:redacted|REDACTED):)\\b${BOUNDED_KEY_PREFIX}(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)(?:"(?:[^"\\\\\\r\\n]|\\\\.)*"|'(?:[^'\\\\\\r\\n]|\\\\.)*'|\\S+)`,
 		'gi',
 	),
 ];
