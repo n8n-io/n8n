@@ -190,6 +190,8 @@ function prepareRequestingNodeForResuming(
 	request: EngineRequest,
 	executionData: IExecuteData,
 ) {
+	// A node that starts the execution has no source, but scheduling still needs a
+	// parent name, so fall back to the node itself.
 	const sourceNode = executionData.source?.main?.[0]?.previousNode;
 	const parentNode = sourceNode ?? executionData.node.name;
 	if (!parentNode) {

@@ -836,6 +836,8 @@ export class WorkflowExecute {
 				data: {
 					main: connectionDataArray,
 				},
+				// Keep the source null rather than recording the node as its own
+				// `previousNode`: paired item tracing follows that link back into itself.
 				source: omitSource
 					? null
 					: {

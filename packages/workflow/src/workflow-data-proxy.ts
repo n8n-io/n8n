@@ -1055,6 +1055,8 @@ export class WorkflowDataProxy {
 				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
+			// Track visited items per path rather than cumulatively: lineage is a DAG,
+			// so the same item reached again through another branch must still resolve.
 			const pathKey = `${sourceData.previousNode} ${sourceData.previousNodeRun ?? 0} ${sourceData.previousNodeOutput ?? 0} ${pairedItem.item}`;
 
 			if (activePath.has(pathKey)) {
