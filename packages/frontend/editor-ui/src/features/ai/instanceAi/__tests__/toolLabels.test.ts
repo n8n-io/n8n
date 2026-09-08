@@ -76,7 +76,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns the apps grid for the apps tool', () => {
-		expect(getToolIcon('apps')).toBe('grid-2x2');
+		expect(getToolIcon('apps')).toBe('app-window');
 	});
 
 	test('returns workflow for workflow-related tools', () => {

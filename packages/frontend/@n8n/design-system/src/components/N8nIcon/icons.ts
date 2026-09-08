@@ -43,6 +43,7 @@ import Webhook from './custom/webhook.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
+import IconLucideAppWindow from '~icons/lucide/app-window';
 import IconLucideArchive from '~icons/lucide/archive';
 import IconLucideArchiveRestore from '~icons/lucide/archive-restore';
 import IconLucideArrowDown from '~icons/lucide/arrow-down';
@@ -555,6 +556,7 @@ export const updatedIconSet = {
 
 	// lucide
 	'align-right': IconLucideAlignRight,
+	'app-window': IconLucideAppWindow,
 	archive: IconLucideArchive,
 	'archive-restore': IconLucideArchiveRestore,
 	'arrow-down': IconLucideArrowDown,

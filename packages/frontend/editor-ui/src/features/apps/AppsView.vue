@@ -80,7 +80,7 @@ onMounted(() => {
 				@click="openApp(app.id)"
 			>
 				<template #prepend>
-					<N8nIcon icon="grid-2x2" />
+					<N8nIcon icon="app-window" />
 				</template>
 				<N8nText bold>{{ app.name }}</N8nText>
 				<N8nText color="text-light" size="small">/{{ app.namespace }}</N8nText>

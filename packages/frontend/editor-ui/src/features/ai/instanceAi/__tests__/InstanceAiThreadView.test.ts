@@ -1373,7 +1373,7 @@ describe('InstanceAiThreadView', () => {
 			expect(preview).toHaveAttribute('data-app-id', 'app-1');
 			expect(preview).toHaveAttribute('data-project-id', 'project-1');
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Greeter');
-			expect(getByTestId('instance-ai-input-context-chip-icon')).toHaveTextContent('grid-2x2');
+			expect(getByTestId('instance-ai-input-context-chip-icon')).toHaveTextContent('app-window');
 		});
 
 		it('sends the app attachment with the first message and then drops the chip', async () => {

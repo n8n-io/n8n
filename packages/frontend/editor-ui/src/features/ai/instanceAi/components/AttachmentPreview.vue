@@ -111,7 +111,7 @@ onBeforeUnmount(() => {
 		:class="$style.resourceChip"
 		data-test-id="attachment-preview-resource"
 	>
-		<N8nIcon icon="grid-2x2" size="small" />
+		<N8nIcon icon="app-window" size="small" />
 		<span :class="$style.resourceName">{{ appAttachment.name }}</span>
 	</div>
 	<div v-else-if="isImage && thumbnailSrc" :class="$style.thumbnailWrapper">

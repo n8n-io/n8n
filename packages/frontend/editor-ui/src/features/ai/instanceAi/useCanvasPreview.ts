@@ -37,7 +37,7 @@ const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
-	app: 'grid-2x2',
+	app: 'app-window',
 };
 
 interface UseCanvasPreviewOptions {

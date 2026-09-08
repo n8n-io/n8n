@@ -815,7 +815,7 @@ const composerContextChip = computed(() => {
 			isNewApp: !appAttachment.appId,
 			key: `pending-app:${appAttachment.appId ?? appAttachment.namespace ?? appAttachment.name}`,
 			label: appAttachment.name,
-			icon: 'grid-2x2',
+			icon: 'app-window',
 			isPending: true,
 		};
 	}

@@ -223,7 +223,7 @@ const resolvedSuggestionCatalogVersion = computed(
 const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 
 const contextChipDefaultIcon = computed(() =>
-	props.contextChip?.type === 'app-artifact' ? 'grid-2x2' : 'robot',
+	props.contextChip?.type === 'app-artifact' ? 'app-window' : 'robot',
 );
 
 const placeholder = computed(() => {
