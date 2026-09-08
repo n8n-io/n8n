@@ -278,7 +278,7 @@ describe('Microsoft Teams v2 - getUsers', () => {
 			{},
 			{
 				$select: 'id,displayName,userPrincipalName',
-				$search: '"displayName:ann" OR "userPrincipalName:ann"',
+				$search: '"displayName:ann" OR "mail:ann" OR "userPrincipalName:ann"',
 			},
 			undefined,
 			{ ConsistencyLevel: 'eventual' },
@@ -295,7 +295,7 @@ describe('Microsoft Teams v2 - getUsers', () => {
 			{},
 			{
 				$select: 'id,displayName,userPrincipalName',
-				$search: '"displayName:a\\"b\\\\c" OR "userPrincipalName:a\\"b\\\\c"',
+				$search: '"displayName:a\\"b\\\\c" OR "mail:a\\"b\\\\c" OR "userPrincipalName:a\\"b\\\\c"',
 			},
 			undefined,
 			{ ConsistencyLevel: 'eventual' },

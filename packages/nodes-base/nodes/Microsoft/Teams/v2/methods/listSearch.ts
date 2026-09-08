@@ -146,11 +146,22 @@ export async function getUsers(
 		)) as IDataObject;
 	} else {
 		const qs: IDataObject = { $select: 'id,displayName,userPrincipalName' };
-		if (filter) {
-			// `$search` escaping is NOT `$filter`'s quote-doubling: backslash-escape `\`
-			// first, then `"`, and the OR operator is uppercase and outside the quotes.
-			const escaped = filter.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
-			qs.$search = `"displayName:${escaped}" OR "userPrincipalName:${escaped}"`;
+		// Two different problems. `"` and `\` only need escaping inside the quoted term, so
+		// escape them (backslash first, then quote) and keep the term intact. `&` and `#`
+		// cannot be escaped or encoded away: Graph re-splits the query string AFTER
+		// percent-decoding, so they truncate the expression and 400 the whole call (verified on
+		// a live tenant). Those two are dropped, which just widens the match. `mail` is searched
+		// as well, because a guest's mail differs from their principal name and the mail is the
+		// address people actually know.
+		// The emptiness check is on the stripped term, not the raw filter: a filter of only
+		// unusable characters would otherwise send an empty term, which Graph rejects.
+		const escaped = (filter ?? '')
+			.replace(/[&#]/g, '')
+			.replaceAll('\\', '\\\\')
+			.replaceAll('"', '\\"')
+			.trim();
+		if (escaped) {
+			qs.$search = `"displayName:${escaped}" OR "mail:${escaped}" OR "userPrincipalName:${escaped}"`;
 		}
 		response = (await microsoftApiRequest.call(
 			this,
@@ -161,6 +172,12 @@ export async function getUsers(
 			undefined,
 			headers,
 		)) as IDataObject;
+	}
+
+	// An unexpected shape is not an empty directory: returning the token as well would offer
+	// "load more" into nothing.
+	if (!Array.isArray(response.value)) {
+		return { results: [], paginationToken: undefined };
 	}
 
 	const returnData: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => ({
@@ -388,67 +405,4 @@ export async function getMembers(
 
 	const results = filterSortSearchListItems(returnData, filter);
 	return { results };
-}
-
-/**
- * Org-wide user picker on Graph `/v1.0/users`, shared by every Teams field that targets a
- * person. Deliberately generic: no resource/operation reads, no team scoping. Filtering is
- * `$search` (word-prefix, so `dun` will not find `Verdun`) and ordering is `$orderby`, both
- * server-side, hence no `filterSortSearchListItems` call unlike its siblings above: filtering
- * again client-side would delete legitimate results and break pagination.
- */
-export async function getUsers(
-	this: ILoadOptionsFunctions,
-	filter?: string,
-	paginationToken?: string,
-): Promise<INodeListSearchResult> {
-	const qs: IDataObject = {
-		$select: 'id,displayName,userPrincipalName',
-		$top: 100,
-		$orderby: 'displayName',
-	};
-
-	// Graph rejects the whole $search expression for four characters, so drop them rather than
-	// let the picker error: `"` unterminates the quoted term, `\` starts a KQL escape sequence,
-	// and `&`/`#` split the query string because Graph re-splits it AFTER percent-decoding, so
-	// encoding them is not enough. Dropping them degrades to a broader match.
-	const term = (filter ?? '').replace(/["\\&#]/g, '').trim();
-	if (term) {
-		qs.$search = `"displayName:${term}" OR "mail:${term}" OR "userPrincipalName:${term}"`;
-	}
-
-	const response = (await microsoftApiRequest.call(
-		this,
-		'GET',
-		'/v1.0/users',
-		{},
-		// `@odata.nextLink` already carries the query, so a paginated call sends none.
-		paginationToken ? {} : qs,
-		paginationToken,
-		// `$search` on /users is an advanced query and 400s without this header; harmless on
-		// the unfiltered first page, so send it always.
-		{ ConsistencyLevel: 'eventual' },
-	)) as IDataObject;
-
-	// An unexpected shape is not an empty directory: keeping the token would offer "load more"
-	// into nothing.
-	if (!Array.isArray(response.value)) {
-		return { results: [], paginationToken: undefined };
-	}
-
-	// Display names are not unique, so the UPN has to disambiguate. It goes in `name`, not
-	// `description`, because the resource-locator dropdown renders only `name`. Falls back so a
-	// nameless directory object still shows a label rather than a blank row.
-	const results: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => {
-		const displayName = user.displayName as string;
-		const upn = user.userPrincipalName as string;
-		const label = displayName && upn ? `${displayName} (${upn})` : displayName || upn;
-		return {
-			name: label || (user.id as string),
-			value: user.id as string,
-			description: upn,
-		};
-	});
-
-	return { results, paginationToken: response['@odata.nextLink'] as string | undefined };
 }
