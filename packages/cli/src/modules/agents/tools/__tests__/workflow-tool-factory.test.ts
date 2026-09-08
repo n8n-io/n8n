@@ -959,6 +959,22 @@ describe('workflow tool → background job handoff', () => {
 		expect(suspend).not.toHaveBeenCalled();
 	});
 
+	it('returns the inline result even when consuming its mail fails', async () => {
+		setPersistence(settledInDb());
+		const jobService = setJobService();
+		jobService.markMailConsumed.mockRejectedValue(new Error('db down'));
+		const logger = mock<Logger>();
+		Container.set(Logger, logger);
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(result).toMatchObject({ status: 'success', jobId: 'job-1' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
 	it('consumes the mail of an inline result even when the settle hook won the claim', async () => {
 		setPersistence(settledInDb());
 		const jobService = setJobService();

@@ -756,7 +756,7 @@ async function backgroundWaitingExecution(
 			});
 			// The model receives this result inline, so no wake needs to repeat it,
 			// whichever writer settled the row first.
-			await jobService.markMailConsumed(agentRun.threadId, [jobId]);
+			await consumeInlineMail(jobService, agentRun.threadId, jobId);
 
 			return { ...withoutWaitState(fresh), jobId };
 		}
@@ -783,6 +783,25 @@ async function backgroundWaitingExecution(
 	}
 }
 
+/**
+ * Mail bookkeeping must never change the tool result: a failed write only
+ * means one redundant wake later.
+ */
+async function consumeInlineMail(
+	jobService: AgentBackgroundJobService,
+	parentThreadId: string,
+	jobId: string,
+): Promise<void> {
+	try {
+		await jobService.markMailConsumed(parentThreadId, [jobId]);
+	} catch (error) {
+		Container.get(Logger).warn('Failed to consume mail of an inline workflow result', {
+			jobId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+}
+
 /** The execution is gone, so its outcome cannot be known; a lost claim means the settle hook recorded it first. */
 async function settleOutcomeUnknown(
 	jobService: AgentBackgroundJobService,
@@ -795,7 +814,7 @@ async function settleOutcomeUnknown(
 		error: EXECUTION_OUTCOME_UNKNOWN_ERROR,
 	});
 	// The model receives this outcome inline, so no wake needs to repeat it.
-	if (claimed) await jobService.markMailConsumed(parentThreadId, [jobId]);
+	if (claimed) await consumeInlineMail(jobService, parentThreadId, jobId);
 	return {
 		executionId,
 		status: 'unknown',
