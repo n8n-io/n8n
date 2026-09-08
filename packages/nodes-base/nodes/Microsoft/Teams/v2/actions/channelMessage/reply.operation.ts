@@ -3,10 +3,10 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import {
+	channelMentionsField,
 	channelRLC,
 	includeLinkToWorkflowOption,
 	mentionPlacementOption,
-	mentionsField,
 	teamRLC,
 } from '../../descriptions';
 import type { MentionPlacement } from '../../helpers/utils';
@@ -56,7 +56,7 @@ const properties: INodeProperties[] = [
 			rows: 2,
 		},
 	},
-	mentionsField,
+	channelMentionsField,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -98,7 +98,7 @@ export async function execute(
 	// on, any explicit value keeps its own truthiness.
 	const { includeLinkToWorkflow = true, mentionPlacement } = this.getNodeParameter('options', i);
 
-	const mentions = await resolveMentions.call(this, i);
+	const mentions = await resolveMentions.call(this, i, teamId);
 
 	const body: IDataObject = prepareMessage.call(
 		this,
