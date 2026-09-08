@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 	showError: vi.fn(),
 	syncThread: vi.fn(),
 	updateThreadMetadata: vi.fn(),
-	instanceAiAvailable: true,
+	instanceAiReady: true,
 }));
 
 vi.mock('vue-router', () => ({
@@ -26,9 +26,9 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mocks.showError }),
 }));
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
-	useInstanceAiAvailable: () => ({
+	useInstanceAiReady: () => ({
 		get value() {
-			return mocks.instanceAiAvailable;
+			return mocks.instanceAiReady;
 		},
 	}),
 }));
@@ -45,13 +45,13 @@ describe('NewAgentView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.route.query = { projectId: 'project-1' };
-		mocks.instanceAiAvailable = true;
+		mocks.instanceAiReady = true;
 		history.replaceState({}, '');
 		localStorage.clear();
 	});
 
-	it('opens an unpersisted agent in the manual builder when Instance AI is unavailable', async () => {
-		mocks.instanceAiAvailable = false;
+	it('opens an unpersisted agent in the manual builder when Instance AI cannot answer yet', async () => {
+		mocks.instanceAiReady = false;
 
 		mount(NewAgentView);
 		await flushPromises();
@@ -65,7 +65,35 @@ describe('NewAgentView', () => {
 		});
 	});
 
-	it('opens an unsaved agent artifact when Instance AI is available', async () => {
+	it('opens the manual builder when manual mode is requested, even with Instance AI ready', async () => {
+		mocks.route.query = { projectId: 'project-1', mode: 'manual' };
+		history.replaceState({ instanceAiPendingAgentId: 'ZyXwVuTsRqPoNmLk' }, '');
+
+		mount(NewAgentView);
+		await flushPromises();
+
+		expect(mocks.syncThread).not.toHaveBeenCalled();
+		expect(mocks.updateThreadMetadata).not.toHaveBeenCalled();
+		expect(mocks.replace).toHaveBeenCalledWith({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: 'project-1', agentId: 'ZyXwVuTsRqPoNmLk' },
+			state: { instanceAiPendingAgentId: 'ZyXwVuTsRqPoNmLk' },
+		});
+	});
+
+	it('keeps the Instance AI flow for an unrecognized mode query', async () => {
+		mocks.route.query = { projectId: 'project-1', mode: 'something-else' };
+
+		mount(NewAgentView);
+		await flushPromises();
+
+		expect(mocks.replace).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-1' },
+		});
+	});
+
+	it('opens an unsaved agent artifact when Instance AI is set up', async () => {
 		mount(NewAgentView);
 		await flushPromises();
 

@@ -327,6 +327,8 @@ const groupExpansionMode = computed<GroupExpansionMode | undefined>(() => {
 });
 
 const canExecuteOnCanvas = computed(() => {
+	// A protected instance blocks every manual run, even a demo canvas that requests ?canExecute=true.
+	if (isReadOnlyEnvironment.value) return false;
 	if (isDemoRoute.value) {
 		return route.query.canExecute === 'true';
 	}
@@ -830,7 +832,7 @@ async function loadCredentials() {
 		options = { projectId };
 	}
 
-	await credentialsStore.fetchAllCredentialsForWorkflow(options);
+	await credentialsStore.fetchUsableCredentials(options);
 }
 
 /**

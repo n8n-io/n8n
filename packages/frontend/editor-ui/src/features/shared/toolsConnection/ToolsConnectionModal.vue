@@ -8,7 +8,7 @@ import {
 	N8nTabs,
 	N8nText,
 } from '@n8n/design-system';
-import type { TabOptions } from '@n8n/design-system';
+import type { DialogSize, TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -37,6 +37,8 @@ const props = withDefaults(
 		detailItem?: ToolConnectionItem | null;
 		detailMode?: 'detail' | 'settings';
 		hideBackButton?: boolean;
+		/** Dialog width. Consumers with more tabs (e.g. the n8n Connect section) can widen it. */
+		size?: DialogSize;
 		allowWorkflowCreation?: boolean;
 		workflowCreationLoading?: boolean;
 	}>(),
@@ -44,6 +46,7 @@ const props = withDefaults(
 		open: false,
 		detailItem: null,
 		detailMode: 'detail',
+		size: 'xlarge',
 		allowWorkflowCreation: false,
 		workflowCreationLoading: false,
 	},
@@ -83,6 +86,7 @@ watch(searchQuery, (value) => {
 });
 
 const activeCategory = ref<ToolCategoryKey>(props.categories[0] ?? 'connected');
+const isMcpCategory = computed(() => activeCategory.value === 'mcp');
 
 const searchInputRef = useTemplateRef('searchInputRef');
 const scrollerRef = useTemplateRef('scrollerRef');
@@ -137,8 +141,19 @@ function categoryOf(item: ToolConnectionItem): ToolCategoryKey {
 	return item.category ?? CATEGORY_BY_KIND[item.kind];
 }
 
+/**
+ * "All" ranks connected tools first, then those backed by n8n credits, then the
+ * rest — so the most immediately usable tools sit on top. Lower rank sorts first.
+ */
+function allSortRank(item: ToolConnectionItem): number {
+	if (hasToolConnection(item.status)) return 0;
+	if (item.freeCredits) return 1;
+	return 2;
+}
+
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
-	if (category === 'all') return props.items;
+	// Stable sort keeps each bucket in its original order (Array.sort is stable).
+	if (category === 'all') return [...props.items].sort((a, b) => allSortRank(a) - allSortRank(b));
 	if (category === 'connected') return props.items.filter((item) => hasToolConnection(item.status));
 	return props.items.filter(
 		(item) =>
@@ -168,10 +183,16 @@ function tabCount(category: ToolCategoryKey): string {
 	return count > MAX_DISPLAYED_COUNT ? `${MAX_DISPLAYED_COUNT}+` : String(count);
 }
 
-const flattenedRows = computed<FlattenedRow[]>(() =>
+type ListRow = FlattenedRow | { key: 'suggestion' };
+
+const toolRows = computed<FlattenedRow[]>(() =>
 	itemsForCategory(activeCategory.value)
 		.filter(matchesQuery)
 		.map((item) => ({ key: `item:${item.id}`, item })),
+);
+
+const flattenedRows = computed<ListRow[]>(() =>
+	isMcpCategory.value ? [...toolRows.value, { key: 'suggestion' }] : toolRows.value,
 );
 
 /** Categories only worth a tab once they hold something. */
@@ -206,6 +227,7 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	mcp: 'tools.connection.categories.mcp',
 	ai: 'tools.connection.categories.ai',
 	n8n: 'tools.connection.categories.n8n',
+	'n8n-connect': 'tools.connection.categories.n8nConnect',
 	'app-action': 'tools.connection.categories.appAction',
 	community: 'tools.connection.categories.community',
 	workflows: 'tools.connection.categories.workflows',
@@ -237,7 +259,7 @@ watch(visibleCategories, (categories) => {
 	}
 });
 
-const isListEmpty = computed(() => flattenedRows.value.length === 0);
+const isListEmpty = computed(() => toolRows.value.length === 0);
 const emptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
 		return i18n.baseText('tools.connection.empty.noResults', {
@@ -267,7 +289,7 @@ function handleOpenChange(value: boolean) {
 <template>
 	<N8nDialog
 		:open="open"
-		size="xlarge"
+		:size="size"
 		:header="detailItem ? '' : modalTitle"
 		:show-close-button="!detailItem"
 		:aria-label="modalTitle"
@@ -364,11 +386,17 @@ function handleOpenChange(value: boolean) {
 					</span>
 				</button>
 
-				<div v-if="isListEmpty" :class="$style.empty" data-test-id="tools-connection-empty">
-					<N8nText color="text-light">{{ emptyMessage }}</N8nText>
-				</div>
-				<div v-else :class="$style.listWrapper">
+				<div :class="$style.listWrapper">
+					<template v-if="isListEmpty">
+						<div :class="$style.empty" data-test-id="tools-connection-empty">
+							<N8nText color="text-light">{{ emptyMessage }}</N8nText>
+						</div>
+						<div v-if="isMcpCategory" :class="$style.suggestionRow">
+							<slot name="suggestion-footer" />
+						</div>
+					</template>
 					<N8nRecycleScroller
+						v-else
 						ref="scrollerRef"
 						:items="flattenedRows"
 						:item-size="ITEM_HEIGHT"
@@ -377,6 +405,7 @@ function handleOpenChange(value: boolean) {
 					>
 						<template #default="{ item: row }">
 							<ToolRow
+								v-if="'item' in row"
 								:item="row.item"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
@@ -388,6 +417,9 @@ function handleOpenChange(value: boolean) {
 								@first-credential-connect="emit('first-credential-connect', $event)"
 								@new-credential-connect="emit('new-credential-connect', $event)"
 							/>
+							<div v-else :class="$style.suggestionRow">
+								<slot name="suggestion-footer" />
+							</div>
 						</template>
 					</N8nRecycleScroller>
 				</div>
@@ -465,10 +497,9 @@ function handleOpenChange(value: boolean) {
 	min-width: 0;
 }
 
-// Runs past the dialog's own bottom padding so the list ends at the dialog
-// edge instead of floating above it; rows stay inside the horizontal padding,
-// clear of the rounded corners.
 .listWrapper {
+	display: flex;
+	flex-direction: column;
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
@@ -481,10 +512,19 @@ function handleOpenChange(value: boolean) {
 }
 
 .empty {
+	flex: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	padding: var(--spacing--xl);
 	min-height: 200px;
+}
+
+.suggestionRow {
+	width: 100%;
+
+	&:has(*) {
+		margin-top: var(--spacing--sm);
+	}
 }
 </style>

@@ -3,6 +3,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
@@ -81,6 +82,39 @@ function setupStore(overrides: Record<string, unknown> = {}) {
 describe('InstanceAiOnboardingWizard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(hasPermission).mockReturnValue(true);
+	});
+
+	it('does not auto-focus or auto-open the model dropdown when the wizard opens', async () => {
+		const { pinia } = setupStore({
+			modelName: 'claude-opus-5',
+			modelEnvConfigured: true,
+			envManaged: {
+				model: { provider: true, apiKey: true, baseUrl: false, model: false },
+				sandbox: { provider: false, serviceUrl: false, apiKey: false },
+				search: { provider: false, apiKey: false, url: false },
+			},
+		});
+		const { findByRole, findByTestId } = renderWizard({ pinia });
+
+		const modelField = inputFor(await findByTestId('assistant-model-name'));
+
+		expect(modelField).not.toHaveFocus();
+		expect(modelField).toHaveAttribute('aria-expanded', 'false');
+		// Focus still has to land inside the dialog so Tab and Escape work.
+		expect(document.activeElement).toBe(await findByRole('dialog'));
+	});
+
+	it('disables the model field when the user cannot manage instance credentials', async () => {
+		vi.mocked(hasPermission).mockImplementation(
+			(_types, options) => options?.rbac?.scope !== 'credential:manageInstance',
+		);
+		const { pinia } = setupStore();
+		const { findByTestId } = renderWizard({ pinia });
+
+		const modelField = inputFor(await findByTestId('assistant-model-name'));
+
+		expect(modelField).toBeDisabled();
 	});
 
 	it('loads and merges the model catalog without changing the selected model', async () => {
@@ -196,18 +230,24 @@ describe('InstanceAiOnboardingWizard', () => {
 
 	it('keeps the model step open on verification failure and clears the error after editing', async () => {
 		const { pinia, store } = setupStore();
-		vi.mocked(store.verifyModel).mockResolvedValue({ ok: false, failure: 'unauthorized' });
+		vi.mocked(store.verifyModel).mockResolvedValue({
+			ok: false,
+			failure: 'unauthorized',
+			error: 'Incorrect API key provided',
+		});
 		const { emitted, findByTestId, getByTestId, queryByTestId } = renderWizard({ pinia });
 		const apiKey = inputFor(await findByTestId('assistant-model-api-key'));
 
 		await fireEvent.update(apiKey, 'wrong-key');
 		await fireEvent.click(getByTestId('wizard-primary'));
 		await waitFor(() => expect(getByTestId('assistant-verification-error')).toBeVisible());
+		expect(getByTestId('assistant-verification-error-details')).toBeVisible();
 		expect(store.save).not.toHaveBeenCalled();
 		expect(emitted().advance).toBeUndefined();
 
 		await fireEvent.update(apiKey, 'new-key');
 		await waitFor(() => expect(queryByTestId('assistant-verification-error')).toBeNull());
+		expect(queryByTestId('assistant-verification-error-details')).toBeNull();
 	});
 
 	it('verifies an environment-managed model without sending a connection', async () => {
@@ -618,6 +658,17 @@ describe('InstanceAiOnboardingWizard', () => {
 		await fireEvent.click(await findByTestId('wizard-back'));
 
 		expect(emitted().back).toEqual([[]]);
+	});
+
+	it('hides the step indicator when there is only one setup step', async () => {
+		const { pinia } = setupStore();
+		const { findByTestId, queryByTestId } = renderWizard({
+			pinia,
+			props: { sequence: ['model', 'done'] },
+		});
+
+		expect(await findByTestId('wizard-primary')).toBeVisible();
+		expect(queryByTestId('wizard-progress')).toBeNull();
 	});
 
 	it('uses cancel and save without progress controls in direct edit mode', async () => {

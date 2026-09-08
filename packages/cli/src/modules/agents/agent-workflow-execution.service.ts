@@ -187,6 +187,9 @@ export class AgentWorkflowExecutionService {
 					undefined,
 					'manual',
 					sandboxPrincipalHash,
+					// A workflow execution cannot resume a suspended run — it throws
+					// instead (see `recorder.suspended` below).
+					false,
 				);
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
 		} catch (e) {
@@ -580,6 +583,7 @@ export class AgentWorkflowExecutionService {
 				userMessage: message,
 				source: AGENT_WORKFLOW_TRIGGER_TYPE,
 				telemetry: {
+					userId: telemetryUserId,
 					runType,
 					configuration: telemetryConfiguration,
 				},
@@ -606,6 +610,7 @@ export class AgentWorkflowExecutionService {
 					record: run.messageRecord,
 					source: AGENT_WORKFLOW_TRIGGER_TYPE,
 					telemetry: {
+						userId: telemetryUserId,
 						runType,
 						configuration: telemetryConfiguration,
 					},
@@ -730,6 +735,7 @@ export class AgentWorkflowExecutionService {
 		try {
 			this.telemetry.trackAgentTurnFinished({
 				agent_id: syntheticAgentId,
+				user_id: telemetryUserId,
 				thread_id: threadId,
 				run_type: runType,
 				agent_type: 'inline',

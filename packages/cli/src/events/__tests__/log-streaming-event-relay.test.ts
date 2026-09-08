@@ -199,6 +199,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				// Telemetry-only; must not appear in the audit payload below.
 				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			};
 
 			eventService.emit('n8n-package-exported', event);
@@ -442,6 +443,8 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `workflow-deleted` event', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
+				workflowName: 'Deleted Workflow',
+				projectId: 'project789',
 				user: {
 					id: '456',
 					email: 'jane@n8n.io',
@@ -1278,6 +1281,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `credentials-created` event', () => {
 			const event: RelayEventMap['credentials-created'] = {
+				credentialName: 'My GitHub account',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1313,6 +1317,8 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `credentials-deleted` event', () => {
 			const event: RelayEventMap['credentials-deleted'] = {
+				credentialName: 'Retired token',
+				projectId: 'project707',
 				user: {
 					id: 'user707',
 					email: 'creduser@example.com',
@@ -1342,6 +1348,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `credentials-updated` event', () => {
 			const event: RelayEventMap['credentials-updated'] = {
+				credentialName: 'Rotated token',
 				user: {
 					id: 'user808',
 					email: 'updatecred@example.com',
@@ -3261,6 +3268,8 @@ describe('LogStreamingEventRelay', () => {
 				toolName: 'execute_workflow',
 				workflowId: 'wf-789',
 				status: 'success',
+				authType: 'oauth',
+				clientId: 'client-abc',
 				clientName: 'Cursor',
 			};
 
@@ -3278,6 +3287,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-789',
 					status: 'success',
 					errorMessage: undefined,
+					authType: 'oauth',
+					clientId: 'client-abc',
 					clientName: 'Cursor',
 				},
 			});
@@ -3295,6 +3306,7 @@ describe('LogStreamingEventRelay', () => {
 				toolName: 'get_workflow_details',
 				status: 'error',
 				errorMessage: 'Workflow not found',
+				authType: 'api_key',
 			};
 
 			eventService.emit('mcp-tool-called', event);
@@ -3311,6 +3323,9 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: undefined,
 					status: 'error',
 					errorMessage: 'Workflow not found',
+					// An API-key caller has no OAuth client and reports no name
+					authType: 'api_key',
+					clientId: undefined,
 					clientName: undefined,
 				},
 			});

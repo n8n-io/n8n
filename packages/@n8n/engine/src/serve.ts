@@ -2,8 +2,12 @@ import { EngineConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import { AllowAllAdmittance } from './admittance';
+import { SharedSecretIdentityVerifier } from './auth';
 import { createDataSource } from './database';
+import { createConsoleLogger } from './logging';
 import { createEngineRuntime } from './runtime';
+
+const logger = createConsoleLogger();
 
 async function main(): Promise<void> {
 	const config = Container.get(EngineConfig);
@@ -14,22 +18,31 @@ async function main(): Promise<void> {
 		throw new Error('engine: N8N_ENGINE_DATABASE_URL is not set');
 	}
 
+	if (!config.authSecret) {
+		throw new Error('engine: N8N_ENGINE_AUTH_SECRET is not set');
+	}
+
 	const dataSource = createDataSource(config.databaseUrl);
 	await dataSource.initialize();
 	await dataSource.runMigrations();
 
-	const runtime = createEngineRuntime({ dataSource, admittance: new AllowAllAdmittance() });
+	const runtime = createEngineRuntime({
+		dataSource,
+		admittance: new AllowAllAdmittance(),
+		identityVerifier: new SharedSecretIdentityVerifier(config.authSecret),
+		logger,
+	});
 	runtime.start();
 
 	const server = runtime.app.listen(config.port, config.host, () => {
-		console.log(`engine: listening on http://${config.host}:${config.port}`);
+		logger.info(`listening on http://${config.host}:${config.port}`);
 	});
 
 	let shuttingDown = false;
 	const shutdown = async (signal: string): Promise<void> => {
 		if (shuttingDown) return;
 		shuttingDown = true;
-		console.log(`engine: received ${signal}, shutting down`);
+		logger.info(`received ${signal}, shutting down`);
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});
@@ -40,7 +53,7 @@ async function main(): Promise<void> {
 
 	const onSignal = (signal: string): void => {
 		shutdown(signal).catch((error: unknown) => {
-			console.error('engine: error during shutdown', error);
+			logger.error('error during shutdown', { error });
 			process.exit(1);
 		});
 	};
@@ -50,6 +63,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-	console.error('engine: failed to start', error);
+	logger.error('failed to start', { error });
 	process.exit(1);
 });

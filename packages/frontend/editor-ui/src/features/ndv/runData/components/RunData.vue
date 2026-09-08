@@ -270,9 +270,7 @@ const isArchivedWorkflow = computed(() => workflowDocumentStore?.value?.isArchiv
 const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
 const isWaitNodeWaiting = computed(() => {
 	return (
-		node.value?.name &&
-		workflowExecution.value?.resultData?.runData?.[node.value?.name]?.[props.runIndex]
-			?.executionStatus === 'waiting'
+		node.value?.name && currentNodeRunData.value?.[props.runIndex]?.executionStatus === 'waiting'
 	);
 });
 
@@ -325,9 +323,29 @@ const shouldShowSchemaView = computed(() => {
 	);
 });
 
+const hasExecutionNodeSnapshot = computed(
+	() => (currentExecution.value?.workflowData?.nodes?.length ?? 0) > 0,
+);
+
 // Helper: Get run data for current node (returns null if not available)
 const currentNodeRunData = computed(() => {
-	if (!node.value || !workflowRunData.value) return null;
+	if (!node.value) {
+		return null;
+	}
+
+	// Only the active execution with a node snapshot can be resolved by id.
+	if (props.workflowExecution === undefined && hasExecutionNodeSnapshot.value) {
+		return (
+			workflowExecutionStateStore.value.activeExecutionRunDataByNodeId.get(node.value.id)?.value ??
+			null
+		);
+	}
+
+	if (!workflowRunData.value) {
+		return null;
+	}
+
+	// try by name otherwise
 	const nodeName = node.value.name;
 	return workflowRunData.value.hasOwnProperty(nodeName) ? workflowRunData.value[nodeName] : null;
 });
@@ -378,8 +396,7 @@ const hasNodeRun = computed(() =>
 	Boolean(
 		!props.isExecuting &&
 			node.value &&
-			((workflowRunData.value && workflowRunData.value.hasOwnProperty(node.value.name)) ||
-				pinnedData.hasData.value),
+			(currentNodeRunData.value !== null || pinnedData.hasData.value),
 	),
 );
 
@@ -411,9 +428,11 @@ const parentNodeError = computed(() => {
 });
 
 const workflowRunErrorAsNodeError = computed(() => {
-	if (!node.value) return null;
+	if (!node.value) {
+		return null;
+	}
 
-	const selfTaskData = workflowRunData.value?.[node.value.name]?.[props.runIndex];
+	const selfTaskData = currentNodeRunData.value?.[props.runIndex];
 
 	if (!selfTaskData && isSubNodeType.value && isPaneTypeInput.value) {
 		return parentNodeError.value;
@@ -423,7 +442,7 @@ const workflowRunErrorAsNodeError = computed(() => {
 
 const hasRedactedError = computed(() => {
 	if (!node.value) return false;
-	const selfTaskData = workflowRunData.value?.[node.value.name]?.[props.runIndex];
+	const selfTaskData = currentNodeRunData.value?.[props.runIndex];
 	return !!selfTaskData?.redactedError;
 });
 
@@ -436,7 +455,7 @@ const hasRunError = computed(
 
 const executionHints = computed(() => {
 	if (hasNodeRun.value) {
-		const hints = node.value && workflowRunData.value?.[node.value.name]?.[props.runIndex]?.hints;
+		const hints = node.value && currentNodeRunData.value?.[props.runIndex]?.hints;
 
 		if (hints) return hints;
 	}
@@ -527,12 +546,10 @@ const inputDataPage = computed(() => {
 });
 const jsonData = computed(() => executionDataToJson(inputData.value));
 const binaryData = computed(() => {
-	if (!node.value) {
-		return [];
-	}
+	const runDataOfNode = currentNodeRunData.value?.[props.runIndex]?.data;
 
 	return nodeHelpers
-		.getBinaryData(workflowRunData.value, node.value.name, props.runIndex, currentOutputIndex.value)
+		.getBinaryData(runDataOfNode, currentOutputIndex.value)
 		.filter((data) => Boolean(data && Object.keys(data).length));
 });
 const inputHtml = computed(() => String(inputData.value[0]?.json?.html ?? ''));
@@ -675,7 +692,7 @@ const activeTaskMetadata = computed((): ITaskMetadata | null => {
 		}
 	}
 
-	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
+	return currentNodeRunData.value?.[props.runIndex]?.metadata ?? null;
 });
 
 const hasInputOverwrite = computed((): boolean => {
@@ -820,7 +837,7 @@ onMounted(() => {
 	}
 
 	if (hasRunError.value && node.value) {
-		const error = workflowRunData.value?.[node.value.name]?.[props.runIndex]?.error;
+		const error = currentNodeRunData.value?.[props.runIndex]?.error;
 		const errorsToTrack = ['unknown error'];
 
 		if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {
@@ -900,8 +917,7 @@ const nodeHints = computed<NodeHint[]>(() => {
 				const hasMultipleInputItems =
 					parentNodeOutputData.value.length > 1 || parentNodePinnedData.value.length > 1;
 
-				const nodeOutputData =
-					workflowRunData.value?.[node.value.name]?.[props.runIndex]?.data?.main?.[0] ?? [];
+				const nodeOutputData = currentNodeRunData.value?.[props.runIndex]?.data?.main?.[0] ?? [];
 
 				const genericHints = getGenericHints({
 					workflowNode,
@@ -1273,7 +1289,7 @@ function getRunLabel(option: number) {
 		interpolate: { count: itemsCount },
 	});
 
-	const metadata = workflowRunData.value?.[node.value.name]?.[option - 1]?.metadata ?? null;
+	const metadata = currentNodeRunData.value?.[option - 1]?.metadata ?? null;
 	const subexecutions = metadata?.subExecutionsCount
 		? i18n.baseText('ndv.output.andSubExecutions', {
 				adjustToNumber: metadata.subExecutionsCount,
@@ -1345,7 +1361,7 @@ function getDataCount(
 		return 0;
 	}
 
-	if (workflowRunData.value?.[node.value.name]?.[runIndex]?.hasOwnProperty('error')) {
+	if (currentNodeRunData.value?.[runIndex]?.hasOwnProperty('error')) {
 		return 1;
 	}
 

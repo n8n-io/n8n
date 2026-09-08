@@ -159,7 +159,7 @@ describe('NodeToolSettingsContent', () => {
 		credentialsStore.allCredentials = [];
 		credentialsStore.setCredentials = vi.fn();
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
-		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue(undefined);
+		credentialsStore.fetchUsableCredentials = vi.fn().mockResolvedValue(undefined);
 		projectsStore.personalProject = { id: 'personal-project', name: 'Personal' } as never;
 		projectsStore.setCurrentProject = vi.fn();
 		projectsStore.fetchAndSetProject = vi.fn().mockResolvedValue(undefined);
@@ -344,7 +344,7 @@ describe('NodeToolSettingsContent', () => {
 
 		await waitFor(() => {
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
@@ -358,7 +358,7 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
@@ -376,7 +376,7 @@ describe('NodeToolSettingsContent', () => {
 
 		await waitFor(() => {
 			expect(projectsStore.getPersonalProject).toHaveBeenCalled();
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
@@ -400,7 +400,7 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
@@ -427,7 +427,7 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'team-project',
 			});
 		});

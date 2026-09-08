@@ -146,6 +146,19 @@ describe('CredentialsRepository', () => {
 			expect(callArg!.order).toBeUndefined();
 		});
 
+		it('should honor a caller-provided relations array', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await credentialsRepository.findManyAndCount({
+				take: 10,
+				skip: 0,
+				relations: ['shared', 'shared.project'],
+			});
+
+			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
+			expect(callArg?.relations).toEqual(['shared', 'shared.project']);
+		});
+
 		it('should apply credentialIds filter when provided', async () => {
 			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
 

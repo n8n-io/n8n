@@ -99,7 +99,7 @@ vi.mock('@/features/agents/composables/useAgentApi', () => ({
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		setCredentials: vi.fn(),
-		fetchAllCredentialsForWorkflow: mocks.fetchCredentials,
+		fetchUsableCredentials: mocks.fetchCredentials,
 		deleteCredential: vi.fn(),
 	}),
 }));

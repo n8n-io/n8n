@@ -394,13 +394,21 @@ export class RoleService {
 		const entityType = isWorkflow ? 'workflow' : 'credential';
 		entity.scopes = this.combineResourceScopes(entityType, user, shared, userProjectRelations);
 
-		if (
-			entityType === 'credential' &&
-			'isGlobal' in entity &&
-			entity.isGlobal &&
-			!entity.scopes.includes('credential:read')
-		) {
-			entity.scopes.push('credential:read');
+		if (entityType === 'credential' && 'isGlobal' in entity && entity.isGlobal) {
+			if (!entity.scopes.includes('credential:read')) {
+				entity.scopes.push('credential:read');
+			}
+
+			// End-user credentials require the recipient to connect their own
+			// account, so a global share must also grant `credential:connect`.
+			// Static credentials stay read-only.
+			if (!('isResolvable' in entity)) {
+				throw new UnexpectedError('isResolvable must be selected whenever isGlobal is');
+			}
+
+			if (entity.isResolvable && !entity.scopes.includes('credential:connect')) {
+				entity.scopes.push('credential:connect');
+			}
 		}
 
 		return entity;

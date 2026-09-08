@@ -6,7 +6,7 @@ import AgentChannelsSection from '../components/AgentChannelsSection.vue';
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		setCredentials: vi.fn(),
-		fetchAllCredentialsForWorkflow: vi.fn().mockResolvedValue([]),
+		fetchUsableCredentials: vi.fn().mockResolvedValue([]),
 	}),
 }));
 

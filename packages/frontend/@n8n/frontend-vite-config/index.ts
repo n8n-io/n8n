@@ -27,6 +27,7 @@ export const sourcePackages = [
 	{ name: '@n8n/design-system', dir: 'frontend/@n8n/design-system' },
 	{ name: '@n8n/frontend-constants', dir: 'frontend/@n8n/frontend-constants', entry: false },
 	{ name: '@n8n/frontend-module-sdk', dir: 'frontend/@n8n/frontend-module-sdk' },
+	{ name: '@n8n/frontend-test-utils', dir: 'frontend/@n8n/frontend-test-utils' },
 	{ name: '@n8n/frontend-utils', dir: 'frontend/@n8n/frontend-utils', entry: false },
 	{ name: '@n8n/i18n', dir: 'frontend/@n8n/i18n' },
 	{ name: '@n8n/rest-api-client', dir: 'frontend/@n8n/rest-api-client' },
@@ -44,6 +45,7 @@ export const sourcePackages = [
  */
 export const modulePackages: Array<{ name: string; dir: string; entry?: boolean }> = [
 	{ name: '@n8n/frontend-module-instance-registry', dir: 'modules/instance-registry/frontend' },
+	{ name: '@n8n/frontend-module-otel', dir: 'modules/otel/frontend' },
 ];
 
 // The code below makes the Vite aliases from the two tables. Keep this code in the same file as

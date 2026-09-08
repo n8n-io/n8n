@@ -132,7 +132,11 @@ function createMockRoute(threadId = 'thread-1') {
 // Test helper — create composable + flush
 // ---------------------------------------------------------------------------
 
-function setup(options?: { threadOverrides?: Partial<MockThread> }) {
+function setup(options?: {
+	threadOverrides?: Partial<MockThread>;
+	initialAgentId?: () => string | undefined;
+	previewOpenState?: () => boolean | undefined;
+}) {
 	const thread = createMockThread();
 	if (options?.threadOverrides) Object.assign(thread, options.threadOverrides);
 	const route = createMockRoute();
@@ -141,6 +145,8 @@ function setup(options?: { threadOverrides?: Partial<MockThread> }) {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		thread: thread as any,
 		threadId: () => route.params.threadId,
+		initialAgentId: options?.initialAgentId,
+		previewOpenState: options?.previewOpenState,
 	});
 
 	return { ...result, thread, route };
@@ -169,16 +175,81 @@ describe('useCanvasPreview', () => {
 					name: 'My Workflow',
 					icon: 'workflow',
 					projectId: undefined,
+					building: false,
 				},
-				{ id: 'dt-1', type: 'data-table', name: 'My Table', icon: 'table', projectId: 'proj-1' },
+				{
+					id: 'dt-1',
+					type: 'data-table',
+					name: 'My Table',
+					icon: 'table',
+					projectId: 'proj-1',
+					building: false,
+				},
 				{
 					id: 'agent-1',
 					type: 'agent',
 					name: 'SEO Auditor',
 					icon: 'robot',
 					projectId: 'project-1',
+					building: false,
 				},
 			]);
+		});
+
+		test('marks tabs as building while an active builder sub-agent targets them', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						status: 'active',
+						children: [
+							makeAgentNode({
+								agentId: 'builder-1',
+								kind: 'agent-builder',
+								role: 'agent-builder',
+								status: 'active',
+								targetResource: { type: 'agent', id: 'agent-1' },
+							}),
+						],
+					}),
+				}),
+			];
+
+			const byId = new Map(ctx.allArtifactTabs.value.map((t) => [t.id, t]));
+			expect(byId.get('agent-1')?.building).toBe(true);
+			expect(byId.get('wf-1')?.building).toBe(false);
+		});
+
+		test('marks a workflow tab as building while a workflow-builder targets it, and clears when it completes', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			const builder = makeAgentNode({
+				agentId: 'builder-1',
+				kind: 'builder',
+				role: 'workflow-builder',
+				status: 'active',
+				targetResource: { type: 'workflow', id: 'wf-1' },
+			});
+			ctx.thread.messages = [
+				makeMessage({ agentTree: makeAgentNode({ status: 'active', children: [builder] }) }),
+			];
+
+			expect(ctx.allArtifactTabs.value[0].building).toBe(true);
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						status: 'completed',
+						children: [{ ...builder, status: 'completed' }],
+					}),
+				}),
+			];
+
+			expect(ctx.allArtifactTabs.value[0].building).toBe(false);
 		});
 
 		test('excludes credential entries', () => {
@@ -1040,6 +1111,31 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.activeTabId.value).toBe('agent-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('restores the attached agent instead of an earlier helper workflow', async () => {
+			const ctx = setup({ previewOpenState: () => true });
+			ctx.thread.isHydratingThread = true;
+			registerWorkflow(ctx.thread, 'workflow-1', 'Helper workflow');
+			registerAgent(ctx.thread, 'agent-1', 'Support Agent', 'proj-1');
+			ctx.thread.messages = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'agent-1',
+							name: 'Support Agent',
+							projectId: 'proj-1',
+						},
+					],
+				}),
+			];
+			ctx.thread.isHydratingThread = false;
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('agent-1');
+			expect(ctx.activeAgentId.value).toBe('agent-1');
 		});
 	});
 

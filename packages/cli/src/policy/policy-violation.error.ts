@@ -32,6 +32,13 @@ export class PolicyViolationError extends UserError {
 	readonly meta: { violations: PolicyViolation[] };
 
 	/**
+	 * An own property, so it survives the flattening that execution failure
+	 * serialization does to errors — where `instanceof` no longer holds. Read it
+	 * through {@link isPolicyRefusal}, never directly.
+	 */
+	readonly isPolicyRefusal = true;
+
+	/**
 	 * @param violations All of them, not just the first — a user fixing a workflow deserves the
 	 * whole list.
 	 * @param message Overrides the derived summary when the call site can say more.
@@ -44,4 +51,24 @@ export class PolicyViolationError extends UserError {
 		this.violations = [...violations];
 		this.meta = { violations: this.violations };
 	}
+}
+
+/**
+ * Whether an error is a policy refusal, including one flattened into a plain
+ * object by execution failure serialization, where `instanceof` no longer holds.
+ *
+ * The default way to ask. Use `instanceof` only where the typed instance itself
+ * is needed, e.g. to read {@link PolicyViolationError.violations}.
+ */
+export function isPolicyRefusal(error: unknown): boolean {
+	if (error instanceof PolicyViolationError) return true;
+
+	// `hasOwn`, not `in`: the marker is an own property by contract, and an inherited
+	// one would let an unrelated error suppress cleanup and retries.
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		Object.hasOwn(error, 'isPolicyRefusal') &&
+		(error as { isPolicyRefusal?: unknown }).isPolicyRefusal === true
+	);
 }

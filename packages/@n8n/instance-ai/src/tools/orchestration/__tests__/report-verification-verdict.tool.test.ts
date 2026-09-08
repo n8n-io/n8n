@@ -1,5 +1,4 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, TaskStorage } from '../../../types';
 import type { WorkflowLoopAction } from '../../../workflow-loop/workflow-loop-state';
 import { createReportVerificationVerdictTool } from '../report-verification-verdict.tool';
@@ -31,13 +30,8 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		eventBus: {
 			publish: vi.fn(),
 			subscribe: vi.fn(),
-			getEventsAfter: vi.fn(),
-			getNextEventId: vi.fn(),
-			getEventsForRun: vi.fn().mockReturnValue([]),
-			getEventsForRuns: vi.fn().mockReturnValue([]),
 		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
 			get: vi.fn(),

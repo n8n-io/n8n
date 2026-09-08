@@ -21,6 +21,10 @@ export interface PollerFailureState {
 	backoffUntil: Date | null;
 }
 
+export interface PollerFullState extends PollerFailureState {
+	cursor: PollerCursor;
+}
+
 @Service()
 export class PollerStateRepository extends BaseRepository<PollerState> {
 	private readonly isPostgres: boolean;
@@ -151,19 +155,23 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		return result.affected ?? 0;
 	}
 
-	/** The node's failure counters, or `null` if it has no stored row. */
-	async findFailureState(
+	/** The node's cursor plus failure counters, or `null` if it has no stored row. */
+	async findState(
 		workflowId: string,
 		nodeId: string,
 		ctx: OperationContext = {},
-	): Promise<PollerFailureState | null> {
+	): Promise<PollerFullState | null> {
 		const row = await this.managerFor(ctx).findOne(PollerState, {
-			select: ['consecutiveErrors', 'backoffUntil'],
+			select: ['cursor', 'consecutiveErrors', 'backoffUntil'],
 			where: { workflowId, nodeId },
 		});
 		return row === null
 			? null
-			: { consecutiveErrors: row.consecutiveErrors, backoffUntil: row.backoffUntil };
+			: {
+					cursor: row.cursor,
+					consecutiveErrors: row.consecutiveErrors,
+					backoffUntil: row.backoffUntil,
+				};
 	}
 
 	/**

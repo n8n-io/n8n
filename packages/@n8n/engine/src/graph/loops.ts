@@ -1,6 +1,6 @@
 import { UnimplementedError } from '../common';
 import { GraphValidationError } from './graph-validation.error';
-import type { GraphEdge, WorkflowGraph } from './workflow-graph';
+import { isBatchStepConfig, type GraphEdge, type WorkflowGraph } from './workflow-graph';
 
 /** A loop, derived from the graph's marked back-edges. */
 export interface WorkflowLoop {
@@ -152,6 +152,9 @@ export function validateLoops(graph: WorkflowGraph): void {
 	const batchNodeIds = new Set(
 		graph.nodes.filter((node) => node.type === 'batch').map((node) => node.id),
 	);
+	const triggerNodeIds = new Set(
+		graph.nodes.filter((node) => node.type === 'trigger').map((node) => node.id),
+	);
 	const loops = deriveLoops(graph);
 	const loopsByBatchNode = new Map(loops.map((loop) => [loop.batchNodeId, loop]));
 
@@ -174,6 +177,22 @@ export function validateLoops(graph: WorkflowGraph): void {
 			throw new GraphValidationError(
 				`Node ${name(batchNodeId)} has a back-edge returning to it but is not a batch node`,
 			);
+		}
+
+		const batchNode = graph.nodes.find((node) => node.id === batchNodeId);
+		if (!isBatchStepConfig(batchNode?.config)) {
+			throw new GraphValidationError(
+				`Batch node ${name(batchNodeId)} has no batch size, and it must be a whole number of at least 1`,
+			);
+		}
+
+		// Nothing outside the loop points in, so it would start at pass 1 with no pass 0, and never finish.
+		for (const memberId of memberIds) {
+			if (triggerNodeIds.has(memberId)) {
+				throw new GraphValidationError(
+					`Trigger ${name(memberId)} is inside the loop of ${name(batchNodeId)}, so that loop could never start`,
+				);
+			}
 		}
 
 		// Nesting, before the shape rules: two looping batch nodes land in one

@@ -284,6 +284,24 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 						},
 						{
 							type: 'tool-call',
+							toolCallId: 'content-result-call',
+							toolName: 'content-result-tool',
+							input: {},
+							state: 'resolved',
+							output: {
+								type: 'content',
+								value: [
+									{ type: 'text', text: JSON.stringify(envelope('result')) },
+									{
+										type: 'file-data',
+										data: 'base64-pdf',
+										mediaType: 'application/pdf',
+									},
+								],
+							},
+						},
+						{
+							type: 'tool-call',
 							toolCallId: 'error-call',
 							toolName: 'error-tool',
 							input: {},
@@ -304,6 +322,23 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 				expect.objectContaining({
 					state: 'resolved',
 					output: EXPIRED_OFFLOADED_TOOL_RESULT,
+				}),
+				expect.objectContaining({
+					state: 'resolved',
+					output: {
+						type: 'content',
+						value: [
+							{
+								type: 'text',
+								text: JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT),
+							},
+							{
+								type: 'file-data',
+								data: 'base64-pdf',
+								mediaType: 'application/pdf',
+							},
+						],
+					},
 				}),
 				expect.objectContaining({
 					state: 'rejected',

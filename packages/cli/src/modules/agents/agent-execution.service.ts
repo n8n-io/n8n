@@ -51,6 +51,7 @@ export interface RecordMessageParams {
 	taskVersionId?: string;
 	/** Backend heartbeat telemetry context for this recorded run. */
 	telemetry?: {
+		userId?: string;
 		runType: AgentRunTelemetryType;
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
@@ -370,6 +371,7 @@ export class AgentExecutionService {
 			try {
 				this.telemetry.trackAgentTurnFinished({
 					agent_id: agentId,
+					user_id: params.telemetry.userId,
 					thread_id: threadId,
 					run_type: params.telemetry.runType,
 					turn_status: status === 'success' ? 'succeeded' : 'failed',
@@ -406,6 +408,15 @@ export class AgentExecutionService {
 	 */
 	async findLatestSuspendedRun(threadId: string): Promise<AgentExecution | null> {
 		return await this.agentExecutionRepository.findLatestSuspendedByThreadId(threadId);
+	}
+
+	/**
+	 * Whether the thread ever parked a run — a cheap negative filter in front of
+	 * the checkpoint lookup, which has no thread index and must parse each of the
+	 * agent's active checkpoints to find the thread's.
+	 */
+	async hasSuspendedRun(threadId: string): Promise<boolean> {
+		return await this.agentExecutionRepository.hasSuspendedRun(threadId);
 	}
 
 	/**

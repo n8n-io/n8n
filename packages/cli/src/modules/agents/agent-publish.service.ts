@@ -1,4 +1,5 @@
 import {
+	isDraftIntegration,
 	type AgentConfigValidationResponse,
 	type AgentJsonConfig,
 	type AgentSkill,
@@ -40,11 +41,9 @@ import { AgentHistoryRepository } from './repositories/agent-history.repository'
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
-import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import {
-	configuredCapabilityKinds,
+	capabilityCountTelemetryProperties,
 	countAgentCapabilities,
-	totalAgentCapabilities,
 } from './utils/agent-capabilities';
 import { saveAgentDraftFenced } from './utils/agent-draft.utils';
 
@@ -69,6 +68,14 @@ function requireValidValidation(
 	validation: AgentConfigValidationResponse,
 ): asserts validation is ValidAgentConfigValidationResponse {
 	if (validation.status !== 'valid') {
+		const unpublishedWorkflows = validation.issues
+			.filter((issue) => issue.reason === 'not_published')
+			.map(({ capability }) => `workflow "${capability.id}" is not published`);
+		if (unpublishedWorkflows.length > 0) {
+			throw new UserError(
+				`Cannot publish agent: ${unpublishedWorkflows.join('; ')}. Publish these workflows first.`,
+			);
+		}
 		throw new UserError('Agent configuration has errors that must be resolved before publishing');
 	}
 }
@@ -97,7 +104,6 @@ export class AgentPublishService {
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly customToolsService: AgentCustomToolsService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly subAgentCleanupService: SubAgentCleanupService,
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
 		private readonly telemetry: Telemetry,
@@ -282,7 +288,30 @@ export class AgentPublishService {
 				);
 
 		requireValidValidation(validation);
+		await this.assertChannelsStartable(agent, projectId);
 		return validation;
+	}
+
+	/**
+	 * Reject a publish whose channels cannot start for a reason only the user can
+	 * fix — today, a credential another agent already claims.
+	 *
+	 * This runs before the version is written, so a rejection leaves nothing
+	 * behind: the agent stays unpublished and there is no partial state to roll
+	 * back. Only deterministic checks belong here — startup failures that a retry
+	 * can clear are reported per channel and healed by the reconciler instead, so
+	 * an unreachable platform never blocks a publish.
+	 *
+	 * Draft entries carry no credential to check; validation has already rejected
+	 * them by this point, and skipping them keeps that the single place that owns
+	 * the rule.
+	 */
+	private async assertChannelsStartable(agent: Agent, projectId: string): Promise<void> {
+		const chatIntegrationService = Container.get(ChatIntegrationService);
+		for (const integration of agent.integrations ?? []) {
+			if (isDraftIntegration(integration)) continue;
+			await chatIntegrationService.assertStartupPreconditions(agent.id, integration, projectId);
+		}
 	}
 
 	async unpublishAgent(
@@ -327,8 +356,6 @@ export class AgentPublishService {
 		this.runtimeCacheService.clearRuntimes(agentId);
 
 		this.trackUnpublished(agentId, projectId, user, by);
-
-		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, projectId);
 
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {
@@ -383,15 +410,7 @@ export class AgentPublishService {
 			// Set by the transaction above to either targetHistory.versionId or
 			// agent.versionId, so it is never null on this path.
 			version_id: agent.activeVersionId!,
-			capability_kinds: configuredCapabilityKinds(counts),
-			capability_count: totalAgentCapabilities(counts),
-			tool_count: counts.tool,
-			skill_count: counts.skill,
-			sub_agent_count: counts.subAgent,
-			mcp_server_count: counts.mcpServer,
-			vector_store_count: counts.vectorStore,
-			task_count: counts.task,
-			trigger_count: counts.channel,
+			...capabilityCountTelemetryProperties(counts),
 			model,
 			tool_types,
 		} as const;

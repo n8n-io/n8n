@@ -1,7 +1,6 @@
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import { createToolRegistry } from '../../../tool-registry';
 import type {
 	InstanceAiDataTableService,
 	InstanceAiWorkflowService,
@@ -70,7 +69,6 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 			warn: vi.fn(),
 			error: vi.fn(),
 		} as unknown as OrchestrationContext['logger'],
-		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {} as OrchestrationContext['taskStorage'],
 		workflowTaskService,
@@ -599,6 +597,7 @@ async function runTool(
 		includeData?: boolean;
 		maxDataChars?: number;
 		fixtureOverrides?: Record<string, Array<Record<string, unknown>>>;
+		triggerNodeName?: string;
 	},
 ) {
 	const tool = createVerifyBuiltWorkflowTool(ctx as unknown as OrchestrationContext);
@@ -1494,5 +1493,37 @@ describe('verify-built-workflow tool — stale mocked-credential plan', () => {
 			'verify-built-workflow: could not reconcile mocked-credential plan',
 			expect.objectContaining({ workItemId: 'wi-1' }),
 		);
+	});
+});
+
+describe('verify-built-workflow tool — trigger selection', () => {
+	it('starts verification from the named trigger', async () => {
+		const { ctx } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-monthly',
+			status: 'success',
+			data: { 'Post Summary': [{ ok: true }] },
+		});
+
+		await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			triggerNodeName: 'First of Month',
+		});
+
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({ triggerNodeName: 'First of Month' });
+	});
+
+	it('leaves the trigger auto-detected when no trigger is named', async () => {
+		const { ctx } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-auto',
+			status: 'success',
+			data: { 'Post Movers': [{ ok: true }] },
+		});
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({ triggerNodeName: undefined });
 	});
 });

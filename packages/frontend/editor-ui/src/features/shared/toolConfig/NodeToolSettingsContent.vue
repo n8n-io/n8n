@@ -401,7 +401,7 @@ onMounted(async () => {
 	if (projectId) {
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchAllCredentialsForWorkflow({ projectId }),
+			credentialsStore.fetchUsableCredentials({ projectId }),
 		]);
 	}
 });

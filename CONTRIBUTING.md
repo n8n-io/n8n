@@ -82,7 +82,7 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 10.22 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) version 12.3.4 or newer is required for development. We recommend that you install it with [Corepack](#corepack).
 
 ##### pnpm workspaces
 
@@ -96,7 +96,7 @@ We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/ap
 
 ```bash
 corepack enable
-corepack prepare pnpm@10.22.0 --activate
+corepack prepare pnpm@12.3.4 --activate
 ```
 
 **IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
@@ -234,6 +234,16 @@ backend, and refresh the frontend on each change you make. The root `pnpm dev`
 does not exist: it prints a notice and exits with code 0.
 Given the size of the code base and the number of modules, we recommend only watching the modules you're
 actively working on.
+
+The dev servers default to 5678 (backend) and 8080 (editor). Set `N8N_PORT` and
+`N8N_EDITOR_PORT` to relocate them, for example to run a second instance beside
+your main one. The editor derives its REST base URL from `N8N_PORT`, so pass it
+to both commands:
+
+```bash
+N8N_PORT=5699 pnpm dev:be
+N8N_PORT=5699 N8N_EDITOR_PORT=8082 pnpm dev:fe:editor
+```
 
 ### Basic Development Workflow Example (most used within n8n)
 

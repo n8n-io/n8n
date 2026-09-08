@@ -425,6 +425,131 @@ describe('CredentialsPermissionChecker', () => {
 			);
 		});
 
+		describe('with the credential-type parameters declared in the node type', () => {
+			// The other cases in this block mock descriptions without `properties`, which
+			// takes the "parameter not declared, trust its value" path. A real HTTP Request
+			// description declares both selectors and gates them on `authentication`, so
+			// their values only count while the matching auth mode is selected. The runtime
+			// agrees because HttpRequestV3 reads `authentication` first and only fetches the
+			// credential for that branch (its default is `none`).
+			const description = {
+				credentials: [
+					{
+						name: 'httpSslAuth',
+						required: true,
+						displayOptions: { show: { provideSslCertificates: [true] } },
+					},
+				],
+				properties: [
+					{
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+					{
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			};
+
+			const makeNode = (parameters: INode['parameters']): INode => ({
+				id: 'node-5',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.3,
+				position: [0, 0],
+				parameters,
+				credentials: {
+					googleOAuth2Api: { id: staleCredentialId, name: 'Google OAuth2' },
+					httpHeaderAuth: { id: activeCredentialId, name: 'Header Auth' },
+				},
+			});
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({ description } as never);
+				credentialsRepository.find.mockResolvedValue([]);
+			});
+
+			it('should not check a credential whose selector parameter is hidden', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+					activeCredentialId,
+				]);
+
+				const node = makeNode({
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+					// Left over from a previous setup; hidden while generic auth is selected
+					nodeCredentialType: 'googleOAuth2Api',
+				});
+
+				await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[activeCredentialId],
+				);
+			});
+
+			it('should check a credential whose selector parameter is displayed', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+
+				const node = makeNode({
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'googleOAuth2Api',
+				});
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "HTTP Request" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[staleCredentialId],
+				);
+			});
+
+			it('should ignore an expression in a hidden selector parameter', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+					activeCredentialId,
+				]);
+
+				const node = makeNode({
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+					nodeCredentialType: '={{ $json.credType }}',
+				});
+
+				await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
+
+				// A hidden parameter resolves to nothing, so the expression must not force
+				// the fallback that checks every credential reference.
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[activeCredentialId],
+				);
+			});
+
+			it('should check every credential for an expression in a displayed selector parameter', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+
+				const node = makeNode({
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: '={{ $json.credType }}',
+				});
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "HTTP Request" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					expect.arrayContaining([staleCredentialId, activeCredentialId]),
+				);
+			});
+		});
+
 		it('should fall back to checking all credentials if node type cannot be resolved', async () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
 				throw new Error('Unknown node type');
