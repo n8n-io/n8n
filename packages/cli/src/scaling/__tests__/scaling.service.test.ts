@@ -1,9 +1,11 @@
+import type { Logger } from '@n8n/backend-common';
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { InstanceSettings } from 'n8n-core';
+import type { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -86,6 +88,11 @@ describe('ScalingService', () => {
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
+	// The service scopes its logger on construction, so assertions go to the scoped mock.
+	const scopedLogger = mock<Logger>();
+	const logger = mock<Logger>({ scoped: () => scopedLogger });
+	const errorReporter = mock<ErrorReporter>();
+	const activeExecutions = mock<ActiveExecutions>();
 	const jobProcessor = mock<JobProcessor>();
 	const executionRepository = mock<ExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
@@ -116,9 +123,9 @@ describe('ScalingService', () => {
 		instanceSettings.markAsLeader();
 
 		scalingService = new ScalingService(
-			mockLogger(),
-			mock(),
-			mock(),
+			logger,
+			errorReporter,
+			activeExecutions,
 			jobProcessor,
 			globalConfig,
 			executionRepository,
@@ -223,6 +230,28 @@ describe('ScalingService', () => {
 			instanceSettings.instanceType = 'worker';
 
 			expect(() => scalingService.setupWorker(5)).toThrow();
+		});
+
+		it('should report the original error even if notifying main of the failure fails', async () => {
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
+			await scalingService.setupQueue();
+			scalingService.setupWorker(5);
+			const processFn = queue.process.mock.calls[0][2] as unknown as (job: Job) => Promise<void>;
+
+			const job = mock<Job>({ id: '1', data: { executionId: '123', loadStaticData: false } });
+			const originalError = new Error('execution errored');
+			jobProcessor.processJob.mockRejectedValueOnce(originalError);
+			// e.g. the job key was already deleted from Redis by a stall sweep
+			job.progress.mockRejectedValueOnce(new Error('Missing key for job 1 updateProgress'));
+
+			await expect(processFn(job)).rejects.toThrow(originalError);
+
+			expect(scopedLogger.warn).toHaveBeenCalledWith(
+				'Failed to notify main of failed execution 123 (job 1)',
+				expect.objectContaining({ executionId: '123', jobId: '1' }),
+			);
+			expect(errorReporter.error).toHaveBeenCalledWith(originalError, { executionId: '123' });
 		});
 	});
 
