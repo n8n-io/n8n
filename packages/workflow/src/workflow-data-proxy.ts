@@ -59,6 +59,11 @@ const PAIRED_ITEM_METHOD = {
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
 
+type PairedItemMemo = Map<
+	string,
+	{ ok: true; result: INodeExecutionData } | { ok: false; error: unknown }
+>;
+
 /**
  * Whether the runtime can compile expressions. The expression engine compiles
  * expressions via `new Function`, which throws when the process is started with
@@ -1034,7 +1039,26 @@ export class WorkflowDataProxy {
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
-			nodeBeforeLast?: string,
+		): INodeExecutionData =>
+			resolvePairedItem(
+				destinationNodeName,
+				incomingSourceData,
+				initialPairedItem,
+				usedMethodName,
+				undefined,
+				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
+				// Aggregate output pairing to all its inputs), so without memoization
+				// the walk revisits the same item exponentially often.
+				new Map(),
+			);
+
+		const resolvePairedItem = (
+			destinationNodeName: string,
+			incomingSourceData: ISourceData | null,
+			initialPairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod,
+			nodeBeforeLast: string | undefined,
+			memo: PairedItemMemo,
 		): INodeExecutionData => {
 			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
@@ -1043,6 +1067,46 @@ export class WorkflowDataProxy {
 				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
+			// The outcome is a pure function of this state (for a fixed destination),
+			// so an already-visited item resolves from the memo.
+			// JSON serialization keeps the key collision-safe.
+			const memoKey = JSON.stringify([
+				sourceData.previousNode,
+				sourceData.previousNodeRun ?? 0,
+				sourceData.previousNodeOutput ?? 0,
+				pairedItem.item,
+			]);
+			const memoized = memo.get(memoKey);
+			if (memoized) {
+				if (memoized.ok) return memoized.result;
+				throw memoized.error;
+			}
+
+			try {
+				const result = resolvePairedItemUncached(
+					destinationNodeName,
+					sourceData,
+					pairedItem,
+					usedMethodName,
+					nodeBeforeLast,
+					memo,
+				);
+				memo.set(memoKey, { ok: true, result });
+				return result;
+			} catch (error) {
+				memo.set(memoKey, { ok: false, error });
+				throw error;
+			}
+		};
+
+		const resolvePairedItemUncached = (
+			destinationNodeName: string,
+			sourceData: ISourceData,
+			pairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod,
+			nodeBeforeLast: string | undefined,
+			memo: PairedItemMemo,
+		): INodeExecutionData => {
 			const taskData = getTaskData(sourceData);
 			const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
 			const item = outputData[pairedItem.item];
@@ -1074,12 +1138,13 @@ export class WorkflowDataProxy {
 
 				try {
 					return createResultOk(
-						getPairedItem(
+						resolvePairedItem(
 							destinationNodeName,
 							nextSource,
 							{ ...nextPairedItem, input: inputIndex },
 							usedMethodName,
 							sourceData.previousNode,
+							memo,
 						),
 					);
 				} catch (error) {
