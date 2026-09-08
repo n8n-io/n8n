@@ -34,12 +34,16 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 
 	// The per-resource loops below assert "every field is hidden under SP", which is vacuously
 	// true for a field that was never added. Pin that the mention picker is one they cover.
-	it.each(['channelMessage', 'chatMessage'])('%s:create has a mentions field', (resource) => {
+	it.each([
+		['channelMessage', 'create'],
+		['channelMessage', 'reply'],
+		['chatMessage', 'create'],
+	])('%s:%s has a mentions field', (resource, operation) => {
 		const mentions = actionProps.find(
 			(p) =>
 				p.name === 'mentions' &&
 				p.displayOptions?.show?.resource?.includes(resource) &&
-				p.displayOptions?.show?.operation?.includes('create'),
+				p.displayOptions?.show?.operation?.includes(operation),
 		);
 
 		expect(mentions).toBeDefined();

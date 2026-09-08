@@ -185,28 +185,29 @@ describe('Microsoft Teams v2, getUsers', () => {
 });
 
 describe('Microsoft Teams v2, mention picker wiring', () => {
-	const mentionUserRlc = (resource: string) => {
+	const mentionUserRlc = (resource: string, operation = 'create') => {
 		const mentions = versionDescription.properties.find(
 			(property) =>
 				property.name === 'mentions' &&
 				property.displayOptions?.show?.resource?.includes(resource) &&
-				property.displayOptions?.show?.operation?.includes('create'),
+				property.displayOptions?.show?.operation?.includes(operation),
 		);
 		const row = (mentions?.options ?? [])[0] as { values: INodeProperties[] };
 		return row?.values?.find((value) => value.name === 'userId');
 	};
 
-	it.each(['channelMessage', 'chatMessage'])(
-		'%s create offers a user picker backed by getUsers',
-		(resource) => {
-			const listMode = mentionUserRlc(resource)?.modes?.find((mode) => mode.name === 'list');
+	it.each([
+		['channelMessage', 'create'],
+		['channelMessage', 'reply'],
+		['chatMessage', 'create'],
+	])('%s %s offers a user picker backed by getUsers', (resource, operation) => {
+		const listMode = mentionUserRlc(resource, operation)?.modes?.find(
+			(mode) => mode.name === 'list',
+		);
 
-			expect(listMode?.typeOptions?.searchListMethod).toBe('getUsers');
-			expect(new MicrosoftTeamsV2(versionDescription).methods.listSearch).toHaveProperty(
-				'getUsers',
-			);
-		},
-	);
+		expect(listMode?.typeOptions?.searchListMethod).toBe('getUsers');
+		expect(new MicrosoftTeamsV2(versionDescription).methods.listSearch).toHaveProperty('getUsers');
+	});
 
 	it('leaves the By ID mode without an extractValue', () => {
 		const byId = mentionUserRlc('channelMessage')?.modes?.find((mode) => mode.name === 'id');
