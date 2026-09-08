@@ -19,6 +19,9 @@ import { ElDialog } from 'element-plus';
 import {
 	N8nBadge,
 	N8nButton,
+	N8nDialog,
+	N8nDialogDescription,
+	N8nDialogFooter,
 	N8nHeading,
 	N8nInfoTip,
 	N8nInput,
@@ -45,6 +48,7 @@ const viewPlansUrl = computed(
 );
 const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCallback.value}`);
 const activationKeyModal = ref(false);
+const activationSuccessModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
 const eulaModal = ref(false);
@@ -72,25 +76,8 @@ const canUserRegisterCommunityPlus = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
 );
 
-const showActivationSuccess = (eulaAccepted = false) => {
-	const message = eulaAccepted
-		? locale.baseText('settings.usageAndPlan.license.activation.success.message.eula', {
-				interpolate: { name: usageStore.planName },
-			})
-		: locale.baseText('settings.usageAndPlan.license.activation.success.message', {
-				interpolate: {
-					name: usageStore.planName,
-					type: usageStore.planId
-						? locale.baseText('settings.usageAndPlan.plan')
-						: locale.baseText('settings.usageAndPlan.edition'),
-				},
-			});
-
-	toast.showMessage({
-		type: 'success',
-		title: locale.baseText('settings.usageAndPlan.license.activation.success.title'),
-		message,
-	});
+const showActivationSuccess = () => {
+	activationSuccessModal.value = true;
 };
 
 const showActivationError = (error: unknown) => {
@@ -113,7 +100,7 @@ const onLicenseActivation = async (eulaUri?: string) => {
 		activationKeyModal.value = false;
 		eulaModal.value = false;
 		activationKey.value = '';
-		showActivationSuccess(!!eulaUri);
+		showActivationSuccess();
 	} catch (error: unknown) {
 		// Check if error requires EULA acceptance using type guard
 		if (isEulaError(error)) {
@@ -343,6 +330,27 @@ const openCommunityRegisterModal = () => {
 				</template>
 			</ElDialog>
 
+			<N8nDialog
+				v-model:open="activationSuccessModal"
+				size="small"
+				:header="locale.baseText('settings.usageAndPlan.license.activation.success.title')"
+			>
+				<N8nDialogDescription
+					:class="$style.activationSuccessDescription"
+					data-test-id="license-activation-success-dialog"
+				>
+					{{ locale.baseText('settings.usageAndPlan.license.activation.success.message') }}
+				</N8nDialogDescription>
+				<N8nDialogFooter>
+					<N8nButton
+						data-test-id="license-activation-success-close-button"
+						@click="activationSuccessModal = false"
+					>
+						{{ locale.baseText('generic.close') }}
+					</N8nButton>
+				</N8nDialogFooter>
+			</N8nDialog>
+
 			<EulaAcceptanceModal
 				v-model="eulaModal"
 				:eula-url="eulaUrl"
@@ -452,6 +460,11 @@ div[class*='info'] > span > span:last-child {
 .dialogButtonsContainer {
 	display: flex;
 	justify-content: flex-end;
+}
+
+.activationSuccessDescription {
+	display: block;
+	margin-top: var(--spacing--xs);
 }
 </style>
 

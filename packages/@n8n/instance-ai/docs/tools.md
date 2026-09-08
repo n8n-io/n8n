@@ -22,6 +22,7 @@ live in `src/tools/tool-ids.ts`.
 | `credentials` | 6 |
 | `nodes` | 6 |
 | `mcp-servers` | 4 |
+| `conversation-history` | 2 |
 | `task-control` | 3 |
 | `research` | 2 |
 | `eval-config` | 6 |
@@ -248,8 +249,11 @@ List workflows accessible to the current user.
 | `status` | `"active" \| "archived" \| "all"` | no | `"active"` | Which workflows to list |
 | `scope` | `"project" \| "instance"` | no | `"project"` | Which project(s) to search |
 | `projectId` | string | no | — | Read one specific project, overriding `scope` |
+| `folderPath` | string | no | — | Restrict to one folder, named as the user named it (`Clients/Acme`, `Acme`). Strict, staged match; never fuzzy. Advertised only while folder exploration is on |
+| `folderId` | string | no | — | Restrict to one folder by id (from a prior row's `folder.id`). Same gate |
+| `recursive` | boolean | no | `true` | Include nested subfolders. Same gate |
 
-**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt, project? }], total, totalInScope, note? }`
+**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt, project?, folder? }], total, totalInScope, note?, folderResolution? }`
 
 `activeVersionId` is `null` when the workflow is unpublished.
 
@@ -262,6 +266,21 @@ project's full inventory.
 can span more than one — i.e. neither `projectId` nor a bound project narrowed it
 to one. It is what makes membership readable in a cross-project listing instead
 of guessable by comparing per-scope counts.
+
+`folder` (`{ id, name, path }`) is the workflow's folder with its root-relative
+path (`Clients/Acme`). Folder names cannot contain `/`, so `path` is
+unambiguous. Absent for root-level workflows, and absent on every row
+while folder exploration is off for the run (PostHog flag
+`110_instance_ai_folder_exploration`, force-on via
+`N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED`).
+
+`folderResolution` (`{ requested, reason, candidates }`) is present only when a
+requested folder did not resolve. `workflows` is then empty on purpose, and
+`note` says so first: the rows must never be read as the folder, and a `query`
+name filter is not a substitute. `reason` is `not-found`, `ambiguous` (more
+than one folder matched; `candidates` lists them), `unsupported` (folders are
+not licensed on the instance) or `scope-too-wide` (the listing spans more
+projects than the folder scan covers, so the caller must pass `projectId`).
 
 `projectId` is a read-only narrowing: the adapter passes it as a filter on a query
 that still resolves readability from the caller's own project and workflow roles,
@@ -313,12 +332,14 @@ this tool with `filePath`.
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
+| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `workspace(action="move-workflow-to-folder")`. Advertised only while folder exploration is on |
 
 There is deliberately **no `projectId`**: a build writes to the project the
 conversation is bound to, and nothing can redirect it. The field used to exist and
 the adapter ignored it, so a build could report a project it had not written to.
 
-**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, remediation?, errors?, warnings? }`
+**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, folder?, remediation?, errors?, warnings? }`
+— `folder` is `{ id, name, path }` when the workflow was created inside a folder.
 
 **Behavior**: Reads the source file from the runtime workspace, compiles
 TypeScript sources through the sandbox `tsx` runner or parses WorkflowJSON
@@ -601,6 +622,7 @@ The LLM never sees secrets — the user interacts with the n8n frontend directly
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `credentials` | array | yes | Requests with `{ credentialType, reason?, suggestedName?, preferNew?, setupHint? }` |
+| `workflowId` | string | no | The workflow the credentials are for, when one exists |
 | `requireUserSelection` | boolean | no | Keep the card open for an explicit choice |
 | `credentialFlow` | object | no | `{ stage: "generic" | "finalize" }` |
 
@@ -619,6 +641,19 @@ a service. When `needsBrowserSetup=true`, the orchestrator should load the
 `credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
 directly, then call `credentials(action="setup")` again to select the created
 credential.
+
+**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): when the call belongs
+to a workflow (`workflowId`, or the workflow this run last saved) and the stage
+is not `finalize`, the tool does not suspend. It merges the credential types
+into the workflow's durable `setup-items` snapshot and returns
+`{ success: true, announced: true, workflowId, credentials: [{ credentialType,
+existingCredentials }], message }` so the build continues while the user
+connects credentials from the panel. The announcement is built from the saved
+workflow's analysis, so generic auth types land on their per-node rows; a type
+no saved node uses yet gets a node-less row (generic types wait for the next
+build snapshot). Standalone setup, `requireUserSelection`, and an entry with
+`preferNew` keep the card: the panel cannot express "replace the bound
+credential".
 
 ### `credentials(action="test")`
 
@@ -1028,6 +1063,66 @@ at 5, most relevant first. Only servers the user has *not* connected come back.
 **`connect`** → `{ connectedSlugs, message }`. Suspends to render the inline
 **Available tools** card, resuming when the user connects or skips. `connectedSlugs`
 are the ones the server confirms on resume, not the ones the client claimed.
+
+## Conversation History Tool
+
+### `conversation-history` *(domain tool — conditional, orchestrator only)*
+
+Read-only recall over the user's past conversations in the current project.
+Scoped to the current user and project, with the current thread excluded from
+search. Registered only when the host wires `conversationHistoryService` — the
+user is in the `109_instance_ai_conversation_history` experiment and the run
+has a bound project — and only onto the orchestrator: sub-agents get
+their context from briefings, not by reading across threads. Always loaded:
+recall only works proactively, and deferred it was only reached when the user
+explicitly asked about past conversations. The system prompt's "Past
+Conversations" section describes the situations where recall helps (an
+example-based list, not hard rules — mandates proved both repetitive and
+over-aggressive), and the host appends
+a `<past-conversations>` block (recent titles + count) to the first user
+message of a thread whose project has history — the ambient cue that makes the
+tool's relevance self-evident.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `action` | `'search' \| 'get-messages'` | yes | Discriminator |
+| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask-user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
+| `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 10) |
+| `threadId` | string | `get-messages` | Conversation id from a search result |
+| `aroundMessageId` | string | no | Center the read on this message id (from a search excerpt) |
+| `before` | number | no | Messages before the anchor; without `aroundMessageId`, the last N messages (max 5) |
+| `after` | number | no | Messages after the anchor; without `aroundMessageId`, the first N messages (max 5) |
+
+`before` and `after` can only be combined with `aroundMessageId` — passing both
+without an anchor is a schema-level rejection.
+
+**`search`** → `{ hits: [{ threadId, title, updatedAt, matchedIn, firstMessageExcerpt?, excerpts: [{ messageId, text, createdAt }] }], error? }`,
+recency-ordered. `matchedIn` is an array containing zero or more of `'title' | 'messages' | 'user-answers'`.
+The SQL prefilter is a LIKE over serialized JSON, so candidates are re-checked
+against the text a reader would see, one page at a time; a thread with neither
+a title match nor a re-checked excerpt is dropped. There are no counts. Threads
+with no messages are never returned. Without a `query` the same shape carries a
+recency listing: empty `matchedIn`/`excerpts` — pair it with a `get-messages`
+tail read to continue recent work.
+
+**`get-messages`** → `{ threadId, title, messages: [{ messageId, role, createdAt, text, userAnswers?: [{ question, answer }] }], hasMoreBefore, hasMoreAfter, error? }`,
+oldest-first. Defaults for the read window (tail/head/around sizing) are
+applied by the service, not the tool. The read is the conversation as the
+user experienced it: their messages, ask-user Q&A, and each turn's final
+text-only reply. Mid-turn assistant rows — the agent loop only continues on
+tool calls, so a row carrying them is working narration rather than the reply
+that ended the turn — are filtered out in SQL via structural markers
+(unescaped `"type":"tool-call"` can only be block structure — quotes inside
+text are escaped); ask-user rows stay visible for their Q&A. Rows only
+recognizable after parsing — internal auto-follow-up user rows, rows with no
+visible text, ask-user rows still awaiting an answer, unreadable content — are
+dropped by the same visibility predicate the window fetch uses, so
+`before`/`after` count returned messages. The fetch over-reads to fill its
+slots; `hasMoreBefore`/`hasMoreAfter` may over-report after a long run of
+invisible rows, never under-report.
+
+Both actions return `{ ..., error: '...' }` with empty/default fields — never a
+thrown tool error — when the service is unavailable or a lookup fails.
 
 ## Tool Distribution
 

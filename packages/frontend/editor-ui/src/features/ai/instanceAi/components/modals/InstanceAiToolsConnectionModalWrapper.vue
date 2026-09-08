@@ -208,13 +208,13 @@ function buildItem(
 		longDescription: server.description,
 		status: connection?.status ?? 'none',
 		iconSource: iconForTool(server.icons, uiStore.appliedTheme),
-		credentials: [
-			{
-				authType: server.credentialType,
-				credentialId: connection?.credentialId,
-				required: true,
-			},
-		],
+		credentials: server.credentials.map(({ credentialType, name }) => ({
+			authType: credentialType,
+			displayName: name,
+			credentialId:
+				connection?.credentialType === credentialType ? connection.credentialId : undefined,
+			required: true,
+		})),
 		availableTools: availableToolsForServer(server, connection),
 		...(connection ? { settings: settingsForConnection(connection) } : {}),
 		publisher:
@@ -303,7 +303,7 @@ watch(
 
 provide(
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
-	createCredentialAdapter((authType, item) => {
+	createCredentialAdapter((authType, item, credentialTypes) => {
 		void (async () => {
 			const server = item.kind === 'mcp-server' ? findServerForItem(item) : undefined;
 			if (!server) {
@@ -312,7 +312,13 @@ provide(
 				uiStore.openNewCredential(authType);
 				return;
 			}
-			showConnectedServer(await connectServer(server));
+			showConnectedServer(
+				await connectServer({
+					slug: server.slug,
+					credentialType: authType,
+					credentialTypes,
+				}),
+			);
 		})();
 	}),
 );
@@ -400,8 +406,9 @@ async function handleConnect(item: ToolConnectionItem) {
 	if (item.kind !== 'mcp-server') return;
 
 	const server = findServerForItem(item);
-	if (server) {
-		showConnectedServer(await connectServer(server));
+	const credentialType = item.credentials?.[0]?.authType;
+	if (server && credentialType) {
+		showConnectedServer(await connectServer({ slug: server.slug, credentialType }));
 	}
 }
 </script>

@@ -55,11 +55,13 @@ vi.mock('../../tools', () => ({
 		(context: {
 			evaluationConfigService?: unknown;
 			mcpService?: unknown;
+			conversationHistoryService?: unknown;
 			currentUserAttachments?: unknown[];
 		}) => {
 			const names = ['workflows', 'research', 'n8n-docs', 'nodes', 'executions', 'build-workflow'];
 			if (context.evaluationConfigService) names.push('eval-config');
 			if (context.mcpService) names.push('mcp-servers');
+			if (context.conversationHistoryService) names.push('conversation-history');
 			if (context.currentUserAttachments?.length) names.push('parse-file');
 			return new Set(names);
 		},
@@ -686,6 +688,36 @@ describe('createInstanceAgent', () => {
 		expect(mcpContextTools.get('shared_tool')).toMatchObject({ marker: 'local-shared' });
 		expect(mcpContextTools.get('github_workflows')).toMatchObject({ marker: 'github-workflows' });
 		expect(mcpContextTools.get('custom_plan')).toMatchObject({ marker: 'custom-plan' });
+	});
+
+	it('keeps native orchestrator-only tools when an MCP tool claims the same name', async () => {
+		const localMcpServer = {
+			getToolsByCategory: vi.fn().mockReturnValue([]),
+		};
+		createToolsFromLocalMcpServer.mockReturnValue(
+			new Map([['conversation-history', mockBuiltTool('conversation-history', 'mcp-history')]]),
+		);
+		createOrchestratorDomainTools.mockReturnValueOnce(
+			new Map([['conversation-history', mockBuiltTool('conversation-history', 'native-history')]]),
+		);
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'reserved-names',
+				conversationHistoryService: {},
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer,
+				logger: mockLogger,
+			},
+			orchestrationContext: { runId: 'reserved-names' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attachedTools = getAttachedTools();
+		expect(attachedTools['conversation-history']).toMatchObject({ marker: 'native-history' });
 	});
 
 	it('keeps MCP tools whose conditional native counterparts are inactive', async () => {

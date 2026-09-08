@@ -17,6 +17,9 @@ const loadParseFileTool = lazyMod(
 const loadCredentialsTool = lazyMod(
 	() => require('./credentials.tool') as typeof import('./credentials.tool'),
 );
+const loadConversationHistoryTool = lazyMod(
+	() => require('./conversation-history.tool') as typeof import('./conversation-history.tool'),
+);
 const loadDataTablesTool = lazyMod(
 	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
 );
@@ -122,6 +125,16 @@ function getOrchestratorDomainToolFactories(
 		tools.push([
 			DOMAIN_TOOL_IDS.MCP_SERVERS,
 			() => loadMcpServersTool().createMcpServersTool(context),
+		]);
+	}
+
+	// Orchestrator-only: sub-agents receive context via briefings, and cross-thread
+	// reads stay with the agent the user talks to. The adapter only wires
+	// conversationHistoryService when the run has a bound project.
+	if (context.conversationHistoryService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
+			() => loadConversationHistoryTool().createConversationHistoryTool(context),
 		]);
 	}
 

@@ -255,6 +255,9 @@ function applyInstanceState(
 		...(localGateway ? { localGatewayStatus: localGateway } : {}),
 		...(localMcpServer ? { localMcpServer } : {}),
 		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
+		...(state.folderExploration !== undefined
+			? { folderExplorationEnabled: state.folderExploration }
+			: {}),
 	};
 }
 

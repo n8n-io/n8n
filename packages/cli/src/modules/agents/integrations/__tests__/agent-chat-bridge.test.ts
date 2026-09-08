@@ -5,7 +5,7 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author } from 'chat';
 import { mock } from 'vitest-mock-extended';
-import { type Logger } from 'n8n-workflow';
+import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -620,6 +620,35 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			expect(thread.post).toHaveBeenCalledOnce();
 			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it('names the misconfiguration when the run fails with a UserError', async () => {
+			const { bot, handlers } = makeBot();
+			const agentExecutor = {
+				// The real method is an async generator: the build error surfaces on
+				// the first `next()`, inside the stream consumer.
+				// eslint-disable-next-line require-yield
+				executeForChatPublished: vi.fn(async function* () {
+					throw new UserError('Credential "OpenAI" not found.');
+				}),
+			};
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				bufferedIntegration,
+			);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(
+				'⚠️ This agent is misconfigured: Credential "OpenAI" not found. An agent owner has to fix this in n8n.',
+			);
 		});
 
 		it('does not add a generic error when text follows an errored tool result', async () => {

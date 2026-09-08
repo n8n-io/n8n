@@ -89,7 +89,6 @@ export async function createInstanceAgent(
 		orchestrationContext.modelId = modelId;
 	}
 
-	// Build native n8n domain tools (context captured via closures — per-run).
 	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
 	// explicit child runs that land on the active trace — orchestration tools
 	// (e.g. verify) already get it via OrchestrationContext.
@@ -198,6 +197,9 @@ export async function createInstanceAgent(
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
 		projectId: context.projectId,
+		// Presence of the service IS the experiment gate — the host only wires it
+		// for flagged-in users on project-bound runs.
+		conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 		workspaceRoot:
 			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 				? orchestrationContext.workspaceRoot
