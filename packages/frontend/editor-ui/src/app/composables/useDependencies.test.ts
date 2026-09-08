@@ -133,6 +133,31 @@ describe('useDependencies', () => {
 			});
 		});
 
+		it('ignores an out-of-order older response', async () => {
+			let resolveFirst!: (value: Awaited<ReturnType<typeof getResourceDependenciesMock>>) => void;
+			getResourceDependenciesMock
+				.mockImplementationOnce(
+					async () => await new Promise((resolve) => (resolveFirst = resolve)),
+				)
+				.mockResolvedValueOnce({
+					'wf-1': {
+						dependencies: [{ type: 'workflowParent', id: 'wf-2', name: 'New' }],
+						inaccessibleCount: 0,
+					},
+				});
+
+			const dependencies = useDependencies();
+			const firstRequest = dependencies.fetchDependencies(['wf-1'], 'workflow');
+			await dependencies.fetchDependencies(['wf-1'], 'workflow');
+			expect(dependencies.getDependencies('wf-1')?.dependencies[0]?.name).toBe('New');
+
+			// The older response omits the id; it must not clear the newer result
+			resolveFirst({});
+			await firstRequest;
+
+			expect(dependencies.getDependencies('wf-1')?.dependencies[0]?.name).toBe('New');
+		});
+
 		it('keeps a cached entry when the request fails', async () => {
 			getResourceDependenciesMock.mockResolvedValueOnce({
 				'wf-1': {

@@ -35,6 +35,18 @@ function toBatches(resourceIds: string[]): string[][] {
 	return batches;
 }
 
+// Overlapping refetches can resolve out of order. Track the newest request per
+// resource id, so only that request may write its result to the cache.
+let requestCounter = 0;
+const countsRequestGeneration: Record<string, number> = {};
+const detailsRequestGeneration: Record<string, number> = {};
+
+function claimGeneration(generations: Record<string, number>, ids: string[]): number {
+	const generation = ++requestCounter;
+	for (const id of ids) generations[id] = generation;
+	return generation;
+}
+
 export function useDependencies() {
 	const rootStore = useRootStore();
 
@@ -45,6 +57,7 @@ export function useDependencies() {
 	): Promise<void> {
 		await Promise.all(
 			toBatches(resourceIds).map(async (batch) => {
+				const generation = claimGeneration(countsRequestGeneration, batch);
 				try {
 					const result = await workflowDependenciesApi.getResourceDependencyCounts(
 						rootStore.restApiContext,
@@ -54,6 +67,7 @@ export function useDependencies() {
 					// Write every requested id so a stale cache entry clears when the
 					// resource no longer appears in the response
 					for (const id of batch) {
+						if (countsRequestGeneration[id] !== generation) continue; // a newer request owns this id
 						countsMap.value[id] = result[id] ?? emptyCounts();
 					}
 				} catch {
@@ -70,6 +84,7 @@ export function useDependencies() {
 	): Promise<void> {
 		await Promise.all(
 			toBatches(resourceIds).map(async (batch) => {
+				const generation = claimGeneration(detailsRequestGeneration, batch);
 				try {
 					const result = await workflowDependenciesApi.getResourceDependencies(
 						rootStore.restApiContext,
@@ -79,6 +94,7 @@ export function useDependencies() {
 					// Write every requested id so a stale cache entry clears when the
 					// resource no longer appears in the response
 					for (const id of batch) {
+						if (detailsRequestGeneration[id] !== generation) continue; // a newer request owns this id
 						dependenciesMap.value[id] = result[id] ?? { dependencies: [], inaccessibleCount: 0 };
 					}
 				} catch {
