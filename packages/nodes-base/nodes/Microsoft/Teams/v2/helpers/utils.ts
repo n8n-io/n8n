@@ -199,13 +199,15 @@ async function resolveTagMention(
 	};
 }
 
- * One Graph lookup per distinct mention target for the whole run, not one per item. The router calls
- * `resolveMentions` once per input item with the same execute context, so a static mention on a
- * 500-item fan-out would otherwise repeat the same lookup 500 times, sequentially.
- * Keyed on the context object, so the cache is collected with the execution and never crosses
- * runs or tenants. Only successes are stored, so a throttled row is retried on the next item. Keys are
- * namespaced by mention type, and a tag key carries its team, because the same ID string
- * means different things in the two arms and a tag is only valid under the team that owns it.
+/**
+ * One Graph lookup per distinct mention target for the whole run, not one per item. The router
+ * calls `resolveMentions` once per input item with the same execute context, so a static mention
+ * on a 500-item fan-out would otherwise repeat the same lookup 500 times, sequentially. Keyed on
+ * the context object, so the cache is collected with the execution and never crosses runs or
+ * tenants. Only successes are stored, so a throttled row is retried on the next item.
+ *
+ * Keys are namespaced by mention type, and a tag key carries its team: the same ID string means
+ * different things in the two arms, and a tag only resolves under the team that owns it.
  */
 const resolvedPerRun = new WeakMap<IExecuteFunctions, Map<string, Mention>>();
 
@@ -273,13 +275,7 @@ export async function resolveMentions(
 				continue;
 			}
 
-			const tagMention = await resolveTagMention.call(
-				this,
-				tagId,
-				teamId,
-				index + 1,
-				itemIndex,
-			);
+			const tagMention = await resolveTagMention.call(this, tagId, teamId, index + 1, itemIndex);
 			cache.set(tagKey, tagMention);
 			mentions.push(tagMention);
 			continue;
