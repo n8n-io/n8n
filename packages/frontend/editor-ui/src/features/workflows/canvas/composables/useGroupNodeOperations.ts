@@ -2,9 +2,23 @@ import { GROUP_NODE_TYPE, getInteriorNodes, isGroupNode } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 
 import type { INodeUi, XYPosition } from '@/Interface';
-import { SetNodeParentCommand } from '@/app/models/history';
+import { AddNodeCommand, SetNodeParentCommand } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { assignNodeId } from '@/app/utils/nodes/nodeTransforms';
+
+/** Card header height, so the group node sits above its members. Matches the migration. */
+const GROUP_HEADER_OFFSET = 96;
+/** Padding between the card and the member bounding box. Matches the migration. */
+const GROUP_PADDING = 32;
+
+/** Top-left corner for a new group node, above and left of its members. */
+function groupPosition(members: Array<Pick<INodeUi, 'position'>>): XYPosition {
+	if (members.length === 0) return [0, 0];
+	const left = Math.min(...members.map((member) => member.position[0]));
+	const top = Math.min(...members.map((member) => member.position[1]));
+	return [left - GROUP_PADDING, top - GROUP_HEADER_OFFSET];
+}
 
 /**
  * The edits a group node needs, on the group-node model.
@@ -154,6 +168,47 @@ export function useGroupNodeOperations() {
 		setNodeParent(nodeId, parentId, { trackHistory: false });
 	}
 
+	/**
+	 * Creates a group node from the given members and moves them into it.
+	 *
+	 * The group node sits at the top-left of the members' bounding box, above the
+	 * card header (per the spec). Adding the node and reparenting the members is
+	 * one undo step. Returns the new group node, or undefined when there are no
+	 * members to group.
+	 */
+	function groupSelection(
+		memberIds: string[],
+		{ name, objective }: { name?: string; objective?: string } = {},
+	): INodeUi | undefined {
+		const members = memberIds
+			.map((id) => workflowDocumentStore.value.getNodeById(id))
+			.filter((node): node is INodeUi => node !== undefined && !isGroupNode(node));
+		if (members.length === 0) return undefined;
+
+		const groupNode: INodeUi = {
+			id: '',
+			name: name ?? nextGroupName('Group'),
+			type: GROUP_NODE_TYPE,
+			typeVersion: 1,
+			position: groupPosition(members),
+			parameters: { objective: objective ?? '' },
+		};
+		assignNodeId(groupNode);
+
+		historyStore.startRecordingUndo();
+		try {
+			workflowDocumentStore.value.addNode(groupNode);
+			historyStore.pushCommandToUndo(new AddNodeCommand(groupNode, Date.now()));
+			for (const member of members) {
+				setNodeParent(member.id, groupNode.id);
+			}
+		} finally {
+			historyStore.stopRecordingUndo();
+		}
+
+		return groupNode;
+	}
+
 	return {
 		GROUP_NODE_TYPE,
 		allGroupNodes,
@@ -166,6 +221,7 @@ export function useGroupNodeOperations() {
 		nextGroupName,
 		setNodeParent,
 		addNodesToGroup,
+		groupSelection,
 		ungroup,
 		setGroupObjective,
 		revertSetNodeParent,

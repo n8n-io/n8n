@@ -43,6 +43,49 @@ export function applyOffset(
 	return { x: x + offset.x, y: y + offset.y };
 }
 
+/** A group card's rendered frame, in canvas coordinates. */
+export interface GroupFrame {
+	groupId: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+/**
+ * Resolves a dragged node's group after a drop, from the group frames its
+ * center lands in.
+ *
+ * A node dropped over a group card joins that group; a node dragged out of its
+ * group and over no card leaves it. Returns the new parent id (or `undefined`
+ * to ungroup) only when it differs from the current one, so the caller writes
+ * `parentId` just when the membership actually changed. A node never becomes its
+ * own parent.
+ */
+export function resolveDroppedGroupMembership(
+	nodeId: string,
+	center: { x: number; y: number },
+	currentParentId: string | undefined,
+	frames: GroupFrame[],
+): { changed: false } | { changed: true; parentId: string | undefined } {
+	let target: string | undefined;
+	for (const frame of frames) {
+		if (frame.groupId === nodeId) continue;
+		if (
+			center.x >= frame.x &&
+			center.x <= frame.x + frame.width &&
+			center.y >= frame.y &&
+			center.y <= frame.y + frame.height
+		) {
+			target = frame.groupId;
+			// The last frame wins, matching the top-most card the drop lands on.
+		}
+	}
+
+	if (target === currentParentId) return { changed: false };
+	return { changed: true, parentId: target };
+}
+
 /**
  * Display size for a node with `Default` render type — pulls port counts from
  * render data and forwards to `calculateNodeSize`. Single source of truth for

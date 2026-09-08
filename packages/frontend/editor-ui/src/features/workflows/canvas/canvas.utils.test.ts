@@ -8,7 +8,9 @@ import {
 	mapLegacyEndpointsToCanvasConnectionPort,
 	parseCanvasConnectionHandleString,
 	resolveCanonicalConnection,
+	resolveDroppedGroupMembership,
 	shouldIgnoreCanvasShortcut,
+	type GroupFrame,
 } from './canvas.utils';
 import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -1142,5 +1144,34 @@ describe(shouldIgnoreCanvasShortcut, () => {
 		div.classList.add('ignore-key-press-canvas');
 
 		expect(shouldIgnoreCanvasShortcut(div)).toEqual(true);
+	});
+});
+
+describe('resolveDroppedGroupMembership', () => {
+	const frames: GroupFrame[] = [{ groupId: 'g1', x: 0, y: 0, width: 100, height: 100 }];
+
+	it('joins the group whose frame the drop lands in', () => {
+		const result = resolveDroppedGroupMembership('a', { x: 50, y: 50 }, undefined, frames);
+		expect(result).toEqual({ changed: true, parentId: 'g1' });
+	});
+
+	it('leaves the group when the node is dragged out over no card', () => {
+		const result = resolveDroppedGroupMembership('a', { x: 500, y: 500 }, 'g1', frames);
+		expect(result).toEqual({ changed: true, parentId: undefined });
+	});
+
+	it('reports no change when the node stays inside its own group', () => {
+		const result = resolveDroppedGroupMembership('a', { x: 50, y: 50 }, 'g1', frames);
+		expect(result).toEqual({ changed: false });
+	});
+
+	it('reports no change for a loose node dropped over no card', () => {
+		const result = resolveDroppedGroupMembership('a', { x: 500, y: 500 }, undefined, frames);
+		expect(result).toEqual({ changed: false });
+	});
+
+	it('never puts a group node inside itself', () => {
+		const result = resolveDroppedGroupMembership('g1', { x: 50, y: 50 }, undefined, frames);
+		expect(result).toEqual({ changed: false });
 	});
 });

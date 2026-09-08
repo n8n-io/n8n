@@ -33,6 +33,9 @@ const store = {
 	removeNodeById: (id: string) => {
 		nodes.value = nodes.value.filter((node) => node.id !== id);
 	},
+	addNode: (node: INodeUi) => {
+		nodes.value = [...nodes.value, node];
+	},
 	setNodeParameters: vi.fn(),
 };
 
@@ -209,6 +212,47 @@ describe('useGroupNodeOperations', () => {
 
 			// `Deep` stays inside the outer group instead of landing on the canvas.
 			expect(nodes.value.find((n) => n.name === 'Deep')?.parentId).toBe('g1');
+		});
+	});
+
+	describe('grouping a selection', () => {
+		it('creates a group node and sets parentId on the members', () => {
+			nodes.value = [node('A'), node('B')];
+
+			const created = useGroupNodeOperations().groupSelection(['a', 'b']);
+
+			expect(created).toBeDefined();
+			expect(created && created.type).toBe(GROUP_NODE_TYPE);
+			expect(nodes.value.find((n) => n.id === 'a')?.parentId).toBe(created?.id);
+			expect(nodes.value.find((n) => n.id === 'b')?.parentId).toBe(created?.id);
+		});
+
+		it('places the group node above the left-top of the members', () => {
+			nodes.value = [
+				{ ...node('A'), position: [400, 300] },
+				{ ...node('B'), position: [200, 500] },
+			];
+
+			const created = useGroupNodeOperations().groupSelection(['a', 'b']);
+
+			// Left of the leftmost member and above the topmost, per the spec.
+			expect(created?.position[0]).toBeLessThan(200);
+			expect(created?.position[1]).toBeLessThan(300);
+		});
+
+		it('records the whole group as one undo step', () => {
+			nodes.value = [node('A'), node('B')];
+
+			useGroupNodeOperations().groupSelection(['a', 'b']);
+
+			expect(startRecordingUndo).toHaveBeenCalledOnce();
+			expect(stopRecordingUndo).toHaveBeenCalledOnce();
+		});
+
+		it('never groups a group node, and does nothing with no real members', () => {
+			nodes.value = [group('g1')];
+
+			expect(useGroupNodeOperations().groupSelection(['g1'])).toBeUndefined();
 		});
 	});
 

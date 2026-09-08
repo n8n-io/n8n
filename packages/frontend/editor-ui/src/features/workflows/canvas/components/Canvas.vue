@@ -65,7 +65,12 @@ import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn, watchDebounced } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
-import { shouldIgnoreCanvasShortcut, type CanvasRenderData } from '../canvas.utils';
+import {
+	resolveDroppedGroupMembership,
+	shouldIgnoreCanvasShortcut,
+	type CanvasRenderData,
+	type GroupFrame,
+} from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
@@ -99,6 +104,7 @@ import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
 import { NodeGroupDescriptionVisibilityKey } from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { useGroupNodeExperiment } from '@/experiments/groupNode/useGroupNodeExperiment';
 import { useGroupNodeCards } from '../composables/useGroupNodeCards';
+import { useGroupNodeOperations } from '../composables/useGroupNodeOperations';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -310,6 +316,7 @@ const groupNodeCards = useGroupNodeCards(
 	computed(() => workflowDocumentStore.value.allNodes),
 	computed(() => workflowDocumentStore.value.connectionsBySourceNode),
 );
+const groupNodeOperations = useGroupNodeOperations();
 
 /**
  * The group the canvas is drawing, from whichever model is active.
@@ -828,6 +835,56 @@ function onNodeDragStop(event: NodeDragEvent) {
 		event.nodes,
 	);
 	if (moves.length > 0) commitManualNodePositions(moves);
+	applyGroupMembershipFromDrag(event);
+}
+
+/**
+ * The rendered frame of each group card, straight off the VueFlow group node,
+ * so the hit rect is the one on screen in every state (empty card, collapsed
+ * card, expanded frame) and needs no geometry of its own.
+ */
+function groupFrames(): GroupFrame[] {
+	const frames: GroupFrame[] = [];
+	for (const group of groupNodeCards.allGroups.value) {
+		const frame = findNode(createCanvasGroupNodeId(group.id));
+		if (!frame?.dimensions) continue;
+		frames.push({
+			groupId: group.id,
+			x: frame.position.x,
+			y: frame.position.y,
+			width: frame.dimensions.width,
+			height: frame.dimensions.height,
+		});
+	}
+	return frames;
+}
+
+/**
+ * After a drag, a node dropped over a group card joins that group and a node
+ * dragged out of its group leaves it. Membership is the node's `parentId`, so
+ * both are one field change. Group nodes never re-parent this way — moving a
+ * group moves its members with it.
+ */
+function applyGroupMembershipFromDrag(event: NodeDragEvent) {
+	if (!isGroupNodeEnabled.value) return;
+
+	const dragged = (event.nodes?.length ? event.nodes : [event.node]).filter(
+		(node) => !isCanvasGroupNode(node),
+	);
+	if (dragged.length === 0) return;
+
+	const frames = groupFrames();
+	for (const node of dragged) {
+		const stored = workflowDocumentStore.value.getNodeById(node.id);
+		if (!stored) continue;
+
+		const center = {
+			x: node.position.x + (node.dimensions?.width ?? 0) / 2,
+			y: node.position.y + (node.dimensions?.height ?? 0) / 2,
+		};
+		const result = resolveDroppedGroupMembership(node.id, center, stored.parentId, frames);
+		if (result.changed) groupNodeOperations.setNodeParent(node.id, result.parentId);
+	}
 }
 
 function onSelectionDragStart(event: NodeDragEvent) {

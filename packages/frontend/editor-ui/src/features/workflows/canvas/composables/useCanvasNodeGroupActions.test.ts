@@ -26,6 +26,13 @@ vi.mock('@/app/composables/useSelectionValidation', () => ({
 	}),
 }));
 
+// Flag off by default so the legacy-path tests are unaffected. The group-node
+// block flips it on.
+const groupNodeFlag = { enabled: false };
+vi.mock('@/experiments/groupNode/useGroupNodeExperiment', () => ({
+	useGroupNodeExperiment: () => ({ isFeatureEnabled: computed(() => groupNodeFlag.enabled) }),
+}));
+
 let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
@@ -39,6 +46,7 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
 describe('useCanvasNodeGroupActions', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		groupNodeFlag.enabled = false;
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-test'));
 		// Mirrors the real resolver's contract: member ids when groupable, null otherwise
 		resolveGroupableNodeIdsMock
@@ -412,6 +420,58 @@ describe('useCanvasNodeGroupActions', () => {
 				computed(() => [createCanvasGraphNode({ id: 'a' })]),
 			);
 			expect(selectedGroupIds.value).toEqual([]);
+		});
+	});
+
+	describe('with the group-node flag on', () => {
+		beforeEach(() => {
+			groupNodeFlag.enabled = true;
+			workflowDocumentStore.setNodes([
+				{
+					id: 'a',
+					name: 'A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'b',
+					name: 'B',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [100, 0],
+					parameters: {},
+				},
+			]);
+		});
+
+		it('groupNodes creates a group node and stamps parentId on the members', () => {
+			const { groupNodes } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' }), createCanvasGraphNode({ id: 'b' })]),
+			);
+
+			const group = groupNodes(['a', 'b']);
+			expect(group).not.toBeNull();
+
+			const groupNode = workflowDocumentStore.getNodeById(group?.id ?? '');
+			expect(groupNode?.type).toBe('n8n-nodes-base.group');
+			expect(workflowDocumentStore.getNodeById('a')?.parentId).toBe(group?.id);
+			expect(workflowDocumentStore.getNodeById('b')?.parentId).toBe(group?.id);
+		});
+
+		it('ungroup clears parentId and removes the group node', () => {
+			const { groupNodes, ungroup } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' }), createCanvasGraphNode({ id: 'b' })]),
+			);
+			const group = groupNodes(['a', 'b']);
+			const groupId = group?.id ?? '';
+
+			ungroup(groupId);
+
+			expect(workflowDocumentStore.getNodeById(groupId)).toBeUndefined();
+			expect(workflowDocumentStore.getNodeById('a')?.parentId).toBeUndefined();
+			expect(workflowDocumentStore.getNodeById('b')?.parentId).toBeUndefined();
 		});
 	});
 });
