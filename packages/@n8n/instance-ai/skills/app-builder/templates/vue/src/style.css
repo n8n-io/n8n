@@ -1,0 +1,64 @@
+/* Shared classes on top of the design-system tokens (theme.css). Add app-wide styles here. */
+
+.button {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	height: var(--height--md);
+	padding: 0 var(--spacing--xs);
+	border: none;
+	border-radius: var(--radius);
+	background: var(--background--brand);
+	color: var(--color--neutral-white);
+	font: inherit;
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	line-height: 1;
+	cursor: pointer;
+}
+
+.button:hover {
+	background: var(--background--brand--hover);
+}
+
+.button:active {
+	background: var(--background--brand--active);
+}
+
+.button:focus-visible {
+	outline: 2px solid var(--background--brand--focus);
+	outline-offset: 2px;
+}
+
+.button--secondary {
+	background: var(--background--surface);
+	color: var(--text-color);
+	box-shadow: inset 0 0 0 1px var(--border-color);
+}
+
+.button--secondary:hover,
+.button--secondary:active {
+	background: var(--background--hover);
+}
+
+.card {
+	padding: var(--spacing--md);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--color--background--light-3);
+}
+
+.heading {
+	margin: 0;
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--2xl);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--sm);
+}
+
+.text {
+	margin: 0;
+	color: var(--color--text);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--md);
+}

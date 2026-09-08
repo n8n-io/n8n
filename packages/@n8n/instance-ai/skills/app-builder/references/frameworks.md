@@ -10,6 +10,22 @@ Pass `command` and `outDir` to `build` when they differ from the defaults
 so `vite build` works without `npx`. Most frameworks want the base without the
 trailing slash; strip it where noted.
 
+## Memory: 512 MiB for every framework
+
+The build machine has 512 MiB of memory; exit code 134 (heap out of memory)
+or 137 (killed) means you exceeded it. For every framework:
+
+- The build script bundles only. Keep type checking out of it: no `vue-tsc`,
+  `tsc`, `svelte-check` or `astro check` in `build`. Put them in a separate
+  `typecheck` script and run it before `build` when you changed TypeScript.
+- Do not import `@n8n/design-system` components (`N8n*`); use
+  `@n8n/design-system/theme.css` tokens instead. Avoid other large component
+  libraries (element-plus, MUI, Ant Design) for the same reason.
+- Prefer Vite for small apps. If another framework's build dies with 134/137,
+  tell the user the sandbox is too small for that stack instead of retrying.
+- Raising `NODE_OPTIONS=--max-old-space-size` does not help: the limit is the
+  machine, not the heap. A bigger heap turns exit 134 into exit 137.
+
 ## Vite (Vue, React, Svelte, vanilla) — default
 
 ```ts
@@ -18,6 +34,9 @@ export default defineConfig({
 	base: process.env.APP_BASE ?? '/',
 });
 ```
+
+`package.json` scripts: `"build": "vite build"`, `"typecheck": "vue-tsc -b"`
+(or `tsc --noEmit`, `svelte-check`).
 
 Vue Router: `createWebHistory(import.meta.env.BASE_URL)`.
 React Router: `createBrowserRouter(routes, { basename: import.meta.env.BASE_URL.replace(/\/$/, '') })`.
@@ -87,4 +106,4 @@ Links: `import.meta.env.BASE_URL`. `outDir`: `dist`.
 No bundler: `template: "none"`, put the files in `public/` and copy them on
 build: `command: "rm -rf dist && cp -r public dist"`. Use relative URLs
 (`./style.css`) so the base path does not matter. Keep sources out of
-`outDir`; the source tarball excludes it.
+`outDir`; the source tarball excludes it. Uses no build memory at all.

@@ -42,8 +42,10 @@ it into a published version.
    change.
    - `install`: `npm install` failed. Check `package.json` dependency names
      and versions; the sandbox has npm and network access to the registry.
-   - `build`: the build command exited non-zero. Type errors and missing
-     imports show up here.
+   - `build`: the build command exited non-zero. Missing imports and
+     syntax errors show up here. Exit code 134 or 137 means the build ran
+     out of memory (the sandbox has 512 MiB): drop the heavy dependency, do
+     not retry with a bigger heap.
    - `check`: the output is not a servable static site: `<outDir>/index.html`
      is missing, a `server/` directory exists, or a tarball is over 20 MB.
    - `store`: n8n rejected the upload; `message` says why.
@@ -64,24 +66,28 @@ the user the app source is not available in this conversation.
   or built from the base: `APP_BASE` is set during the build (with a trailing
   slash), the Vue template reads it in `vite.config.ts` and the router uses
   `createWebHistory(import.meta.env.BASE_URL)`. Do not hardcode `/`.
-- Default to the Vue template and `@n8n/design-system`. Use another stack only
-  when the user asks for it; then follow `references/frameworks.md` for the
-  static-export and base-path settings and pass matching `command`/`outDir`
-  to `build`.
-- Look: use design-system components first (`references/design-system.md`),
-  then its CSS tokens (`import '@n8n/design-system/theme.css'`, works in any
-  stack) for custom layout, and only build a different look when the user
-  asks for one.
+- Default to the Vue template. Use another stack only when the user asks for
+  it; then follow `references/frameworks.md` for the static-export and
+  base-path settings and pass matching `command`/`outDir` to `build`.
+- The build runs in 512 MiB of memory. Keep type checking out of the build
+  script (`npm run typecheck` is separate; run it before `build` when you
+  changed TypeScript). Do not import `@n8n/design-system` components: bundling
+  them needs more than 1 GiB and the build dies (see
+  `references/design-system.md`).
+- Look: style plain elements with the design-system CSS tokens
+  (`import '@n8n/design-system/theme.css'`, works in any stack) and the
+  classes in the template's `src/style.css`; only build a different look when
+  the user asks for one.
 - Keep dependencies few. Adding one means a cold `npm install` on the next
-  build.
+  build, and every dependency costs build memory.
 - Never paste file contents into the chat; point at the file path.
 
 ## Template
 
 `apps(action="create")` with the default `template: "vue"` copies
 `${N8N_SKILL_DIR}/templates/vue` into the app directory: Vite + Vue 3 + TS +
-vue-router + `@n8n/design-system`, with a committed `package-lock.json` so the
-first build installs pinned versions. `template: "none"` gives an empty
+vue-router + the `@n8n/design-system` CSS tokens, with a committed
+`package-lock.json` so the first build installs pinned versions. `template: "none"` gives an empty
 directory for other stacks; write `package.json` yourself.
 
 Layout after create:
@@ -90,9 +96,10 @@ Layout after create:
 apps/<namespace>/
   AI_RULES.md        stack and conventions for this app
   index.html
-  package.json       scripts: build = vue-tsc -b && vite build
+  package.json       scripts: build = vite build, typecheck = vue-tsc -b
   vite.config.ts     base: process.env.APP_BASE ?? '/'
-  src/main.ts        style.css + N8nPlugin + router
+  src/main.ts        theme.css + style.css + router
+  src/style.css      shared classes: .button, .button--secondary, .card, .heading, .text
   src/router.ts      createWebHistory(import.meta.env.BASE_URL)
   src/App.vue        RouterView shell
   src/pages/Home.vue one component per route

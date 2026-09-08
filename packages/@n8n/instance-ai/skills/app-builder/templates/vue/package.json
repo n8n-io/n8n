@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "vue-tsc -b && vite build"
+    "build": "vite build",
+    "typecheck": "vue-tsc -b"
   },
   "dependencies": {
     "@n8n/design-system": "2.36.0",

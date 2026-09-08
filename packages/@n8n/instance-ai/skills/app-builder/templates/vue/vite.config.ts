@@ -9,6 +9,4 @@ export default defineConfig({
 	resolve: {
 		alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
 	},
-	// The design system ships as one chunk; the default 500 kB warning is noise here.
-	build: { chunkSizeWarningLimit: 2000 },
 });

@@ -1,7 +1,77 @@
 # @n8n/design-system in an app
 
-Version pinned in the template: see `templates/vue/package.json`. The Vue
-components need the global stylesheet and the plugin once:
+Version pinned in the template: see `templates/vue/package.json`.
+
+**In the sandbox, use the CSS tokens only.** `@n8n/design-system/theme.css`
+is a plain stylesheet (tokens, fonts, reset, dark mode) and costs no build
+memory. The `N8n*` Vue components are not available by default: importing any
+of them pulls the whole component library plus element-plus and tiptap into
+the bundle, and `vite build` then needs more than 1 GiB while the sandbox has
+512 MiB. The build dies with exit 134 or 137.
+
+```ts
+// src/main.ts — the template already does this
+import '@n8n/design-system/theme.css';
+import './style.css';
+```
+
+Style plain elements with the tokens below. The template's `src/style.css`
+ships `.button`, `.button--secondary`, `.card`, `.heading` and `.text`; add
+more classes there. Do not add `import { ... } from '@n8n/design-system'`.
+
+## Tokens (CSS variables)
+
+Use these in `<style scoped>` instead of raw px values.
+
+- Spacing: `--spacing--5xs` … `--spacing--3xs`, `--spacing--2xs`, `--spacing--xs`,
+  `--spacing--sm`, `--spacing--md`, `--spacing--lg`, `--spacing--xl`,
+  `--spacing--2xl` … `--spacing--5xl`
+- Radius: `--radius--xs`, `--radius--sm`, `--radius`, `--radius--md`,
+  `--radius--lg`, `--radius--xl`, `--radius--full`
+- Font: `--font-family`, `--font-family--monospace`, `--font-size--3xs` …
+  `--font-size--2xl`, `--font-weight--regular`, `--font-weight--medium`,
+  `--font-weight--bold`
+- Text colors: `--color--text`, `--color--text--shade-1`, `--color--text--tint-1`,
+  `--color--text--danger`
+- Surfaces: `--color--background`, `--color--background--light-1`,
+  `--color--background--light-2`, `--color--background--light-3`,
+  `--color--background--shade-2`
+- Borders: `--border-color`, `--border-color--subtle`, `--border-color--strong`,
+  `--border-color--stronger`
+- Brand/status: `--color--primary`, `--color--danger`, `--color--success`,
+  `--color--warning`
+- Interactive surfaces (what `.button` uses): `--background--brand`,
+  `--background--brand--hover`, `--background--brand--active`,
+  `--background--brand--focus`, `--background--surface`, `--background--hover`,
+  `--text-color`, `--height--sm`, `--height--md`, `--height--lg`
+- Shorthands: `--border` (1px solid `--border-color`), `--line-height--sm`,
+  `--line-height--md`
+
+Dark mode is automatic through `color-scheme`; set `data-theme="dark"` on
+`<body>` to force it.
+
+```vue
+<style scoped>
+.grid {
+	display: grid;
+	gap: var(--spacing--md);
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.panel {
+	padding: var(--spacing--lg);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--color--background--light-2);
+}
+</style>
+```
+
+## Only when memory allows: Vue components
+
+Skip this section in the sandbox (512 MiB). It applies only when the build
+runs on a machine with at least 1 GiB of memory and the user accepts a ~1.3 MB
+JavaScript bundle. Then the components need the global stylesheet and the
+plugin once:
 
 ```ts
 // src/main.ts
@@ -20,10 +90,7 @@ import { N8nButton, N8nCard, N8nHeading, N8nInput } from '@n8n/design-system';
 </script>
 ```
 
-Other stacks: `import '@n8n/design-system/theme.css'` gives the CSS variables
-below without Vue.
-
-## Components (props; all optional unless marked)
+### Components (props; all optional unless marked)
 
 | Component | Props | Notes |
 |---|---|---|
@@ -50,44 +117,3 @@ below without Vue.
 | `N8nSpinner` | `size`: xsmall \| small \| medium \| large \| xlarge · `type`: dots \| ring | Indeterminate spinner. |
 | `N8nDatatable` | `columns` (required): `{ id, path, label, width? }[]` · `rows` (required): objects read by `path` · `pagination`, `rowsPerPage`, `currentPage` | Simple table with client-side pagination. |
 | `N8nEmptyState` | `heading`, `description`, `icon`, `buttonText`, `buttonVariant`, `calloutText` | Emits `click:button`. |
-
-## Layout tokens (CSS variables)
-
-Use these in `<style scoped>` instead of raw px values.
-
-- Spacing: `--spacing--5xs` … `--spacing--3xs`, `--spacing--2xs`, `--spacing--xs`,
-  `--spacing--sm`, `--spacing--md`, `--spacing--lg`, `--spacing--xl`,
-  `--spacing--2xl` … `--spacing--5xl`
-- Radius: `--radius--xs`, `--radius--sm`, `--radius`, `--radius--md`,
-  `--radius--lg`, `--radius--xl`, `--radius--full`
-- Font: `--font-family`, `--font-family--monospace`, `--font-size--3xs` …
-  `--font-size--2xl`, `--font-weight--regular`, `--font-weight--medium`,
-  `--font-weight--bold`
-- Text colors: `--color--text`, `--color--text--shade-1`, `--color--text--tint-1`,
-  `--color--text--danger`
-- Surfaces: `--color--background`, `--color--background--light-1`,
-  `--color--background--light-2`, `--color--background--light-3`,
-  `--color--background--shade-2`
-- Borders: `--border-color`, `--border-color--subtle`, `--border-color--strong`,
-  `--border-color--stronger`
-- Brand/status: `--color--primary`, `--color--danger`, `--color--success`,
-  `--color--warning`
-
-Dark mode is automatic through `color-scheme`; set `data-theme="dark"` on
-`<body>` to force it.
-
-```vue
-<style scoped>
-.grid {
-	display: grid;
-	gap: var(--spacing--md);
-	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-}
-.panel {
-	padding: var(--spacing--lg);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background: var(--color--background--light-2);
-}
-</style>
-```
