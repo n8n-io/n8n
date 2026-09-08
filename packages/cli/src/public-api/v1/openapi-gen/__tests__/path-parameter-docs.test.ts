@@ -2,11 +2,6 @@ import { parse } from 'yaml';
 
 import { getGeneratedArtifacts } from '../generate';
 
-/**
- * `description` belongs to the parameter object, beside `name`/`in`/`required`. Nested inside
- * `schema` it is still valid OpenAPI, so the drift guard and the route tests stay green while
- * Swagger UI renders no description at all.
- */
 type Parameter = {
 	in?: string;
 	name?: string;
