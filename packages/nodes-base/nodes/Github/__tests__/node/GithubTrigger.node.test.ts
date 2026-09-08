@@ -71,7 +71,12 @@ const resolveExpression = (
 		position: [0, 0] as [number, number],
 		parameters: {
 			authentication: 'accessToken',
-			owner: { __rl: true, mode: 'url', value: 'https://github.com/n8n-io', __regex: 'github.com/([-\\w]+)' },
+			owner: {
+				__rl: true,
+				mode: 'url',
+				value: 'https://github.com/n8n-io',
+				__regex: 'github.com/([-\\w]+)',
+			},
 			repository: { __rl: true, mode: 'name', value: 'n8n' },
 			events: ['push'],
 		},
@@ -88,7 +93,12 @@ const resolveExpression = (
 		} as unknown as INodeTypes,
 	});
 
-	return workflow.expression.getSimpleParameterValue(node, expression, 'internal', extraKeys as never);
+	return workflow.expression.getSimpleParameterValue(
+		node,
+		expression,
+		'internal',
+		extraKeys as never,
+	);
 };
 
 describe('GithubTrigger Node', () => {
@@ -230,7 +240,6 @@ describe('GithubTrigger Node', () => {
 			});
 			mockExistingWebhook().mockRejectedValueOnce(apiError);
 
-
 			await expect(createWebhook.call(mockThis)).rejects.toThrow(
 				/could not be updated with a signing secret/,
 			);
@@ -285,10 +294,7 @@ describe('GithubTrigger Node', () => {
 				config: { url: 'https://example.com/webhook' },
 			});
 
-
-			await expect(createWebhook.call(mockThis)).rejects.toThrow(
-				/refused to create the webhook/,
-			);
+			await expect(createWebhook.call(mockThis)).rejects.toThrow(/refused to create the webhook/);
 			expect(webhookData.webhookSecret).toBeUndefined();
 			expect(webhookData.webhookId).toBeUndefined();
 			expect(apiRequestSpy).toHaveBeenCalledTimes(1);
@@ -302,10 +308,7 @@ describe('GithubTrigger Node', () => {
 				config: { url: 'https://example.com/somewhere-else' },
 			});
 
-
-			await expect(createWebhook.call(mockThis)).rejects.toThrow(
-				/refused to create the webhook/,
-			);
+			await expect(createWebhook.call(mockThis)).rejects.toThrow(/refused to create the webhook/);
 			expect(webhookData.webhookSecret).toBeUndefined();
 			expect(apiRequestSpy).not.toHaveBeenCalledWith('PATCH', expect.anything(), expect.anything());
 		});
@@ -314,10 +317,7 @@ describe('GithubTrigger Node', () => {
 			withAdoptableWebhook();
 			mockExistingWebhook({ id: 123, events: ['push'] });
 
-
-			await expect(createWebhook.call(mockThis)).rejects.toThrow(
-				/refused to create the webhook/,
-			);
+			await expect(createWebhook.call(mockThis)).rejects.toThrow(/refused to create the webhook/);
 			expect(webhookData.webhookSecret).toBeUndefined();
 		});
 
@@ -325,10 +325,7 @@ describe('GithubTrigger Node', () => {
 			withAdoptableWebhook();
 			mockExistingWebhook({ reject: { httpCode: '404' } });
 
-
-			await expect(createWebhook.call(mockThis)).rejects.toThrow(
-				/refused to create the webhook/,
-			);
+			await expect(createWebhook.call(mockThis)).rejects.toThrow(/refused to create the webhook/);
 			expect(webhookData.webhookSecret).toBeUndefined();
 		});
 
@@ -353,7 +350,6 @@ describe('GithubTrigger Node', () => {
 			apiError.description = 'Resource not accessible by personal access token';
 			mockExistingWebhook().mockRejectedValueOnce(apiError);
 
-
 			await expect(createWebhook.call(mockThis)).rejects.toMatchObject({
 				description: expect.stringContaining('Resource not accessible by personal access token'),
 			});
@@ -367,10 +363,7 @@ describe('GithubTrigger Node', () => {
 			const plain = new Error('socket hang up');
 			mockExistingWebhook().mockRejectedValueOnce(plain);
 
-
-			await expect(createWebhook.call(mockThis)).rejects.toThrow(
-				'socket hang up',
-			);
+			await expect(createWebhook.call(mockThis)).rejects.toThrow('socket hang up');
 			expect(webhookData.webhookSecret).toBeUndefined();
 		});
 
@@ -378,10 +371,7 @@ describe('GithubTrigger Node', () => {
 			withAdoptableWebhook();
 			mockExistingWebhook().mockResolvedValueOnce({ id: 123, active: false });
 
-
-			await expect(createWebhook.call(mockThis)).rejects.toThrow(
-				/did not apply the update/,
-			);
+			await expect(createWebhook.call(mockThis)).rejects.toThrow(/did not apply the update/);
 			expect(webhookData.webhookSecret).toBeUndefined();
 		});
 
@@ -415,10 +405,7 @@ describe('GithubTrigger Node', () => {
 		it('should throw NodeOperationError if repo is not found (404)', async () => {
 			vi.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '404' });
 
-
-			await expect(createWebhook.call(mockThis)).rejects.toThrow(
-				NodeOperationError,
-			);
+			await expect(createWebhook.call(mockThis)).rejects.toThrow(NodeOperationError);
 
 			await expect(createWebhook.call(mockThis)).rejects.toThrow(
 				/Check that the repository exists/,
@@ -432,7 +419,6 @@ describe('GithubTrigger Node', () => {
 				webhookEvents: ['stale'],
 			};
 			const mockThis: any = createMockHookFunctions(webhookData);
-
 
 			// checkExists reports it absent because no secret is stored; that half is
 			// `requireKeys` now, asserted in "declarative lifecycle" below.
