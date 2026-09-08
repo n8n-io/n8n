@@ -150,12 +150,14 @@ function isOurShim(path) {
 const pathDirs = () => (process.env.PATH ?? '').split(':').filter(Boolean);
 
 // Binaries that pnpm manages itself: the `packageManager` version store
-// (`<PNPM_HOME>/store/vN/links/...`) and its `.tools` install dir. pnpm prepends
-// the running binary's dir to PATH for lifecycle scripts, so a `pnpm install`
-// under a version-switched pnpm puts these first on PATH. Shimming them corrupts
-// pnpm's version switching — never touch them, target the durable install instead.
+// (`<PNPM_HOME>/store/vN/links/...`) and its self-update install dir
+// (`<PNPM_HOME>/.tools/pnpm/<version>/...`). pnpm prepends the running binary's
+// dir to PATH for lifecycle scripts, so a `pnpm install` under a version-switched
+// pnpm puts these first on PATH. Shimming them corrupts pnpm's version switching
+// — never touch them, target the durable install instead. The shape checks match
+// on any prefix because PNPM_HOME is not always set in the environment.
 function isPnpmManagedPath(p) {
-	if (/\/store\/v\d+\/links\//.test(p) || /\/\.tools\//.test(p)) return true;
+	if (/\/store\/v\d+\/links\//.test(p) || /\/\.tools\/pnpm\//.test(p)) return true;
 	const home = process.env.PNPM_HOME;
 	if (!home) return false;
 	return p.startsWith(join(home, 'store') + '/') || p.startsWith(join(home, '.tools') + '/');
@@ -217,7 +219,12 @@ function installOne(bin) {
 	// shim inside a pnpm-managed dir, then shim the durable binary below.
 	for (const d of pathDirs()) {
 		const p = join(d, bin);
-		if (isPnpmManagedPath(p) && isOurShim(p)) restoreOne(p);
+		if (!isPnpmManagedPath(p) || !isOurShim(p)) continue;
+		try {
+			restoreOne(p);
+		} catch {
+			// unwritable managed dir — the durable binary below still gets the shim
+		}
 	}
 
 	const front = whichOnPath(bin);

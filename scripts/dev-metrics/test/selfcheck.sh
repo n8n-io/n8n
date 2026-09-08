@@ -102,5 +102,37 @@ grep -q "n8n-shadow-shim-version" "$BIN/pnpm" && fail "shim left after reset"
 	echo "$out" | grep -q "STORE probe" || fail "store binary not restored to the original"
 )
 
+# Regression: the `.tools` match is scoped to pnpm's own layout
+# (.tools/pnpm/<version>/...) and works without PNPM_HOME. A durable binary
+# under an unrelated .tools dir must still get the shim.
+(
+	TOOLS="$T/dev/.tools/bin"; MANAGED="$T/ph2/.tools/pnpm/9.9.9/bin"
+	mkdir -p "$TOOLS" "$MANAGED"
+	printf '#!/bin/sh\necho "TOOLS $*"\n' > "$TOOLS/pnpm"; chmod +x "$TOOLS/pnpm"
+	printf '#!/bin/sh\necho "MANAGED $*"\n' > "$MANAGED/pnpm"; chmod +x "$MANAGED/pnpm"
+	export N8N_USER_FOLDER="$T/uf4" N8N_DEV_TELEMETRY=0 PATH="$MANAGED:$TOOLS:$PATH"
+	unset PNPM_HOME
+	node "$SRC/setup.mjs" --enable >/dev/null
+	grep -q "n8n-shadow-shim-version" "$MANAGED/pnpm" && fail "managed .tools binary was shimmed without PNPM_HOME"
+	grep -q "n8n-shadow-shim-version" "$TOOLS/pnpm" || fail "durable binary under unrelated .tools not shimmed"
+)
+
+# Regression: a heal failure (unwritable managed dir) must not abort the
+# install — the durable binary still gets the shim.
+(
+	PH="$T/ph3"; STORE="$PH/store/v11/links/@/pnpm/9.9.9/hash/bin"; DUR="$T/bin4"
+	mkdir -p "$STORE" "$DUR"
+	printf '#!/bin/sh\necho "DURABLE $*"\n' > "$DUR/pnpm"; chmod +x "$DUR/pnpm"
+	printf '#!/bin/sh\necho "STORE-REAL $*"\n' > "$STORE/pnpm.n8n-real"; chmod +x "$STORE/pnpm.n8n-real"
+	sed "s|__N8N_BIN__|pnpm|;s|__N8N_REAL__|$STORE/pnpm.n8n-real|;s|__N8N_BINDIR__|$STORE|;s|__N8N_TRACKER__|/nonexistent|" \
+		"$SRC/shadow-shim.sh" > "$STORE/pnpm"
+	chmod +x "$STORE/pnpm"
+	chmod a-w "$STORE"  # healing the store shim cannot rename here
+	export N8N_USER_FOLDER="$T/uf5" N8N_DEV_TELEMETRY=0 PNPM_HOME="$PH" PATH="$STORE:$DUR:$PATH"
+	node "$SRC/setup.mjs" --enable >/dev/null
+	chmod u+w "$STORE"  # so cleanup can remove the temp dir
+	grep -q "n8n-shadow-shim-version" "$DUR/pnpm" || fail "heal failure aborted the durable shim install"
+)
+
 rm -rf "$T" "$EV"
 echo "ALL PASS"
