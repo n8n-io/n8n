@@ -49,7 +49,7 @@ const showSearch = computed(
 const searchTerm = ref('');
 
 const menuItems = computed(() =>
-	buildDependencyMenuItems(depsResult.value?.dependencies ?? [], searchTerm.value),
+	buildDependencyMenuItems(depsResult.value?.dependencies ?? [], { query: searchTerm.value }),
 );
 
 function onSelect(value: string) {

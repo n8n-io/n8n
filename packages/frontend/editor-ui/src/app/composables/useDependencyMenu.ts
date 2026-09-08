@@ -55,14 +55,18 @@ export function useDependencyMenu() {
 	const router = useRouter();
 	const uiStore = useUIStore();
 
-	/** Menu items grouped by type, with a disabled header per group. Item ids are `<type>:<id>`. */
+	/**
+	 * Menu items grouped by type, with a disabled header per group. Item ids are `<type>:<id>`.
+	 * `limit` caps the number of dependency entries (group headers not counted).
+	 */
 	function buildDependencyMenuItems(
 		deps: ResolvedDependency[],
-		query = '',
+		options: { query?: string; limit?: number } = {},
 	): Array<DropdownMenuItemProps<string>> {
 		if (deps.length === 0) return [];
 
-		const normalizedQuery = query.toLowerCase().trim();
+		const limit = options.limit ?? Infinity;
+		const normalizedQuery = (options.query ?? '').toLowerCase().trim();
 		const filtered = normalizedQuery
 			? deps.filter((dep) => dep.name.toLowerCase().includes(normalizedQuery))
 			: deps;
@@ -81,9 +85,10 @@ export function useDependencyMenu() {
 		}
 
 		const items: Array<DropdownMenuItemProps<string>> = [];
+		let entryCount = 0;
 		for (const typeKey of displayOrder) {
 			const groupDeps = groups[typeKey];
-			if (groupDeps.length === 0) continue;
+			if (groupDeps.length === 0 || entryCount >= limit) continue;
 
 			const config = typeConfig[typeKey];
 			// Add a disabled "header" item as group label, with divider if not the first group
@@ -96,10 +101,12 @@ export function useDependencyMenu() {
 			});
 
 			for (const dep of groupDeps) {
+				if (entryCount >= limit) break;
 				items.push({
 					id: `${dep.type}:${dep.id}`,
 					label: dep.name,
 				});
+				entryCount++;
 			}
 		}
 

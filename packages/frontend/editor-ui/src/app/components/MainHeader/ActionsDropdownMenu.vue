@@ -100,9 +100,26 @@ watch(
 	{ immediate: true },
 );
 
+// The submenu has no scroll, so cap it instead of letting it grow off-screen
+const MAX_DEPENDENCY_MENU_ITEMS = 12;
+
 const dependencyMenuChildren = computed<WorkflowMenuItem[]>(() => {
 	const result = getDependencies(props.id);
-	const items: WorkflowMenuItem[] = buildDependencyMenuItems(result?.dependencies ?? []);
+	const deps = result?.dependencies ?? [];
+	const items: WorkflowMenuItem[] = buildDependencyMenuItems(deps, {
+		limit: MAX_DEPENDENCY_MENU_ITEMS,
+	});
+	const shownCount = items.filter((item) => !String(item.id).startsWith('header-')).length;
+	if (deps.length > shownCount) {
+		items.push({
+			id: 'dependency-overflow',
+			label: locale.baseText('workflows.dependencies.overflow', {
+				interpolate: { count: String(deps.length - shownCount) },
+			}),
+			disabled: true,
+			divided: true,
+		});
+	}
 	if (result && result.inaccessibleCount > 0) {
 		items.push({
 			id: 'dependency-inaccessible',
