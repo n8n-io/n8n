@@ -685,6 +685,113 @@ describe('WorkflowDataProxy', () => {
 		});
 	});
 
+	describe('Self-referencing paired item lineage', () => {
+		const createWorkflowWithSelfReference = (): IWorkflowBase => ({
+			id: '123',
+			name: 'self referencing lineage',
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node2',
+					name: 'Middle',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [300, 0],
+					parameters: {},
+				},
+				{
+					id: 'node3',
+					name: 'End',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Start: {
+					main: [[{ node: 'Middle', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				Middle: {
+					main: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			active: false,
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+
+		const createRunWithSelfReference = (): IRun => ({
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						Start: [
+							{
+								startTime: 100,
+								executionTime: 1,
+								executionIndex: 0,
+								source: [null],
+								data: { main: [[{ json: { id: 1 }, pairedItem: { item: 0 } }]] },
+							},
+						],
+						Middle: [
+							{
+								startTime: 110,
+								executionTime: 1,
+								executionIndex: 0,
+								source: [{ previousNode: 'Middle' }],
+								data: { main: [[{ json: { id: 1 }, pairedItem: { item: 0 } }]] },
+							},
+						],
+						End: [
+							{
+								startTime: 120,
+								executionTime: 1,
+								executionIndex: 0,
+								source: [{ previousNode: 'Middle' }],
+								data: { main: [[{ json: { id: 1 }, pairedItem: { item: 0 } }]] },
+							},
+						],
+					},
+				},
+			}),
+			mode: 'manual',
+			startedAt: new Date(),
+			status: 'success',
+			storedAt: 'db',
+		});
+
+		test('$("NodeName").item reports a circular link instead of exhausting the stack', () => {
+			const proxy = getProxyFromFixture(
+				createWorkflowWithSelfReference(),
+				createRunWithSelfReference(),
+				'End',
+			);
+
+			let caught: unknown;
+			try {
+				proxy.$('Start').item;
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(ExpressionError);
+			const exprError = caught as ExpressionError;
+			expect(exprError.message).toEqual('Circular item linking');
+			expect(exprError.context.type).toEqual('paired_item_invalid_info');
+			expect(exprError.context.nodeCause).toEqual('Middle');
+		});
+	});
+
 	describe('Pinned data with manual execution', () => {
 		const fixture = loadFixture('pindata');
 		const proxy = getProxyFromFixture(fixture.workflow, null, 'NotPinnedSet1', 'manual');

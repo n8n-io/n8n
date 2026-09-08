@@ -954,6 +954,17 @@ export class WorkflowDataProxy {
 			});
 		}
 
+		function createPairedItemCycleError(nodeCause: string, itemIndex: number) {
+			return createExpressionError('Circular item linking', {
+				messageTemplate: 'Paired item references itself',
+				functionality: 'pairedItem',
+				functionOverrides: { message: 'Circular item linking' },
+				nodeCause,
+				description: `Item ${itemIndex} in node ${nodeCause} links back to itself, so the item cannot be traced.`,
+				type: 'paired_item_invalid_info',
+			});
+		}
+
 		function createPairedItemMultipleItemsFound(destNode: string, itemIndex: number) {
 			return createExpressionError('Multiple matches found', {
 				messageTemplate: `Multiple matching items for item [${itemIndex}]`,
@@ -1035,6 +1046,7 @@ export class WorkflowDataProxy {
 			initialPairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
 			nodeBeforeLast?: string,
+			activePath: Set<string> = new Set(),
 		): INodeExecutionData => {
 			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
@@ -1043,67 +1055,80 @@ export class WorkflowDataProxy {
 				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
-			const taskData = getTaskData(sourceData);
-			const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
-			const item = outputData[pairedItem.item];
-			const sourceArray = taskData?.source ?? [];
+			const pathKey = `${sourceData.previousNode} ${sourceData.previousNodeRun ?? 0} ${sourceData.previousNodeOutput ?? 0} ${pairedItem.item}`;
 
-			// Done: reached the destination node in the ancestry chain
-			if (sourceData.previousNode === destinationNodeName) {
-				if (pairedItem.item >= outputData.length) {
+			if (activePath.has(pathKey)) {
+				throw createPairedItemCycleError(sourceData.previousNode, pairedItem.item);
+			}
+
+			activePath.add(pathKey);
+
+			try {
+				const taskData = getTaskData(sourceData);
+				const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
+				const item = outputData[pairedItem.item];
+				const sourceArray = taskData?.source ?? [];
+
+				// Done: reached the destination node in the ancestry chain
+				if (sourceData.previousNode === destinationNodeName) {
+					if (pairedItem.item >= outputData.length) {
+						throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
+					}
+
+					return item;
+				}
+
+				// Normalize paired item to always be IPairedItemData[]
+				const nextPairedItems = normalizePairedItem(item.pairedItem);
+
+				if (nextPairedItems.length === 0) {
 					throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
 				}
 
-				return item;
-			}
+				// Recursively traverse ancestry to find the destination node + paired item
+				const results = nextPairedItems.flatMap((nextPairedItem) => {
+					const inputIndex = nextPairedItem.input ?? 0;
 
-			// Normalize paired item to always be IPairedItemData[]
-			const nextPairedItems = normalizePairedItem(item.pairedItem);
+					if (inputIndex >= sourceArray.length) return [];
 
-			if (nextPairedItems.length === 0) {
-				throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
-			}
+					const nextSource = nextPairedItem.sourceOverwrite ?? sourceArray[inputIndex];
 
-			// Recursively traverse ancestry to find the destination node + paired item
-			const results = nextPairedItems.flatMap((nextPairedItem) => {
-				const inputIndex = nextPairedItem.input ?? 0;
+					try {
+						return createResultOk(
+							getPairedItem(
+								destinationNodeName,
+								nextSource,
+								{ ...nextPairedItem, input: inputIndex },
+								usedMethodName,
+								sourceData.previousNode,
+								activePath,
+							),
+						);
+					} catch (error) {
+						return createResultError(error);
+					}
+				});
 
-				if (inputIndex >= sourceArray.length) return [];
-
-				const nextSource = nextPairedItem.sourceOverwrite ?? sourceArray[inputIndex];
-
-				try {
-					return createResultOk(
-						getPairedItem(
-							destinationNodeName,
-							nextSource,
-							{ ...nextPairedItem, input: inputIndex },
-							usedMethodName,
-							sourceData.previousNode,
-						),
-					);
-				} catch (error) {
-					return createResultError(error);
+				if (results.every((result) => !result.ok)) {
+					throw results[0].error;
 				}
-			});
 
-			if (results.every((result) => !result.ok)) {
-				throw results[0].error;
+				const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
+
+				if (matchedItems.length === 0) {
+					if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
+					throw createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
+				}
+
+				const [first, ...rest] = matchedItems;
+				if (rest.some((r) => r !== first)) {
+					throw createPairedItemMultipleItemsFound(destinationNodeName, pairedItem.item);
+				}
+
+				return first;
+			} finally {
+				activePath.delete(pathKey);
 			}
-
-			const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
-
-			if (matchedItems.length === 0) {
-				if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
-				throw createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
-			}
-
-			const [first, ...rest] = matchedItems;
-			if (rest.some((r) => r !== first)) {
-				throw createPairedItemMultipleItemsFound(destinationNodeName, pairedItem.item);
-			}
-
-			return first;
 		};
 
 		const handleFromAi = (
