@@ -221,11 +221,27 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	): Promise<string> {
 		const credentials = await this.getCredentials(getCredentialType.call(this));
-		return (
+		const baseUrl = (
 			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
 				? credentials.graphApiBaseUrl
 				: 'https://graph.microsoft.com'
 		).replace(/\/+$/, '');
+		// Guarantee an origin to compare against: the same-origin check below reads
+		// `new URL(baseUrl).origin` unguarded, and that is the string "null" for a scheme
+		// with no defined origin, which would make the comparison pass for any host. Same
+		// refusal message as the request-time guard (one concept, one string); the
+		// description is what distinguishes them.
+		if (!URL.canParse(baseUrl) || new URL(baseUrl).origin === 'null') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Refusing to send credentials to an unexpected host',
+				{
+					description:
+						'The Graph API base URL on the credential is not a valid URL. Fix it on the credential and try again.',
+				},
+			);
+		}
+		return baseUrl;
 	}
 
 	async function microsoftApiRequest(
@@ -370,6 +386,8 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 			if (limit && returnData.length >= limit) {
 				return returnData.slice(0, limit);
 			}
+			// `uri`, not `responseData['@odata.nextLink']`: a literal `null` next link is not
+			// `undefined`, and with `uri` falsy the identical request would be re-sent forever.
 		} while (responseData['@odata.nextLink'] !== undefined);
 
 		return returnData;
