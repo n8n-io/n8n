@@ -500,6 +500,7 @@ export class InstanceAiAdapterService {
 							projectId,
 							new AgentsCredentialProvider(this.credentialsService, projectId, user),
 							credentialService,
+							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
 						),
 					}
 				: {}),

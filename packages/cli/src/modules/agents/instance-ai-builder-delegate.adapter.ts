@@ -105,6 +105,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 	private buildSubAgentSession(
 		session: BuilderDelegateSession,
 		onRequiredArtifact: (artifact: BuilderRequiredArtifact) => void,
+		useEvalModelCatalog: boolean,
 	): InstanceAiBuilderSessionOptions {
 		return {
 			threadId: session.threadId,
@@ -116,6 +117,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
 			abortSignal: session.abortSignal,
 			...(session.mcpTools ? { mcpTools: session.mcpTools } : {}),
+			...(useEvalModelCatalog ? { useEvalModelCatalog: true } : {}),
 			onRequiredArtifact,
 		};
 	}
@@ -125,6 +127,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		credentialService: InstanceAiCredentialService,
+		options: { useEvalModelCatalog?: boolean } = {},
 	): InstanceAiBuilderDelegate {
 		// Mirrors the `@ProjectScope('agent:*')` guards on the agent-builder REST
 		// routes. The delegate calls the builder service directly, bypassing the
@@ -164,7 +167,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 						credentialProvider,
 						credentialService,
 						user,
-						this.buildSubAgentSession(session, (artifact) => requiredArtifacts.push(artifact)),
+						this.buildSubAgentSession(
+							session,
+							(artifact) => requiredArtifacts.push(artifact),
+							options.useEvalModelCatalog === true,
+						),
 					),
 					requiredArtifacts,
 				);
@@ -183,7 +190,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 						credentialProvider,
 						credentialService,
 						user,
-						this.buildSubAgentSession(session, (artifact) => requiredArtifacts.push(artifact)),
+						this.buildSubAgentSession(
+							session,
+							(artifact) => requiredArtifacts.push(artifact),
+							options.useEvalModelCatalog === true,
+						),
 					),
 					requiredArtifacts,
 				);

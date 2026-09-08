@@ -10,6 +10,7 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
+import { LLM_PROVIDER_DEFAULTS } from '../llm-provider-defaults';
 
 export type ModelCatalogPolicy = 'curated' | 'endpoint-only' | 'managed';
 
@@ -20,6 +21,10 @@ export type LiveModelLookupResult =
 			policy: ModelCatalogPolicy;
 	  }
 	| { status: 'unavailable'; error: unknown; policy: ModelCatalogPolicy };
+
+interface ModelLookupOptions {
+	useEvalModelCatalog?: boolean;
+}
 
 /**
  * Fetches a provider's live chat-model list for a credential, via the shared
@@ -52,8 +57,16 @@ export class BuilderModelLiveLookupService {
 		credentialId: string,
 		credentialType: string,
 		provider: string,
+		options?: ModelLookupOptions,
 	): Promise<Array<{ name: string; value: string }>> {
-		const result = await this.lookup(user, projectId, credentialId, credentialType, provider);
+		const result = await this.lookup(
+			user,
+			projectId,
+			credentialId,
+			credentialType,
+			provider,
+			options,
+		);
 		if (result.status === 'unavailable') throw result.error;
 		return result.models;
 	}
@@ -64,8 +77,12 @@ export class BuilderModelLiveLookupService {
 		credentialId: string,
 		credentialType: string,
 		provider: string,
+		options?: ModelLookupOptions,
 	): Promise<LiveModelLookupResult> {
 		if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+			if (options?.useEvalModelCatalog) {
+				return this.getEvalModelCatalog(credentialType, provider, 'managed');
+			}
 			return await this.lookupAiGatewayManagedModels(projectId, provider, user);
 		}
 
@@ -77,10 +94,31 @@ export class BuilderModelLiveLookupService {
 		if (!usable || usable.type !== credentialType) {
 			throw new Error(`Credential ${credentialId} not found or not accessible`);
 		}
+		if (options?.useEvalModelCatalog) {
+			return this.getEvalModelCatalog(credentialType, provider, 'curated');
+		}
 
 		const credentialData = await this.decryptWithExpressions(usable, projectId, user);
 
 		return await this.discoverModels(provider, credentialData);
+	}
+
+	private getEvalModelCatalog(
+		credentialType: string,
+		provider: string,
+		policy: ModelCatalogPolicy,
+	): LiveModelLookupResult {
+		const configuredDefault = LLM_PROVIDER_DEFAULTS[credentialType];
+		const model =
+			configuredDefault?.provider === provider
+				? configuredDefault.defaultModel
+				: `eval-${provider}-model`;
+
+		return {
+			status: 'success',
+			models: [{ name: model, value: model }],
+			policy,
+		};
 	}
 
 	/**

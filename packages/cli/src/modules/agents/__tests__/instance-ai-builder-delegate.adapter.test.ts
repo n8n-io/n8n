@@ -32,7 +32,7 @@ import type { AgentSkillsService } from '../agent-skills.service';
 import type { N8nMemory, N8nMemoryImpl } from '../integrations/n8n-memory';
 import type { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
-function setup() {
+function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 	const agentsService = mock<AgentsService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
 	const n8nMemory = mock<N8nMemory>();
@@ -54,7 +54,13 @@ function setup() {
 
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
-	const delegate = service.createDelegate(user, 'project-1', credentialProvider, credentialService);
+	const delegate = service.createDelegate(
+		user,
+		'project-1',
+		credentialProvider,
+		credentialService,
+		options,
+	);
 
 	return {
 		service,
@@ -154,6 +160,30 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					mcpTools,
 					onRequiredArtifact: expect.any(Function),
 				},
+			);
+		});
+
+		it('enables deterministic model catalogs for eval builder sessions', async () => {
+			const { delegate, agentsBuilderService } = setup({ useEvalModelCatalog: true });
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
+
+			await delegate.streamBuild('agent-1', 'hi', {
+				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
+			});
+
+			expect(agentsBuilderService.buildAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				'hi',
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ useEvalModelCatalog: true }),
 			);
 		});
 
