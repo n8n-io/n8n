@@ -17,6 +17,11 @@
 # head is the bundle branch). A merged fix and a manual dispatch before a cut are the moments
 # that matter.
 #
+# Only published history is synced in. A cut leaves a private-only `chore: Bundle/*` commit on
+# private master that the hourly public→private mirror later discards for the public copy, so a
+# run in that window skips instead of building the branch on it — a dispatch or a merged fix PR
+# right after a cut can legitimately do nothing. See sync-bundle-branch.mjs.
+#
 # One job per bundle branch: a conflict on one FAILS THAT JOB and leaves its branch untouched,
 # while the other still syncs. Recovery is manual and deliberate — merge the base in locally,
 # resolve, push, then re-run this workflow. That resolution then lives in the merge commit,
