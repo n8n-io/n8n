@@ -18,14 +18,14 @@ import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
-import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 
 interface Props {
 	/**
 	 * Where this panel is mounted. The component renders different subsets of
 	 * `pendingConfirmations` depending on this:
-	 * - `inline`: full-form confirmations rendered in the chat flow (plan review,
-	 *   text, setup, credential, gateway resource-decision, continue).
+	 * - `inline`: full-form confirmations rendered in the chat flow (text, setup,
+	 *   credential, gateway resource-decision, continue). Plan review is filtered
+	 *   out of `pendingConfirmations` and renders in the timeline instead.
 	 * - `floating`: questions, single-click approvals, and domain/web-search
 	 *   access, which replace the chat input slot. Only the oldest pending item
 	 *   is rendered at a time — no stacking.
@@ -438,38 +438,6 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
-
-const PLAN_REVIEW_OPTIONS = ['approve', 'ask-for-edits', 'deny'] as const;
-
-function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
-	trackInputCompleted(
-		conf,
-		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'approve' }],
-		[],
-		{ num_tasks: numTasks, plan_feedback_type: 'accept' },
-	);
-	thread.resolveConfirmation(conf.requestId, 'approved');
-	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
-}
-
-function handlePlanAskForEdits(conf: InstanceAiConfirmation, numTasks: number) {
-	thread.startPlanEdit({
-		requestId: conf.requestId,
-		inputThreadId: conf.inputThreadId,
-		taskCount: numTasks,
-	});
-}
-
-function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
-	trackInputCompleted(
-		conf,
-		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'deny' }],
-		[],
-		{ num_tasks: numTasks, plan_feedback_type: 'deny' },
-	);
-	thread.resolveConfirmation(conf.requestId, 'denied');
-	void thread.confirmAction(conf.requestId, { kind: 'planDeny' });
-}
 </script>
 
 <template>
@@ -513,36 +481,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
-				/>
-
-				<!-- Plan review -->
-				<PlanReviewPanel
-					v-else-if="chunk.item.toolCall.confirmation.inputType === 'plan-review'"
-					:key="'plan-' + chunk.item.toolCall.confirmation.requestId"
-					:planned-tasks="
-						chunk.item.toolCall.confirmation?.planItems ??
-						(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ??
-						[]
-					"
-					:message="chunk.item.toolCall.confirmation.message"
-					@approve="
-						handlePlanApprove(
-							chunk.item.toolCall.confirmation,
-							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-						)
-					"
-					@ask-for-edits="
-						handlePlanAskForEdits(
-							chunk.item.toolCall.confirmation,
-							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-						)
-					"
-					@deny="
-						handlePlanDeny(
-							chunk.item.toolCall.confirmation,
-							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-						)
-					"
 				/>
 
 				<!-- Text input (ask-user) -->

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import PlanReviewPanel, { type PlannedTaskArg } from '../components/PlanReviewPanel.vue';
+import type { PlannedTaskArg } from '@n8n/api-types';
+
+import PlanReviewPanel from '../components/PlanReviewPanel.vue';
 
 const plannedTasks: PlannedTaskArg[] = [
 	{
