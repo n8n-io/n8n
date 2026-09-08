@@ -13,18 +13,13 @@ import type {
 	PublicationOutcomeReason,
 	PublicationOutcomeResult,
 } from '@/events/maps/workflow-publication-metrics.event-map';
+import { raceTimeout, TIMED_OUT } from '@/utils/race-timeout';
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import { WorkflowPublicationOutboxWorkerPool } from '@/workflows/publication/workflow-publication-outbox-worker-pool';
 import type { TriggerOperationAbort } from '@/workflows/triggers/workflow-trigger-activator';
-
-/**
- * Resolved by {@link WorkflowPublicationOutboxConsumer.raceTimeout} when the
- * timeout elapses before the raced promise settles.
- */
-const TIMED_OUT = Symbol('timed-out');
 
 /**
  * Fraction of the outbox lease after which a record's processing is aborted.
@@ -258,11 +253,11 @@ export class WorkflowPublicationOutboxConsumer {
 		const controller = new AbortController();
 		const work = this.processRecord(record, controller.signal);
 
-		if ((await this.raceTimeout(work, abortAfterMs)) !== TIMED_OUT) return true;
+		if ((await raceTimeout(work, abortAfterMs)) !== TIMED_OUT) return true;
 
 		controller.abort(new OperationalError('Workflow publication processing exceeded its deadline'));
 
-		if ((await this.raceTimeout(work, abandonGraceMs)) !== TIMED_OUT) return true;
+		if ((await raceTimeout(work, abandonGraceMs)) !== TIMED_OUT) return true;
 
 		// A late rejection of the abandoned work must not become an unhandled rejection.
 		void work.catch((error) =>
@@ -276,24 +271,6 @@ export class WorkflowPublicationOutboxConsumer {
 			{ shouldBeLogged: true },
 		);
 		return false;
-	}
-
-	/** Resolves with the raced promise, or with {@link TIMED_OUT} after `timeoutMs`. */
-	private async raceTimeout<T>(
-		promise: Promise<T>,
-		timeoutMs: number,
-	): Promise<T | typeof TIMED_OUT> {
-		let timer: NodeJS.Timeout | undefined;
-		try {
-			return await Promise.race([
-				promise,
-				new Promise<typeof TIMED_OUT>((resolve) => {
-					timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs);
-				}),
-			]);
-		} finally {
-			clearTimeout(timer);
-		}
 	}
 
 	/**
