@@ -138,7 +138,7 @@
       "lodash-es": "4.18.1",
       "node-forge": "1.4.0",
       "path-to-regexp@<=8.4.0": "8.4.0",
-      "@xmldom/xmldom@<=0.8.14": "0.8.14",
+      "@xmldom/xmldom@<=0.8.15": "0.8.15",
       "handlebars": "4.7.9",
       "defu@<=6.1.5": "6.1.5",
       "follow-redirects@<=1.16.0": "1.16.0",
