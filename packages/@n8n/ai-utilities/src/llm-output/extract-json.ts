@@ -65,9 +65,11 @@ export function extractJsonCandidate(text: string): string {
 	const trimmed = text.trim();
 	// A response that already starts with a JSON container is the payload itself;
 	// backtick pairs inside one of its string values must not shadow it. Elsewhere,
-	// trust a fenced block only when it is JSON-shaped, for the same reason.
+	// trust a fenced block only when it is JSON-shaped and parses as JSON.
+	// An inner ``` can cut the fence short, but that fence must not shadow the payload.
 	const fenced = JSON_CONTAINER_START.test(trimmed) ? undefined : extractFencedJson(trimmed);
-	if (fenced !== undefined && JSON_CONTAINER_START.test(fenced)) return fenced;
+	if (fenced !== undefined && JSON_CONTAINER_START.test(fenced) && parsesAsJson(fenced))
+		return fenced;
 
 	return extractJsonContainer(trimmed) ?? fenced ?? trimmed;
 }

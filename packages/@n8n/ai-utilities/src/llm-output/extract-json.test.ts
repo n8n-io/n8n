@@ -40,6 +40,11 @@ describe('extractJsonCandidate', () => {
 			'{"pass":true,"reasoning":"see ```json\\n{\\"x\\":1}\\n``` ok"}',
 			'{"pass":true,"reasoning":"see ```json\\n{\\"x\\":1}\\n``` ok"}',
 		],
+		[
+			'```json\n{"hint":"run ```pnpm test``` first","ok":true}\n```',
+			'{"hint":"run ```pnpm test``` first","ok":true}',
+		],
+		['```json\n{"broken": \n```\nFixed: {"ok":true}', '{"ok":true}'],
 	])('ignores fenced blocks that are not the payload', (input, expected) => {
 		expect(extractJsonCandidate(input)).toBe(expected);
 	});
