@@ -40,6 +40,19 @@ describe('Microsoft Teams V2, chat getAll paging arguments', () => {
 		// Graph rejects a fractional `$top`, and an expression can resolve the limit to one.
 		// A fraction below 1 needs no row: the low clamp already returns 1 without the floor.
 		['rounds a fractional limit down', { returnAll: false, limit: 2.7 }, 2, 2],
+		// `minValue: 1` is editor-only. These two are the shapes only an expression produces,
+		// and each one kills a different wrong clamp: a plain floor lets the negative through,
+		// and a plain `Math.max` lets NaN through.
+		['asks for a single chat when the limit is negative', { returnAll: false, limit: -5 }, 1, 1],
+		[
+			'asks for a single chat when the limit is not a number',
+			{ returnAll: false, limit: 'abc' },
+			1,
+			1,
+		],
+		// The accept side of the row above. An expression that reads the limit out of JSON
+		// hands over a numeric string, and that has to keep its value, not fall to 1.
+		['keeps a numeric string limit', { returnAll: false, limit: '25' }, 25, 25],
 		['asks for a full page and no limit when returning all', { returnAll: true }, 50, undefined],
 	])('%s', async (_name, params, expectedTop, expectedLimit) => {
 		setParams(ctx, { resource: 'chat', operation: 'getAll', ...params });

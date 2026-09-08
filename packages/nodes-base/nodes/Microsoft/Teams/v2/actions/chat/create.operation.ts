@@ -108,6 +108,9 @@ const displayOptions = {
 	},
 };
 
+const isParticipantRow = (row: unknown): row is IDataObject =>
+	typeof row === 'object' && row !== null && !Array.isArray(row);
+
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
@@ -130,10 +133,11 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			description: 'An expression on this field returned a single value. Return a list instead.',
 		});
 	}
-	const rawRows = Array.isArray(raw) ? raw : [];
+	const rows = Array.isArray(raw) ? raw : [];
 	// Every row must be an object before the reads below. An expression can put `null` or a
-	// plain string in the list, and `rows[n].tenantId` would then throw a bare TypeError.
-	if (rawRows.some((row) => typeof row !== 'object' || row === null || Array.isArray(row))) {
+	// plain string in the list, and `row.tenantId` would then throw a bare TypeError.
+	// A type predicate, so `rows` narrows in place and the reads below need no cast.
+	if (!rows.every(isParticipantRow)) {
 		throw new NodeOperationError(
 			node,
 			'Other Participants contains an entry that is not a participant',
@@ -143,7 +147,6 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			},
 		);
 	}
-	const rows = rawRows as IDataObject[];
 
 	// Graph needs the initiator in `members`, and no author (or AI agent) knows that, so the
 	// node adds them. Uncached, one request per item, as `task:getAll` already does.
@@ -175,6 +178,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	try {
 		for (let n = 0; n < rows.length; n++) {
 			const label = `participant ${n + 1}`;
+			const row = rows[n];
 			const rawValue = this.getNodeParameter(`members.member[${n}].userId`, i, '', {
 				extractValue: true,
 			});
@@ -182,15 +186,11 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			// anchored and do not trim, while the RLC's own By-ID regex tolerates trailing
 			// whitespace, so without this a pasted value is accepted on one branch only.
 			const value = String(rawValue ?? '').trim();
-			const tenantId =
-				typeof rows[n].tenantId === 'string' ? (rows[n].tenantId as string).trim() : '';
+			const tenantId = typeof row.tenantId === 'string' ? row.tenantId.trim() : '';
 			// A collection option default only materialises once the option is added, so a
 			// hand-edited or AI-authored row can omit `role` entirely, and `roles: [undefined]`
 			// is a 400. Not allow-listed against owner/guest: Graph's 400 says it better.
-			const role =
-				typeof rows[n].role === 'string' && (rows[n].role as string).trim() !== ''
-					? (rows[n].role as string).trim()
-					: 'owner';
+			const role = (typeof row.role === 'string' ? row.role.trim() : '') || 'owner';
 
 			let id: string;
 			if (tenantId !== '') {

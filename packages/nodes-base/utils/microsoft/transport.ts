@@ -222,11 +222,15 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 				? credentials.graphApiBaseUrl
 				: 'https://graph.microsoft.com'
 		).replace(/\/+$/, '');
-		// Guarantee an origin to compare against: `microsoftApiRequest` compares
-		// `new URL(baseUrl).origin` unguarded, and that is the string "null" for a scheme
-		// with no defined origin, which would make the comparison pass for any host. Same
-		// refusal message as the request-time guard (one concept, one string); the
-		// description is what distinguishes them.
+		// Refuse a base URL that cannot carry a request. An opaque scheme (`data:`, `file:`,
+		// `foo:`) parses, but `URL.origin` is then the string "null", so the request-time
+		// same-origin check compares "null" to "null" and lets it through. The token stays
+		// put either way: a different host has a different origin and is refused, and no
+		// scheme is both origin-"null" and able to carry a bearer. What the caller gets
+		// without this clause is a late unsupported-protocol error, or for `data:` a
+		// fabricated 200 that axios resolves in process. Fail here instead, where the
+		// message can name the credential. Same refusal message as the request-time guard
+		// (one concept, one string); the description is what distinguishes them.
 		if (!URL.canParse(baseUrl) || new URL(baseUrl).origin === 'null') {
 			throw new NodeOperationError(
 				this.getNode(),
