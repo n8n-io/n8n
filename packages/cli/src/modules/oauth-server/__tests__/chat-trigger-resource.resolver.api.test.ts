@@ -482,13 +482,13 @@ describe('IAM-1353 repro: consent reuse on a second visit', () => {
 		expect(second.headers.location).toContain(resourceUrl);
 	});
 
-	test('a visitor who already consented is still shown the manual approve screen when they authenticate mid-flow', async () => {
+	test('a visitor who already consented is auto-approved after authenticating mid-flow', async () => {
 		// This is the real IAM-1353 shape: the visitor already has a UserConsent row from a
 		// prior visit (e.g. the local grant cookie was cleared/expired), but their n8n-auth
 		// cookie is gone too — so the very first /oauth/authorize hit has no cookie to check
 		// and tryAutoApproveConsent is skipped. They then log in as part of reaching the
-		// (auth-gated) consent page. Once logged in, nothing ever re-attempts auto-approval:
-		// GET /consent/details unconditionally returns the manual approve/deny picker.
+		// (auth-gated) consent page. GET /consent/details now retries the reuse check once
+		// the user is authenticated, instead of unconditionally returning the manual picker.
 		const path = chatPath();
 		await createPublishedChatWorkflow(path, chatTriggerNode());
 		const resourceUrl = resourceUrlFor(path);

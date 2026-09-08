@@ -75,11 +75,6 @@ export class OAuthConsentService {
 				return null;
 			}
 
-			const reuse = await this.tryReuseConsent(user, sessionPayload);
-			if (reuse) {
-				return { ok: true, autoApproved: true, redirectUrl: reuse.redirectUrl };
-			}
-
 			if (sessionPayload.resource) {
 				const resource = await this.protectedResourceRegistry.getByResourceUrl(
 					sessionPayload.resource,
@@ -87,6 +82,15 @@ export class OAuthConsentService {
 
 				if (!resource) {
 					return { ok: false, reason: 'resource_unavailable' };
+				}
+
+				// Resolved once above and threaded through, so a first-time consent (the
+				// common case here — a prior consent already short-circuits via
+				// tryAutoApproveConsent at /oauth/authorize) doesn't pay for the resource
+				// resolver's DB-backed lookup twice.
+				const reuse = await this.tryReuseConsent(user, sessionPayload, resource);
+				if (reuse) {
+					return { ok: true, autoApproved: true, redirectUrl: reuse.redirectUrl };
 				}
 
 				if (!(await resource.authorize(user)))
@@ -321,13 +325,20 @@ export class OAuthConsentService {
 		return scopes;
 	}
 
+	/**
+	 * @param resolvedResource The caller's own resolution of `sessionPayload.resource`,
+	 * when it already has one — skips resolving it again here.
+	 */
 	async tryReuseConsent(
 		user: User,
 		sessionPayload: OAuthSessionPayload,
+		resolvedResource?: ProtectedResource,
 	): Promise<{ redirectUrl: string } | null> {
 		if (!sessionPayload.resource) return null;
 
-		const resource = await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource);
+		const resource =
+			resolvedResource ??
+			(await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource));
 		if (!resource?.isFirstParty) return null;
 
 		const consent = await this.userConsentRepository.findOne({

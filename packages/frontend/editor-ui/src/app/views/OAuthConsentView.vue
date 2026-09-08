@@ -4,7 +4,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { onMounted, computed, ref, watch } from 'vue';
-import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
+import type { ConsentDetailsPicker } from '@n8n/rest-api-client/api/consent';
 import {
 	N8nButton,
 	N8nCallout,
@@ -40,7 +40,6 @@ const selectedScopes = ref<string[]>([]);
 
 const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
-const resourceName = computed(() => consentStore.consentDetails?.resourceName);
 
 const errorMessage = computed(() => {
 	if (consentStore.errorCode === 'resource_unavailable') {
@@ -51,7 +50,13 @@ const errorMessage = computed(() => {
 	return consentStore.error;
 });
 
-const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+// Narrows away the auto-approved redirect signal, which carries none of these fields
+// and is handled separately in `onMounted` before this is ever read.
+const clientDetails = computed<ConsentDetailsPicker | null>(() => {
+	const details = consentStore.consentDetails;
+	return details && !details.autoApproved ? details : null;
+});
+const resourceName = computed(() => clientDetails.value?.resourceName);
 // Known clients get their brand mark on the left tile; unknown ones fall back to the MCP glyph.
 const clientBrandIcon = computed(() => getClientBrand(clientDetails.value?.clientName ?? '').icon);
 // Localized noun for first-party copy, driven by the resource's consentType hint.
@@ -303,7 +308,10 @@ onMounted(async () => {
 					</ul>
 				</div>
 			</div>
-			<footer v-if="!waitingForRedirect && !autoApprovedRedirect" :class="$style.footer">
+			<footer
+				v-if="!waitingForRedirect && !autoApprovedRedirect && (error || clientDetails)"
+				:class="$style.footer"
+			>
 				<!-- Third-party clients: the redirect destination, with the trust acknowledgment
 				     below it in the action row so it reads as a step rather than banner small
 				     print. Both are gated on the same `trustRequired` as the Allow button, so the

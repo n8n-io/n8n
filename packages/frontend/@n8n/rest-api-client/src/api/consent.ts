@@ -3,14 +3,7 @@ import type { ConsentUiHints } from '@n8n/api-types';
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
-export interface ConsentDetails {
-	/**
-	 * Set when a prior consent already covers this request — e.g. the visitor only
-	 * authenticated as part of reaching this page. `redirectUrl` is then the only other
-	 * field present: there is nothing left to show a picker for.
-	 */
-	autoApproved?: boolean;
-	redirectUrl?: string;
+export interface ConsentDetailsPicker {
 	clientName: string;
 	clientId: string;
 	redirectUri?: string;
@@ -29,6 +22,18 @@ export interface ConsentDetails {
 	/** True only for first-party clients (e.g. form triggers) that skip the trust gate. */
 	isFirstParty?: boolean;
 }
+
+export type ConsentDetails =
+	| {
+			/**
+			 * A prior consent already covers this request — e.g. the visitor only
+			 * authenticated as part of reaching this page. There is nothing left to
+			 * show a picker for.
+			 */
+			autoApproved: true;
+			redirectUrl: string;
+	  }
+	| ({ autoApproved?: false } & ConsentDetailsPicker);
 
 export interface ConsentApprovalResponse {
 	status: string;
