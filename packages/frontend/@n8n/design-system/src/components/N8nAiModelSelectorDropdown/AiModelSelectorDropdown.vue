@@ -40,7 +40,6 @@ const {
 	disabled = false,
 	dataTestId,
 	credentialDataTestId,
-	showChevron = true,
 } = defineProps<{
 	/** Menu items to render in the dropdown. */
 	items: Array<AiModelSelectorMenuItem<TData>>;
@@ -64,8 +63,6 @@ const {
 	dataTestId: string;
 	/** Test id applied to the selected credential label. */
 	credentialDataTestId: string;
-	/** Whether to show the chevron icon in the trigger. */
-	showChevron?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -155,7 +152,7 @@ defineExpose({
 						</N8nText>
 					</div>
 				</div>
-				<N8nIcon v-if="showChevron" :class="$style.chevron" icon="chevron-down" size="medium" />
+				<N8nIcon :class="$style.chevron" icon="chevron-down" size="medium" />
 			</Primitive>
 		</template>
 

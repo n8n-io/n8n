@@ -151,15 +151,19 @@ const i18n = useI18n();
 							:simple-channel-setup="artifactMode"
 							:agent-unsaved="agentUnsaved"
 							:ensure-agent-persisted="ensureAgentPersisted"
+							:task-refs="localConfig?.tasks ?? []"
+							:reload-key="tasksReloadKey"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
 							@agent-changed="emit('agent-changed')"
+							@toggle-task="emit('toggle-task', $event)"
+							@tasks-changed="emit('tasks-changed')"
 						/>
 					</AgentPanel>
 
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.capabilities.title')"
-						description="What this agent can do and how it does it"
+						:description="i18n.baseText('agents.builder.capabilities.description')"
 					>
 						<AgentCapabilitiesSection
 							:config="localConfig"
@@ -170,8 +174,6 @@ const i18n = useI18n();
 							:project-id="projectId"
 							:agent-id="agentId"
 							:is-published="Boolean(agent?.activeVersionId)"
-							:task-refs="localConfig?.tasks ?? []"
-							:reload-key="tasksReloadKey"
 							:validation-issues="configValidationIssues ?? []"
 							:agent-unsaved="agentUnsaved"
 							@open-tool="emit('open-tool', $event)"
@@ -181,8 +183,6 @@ const i18n = useI18n();
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
 							@remove-skill="emit('remove-skill', $event)"
-							@toggle-task="emit('toggle-task', $event)"
-							@tasks-changed="emit('tasks-changed')"
 						/>
 					</AgentPanel>
 
@@ -340,7 +340,6 @@ const i18n = useI18n();
 	flex-shrink: 0;
 	display: flex;
 	width: 100%;
-	padding-inline: var(--spacing--xs);
 }
 
 .identityHeader {

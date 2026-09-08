@@ -5,7 +5,7 @@ import AgentPanel from './AgentPanel.vue';
  * Credential selection is handled inside the model picker — no separate
  * credential field.
  */
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, useId, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	N8nCallout,
@@ -71,6 +71,7 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const i18n = useI18n();
+const instructionsEditorId = useId();
 const usersStore = useUsersStore();
 const credentialsStore = useCredentialsStore();
 const { showError } = useToast();
@@ -378,7 +379,9 @@ function onInstructionsInput(value: string) {
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">
 							{{ i18n.baseText('agents.builder.agent.model.label') }}
 						</N8nText>
-						<N8nText step="sm" color="text-light">What model this agent uses</N8nText>
+						<N8nText step="sm" color="text-light">
+							{{ i18n.baseText('agents.builder.agent.model.description') }}
+						</N8nText>
 					</div>
 					<AgentModelSelector
 						:disabled="props.disabled"
@@ -453,10 +456,12 @@ function onInstructionsInput(value: string) {
 					<N8nText step="sm" bold :class="shared.dataEntryLabel">
 						{{ i18n.baseText('agents.builder.agent.instructions.label') }}
 					</N8nText>
-					<N8nText step="sm" color="text-light"> What this agent should do </N8nText>
+					<N8nText step="sm" color="text-light">
+						{{ i18n.baseText('agents.builder.agent.instructions.description') }}
+					</N8nText>
 				</div>
 				<N8nMarkdownEditor
-					id="editor"
+					:id="instructionsEditorId"
 					:class="$style.instructionsDocument"
 					:model-value="instructions"
 					:disabled="props.disabled"
