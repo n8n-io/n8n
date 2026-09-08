@@ -33,6 +33,7 @@ import {
 	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	instanceAiEvalSeedAgentSchema,
 	instanceAiAttachmentSchema,
+	instanceAiHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
@@ -94,6 +95,25 @@ describe('instanceAiEventSchema', () => {
 						nodeBindings: [{ nodeName: 'Send message' }],
 					},
 				],
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses historical eval-setup agent events', () => {
+		const event = {
+			type: 'agent-spawned',
+			runId: 'run-legacy-eval',
+			agentId: 'agent-legacy-eval',
+			payload: {
+				parentId: 'agent-root',
+				role: 'evaluation setup',
+				tools: ['workflows'],
+				taskId: 'task-legacy-eval',
+				kind: 'eval-setup',
+				title: 'Setting up evaluations',
+				targetResource: { type: 'workflow', id: 'workflow-1' },
 			},
 		};
 
@@ -1057,5 +1077,32 @@ describe('InstanceAiThreadMessagesQuery', () => {
 		{ page: -1 },
 	])('rejects out-of-range paging (%o)', (query) => {
 		expect(InstanceAiThreadMessagesQuery.safeParse(query).success).toBe(false);
+	});
+});
+
+describe('instanceAiHandoffContextSchema', () => {
+	it('accepts the setup panel execute context', () => {
+		const result = instanceAiHandoffContextSchema.safeParse({
+			source: 'setup-panel-execute',
+			workflowId: 'wf-1',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a setup panel execute context without a workflowId', () => {
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel-execute' }).success,
+		).toBe(false);
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel-execute', workflowId: '' })
+				.success,
+		).toBe(false);
+	});
+
+	it('rejects an unknown source', () => {
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel', workflowId: 'wf-1' })
+				.success,
+		).toBe(false);
 	});
 });

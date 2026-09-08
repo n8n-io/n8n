@@ -65,7 +65,7 @@
 		"GET /credentials": {
 			"status": "gap"
 		},
-		"GET /credentials/{id}": {
+		"GET /credentials/{credentialId}": {
 			"status": "gap"
 		},
 		"POST /credentials": {
@@ -245,6 +245,9 @@
 			"status": "gap"
 		},
 		"GET /source-control/status": {
+			"status": "gap"
+		},
+		"POST /source-control/push": {
 			"status": "gap"
 		},
 		"POST /git-connections/{id}/push": {

@@ -11,6 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
+    description: The ID of the git connection.
     name: id
     in: path
 responses:

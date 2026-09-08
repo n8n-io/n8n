@@ -5,6 +5,8 @@ import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decor
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
+import { z } from 'zod';
+import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -24,6 +26,16 @@ import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
+
+function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {
+	const output = z.object({ [key]: schema }).safeParse(params);
+
+	if (!output.success) {
+		throw new BadRequestError(formatValidationError('params', output.error));
+	}
+
+	return output.data[key];
+}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -71,7 +83,9 @@ export class PublicApiControllerRegistry {
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
-						args.push(req.params[arg.key]);
+						args.push(
+							arg.schema ? parsePathParam(arg.key, arg.schema, req.params) : req.params[arg.key],
+						);
 					} else {
 						const output = arg.dto.safeParse(req[arg.type]);
 						if (output.success) {
