@@ -4,6 +4,7 @@ packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getTags.test.ts
 packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
   s_aa4dc5d9a1db02::t_67cfbf49ba2481 5,58,62,67-84
   s_aa4dc5d9a1db02::t_acf269de9effd1 85
+  s_aa4dc5d9a1db02::t_31010a9b8d09a7 59-61,63-66
 packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
   s_aa4dc5d9a1db02::t_dce767615dd925 10,188-234
   s_aa4dc5d9a1db02::t_de6fc352700423 235
