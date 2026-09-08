@@ -20,11 +20,21 @@ import init, { Compiler } from '@virustotal/yara-x';
  * Python and not ported.
  */
 
-const RULES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'rules', 'guarddog');
-const RULES_VERSION = fs.readFileSync(path.join(RULES_DIR, 'VERSION'), 'utf8').trim();
-/** Upstream source of a rule: the patterns it matches and the reasoning behind them. */
-const ruleUrl = (rule) =>
-	`https://github.com/DataDog/guarddog/blob/${RULES_VERSION}/guarddog/analyzer/sourcecode/${rule}.yar`;
+const RULES_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'rules');
+
+/**
+ * Where to read a rule's source: the patterns it matches and the reasoning
+ * behind them. Each subdirectory of ./rules is a ruleset; vendored ones link
+ * upstream at the pinned version, our own link into this repository.
+ */
+const RULE_URLS = {
+	guarddog: (dir, file) => {
+		const version = fs.readFileSync(path.join(dir, 'VERSION'), 'utf8').trim();
+		return `https://github.com/DataDog/guarddog/blob/${version}/guarddog/analyzer/sourcecode/${file}`;
+	},
+};
+const ownRuleUrl = (ruleset, file) =>
+	`https://github.com/n8n-io/n8n/blob/master/packages/@n8n/scan-community-package/scanner/rules/${ruleset}/${file}`;
 
 const globToRegExp = (glob) =>
 	new RegExp(
@@ -49,20 +59,28 @@ export const loadRules = async () => {
 	await init({ module_or_path: fs.readFileSync(wasmPath) });
 
 	const compiler = new Compiler();
-	const ruleNames = new Set();
+	const ruleUrls = new Map(); // rule identifier → URL of its source
 
-	for (const file of fs.readdirSync(RULES_DIR).filter((f) => f.endsWith('.yar'))) {
-		let source = fs.readFileSync(path.join(RULES_DIR, file), 'utf8');
-		// Read the rule's own name before inlining includes, or a helper rule from
-		// the included file would be the first `rule` in the text.
-		ruleNames.add(/^rule\s+(\w+)/m.exec(source)[1]);
-		source = source.replace(/^include\s+"([^"]+)"\s*$/gm, (_, included) =>
-			fs.readFileSync(path.join(RULES_DIR, included), 'utf8'),
-		);
-		compiler.addSource(source);
+	const rulesets = fs
+		.readdirSync(RULES_ROOT, { withFileTypes: true })
+		.filter((e) => e.isDirectory())
+		.map((e) => e.name);
+	for (const ruleset of rulesets) {
+		const dir = path.join(RULES_ROOT, ruleset);
+		const toUrl = RULE_URLS[ruleset] ?? ((_, file) => ownRuleUrl(ruleset, file));
+		for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.yar'))) {
+			let source = fs.readFileSync(path.join(dir, file), 'utf8');
+			// Read the rule's own name before inlining includes, or a helper rule from
+			// the included file would be the first `rule` in the text.
+			ruleUrls.set(/^rule\s+(\w+)/m.exec(source)[1], toUrl(dir, file));
+			source = source.replace(/^include\s+"([^"]+)"\s*$/gm, (_, included) =>
+				fs.readFileSync(path.join(dir, included), 'utf8'),
+			);
+			compiler.addSource(source);
+		}
 	}
 
-	compiled = { rules: compiler.build(), ruleNames };
+	compiled = { rules: compiler.build(), ruleUrls };
 	return compiled;
 };
 
@@ -117,7 +135,7 @@ export const formatYaraFindings = (findings) =>
  * @returns {Promise<{ passed: boolean, summary: string, message?: string, details?: string, findings: Array<{ rule, file, line, text, message, url }> }>}
  */
 export const runYaraRules = async (packageDir) => {
-	const { rules, ruleNames } = await loadRules();
+	const { rules, ruleUrls } = await loadRules();
 	const findings = [];
 
 	for (const file of walk(packageDir)) {
@@ -126,7 +144,7 @@ export const runYaraRules = async (packageDir) => {
 
 		for (const match of rules.scan(content).matches) {
 			// Helper rules pulled in via `include` are not findings.
-			if (!ruleNames.has(match.identifier)) continue;
+			if (!ruleUrls.has(match.identifier)) continue;
 			const rule = match.identifier.replace(/_/g, '-');
 			if (!rule.startsWith('threat-')) continue;
 
@@ -147,7 +165,7 @@ export const runYaraRules = async (packageDir) => {
 				line,
 				text,
 				message: metadata.description ?? rule,
-				url: ruleUrl(rule),
+				url: ruleUrls.get(match.identifier),
 			});
 		}
 	}

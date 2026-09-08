@@ -21,9 +21,9 @@ describe('yara rules', () => {
 	afterEach(() => dirs.splice(0).forEach((d) => fs.rmSync(d, { recursive: true, force: true })));
 
 	it('compiles every vendored rule', async () => {
-		const { ruleNames } = await loadRules();
+		const { ruleUrls } = await loadRules();
 		const ruleFiles = fs.readdirSync(RULES_DIR).filter((f) => f.endsWith('.yar'));
-		expect(ruleNames.size).toBe(ruleFiles.length);
+		expect(ruleUrls.size).toBe(ruleFiles.length);
 	});
 
 	it('flags a preinstall script in package.json', async () => {
