@@ -413,6 +413,39 @@ describe('analyzeHtmlSensitivity', () => {
 		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
 	});
 
+	// A dialog that presents nothing but the field and an icon-only copy control
+	// has no text of its own, and the copy control's label lives in `aria-label`.
+	// The copy signal alone confirms the dialog, so the field pass must not be
+	// gated on the dialog having text.
+	it('finds an unlabelled input value in a reveal dialog whose only signal is an icon-only copy control', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><input type="text" readonly value="${OPAQUE}"><button type="button" aria-label="Copy key"><svg></svg></button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
+	// A reveal control that flips `type=password` to `type=text` leaves an editable
+	// field holding the secret. The exclusion below is on the field being editable
+	// AND unnamed: any of the usual credential signals still carries it, through the
+	// input pass rather than the container pass.
+	it.each([
+		['an associated label', '<label for="k">API key</label><input id="k" type="text"'],
+		['an aria-label', '<input type="text" aria-label="Secret key"'],
+		['a password autocomplete', '<input type="text" autocomplete="new-password"'],
+		['a sensitive test id', '<input type="text" data-testid="api-key-input"'],
+	])('finds a revealed editable field carrying %s', (_signal, markup) => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p>${markup} value="${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
 	// A name the agent types is not a value the page issued. It can clear the
 	// opaque floor on length and entropy alone, so the field being editable is what
 	// keeps it out.

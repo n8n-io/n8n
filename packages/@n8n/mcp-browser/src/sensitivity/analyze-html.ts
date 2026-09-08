@@ -79,9 +79,12 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 
 	// Reveal dialogs are the high-risk flow: newly created credentials are often
 	// rendered once with copy affordances and explanatory text.
+	// Both signals read attributes or child controls rather than the dialog's own
+	// text, so a dialog holding only the field and an icon-only copy control still
+	// confirms. No text means no phrase and no entropy candidates, which the two
+	// passes below already report as nothing.
 	for (const dialog of Array.from(document.querySelectorAll('[role="dialog"], dialog[open]'))) {
 		const text = elementText(dialog);
-		if (!text) continue;
 		const hasRevealPhrase = REVEAL_PHRASE_PATTERNS.some((pattern) => pattern.test(text));
 		const hasCopyButton = hasButtonMatching(dialog, COPY_BUTTON_PATTERN);
 		if (!hasRevealPhrase && !hasCopyButton) continue;
