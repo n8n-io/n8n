@@ -51,10 +51,12 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 const projectAgentsListRef = ref<AgentResource[] | null>([]);
 const ensureProjectAgentsLoadedSpy = vi.fn();
+const refreshProjectAgentsSpy = vi.fn();
 vi.mock('../composables/useProjectAgentsList', () => ({
 	useProjectAgentsList: () => ({
 		list: projectAgentsListRef,
 		ensureLoaded: ensureProjectAgentsLoadedSpy,
+		refresh: refreshProjectAgentsSpy,
 	}),
 }));
 
@@ -176,7 +178,8 @@ describe('AgentCapabilitiesSection', () => {
 		vi.clearAllMocks();
 		getAgentTasksSpy.mockResolvedValue([]);
 		projectAgentsListRef.value = [];
-		ensureProjectAgentsLoadedSpy.mockResolvedValue([]);
+		ensureProjectAgentsLoadedSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
+		refreshProjectAgentsSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
 		integrationsCatalogRef.value = [];
 	});
 
@@ -393,7 +396,10 @@ describe('AgentCapabilitiesSection', () => {
 			expect.objectContaining({
 				name: AGENT_SUB_AGENTS_MODAL_KEY,
 				data: expect.objectContaining({
-					agents: [{ id: 'agent-3', name: 'Research Agent' }],
+					agents: [
+						{ id: 'agent-3', name: 'Research Agent' },
+						{ id: 'agent-4', name: 'Draft Agent' },
+					],
 				}),
 			}),
 		);
@@ -402,8 +408,8 @@ describe('AgentCapabilitiesSection', () => {
 			data: { onConfirm: (payload: { agentId: string; useWhen?: string }) => void };
 		};
 		modalCall.data.onConfirm({
-			agentId: 'agent-3',
-			useWhen: 'Use for research requests.',
+			agentId: 'agent-4',
+			useWhen: 'Use for draft research requests.',
 		});
 
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([
@@ -412,11 +418,60 @@ describe('AgentCapabilitiesSection', () => {
 					maxChildren: 7,
 					agents: [
 						{ agentId: 'agent-2', useWhen: 'Use for billing support requests.' },
-						{ agentId: 'agent-3', useWhen: 'Use for research requests.' },
+						{ agentId: 'agent-4', useWhen: 'Use for draft research requests.' },
 					],
 				},
 			},
 		]);
+	});
+
+	it('refreshes a stale project-agent cache and renders only the sub-agent name', async () => {
+		const child = makeAgent({ id: 'agent-new', name: 'Notion Research Agent' });
+		refreshProjectAgentsSpy.mockImplementationOnce(async () => {
+			projectAgentsListRef.value = [makeAgent({ id: 'agent-id' }), child];
+			return projectAgentsListRef.value;
+		});
+
+		const wrapper = mountSection(
+			[],
+			{},
+			{
+				name: 'Parent Agent',
+				model: '',
+				instructions: '',
+				tools: [],
+				subAgents: { agents: [{ agentId: child.id }] },
+			},
+			[],
+			[makeAgent({ id: 'agent-id' })],
+		);
+		await flushPromises();
+
+		expect(refreshProjectAgentsSpy).toHaveBeenCalledOnce();
+		expect(wrapper.text()).toContain('Notion Research Agent');
+		expect(wrapper.text()).not.toContain(child.id);
+	});
+
+	it('never exposes an unresolved sub-agent id as the chip label', async () => {
+		const missingAgentId = 'agent-missing';
+		const wrapper = mountSection(
+			[],
+			{},
+			{
+				name: 'Parent Agent',
+				model: '',
+				instructions: '',
+				tools: [],
+				subAgents: { agents: [{ agentId: missingAgentId }] },
+			},
+			[],
+			[makeAgent({ id: 'agent-id' })],
+		);
+		await flushPromises();
+
+		const chip = wrapper.find('[data-testid="agent-capabilities-sub-agent-row"]');
+		expect(chip.text()).toContain('agents.builder.subAgents.unavailable');
+		expect(chip.text()).not.toContain(missingAgentId);
 	});
 
 	it('opens an existing sub-agent chip for editing and removal', async () => {
@@ -970,6 +1025,33 @@ describe('AgentCapabilitiesSection', () => {
 			);
 			expect(toolChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.incompatibleReference',
+			);
+		});
+
+		it('marks an unpublished workflow tool as a warning, not as invalid', async () => {
+			const tools: AgentJsonToolRef[] = [
+				{ type: 'workflow', workflowId: 'wf-1', workflow: 'Draft Flow' },
+			];
+
+			const wrapper = mountSection(tools, {}, null, [], [], {
+				validationIssues: [
+					{
+						code: 'incompatible_reference',
+						path: 'tools.0.workflowId',
+						capability: { kind: 'tool', id: 'Draft Flow', index: 0, toolType: 'workflow' },
+						reason: 'not_published',
+					},
+				],
+			});
+			await flushPromises();
+
+			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			expect(chip.classes().some((c) => c.includes('warning'))).toBe(true);
+			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(false);
+			expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(false);
+			expect(chip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.tool.workflow.notPublished',
 			);
 		});
 

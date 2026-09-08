@@ -37,8 +37,6 @@ export const NEW_CONVERSATION_TITLE = 'New conversation';
 export { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 export const BROWSER_USE_CONNECTION_TYPE = 'browser-use';
 export const COMPUTER_USE_CONNECTION_TYPE = 'computer-use';
-export type BrowserUseConnectionType = typeof BROWSER_USE_CONNECTION_TYPE;
-export type ComputerUseConnectionType = typeof COMPUTER_USE_CONNECTION_TYPE;
 
 export const BROWSER_USE_EXTENSION_ID = 'cegmdpndekdfpnafgacidejijecomlhh';
 export const CHROME_EXTENSION_URL = `https://chromewebstore.google.com/detail/n8n-browser-use/${BROWSER_USE_EXTENSION_ID}`;
@@ -62,6 +60,12 @@ const INSTANCE_AI_CHAT_ROUTE_NAMES: ReadonlySet<string> = new Set([
  */
 export function isInstanceAiChatRoute(name: unknown): boolean {
 	return typeof name === 'string' && INSTANCE_AI_CHAT_ROUTE_NAMES.has(name);
+}
+
+const NODE_CHIP_REMOVAL_KEYS: ReadonlySet<string> = new Set(['Delete', 'Backspace', 'x']);
+
+export function isNodeChipRemovalKey(key: string): boolean {
+	return NODE_CHIP_REMOVAL_KEYS.has(key);
 }
 
 export const INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY = 'instanceAiComputerUseSetup';

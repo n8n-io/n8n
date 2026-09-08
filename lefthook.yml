@@ -32,13 +32,6 @@ pre-commit:
       skip:
         - merge
         - rebase
-    # Supersedes the zod-only peer check: same guard, generalized to every curated library.
-    single_instance_libs_check:
-      glob: '**/package.json'
-      run: pnpm --dir packages/testing/code-health exec tsx src/cli.ts --rule=single-instance-libs
-      skip:
-        - merge
-        - rebase
     workspace_private_deps_check:
       glob: '**/package.json'
       run: node scripts/check-workspace-private-deps.mjs

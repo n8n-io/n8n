@@ -4,7 +4,12 @@ import {
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
-import { SDK_IMPORTABLE_FUNCTIONS, type WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	dropInvalidWorkflowJsonGroups,
+	SDK_IMPORTABLE_FUNCTIONS,
+	type WorkflowJSON,
+} from '@n8n/workflow-sdk';
+import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -16,9 +21,11 @@ import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
 	buildCredentialMap,
 	buildCredentialResolutionNote,
+	isN8nCreditsWalletDepleted,
 	resolveCredentials,
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
+import { buildSetupItemsFromSetupRequests, isSetupPanelEnabled } from './setup-items';
 import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
@@ -71,11 +78,16 @@ import {
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
-import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
+import {
+	nodeGroupDroppedWarnings,
+	partitionWarnings,
+	type ValidationWarning,
+} from './workflow-validation-warnings';
+import { FolderResolutionError } from '../../errors/folder-resolution.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
-import type { InstanceAiContext } from '../../types';
+import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
 import {
@@ -159,10 +171,6 @@ export const buildWorkflowInputSchema = z
 					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
 					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
-		projectId: z
-			.string()
-			.optional()
-			.describe('Project ID to create the workflow in. Defaults to personal project.'),
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
 		workItemId: z
 			.string()
@@ -179,9 +187,10 @@ export const buildWorkflowInputSchema = z
 			.array(z.string())
 			.optional()
 			.describe(
-				'Credential types (e.g. ["slackApi"]) the user explicitly asked to create fresh — pass ONLY on ' +
-					'an explicit request like "create a new Slack credential", never as a default. Those slots are ' +
-					'left unresolved instead of being filled from an existing credential or n8n credits, so ' +
+				'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when the user ' +
+					'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
+					'credential whose secret is invalid or rotated, never as a default. Those slots are ' +
+					'left unresolved instead of being filled from an existing credential or Gateway credits, so ' +
 					'credential setup can offer to create one. Pass the same list to workflows(action="setup").',
 			),
 		executionIntent: z
@@ -196,6 +205,47 @@ export const buildWorkflowInputSchema = z
 			),
 	})
 	.strict();
+
+const FOLDER_PATH_PLACEMENT_DESCRIPTION =
+	'Folder to create the NEW workflow in, named the way the user named it — "Clients/Acme", "Acme". ' +
+	'Pass it whenever the workflow has a clear home: the user named a folder, or the related workflows you read live there. ' +
+	'Resolved strictly (exact path, then folder name, then path suffix), never fuzzy: an unresolved folder fails the build before anything is saved and lists the real folders, so retry with one of those or ask the user. ' +
+	'New workflows only — to move an existing workflow use `workspace(action="move-workflow-to-folder")`.';
+
+/** Same contract plus a folder target; advertised only while folder exploration is on for the run. */
+export const buildWorkflowInputSchemaWithFolderPlacement = buildWorkflowInputSchema
+	.extend({
+		folderPath: z.string().optional().describe(FOLDER_PATH_PLACEMENT_DESCRIPTION),
+	})
+	.strict();
+
+function pickBuildWorkflowInputSchema(context: InstanceAiContext) {
+	return context.folderExplorationEnabled === true
+		? buildWorkflowInputSchemaWithFolderPlacement
+		: buildWorkflowInputSchema;
+}
+
+/**
+ * An unresolved folder must read as "nothing was created", before any other
+ * note: a workflow quietly left at the root when the user named a folder is
+ * the failure `folderPath` exists to remove.
+ */
+function formatFolderPlacementFailure(failure: FolderResolutionFailure): string {
+	const candidates =
+		failure.candidates.length > 0
+			? ` Folders in this project: ${failure.candidates.map((path) => `"${path}"`).join(', ')}.`
+			: '';
+	const retry =
+		' Re-run `build-workflow` with one of those paths as `folderPath`, or ask the user which folder they mean. Do NOT guess a folder from workflow names, and do NOT drop `folderPath` to save at the project root unless the user agrees.';
+	switch (failure.reason) {
+		case 'ambiguous':
+			return `Folder "${failure.requested}" matches more than one folder, so the workflow was NOT created.${candidates}${retry}`;
+		case 'unsupported':
+			return `Folders are not available on this instance, so the workflow was NOT created in "${failure.requested}". Tell the user, and re-run without \`folderPath\` only if they agree to a root-level workflow.`;
+		default:
+			return `No folder matches "${failure.requested}", so the workflow was NOT created.${candidates}${retry}`;
+	}
+}
 
 const triggerNodeOutputSchema = z.object({
 	nodeName: z.string(),
@@ -425,6 +475,45 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 	};
 }
 
+const buildWorkflowOutputSchema = z.object({
+	success: z.boolean(),
+	filePath: z.string(),
+	sourceHash: z.string().optional(),
+	workflowId: z.string().optional(),
+	workflowName: z.string().optional(),
+	workItemId: z.string().optional(),
+	triggerNodes: z.array(triggerNodeOutputSchema).optional(),
+	verificationReadiness: verificationReadinessOutputSchema.optional(),
+	/** Effective intent after merging with the prior outcome for this work
+	 *  item — a repair rebuild that omits the input keeps the stored value. */
+	executionIntent: z.enum(['one-off', 'reusable']).optional(),
+	setupRequirement: setupRequirementOutputSchema.optional(),
+	postBuildFlow: postBuildFlowOutputSchema.optional(),
+	isSupportingWorkflow: z.boolean().optional(),
+	mockedNodeNames: z.array(z.string()).optional(),
+	mockedCredentialTypes: z.array(z.string()).optional(),
+	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
+	resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
+	credentialResolutionNote: z.string().optional(),
+	referencedWorkflowIds: z.array(z.string()).optional(),
+	hasUnresolvedPlaceholders: z.boolean().optional(),
+	denied: z.boolean().optional(),
+	reason: z.string().optional(),
+	remediation: remediationMetadataSchema.optional(),
+	errors: z.array(z.string()).optional(),
+	warnings: z.array(z.string()).optional(),
+});
+
+/** The output mirrors the input gate: `folder` is advertised only while folder exploration is on. */
+function pickBuildWorkflowOutputSchema(context: InstanceAiContext) {
+	return context.folderExplorationEnabled === true
+		? buildWorkflowOutputSchema.extend({
+				/** Folder the workflow was created in, when a `folderPath` was given. */
+				folder: z.object({ id: z.string(), name: z.string(), path: z.string() }).optional(),
+			})
+		: buildWorkflowOutputSchema;
+}
+
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
@@ -437,37 +526,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
-		.input(buildWorkflowInputSchema)
-		.output(
-			z.object({
-				success: z.boolean(),
-				filePath: z.string(),
-				sourceHash: z.string().optional(),
-				workflowId: z.string().optional(),
-				workflowName: z.string().optional(),
-				workItemId: z.string().optional(),
-				triggerNodes: z.array(triggerNodeOutputSchema).optional(),
-				verificationReadiness: verificationReadinessOutputSchema.optional(),
-				/** Effective intent after merging with the prior outcome for this work
-				 *  item — a repair rebuild that omits the input keeps the stored value. */
-				executionIntent: z.enum(['one-off', 'reusable']).optional(),
-				setupRequirement: setupRequirementOutputSchema.optional(),
-				postBuildFlow: postBuildFlowOutputSchema.optional(),
-				isSupportingWorkflow: z.boolean().optional(),
-				mockedNodeNames: z.array(z.string()).optional(),
-				mockedCredentialTypes: z.array(z.string()).optional(),
-				mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-				resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
-				credentialResolutionNote: z.string().optional(),
-				referencedWorkflowIds: z.array(z.string()).optional(),
-				hasUnresolvedPlaceholders: z.boolean().optional(),
-				denied: z.boolean().optional(),
-				reason: z.string().optional(),
-				remediation: remediationMetadataSchema.optional(),
-				errors: z.array(z.string()).optional(),
-				warnings: z.array(z.string()).optional(),
-			}),
-		)
+		.input(pickBuildWorkflowInputSchema(context))
+		.output(pickBuildWorkflowOutputSchema(context))
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
@@ -549,6 +609,39 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const targetWorkflowId = binding.workflowId;
+			// Only the folder-enabled schema carries the field; the narrowing keeps the
+			// handler valid for both shapes without a cast.
+			const folderPath =
+				'folderPath' in input && typeof input.folderPath === 'string'
+					? input.folderPath
+					: undefined;
+			if (folderPath !== undefined && targetWorkflowId) {
+				// Placement is a create-time decision. Moving on update would silently
+				// relocate a workflow the user did not ask to move.
+				const remediation = createRemediation({
+					category: 'blocked',
+					shouldEdit: false,
+					reason: 'folder_placement_on_update',
+					guidance:
+						'`folderPath` only applies when creating a new workflow. Nothing was saved. Re-run without `folderPath` to update the workflow, and move it with `workspace(action="move-workflow-to-folder")` if the user asked for that.',
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'blocked',
+					stage: 'folder',
+					binding,
+					targetWorkflowId,
+					isSupportingWorkflow: input.isSupportingWorkflow,
+					remediation,
+					errorCount: 1,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: targetWorkflowId,
+					errors: [remediation.guidance],
+					remediation,
+				};
+			}
 			const permKey = targetWorkflowId ? 'updateWorkflow' : 'createWorkflow';
 			if (context.permissions?.[permKey] === 'blocked') {
 				const remediation = createRemediation({
@@ -589,7 +682,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						category: 'blocked',
 						shouldEdit: false,
 						reason: 'user_denied',
-						guidance: 'The user denied permission to edit this workflow.',
+						guidance:
+							'The user declined the save approval card — nothing was saved. Do not re-issue ' +
+							'the same save unprompted: acknowledge the denial, tell the user what remains ' +
+							'unsaved, and ask how they want to proceed.',
 					});
 					trackWorkflowSourceBuild(context, {
 						result: 'denied',
@@ -725,7 +821,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				binding = await saveWorkflowSourceFileBinding(context, { ...binding, sourceHash });
 			}
 
-			const { projectId, name } = input;
+			const { name } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
 			const buildContext = context.workflowBuildContext;
 			const {
@@ -1012,6 +1108,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
+				let droppedGroupCount = 0;
 				// Runs first: the passes below key off node ids, so they must be unique.
 				ensureUniqueNodeIds(json);
 				// Recovers the saved id of a surviving node whose source declared none — layered
@@ -1021,6 +1118,17 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 				await preserveExistingNodePositions(json, targetWorkflowId, context);
+				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
+				const droppedGroupWarnings = nodeGroupDroppedWarnings(
+					dropInvalidWorkflowJsonGroups(
+						json,
+						context.nodeTypesProvider
+							? makeGetNodeTypeForGrouping(context.nodeTypesProvider)
+							: null,
+					),
+				);
+				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
+				informational.push(...droppedGroupWarnings);
 
 				if (await hasLostAllSavedNodeIds(json, targetWorkflowId, context)) {
 					context.logger.debug('Build kept none of the saved node ids', {
@@ -1064,14 +1172,36 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					(n) => isInSetupScope(n.name) && hasPlaceholderDeep(n.parameters),
 				);
 				const createSuccessResponse = async (
-					saved: { id: string; versionId: string; checksum?: string },
+					saved: { id: string; versionId: string; checksum?: string; folder?: WorkflowFolderRef },
 					operation: 'create' | 'update',
 				) => {
-					const setupRequests = await analyzeWorkflow(context, saved.id, undefined, {
+					// The setup panel lists bound slots too (rendered as done), so its
+					// snapshot needs the settled requests the routing below must not see.
+					const setupItemsEmitter = isSetupPanelEnabled(context)
+						? context.setupItemsEmitter
+						: undefined;
+					const analyzedRequests = await analyzeWorkflow(context, saved.id, undefined, {
 						...(input.preferNewCredentials
 							? { preferNewCredentialTypes: input.preferNewCredentials }
 							: {}),
+						...(setupItemsEmitter ? { includeSettled: true } : {}),
 					});
+					const setupRequests = analyzedRequests.filter((request) => !!request.needsAction);
+					if (setupItemsEmitter) {
+						// Every saved iteration re-announces the checklist; the emitter
+						// drops unchanged snapshots. Best-effort: never fail a build over it.
+						try {
+							setupItemsEmitter.emit(
+								saved.id,
+								buildSetupItemsFromSetupRequests(saved.id, analyzedRequests),
+							);
+						} catch (error) {
+							context.logger.warn('Failed to emit setup-items snapshot for built workflow', {
+								workflowId: saved.id,
+								error: error instanceof Error ? error.message : String(error),
+							});
+						}
+					}
 					// Two independent filters over the same list: `isInSetupScope` drops nodes this
 					// build never touched, the skip partition drops cards the user declined. A node
 					// only re-arms the setup follow-up when it survives both.
@@ -1202,6 +1332,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						isSupportingWorkflow,
 						isAuxiliarySupportingWorkflow,
 						warningCount: informational.length,
+						droppedGroupCount,
 					});
 
 					return {
@@ -1210,6 +1341,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workflowId: saved.id,
 						workflowName: json.name || undefined,
 						workItemId: resolvedWorkItemId,
+						...(saved.folder ? { folder: saved.folder } : {}),
 						isSupportingWorkflow: isSupportingWorkflow || undefined,
 						triggerNodes,
 						verificationReadiness: outcome.verificationReadiness,
@@ -1231,6 +1363,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								? buildCredentialResolutionNote(
 										mockResult.resolvedCredentialsByNode,
 										heldForNewCredentialTypes,
+										{
+											n8nCreditsDepleted: await isN8nCreditsWalletDepleted(
+												context,
+												mockResult.resolvedCredentialsByNode,
+											),
+										},
 									)
 								: undefined,
 						referencedWorkflowIds:
@@ -1241,14 +1379,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 
 				if (targetWorkflowId) {
-					const updateOptions = projectId
-						? {
-								projectId,
-								...(binding.workflowChecksum ? { expectedChecksum: binding.workflowChecksum } : {}),
-							}
-						: binding.workflowChecksum
-							? { expectedChecksum: binding.workflowChecksum }
-							: undefined;
+					const updateOptions = binding.workflowChecksum
+						? { expectedChecksum: binding.workflowChecksum }
+						: undefined;
 					const updated = await context.workflowService.updateFromWorkflowJSON(
 						targetWorkflowId,
 						json,
@@ -1258,13 +1391,44 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 
 				const created = await context.workflowService.createFromWorkflowJSON(json, {
-					...(projectId ? { projectId } : {}),
 					markAsAiTemporary: true,
+					...(folderPath !== undefined ? { folderPath } : {}),
 				});
 				await recordSessionOwnedWorkflow(context, created.id);
 				return await createSuccessResponse(created, 'create');
 			} catch (error) {
 				const message = error instanceof Error ? error.message : 'Unknown error';
+
+				if (error instanceof FolderResolutionError) {
+					// Nothing was written. The source is fine, so the binding is left as is:
+					// the fix is a corrected `folderPath` or a question to the user, not an edit.
+					const failureText = formatFolderPlacementFailure(error.folderResolution);
+					const remediation = createRemediation({
+						category: 'blocked',
+						shouldEdit: false,
+						reason: `folder_${error.folderResolution.reason.replace(/-/g, '_')}`,
+						guidance: failureText,
+					});
+					trackWorkflowSourceBuild(context, {
+						result: 'failure',
+						stage: 'folder',
+						binding,
+						targetWorkflowId,
+						saveOperation: 'create',
+						isSupportingWorkflow,
+						isAuxiliarySupportingWorkflow,
+						remediation,
+						errorCount: 1,
+					});
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						workflowName: json.name || undefined,
+						workItemId: resolvedWorkItemId,
+						errors: [failureText],
+						remediation,
+					};
+				}
 
 				if (error instanceof WorkflowSaveConflictError) {
 					const remediation = createWorkflowModifiedExternallyRemediation();

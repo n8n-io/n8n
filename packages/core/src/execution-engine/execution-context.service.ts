@@ -4,7 +4,9 @@ import {
 	ICredentialContext,
 	IExecuteData,
 	IExecutionContext,
+	IN8NOAuthMetadata,
 	INodeExecutionData,
+	N8NOAuthMetadataSchema,
 	OAuthResourceGrant,
 	PlaintextExecutionContext,
 	toCredentialContext,
@@ -99,20 +101,64 @@ export class ExecutionContextService {
 		);
 	}
 
+	async maybeBindExecutionId(
+		context: IExecutionContext,
+		executionId: string | undefined,
+		{ allowInherit = false }: { allowInherit?: boolean } = {},
+	): Promise<IExecutionContext> {
+		if (!executionId) {
+			return context;
+		}
+		const decryptedContext = await this.decryptExecutionContext(context);
+		if (decryptedContext.credentials) {
+			if (decryptedContext.credentials.metadata) {
+				const metadata = N8NOAuthMetadataSchema.safeParse(decryptedContext.credentials.metadata);
+				// Only sealed carriers (a resolved subject) need execution binding; a
+				// non-sealed n8n-oauth carrier has nothing that reads its executionPath.
+				if (metadata.success && metadata.data.subject) {
+					const executionPath = metadata.data.executionPath ?? [];
+					// Seed an empty path at mint, or extend it only for a legitimate re-run of
+					// this carrier's own execution data — an inherited child (sub-workflow /
+					// error workflow) or a retry. A non-empty path that lacks this id on a
+					// non-inherit bind means the carrier was attached to an execution it was
+					// not minted for — leave it, so credential resolution rejects it.
+					const mayBind =
+						!executionPath.includes(executionId) && (executionPath.length === 0 || allowInherit);
+					if (mayBind) {
+						metadata.data.executionPath = [...executionPath, executionId];
+						decryptedContext.credentials.metadata = metadata.data;
+						return await this.encryptExecutionContext(decryptedContext);
+					}
+				}
+			}
+		}
+		return context;
+	}
+
 	/**
-	 * Seals the token a trigger authenticated its caller with, plus the grant it was
-	 * accepted under, so the run can re-verify itself for as long as it lasts. See
-	 * {@link OAuthResourceGrant}.
+	 * Seals the identity a trigger authenticated its caller with. The token stays in
+	 * `identity` as evidence; `grant` lets the run re-verify that token after the
+	 * protected resource stops resolving (see {@link OAuthResourceGrant}), and `subject`
+	 * seals the resolved n8n user so a bound run resolves without re-verifying the token.
 	 */
 	async buildTriggerIdentityCredentials(
 		token: string,
 		resource: string,
 		grant?: OAuthResourceGrant,
+		subject?: string,
 	): Promise<string> {
+		const metadata: IN8NOAuthMetadata = {
+			source: 'n8n-oauth',
+			resource,
+			establishedAt: Date.now(),
+			executionPath: [],
+			...(grant ? { grant } : {}),
+			...(subject ? { subject } : {}),
+		};
 		const payload: ICredentialContext = {
 			version: 1,
 			identity: token,
-			metadata: { source: 'n8n-oauth', resource, ...(grant ? { grant } : {}) },
+			metadata,
 		};
 		return await this.cipher.encryptV2(payload);
 	}

@@ -196,7 +196,14 @@ export interface ToolCallExecutorDeps {
  * emission are owned by the caller.
  */
 export class ToolCallExecutor {
+	private offloadedToolResults = false;
+
 	constructor(private readonly deps: ToolCallExecutorDeps) {}
+
+	/** Whether any tool result was offloaded to the workspace filesystem during this runtime's lifetime. */
+	get hasOffloadedToolResults(): boolean {
+		return this.offloadedToolResults;
+	}
 
 	private get telemetry(): RuntimeTelemetry {
 		return this.deps.telemetry;
@@ -1089,6 +1096,9 @@ export class ToolCallExecutor {
 			filesystem,
 			runId: params.runId,
 			toolCallId: params.toolCallId,
+			onOffloaded: () => {
+				this.offloadedToolResults = true;
+			},
 			...(params.abortSignal ? { abortSignal: params.abortSignal } : {}),
 		};
 	}

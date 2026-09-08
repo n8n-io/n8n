@@ -1,9 +1,11 @@
 import { type Router } from 'vue-router';
 import {
+	assertUniqueRouteNames,
 	modalRegistry,
 	registerResource,
 	pushHandlerRegistry,
 	commandRegistry,
+	parameterInputRegistry,
 } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 import { modules } from '@/app/modules.manifest';
@@ -100,12 +102,16 @@ export const registerModuleModals = () => {
 };
 
 /**
- * Initialize module push handlers, done in init.ts. Handlers are consulted by
- * `usePushConnection` before its built-in switch.
+ * Initialize module push handlers, done in init.ts. `useModulePushDispatcher`
+ * dispatches to them at app scope.
+ *
+ * Only an active module registers: a claimed type also suppresses the shell's
+ * built-in handler for it, so an inactive module would silently kill it.
  */
 export const registerModulePushHandlers = () => {
+	const settingsStore = useSettingsStore();
 	modules.forEach((module) => {
-		if (module.pushHandlers) {
+		if (module.pushHandlers && settingsStore.isModuleActive(module.id)) {
 			pushHandlerRegistry.registerAll(module.pushHandlers);
 		}
 	});
@@ -123,9 +129,28 @@ export const registerModuleCommands = () => {
 };
 
 /**
+ * Initialize module parameter inputs, done in init.ts. `ParameterInput` resolves
+ * them by `parameter.type` at render time.
+ *
+ * Deliberately NOT gated on `isModuleActive`: a parameter input is a render
+ * primitive, not a feature. A gated renderer leaves a parameter with nothing to
+ * render it, which is a broken field rather than a hidden feature. Availability
+ * is enforced backend-side.
+ */
+export const registerModuleParameterInputs = () => {
+	modules.forEach((module) => {
+		module.parameterInputs?.forEach((contribution) => {
+			parameterInputRegistry.register(contribution);
+		});
+	});
+};
+
+/**
  * Initialize module routes, done in main.ts
  */
 export const registerModuleRoutes = (router: Router) => {
+	assertUniqueRouteNames(modules, router);
+
 	modules.forEach((module) => {
 		module.routes?.forEach((route) => {
 			// Prepare the enhanced route with module metadata and custom middleware that checks module availability

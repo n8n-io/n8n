@@ -85,9 +85,9 @@ describe('useAiGateway', () => {
 			await fetchWallet();
 			expect(balance.value).toBe(5);
 
-			// Second call fails
+			// Second call fails (force past the TTL cache so it actually hits the API)
 			mockGetGatewayWallet.mockRejectedValueOnce(new Error('Network error'));
-			await fetchWallet();
+			await fetchWallet({ force: true });
 
 			// Values should remain from first successful call
 			expect(balance.value).toBe(5);

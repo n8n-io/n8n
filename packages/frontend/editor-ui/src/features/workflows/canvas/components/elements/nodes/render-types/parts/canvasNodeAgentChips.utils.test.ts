@@ -33,12 +33,26 @@ describe('buildAgentCardChips', () => {
 		expect(chips.some((c) => c.key.startsWith('task:'))).toBe(false);
 	});
 
-	it('humanizes raw tool names like the edit page', () => {
+	it('humanizes node tool names while tracking their runtime-safe names', () => {
 		const summary = makeSummary({
-			tools: [{ type: 'node', name: 'send_telegram_message' }],
+			tools: [{ type: 'node', name: 'Send Telegram Message' }],
 		});
 
-		expect(buildAgentCardChips(summary)[0].label).toBe('Send telegram message');
+		expect(buildAgentCardChips(summary)[0]).toMatchObject({
+			label: 'Send telegram message',
+			activityKeys: ['tool:Send_Telegram_Message'],
+		});
+	});
+
+	it('tracks workflow tools by their runtime-safe name while preserving the display label', () => {
+		const summary = makeSummary({
+			tools: [{ type: 'workflow', name: 'Lookup Orders & Returns' }],
+		});
+
+		expect(buildAgentCardChips(summary)[0]).toMatchObject({
+			label: 'Lookup orders & returns',
+			activityKeys: ['tool:lookup-orders-returns'],
+		});
 	});
 
 	it('orders MCP servers between tools and skills, with the MCP icon', () => {
@@ -116,7 +130,7 @@ describe('buildAgentCardChips', () => {
 			tools: [
 				{
 					type: 'node',
-					name: 'send_message',
+					name: 'Send Message',
 					nodeType: 'n8n-nodes-base.telegramTool',
 					nodeTypeVersion: 2,
 				},
@@ -136,13 +150,13 @@ describe('buildAgentCardChips', () => {
 			tools: [
 				{
 					type: 'node',
-					name: 'send_message',
+					name: 'Send Message',
 					nodeType: 'n8n-nodes-base.telegramTool',
 					nodeTypeVersion: 1,
 				},
 				{
 					type: 'node',
-					name: 'get_chat',
+					name: 'Get Chat',
 					nodeType: 'n8n-nodes-base.telegramTool',
 					nodeTypeVersion: 1,
 				},
@@ -155,6 +169,21 @@ describe('buildAgentCardChips', () => {
 			label: '2 Telegram',
 			nodeType: 'n8n-nodes-base.telegramTool',
 			nodeTypeVersion: 1,
+			activityKeys: ['tool:Send_Message', 'tool:Get_Chat'],
 		});
+	});
+
+	it('uses skill id and name activity keys while leaving MCP inactive', () => {
+		const summary = makeSummary({
+			mcpServers: [{ name: 'notion-mcp' }],
+			skills: [{ id: 'skill-1', name: 'Research' }],
+		});
+
+		const chips = buildAgentCardChips(summary);
+		expect(chips.find((chip) => chip.key === 'mcp:notion-mcp')?.activityKeys).toEqual([]);
+		expect(chips.find((chip) => chip.key === 'skill:skill-1')?.activityKeys).toEqual([
+			'skill:id:skill-1',
+			'skill:name:Research',
+		]);
 	});
 });

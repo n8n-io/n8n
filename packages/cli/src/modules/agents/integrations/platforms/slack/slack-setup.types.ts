@@ -1,6 +1,10 @@
 import { isRecord } from '@n8n/utils/is-record';
 
 const SLACK_APP_SETUP_CACHE_PREFIX = 'agents:slack-app-setup:';
+const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
+
+export const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
+export const SLACK_CREDENTIAL_TYPE = 'slackApi';
 
 export const SLACK_BOT_SCOPES = [
 	'app_mentions:read',
@@ -40,6 +44,17 @@ export interface SlackAppSetupSession {
 
 export function slackSetupCacheKey(state: string): string {
 	return `${SLACK_APP_SETUP_CACHE_PREFIX}${state}`;
+}
+
+/** Both Slack setup services read and write this entry, so the key must stay identical. */
+export function managedSlackAppCacheKey(options: {
+	projectId: string;
+	agentId: string;
+	managerCredentialId: string;
+	workspaceId: string;
+	userId: string;
+}): string {
+	return `${SLACK_MANAGED_APP_CACHE_PREFIX}${options.projectId}:${options.agentId}:${options.managerCredentialId}:${options.workspaceId}:${options.userId}`;
 }
 
 export function childRecord(

@@ -25,12 +25,19 @@ import type {
 	ReplyExpectation,
 } from './integration-tools';
 
-/** Per-connection context handed to AgentChatIntegration hooks. */
-export interface AgentChatIntegrationContext {
+/**
+ * Channel identity, without the decrypted credential. Enough for checks that
+ * only read our own state — see {@link AgentChatIntegration.assertStartupPreconditions}.
+ */
+export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;
-	integration: AgentIntegrationConfig;
 	credentialId: string;
+}
+
+/** Per-connection context handed to AgentChatIntegration hooks. */
+export interface AgentChatIntegrationContext extends AgentChannelPreconditionContext {
+	integration: AgentIntegrationConfig;
 	credential: Record<string, unknown>;
 	/** Whether this connection may receive events from the external platform. */
 	ingressEnabled: boolean;
@@ -266,8 +273,14 @@ export abstract class AgentChatIntegration {
 	 * mains and either duplicate or get lost. Webhook-based platforms return
 	 * false so any main can answer inbound webhooks (which the load balancer
 	 * routes round-robin across all mains).
+	 *
+	 * `ingressEnabled` is passed because exclusivity can depend on it: an outbound
+	 * connection that receives nothing may well be safe on every main even when the
+	 * ingress one is not. Only the integration knows — it is the same input its
+	 * `createAdapter` uses to pick a transport — so the answer belongs here rather
+	 * than inferred by the caller.
 	 */
-	requiresLeader(): boolean {
+	requiresLeader(_options: { ingressEnabled: boolean } = { ingressEnabled: true }): boolean {
 		return false;
 	}
 
@@ -313,6 +326,19 @@ export abstract class AgentChatIntegration {
 	 * credential isn't already claimed elsewhere. Throwing aborts the connect.
 	 */
 	onBeforeConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
+
+	/**
+	 * The deterministic part of {@link onBeforeConnect}: a check that reads only
+	 * our own state, so it always answers the same way and never depends on the
+	 * platform being reachable.
+	 *
+	 * Publishing runs this as a preflight, before it writes anything, so a
+	 * conflict a user has to resolve fails the publish outright instead of
+	 * leaving an agent published with a channel that never started. Anything
+	 * that calls the platform belongs in `onBeforeConnect` only — a platform
+	 * outage is transient, and must never block a publish.
+	 */
+	assertStartupPreconditions?(ctx: AgentChannelPreconditionContext): Promise<void>;
 
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */
 	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
@@ -380,6 +406,25 @@ export abstract class AgentChatIntegration {
 		fromSdk: (thread: Thread<unknown, unknown>) => string;
 		toSdk: (threadId: string) => string;
 	};
+
+	/**
+	 * Thread id anchored at a message, for platforms where a top-level message
+	 * starts its own thread (e.g. Slack). Outbound sends and inbound channel
+	 * posts travel through a channel-level pseudo-thread (empty thread_ts);
+	 * replies arrive in the thread anchored at the message's own id, so
+	 * subscription and session context must attach there.
+	 *
+	 * Inbound callers pass `{ inbound: true }` and the message `raw` payload.
+	 * Slack uses that to leave conversation-scoped DMs and group DMs
+	 * (`slack:D123:`, `slack:G…:` with `channel_type: mpim`) un-rewritten so
+	 * Agent-view chat stays one session. Private-channel inbound still
+	 * re-anchors. Return undefined when the message is already in an anchored
+	 * thread, or when inbound re-anchoring should not apply.
+	 */
+	messageThreadId?(
+		message: { id: string; threadId: string; raw?: unknown },
+		context?: { inbound?: boolean },
+	): string | undefined;
 
 	/**
 	 * Optional per-user authorisation check called on every inbound mention,

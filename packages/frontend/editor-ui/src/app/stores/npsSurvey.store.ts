@@ -33,7 +33,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	}
 
 	function setShouldShowNpsSurvey(settings: IUserSettings) {
-		if (!settingsStore.isTelemetryEnabled) {
+		if (!settingsStore.isTelemetryEnabled || settingsStore.isCanvasOnly) {
 			shouldShowNpsSurveyNext.value = false;
 			return;
 		}

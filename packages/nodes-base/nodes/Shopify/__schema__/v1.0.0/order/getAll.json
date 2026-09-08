@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "admin_graphql_api_id": {
+            "type": "string"
+        },
         "created_at": {
             "type": "string"
         },
@@ -171,6 +174,9 @@
                                         }
                                     }
                                 },
+                                "rate": {
+                                    "type": "number"
+                                },
                                 "title": {
                                     "type": "string"
                                 }
@@ -222,6 +228,9 @@
                 }
             }
         },
+        "name": {
+            "type": "string"
+        },
         "order_number": {
             "type": "integer"
         },
@@ -229,5 +238,5 @@
             "type": "string"
         }
     },
-    "version": 7
+    "version": 8
 }

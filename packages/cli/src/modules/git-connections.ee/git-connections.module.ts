@@ -16,6 +16,9 @@ export class GitConnectionsModule implements ModuleInterface {
 
 	async entities() {
 		const { GitConnection } = await import('./database/entities/git-connection.entity.js');
-		return [GitConnection];
+		const { GitConnectionProject } = await import(
+			'./database/entities/git-connection-project.entity.js'
+		);
+		return [GitConnection, GitConnectionProject];
 	}
 }

@@ -1,4 +1,8 @@
-import { type APPROVAL_TOOL_NAME, type N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import {
+	type APPROVAL_TOOL_NAME,
+	type N8N_CHAT_ACTION_TOOL_NAME,
+	type WAIT_TOOL_NAME,
+} from '@n8n/api-types';
 
 import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
 
@@ -89,6 +93,16 @@ export type InteractivePayload =
 	  })
 	| (InteractivePayloadBase & {
 			toolName: typeof N8N_CHAT_ACTION_TOOL_NAME;
+			input: N8nChatInteractionInput;
+			resolvedValue?: N8nChatResumeValue;
+	  })
+	/**
+	 * A workflow tool parked on a Wait node. Same card contract as a chat card —
+	 * it reuses that renderer — but it is not a question, so typing must not
+	 * cancel and steer it (see `AgentChatPanel`).
+	 */
+	| (InteractivePayloadBase & {
+			toolName: typeof WAIT_TOOL_NAME;
 			input: N8nChatInteractionInput;
 			resolvedValue?: N8nChatResumeValue;
 	  });

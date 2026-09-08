@@ -992,6 +992,15 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('hasSuspendedRun', () => {
+		it.each([true, false])('delegates to the repository and returns %s', async (expected) => {
+			agentExecutionRepository.hasSuspendedRun.mockResolvedValue(expected);
+
+			await expect(service.hasSuspendedRun('thread-1')).resolves.toBe(expected);
+			expect(agentExecutionRepository.hasSuspendedRun).toHaveBeenCalledWith('thread-1');
+		});
+	});
+
 	describe('deleteThread', () => {
 		it('deletes thread memory, attachments, and the execution thread', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({

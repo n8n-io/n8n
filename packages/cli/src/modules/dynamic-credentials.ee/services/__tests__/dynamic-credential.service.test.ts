@@ -693,13 +693,18 @@ describe('DynamicCredentialService', () => {
 					apiKey: 'dynamic-key', // From dynamic (overridden)
 					refreshToken: 'dynamic-refresh-token', // From dynamic (new field)
 				});
-				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-					configuration: {
-						prefix: 'test',
+				expect(mockResolver.getSecret).toHaveBeenCalledWith(
+					'cred-123',
+					credentialContext,
+					{
+						resolverId: resolverEntity.id,
+						resolverName: resolverEntity.type,
+						configuration: {
+							prefix: 'test',
+						},
 					},
-				});
+					undefined,
+				);
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Successfully resolved dynamic credentials',
 					expect.objectContaining({
@@ -738,11 +743,16 @@ describe('DynamicCredentialService', () => {
 					undefined,
 				);
 
-				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-					configuration: customConfig,
-				});
+				expect(mockResolver.getSecret).toHaveBeenCalledWith(
+					'cred-123',
+					credentialContext,
+					{
+						resolverId: resolverEntity.id,
+						resolverName: resolverEntity.type,
+						configuration: customConfig,
+					},
+					undefined,
+				);
 			});
 
 			it('credential context with metadata is properly decrypted', async () => {
@@ -777,6 +787,7 @@ describe('DynamicCredentialService', () => {
 					'cred-123',
 					credentialContext,
 					expect.any(Object),
+					undefined,
 				);
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Successfully resolved dynamic credentials',
@@ -854,11 +865,16 @@ describe('DynamicCredentialService', () => {
 					undefined,
 				);
 
-				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-					configuration: {},
-				});
+				expect(mockResolver.getSecret).toHaveBeenCalledWith(
+					'cred-123',
+					credentialContext,
+					{
+						resolverId: resolverEntity.id,
+						resolverName: resolverEntity.type,
+						configuration: {},
+					},
+					undefined,
+				);
 			});
 		});
 
@@ -1022,14 +1038,19 @@ describe('DynamicCredentialService', () => {
 				);
 
 				// Verify the resolver was called with resolved config
-				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-					configuration: {
-						apiKey: 'secret-api-key-123', // $vars expression resolved
-						prefix: 'cred',
+				expect(mockResolver.getSecret).toHaveBeenCalledWith(
+					'cred-123',
+					credentialContext,
+					{
+						resolverId: resolverEntity.id,
+						resolverName: resolverEntity.type,
+						configuration: {
+							apiKey: 'secret-api-key-123', // $vars expression resolved
+							prefix: 'cred',
+						},
 					},
-				});
+					undefined,
+				);
 
 				// Cleanup
 				delete (global as any).testVars;
@@ -1115,16 +1136,21 @@ describe('DynamicCredentialService', () => {
 				);
 
 				// Verify only global expressions were resolved, runtime expressions remain as-is
-				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-					configuration: {
-						prefix: '={{$execution.id}}', // NOT resolved (runtime data)
-						envValue: 'env-value', // Resolved (global data)
-						mode: '={{$execution.mode}}', // NOT resolved (runtime data)
-						staticValue: 'no-expression',
+				expect(mockResolver.getSecret).toHaveBeenCalledWith(
+					'cred-123',
+					credentialContext,
+					{
+						resolverId: resolverEntity.id,
+						resolverName: resolverEntity.type,
+						configuration: {
+							prefix: '={{$execution.id}}', // NOT resolved (runtime data)
+							envValue: 'env-value', // Resolved (global data)
+							mode: '={{$execution.mode}}', // NOT resolved (runtime data)
+							staticValue: 'no-expression',
+						},
 					},
-				});
+					undefined,
+				);
 
 				// Cleanup
 				delete (global as any).testVars;
@@ -1159,14 +1185,19 @@ describe('DynamicCredentialService', () => {
 				);
 
 				// Verify config passed as-is (expression not resolved)
-				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-					configuration: {
-						prefix: 'cred',
-						executionId: '={{$execution.id}}', // Expression NOT resolved
+				expect(mockResolver.getSecret).toHaveBeenCalledWith(
+					'cred-123',
+					credentialContext,
+					{
+						resolverId: resolverEntity.id,
+						resolverName: resolverEntity.type,
+						configuration: {
+							prefix: 'cred',
+							executionId: '={{$execution.id}}', // Expression NOT resolved
+						},
 					},
-				});
+					undefined,
+				);
 			});
 		});
 

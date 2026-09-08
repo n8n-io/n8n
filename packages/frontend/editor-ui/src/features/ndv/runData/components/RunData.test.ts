@@ -1,6 +1,7 @@
 import { reactive, computed } from 'vue';
 import {
 	createTestNode,
+	createTestWorkflow,
 	createTestWorkflowObject,
 	createTestWorkflowExecutionResponse,
 	defaultNodeDescriptions,
@@ -18,7 +19,7 @@ import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import {
 	createRunExecutionData,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
@@ -1216,6 +1217,136 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('run data ownership', () => {
+		const erroringRun: ITaskData = {
+			startTime: Date.now(),
+			executionIndex: 0,
+			executionTime: 1,
+			data: { main: [[{ json: { test: 'data' } }]] },
+			source: [null],
+			error: {
+				level: 'error',
+				message: 'Test error message',
+				node: {
+					name: 'Test Node',
+					type: SET_NODE_TYPE,
+					typeVersion: 3,
+					position: [0, 0],
+					id: 'executed-node',
+					parameters: {},
+				},
+				timestamp: Date.now(),
+				functionality: 'regular',
+				description: null,
+				context: {},
+				cause: undefined,
+				messages: [],
+				name: 'NodeOperationError',
+			} as unknown as ITaskData['error'],
+		};
+
+		it('shows the error for the node that recorded it', async () => {
+			const { getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				nodeId: 'executed-node',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				runs: [erroringRun],
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('node-error-view')).toBeInTheDocument();
+			});
+		});
+
+		it('does not show the error on a different node that reuses the name', async () => {
+			const { queryByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				// Same name as the executed node, but a node the execution never ran.
+				nodeId: 'added-after-the-run',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				runs: [erroringRun],
+			});
+
+			await waitFor(() => {
+				expect(queryByTestId('node-error-view')).not.toBeInTheDocument();
+			});
+		});
+
+		it('falls back to the name when the execution recorded no nodes', async () => {
+			const { getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				nodeId: 'any-id',
+				// No `executionNodes`: nothing to resolve an id against.
+				runs: [erroringRun],
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('node-error-view')).toBeInTheDocument();
+			});
+		});
+
+		it('falls back to the name for a supplied historical execution', async () => {
+			const { getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				nodeId: 'added-after-the-run',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				workflowExecutionProp: createRunExecutionData({
+					resultData: { runData: { 'Test Node': [erroringRun] } },
+				}),
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('node-error-view')).toBeInTheDocument();
+			});
+		});
+
+		const binaryItems: INodeExecutionData[] = [
+			{
+				json: {},
+				binary: {
+					data: {
+						fileName: 'test.pdf',
+						fileType: 'pdf',
+						mimeType: 'application/pdf',
+						data: '',
+					},
+				},
+			},
+		];
+
+		it('shows the binary data for the node that recorded it', async () => {
+			const { getByTestId } = render({
+				displayMode: 'binary',
+				paneType: 'output',
+				nodeId: 'executed-node',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				defaultRunItems: binaryItems,
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+			});
+		});
+
+		it('does not show the binary data on a different node that reuses the name', async () => {
+			const { queryByTestId } = render({
+				displayMode: 'binary',
+				paneType: 'output',
+				nodeId: 'added-after-the-run',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				defaultRunItems: binaryItems,
+			});
+
+			await waitFor(() => {
+				expect(queryByTestId('ndv-binary-data_0')).not.toBeInTheDocument();
+			});
+		});
+	});
+
 	describe('schema view with mixed execution states', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
@@ -1565,6 +1696,23 @@ describe('RunData', () => {
 			expect(outputPane.queryByText('Input pane hint')).not.toBeInTheDocument();
 		});
 
+		it('should render every hint inside the hints container, which caps their height', () => {
+			const { getByTestId, getAllByTestId } = render({
+				displayMode: 'table',
+				nodeTypeHints: [
+					{ message: 'First hint', location: 'outputPane' },
+					{ message: 'Second hint', location: 'outputPane' },
+				],
+				paneType: 'output',
+			});
+
+			const hintsContainer = getByTestId('run-data-hints');
+
+			expect(within(hintsContainer).getAllByTestId('node-hint')).toHaveLength(2);
+			expect(getAllByTestId('node-hint')).toHaveLength(2);
+			expect(hintsContainer).toHaveClass('hints');
+		});
+
 		it('should hide an afterExecution hint before the node has run', () => {
 			const { queryByText } = render({
 				displayMode: 'table',
@@ -1605,6 +1753,8 @@ describe('RunData', () => {
 		nodeTypeHints,
 		withRunData = true,
 		workflowExecutionProp,
+		nodeId,
+		executionNodes,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1621,6 +1771,10 @@ describe('RunData', () => {
 		withRunData?: boolean;
 		/** Supplied historical execution data, as standalone hosts pass it. */
 		workflowExecutionProp?: IRunExecutionData;
+		/** Id of the node under test, to make it differ from the executed one. */
+		nodeId?: string;
+		/** Nodes the execution recorded running. Omit for an execution with no snapshot. */
+		executionNodes?: INodeUi[];
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1690,6 +1844,7 @@ describe('RunData', () => {
 			createTestWorkflowExecutionResponse({
 				mode: 'trigger',
 				status: executionStatus ?? 'success',
+				...(executionNodes ? { workflowData: createTestWorkflow({ nodes: executionNodes }) } : {}),
 				data: createRunExecutionData({
 					resultData: {
 						runData: withRunData ? { 'Test Node': runs ?? [defaultRun] } : {},
@@ -1713,9 +1868,6 @@ describe('RunData', () => {
 
 		return createComponentRenderer(RunData, {
 			props: {
-				node: createTestNode({
-					name: 'Test Node',
-				}),
 				workflowObject: createTestWorkflowObject({
 					id: workflowId,
 					nodes: workflowNodes,
@@ -1764,7 +1916,7 @@ describe('RunData', () => {
 		})({
 			props: {
 				node: createTestNode({
-					id: '1',
+					id: nodeId ?? '1',
 					name: 'Test Node',
 					type: SET_NODE_TYPE,
 					position: [0, 0],

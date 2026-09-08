@@ -357,6 +357,11 @@ export class AgentBrowserAdapter implements Adapter {
 		const ref = this.resolveTarget(target);
 		const baseCmd = options?.clear ? 'fill' : 'type';
 
+		// TODO: `mode: 'paste'` is accepted but not honoured here — this adapter still
+		// types key by key, so code editors are still corrupted. Implementing it needs an
+		// atomic insert that replaces existing content (the CLI's `fill` does not, on a
+		// contenteditable) and that reports failure (the `eval` channel does not).
+
 		// agent-browser's CLI scans all raw args for "--help"/"-h" before parsing,
 		// so any arg starting with "-" would be misinterpreted as a flag.
 		// Peel each leading "-" into a separate type call so no single arg starts with "-".

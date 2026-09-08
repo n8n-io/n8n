@@ -2,8 +2,8 @@ import type { Project } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { INode } from 'n8n-workflow';
-import { displayParameter, isExpression, UserError } from 'n8n-workflow';
+import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import { getActiveCredentialTypes, UserError } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NodeTypes } from '@/node-types';
@@ -197,41 +197,15 @@ export class CredentialsPermissionChecker {
 	 * in which case all credentials should be checked as a safe fallback.
 	 */
 	private getActiveCredentialTypes(node: INode): Set<string> | null {
+		let nodeTypeDescription: INodeTypeDescription | null = null;
 		try {
-			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			const activeTypes = new Set<string>();
-
-			// Check credentials defined in the node type description with display options
-			for (const credDef of nodeType.description.credentials ?? []) {
-				if (displayParameter(node.parameters, credDef, node, nodeType.description)) {
-					activeTypes.add(credDef.name);
-				}
-			}
-
-			// For nodes using predefined credential type (e.g., HTTP Request node),
-			// the active credential is specified by the nodeCredentialType parameter
-			const { nodeCredentialType } = node.parameters;
-			if (typeof nodeCredentialType === 'string' && nodeCredentialType) {
-				// An expression only resolves to its real type at execution time, so the
-				// static filter can't know which credential it activates. Check all
-				// referenced credentials rather than trust the unresolved literal.
-				if (isExpression(nodeCredentialType)) return null;
-				activeTypes.add(nodeCredentialType);
-			}
-
-			// For nodes using generic credential types (e.g., HTTP Request with
-			// authentication=genericCredentialType), the active credential type is
-			// specified by the genericAuthType parameter
-			const { genericAuthType } = node.parameters;
-			if (typeof genericAuthType === 'string' && genericAuthType) {
-				if (isExpression(genericAuthType)) return null;
-				activeTypes.add(genericAuthType);
-			}
-
-			return activeTypes;
+			nodeTypeDescription = this.nodeTypes.getByNameAndVersion(
+				node.type,
+				node.typeVersion,
+			).description;
 		} catch {
 			// If we can't resolve the node type, fall back to checking all credentials
-			return null;
 		}
+		return getActiveCredentialTypes(node, nodeTypeDescription);
 	}
 }

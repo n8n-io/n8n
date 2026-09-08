@@ -22,7 +22,13 @@ export function throwIfDomainNotAllowed(
 	configOrUrl: AxiosRequestConfig | string,
 	allowedDomains?: string,
 ): void {
-	const url = typeof configOrUrl === 'string' ? configOrUrl : axios.getUri(configOrUrl);
+	// Resolve the bare target rather than `axios.getUri()`, which also serializes
+	// `config.params` onto the string. The allowlist check only needs the hostname,
+	// and this URL is what the thrown message embeds.
+	const url =
+		typeof configOrUrl === 'string'
+			? configOrUrl
+			: (buildTargetUrl(configOrUrl.url, configOrUrl.baseURL) ?? configOrUrl.url ?? '');
 	assertUrlAllowed({ url, allowedDomains });
 }
 

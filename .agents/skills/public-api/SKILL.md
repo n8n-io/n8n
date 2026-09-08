@@ -43,6 +43,11 @@ add to it.
 
 - List endpoints: cursor-based pagination (internal API uses both cursor- and
   page-based — don't copy an internal endpoint's model).
+- Pagination args are always `offset` and `limit` — on service methods, handler
+  calls, and repository methods you add. Never `skip`/`take` (TypeORM names).
+  Translate to `skip`/`take` only inside a repository, at the TypeORM `find`
+  call. The public query string is still `cursor` + `limit`; `offset` is the
+  decoded cursor field passed into the service, never a client-facing param.
 - Updates: full-object `PUT`, not `PATCH`. A successful `GET` body should be
   acceptable as a `PUT` body for the same resource (round-trip), aside from
   server-managed/immutable fields.
@@ -127,17 +132,29 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
   on `@ApiResponse` stripping to hide fields.
 - Treat the output DTO as an allowlist. Re-check nested relations, ownership
   fields, tokens, and encrypted values.
-- Make input DTOs strict so unknown/partial fields aren't silently accepted.
+- An output DTO restricts which fields you return, not which values they may hold.
+  The registry parses the handler's return value against it, so a value the schema
+  rejects becomes a `500`. Keep the schema loose enough for anything an existing
+  row may contain.
+- Build the response from the relations the route loaded, not from the entity type.
+  TypeORM relations are opt-in, so two routes over the same entity can return
+  different shapes.
+- Make input DTOs strict so unknown/partial fields aren't silently accepted:
+  `Z.class(shape, { strict: true })`.
 - Secrets: never return a real secret; use the resource's sentinel/placeholder
   (or omit). See [Updates and write-only secrets](reference.md#updates-and-write-only-secrets).
 
 ## List endpoints (cursor pagination)
 
-Copy the cursor flow from `tags.public.controller.ts`. Use `publicApiPaginationSchema`
-plus `decodeCursor` / `encodeNextCursor` from the shared pagination service; the
+Copy the cursor flow from `tags.public.controller.ts`. The input DTO takes
+`limit: publicApiPaginationSchema.limit` plus `cursor: z.string().optional()` —
+pick `limit` off the schema, never spread the whole `publicApiPaginationSchema`
+(it also exports `offset`, which must never be a Public API query param). Use
+`decodeCursor` / `encodeNextCursor` from the shared pagination service; the
 cursor is opaque; return `{ data, nextCursor }` (never a bare array) with
 `nextCursor: null` on the last page; an invalid cursor is a `400`. Preserve an
-existing endpoint's pagination as-is. Detail:
+existing endpoint's cursor semantics as-is — but an `offset` param is a
+defect to remove, not a contract to preserve. Detail:
 [List endpoints and cursor pagination](reference.md#list-endpoints-and-cursor-pagination).
 
 ## Wiring checklist
@@ -177,3 +194,5 @@ existing tests.
 - [Errors](reference.md#errors)
 - [Testing matrix](reference.md#testing-matrix)
 - [Migrating legacy EOV endpoints](reference.md#migrating-legacy-eov-endpoints)
+- [Verifying a migration](reference.md#verifying-a-migration)
+- [CI and merging](reference.md#ci-and-merging)

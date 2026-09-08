@@ -19,10 +19,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
-import type { WorkflowReviewStatus } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+import { INSTANCE_AI_NEW_VIEW } from '@/features/ai/instanceAi/constants';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -1273,66 +1274,6 @@ describe('WorkflowCard', () => {
 		expect(actions).not.toHaveTextContent('Duplicate');
 	});
 
-	describe('review badge', () => {
-		const cardStatus = (
-			overrides: Partial<WorkflowReviewStatus['summary']> = {},
-			viewerCanOpen = false,
-		): WorkflowReviewStatus => ({
-			summary: {
-				id: 'req-1',
-				state: 'open',
-				decision: 'pending',
-				workflowVersionId: 'ver-1',
-				createdAt: '2026-07-20T10:00:00.000Z',
-				updatedAt: '2026-07-20T10:00:00.000Z',
-				...overrides,
-			},
-			viewerCanOpen,
-		});
-
-		const seedCardStatus = (status: WorkflowReviewStatus | null) => {
-			const reviewStatusStore = mockedStore(useWorkflowReviewStatusStore);
-			reviewStatusStore.reviewStatus = vi.fn().mockReturnValue(status);
-			return reviewStatusStore;
-		};
-
-		it('renders no badge while the card status is unknown or null', () => {
-			seedCardStatus(null);
-
-			const { queryByTestId } = renderComponent({ props: { data: createWorkflow() } });
-
-			expect(queryByTestId('workflow-review-status-badge')).not.toBeInTheDocument();
-		});
-
-		it.each([
-			{ decision: 'pending' as const, label: 'Waiting for review' },
-			{ decision: 'changes_requested' as const, label: 'Changes requested' },
-		])('shows the open review as "$label" with the status dot', ({ decision, label }) => {
-			const data = createWorkflow();
-			const store = seedCardStatus(cardStatus({ decision }));
-
-			const { getByTestId } = renderComponent({ props: { data } });
-
-			expect(store.reviewStatus).toHaveBeenCalledWith(data.id);
-			expect(getByTestId('workflow-review-status-badge')).toHaveTextContent(label);
-			expect(getByTestId('workflow-review-request-status-dot')).toBeInTheDocument();
-		});
-
-		// Link/href behavior is covered by WorkflowReviewStatusBadge.test.ts with a
-		// real router; the global RouterLink stub here renders nothing, so this
-		// clicks the unlinked badge variant.
-		it('does not open the workflow when the badge area is clicked', async () => {
-			const data = createWorkflow();
-			seedCardStatus(cardStatus({}, false));
-
-			const { getByTestId } = renderComponent({ props: { data } });
-			await userEvent.click(getByTestId('workflow-review-status-badge'));
-
-			expect(router.push).not.toHaveBeenCalled();
-			expect(windowOpenSpy).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('Unpublish functionality', () => {
 		beforeEach(() => {
 			// Enable draft/publish feature by default for unpublish tests
@@ -1466,6 +1407,76 @@ describe('WorkflowCard', () => {
 				return text.includes('|') && text.trim() !== '|';
 			});
 			expect(embedsDivider).toBe(false);
+		});
+	});
+
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	describe('open in assistant experiment', () => {
+		let openInAssistantStore: MockedStore<typeof useOpenWorkflowInAssistantStore>;
+
+		beforeEach(() => {
+			openInAssistantStore = mockedStore(useOpenWorkflowInAssistantStore);
+			openInAssistantStore.opensInAssistant = false;
+		});
+
+		it('opens the workflow in the assistant for treatment users', async () => {
+			openInAssistantStore.opensInAssistant = true;
+			const data = createWorkflow({
+				scopes: ['workflow:update'],
+				homeProject: { id: 'p1', type: 'personal', name: 'Personal' },
+			});
+			const { getByRole } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByRole('heading', { level: 2, name: new RegExp(data.name) }));
+			await waitFor(() => {
+				expect(router.push).toHaveBeenCalledWith({
+					name: INSTANCE_AI_NEW_VIEW,
+					query: { workflowId: data.id },
+				});
+			});
+		});
+	});
+
+	describe('Publication status indicator', () => {
+		const renderCard = (overrides: Partial<WorkflowResource> = {}) =>
+			renderComponent({ props: { data: createWorkflow(overrides) } });
+
+		it.each([
+			['partial', 'Partial publish'],
+			['failed', 'Failed publish'],
+		] as const)('shows the %s indicator with its label and state', (status, label) => {
+			const { getByTestId, getByText } = renderCard({
+				publicationStatus: status,
+				activeVersionId: 'v1',
+			});
+			const indicator = getByTestId('workflow-card-publish-indicator');
+			expect(indicator).toBeVisible();
+			expect(indicator).toHaveAttribute('data-state', status);
+			expect(getByText(label)).toBeVisible();
+			// The explanation lives in a focus-openable tooltip; the trigger must be tabbable.
+			expect(indicator).toHaveAttribute('tabindex', '0');
+		});
+
+		it('lets the server status win over activeVersionId', () => {
+			const { getByTestId } = renderCard({ publicationStatus: 'failed', activeVersionId: null });
+			expect(getByTestId('workflow-card-publish-indicator')).toHaveAttribute(
+				'data-state',
+				'failed',
+			);
+		});
+
+		it('falls back to the legacy "Published" indicator when publicationStatus is absent', () => {
+			const { getByTestId, getByText } = renderCard({ activeVersionId: 'v1' });
+			const indicator = getByTestId('workflow-card-publish-indicator');
+			expect(indicator).toHaveAttribute('data-state', 'published');
+			expect(getByText('Published')).toBeVisible();
+			// The published state has no tooltip, so it must not be a focus stop.
+			expect(indicator).not.toHaveAttribute('tabindex');
+		});
+
+		it('shows no indicator when not published and no publicationStatus', () => {
+			const { queryByTestId } = renderCard({ activeVersionId: null });
+			expect(queryByTestId('workflow-card-publish-indicator')).toBeNull();
 		});
 	});
 });

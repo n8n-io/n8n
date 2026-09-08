@@ -19,9 +19,10 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
-import WorkflowReviewStatusBadge from '@/features/workflow-reviews/components/WorkflowReviewStatusBadge.vue';
-import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
-import { useI18n } from '@n8n/i18n';
+import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import type { WorkflowListPublicationStatus } from '@n8n/api-types';
+import type { StatusDotVariant } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
@@ -46,6 +47,9 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenInAssistantCardButton from '@/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.vue';
+import { useOpenInAssistantCard } from '@/experiments/openWorkflowInAssistant/composables/useOpenInAssistantCard';
 import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
@@ -133,12 +137,10 @@ const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
 const mcp = useMcp();
 const workflowActivate = useWorkflowActivate();
-const reviewStatusStore = useWorkflowReviewStatusStore();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
-const reviewStatus = computed(() => reviewStatusStore.reviewStatus(props.data.id));
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
 
@@ -300,6 +302,9 @@ const canEditMcp = computed(
 	() => Boolean(workflowPermissions.value.update) && !props.readOnly && !props.data.isArchived,
 );
 
+// Experiment cleanup: remove with openWorkflowInAssistant.
+const openInAssistant = useOpenInAssistantCard(props);
+
 // Optimistic state for the legacy 3-dot menu fallback (used when the
 // 086_workflow_card_mcp_toggle experiment is off).
 const mcpToggleStatus = ref<boolean | null>(null);
@@ -322,6 +327,39 @@ const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
 
+// Keyed by the full status union so a new backend status is a compile error
+// here instead of silently rendering as the green 'Published' dot.
+const publicationIndicators: Record<
+	WorkflowListPublicationStatus,
+	{ variant: StatusDotVariant; labelKey: BaseTextKey; tooltipKey?: BaseTextKey }
+> = {
+	published: { variant: 'success', labelKey: 'workflows.published' },
+	partial: {
+		variant: 'warning',
+		labelKey: 'workflows.publicationStatus.partial',
+		tooltipKey: 'workflows.publicationStatus.partial.tooltip',
+	},
+	failed: {
+		variant: 'danger',
+		labelKey: 'workflows.publicationStatus.failed',
+		tooltipKey: 'workflows.publicationStatus.failed.tooltip',
+	},
+};
+
+// The server-derived status is authoritative when present; workflows with no
+// settled trigger rows omit it and fall back to the legacy activeVersionId indicator.
+const publicationIndicator = computed(() => {
+	const state = props.data.publicationStatus ?? (isWorkflowPublished.value ? 'published' : null);
+	if (state === null) return null;
+	const { variant, labelKey, tooltipKey } = publicationIndicators[state];
+	return {
+		state,
+		variant,
+		label: locale.baseText(labelKey),
+		tooltip: tooltipKey ? locale.baseText(tooltipKey) : null,
+	};
+});
+
 const hasDynamicCredentials = computed(() => {
 	return isPrivateCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
@@ -329,6 +367,9 @@ const hasDynamicCredentials = computed(() => {
 const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	if (openInAssistant(event)) return;
+
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
 			name: VIEWS.WORKFLOW,
@@ -445,6 +486,7 @@ async function unpublishWorkflow() {
 	uiStore.openModalWithData({
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
+			workflowId: props.data.id,
 			versionName: props.data.name,
 			eventBus: unpublishEventBus,
 		},
@@ -680,7 +722,6 @@ const tags = computed(
 					source="workflow_card"
 					data-test-id="workflow-card-dependencies"
 				/>
-				<WorkflowReviewStatusBadge v-if="reviewStatus" :status="reviewStatus" />
 				<ProjectCardBadge
 					v-if="showOwnershipBadge"
 					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
@@ -718,16 +759,14 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<div
-					v-else-if="isWorkflowPublished"
-					:class="$style.publishIndicator"
+				<PublicationIndicator
+					v-else-if="publicationIndicator"
+					:variant="publicationIndicator.variant"
+					:label="publicationIndicator.label"
+					:tooltip="publicationIndicator.tooltip"
+					:data-state="publicationIndicator.state"
 					data-test-id="workflow-card-publish-indicator"
-				>
-					<span :class="$style.publishIndicatorDot" />
-					<N8nText size="small" color="text-base">{{
-						locale.baseText('workflows.published')
-					}}</N8nText>
-				</div>
+				/>
 				<WorkflowCardMcpToggle
 					v-if="props.isWorkflowCardMcpToggleEnabled"
 					:workflow-id="data.id"
@@ -737,6 +776,8 @@ const tags = computed(
 					:is-mcp-module-active="props.isMcpModuleActive"
 					:can-manage-instance-mcp="props.canManageInstanceMcp"
 				/>
+				<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+				<OpenInAssistantCardButton :workflow="data" :read-only="readOnly" />
 				<N8nActionToggle
 					:actions="actions"
 					placement="bottom-end"
@@ -835,27 +876,6 @@ const tags = computed(
 	background-color: var(--color--background--light-2);
 	border-color: var(--color--foreground--tint-1);
 	color: var(--color--text);
-}
-
-.publishIndicator {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--spacing--4xs);
-	border: var(--border);
-
-	* {
-		// This is needed to line height up with ownership badge
-		line-height: calc(var(--font-size--sm) + 1px);
-	}
-}
-
-.publishIndicatorDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	background-color: var(--color--mint-600);
 }
 
 @include mixins.breakpoint('sm-and-down') {
