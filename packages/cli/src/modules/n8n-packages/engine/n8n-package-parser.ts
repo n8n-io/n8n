@@ -122,7 +122,6 @@ export class N8nPackageParser {
 		const wire = await this.readJson<SerializedWorkflow>(reader, path, 'workflow');
 		const lifecycle = await this.readWorkflowLifecycle(reader, entry);
 		const sourceArchived = lifecycle.isArchived;
-		const sourcePublished = derivePublishedState(lifecycle, wire.versionId);
 
 		let entity: WorkflowEntity;
 		try {
@@ -140,6 +139,9 @@ export class N8nPackageParser {
 		WorkflowHelpers.validateWorkflowStructure(entity);
 		this.normalizeNodeGroups(entity, path);
 
+		// Read from `wire` only past `deserialize`, which is what validates it.
+		const sourcePublished = derivePublishedState(lifecycle, wire.versionId);
+
 		return {
 			entity,
 			sourceWorkflowId: entry.id,
@@ -155,7 +157,12 @@ export class N8nPackageParser {
 		entry: ManifestEntry,
 	): Promise<SerializedWorkflowLifecycle> {
 		const path = workflowLifecycleFilePath(entry.target);
-		const wire = await this.readJson(reader, path, 'workflow lifecycle');
+		const wire = await this.readJson(
+			reader,
+			path,
+			'workflow lifecycle',
+			`Package workflow lifecycle file is missing at ${path}. Export the package again from an instance that runs this version.`,
+		);
 
 		try {
 			return serializedWorkflowLifecycleSchema.parse(wire);
@@ -310,14 +317,16 @@ export class N8nPackageParser {
 		reader: PackageReader,
 		path: string,
 		label: string,
+		missingFileMessage?: string,
 	): Promise<T> {
 		let content: Buffer;
 		try {
 			content = await reader.readFile(path);
 		} catch (cause) {
-			throw new UserError(`Package manifest references a missing ${label} file at ${path}.`, {
-				cause,
-			});
+			throw new UserError(
+				missingFileMessage ?? `Package manifest references a missing ${label} file at ${path}.`,
+				{ cause },
+			);
 		}
 
 		return jsonParse<T>(content.toString('utf-8'), {
