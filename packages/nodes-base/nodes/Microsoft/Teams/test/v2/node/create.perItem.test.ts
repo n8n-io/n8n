@@ -209,4 +209,53 @@ describe('Microsoft Teams V2, create per item', () => {
 			.map((call) => call[1] as string);
 		expect(resolved).toEqual(['/v1.0/teams/team-a/tags/tag-a', '/v1.0/teams/team-b/tags/tag-b']);
 	});
+
+	// The per-run cache keys a tag on its team as well as its ID. A tag name can be reused across
+	// teams, so keying on the ID alone would serve item 1 the mention resolved for item 0's team:
+	// a different set of people, and a path that would 404 if it were ever requested for real.
+	it('channelMessage create resolves the same tag ID again for a different team', async () => {
+		const teams = ['team-a', 'team-c'];
+		const params: Record<string, unknown> = {
+			authentication: 'microsoftTeamsOAuth2Api',
+			resource: 'channelMessage',
+			operation: 'create',
+			channelId: 'channelID',
+			contentType: 'text',
+			message: 'hi',
+			options: { includeLinkToWorkflow: false },
+		};
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, itemIndex?: number, fallback?: unknown): NodeParameterValueType => {
+				if (name === 'teamId') return teams[itemIndex as number];
+				if (name === 'mentions.mention') {
+					return [{ mentionType: 'tag', tagId: 'tag-a' }] as NodeParameterValueType;
+				}
+				return (name in params ? params[name] : fallback) as NodeParameterValueType;
+			},
+		);
+		const SHARED: Record<string, IDataObject> = {
+			'/v1.0/teams/team-a/tags/tag-a': { id: 'tag-a', displayName: 'Engineering' },
+			'/v1.0/teams/team-c/tags/tag-a': { id: 'tag-a', displayName: 'Engineering (Team C)' },
+		};
+		apiRequest.mockImplementation(async (method: string, resourcePath: string) => {
+			if (method !== 'GET') return { id: 'sent' };
+			if (!(resourcePath in SHARED)) throw new Error(`unexpected GET ${resourcePath}`);
+			return SHARED[resourcePath];
+		});
+
+		await node.execute.call(ctx);
+
+		const resolved = apiRequest.mock.calls
+			.filter((call) => call[0] === 'GET')
+			.map((call) => call[1] as string);
+		expect(resolved).toEqual(['/v1.0/teams/team-a/tags/tag-a', '/v1.0/teams/team-c/tags/tag-a']);
+
+		const sent = apiRequest.mock.calls
+			.filter((call) => call[0] === 'POST')
+			.map((call) => (call[2] as { body: { content: string } }).body.content);
+		expect(sent).toEqual([
+			'<at id="0">Engineering</at> hi',
+			'<at id="0">Engineering (Team C)</at> hi',
+		]);
+	});
 });
