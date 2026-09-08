@@ -3,7 +3,7 @@ import type {
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import { isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
+import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user. */
 export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
@@ -312,7 +312,7 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 			const artifact: ArtifactInfo = {
 				type,
 				resourceId: node.targetResource.id,
-				name: node.targetResource.name ?? node.subtitle ?? 'Untitled',
+				name: firstNonBlank(node.targetResource.name, node.subtitle) ?? 'Untitled',
 				completedAt: undefined,
 			};
 			if (node.targetResource.projectId) artifact.projectId = node.targetResource.projectId;

@@ -102,6 +102,14 @@ describe('extractArtifacts', () => {
 		expect(extractArtifacts(node)[0].name).toBe('Untitled');
 	});
 
+	test('falls back to Untitled when the name and subtitle are blank', () => {
+		const node = makeAgentNode({
+			subtitle: '   ',
+			targetResource: { id: 'wf-1', type: 'workflow', name: '' },
+		});
+		expect(extractArtifacts(node)[0].name).toBe('Untitled');
+	});
+
 	test('ignores targetResource with non-artifact type', () => {
 		const node = makeAgentNode({
 			targetResource: { id: 'cred-1', type: 'credential', name: 'API Key' },

@@ -7178,6 +7178,7 @@
 	"instanceAi.planReview.denied": "Plan denied",
 	"instanceAi.planReview.changesRequested": "Changes requested",
 	"instanceAi.planReview.updating": "Updating plan...",
+	"instanceAi.tasks.untitled": "Untitled task",
 	"instanceAi.message.retry": "Retry",
 	"instanceAi.input.amendPlaceholder": "Amend the {role} agent...",
 	"instanceAi.fixWithAi.button": "Fix with AI",
