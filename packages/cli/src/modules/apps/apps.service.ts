@@ -1,16 +1,35 @@
-import type { CreateAppDto, CreatePageDto, UpdateAppDto, UpdatePageDto } from '@n8n/api-types';
+import {
+	appBindingsSchema,
+	getWorkflowToolIncompatibilityReason,
+	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
+	type AppBinding,
+	type CreateAppDto,
+	type CreatePageDto,
+	type DescribedBinding,
+	type UpdateAppDto,
+	type UpdatePageDto,
+} from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import {
+	detectTriggerNode,
+	listWorkflowInputFields,
+} from '@/modules/agents/tools/workflow-tool-factory';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AppVersionService } from './app-version.service';
+import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 import { deriveRoutesFromRouterSource } from './derive-routes';
 import { AppNotFoundError } from './errors/app-not-found.error';
 import { AppQuotaExceededError } from './errors/app-quota-exceeded.error';
+import { BindingIncompatibleError } from './errors/binding-incompatible.error';
+import { BindingProjectMismatchError } from './errors/binding-project-mismatch.error';
+import { BindingWorkflowNotFoundError } from './errors/binding-workflow-not-found.error';
 import { DataWorkflowNotFoundError } from './errors/data-workflow-not-found.error';
+import { InvalidBindingsError } from './errors/invalid-bindings.error';
 import { IndexPageCannotHaveChildrenError } from './errors/index-page-cannot-have-children.error';
 import { IndexPageMustBeTopLevelError } from './errors/index-page-must-be-top-level.error';
 import { PageNotFoundError } from './errors/page-not-found.error';
@@ -25,6 +44,7 @@ export class AppsService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly appVersionService: AppVersionService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto) {
@@ -71,6 +91,92 @@ export class AppsService {
 		await this.getApp(appId);
 		const versions = await this.appVersionService.list(appId);
 		return versions.map((version) => this.appVersionService.toResponse(version));
+	}
+
+	/**
+	 * Replaces the whole binding list. Each workflow is checked with the acting user's
+	 * `workflow:execute` scope now; at call time the app acts as its project, so the
+	 * workflow must also be owned by that project. Unpublished workflows are accepted
+	 * (reported as a warning) so an agent can bind first and publish later.
+	 */
+	async setBindings(appId: string, bindings: AppBinding[], user: User) {
+		const parsed = appBindingsSchema.safeParse(bindings);
+		if (!parsed.success) {
+			throw new InvalidBindingsError(parsed.error.issues.map((issue) => issue.message));
+		}
+		const app = await this.getApp(appId);
+
+		for (const binding of parsed.data) {
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
+				binding.workflowId,
+				user,
+				['workflow:execute'],
+			);
+			if (!workflow) throw new BindingWorkflowNotFoundError(binding.workflowId);
+
+			const ownerProjectId = workflow.shared.find((s) => s.role === 'workflow:owner')?.projectId;
+			if (ownerProjectId !== app.projectId) {
+				throw new BindingProjectMismatchError(binding.key, workflow.name);
+			}
+
+			const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
+			if (incompatibility) {
+				throw new BindingIncompatibleError(binding.key, workflow.name, incompatibility);
+			}
+		}
+
+		const updated = await this.appRepository.updateBindings(app, parsed.data);
+		return await this.describeBindings(updated);
+	}
+
+	/**
+	 * Resolves each binding against the draft workflow (its trigger declares the input
+	 * fields). A binding whose workflow was deleted or lost its trigger since bind time is
+	 * left out and reported as a warning, so the remaining bindings stay usable.
+	 */
+	async describeBindings(app: App): Promise<{ bindings: DescribedBinding[]; warnings: string[] }> {
+		const workflows = await this.workflowRepository.findByIds(
+			app.bindings.map((binding) => binding.workflowId),
+			{ fields: ['name', 'nodes', 'connections', 'activeVersionId'] },
+		);
+		const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
+
+		const bindings: DescribedBinding[] = [];
+		const warnings: string[] = [];
+		for (const binding of app.bindings) {
+			const workflow = workflowsById.get(binding.workflowId);
+			if (!workflow) {
+				warnings.push(
+					`Binding '${binding.key}': workflow '${binding.workflowId}' no longer exists.`,
+				);
+				continue;
+			}
+			if (getWorkflowToolIncompatibilityReason(workflow) !== null) {
+				warnings.push(
+					`Binding '${binding.key}': workflow "${workflow.name}" no longer starts with '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' or contains nodes an app cannot run.`,
+				);
+				continue;
+			}
+
+			const published = workflow.activeVersionId !== null;
+			if (!published) {
+				warnings.push(
+					`Binding '${binding.key}': workflow "${workflow.name}" is not published. The app gets an error until it is published.`,
+				);
+			}
+			// `inferInputSchema` also treats a trigger without declared fields as passthrough.
+			const fields = listWorkflowInputFields(detectTriggerNode(workflow).node);
+			bindings.push({
+				key: binding.key,
+				kind: binding.kind,
+				workflowId: workflow.id,
+				name: workflow.name,
+				published,
+				input: fields.length > 0 ? fields : 'passthrough',
+			});
+		}
+
+		return { bindings, warnings };
 	}
 
 	async createPage(appId: string, dto: CreatePageDto) {
