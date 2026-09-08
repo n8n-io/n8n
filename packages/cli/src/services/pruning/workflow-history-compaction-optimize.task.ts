@@ -30,7 +30,6 @@ export class WorkflowHistoryCompactionOptimizeTask implements SystemTask {
 	) {}
 
 	async run(signal: AbortSignal): Promise<void> {
-		if (!this.compactionService.isEnabled) return;
 		await this.compactionService.optimizeHistories(signal);
 	}
 }

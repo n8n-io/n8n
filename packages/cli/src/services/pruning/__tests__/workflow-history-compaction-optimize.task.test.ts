@@ -22,19 +22,10 @@ describe('WorkflowHistoryCompactionOptimizeTask', () => {
 	});
 
 	it('should optimize histories on run, handing the pass its abort signal', async () => {
-		Object.defineProperty(compactionService, 'isEnabled', { value: true });
 		const { signal } = new AbortController();
 
 		await task.run(signal);
 
 		expect(compactionService.optimizeHistories).toHaveBeenCalledExactlyOnceWith(signal);
-	});
-
-	it('should skip the run when compaction is disabled', async () => {
-		Object.defineProperty(compactionService, 'isEnabled', { value: false });
-
-		await task.run(new AbortController().signal);
-
-		expect(compactionService.optimizeHistories).not.toHaveBeenCalled();
 	});
 });

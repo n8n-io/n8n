@@ -26,7 +26,6 @@ export class WorkflowHistoryCompactionTrimTask implements SystemTask {
 	constructor(private readonly compactionService: WorkflowHistoryCompactionService) {}
 
 	async run(signal: AbortSignal): Promise<void> {
-		if (!this.compactionService.isEnabled) return;
 		if (!this.compactionService.isTrimmingEnabled) return;
 		if (new Date().getHours() !== 3) return;
 		await this.compactionService.trimLongRunningHistories(signal);

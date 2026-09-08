@@ -7,8 +7,7 @@ describe('WorkflowHistoryCompactionTrimTask', () => {
 	let compactionService = mock<WorkflowHistoryCompactionService>();
 	let task = new WorkflowHistoryCompactionTrimTask(compactionService);
 
-	const setService = ({ enabled = true, trimmingEnabled = true } = {}) => {
-		Object.defineProperty(compactionService, 'isEnabled', { value: enabled });
+	const setService = ({ trimmingEnabled = true } = {}) => {
 		Object.defineProperty(compactionService, 'isTrimmingEnabled', { value: trimmingEnabled });
 	};
 
