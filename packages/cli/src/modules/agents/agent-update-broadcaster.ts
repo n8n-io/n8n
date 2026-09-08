@@ -1,6 +1,6 @@
 import type { PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectRelationRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -8,6 +8,7 @@ import { InstanceSettings } from 'n8n-core';
 import { Push } from '@/push';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { RoleService } from '@/services/role.service';
 
 type AgentUpdate = PushPayload<'agentUpdated'>;
 
@@ -15,7 +16,8 @@ type AgentUpdate = PushPayload<'agentUpdated'>;
 export class AgentUpdateBroadcaster {
 	constructor(
 		private readonly logger: Logger,
-		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly userRepository: UserRepository,
+		private readonly roleService: RoleService,
 		private readonly push: Push,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
@@ -33,7 +35,15 @@ export class AgentUpdateBroadcaster {
 	}
 
 	private async broadcast(data: AgentUpdate, excludePushRef?: string): Promise<void> {
-		const userIds = await this.projectRelationRepository.findUserIdsByProjectId(data.projectId);
+		const [globalRoleSlugs, projectRoleSlugs] = await Promise.all([
+			this.roleService.rolesWithScope('global', ['agent:read']),
+			this.roleService.rolesWithScope('project', ['agent:read']),
+		]);
+		const userIds = await this.userRepository.findIdsWithGlobalOrProjectRoles({
+			projectIds: [data.projectId],
+			projectRoleSlugs,
+			globalRoleSlugs,
+		});
 		if (userIds.length === 0) return;
 
 		this.push.sendToUsers({ type: 'agentUpdated', data }, userIds, { excludePushRef });
