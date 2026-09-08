@@ -2,8 +2,8 @@ import { HTTP_REQUEST_NODE_NAME, MANUAL_TRIGGER_NODE_NAME } from '../../../../..
 import { test, expect } from '../../../../../fixtures/base';
 
 const URL_PARAMETER_NAME = 'url';
-const UNRESOLVED_PREVIEW_PLACEHOLDER = '[empty]';
 const ENV_ACCESS_DENIED_MESSAGE = 'access to env vars denied';
+const RUN_NODE_TO_RESOLVE_MESSAGE = '[not accessible via UI, please run node]';
 
 test.use({
 	capability: {
@@ -39,7 +39,7 @@ test.describe(
 			await n8n.ndv.typeInExpressionEditor('{{ $env.E2E_ENV_PREVIEW_PROBE', URL_PARAMETER_NAME);
 
 			const output = n8n.ndv.getInlineExpressionEditorOutput();
-			await expect(output).not.toHaveText(UNRESOLVED_PREVIEW_PLACEHOLDER);
+			await expect(output).toHaveText(RUN_NODE_TO_RESOLVE_MESSAGE);
 			await expect(output).not.toContainText(ENV_ACCESS_DENIED_MESSAGE);
 		});
 	},
