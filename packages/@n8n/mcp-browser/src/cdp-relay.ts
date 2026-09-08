@@ -8,7 +8,12 @@
  * All tab IDs are CDP Target.targetId strings resolved by the extension.
  */
 
-import { browserRecordingSchema, type BrowserRecording } from '@n8n/api-types';
+import {
+	browserRecordingActionSchema,
+	browserRecordingSchema,
+	type BrowserRecording,
+	type BrowserRecordingAction,
+} from '@n8n/api-types';
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import http from 'node:http';
@@ -104,6 +109,9 @@ export class CDPRelayServer {
 
 	/** Called after the extension submits a reviewed semantic recording. */
 	onRecordingCompleted?: (recording: BrowserRecording) => Promise<{ threadUrl?: string }>;
+
+	/** Called for each action captured while a recording is still in progress. */
+	onRecordingActionAppended?: (recordingId: string, action: BrowserRecordingAction) => void;
 
 	private readonly connectionTimeoutMs: number;
 
@@ -627,6 +635,12 @@ export class CDPRelayServer {
 		await this.extensionConn.send('stopAndSubmitRecording', {});
 	}
 
+	/** Tell the extension to discard the active recording without submitting it. */
+	async discardRecording(): Promise<void> {
+		if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
+		await this.extensionConn.send('discardRecording', {});
+	}
+
 	/** Close a tab via the extension. */
 	async closeTab(id: string): Promise<void> {
 		if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
@@ -896,6 +910,11 @@ export class CDPRelayServer {
 							})
 							.catch(() => {});
 					});
+			} else if (method === 'recordingActionAppended') {
+				const eventParams = params as ExtensionEvents['recordingActionAppended']['params'];
+				const parsed = browserRecordingActionSchema.safeParse(eventParams.action);
+				if (!parsed.success) return;
+				this.onRecordingActionAppended?.(eventParams.recordingId, parsed.data);
 			}
 		};
 	}
