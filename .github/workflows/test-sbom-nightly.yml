@@ -23,68 +23,26 @@ jobs:
       actions: read
       contents: read
     outputs:
-      image_tag: ${{ steps.image-tag.outputs.tag }}
-      source_sha: ${{ steps.source.outputs.sha }}
+      image_tag: ${{ steps.image-tag.outputs.image_tag }}
+      source_sha: ${{ steps.source.outputs.source_sha }}
     steps:
-      - name: Resolve source SHA
-        id: source
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ "$EVENT_NAME" = 'workflow_dispatch' ]; then
-            echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          for ATTEMPT in $(seq 1 25); do
-            RUN=$(gh run list \
-              --repo "$GITHUB_REPOSITORY" \
-              --workflow docker-build-push.yml \
-              --event schedule \
-              --limit 1 \
-              --json conclusion,createdAt,headSha,status)
-            STATUS=$(jq -r '.[0].status // empty' <<< "$RUN")
-            CONCLUSION=$(jq -r '.[0].conclusion // empty' <<< "$RUN")
-            CREATED_AT=$(jq -r '.[0].createdAt // empty' <<< "$RUN")
-            SHA=$(jq -r '.[0].headSha // empty' <<< "$RUN")
-
-            if [ -n "$CREATED_AT" ]; then
-              AGE_SECONDS=$(($(date -u +%s) - $(date -d "$CREATED_AT" +%s)))
-            else
-              AGE_SECONDS=21601
-            fi
-
-            if [ "$STATUS" = 'completed' ] && [ "$CONCLUSION" = 'success' ] && [ -n "$SHA" ] && [ "$AGE_SECONDS" -le 21600 ]; then
-              echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-
-            if [ "$STATUS" = 'completed' ] && [ -n "$CREATED_AT" ] && [ "$AGE_SECONDS" -le 21600 ]; then
-              echo "::error::The current scheduled Docker build completed with conclusion '$CONCLUSION'."
-              exit 1
-            fi
-
-            if [ "$ATTEMPT" -lt 25 ]; then
-              echo "Waiting for the current scheduled Docker build (attempt $ATTEMPT of 25)."
-              sleep 300
-            fi
-          done
-
-          echo '::error::No successful scheduled Docker build appeared within two hours.'
-          exit 1
-
       - name: Checkout workflow source
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Resolve source SHA
+        id: source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/nightly-sbom-context.mjs resolve-source
+
       # Resolve source only from GitHub's scheduled-run response or GITHUB_SHA.
       # poutine: untrusted_checkout_exec
       - name: Checkout nightly source
         env:
-          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          SOURCE_SHA: ${{ steps.source.outputs.source_sha }}
         run: |
           if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo '::error::The nightly source must be a full commit SHA.'
@@ -95,14 +53,7 @@ jobs:
 
       - name: Select nightly image tag
         id: image-tag
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          if [ "$EVENT_NAME" = 'schedule' ]; then
-            echo "tag=nightly-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
-          else
-            echo 'tag=nightly' >> "$GITHUB_OUTPUT"
-          fi
+        run: node .github/scripts/nightly-sbom-context.mjs resolve-image-tag
 
   validate-release-sbom:
     name: Validate release SBOM
