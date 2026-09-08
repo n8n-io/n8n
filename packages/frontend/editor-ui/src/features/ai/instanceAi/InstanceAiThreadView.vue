@@ -297,7 +297,7 @@ const preview = useCanvasPreview({
 const setupPanelWorkflowId = computed(() => {
 	if (!settingsStore.isInstanceAiSetupPanelEnabled) return undefined;
 	const active = preview.activeWorkflowId.value;
-	if (active) return active;
+	if (preview.activeTabId.value) return active ?? undefined;
 	let latest: string | undefined;
 	for (const entry of thread.producedArtifacts.values()) {
 		if (entry.type === 'workflow') latest = entry.id;

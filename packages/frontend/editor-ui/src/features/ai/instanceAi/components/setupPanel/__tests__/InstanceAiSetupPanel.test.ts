@@ -15,6 +15,7 @@ const { stateMock, actionsMock, showMessageMock, testCredentialMock } = vi.hoist
 	stateMock: {
 		rows: [] as SetupPanelRow[],
 		nodesByName: {} as Record<string, INodeUi>,
+		refreshWorkflow: vi.fn().mockResolvedValue(undefined),
 	},
 	actionsMock: {
 		bindCredential: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock('../../../composables/useSetupPanelState', async () => {
 			rowSource: computed(() => 'derived'),
 			isAgentBuilding: computed(() => false),
 			getNodeByName: (name: string) => stateMock.nodesByName[name],
+			refreshWorkflow: stateMock.refreshWorkflow,
 		}),
 	};
 });

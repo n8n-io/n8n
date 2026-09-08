@@ -52,7 +52,12 @@ function createHarness(
 	vi.mocked(useWorkflowSetupItems).mockReturnValue({
 		isWorkflowAvailable: computed(() => available.value),
 		derivedItems: computed(() => derived.value),
+		derivedCredentialItems: computed(() =>
+			derived.value.filter((item) => item.kind === 'credential'),
+		),
 		isItemDone: (item: InstanceAiSetupItem) => doneIds.value.has(item.id),
+		getNodeByName: vi.fn(),
+		refreshWorkflow: vi.fn().mockResolvedValue(undefined),
 	});
 
 	const thread: SetupPanelThreadSource = reactive({

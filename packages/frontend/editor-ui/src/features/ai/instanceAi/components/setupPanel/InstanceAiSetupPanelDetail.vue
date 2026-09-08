@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, onScopeDispose, provide, ref, watch } from 'vue';
+import isEqual from 'lodash/isEqual';
 import { N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE, type InstanceAiSetupItem } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
@@ -46,7 +47,7 @@ const parametersItem = computed(() => (props.item.kind === 'parameters' ? props.
 
 // --- Credential selection (local until the bind PATCH re-derives the rows) ---
 
-function initialCredentialId(): string | null {
+function savedCredentialId(): string | null {
 	const item = props.item;
 	if (item.kind !== 'credential') return null;
 	const assigned = props.node.credentials?.[item.credentialType];
@@ -55,7 +56,10 @@ function initialCredentialId(): string | null {
 	return assigned.id ?? null;
 }
 
-const selectedCredentialId = ref<string | null>(initialCredentialId());
+const selectedCredentialId = ref<string | null>(savedCredentialId());
+watch(savedCredentialId, (id) => {
+	selectedCredentialId.value = id;
+});
 
 const selectedCredentials = computed<INodeUi['credentials']>(() => {
 	const item = credentialItem.value;
@@ -69,7 +73,8 @@ const selectedCredentials = computed<INodeUi['credentials']>(() => {
 		? credentialsStore.getCredentialById(selectedCredentialId.value)
 		: undefined;
 
-	return cred ? { [item.credentialType]: { id: cred.id, name: cred.name } } : {};
+	if (cred) return { [item.credentialType]: { id: cred.id, name: cred.name } };
+	return selectedCredentialId.value === savedCredentialId() ? props.node.credentials : {};
 });
 
 function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
@@ -81,8 +86,7 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 		credId = data.__aiGatewayManaged === true ? AI_GATEWAY_MANAGED_TAG : (data.id ?? null);
 	}
 	selectedCredentialId.value = credId;
-	// ponytail: the gateway-managed tag is not a credential id — persisting that
-	// selection is T8's OAuth/managed pass, until then it stays panel-local.
+	// T8 will persist managed credentials. The tag is not a credential ID.
 	if (credId && credId !== AI_GATEWAY_MANAGED_TAG) {
 		emit('bindCredential', item, credId);
 	}
@@ -114,14 +118,29 @@ const usedByNodesLabel = computed(() =>
 // --- Parameter edits (buffered locally, applied on Confirm) ---
 
 const editedParameters = ref<INodeParameters>();
-const displayParameters = computed(() => editedParameters.value ?? props.node.parameters);
+const displayParameters = computed(() => ({ ...props.node.parameters, ...editedParameters.value }));
+
+watch(
+	() => props.node.parameters,
+	(saved) => {
+		if (!editedParameters.value) return;
+		const pending = Object.fromEntries(
+			Object.entries(editedParameters.value).filter(
+				([name, value]) => !isEqual(saved[name], value),
+			),
+		);
+		editedParameters.value = Object.keys(pending).length ? pending : undefined;
+	},
+	{ deep: true },
+);
 
 function onParameterValueChanged(update: IUpdateInformation) {
 	if (!parametersItem.value) return;
 	const parameterName = update.name.replace(/^parameters\./, '');
 	const next = deepCopy(displayParameters.value);
 	setParameterValueByPath(next, parameterName, update.value);
-	editedParameters.value = next;
+	const root = parameterName.split(/[.[\]]/)[0] ?? parameterName;
+	editedParameters.value = { ...editedParameters.value, [root]: next[root] };
 }
 
 function onConfirm() {

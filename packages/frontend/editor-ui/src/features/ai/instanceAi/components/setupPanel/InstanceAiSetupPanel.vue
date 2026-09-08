@@ -33,7 +33,7 @@ const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const { testCredentialInBackground } = useCredentialTestInBackground();
 
-const { rows, isAgentBuilding, getNodeByName } = useSetupPanelState({
+const { rows, isAgentBuilding, getNodeByName, refreshWorkflow } = useSetupPanelState({
 	thread,
 	workflowId: () => props.workflowId,
 });
@@ -51,7 +51,9 @@ const selectedItemId = ref<string>();
 const selectedRow = computed(() => rows.value.find((row) => row.item.id === selectedItemId.value));
 
 function itemNodeName(item: InstanceAiSetupItem): string | undefined {
-	return item.kind === 'parameters' ? item.nodeName : item.nodeBindings?.[0]?.nodeName;
+	return item.kind === 'parameters'
+		? item.nodeName
+		: item.nodeBindings?.find((binding) => getNodeByName(binding.nodeName))?.nodeName;
 }
 
 /**
@@ -99,17 +101,18 @@ function rowNodeType(item: InstanceAiSetupItem) {
 
 const isApplying = ref(false);
 
-function notifyApplyResult(result: SetupPanelApplyResult) {
+async function notifyApplyResult(result: SetupPanelApplyResult) {
 	if (result === 'error' || result === 'conflict') {
 		toast.showMessage({ title: i18n.baseText('instanceAi.setupPanel.applyError'), type: 'error' });
 	}
+	if (result === 'applied' || result === 'noop') await refreshWorkflow();
 }
 
 async function onBindCredential(item: SetupCredentialItem, credentialId: string) {
 	const credential = credentialsStore.getCredentialById(credentialId);
 	if (!credential) return;
 	void testCredentialInBackground(credential.id, credential.name, item.credentialType);
-	notifyApplyResult(
+	await notifyApplyResult(
 		await actions.bindCredential(item, { id: credential.id, name: credential.name }),
 	);
 }
@@ -117,7 +120,7 @@ async function onBindCredential(item: SetupCredentialItem, credentialId: string)
 async function onApplyParameters(nodeName: string, values: INodeParameters) {
 	isApplying.value = true;
 	try {
-		notifyApplyResult(await actions.applyParameterValues(nodeName, values));
+		await notifyApplyResult(await actions.applyParameterValues(nodeName, values));
 	} finally {
 		isApplying.value = false;
 	}
@@ -206,7 +209,7 @@ async function onApplyParameters(nodeName: string, values: INodeParameters) {
 	padding: var(--spacing--2xs);
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	background-color: var(--color--background--light-3);
+	background-color: var(--background--surface);
 }
 
 .rows {
@@ -230,7 +233,7 @@ async function onApplyParameters(nodeName: string, values: INodeParameters) {
 	text-align: left;
 
 	&:hover:not(:disabled) {
-		background-color: var(--color--background--light-2);
+		background-color: var(--background--hover);
 	}
 
 	&:disabled {
@@ -254,7 +257,7 @@ async function onApplyParameters(nodeName: string, values: INodeParameters) {
 }
 
 .rowChevron {
-	color: var(--color--text--tint-1);
+	color: var(--icon-color);
 }
 
 .detailHeader {
