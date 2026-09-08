@@ -55,9 +55,10 @@ export class GeminiEmbeddings extends GoogleGenerativeAIEmbeddings {
 	protected override async _embedDocumentsContent(documents: string[]): Promise<number[][]> {
 		if (!this.outputDimensionality) return await super._embedDocumentsContent(documents);
 
-		const chunks = chunkArray(documents, this.maxBatchSize);
-		const results = await Promise.allSettled(
-			chunks.map(
+		// Unlike the base class, a failed batch rejects the whole call instead of being replaced by
+		// empty vectors, so a transient API error cannot end up stored as embeddings.
+		const responses = await Promise.all(
+			chunkArray(documents, this.maxBatchSize).map(
 				async (chunk) =>
 					await this.embedClient.batchEmbedContents({
 						requests: chunk.map((document) => this.toEmbedContentRequest(document)),
@@ -65,12 +66,8 @@ export class GeminiEmbeddings extends GoogleGenerativeAIEmbeddings {
 			),
 		);
 
-		// Same semantics as the base class: a failed batch yields empty vectors for its inputs so the
-		// output stays aligned with the input positions.
-		return results.flatMap((result, index) =>
-			result.status === 'fulfilled'
-				? result.value.embeddings.map((embedding) => embedding.values ?? [])
-				: Array<number[]>(chunks[index].length).fill([]),
+		return responses.flatMap((response) =>
+			response.embeddings.map((embedding) => embedding.values ?? []),
 		);
 	}
 

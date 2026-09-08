@@ -127,7 +127,7 @@ export class EmbeddingsGoogleGemini implements INodeType {
 						description:
 							'The number of dimensions the returned embeddings should have, e.g. 768, 1536 or 3072 for gemini-embedding-001. Leave unset to use the model default.',
 						type: 'number',
-						typeOptions: { minValue: 1 },
+						typeOptions: { minValue: 1, numberPrecision: 0 },
 					},
 				],
 			},
