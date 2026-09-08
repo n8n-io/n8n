@@ -12,6 +12,8 @@ import type {
 import type { AIMessage, BaseMessage } from '@langchain/core/messages';
 import type { Runnable } from '@langchain/core/runnables';
 import type { StructuredToolInterface } from '@langchain/core/tools';
+import { formatNodeResult, type NodeTypeParser } from '@n8n/ai-utilities/node-catalog';
+import type { TextEditorCommand } from '@n8n/ai-utilities/text-editor';
 import type { Logger } from '@n8n/backend-common';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -20,13 +22,10 @@ import { TEXT_EDITOR_TOOL, VALIDATE_TOOL, BATCH_STR_REPLACE_TOOL } from '../cons
 import { buildCodeBuilderPrompt, type HistoryContext } from '../prompts';
 import { TextEditorHandler } from './text-editor-handler';
 import { TextEditorToolHandler } from './text-editor-tool-handler';
-import type { TextEditorCommand } from './text-editor.types';
 import type { PlanOutput } from '../../types/planning';
 import type { ChatPayload } from '../../workflow-builder-agent';
-import { formatNodeResult } from '../tools/code-builder-search.tool';
 import type { ParseAndValidateResult } from '../types';
 import { SDK_IMPORT_STATEMENT } from '../utils/extract-code';
-import type { NodeTypeParser } from '../utils/node-type-parser';
 
 /**
  * Parse and validate function type

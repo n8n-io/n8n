@@ -2,14 +2,17 @@ import {
 	type IExecuteFunctions,
 	type IDataObject,
 	type INodeExecutionData,
+	type JsonObject,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 
 import * as channel from './channel';
 import * as channelMessage from './channelMessage';
+import * as chatMember from './chatMember';
 import * as chatMessage from './chatMessage';
 import type { MicrosoftTeamsType } from './node.type';
+import * as onlineMeeting from './onlineMeeting';
 import * as task from './task';
 import { configureWaitTillDate } from '../../../../../utils/sendAndWait/configureWaitTillDate.util';
 
@@ -33,7 +36,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		microsoftTeamsTypeData.resource === 'chatMessage' &&
 		microsoftTeamsTypeData.operation === SEND_AND_WAIT_OPERATION
 	) {
-		await chatMessage[microsoftTeamsTypeData.operation].execute.call(this, 0, instanceId);
+		try {
+			await chatMessage[microsoftTeamsTypeData.operation].execute.call(this, 0, instanceId);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				return [[{ json: { error: (error as JsonObject).message } }]];
+			}
+			throw error;
+		}
 
 		const waitTill = configureWaitTillDate(this);
 
@@ -55,11 +65,20 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						instanceId,
 					);
 					break;
+				case 'chatMember':
+					responseData = await chatMember[microsoftTeamsTypeData.operation].execute.call(this, i);
+					break;
 				case 'chatMessage':
 					responseData = await chatMessage[microsoftTeamsTypeData.operation].execute.call(
 						this,
 						i,
 						instanceId,
+					);
+					break;
+				case 'onlineMeeting':
+					responseData = await onlineMeeting[microsoftTeamsTypeData.operation].execute.call(
+						this,
+						i,
 					);
 					break;
 				case 'task':

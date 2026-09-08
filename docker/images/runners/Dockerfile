@@ -1,15 +1,19 @@
-ARG NODE_VERSION=24.13.1
+ARG NODE_VERSION=26.7.0
+ARG PNPM_VERSION=12.3.4
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
 # ==============================================================================
-FROM node:${NODE_VERSION}-alpine AS javascript-runner-builder
+FROM node:${NODE_VERSION}-alpine3.24 AS javascript-runner-builder
 COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 WORKDIR /app/task-runner-javascript
 
-RUN corepack enable pnpm
+# Pin pnpm to the repo's packageManager version. `pnpm deploy` drops the
+# packageManager field from the deployed package.json, so nothing else here pins it.
+ARG PNPM_VERSION
+RUN npm i -g "pnpm@${PNPM_VERSION}"
 
 # Remove `catalog` and `workspace` references from package.json to allow `pnpm add` in extended images
 RUN node -e "const pkg = require('./package.json'); \
@@ -26,15 +30,14 @@ RUN node -e "const pkg = require('./package.json'); \
     delete pkg.devDependencies; \
     require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
 
+# `--config.minimum-release-age=0`: pnpm defaults it to 1440 (24h), which would make
+# this reject any dependency published less than a day ago — e.g. a first-party
+# @n8n_io/ai-assistant-sdk bump landed within hours of its npm publish. This step only
+# re-resolves an already-vetted, already-pinned dependency set; the real supply-chain age
+# policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
 # Install moment (special case for backwards compatibility)
 RUN rm -f node_modules/.modules.yaml && \
-    pnpm add moment@2.30.1 --prod --no-lockfile
-
-# Rebuild isolated-vm for the container platform. Install build tools as
-# fallback in case prebuild-install cannot find a prebuilt binary.
-RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
-    npm rebuild isolated-vm && \
-    apk del .build-deps
+    pnpm add moment@2.30.1 --save-prod --no-lockfile --config.minimum-release-age=0
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
@@ -88,7 +91,7 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 FROM alpine:3.22 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.3
+ARG LAUNCHER_VERSION=1.4.7
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -108,7 +111,9 @@ RUN set -e; \
 # ==============================================================================
 # STAGE 4: Node alpine base for JS task runner
 # ==============================================================================
-FROM node:${NODE_VERSION}-alpine AS node-alpine
+FROM node:${NODE_VERSION}-alpine3.24 AS node-alpine
+ARG PNPM_VERSION
+RUN npm i -g "pnpm@${PNPM_VERSION}"
 
 # ==============================================================================
 # STAGE 5: Runtime
@@ -130,12 +135,13 @@ COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 # libstdc++ is required by Node
 # libc6-compat is required by task-runner-launcher
 RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
+    apk upgrade --no-cache && \
+    pip install --no-cache-dir "pip>=26.0" && \
     apk del apk-tools
 
-# Bring corepack and pnpm over, to make the image easier to extend
-COPY --from=node-alpine /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/corepack
-RUN ln -s ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack && \
-		ln -s ../lib/node_modules/corepack/dist/pnpm.js /usr/local/bin/pnpm
+# Bring pnpm over, to make the image easier to extend. pnpm 12 installs a
+# standalone native executable, so the runtime does not need npm or Corepack.
+COPY --from=node-alpine /usr/local/lib/node_modules/pnpm/pnpm /usr/local/bin/pnpm
 
 RUN addgroup -g 1000 -S runner \
  && adduser  -u 1000 -S -G runner -h /home/runner -D runner

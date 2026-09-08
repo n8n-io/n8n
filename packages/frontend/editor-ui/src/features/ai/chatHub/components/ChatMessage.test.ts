@@ -141,4 +141,70 @@ describe('ChatMessage', () => {
 
 		expect(mockCopy).toHaveBeenCalledWith(codeContent);
 	});
+
+	it('should render footnote references as pill spans and hide the definition block', async () => {
+		const footnoteContent = 'Akhenaten - Wikipedia.pdf, page 3';
+		const message: ChatMessageType = createMockMessage({
+			type: 'ai',
+			content: [
+				{
+					type: 'text',
+					content: `Akhenaten ruled Egypt[^1].\n\n[^1]: ${footnoteContent}`,
+				},
+			],
+		});
+
+		const { container } = renderComponent({
+			props: {
+				message,
+				compact: false,
+				isEditing: false,
+				isEditSubmitting: false,
+				hasSessionStreaming: false,
+				cachedAgentDisplayName: null,
+				cachedAgentIcon: null,
+				acceptedMimeTypes: '',
+			},
+			pinia,
+		});
+
+		await waitFor(() => {
+			const footnoteSpan = container.querySelector(`span[title="${footnoteContent}"]`);
+			expect(footnoteSpan).not.toBeNull();
+			// Text is truncated: short last word ('3') falls through to fixed-suffix,
+			// preserving the file extension and page context
+			expect(footnoteSpan?.textContent).toBe('Akhenaten - W…pdf, page 3');
+			expect(container.querySelector('[aria-hidden="true"]')).not.toBeNull();
+		});
+	});
+
+	it('should strip orphaned footnote references that have no matching definition', async () => {
+		const message: ChatMessageType = createMockMessage({
+			type: 'ai',
+			content: [
+				{
+					type: 'text',
+					content: 'Text with orphaned[^missing] reference.',
+				},
+			],
+		});
+
+		const { container } = renderComponent({
+			props: {
+				message,
+				compact: false,
+				isEditing: false,
+				isEditSubmitting: false,
+				hasSessionStreaming: false,
+				cachedAgentDisplayName: null,
+				cachedAgentIcon: null,
+				acceptedMimeTypes: '',
+			},
+			pinia,
+		});
+
+		await waitFor(() => {
+			expect(container.textContent).not.toContain('[^missing]');
+		});
+	});
 });

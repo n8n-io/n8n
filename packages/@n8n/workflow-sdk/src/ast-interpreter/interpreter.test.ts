@@ -1,89 +1,89 @@
 /**
  * Unit tests for the AST interpreter.
  */
+import type { Mock } from 'vitest';
+
 import {
 	InterpreterError,
 	SecurityError,
 	UnsupportedNodeError,
 	UnknownIdentifierError,
+	ResourceLimitError,
 } from './errors';
 import { expr } from '../expression';
 import type { SDKFunctions } from './interpreter';
 import { interpretSDKCode } from './interpreter';
 import { parseSDKCode } from './parser';
 
-/** Helper to get the first call argument from a Jest mock with proper typing */
-function getFirstCallArg<T>(mockFn: jest.Mock): T {
+/** Helper to get the first call argument from a Vitest mock with proper typing */
+function getFirstCallArg<T>(mockFn: Mock): T {
 	const calls = mockFn.mock.calls as unknown[][];
 	return calls[0][0] as T;
 }
 
 // Mock SDK functions for testing
 const createMockSDKFunctions = (): SDKFunctions => ({
-	workflow: jest.fn((id: string, name: string) => ({
+	workflow: vi.fn((id: string, name: string) => ({
 		id,
 		name,
 		nodes: [] as unknown[],
-		add: jest.fn(function (this: { nodes: unknown[] }, node: unknown) {
+		add: vi.fn(function (this: { nodes: unknown[] }, node: unknown) {
 			this.nodes.push(node);
 			return this;
 		}),
-		then: jest.fn(function (this: { nodes: unknown[] }, node: unknown) {
+		then: vi.fn(function (this: { nodes: unknown[] }, node: unknown) {
 			this.nodes.push(node);
 			return this;
 		}),
-		toJSON: jest.fn(function (this: { id: string; name: string; nodes: unknown[] }) {
+		toJSON: vi.fn(function (this: { id: string; name: string; nodes: unknown[] }) {
 			return { id: this.id, name: this.name, nodes: this.nodes };
 		}),
 	})),
-	node: jest.fn((config: unknown) => ({
+	node: vi.fn((config: unknown) => ({
 		type: 'node',
 		config,
-		then: jest.fn((target: unknown) => target),
-		to: jest.fn((target: unknown) => target),
-		input: jest.fn(() => ({ index: 0 })),
-		output: jest.fn(() => ({ index: 0 })),
-		onError: jest.fn(),
+		then: vi.fn((target: unknown) => target),
+		to: vi.fn((target: unknown) => target),
+		input: vi.fn(() => ({ index: 0 })),
+		output: vi.fn(() => ({ index: 0 })),
+		onError: vi.fn(),
 	})),
-	trigger: jest.fn((config: unknown) => ({
+	trigger: vi.fn((config: unknown) => ({
 		type: 'trigger',
 		config,
-		then: jest.fn((target: unknown) => target),
-		to: jest.fn((target: unknown) => target),
+		then: vi.fn((target: unknown) => target),
+		to: vi.fn((target: unknown) => target),
 	})),
-	sticky: jest.fn((content: string, options?: unknown) => ({
+	sticky: vi.fn((content: string, options?: unknown) => ({
 		type: 'sticky',
 		content,
 		options,
 	})),
-	placeholder: jest.fn((value: string) => ({
-		__placeholder: true as const,
-		hint: value,
-		toString: () => `<__PLACEHOLDER_VALUE__${value}__>`,
-		toJSON() {
-			return this.toString();
-		},
-	})),
-	newCredential: jest.fn((name: string) => ({ __newCredential: true, name })),
-	ifElse: jest.fn(),
-	switchCase: jest.fn(),
-	merge: jest.fn((config: unknown) => ({ type: 'merge', config, input: jest.fn() })),
-	splitInBatches: jest.fn(),
-	nextBatch: jest.fn(),
-	languageModel: jest.fn((config: unknown) => ({ type: 'languageModel', config })),
-	memory: jest.fn((config: unknown) => ({ type: 'memory', config })),
-	tool: jest.fn((config: unknown) => ({ type: 'tool', config })),
-	outputParser: jest.fn((config: unknown) => ({ type: 'outputParser', config })),
-	embedding: jest.fn((config: unknown) => ({ type: 'embedding', config })),
-	embeddings: jest.fn((config: unknown) => ({ type: 'embeddings', config })),
-	vectorStore: jest.fn((config: unknown) => ({ type: 'vectorStore', config })),
-	retriever: jest.fn((config: unknown) => ({ type: 'retriever', config })),
-	documentLoader: jest.fn((config: unknown) => ({ type: 'documentLoader', config })),
-	textSplitter: jest.fn((config: unknown) => ({ type: 'textSplitter', config })),
-	reranker: jest.fn((config: unknown) => ({ type: 'reranker', config })),
-	fromAi: jest.fn(
+	placeholder: vi.fn((value: string) => `<__PLACEHOLDER_VALUE__${value}__>`),
+	newCredential: vi.fn((name: string) => ({ __newCredential: true, name })),
+	ifElse: vi.fn(),
+	switchCase: vi.fn(),
+	merge: vi.fn((config: unknown) => ({ type: 'merge', config, input: vi.fn() })),
+	splitInBatches: vi.fn(),
+	nextBatch: vi.fn(),
+	languageModel: vi.fn((config: unknown) => ({ type: 'languageModel', config })),
+	memory: vi.fn((config: unknown) => ({ type: 'memory', config })),
+	tool: vi.fn((config: unknown) => ({ type: 'tool', config })),
+	outputParser: vi.fn((config: unknown) => ({ type: 'outputParser', config })),
+	embedding: vi.fn((config: unknown) => ({ type: 'embedding', config })),
+	embeddings: vi.fn((config: unknown) => ({ type: 'embeddings', config })),
+	vectorStore: vi.fn((config: unknown) => ({ type: 'vectorStore', config })),
+	retriever: vi.fn((config: unknown) => ({ type: 'retriever', config })),
+	documentLoader: vi.fn((config: unknown) => ({ type: 'documentLoader', config })),
+	textSplitter: vi.fn((config: unknown) => ({ type: 'textSplitter', config })),
+	reranker: vi.fn((config: unknown) => ({ type: 'reranker', config })),
+	fromAi: vi.fn(
 		(key: string, desc?: string) => `={{ $fromAI('${key}'${desc ? `, '${desc}'` : ''}) }}`,
 	),
+	nodeJson: vi.fn((node: { name: string } | string, path: string) => {
+		const name = typeof node === 'string' ? node : node.name;
+		return `={{ $('${name}').item.json.${path} }}`;
+	}),
 });
 
 describe('AST Interpreter', () => {
@@ -104,7 +104,7 @@ describe('AST Interpreter', () => {
 			const code = 'const x = {;';
 			try {
 				parseSDKCode(code);
-				fail('Should have thrown');
+				expect.fail('Should have thrown');
 			} catch (error) {
 				expect(error).toBeInstanceOf(InterpreterError);
 				expect((error as InterpreterError).location).toBeDefined();
@@ -222,6 +222,14 @@ describe('AST Interpreter', () => {
 			const result = interpretSDKCode(code, sdkFunctions);
 			expect(sdkFunctions.fromAi).toHaveBeenCalledWith('email', 'The recipient email address');
 			expect(result).toContain('$fromAI');
+		});
+
+		it('should call nodeJson function', () => {
+			const code = "export default nodeJson('Telegram Trigger', 'message.chat.id');";
+			const result = interpretSDKCode(code, sdkFunctions);
+
+			expect(sdkFunctions.nodeJson).toHaveBeenCalledWith('Telegram Trigger', 'message.chat.id');
+			expect(result).toBe("={{ $('Telegram Trigger').item.json.message.chat.id }}");
 		});
 
 		it('should chain method calls', () => {
@@ -709,7 +717,7 @@ describe('AST Interpreter', () => {
 			// Verify node was called with the subnode
 			expect(sdkFunctions.node).toHaveBeenCalled();
 			const nodeCallArgs = getFirstCallArg<{ config: { subnodes: { model: unknown } } }>(
-				sdkFunctions.node as jest.Mock,
+				sdkFunctions.node as Mock,
 			);
 			expect(nodeCallArgs.config.subnodes.model).toBeDefined();
 		});
@@ -755,7 +763,7 @@ describe('AST Interpreter', () => {
 			// Verify tool was called with the fromAi result
 			expect(sdkFunctions.tool).toHaveBeenCalled();
 			const toolCallArgs = getFirstCallArg<{ config: { parameters: { sendTo: string } } }>(
-				sdkFunctions.tool as jest.Mock,
+				sdkFunctions.tool as Mock,
 			);
 			expect(toolCallArgs.config.parameters.sendTo).toContain('$fromAI');
 		});
@@ -799,9 +807,31 @@ describe('AST Interpreter', () => {
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
 		});
 
+		it('reports an actionable, non-double-wrapped message for disallowed methods', () => {
+			const code = `
+				const wf = workflow('id', 'name');
+				export default wf.join(', ');
+			`;
+			let caught: unknown;
+			try {
+				interpretSDKCode(code, sdkFunctions);
+			} catch (error) {
+				caught = error;
+			}
+			expect(caught).toBeInstanceOf(SecurityError);
+			const message = (caught as SecurityError).message;
+			expect(message).toContain("Method 'join' is not an allowed SDK method");
+			expect(message).toContain('Allowed methods:');
+			expect(message).toContain('add');
+			// No double-wrap: the sentence must not be quoted inside "Security violation: '...'".
+			expect(message).not.toContain("Security violation: 'Method");
+			// Internal methods are not advertised as allowed.
+			expect(message).not.toContain('toJSON');
+		});
+
 		it('should allow connect() method on workflow builder', () => {
-			const connectMock = jest.fn();
-			sdkFunctions.workflow = jest.fn(() => ({
+			const connectMock = vi.fn();
+			sdkFunctions.workflow = vi.fn(() => ({
 				connect: connectMock,
 			}));
 			const code = `
@@ -810,6 +840,22 @@ describe('AST Interpreter', () => {
 			`;
 			interpretSDKCode(code, sdkFunctions);
 			expect(connectMock).toHaveBeenCalledWith('source', 0, 'target', 0);
+		});
+
+		it("should forward group()'s options object to the workflow builder", () => {
+			const groupMock = vi.fn();
+			sdkFunctions.workflow = vi.fn(() => ({
+				group: groupMock,
+			}));
+			// Members are irrelevant here — this pins the third argument surviving evaluation.
+			const code = `
+				const wf = workflow('id', 'name');
+				export default wf.group('Ingestion', [], { description: 'Pulls the CRM contacts' });
+			`;
+			interpretSDKCode(code, sdkFunctions);
+			expect(groupMock).toHaveBeenCalledWith('Ingestion', [], {
+				description: 'Pulls the CRM contacts',
+			});
 		});
 	});
 
@@ -863,6 +909,69 @@ describe('AST Interpreter', () => {
 		it('should reject WebAssembly access', () => {
 			const code = 'export default WebAssembly;';
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should report SecurityError with a clean (non-doubled) message', () => {
+			const code = 'export default fetch;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(
+				/Security violation: 'fetch' is not allowed/,
+			);
+		});
+	});
+
+	describe('Security - dangerous globals shadowed by declared variables', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		const shadowable = [
+			'fetch',
+			'process',
+			'require',
+			'console',
+			'Object',
+			'Array',
+			'Math',
+			'Date',
+			'Error',
+			'Promise',
+			'Buffer',
+		];
+
+		for (const name of shadowable) {
+			it(`should allow '${name}' as a node variable name`, () => {
+				const code = `
+					const ${name} = node({ name: 'X', type: 'n8n-nodes-base.set' });
+					export default workflow('id', 'name').add(${name});
+				`;
+				const result = interpretSDKCode(code, sdkFunctions) as { nodes: unknown[] };
+				expect(result.nodes).toHaveLength(1);
+			});
+		}
+
+		it('should still reject undeclared fetch reference', () => {
+			const code = 'export default fetch;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject member access on undeclared process', () => {
+			const code = 'export default process.env.PATH;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject member access on undeclared Math', () => {
+			const code = 'export default Math.PI;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should resolve member access against the user-declared shadow', () => {
+			const code = `
+				const Math = { custom: 42 };
+				export default Math.custom;
+			`;
+			expect(interpretSDKCode(code, sdkFunctions)).toBe(42);
 		});
 	});
 
@@ -932,17 +1041,323 @@ describe('AST Interpreter', () => {
 		});
 	});
 
-	describe('expr(placeholder(...)) error', () => {
-		it('should throw clear error when expr receives a PlaceholderValue', () => {
+	describe('String.trim', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		it('should allow "  abc  ".trim()', () => {
+			const code = 'export default "  abc  ".trim();';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toBe('abc');
+		});
+
+		it('should allow trim on a template literal', () => {
+			const code = 'export default `\n  hello\n`.trim();';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toBe('hello');
+		});
+
+		it('should allow trim on a variable holding a string', () => {
+			const code = 'const padded = "  x  "; export default padded.trim();';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toBe('x');
+		});
+	});
+
+	describe('Resource limits', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		it('should reject exponential array-spread doubling before completing', () => {
+			const doublings = 25; // 2^25 elements if unbounded — must abort far earlier
+			const lines = ['const a0 = [1];'];
+			for (let i = 1; i <= doublings; i++) {
+				lines.push(`const a${i} = [...a${i - 1}, ...a${i - 1}];`);
+			}
+			lines.push(`export default a${doublings};`);
+			const code = lines.join('\n');
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject cumulative object-spread growth across many statements', () => {
+			// Object spread merges by key (duplicate keys overwrite rather than
+			// duplicate), so it can't blow up exponentially the way array spread
+			// does — but copying a large object's keys over and over still adds
+			// up, so the shared budget must catch it across statements.
+			const keyCount = 2000;
+			const props = Array.from({ length: keyCount }, (_, i) => `k${i}: ${i}`).join(', ');
+			// Each merge copies keyCount slots but adds only ~23 characters of
+			// source, so the cost outgrows the source-derived budget.
+			const mergeCount = 500;
+			const lines = [`const big = { ${props} };`];
+
+			for (let i = 0; i < mergeCount; i++) {
+				lines.push(`const m${i} = { ...big };`);
+			}
+
+			lines.push('export default m0;');
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a huge String.repeat count', () => {
+			const code = 'export default "a".repeat(100000000);';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a huge String.repeat count passed as a numeric string', () => {
+			// Native String.prototype.repeat coerces its argument, so a string-typed
+			// count must be charged the same as a numeric one.
+			const code = 'export default "a".repeat("100000000");';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject exponential string growth from repeated + concatenation', () => {
+			const doublings = 25; // 2^25 characters if unbounded — must abort far earlier
+			const lines = ['const s0 = "a";'];
+			for (let i = 1; i <= doublings; i++) {
+				lines.push(`const s${i} = s${i - 1} + s${i - 1};`);
+			}
+
+			lines.push(`export default s${doublings};`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a reference DAG (Directed Acyclic Graph) that doubles without ever spreading', () => {
+			// [a, a] is two references, no copy — must still cost what `a` holds.
+			const doublings = 25;
+			const lines = ['const a0 = [1];'];
+			for (let i = 1; i <= doublings; i++) {
+				lines.push(`const a${i} = [a${i - 1}, a${i - 1}];`);
+			}
+
+			lines.push(`export default a${doublings};`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should count empty containers when sizing repeated references', () => {
+			const doublings = 18;
+			const lines = ['const a0 = [];'];
+			for (let i = 1; i <= doublings; i++) {
+				lines.push(`const a${i} = [a${i - 1}, a${i - 1}];`);
+			}
+
+			lines.push(`export default a${doublings};`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject chained JSON.stringify that doubles its own output each round', () => {
+			// Each round wraps the previous string in a 2-element array and
+			// re-serializes it. Serializing writes both references out in full,
+			// so the output doubles while the structure stays tiny.
+			const rounds = 15;
+			const lines = ['const s0 = "x".repeat(1000);'];
+			for (let i = 1; i <= rounds; i++) {
+				lines.push(`const a${i} = [s${i - 1}, s${i - 1}];`, `const s${i} = JSON.stringify(a${i});`);
+			}
+
+			lines.push(`export default s${rounds};`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a DAG whose members were filled in by property assignment', () => {
+			// Nothing is serialized here, so only the recorded size of `holder` can
+			// catch the doubling: left at the size it had when it was built, the
+			// whole chain measures empty.
+			const code = [
+				'const big = "x".repeat(50000);',
+				'const holder = {};',
+				'holder.a = big;',
+				'const a0 = [holder, holder];',
+				'const a1 = [a0, a0];',
+				'const a2 = [a1, a1];',
+				'export default a2;',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a DAG that repeats a long property name', () => {
+			// The name is written out once per occurrence, so it counts towards the
+			// output even though it is not part of any value. Sized like the case
+			// above, so a late limit would surface as a RangeError instead.
+			const doublings = 14;
+			const lines = [`const k = { "${'K'.repeat(20_000)}": 1 };`, 'const a0 = [k, k];'];
+			for (let i = 1; i <= doublings; i++) {
+				lines.push(`const a${i} = [a${i - 1}, a${i - 1}];`);
+			}
+
+			lines.push(`export default JSON.stringify(a${doublings});`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should still allow ordinary property assignment', () => {
+			const code = [
+				'const cfg = {};',
+				'cfg.name = "hello";',
+				'cfg.items = [1, 2, 3];',
+				'export default JSON.stringify(cfg);',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).not.toThrow();
+		});
+
+		it('should reject deep nesting serialized with a wide indent', () => {
+			// Indentation grows with depth, so it has to be counted per node: left
+			// out, this reaches the engine's string ceiling and raises a RangeError
+			// while building instead.
+			const depth = 4900;
+			const lines = ['const d0 = [1];'];
+			for (let i = 1; i <= depth; i++) {
+				lines.push(`const d${i} = [d${i - 1}];`);
+			}
+
+			lines.push(`export default JSON.stringify(d${depth}, null, 10);`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject JSON.stringify traversing an externally produced oversized structure', () => {
+			// Untracked value (no tracked size) must still trip the JSON.stringify guard.
+			const bigArray = Array.from({ length: 200_001 }, (_, i) => i); // above the floor budget
+			const funcs: SDKFunctions = {
+				...sdkFunctions,
+				getBig: vi.fn(() => bigArray),
+			};
+			const code = 'export default JSON.stringify(getBig());';
+
+			expect(() => interpretSDKCode(code, funcs)).toThrow(ResourceLimitError);
+		});
+
+		it('should accumulate JSON.stringify traversal across separate calls', () => {
+			// Each call stays under the limit on its own; together they must not.
+			const bigArray = Array.from({ length: 50_000 }, (_, i) => i);
+			const funcs: SDKFunctions = {
+				...sdkFunctions,
+				getBig: vi.fn(() => bigArray),
+			};
+			const code = [
+				'const s1 = JSON.stringify(getBig());',
+				'const s2 = JSON.stringify(getBig());',
+				'const s3 = JSON.stringify(getBig());',
+				'const s4 = JSON.stringify(getBig());',
+				'const s5 = JSON.stringify(getBig());',
+				'export default s5;',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, funcs)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a JSON.stringify replacer, which would displace the size guard', () => {
+			const code = 'export default JSON.stringify({ a: 1, b: 2 }, ["a"]);';
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(UnsupportedNodeError);
+		});
+
+		it('should still allow JSON.stringify on a reasonably large legitimate structure', () => {
+			const code = [
+				'const items = [1, 2, 3, 4, 5];',
+				'export default JSON.stringify({ items, name: "test" });',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).not.toThrow();
+		});
+
+		it('should allow a large embedded literal to be serialized into a parameter', () => {
+			// The documented way to embed a page in a Code node. Passing the same
+			// string along must not be charged again for every hop it makes.
+			const html = 'y'.repeat(150_000);
+			const code = [
+				`const html = "${html}";`,
+				'const jsCode = JSON.stringify(html);',
+				'export default { parameters: { jsCode } };',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).not.toThrow();
+		});
+
+		it('should allow a multi-part concatenation around a large embedded literal', () => {
+			// Charging each step its whole result would make this cost O(n^2).
+			const html = 'y'.repeat(120_000);
+			const code = [
+				`const html = "${html}";`,
+				'const jsCode = "var h=" + JSON.stringify(html) + "; return h;";',
+				'export default { parameters: { jsCode } };',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).not.toThrow();
+		});
+
+		it('should reject unbounded template-literal growth from repeated big values', () => {
+			const code = [
+				'const big = "x".repeat(150000);',
+				'const t1 = `${big}${big}`;',
+				'const t2 = `${t1}${t1}`;',
+				'export default t2;',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject programs with too many top-level statements', () => {
+			const lines: string[] = [];
+			for (let i = 0; i < 6000; i++) {
+				lines.push(`const v${i} = ${i};`);
+			}
+
+			lines.push('export default v0;');
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should still allow reasonably large legitimate literals and spreads', () => {
+			const items = Array.from({ length: 500 }, (_, i) => i).join(',');
+			const code = `const items = [${items}]; export default { ...{ items } };`;
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).not.toThrow();
+		});
+
+		it('should cap unbounded recursion reached via template-literal runtime-variable detection', () => {
+			// Builds a deeply nested $-prefixed member chain inside a template literal,
+			// which is resolved via isN8nRuntimeVariable/expressionToString, not evaluate().
+			let expression = '$json';
+			for (let i = 0; i < 600; i++) {
+				expression += '.a';
+			}
+
+			const code = `export default \`\${${expression}}\`;`;
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+	});
+
+	describe('expr(placeholder(...)) round-trip', () => {
+		it('prepends = to the placeholder marker so it parses as an n8n expression', () => {
 			const funcs: SDKFunctions = {
 				...createMockSDKFunctions(),
 				expr,
 			};
 			const code = `const val = expr(placeholder('Your ID'));
 export default val;`;
-			expect(() => interpretSDKCode(code, funcs)).toThrow(
-				"expr(placeholder('Your ID')) is invalid",
-			);
+			expect(interpretSDKCode(code, funcs)).toBe('=<__PLACEHOLDER_VALUE__Your ID__>');
 		});
 	});
 });

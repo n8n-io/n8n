@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -15,7 +15,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
 import SkeletonMenuItem from './SkeletonMenuItem.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { type ChatHubSessionDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
@@ -45,7 +45,7 @@ const groupedConversations = computed(() =>
 		(chatStore.sessions.ids ?? []).reduce<ChatHubSessionDto[]>((acc, id) => {
 			const session = chatStore.sessions.byId[id];
 
-			if (session) {
+			if (session && session.type !== 'manual') {
 				acc.push(session);
 			}
 
@@ -132,13 +132,11 @@ async function handleDeleteSession(sessionId: string) {
 }
 
 function handleNewChatClick() {
-	telemetry.track('User clicked new chat button', {});
+	telemetry.track('User clicked new chat button', { source: 'chat_hub' });
 }
 
 onMounted(() => {
-	if (!chatStore.sessionsReady) {
-		void chatStore.fetchSessions(true, { minLoadingTime: 250 });
-	}
+	void chatStore.fetchSessions(true, { minLoadingTime: 250, type: 'production' });
 });
 </script>
 

@@ -1,0 +1,55 @@
+get:
+  x-eov-operation-id: getLdapConfiguration
+  x-required-scope: ldap:manage
+  x-eov-operation-handler: v1/handlers/ldap/ldap.handler
+  tags:
+    - SettingsLdap
+  summary: Retrieve the LDAP configuration
+  description: >
+    Retrieve the current LDAP configuration, including every field exposed in the UI.
+    The binding admin password is redacted on read. Requires the `ldap:manage` scope
+    and the LDAP feature to be licensed.
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/ldap-configuration.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+put:
+  x-eov-operation-id: updateLdapConfiguration
+  x-required-scope: ldap:manage
+  x-eov-operation-handler: v1/handlers/ldap/ldap.handler
+  tags:
+    - SettingsLdap
+  summary: Set the LDAP configuration
+  description: >
+    Replace the LDAP configuration with the provided full object (partial updates are
+    not supported). For bindingAdminPassword, submit the blanking placeholder from a
+    prior GET to keep the stored password unchanged. Requires the `ldap:manage` scope 
+    and the LDAP feature to be licensed. Setting loginEnabled to false is destructive 
+    and it deletes all stored LDAP user identities and disables synchronization.
+  requestBody:
+    description: The full LDAP configuration to set.
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/ldap-configuration.update.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/ldap-configuration.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'

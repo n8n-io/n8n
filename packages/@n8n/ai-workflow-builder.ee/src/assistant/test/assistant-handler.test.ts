@@ -56,7 +56,7 @@ function createSplitResponse(chunks: SdkStreamChunk[], splitAt: number): Respons
 
 function createMockClient(response: Response): AssistantSdkClient {
 	return {
-		chat: jest.fn().mockResolvedValue(response),
+		chat: vi.fn().mockResolvedValue(response),
 	};
 }
 

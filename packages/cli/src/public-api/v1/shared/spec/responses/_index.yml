@@ -8,3 +8,11 @@ Conflict:
   $ref: './conflict.yml'
 Forbidden:
   $ref: './forbidden.yml'
+PaymentRequired:
+  $ref: './paymentRequired.yml'
+UnsupportedMediaType:
+  $ref: './unsupportedMediaType.yml'
+UnprocessableEntity:
+  $ref: './unprocessableEntity.yml'
+ServiceUnavailable:
+  $ref: './serviceUnavailable.yml'

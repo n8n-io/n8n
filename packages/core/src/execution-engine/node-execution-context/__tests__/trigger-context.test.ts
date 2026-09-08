@@ -1,5 +1,6 @@
-import { mock } from 'jest-mock-extended';
 import type {
+	Cron,
+	CronExpression,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	INode,
@@ -11,6 +12,7 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowExpression,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { TriggerContext } from '../trigger-context';
 
@@ -53,7 +55,7 @@ describe('TriggerContext', () => {
 	const triggerContext = new TriggerContext(workflow, node, additionalData, mode, activation);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getActivationMode', () => {
@@ -67,11 +69,30 @@ describe('TriggerContext', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials =
 				await triggerContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
 
 			expect(credentials).toEqual({ secret: 'token' });
+		});
+
+		it('should surface the node to the credentials helper', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
+
+			await triggerContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				expect.anything(),
+				testCredentialType,
+				mode,
+				expect.objectContaining({ node }),
+				false,
+				undefined,
+			);
 		});
 	});
 
@@ -97,6 +118,33 @@ describe('TriggerContext', () => {
 	describe('getExecutionContext', () => {
 		it('should return undefined', () => {
 			expect(triggerContext.getExecutionContext()).toBeUndefined();
+		});
+	});
+
+	describe('scheduling helpers', () => {
+		it('should expose injected scheduling functions through helpers', () => {
+			const registerCron = vi.fn();
+			const context = new TriggerContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+				undefined,
+				undefined,
+				undefined,
+				{ registerCron },
+			);
+
+			const cron: Cron = { expression: '0 0 9 * * *' as CronExpression };
+			const onTick = vi.fn();
+			context.helpers.registerCron(cron, onTick);
+
+			expect(registerCron).toHaveBeenCalledWith(cron, onTick);
+		});
+
+		it('should fall back to the in-memory scheduling functions when none are injected', () => {
+			expect(typeof triggerContext.helpers.registerCron).toBe('function');
 		});
 	});
 });

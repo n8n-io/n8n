@@ -1,0 +1,102 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*Create a plan to build and run a simple workflow with a manual trigger and a set node called \\\\\"approval test\\\\\"\\. Show me th[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-fe721ac5207d39cba1e5cbe0520ec1e9-eb746f9bbade21da-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "request-id": [
+        "req_011Ccm2R2ZfyNyY2bVrQhYAp"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-07-06T15:16:43Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "17990000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-07-06T15:16:43Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-07-06T15:16:43Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-07-06T15:16:43Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "14990000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Mon, 06 Jul 2026 15:16:44 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a16f927cf832fe6a-BCN"
+      ]
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_0157ugKFc8giDFiG3KkKkh1Q\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3,\"cache_creation_input_tokens\":426,\"cache_read_input_tokens\":17137,\"cache_creation\":{\"ephemeral_5m_input_tokens\":426,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":7,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}       }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\",\"signature\":\"\"}       }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"The user wants to create a plan for a simple workflow with a manual trigger and a Set node called \\\"approval test\\\", and wants to see the plan before building it\"} }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\". This is a multi-step coordinated task that requires planning. Let me load\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" the planning skill first.\\n\\nActually, wait - this is a simple single workflow.\"}              }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" The user is asking to \\\"show me the plan for approval before building it\\\" - they explicitly want to review\"}  }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" a plan first. The planning skill description says: \\\"user explicitly asked to review\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" a plan first\\\". So I should load the planning skill.\\n\\nLet me load the planning skill.\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"signature_delta\",\"signature\":\"EpQGCmUIDxgCKkBBsx5JSRp7HXF/sN9APeNh323JExoIlon+lenoTwtG/fOKdDXlIcckyEYbJVlQbd+66OSZQ0Iv9yJ8d0uoC5iTMhFjbGF1ZGUtc29ubmV0LTQtNjgAQgh0aGlua2luZxIMufLbugZ/f8S8bOprGgxsaQ/77pqI0iLKFZ8iMA5wMxja/7fQqdoqEiVqWxrKfBVYw2UcVxbhblBLMLAqH/RCrAXMOEFwUNqAYkWcVyrcBPo5in81LTJ1DCS05YcZegTUGcmtOuQ2mczDp3lFnRZO/K1K/1qofD4spdYx+pzbXxijT1U6NPeUjqPeQwUHYORBSbOVJQ6ndwjezn4kzoU9r1NnhAwvcXoL0O2ZZXeeJMjvv7MHCe7gEoGXXFF11fjMyGXhQS7oNUL/vedXExFYjerx8Df+gFz1l7YtM5hu8O4JLI8hwjrh59GJc5TwKngRHHzZlQxJfmikJqNT1s8cLEch0ft53syjbni7oamthfFC6ngeckQmHp6UX4rHMSBk300k3QFdJ4YAQUyGyKQotlWrPmFPLIQPaWPqvabZBPDWBS1rttwtmv22GTl3Wxb/qCSl1la5nnzDF6S27JvfIWryttwVsd+vW5WC2oEHuEUvuLGwVtScez0MNjiZNiLZFf9y0n80IEgMUeaYXlbdJe5uy8lwgMUY+EVqYCpOj9qdC5lcQAAhZqMGMmnY8vN24hFXp8jBuMQknraOUaadBnc05m3mh5txTnVMFf1LTZkB9Ju/f9QVxOSTG29XN1xK2ThPGJBfAEt/Sn8K3akCKuwcj7y8WKAqtlsQPSghB0qKeJkkExDPLokM8njQkMp9aiXE0lSprLoLliQfdopoXd9KbLIc71MeAbhqzE/Y+8q4uN3/xCrxJsi/WnKZUUSJ+DKPEhyEcIE7ZFUZ2L6bfOwzzb+T15/vaJUfS3gkQpCeIfJd+IgNHSOSWR/cbrh6em6yknLs16/Adh8UkjOMh63acf0bITPn+HeY8ZxI9GUCP+QcB6RFzoxn3BChD7lUA63UJn+rX7/lQcQYAQ==\"}          }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0          }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"The\"}             }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\" user wants to review a plan before building, so I'll load the planning skill first.\"}       }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1               }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01YPP27gLdf63QVQ92uRRCcR\",\"name\":\"load_skill\",\"input\":{},\"caller\":{\"type\":\"direct\"}}       }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"} }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"nam\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"e\\\": \\\"pla\"}             }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"nning\\\"}\"} }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":2     }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":3,\"cache_creation_input_tokens\":426,\"cache_read_input_tokens\":17137,\"output_tokens\":213,\"output_tokens_details\":{\"thinking_tokens\":137}}            }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"        }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxNTd1Z0tGYzhnaURGaUczS2tLa2gxUSIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjMsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6NDI2LCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MTcxMzcsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjQyNiwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjcsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fSAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjAsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRoaW5raW5nIiwidGhpbmtpbmciOiIiLCJzaWduYXR1cmUiOiIifSAgICAgICB9CgpldmVudDogcGluZwpkYXRhOiB7InR5cGUiOiAicGluZyJ9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0aGlua2luZ19kZWx0YSIsInRoaW5raW5nIjoiVGhlIHVzZXIgd2FudHMgdG8gY3JlYXRlIGEgcGxhbiBmb3IgYSBzaW1wbGUgd29ya2Zsb3cgd2l0aCBhIG1hbnVhbCB0cmlnZ2VyIGFuZCBhIFNldCBub2RlIGNhbGxlZCBcImFwcHJvdmFsIHRlc3RcIiwgYW5kIHdhbnRzIHRvIHNlZSB0aGUgcGxhbiBiZWZvcmUgYnVpbGRpbmcgaXQifSB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0aGlua2luZ19kZWx0YSIsInRoaW5raW5nIjoiLiBUaGlzIGlzIGEgbXVsdGktc3RlcCBjb29yZGluYXRlZCB0YXNrIHRoYXQgcmVxdWlyZXMgcGxhbm5pbmcuIExldCBtZSBsb2FkIn0gICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGhpbmtpbmdfZGVsdGEiLCJ0aGlua2luZyI6IiB0aGUgcGxhbm5pbmcgc2tpbGwgZmlyc3QuXG5cbkFjdHVhbGx5LCB3YWl0IC0gdGhpcyBpcyBhIHNpbXBsZSBzaW5nbGUgd29ya2Zsb3cuIn0gICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRoaW5raW5nX2RlbHRhIiwidGhpbmtpbmciOiIgVGhlIHVzZXIgaXMgYXNraW5nIHRvIFwic2hvdyBtZSB0aGUgcGxhbiBmb3IgYXBwcm92YWwgYmVmb3JlIGJ1aWxkaW5nIGl0XCIgLSB0aGV5IGV4cGxpY2l0bHkgd2FudCB0byByZXZpZXcifSAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGhpbmtpbmdfZGVsdGEiLCJ0aGlua2luZyI6IiBhIHBsYW4gZmlyc3QuIFRoZSBwbGFubmluZyBza2lsbCBkZXNjcmlwdGlvbiBzYXlzOiBcInVzZXIgZXhwbGljaXRseSBhc2tlZCB0byByZXZpZXcifX0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRoaW5raW5nX2RlbHRhIiwidGhpbmtpbmciOiIgYSBwbGFuIGZpcnN0XCIuIFNvIEkgc2hvdWxkIGxvYWQgdGhlIHBsYW5uaW5nIHNraWxsLlxuXG5MZXQgbWUgbG9hZCB0aGUgcGxhbm5pbmcgc2tpbGwuIn0gICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJzaWduYXR1cmVfZGVsdGEiLCJzaWduYXR1cmUiOiJFcFFHQ21VSUR4Z0NLa0JCc3g1SlNScDdIWEYvc045QVBlTmgzMjNKRXhvSWxvbitsZW5vVHd0Ry9mT0tkRFhsSWNja3lFWWJKVmxRYmQrNjZPU1pRMEl2OXlKOGQwdW9DNWlUTWhGamJHRjFaR1V0YzI5dWJtVjBMVFF0TmpnQVFnaDBhR2x1YTJsdVp4SU11ZkxidWdaL2Y4UzhiT3ByR2d4c2FRLzc3cHFJMGlMS0ZaOGlNQTV3TXhqYS83ZlFxZG9xRWlWcVd4cktmQlZZdzJVY1Z4YmhibEJMTUxBcUgvUkNyQVhNT0VGd1VOcUFZa1djVnlyY0JQbzVpbjgxTFRKMURDUzA1WWNaZWdUVUdjbXRPdVEybWN6RHAzbEZuUlpPL0sxSy8xcW9mRDRzcGRZeCtwemJYeGlqVDFVNk5QZVVqcVBlUXdVSFlPUkJTYk9WSlE2bmR3amV6bjRrem9VOXIxTm5oQXd2Y1hvTDBPMlpaWGVlSk1qdnY3TUhDZTdnRW9HWFhGRjExZmpNeUdYaFFTN29OVUwvdmVkWEV4RllqZXJ4OERmK2dGejFsN1l0TTVodThPNEpMSThod2pyaDU5R0pjNVR3S25nUkhIelpsUXhKZm1pa0pxTlQxczhjTEVjaDBmdDUzc3lqYm5pN29hbXRoZkZDNm5nZWNrUW1IcDZVWDRySE1TQmszMDBrM1FGZEo0WUFRVXlHeUtRb3RsV3JQbUZQTElRUGFXUHF2YWJaQlBEV0JTMXJ0dHd0bXYyMkdUbDNXeGIvcUNTbDFsYTVubnpERjZTMjdKdmZJV3J5dHR3VnNkK3ZXNVdDMm9FSHVFVXZ1TEd3VnRTY2V6ME1OamlaTmlMWkZmOXkwbjgwSUVnTVVlYVlYbGJkSmU1dXk4bHdnTVVZK0VWcVlDcE9qOXFkQzVsY1FBQWhacU1HTW1uWTh2TjI0aEZYcDhqQnVNUWtucmFPVWFhZEJuYzA1bTNtaDV0eFRuVk1GZjFMVFprQjlKdS9mOVFWeE9TVEcyOVhOMXhLMlRoUEdKQmZBRXQvU244SzNha0NLdXdjajd5OFdLQXF0bHNRUFNnaEIwcUtlSmtrRXhEUExva004bmpRa01wOWFpWEUwbFNwckxvTGxpUWZkb3BvWGQ5S2JMSWM3MU1lQWJocXpFL1krOHE0dU4zL3hDcnhKc2kvV25LWlVVU0orREtQRWh5RWNJRTdaRlVaMkw2YmZPd3p6YitUMTUvdmFKVWZTM2drUXBDZUlmSmQrSWdOSFNPU1dSL2Nicmg2ZW02eWtuTHMxNi9BZGg4VWtqT01oNjNhY2YwYklUUG4rSGVZOFp4STlHVUNQK1FjQjZSRnpveG4zQkNoRDdsVUE2M1VKbityWDcvbFFjUVlBUT09In0gICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MCAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjEsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRleHQiLCJ0ZXh0IjoiIn0gICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IlRoZSJ9ICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6InRleHRfZGVsdGEiLCJ0ZXh0IjoiIHVzZXIgd2FudHMgdG8gcmV2aWV3IGEgcGxhbiBiZWZvcmUgYnVpbGRpbmcsIHNvIEknbGwgbG9hZCB0aGUgcGxhbm5pbmcgc2tpbGwgZmlyc3QuIn0gICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MSAgICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MiwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxWVBQMjdnTGRmNjNRVlE5MnVSUkNjUiIsIm5hbWUiOiJsb2FkX3NraWxsIiwiaW5wdXQiOnt9LCJjYWxsZXIiOnsidHlwZSI6ImRpcmVjdCJ9fSAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjIsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiIn0gfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjoyLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IntcIm5hbSJ9ICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MiwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJlXCI6IFwicGxhIn0gICAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjoyLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6Im5uaW5nXCJ9In0gfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MiAgICAgfQoKZXZlbnQ6IG1lc3NhZ2VfZGVsdGEKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9kZWx0YSIsImRlbHRhIjp7InN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGx9LCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjMsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6NDI2LCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MTcxMzcsIm91dHB1dF90b2tlbnMiOjIxMywib3V0cHV0X3Rva2Vuc19kZXRhaWxzIjp7InRoaW5raW5nX3Rva2VucyI6MTM3fX0gICAgICAgICAgICB9CgpldmVudDogbWVzc2FnZV9zdG9wCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2Vfc3RvcCIgICAgICAgIH0KCg==",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0001-1783351136103-unknown-host-POST-_v1_messages-5e7c5f8d.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

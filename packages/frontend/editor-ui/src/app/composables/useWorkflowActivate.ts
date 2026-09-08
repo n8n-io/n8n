@@ -1,4 +1,4 @@
-import { useStorage } from '@/app/composables/useStorage';
+import { useStorage } from '@n8n/composables/useStorage';
 
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
@@ -8,12 +8,14 @@ import {
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useActivationError } from '@/app/composables/useActivationError';
 import type { INode } from 'n8n-workflow';
 import type { ResponseError } from '@n8n/rest-api-client/utils';
 import type { findWebhook } from '@n8n/rest-api-client/api/webhooks';
@@ -24,6 +26,7 @@ import {
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
+	const activationErrorNodeId = ref<string | undefined>();
 
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
@@ -32,6 +35,7 @@ export function useWorkflowActivate() {
 	const toast = useToast();
 	const i18n = useI18n();
 	const collaborationStore = useCollaborationStore();
+	const { errorMessage: activationErrorMessage } = useActivationError(activationErrorNodeId);
 
 	const parseWebhookConflictError = (error: ResponseError) => {
 		try {
@@ -104,8 +108,13 @@ export function useWorkflowActivate() {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		try {
-			const expectedChecksum =
-				workflowId === workflowsStore.workflowId ? workflowDocumentStore.checksum : undefined;
+			// A hydrated document is open in an editor, routed or embedded (assistant artifact).
+			// The route id is empty on the assistant page and the publish modal is global, so
+			// neither can tell whether this workflow is on screen. Re-read the flag after the
+			// request: the editor may have closed while it was in flight.
+			const expectedChecksum = workflowDocumentStore.hydrated
+				? workflowDocumentStore.checksum
+				: undefined;
 
 			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId,
@@ -123,11 +132,15 @@ export function useWorkflowActivate() {
 				activeVersion: updatedWorkflow.activeVersion,
 			});
 
-			if (workflowId === workflowsStore.workflowId) {
-				workflowsStore.setWorkflowVersionData({
+			if (useSettingsStore().isWorkflowPublicationServiceEnabled) {
+				workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+			}
+
+			if (workflowDocumentStore.hydrated) {
+				workflowDocumentStore.setVersionData({
 					versionId: updatedWorkflow.versionId,
-					name: workflowsStore.versionData?.name ?? null,
-					description: workflowsStore.versionData?.description ?? null,
+					name: workflowDocumentStore.versionData?.name ?? null,
+					description: workflowDocumentStore.versionData?.description ?? null,
 				});
 				if (updatedWorkflow.checksum) {
 					workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
@@ -148,12 +161,14 @@ export function useWorkflowActivate() {
 				await handleWebhookConflictError(error);
 				return { success: false, errorHandled: true };
 			} else {
-				toast.showError(
-					error,
-					i18n.baseText('workflowActivator.showError.title', {
-						interpolate: { newStateName: 'published' },
-					}) + ':',
-				);
+				activationErrorNodeId.value = error.meta?.nodeId as string | undefined;
+				const title = i18n.baseText('workflowActivator.showError.title', {
+					interpolate: { newStateName: 'published' },
+				});
+				toast.showError(error, title, {
+					message: activationErrorMessage.value,
+					description: error.meta?.description as string | undefined,
+				});
 
 				// Only update workflow state to inactive if this is not a validation error
 				if (!error.meta?.validationError) {
@@ -164,7 +179,7 @@ export function useWorkflowActivate() {
 					});
 				}
 			}
-			return { success: false };
+			return { success: false, errorHandled: true };
 		} finally {
 			updatingWorkflowActivation.value = false;
 		}
@@ -189,8 +204,9 @@ export function useWorkflowActivate() {
 		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		try {
-			const expectedChecksum =
-				workflowId === workflowsStore.workflowId ? workflowDocumentStore.checksum : undefined;
+			const expectedChecksum = workflowDocumentStore.hydrated
+				? workflowDocumentStore.checksum
+				: undefined;
 
 			await workflowsStore.deactivateWorkflow(workflowId, expectedChecksum);
 			workflowDocumentStore.setActiveState({

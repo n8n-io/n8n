@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+
 import {
 	type IHookFunctions,
 	type IWebhookFunctions,
@@ -12,6 +14,7 @@ import {
 import { parse as urlParse } from 'url';
 
 import { mauticApiRequest } from './GenericFunctions';
+import { verifySignature } from './MauticTriggerHelpers';
 
 export class MauticTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -146,16 +149,19 @@ export class MauticTrigger implements INodeType {
 				const events = this.getNodeParameter('events', 0) as string[];
 				const eventsOrder = this.getNodeParameter('eventsOrder', 0) as string;
 				const urlParts = urlParse(webhookUrl);
+				const webhookSecret = randomBytes(32).toString('hex');
 				const body: IDataObject = {
 					name: `n8n-webhook:${urlParts.path}`,
 					description: 'n8n webhook',
 					webhookUrl,
+					secret: webhookSecret,
 					triggers: events,
 					eventsOrderbyDir: eventsOrder,
 					isPublished: true,
 				};
 				const { hook } = await mauticApiRequest.call(this, 'POST', '/hooks/new', body);
 				webhookData.webhookId = hook.id;
+				webhookData.webhookSecret = webhookSecret;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -166,12 +172,19 @@ export class MauticTrigger implements INodeType {
 					return false;
 				}
 				delete webhookData.webhookId;
+				delete webhookData.webhookSecret;
 				return true;
 			},
 		},
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
+
 		const req = this.getRequestObject();
 		return {
 			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],

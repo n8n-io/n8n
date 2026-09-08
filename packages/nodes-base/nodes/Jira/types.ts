@@ -11,6 +11,20 @@ export type JiraWebhook = {
 	sslVerificationRequired: boolean;
 	self?: string; // Only available for version < 10
 };
+
+export type JiraDynamicWebhook = {
+	id: number;
+	url: string;
+	events?: string[];
+	jqlFilter?: string;
+	expirationDate?: string; // ISO 8601, present on Dynamic Webhooks API responses
+};
+export type JiraProject = {
+	id: string;
+	key: string;
+	name: string;
+};
+
 export type JiraServerInfo = {
 	baseUrl: string;
 	version: string;

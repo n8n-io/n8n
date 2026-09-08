@@ -699,9 +699,9 @@ describe('Edge Case Roundtrip Tests', () => {
 
 			const httpMainConns = parsedJson.connections['HTTP Request']?.main;
 			expect(httpMainConns?.[0]?.[0]?.node).toBe('Success Handler');
-			// Error output is now under 'error' connection type
-			const httpErrorConns = parsedJson.connections['HTTP Request']?.error;
-			expect(httpErrorConns?.[0]?.[0]?.node).toBe('Error Handler');
+			// Error pin is emitted in modern format as an extra slot on `main`
+			expect(httpMainConns?.[1]?.[0]?.node).toBe('Error Handler');
+			expect(parsedJson.connections['HTTP Request']?.error).toBeUndefined();
 
 			// Verify onError setting is preserved
 			const httpNode = parsedJson.nodes.find((n) => n.name === 'HTTP Request');
@@ -961,7 +961,7 @@ export default workflow('test', 'Test').add(t.to(n));`;
 			const parsedJson = parseWorkflowCode(code);
 
 			expect(parsedJson.nodes).toHaveLength(5);
-			expect(parsedJson.connections['HTTP Request']?.error?.[0]?.[0]?.node).toBe('Error IF');
+			expect(parsedJson.connections['HTTP Request']?.main[1]?.[0]?.node).toBe('Error IF');
 			expect(parsedJson.connections['Error IF']?.main[0]?.[0]?.node).toBe('Retry');
 			expect(parsedJson.connections['Error IF']?.main[1]?.[0]?.node).toBe('Log Error');
 		});
@@ -1038,7 +1038,7 @@ export default workflow('test', 'Test').add(t.to(n));`;
 			const parsedJson = parseWorkflowCode(code);
 
 			expect(parsedJson.nodes).toHaveLength(5);
-			expect(parsedJson.connections['HTTP Request']?.error?.[0]?.[0]?.node).toBe('Error Router');
+			expect(parsedJson.connections['HTTP Request']?.main[1]?.[0]?.node).toBe('Error Router');
 			expect(parsedJson.connections['Error Router']?.main[0]?.[0]?.node).toBe('Handle 404');
 			expect(parsedJson.connections['Error Router']?.main[1]?.[0]?.node).toBe('Handle 500');
 		});
@@ -1115,7 +1115,7 @@ export default workflow('test', 'Test').add(t.to(n));`;
 			const parsedJson = parseWorkflowCode(code);
 
 			expect(parsedJson.nodes).toHaveLength(5);
-			expect(parsedJson.connections['HTTP Request']?.error?.[0]?.[0]?.node).toBe('Error Batcher');
+			expect(parsedJson.connections['HTTP Request']?.main[1]?.[0]?.node).toBe('Error Batcher');
 			expect(parsedJson.connections['Error Batcher']?.main[0]?.[0]?.node).toBe('All Done');
 			expect(parsedJson.connections['Error Batcher']?.main[1]?.[0]?.node).toBe('Process Each');
 		});

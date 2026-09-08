@@ -5,6 +5,7 @@ import type {
 	IExecutionContext,
 	IWorkflowSettings,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type {
 	CredentialResolutionResult,
@@ -19,24 +20,25 @@ import { DynamicCredentialsProxy } from '../dynamic-credentials-proxy';
 
 describe('DynamicCredentialsProxy', () => {
 	let proxy: DynamicCredentialsProxy;
-	let mockLogger: jest.Mocked<Logger>;
-	let mockResolverProvider: jest.Mocked<ICredentialResolutionProvider>;
-	let mockStorageProvider: jest.Mocked<IDynamicCredentialStorageProvider>;
+	let mockLogger: Mocked<Logger>;
+	let mockResolverProvider: Mocked<ICredentialResolutionProvider>;
+	let mockStorageProvider: Mocked<IDynamicCredentialStorageProvider>;
 
 	beforeEach(() => {
 		mockLogger = {
-			warn: jest.fn(),
-			debug: jest.fn(),
-			error: jest.fn(),
-			info: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			warn: vi.fn(),
+			debug: vi.fn(),
+			error: vi.fn(),
+			info: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		mockResolverProvider = {
-			resolveIfNeeded: jest.fn(),
+			resolveIfNeeded: vi.fn(),
+			getSystemResolverId: vi.fn(),
 		};
 
 		mockStorageProvider = {
-			storeIfNeeded: jest.fn(),
+			storeIfNeeded: vi.fn(),
 		};
 
 		proxy = new DynamicCredentialsProxy(mockLogger);
@@ -87,6 +89,7 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				undefined,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -118,6 +121,7 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				executionContext,
 				workflowSettings,
+				undefined,
 			);
 		});
 	});
@@ -165,6 +169,7 @@ describe('DynamicCredentialsProxy', () => {
 				credentialContext,
 				undefined,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -188,6 +193,32 @@ describe('DynamicCredentialsProxy', () => {
 				credentialContext,
 				staticData,
 				workflowSettings,
+				undefined,
+			);
+		});
+
+		it('forwards executionId to the storage provider, so a context bound to this execution passes the resolver replay check', async () => {
+			const staticData = { clientId: 'static-client-id' };
+			const workflowSettings: IWorkflowSettings = { executionTimeout: 300 };
+
+			proxy.setStorageProvider(mockStorageProvider);
+
+			await proxy.storeIfNeeded(
+				credentialMetadata,
+				dynamicData,
+				credentialContext,
+				staticData,
+				workflowSettings,
+				'exec-123',
+			);
+
+			expect(mockStorageProvider.storeIfNeeded).toHaveBeenCalledWith(
+				credentialMetadata,
+				dynamicData,
+				credentialContext,
+				staticData,
+				workflowSettings,
+				'exec-123',
 			);
 		});
 	});
@@ -205,6 +236,49 @@ describe('DynamicCredentialsProxy', () => {
 
 			// Verify by checking it doesn't throw when storing resolvable credential
 			expect(() => proxy.setStorageProvider(mockStorageProvider)).not.toThrow();
+		});
+	});
+
+	describe('getSystemResolverId', () => {
+		it('returns null when no resolver provider is set', () => {
+			expect(proxy.getSystemResolverId()).toBeNull();
+		});
+
+		it('delegates to the resolver provider when set', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-n8n');
+			proxy.setResolverProvider(mockResolverProvider);
+
+			expect(proxy.getSystemResolverId()).toBe('system-n8n');
+			expect(mockResolverProvider.getSystemResolverId).toHaveBeenCalled();
+		});
+	});
+
+	describe('getEffectiveResolverId', () => {
+		it('returns the workflow override when set, ignoring the system resolver', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-id');
+			proxy.setResolverProvider(mockResolverProvider);
+			const settings: IWorkflowSettings = { credentialResolverId: 'override-id' };
+
+			expect(proxy.getEffectiveResolverId(settings)).toBe('override-id');
+			expect(mockResolverProvider.getSystemResolverId).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the system resolver id when no override is set', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-id');
+			proxy.setResolverProvider(mockResolverProvider);
+
+			expect(proxy.getEffectiveResolverId({})).toBe('system-id');
+		});
+
+		it('returns null when neither the workflow nor the provider provides an id', () => {
+			expect(proxy.getEffectiveResolverId(undefined)).toBeNull();
+		});
+
+		it('handles undefined settings without throwing', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-id');
+			proxy.setResolverProvider(mockResolverProvider);
+
+			expect(proxy.getEffectiveResolverId(undefined)).toBe('system-id');
 		});
 	});
 });

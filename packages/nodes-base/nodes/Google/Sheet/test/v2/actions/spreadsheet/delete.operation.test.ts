@@ -2,10 +2,11 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/spreadsheet/delete.operation';
 import { apiRequest } from '../../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../../v2/transport', () => ({
+vi.mock('../../../../v2/transport', () => ({
 	apiRequest: {
-		call: jest.fn(),
+		call: vi.fn(),
 	},
 }));
 
@@ -14,22 +15,22 @@ describe('GoogleSheetsDeleteSpreadsheet', () => {
 
 	beforeEach(() => {
 		mockExecuteFunction = {
-			getInputData: jest.fn().mockReturnValue([{}]),
-			getNodeParameter: jest.fn(),
+			getInputData: vi.fn().mockReturnValue([{}]),
+			getNodeParameter: vi.fn(),
 			helpers: {
-				constructExecutionMetaData: jest.fn().mockImplementation((data) => [data]),
+				constructExecutionMetaData: vi.fn().mockImplementation((data) => [data]),
 			},
 		} as unknown as IExecuteFunctions;
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should successfully delete a spreadsheet', async () => {
 		const documentId = '1234567890';
 		const expectedUrl = `https://www.googleapis.com/drive/v3/files/${documentId}`;
 
-		mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue(documentId);
-		(apiRequest.call as jest.Mock).mockResolvedValue({});
+		mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue(documentId);
+		(apiRequest.call as Mock).mockResolvedValue({});
 
 		const result = await execute.call(mockExecuteFunction);
 
@@ -47,11 +48,11 @@ describe('GoogleSheetsDeleteSpreadsheet', () => {
 
 	it('should handle multiple input items', async () => {
 		const documentIds = ['doc1', 'doc2', 'doc3'];
-		mockExecuteFunction.getInputData = jest.fn().mockReturnValue([{}, {}, {}]);
-		mockExecuteFunction.getNodeParameter = jest
+		mockExecuteFunction.getInputData = vi.fn().mockReturnValue([{}, {}, {}]);
+		mockExecuteFunction.getNodeParameter = vi
 			.fn()
 			.mockImplementation((_, index) => documentIds[index]);
-		(apiRequest.call as jest.Mock).mockResolvedValue({});
+		(apiRequest.call as Mock).mockResolvedValue({});
 
 		const result = await execute.call(mockExecuteFunction);
 
@@ -65,25 +66,25 @@ describe('GoogleSheetsDeleteSpreadsheet', () => {
 	it('should handle API errors gracefully', async () => {
 		const documentId = '1234567890';
 		const errorMessage = 'File not found';
-		mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue(documentId);
-		(apiRequest.call as jest.Mock).mockRejectedValue(new Error(errorMessage));
+		mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue(documentId);
+		(apiRequest.call as Mock).mockRejectedValue(new Error(errorMessage));
 
 		await expect(execute.call(mockExecuteFunction)).rejects.toThrow(Error);
 	});
 
 	it('should validate document ID parameter', async () => {
-		mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue(undefined);
+		mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue(undefined);
 		await expect(execute.call(mockExecuteFunction)).rejects.toThrow();
 	});
 
 	describe('Resource Locator Modes', () => {
 		it('should handle list mode correctly', async () => {
 			const documentId = '1234567890';
-			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue({
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue({
 				mode: 'list',
 				value: documentId,
 			});
-			(apiRequest.call as jest.Mock).mockResolvedValue({});
+			(apiRequest.call as Mock).mockResolvedValue({});
 
 			const result = await execute.call(mockExecuteFunction);
 
@@ -92,11 +93,11 @@ describe('GoogleSheetsDeleteSpreadsheet', () => {
 
 		it('should handle URL mode correctly', async () => {
 			const documentUrl = 'https://docs.google.com/spreadsheets/d/1234567890/edit';
-			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue({
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue({
 				mode: 'url',
 				value: documentUrl,
 			});
-			(apiRequest.call as jest.Mock).mockResolvedValue({});
+			(apiRequest.call as Mock).mockResolvedValue({});
 
 			const result = await execute.call(mockExecuteFunction);
 
@@ -105,11 +106,11 @@ describe('GoogleSheetsDeleteSpreadsheet', () => {
 
 		it('should handle ID mode correctly', async () => {
 			const documentId = '1234567890';
-			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue({
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue({
 				mode: 'id',
 				value: documentId,
 			});
-			(apiRequest.call as jest.Mock).mockResolvedValue({});
+			(apiRequest.call as Mock).mockResolvedValue({});
 
 			const result = await execute.call(mockExecuteFunction);
 

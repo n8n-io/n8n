@@ -13,7 +13,8 @@ export class ReadWriteFile implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Read/Write Files from Disk',
 		name: 'readWriteFile',
-		icon: 'file:readWriteFile.svg',
+		icon: 'node:read-write-files-from-disk',
+		iconColor: 'forest-green',
 		group: ['input'],
 		version: [1, 1.1],
 		description: 'Read or write files from the computer that runs n8n',

@@ -5,6 +5,8 @@
 // Start here for CLI/backend (IsolatedVmBridge) or frontend (WebWorkerBridge).
 // ============================================================================
 
+import type { WorkflowData } from './evaluator';
+
 /**
  * Abstract interface for runtime bridges.
  *
@@ -32,7 +34,7 @@ export interface RuntimeBridge {
 	 * Note: Synchronous for Node.js vm module (Slice 1).
 	 *       Will be async for isolated-vm (Slice 2).
 	 */
-	execute(code: string, data: Record<string, unknown>): unknown;
+	execute(code: string, data: WorkflowData, options?: ExecuteOptions): unknown;
 
 	/**
 	 * Dispose of the isolated context and free resources.
@@ -48,6 +50,17 @@ export interface RuntimeBridge {
 }
 
 /**
+ * Logger interface matching n8n-workflow's Logger type.
+ * Accepts an optional metadata bag on each call.
+ */
+export interface Logger {
+	error(message: string, metadata?: Record<string, unknown>): void;
+	warn(message: string, metadata?: Record<string, unknown>): void;
+	info(message: string, metadata?: Record<string, unknown>): void;
+	debug(message: string, metadata?: Record<string, unknown>): void;
+}
+
+/**
  * Configuration for runtime bridges.
  */
 export interface BridgeConfig {
@@ -58,23 +71,43 @@ export interface BridgeConfig {
 	memoryLimit?: number;
 
 	/**
-	 * Timeout in milliseconds for expression execution.
+	 * Timeout in milliseconds for one expression evaluation. A chain of nested
+	 * evaluations (`$evaluateExpression`) shares this limit; a nested call does
+	 * not get a new one.
 	 * Default: 5000ms
 	 */
 	timeout?: number;
 
-	/**
-	 * Enable debug mode (inspector protocol).
-	 * Default: false
-	 *
-	 * Phase 2+: Chrome DevTools debugging support
-	 */
-	debug?: boolean;
+	/** Optional logger. Falls back to no-op if not provided. */
+	logger?: Logger;
 }
+
+const NO_OP_LOGGER: Logger = {
+	error: () => {},
+	warn: () => {},
+	info: () => {},
+	debug: () => {},
+};
 
 /** Default values for BridgeConfig. Bridge implementations should use this as their baseline. */
 export const DEFAULT_BRIDGE_CONFIG: Required<BridgeConfig> = {
 	memoryLimit: 128,
 	timeout: 5000,
-	debug: false,
+	logger: NO_OP_LOGGER,
 };
+
+/** Options for a single execute() call. */
+export interface ExecuteOptions {
+	/**
+	 * IANA timezone for this evaluation (e.g., 'America/New_York').
+	 * Sets luxon Settings.defaultZone inside the isolate before execution.
+	 */
+	timezone?: string;
+
+	/**
+	 * Milliseconds already spent by the chain of evaluations this call belongs
+	 * to. Subtracted from the configured timeout so a chain shares one budget
+	 * instead of each call starting a fresh one. Omit for a standalone call.
+	 */
+	elapsedMs?: number;
+}

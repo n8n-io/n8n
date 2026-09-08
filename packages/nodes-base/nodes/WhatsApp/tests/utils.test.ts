@@ -33,11 +33,13 @@ describe('createMessage', () => {
 				label: 'Yes',
 				style: 'primary',
 				url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+				approved: true,
 			},
 			{
 				label: 'No',
 				style: 'secondary',
 				url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+				approved: false,
 			},
 		],
 	};
@@ -80,6 +82,7 @@ describe('createMessage', () => {
 					label: 'Confirm',
 					style: '',
 					url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+					approved: true,
 				},
 			],
 		};

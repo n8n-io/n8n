@@ -50,8 +50,60 @@ export class GuardrailsV2 implements INodeType {
 						},
 					},
 				},
-				message:
+				searchHint:
 					'Classify operation has two outputs: output 0 (Pass) for items that passed all guardrail checks, output 1 (Fail) for items that failed. Use .output(index).to() to connect from a specific output. @example guardrails.output(0).to(passNode) and guardrails.output(1).to(failNode). Sanitize operation has only one output.',
+				extraTypeDefContent: [
+					{
+						displayOptions: {
+							show: {
+								operation: ['classify'],
+							},
+						},
+						content: `<patterns>
+<pattern title="Guardrails classify with separate Pass and Fail outputs">
+const model = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'OpenAI Chat Model',
+    parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
+    credentials: { openAiApi: { id: 'credId', name: 'OpenAI account' } }
+  }
+});
+
+const guardrailsCheck = node({
+  type: '@n8n/n8n-nodes-langchain.guardrails',
+  version: 2,
+  config: {
+    name: 'Guardrails',
+    parameters: {
+      operation: 'classify',
+      text: expr('{{ $json.input }}'),
+      guardrails: { jailbreak: { value: { threshold: 0.7 } } }
+    },
+    subnodes: { model }
+  }
+});
+
+const passHandler = node({
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: { name: 'Handle Pass', parameters: {} }
+});
+
+const failHandler = node({
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: { name: 'Handle Fail', parameters: {} }
+});
+
+// output 0 = Pass, output 1 = Fail
+guardrailsCheck.output(0).to(passHandler);
+guardrailsCheck.output(1).to(failHandler);
+</pattern>
+</patterns>`,
+					},
+				],
 			},
 		};
 	}

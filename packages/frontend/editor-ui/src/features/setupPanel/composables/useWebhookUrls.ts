@@ -1,6 +1,7 @@
 import { computed, toValue, type MaybeRef } from 'vue';
 import { computedAsync } from '@vueuse/core';
 import type { IWebhookDescription } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -82,6 +83,13 @@ export function useWebhookUrls(node: MaybeRef<INodeUi | null>) {
 	const webhookUrls = computedAsync(async () => {
 		const currentNode = nodeValue.value;
 		if (!currentNode || webhooks.value.length === 0) return [];
+		if (nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE) return [];
+
+		// Access parameters synchronously so Vue tracks it as a dependency.
+		// Without this, changing a node parameter (e.g. webhook path) won't
+		// trigger a URL recomputation because the node object reference itself
+		// doesn't change — only its `parameters` property does.
+		void currentNode.parameters;
 
 		const result: WebhookDisplayData[] = [];
 

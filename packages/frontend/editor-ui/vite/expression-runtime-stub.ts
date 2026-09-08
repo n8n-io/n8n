@@ -35,6 +35,7 @@ export function extend() {}
 export function extendOptional() {}
 export const EXTENSION_OBJECTS: unknown[] = [];
 export class ExpressionExtensionError extends Error {}
+export class IsolateError extends Error {}
 
 export const DEFAULT_BRIDGE_CONFIG = {};
 
@@ -50,3 +51,4 @@ export type MetricsAPI = never;
 export type TracesAPI = never;
 export type Span = never;
 export type LogsAPI = never;
+export type ExecuteOptions = never;

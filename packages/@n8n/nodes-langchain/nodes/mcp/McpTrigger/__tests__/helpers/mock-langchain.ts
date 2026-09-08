@@ -1,4 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
+import type { Mocked } from 'vitest';
 import { z } from 'zod';
 
 /**
@@ -11,16 +12,18 @@ export function createMockTool(
 		invokeReturn?: unknown;
 		invokeError?: Error;
 		metadata?: Record<string, unknown>;
+		schema?: z.ZodTypeAny;
 	} = {},
-): jest.Mocked<Tool> {
+): Mocked<Tool> {
 	const {
 		description = `Mock tool: ${toolName}`,
 		invokeReturn = { result: 'success' },
 		invokeError,
 		metadata,
+		schema = z.object({}),
 	} = opts;
 
-	const invoke = jest.fn().mockImplementation(async () => {
+	const invoke = vi.fn().mockImplementation(async () => {
 		await Promise.resolve();
 		if (invokeError) {
 			throw invokeError;
@@ -31,15 +34,15 @@ export function createMockTool(
 	return {
 		name: toolName,
 		description,
-		schema: z.object({}),
+		schema,
 		invoke,
 		metadata,
-	} as unknown as jest.Mocked<Tool>;
+	} as unknown as Mocked<Tool>;
 }
 
 /**
  * Creates multiple mock tools
  */
-export function createMockTools(toolNames: string[]): Array<jest.Mocked<Tool>> {
+export function createMockTools(toolNames: string[]): Array<Mocked<Tool>> {
 	return toolNames.map((n) => createMockTool(n));
 }

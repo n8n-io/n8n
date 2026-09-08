@@ -5,25 +5,37 @@ import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { IDataObject, INode, ISupplyDataFunctions } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type IDataObject,
+	type INode,
+	type ISupplyDataFunctions,
+} from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 
 import * as common from '../LMChatOpenAi/common';
 import { LmChatOpenAi } from '../LMChatOpenAi/LmChatOpenAi.node';
 
-jest.mock('@langchain/openai');
-jest.mock('@n8n/ai-utilities');
-jest.mock('../LMChatOpenAi/common');
+vi.mock('@langchain/openai');
+vi.mock('@n8n/ai-utilities');
+vi.mock('../LMChatOpenAi/common');
+vi.mock('@utils/chatModelMessageWrapper', () => ({
+	wrapChatModelMessageInput: vi.fn((model) => model),
+}));
 
-const MockedChatOpenAI = jest.mocked(ChatOpenAI);
-const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
-const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
-const mockedCommon = jest.mocked(common);
-const mockedGetProxyAgent = jest.mocked(getProxyAgent);
+const MockedChatOpenAI = vi.mocked(ChatOpenAI);
+const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
+const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
+const mockedCommon = vi.mocked(common);
+const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedWrapChatModelMessageInput = vi.mocked(wrapChatModelMessageInput);
 const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 describe('LmChatOpenAi', () => {
 	let lmChatOpenAi: LmChatOpenAi;
-	let mockContext: jest.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -39,29 +51,29 @@ describe('LmChatOpenAi', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			node,
-		) as jest.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
 		// Setup default mocks
-		mockContext.getCredentials = jest.fn().mockResolvedValue({
+		mockContext.getCredentials = vi.fn().mockResolvedValue({
 			apiKey: 'test-api-key',
 		});
-		mockContext.getNode = jest.fn().mockReturnValue(node);
-		mockContext.getNodeParameter = jest.fn();
+		mockContext.getNode = vi.fn().mockReturnValue(node);
+		//@ts-expect-error - Mocking
+		mockContext.getNodeParameter = vi.fn();
 
 		// Mock the constructors/functions properly
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as any);
-		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
+		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
 		return mockContext;
 	};
 
 	beforeEach(() => {
 		lmChatOpenAi = new LmChatOpenAi();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('node description', () => {
@@ -88,6 +100,24 @@ describe('LmChatOpenAi', () => {
 			expect(lmChatOpenAi.description.outputs).toEqual(['ai_languageModel']);
 			expect(lmChatOpenAi.description.outputNames).toEqual(['Model']);
 		});
+
+		it('should expose Extra Body as an advanced JSON option', () => {
+			const options = lmChatOpenAi.description.properties.find(
+				(property) => property?.name === 'options',
+			);
+
+			expect(options).toBeDefined();
+			expect(options).toMatchObject({
+				options: expect.arrayContaining([
+					expect.objectContaining({
+						displayName: 'Extra Body',
+						name: 'extraBody',
+						type: 'json',
+						default: '{}',
+					}),
+				]),
+			});
+		});
 	});
 
 	describe('supplyData', () => {
@@ -95,7 +125,7 @@ describe('LmChatOpenAi', () => {
 			const mockContext = setupMockContext({ typeVersion: 1.2 });
 
 			// Mock getNodeParameter to handle the proper parameter names for v1.2
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -132,7 +162,7 @@ describe('LmChatOpenAi', () => {
 			const mockContext = setupMockContext({ typeVersion: 1.1 });
 
 			// Mock getNodeParameter to handle the proper parameter names for v1.1
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'gpt-4o-mini';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -164,7 +194,7 @@ describe('LmChatOpenAi', () => {
 			const customBaseURL = 'https://custom-api.example.com/v1';
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options')
 					return {
@@ -207,7 +237,7 @@ describe('LmChatOpenAi', () => {
 				url: customURL,
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -244,7 +274,7 @@ describe('LmChatOpenAi', () => {
 				headerValue: 'custom-value',
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -287,7 +317,7 @@ describe('LmChatOpenAi', () => {
 				reasoningEffort: 'high' as const,
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -328,7 +358,7 @@ describe('LmChatOpenAi', () => {
 				reasoningEffort: 'invalid' as 'low' | 'medium' | 'high',
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -347,7 +377,7 @@ describe('LmChatOpenAi', () => {
 		it('should create N8nLlmTracing callback', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -355,13 +385,35 @@ describe('LmChatOpenAi', () => {
 
 			await lmChatOpenAi.supplyData.call(mockContext, 0);
 
-			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext);
+			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext, { redactedHeaders: [] });
+		});
+
+		it('should pass the declared header name to N8nLlmTracing', async () => {
+			const mockContext = setupMockContext();
+			mockContext.getCredentials = vi.fn().mockResolvedValue({
+				apiKey: 'test-api-key',
+				header: true,
+				headerName: 'x-custom-header',
+				headerValue: 'secret-value',
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext, {
+				redactedHeaders: ['x-custom-header'],
+			});
 		});
 
 		it('should create failed attempt handler', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -378,7 +430,7 @@ describe('LmChatOpenAi', () => {
 		it('should use default values for maxRetries when not provided', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -397,7 +449,7 @@ describe('LmChatOpenAi', () => {
 		it('should set supportsStrictToolCalling to false for OpenAI-compatible backends', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -422,7 +474,7 @@ describe('LmChatOpenAi', () => {
 				url: credentialsURL,
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options')
 					return {
@@ -452,7 +504,7 @@ describe('LmChatOpenAi', () => {
 				responseFormat: 'text' as const,
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -475,7 +527,7 @@ describe('LmChatOpenAi', () => {
 			for (const effort of reasoningEffortValues) {
 				const mockContext = setupMockContext();
 
-				mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model.value') return 'gpt-4o-mini';
 					if (paramName === 'options')
 						return {
@@ -494,8 +546,144 @@ describe('LmChatOpenAi', () => {
 					}),
 				);
 
-				jest.clearAllMocks();
+				vi.clearAllMocks();
 			}
+		});
+
+		it('should merge extraBody into modelKwargs for Chat Completions', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
+			const options = {
+				extraBody: '{"enable_search":true,"custom_temperature":0.25}',
+				responseFormat: 'json_object' as const,
+				reasoningEffort: 'high' as const,
+			};
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return options;
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelKwargs: {
+						response_format: { type: 'json_object' },
+						reasoning_effort: 'high',
+						enable_search: true,
+						custom_temperature: 0.25,
+					},
+				}),
+			);
+		});
+
+		it('should merge extraBody into modelKwargs for Responses API', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.3 });
+			const options = {
+				extraBody: '{"enable_search":true}',
+				promptCacheKey: 'cache_key_1',
+			};
+			const mockResponsesParams = {
+				prompt_cache_key: 'cache_key_1',
+			};
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'responsesApiEnabled') return true;
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return options;
+				if (paramName === 'builtInTools') return {};
+				return undefined;
+			});
+
+			//@ts-expect-error - Mocking
+			mockedCommon.prepareAdditionalResponsesParams = vi.fn().mockReturnValue(mockResponsesParams);
+			//@ts-expect-error - Mocking
+			mockedCommon.formatBuiltInTools = vi.fn().mockReturnValue([]);
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					useResponsesApi: true,
+					modelKwargs: {
+						prompt_cache_key: 'cache_key_1',
+						enable_search: true,
+					},
+				}),
+			);
+		});
+
+		it('should reject invalid extraBody JSON values', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return { extraBody: 'not json' };
+				return undefined;
+			});
+
+			const result = lmChatOpenAi.supplyData.call(mockContext, 0);
+			await expect(result).rejects.toThrow('The value in the "Extra Body" field is not valid JSON');
+			await expect(result).rejects.toThrow(NodeOperationError);
+		});
+
+		it.each(['[1,2]', '"invalid"', 'true', 'null'])(
+			'should reject extraBody JSON values that are not objects: %s',
+			async (extraBody) => {
+				const mockContext = setupMockContext();
+
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return 'gpt-4o-mini';
+					if (paramName === 'options') return { extraBody };
+					return undefined;
+				});
+
+				const result = lmChatOpenAi.supplyData.call(mockContext, 0);
+				await expect(result).rejects.toThrow(
+					'The value in the "Extra Body" field must be a JSON object',
+				);
+				await expect(result).rejects.toThrow(NodeOperationError);
+			},
+		);
+
+		it('should wrap Chat Completions models to normalize empty tool-call content', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
+			const wrappedModel = { wrapped: true };
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+			mockedWrapChatModelMessageInput.mockReturnValueOnce(wrappedModel as never);
+
+			const result = await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockedWrapChatModelMessageInput).toHaveBeenCalledTimes(1);
+			expect(mockedWrapChatModelMessageInput).toHaveBeenCalledWith(
+				MockedChatOpenAI.mock.instances[0],
+			);
+			expect(result.response).toBe(wrappedModel);
+		});
+
+		it('should not wrap Responses API models', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'responsesApiEnabled') return true;
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				if (paramName === 'builtInTools') return {};
+				return undefined;
+			});
+			//@ts-expect-error - Mocking
+			mockedCommon.formatBuiltInTools = vi.fn().mockReturnValue([]);
+
+			const result = await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockedWrapChatModelMessageInput).not.toHaveBeenCalled();
+			expect(result.response).toBe(MockedChatOpenAI.mock.instances[0]);
 		});
 	});
 
@@ -534,18 +722,18 @@ describe('LmChatOpenAi', () => {
 				custom: true,
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'responsesApiEnabled') return true;
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return options;
 				return undefined;
 			});
 
-			mockedCommon.prepareAdditionalResponsesParams = jest
-				.fn()
-				.mockReturnValue(mockResponsesParams);
+			//@ts-expect-error - Mocking
+			mockedCommon.prepareAdditionalResponsesParams = vi.fn().mockReturnValue(mockResponsesParams);
 
-			mockedCommon.formatBuiltInTools = jest.fn().mockReturnValue([]);
+			//@ts-expect-error - Mocking
+			mockedCommon.formatBuiltInTools = vi.fn().mockReturnValue([]);
 
 			await lmChatOpenAi.supplyData.call(mockContext, 0);
 
@@ -574,7 +762,7 @@ describe('LmChatOpenAi', () => {
 				},
 			];
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'responsesApiEnabled') return true;
 				if (paramName === 'model.value') return 'gpt-4o-mini';
 				if (paramName === 'options') return {};
@@ -582,7 +770,8 @@ describe('LmChatOpenAi', () => {
 				return undefined;
 			});
 
-			mockedCommon.formatBuiltInTools = jest.fn().mockReturnValue(mockTools);
+			//@ts-expect-error - Mocking
+			mockedCommon.formatBuiltInTools = vi.fn().mockReturnValue(mockTools);
 
 			await lmChatOpenAi.supplyData.call(mockContext, 0);
 

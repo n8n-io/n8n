@@ -40,10 +40,7 @@ test.describe(
 				await expect(n8n.ndv.outputPanel.getRelatedExecutionLink()).not.toBeAttached();
 
 				await expect(n8n.ndv.outputPanel.getTableHeaders()).toHaveCount(3);
-				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0).locator('a')).toHaveAttribute(
-					'href',
-					/.+/,
-				);
+				await expect(n8n.ndv.outputPanel.getTbodyCellLink(0, 0)).toHaveAttribute('href', /.+/);
 				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 1)).toHaveText('world Natalie Moore');
 			});
 
@@ -87,10 +84,7 @@ test.describe(
 				await expect(n8n.ndv.outputPanel.getTableHeaders()).toHaveCount(7);
 				await expect(n8n.ndv.outputPanel.getTableHeader(1)).toHaveText('uid');
 				await expect(n8n.ndv.outputPanel.getTableRows()).toHaveCount(4);
-				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0).locator('a')).toHaveAttribute(
-					'href',
-					/.+/,
-				);
+				await expect(n8n.ndv.outputPanel.getTbodyCellLink(0, 0)).toHaveAttribute('href', /.+/);
 				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 2)).toContainText('Jon_Ebert@yahoo.com');
 
 				await n8n.ndv.changeOutputRunSelector('1 of 2 (2 items, 2 sub-executions)');
@@ -101,10 +95,7 @@ test.describe(
 				await expect(n8n.ndv.outputPanel.getTableHeader(1)).toHaveText('uid');
 				await expect(n8n.ndv.outputPanel.getTableRows()).toHaveCount(3);
 
-				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0).locator('a')).toHaveAttribute(
-					'href',
-					/.+/,
-				);
+				await expect(n8n.ndv.outputPanel.getTbodyCellLink(0, 0)).toHaveAttribute('href', /.+/);
 				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 2)).toContainText(
 					'Terry.Dach@hotmail.com',
 				);

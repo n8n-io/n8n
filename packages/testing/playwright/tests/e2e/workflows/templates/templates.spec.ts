@@ -230,11 +230,11 @@ test.describe(
 
 			test('should save template id with the workflow', async ({ n8n }) => {
 				await n8n.templatesComposer.importFirstTemplate();
+				await n8n.canvas.waitForCanvasReady();
 
-				// Execute workflow to trigger autosave (imported templates don't auto-save immediately)
-				await n8n.canvas.hitExecuteWorkflow();
-
+				// Arm the save listener before executing: the run's immediate save can land before we listen.
 				const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted();
+				await n8n.canvas.hitExecuteWorkflow();
 				const saveResponse = await saveResponsePromise;
 
 				const requestBody = saveResponse.request().postDataJSON();
@@ -244,7 +244,7 @@ test.describe(
 			test('can open template with images and hides workflow screenshots', async ({ n8n }) => {
 				await n8n.navigate.toTemplate(TEMPLATE_ID);
 				await expect(n8n.templates.getDescription()).toBeVisible();
-				await expect(n8n.templates.getDescription().locator('img')).toHaveCount(1);
+				await expect(n8n.templates.getDescriptionImages()).toHaveCount(1);
 			});
 
 			test('renders search elements correctly', async ({ n8n }) => {

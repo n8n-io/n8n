@@ -1,13 +1,13 @@
-import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 // Mock external modules that are not needed for these unit tests
-jest.mock('@langchain/qdrant', () => {
+vi.mock('@langchain/qdrant', () => {
 	const state: { ctorArgs?: unknown[] } = { ctorArgs: undefined };
 	class QdrantVectorStore {
-		static fromDocuments = jest.fn();
-		static fromExistingCollection = jest.fn();
-		similaritySearch = jest.fn();
+		static fromDocuments = vi.fn();
+		static fromExistingCollection = vi.fn();
+		similaritySearch = vi.fn();
 		constructor(...args: unknown[]) {
 			state.ctorArgs = args;
 		}
@@ -15,10 +15,10 @@ jest.mock('@langchain/qdrant', () => {
 	return { QdrantVectorStore, __state: state };
 });
 
-jest.mock('@n8n/ai-utilities', () => ({
+vi.mock('@n8n/ai-utilities', () => ({
 	metadataFilterField: {},
-	getMetadataFiltersValues: jest.fn(),
-	logAiEvent: jest.fn(),
+	getMetadataFiltersValues: vi.fn(),
+	logAiEvent: vi.fn(),
 	N8nBinaryLoader: class {},
 	N8nJsonLoader: class {},
 	logWrapper: (fn: unknown) => fn,
@@ -36,35 +36,36 @@ jest.mock('@n8n/ai-utilities', () => ({
 		},
 }));
 
-jest.mock('./Qdrant.utils', () => ({
-	createQdrantClient: jest.fn(),
+vi.mock('./Qdrant.utils', () => ({
+	createQdrantClient: vi.fn(),
 }));
 
-jest.mock('../shared/methods/listSearch', () => ({
-	qdrantCollectionsSearch: jest.fn(),
+vi.mock('../shared/methods/listSearch', () => ({
+	qdrantCollectionsSearch: vi.fn(),
 }));
 
-jest.mock('../shared/descriptions', () => ({
+vi.mock('../shared/descriptions', () => ({
 	qdrantCollectionRLC: {},
 }));
 
 import { QdrantVectorStore } from '@langchain/qdrant';
 
-import * as QdrantNode from './VectorStoreQdrant.node';
 import { createQdrantClient } from './Qdrant.utils';
+import * as QdrantNode from './VectorStoreQdrant.node';
+import type { MockedClass, MockedFunction } from 'vitest';
 
-const MockCreateQdrantClient = createQdrantClient as jest.MockedFunction<typeof createQdrantClient>;
-const MockQdrantVectorStore = QdrantVectorStore as jest.MockedClass<typeof QdrantVectorStore>;
+const MockCreateQdrantClient = createQdrantClient as MockedFunction<typeof createQdrantClient>;
+const MockQdrantVectorStore = QdrantVectorStore as MockedClass<typeof QdrantVectorStore>;
 
 describe('VectorStoreQdrant.node', () => {
 	const helpers = mock<ISupplyDataFunctions['helpers']>();
 	const dataFunctions = mock<ISupplyDataFunctions>({ helpers });
 	dataFunctions.logger = {
-		info: jest.fn(),
-		debug: jest.fn(),
-		error: jest.fn(),
-		warn: jest.fn(),
-		verbose: jest.fn(),
+		info: vi.fn(),
+		debug: vi.fn(),
+		error: vi.fn(),
+		warn: vi.fn(),
+		verbose: vi.fn(),
 	} as unknown as ISupplyDataFunctions['logger'];
 
 	const baseCredentials = {
@@ -73,13 +74,13 @@ describe('VectorStoreQdrant.node', () => {
 	};
 
 	const mockClient = {
-		getCollections: jest.fn(),
-		createCollection: jest.fn(),
-		deleteCollection: jest.fn(),
+		getCollections: vi.fn(),
+		createCollection: vi.fn(),
+		deleteCollection: vi.fn(),
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		MockCreateQdrantClient.mockReturnValue(mockClient as never);
 	});
 
@@ -87,14 +88,14 @@ describe('VectorStoreQdrant.node', () => {
 		it('should create vector store client with default content and metadata keys', async () => {
 			const mockEmbeddings = {};
 			const mockVectorStore = {
-				similaritySearch: jest.fn().mockResolvedValue([]),
+				similaritySearch: vi.fn().mockResolvedValue([]),
 			};
 
-			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue(mockVectorStore);
+			MockQdrantVectorStore.fromExistingCollection = vi.fn().mockResolvedValue(mockVectorStore);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					const map: Record<string, unknown> = {
 						qdrantCollection: 'test-collection',
 						'options.contentPayloadKey': '',
@@ -127,14 +128,14 @@ describe('VectorStoreQdrant.node', () => {
 		it('should create vector store client with custom content and metadata keys', async () => {
 			const mockEmbeddings = {};
 			const mockVectorStore = {
-				similaritySearch: jest.fn().mockResolvedValue([]),
+				similaritySearch: vi.fn().mockResolvedValue([]),
 			};
 
-			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue(mockVectorStore);
+			MockQdrantVectorStore.fromExistingCollection = vi.fn().mockResolvedValue(mockVectorStore);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					const map: Record<string, unknown> = {
 						qdrantCollection: 'test-collection',
 						'options.contentPayloadKey': 'custom_content',
@@ -160,15 +161,15 @@ describe('VectorStoreQdrant.node', () => {
 		it('should pass filter to vector store client', async () => {
 			const mockEmbeddings = {};
 			const mockVectorStore = {
-				similaritySearch: jest.fn().mockResolvedValue([]),
+				similaritySearch: vi.fn().mockResolvedValue([]),
 			};
 			const filter = { should: [{ key: 'metadata.batch', match: { value: 12345 } }] };
 
-			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue(mockVectorStore);
+			MockQdrantVectorStore.fromExistingCollection = vi.fn().mockResolvedValue(mockVectorStore);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					const map: Record<string, unknown> = {
 						qdrantCollection: 'test-collection',
 						'options.contentPayloadKey': '',
@@ -200,11 +201,11 @@ describe('VectorStoreQdrant.node', () => {
 				{ pageContent: 'test content 2', metadata: { id: 2 } },
 			];
 
-			MockQdrantVectorStore.fromDocuments = jest.fn().mockResolvedValue(undefined);
+			MockQdrantVectorStore.fromDocuments = vi.fn().mockResolvedValue(undefined);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					const map: Record<string, unknown> = {
 						qdrantCollection: 'test-collection',
 						'options.contentPayloadKey': '',
@@ -238,11 +239,11 @@ describe('VectorStoreQdrant.node', () => {
 			const mockEmbeddings = {};
 			const mockDocuments = [{ pageContent: 'test content', metadata: {} }];
 
-			MockQdrantVectorStore.fromDocuments = jest.fn().mockResolvedValue(undefined);
+			MockQdrantVectorStore.fromDocuments = vi.fn().mockResolvedValue(undefined);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					const map: Record<string, unknown> = {
 						qdrantCollection: 'test-collection',
 						'options.contentPayloadKey': 'custom_content',
@@ -281,11 +282,11 @@ describe('VectorStoreQdrant.node', () => {
 				},
 			};
 
-			MockQdrantVectorStore.fromDocuments = jest.fn().mockResolvedValue(undefined);
+			MockQdrantVectorStore.fromDocuments = vi.fn().mockResolvedValue(undefined);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					const map: Record<string, unknown> = {
 						qdrantCollection: 'test-collection',
 						'options.contentPayloadKey': '',
@@ -318,11 +319,11 @@ describe('VectorStoreQdrant.node', () => {
 			const mockEmbeddings = {};
 			const mockDocuments: Array<{ pageContent: string; metadata: Record<string, unknown> }> = [];
 
-			MockQdrantVectorStore.fromDocuments = jest.fn().mockResolvedValue(undefined);
+			MockQdrantVectorStore.fromDocuments = vi.fn().mockResolvedValue(undefined);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					const map: Record<string, unknown> = {
 						qdrantCollection: 'test-collection',
 						'options.contentPayloadKey': '',
@@ -355,22 +356,22 @@ describe('VectorStoreQdrant.node', () => {
 	describe('ExtendedQdrantVectorStore filter behavior', () => {
 		it('should store and use default filter in ExtendedQdrantVectorStore', async () => {
 			const mockEmbeddings = {};
-			const mockBaseSimilaritySearch = jest
+			const mockBaseSimilaritySearch = vi
 				.fn()
 				.mockResolvedValue([{ pageContent: 'result 1', metadata: {} }]);
 			const defaultFilter = { must: [{ key: 'metadata.default', match: { value: 'test' } }] };
 
 			// Mock fromExistingCollection to actually call the real ExtendedQdrantVectorStore
 			// and return an instance that has the overridden similaritySearch method
-			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockImplementation(async () => {
+			MockQdrantVectorStore.fromExistingCollection = vi.fn().mockImplementation(async () => {
 				const instance = Object.create(MockQdrantVectorStore.prototype);
 				instance.similaritySearch = mockBaseSimilaritySearch;
 				return instance;
 			});
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					const map: Record<string, unknown> = {
 						qdrantCollection: 'test-collection',
 						'options.contentPayloadKey': '',
@@ -394,13 +395,13 @@ describe('VectorStoreQdrant.node', () => {
 		it('should verify client creation with collection name', async () => {
 			const mockEmbeddings = {};
 
-			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
-				similaritySearch: jest.fn(),
+			MockQdrantVectorStore.fromExistingCollection = vi.fn().mockResolvedValue({
+				similaritySearch: vi.fn(),
 			});
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					const map: Record<string, unknown> = {
 						qdrantCollection: 'my-test-collection',
 						'options.contentPayloadKey': '',

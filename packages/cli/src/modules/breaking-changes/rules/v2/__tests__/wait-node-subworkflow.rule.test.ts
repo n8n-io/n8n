@@ -14,7 +14,7 @@ describe('WaitNodeSubworkflowRule', () => {
 	let rule: TestRule;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		rule = new TestRule();
 		rule.reset();
 	});

@@ -1,0 +1,130 @@
+{
+	"name": "Send and Wait Form Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [300, 300]
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "message",
+				"operation": "sendAndWait",
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"value": "C12345678",
+					"mode": "id"
+				},
+				"subject": "Form Request",
+				"message": "Please fill out this form",
+				"responseType": "customForm",
+				"defineForm": "fields",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Name",
+							"fieldType": "text",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Email",
+							"fieldType": "email",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Comments",
+							"fieldType": "textarea",
+							"requiredField": false
+						}
+					]
+				},
+				"options": {
+					"responseFormTitle": "Test Form",
+					"responseFormDescription": "Please provide your information",
+					"responseFormButtonLabel": "Submit Form"
+				}
+			},
+			"id": "slack-send-wait",
+			"name": "Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.2,
+			"position": [500, 300],
+			"credentials": {
+				"slackApi": {
+					"id": "PLACEHOLDER_CREDENTIAL_ID",
+					"name": "Slack Test Credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "name-field",
+							"name": "submittedName",
+							"value": "={{ $json.data.Name }}",
+							"type": "string"
+						},
+						{
+							"id": "email-field",
+							"name": "submittedEmail",
+							"value": "={{ $json.data.Email }}",
+							"type": "string"
+						},
+						{
+							"id": "comments-field",
+							"name": "submittedComments",
+							"value": "={{ $json.data.Comments }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "capture-result",
+			"name": "Capture Result",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [700, 300]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack": {
+			"main": [
+				[
+					{
+						"node": "Capture Result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

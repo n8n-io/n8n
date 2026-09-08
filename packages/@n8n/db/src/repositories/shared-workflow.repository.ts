@@ -1,35 +1,72 @@
 import { Service } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG, type WorkflowSharingRole } from '@n8n/permissions';
-import { DataSource, Repository, In, Not } from '@n8n/typeorm';
-import type { EntityManager, FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
+import {
+	hasGlobalScope,
+	PROJECT_OWNER_ROLE_SLUG,
+	type Scope,
+	type WorkflowSharingRole,
+} from '@n8n/permissions';
+import { DataSource, In, Not } from '@n8n/typeorm';
+import type {
+	EntityManager,
+	FindManyOptions,
+	FindOptionsWhere,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
 
-import type { Project } from '../entities';
-import { SharedWorkflow } from '../entities';
+import { BaseRepository } from './base-repository';
+import type { User } from '../entities';
+import { Project, ProjectRelation, SharedWorkflow } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
-export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
-	constructor(dataSource: DataSource) {
-		super(SharedWorkflow, dataSource.manager);
+export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(SharedWorkflow, dataSource.manager, transactionRunner);
 	}
 
-	async getSharedWorkflowIds(workflowIds: string[]) {
-		const sharedWorkflows = await this.find({
-			select: ['workflowId'],
-			where: {
-				workflowId: In(workflowIds),
-			},
-		});
-		return sharedWorkflows.map((sharing) => sharing.workflowId);
+	/**
+	 * SharedWorkflow maps workflows to projects, so user access is checked through
+	 * project relations with the supplied project roles.
+	 */
+	async findWorkflowIdsInUserProjects(
+		workflowIds: string[],
+		userId: string,
+		projectRoleSlugs: string[],
+	): Promise<Set<string>> {
+		if (workflowIds.length === 0 || projectRoleSlugs.length === 0) return new Set();
+
+		const found = new Set<string>();
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.find({
+				select: { workflowId: true },
+				where: {
+					workflowId: In(chunk),
+					project: { projectRelations: { userId, role: { slug: In(projectRoleSlugs) } } },
+				},
+			});
+			for (const row of rows) {
+				found.add(row.workflowId);
+			}
+		}
+
+		return found;
 	}
 
-	async findByWorkflowIds(workflowIds: string[]) {
-		return await this.find({
-			where: {
-				role: 'workflow:owner',
-				workflowId: In(workflowIds),
-			},
-			relations: { project: { projectRelations: { user: true, role: true } } },
-		});
+	/** Owner project of each workflow, keyed by workflow id. */
+	async findOwnerProjectsByWorkflowIds(workflowIds: string[]): Promise<Map<string, Project>> {
+		const ownerRows: SharedWorkflow[] = [];
+
+		for (const chunk of chunkIds(workflowIds)) {
+			ownerRows.push(
+				...(await this.find({
+					where: { workflowId: In(chunk), role: 'workflow:owner' },
+					relations: { project: true },
+				})),
+			);
+		}
+
+		return new Map(ownerRows.map(({ workflowId, project }) => [workflowId, project]));
 	}
 
 	async findSharingRole(
@@ -116,9 +153,32 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		return [...new Set(projectIds)];
 	}
 
-	async getWorkflowOwningProject(workflowId: string) {
+	/**
+	 * Find the IDs of all the projects where a workflow is shared with one of
+	 * the given sharing roles.
+	 */
+	async findProjectIdsByRole(workflowId: string, roles: string[]) {
+		const rows = await this.find({
+			where: { workflowId, role: In(roles) },
+			select: ['projectId'],
+		});
+
+		const projectIds = rows.reduce<string[]>((acc, row) => {
+			if (row.projectId) acc.push(row.projectId);
+			return acc;
+		}, []);
+
+		return [...new Set(projectIds)];
+	}
+
+	/**
+	 * Pass `ctx` when calling from inside a transaction — the read then runs on that
+	 * transaction's connection instead of checking out a second one, which would
+	 * deadlock a single-connection pool.
+	 */
+	async getWorkflowOwningProject(workflowId: string, ctx: OperationContext = {}) {
 		return (
-			await this.findOne({
+			await this.managerFor(ctx).findOne(SharedWorkflow, {
 				where: { workflowId, role: 'workflow:owner' },
 				relations: { project: true },
 			})
@@ -193,5 +253,77 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				},
 			},
 		});
+	}
+
+	/**
+	 * Build a subquery that returns workflow IDs based on sharing permissions.
+	 * This replicates the logic from WorkflowSharingService but as a subquery.
+	 */
+	buildSharedWorkflowIdsSubquery(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+			projectId?: string;
+		},
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	): SelectQueryBuilder<any> {
+		const {
+			projectRoles,
+			workflowRoles,
+			isPersonalProject,
+			personalProjectOwnerId,
+			onlySharedWithMe,
+			projectId,
+		} = sharingOptions;
+
+		const subquery = this.manager
+			.createQueryBuilder()
+			.select('sw.workflowId')
+			.from(SharedWorkflow, 'sw');
+
+		// Handle different sharing scenarios
+		// Check explicit filters first (isPersonalProject, onlySharedWithMe) before falling back to user's global permissions
+		if (isPersonalProject) {
+			// Personal project - get owned workflows using the project owner's ID (not the requesting user's)
+			const ownerUserId = personalProjectOwnerId ?? user.id;
+			subquery
+				.innerJoin(Project, 'p', 'sw.projectId = p.id')
+				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
+				.where('sw.role = :ownerRole', { ownerRole: 'workflow:owner' })
+				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: ownerUserId })
+				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
+		} else if (onlySharedWithMe) {
+			// Shared with me - workflows shared (as editor) to user's personal project
+			subquery
+				.innerJoin(Project, 'p', 'sw.projectId = p.id')
+				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
+				.where('sw.role = :editorRole', { editorRole: 'workflow:editor' })
+				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
+				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
+		} else if (!hasGlobalScope(user, 'workflow:read')) {
+			// Standard sharing based on roles (global-scope users need no additional filtering)
+			if (!workflowRoles || !projectRoles) {
+				throw new Error('workflowRoles and projectRoles are required when not using special cases');
+			}
+
+			subquery
+				.innerJoin(Project, 'p', 'sw.projectId = p.id')
+				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
+				.where('sw.role IN (:...workflowRoles)', { workflowRoles })
+				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
+				.andWhere('pr.role IN (:...projectRoles)', { projectRoles });
+		}
+
+		// Apply project filter across all branches (except onlySharedWithMe which is personal-project scoped)
+		if (!onlySharedWithMe && projectId) {
+			subquery.andWhere('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
+		}
+
+		return subquery;
 	}
 }

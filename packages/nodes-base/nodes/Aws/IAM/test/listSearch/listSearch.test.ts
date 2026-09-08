@@ -2,28 +2,29 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { searchUsers, searchGroups, searchGroupsForUser } from '../../methods/listSearch';
 import { awsApiRequest } from '../../transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../transport', () => ({
-	awsApiRequest: jest.fn(),
+vi.mock('../../transport', () => ({
+	awsApiRequest: vi.fn(),
 }));
 
 describe('AWS IAM - List search', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const mockContext = {
 		helpers: {
-			requestWithAuthentication: jest.fn(),
+			requestWithAuthentication: vi.fn(),
 		},
-		getNodeParameter: jest.fn(),
-		getCredentials: jest.fn(),
+		getNodeParameter: vi.fn(),
+		getCredentials: vi.fn(),
 	} as unknown as ILoadOptionsFunctions;
 
 	describe('searchUsers', () => {
 		it('should return an empty result if no users are found', async () => {
 			const responseData = { ListUsersResponse: { ListUsersResult: { Users: [] } } };
-			(awsApiRequest as jest.Mock).mockResolvedValue(responseData);
+			(awsApiRequest as Mock).mockResolvedValue(responseData);
 
 			const result = await searchUsers.call(mockContext);
 			expect(result.results).toEqual([]);
@@ -37,7 +38,7 @@ describe('AWS IAM - List search', () => {
 					},
 				},
 			};
-			(awsApiRequest as jest.Mock).mockResolvedValue(responseData);
+			(awsApiRequest as Mock).mockResolvedValue(responseData);
 
 			const result = await searchUsers.call(mockContext);
 			expect(result.results).toEqual([
@@ -54,7 +55,7 @@ describe('AWS IAM - List search', () => {
 					},
 				},
 			};
-			(awsApiRequest as jest.Mock).mockResolvedValue(responseData);
+			(awsApiRequest as Mock).mockResolvedValue(responseData);
 
 			const result = await searchUsers.call(mockContext, 'User1');
 			expect(result.results).toEqual([{ name: 'User1', value: 'User1' }]);
@@ -64,7 +65,7 @@ describe('AWS IAM - List search', () => {
 	describe('searchGroups', () => {
 		it('should return an empty result if no groups are found', async () => {
 			const responseData = { ListGroupsResponse: { ListGroupsResult: { Groups: [] } } };
-			(awsApiRequest as jest.Mock).mockResolvedValue(responseData);
+			(awsApiRequest as Mock).mockResolvedValue(responseData);
 
 			const result = await searchGroups.call(mockContext);
 			expect(result.results).toEqual([]);
@@ -78,7 +79,7 @@ describe('AWS IAM - List search', () => {
 					},
 				},
 			};
-			(awsApiRequest as jest.Mock).mockResolvedValue(responseData);
+			(awsApiRequest as Mock).mockResolvedValue(responseData);
 
 			const result = await searchGroups.call(mockContext);
 			expect(result.results).toEqual([
@@ -95,7 +96,7 @@ describe('AWS IAM - List search', () => {
 					},
 				},
 			};
-			(awsApiRequest as jest.Mock).mockResolvedValue(responseData);
+			(awsApiRequest as Mock).mockResolvedValue(responseData);
 
 			const result = await searchGroups.call(mockContext, 'Group1');
 			expect(result.results).toEqual([{ name: 'Group1', value: 'Group1' }]);
@@ -104,12 +105,12 @@ describe('AWS IAM - List search', () => {
 
 	describe('searchGroupsForUser', () => {
 		it('should return empty if no user groups are found', async () => {
-			mockContext.getNodeParameter = jest.fn().mockReturnValue('user1');
+			mockContext.getNodeParameter = vi.fn().mockReturnValue('user1');
 
 			const responseData = {
 				ListGroupsResponse: { ListGroupsResult: { Groups: [] } },
 			};
-			(awsApiRequest as jest.Mock).mockResolvedValue(responseData);
+			(awsApiRequest as Mock).mockResolvedValue(responseData);
 
 			const result = await searchGroupsForUser.call(mockContext);
 

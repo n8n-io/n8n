@@ -20,9 +20,11 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	credentialId?: string;
 	workflowId?: string;
 	workflowName?: string;
+	projectId?: string | null;
+	projectName?: string;
 	activeVersionId?: string | null;
 	deactivatedVersionId?: string | null;
-	versionId?: string;
+	versionId?: string | null;
 	versionName?: string | null;
 	versionDescription?: string | null;
 	settingsChanged?: Record<string, { from: JsonValue; to: JsonValue }>;
@@ -32,6 +34,13 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	ipAddress?: string;
 	userAgent?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
+	rejectionReason?: string;
+	updatedBy?: string;
+	kind?: string;
+	scopeId?: string;
+	policyId?: string;
+	before?: JsonValue;
+	after?: JsonValue;
 }
 
 export interface EventMessageAuditOptions extends AbstractEventMessageOptions {

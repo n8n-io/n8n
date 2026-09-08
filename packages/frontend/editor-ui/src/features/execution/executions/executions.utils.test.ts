@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	displayForm,
 	executionFilterToQueryFilter,
+	hasCancellableExecutions,
 	waitingNodeTooltip,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
@@ -18,6 +19,7 @@ import type {
 	ExecutionError,
 	INodeTypeDescription,
 	Workflow,
+	ExecutionSummary,
 } from 'n8n-workflow';
 import { type INodeUi, type IWorkflowDb } from '@/Interface';
 import {
@@ -33,7 +35,8 @@ import type { VNode } from 'vue';
 
 const WAIT_NODE_TYPE = 'waitNode';
 
-const windowOpenSpy = vi.spyOn(window, 'open');
+// `restoreMocks` restores spies before each test, so this is (re)established in beforeEach.
+let windowOpenSpy: MockInstance;
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
@@ -44,6 +47,12 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
+		workflowId: 'test-workflow',
+	}),
+}));
+
+vi.mock('@/app/stores/workflowExecutionState.store', () => ({
+	useWorkflowExecutionStateStore: () => ({
 		activeExecutionId: '123',
 	}),
 }));
@@ -52,11 +61,6 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: {
 		baseText: (key: string, options?: { interpolate?: { error?: string; details?: string } }) => {
 			const texts: { [key: string]: string } = {
-				'ndv.output.waitNodeWaiting.description.timer': 'Waiting for execution to resume...',
-				'ndv.output.waitNodeWaiting.description.form': 'Waiting for form submission: ',
-				'ndv.output.waitNodeWaiting.description.webhook': 'Waiting for webhook call: ',
-				'ndv.output.githubNodeWaitingForWebhook': 'Waiting for webhook call: ',
-				'ndv.output.sendAndWaitWaitingApproval': 'Waiting for approval...',
 				'pushConnection.executionError': `Execution error${options?.interpolate?.error}`,
 				'pushConnection.executionError.details': `Details: ${options?.interpolate?.details}`,
 			};
@@ -97,16 +101,11 @@ describe('displayForm', () => {
 		ok: true,
 	} as unknown as Response;
 
-	beforeAll(() => {
-		fetchMock = vi.spyOn(global, 'fetch');
-	});
-
-	afterAll(() => {
-		fetchMock.mockRestore();
-	});
-
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// `restoreMocks` restores spies before each test, so re-establish them here.
+		windowOpenSpy = vi.spyOn(window, 'open');
+		fetchMock = vi.spyOn(global, 'fetch');
 	});
 
 	it('should not call openPopUpWindow if node has already run or is pinned', async () => {
@@ -538,6 +537,54 @@ describe('waitingNodeTooltip', () => {
 		// Test without workflow - should return the raw tooltip string
 		expect(waitingNodeTooltip(node)).toBe('Waiting for approval...');
 	});
+
+	it('should use metadata.resumeUrl when provided for webhook resume type', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'webhook',
+			},
+		};
+		const metadata = { resumeUrl: 'http://signed.com/wait/123?signature=abc123' };
+		const result = waitingNodeTooltip(node, mockWorkflow, metadata);
+		expect(result).toContain('http://signed.com/wait/123?signature=abc123');
+	});
+
+	it('should use metadata.resumeFormUrl when provided for form resume type', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'form',
+			},
+		};
+		const metadata = { resumeFormUrl: 'http://signed.com/form/123?signature=xyz789' };
+		const result = waitingNodeTooltip(node, mockWorkflow, metadata);
+		expect(result).toContain('http://signed.com/form/123?signature=xyz789');
+	});
+
+	it('should fall back to constructed URL when metadata is not provided', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'webhook',
+			},
+		};
+		// No metadata passed - should use constructed URL from store
+		const result = waitingNodeTooltip(node, mockWorkflow);
+		expect(result).toContain('http://localhost:5678/webhook-waiting/123');
+	});
 });
 
 const executionErrorFactory = (error: Record<string, unknown>) =>
@@ -594,6 +641,23 @@ describe('getExecutionErrorToastConfiguration', () => {
 			title: 'Subworkflow failed',
 			message: 'Workflow XYZ failed',
 		});
+	});
+
+	it('returns config for WorkflowHasIssuesError with multi-line message preserved', () => {
+		const result = getExecutionErrorToastConfiguration({
+			error: executionErrorFactory({
+				name: 'WorkflowHasIssuesError',
+				message: 'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+			}),
+			lastNodeExecuted: 'HTTP Request',
+		});
+
+		expect(result.title).toBe('pushConnection.workflowHasIssues.title');
+		const message = result.message as VNode;
+		expect(message.props?.style).toBe('white-space: pre-line');
+		expect(message.children).toBe(
+			'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+		);
 	});
 
 	it('returns config for configuration-node error with node name', () => {
@@ -987,5 +1051,27 @@ describe('generateFakeDataFromSchema', () => {
 		const result = generateFakeDataFromSchema({ fields: [] });
 		expect(result).toHaveLength(1);
 		expect(result[0].json).toEqual({});
+	});
+});
+
+describe('hasCancellableExecutions', () => {
+	const executionWithStatus = (status: string) => ({ status }) as ExecutionSummary;
+
+	it.each(['new', 'running', 'waiting'])(
+		'returns true when at least one execution is %s',
+		(status) => {
+			expect(hasCancellableExecutions([executionWithStatus(status)])).toBe(true);
+		},
+	);
+
+	it.each(['success', 'error', 'crashed', 'canceled', 'unknown'])(
+		'returns false when executions are only %s',
+		(status) => {
+			expect(hasCancellableExecutions([executionWithStatus(status)])).toBe(false);
+		},
+	);
+
+	it('returns false for an empty executions list', () => {
+		expect(hasCancellableExecutions([])).toBe(false);
 	});
 });

@@ -28,6 +28,12 @@ export default {
 			control: 'array',
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A color selection control for choosing and previewing colors.' },
+		},
+	},
 };
 
 const methods = {
@@ -59,3 +65,13 @@ Default.args = {
 	popperClass: '',
 	showInput: true,
 };
+
+export const Sizes: StoryFn = () => ({
+	components: { N8nColorPicker },
+	template: `
+		<div style="display: flex; gap: 16px; align-items: center;">
+			<n8n-color-picker size="small" />
+			<n8n-color-picker size="large" />
+		</div>
+	`,
+});

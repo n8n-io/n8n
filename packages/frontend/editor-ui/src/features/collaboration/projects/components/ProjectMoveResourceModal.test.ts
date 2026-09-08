@@ -7,13 +7,20 @@ import { getDropdownItems, mockedStore } from '@/__tests__/utils';
 import type { MockedStore } from '@/__tests__/utils';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '../projects.constants';
 import ProjectMoveResourceModal from './ProjectMoveResourceModal.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '../projects.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { ResourceType } from '../projects.utils';
+import { ProjectTypes } from '../projects.types';
 import type { ProjectSharingData } from 'n8n-workflow';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+
+const isPrivateCredentialsEnabled = { value: false };
+vi.mock('@/features/resolvers/composables/usePrivateCredentials', () => ({
+	usePrivateCredentials: () => ({ isEnabled: isPrivateCredentialsEnabled }),
+}));
 
 const renderComponent = createComponentRenderer(ProjectMoveResourceModal, {
 	pinia: createTestingPinia(),
@@ -35,16 +42,22 @@ let credentialsStore: MockedStore<typeof useCredentialsStore>;
 describe('ProjectMoveResourceModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		isPrivateCredentialsEnabled.value = false;
 		telemetry = useTelemetry();
 		projectsStore = mockedStore(useProjectsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		credentialsStore = mockedStore(useCredentialsStore);
+
+		// Default: no results
+		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
+		projectsStore.globalProjectPermissions = { list: true };
 	});
 
 	it('should send telemetry when mounted', async () => {
 		const telemetryTrackSpy = vi.spyOn(telemetry, 'track');
 
-		projectsStore.availableProjects = [createProjectListItem()];
+		const projects = [createProjectListItem()];
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
 		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 
 		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
@@ -69,8 +82,8 @@ describe('ProjectMoveResourceModal', () => {
 		);
 	});
 
-	it('should show no available projects message', async () => {
-		projectsStore.availableProjects = [];
+	it('should show empty options text when no projects available', async () => {
+		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
 		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 
 		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
@@ -88,13 +101,14 @@ describe('ProjectMoveResourceModal', () => {
 				}),
 			},
 		};
-		const { getByText } = renderComponent({ props });
-		expect(getByText(/Currently there are not any projects or users available/)).toBeVisible();
+		const { getByTestId } = renderComponent({ props });
+		// The ProjectSharing select should be rendered
+		expect(getByTestId('project-sharing-select')).toBeVisible();
 	});
 
 	it('should not hide project select if filter has no result', async () => {
 		const projects = Array.from({ length: 5 }, createProjectListItem);
-		projectsStore.availableProjects = projects;
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
 
 		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
@@ -114,12 +128,13 @@ describe('ProjectMoveResourceModal', () => {
 
 		const { getByTestId, getByRole } = renderComponent({ props });
 
-		const projectSelect = getByTestId('project-move-resource-modal-select');
+		const projectSelect = getByTestId('project-sharing-select');
 		const projectSelectInput: HTMLInputElement = getByRole('combobox');
 		expect(projectSelectInput).toBeVisible();
 		expect(projectSelect).toBeVisible();
 
 		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+		// Home project is excluded by ProjectSharing
 		expect(projectSelectDropdownItems).toHaveLength(projects.length - 1);
 
 		await userEvent.click(projectSelectInput);
@@ -130,7 +145,8 @@ describe('ProjectMoveResourceModal', () => {
 
 	it('should not load workflow if the resource is a credential', async () => {
 		const telemetryTrackSpy = vi.spyOn(telemetry, 'track');
-		projectsStore.availableProjects = [createProjectListItem()];
+		const projects = [createProjectListItem()];
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
 
 		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
@@ -179,7 +195,10 @@ describe('ProjectMoveResourceModal', () => {
 		};
 
 		projectsStore.currentProjectId = currentProjectId;
-		projectsStore.availableProjects = [destinationProject];
+		projectsStore.searchProjects.mockResolvedValue({
+			count: 1,
+			data: [destinationProject],
+		});
 		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(movedWorkflow);
 		credentialsStore.fetchAllCredentials.mockResolvedValueOnce([
 			{
@@ -223,7 +242,7 @@ describe('ProjectMoveResourceModal', () => {
 		expect(getByTestId('project-move-resource-modal-button')).toBeDisabled();
 		expect(getByText(/Moving will remove any existing sharing for this workflow/)).toBeVisible();
 
-		const projectSelect = getByTestId('project-move-resource-modal-select');
+		const projectSelect = getByTestId('project-sharing-select');
 		expect(projectSelect).toBeVisible();
 
 		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
@@ -243,9 +262,106 @@ describe('ProjectMoveResourceModal', () => {
 		);
 	});
 
+	describe('resolvable credential warning', () => {
+		const makeCredential = (isResolvable: boolean): ICredentialsResponse =>
+			({
+				id: '1',
+				name: 'My private credential',
+				type: 'oAuth2Api',
+				createdAt: '2021-01-01T00:00:00Z',
+				updatedAt: '2021-01-01T00:00:00Z',
+				isManaged: false,
+				isResolvable,
+				homeProject: { id: '2', name: 'My Project' } as ProjectSharingData,
+			}) as ICredentialsResponse;
+
+		const props = (isResolvable: boolean): ComponentProps<typeof ProjectMoveResourceModal> => ({
+			modalName: PROJECT_MOVE_RESOURCE_MODAL,
+			data: {
+				resourceType: ResourceType.Credential,
+				resourceTypeLabel: 'credential',
+				resource: makeCredential(isResolvable),
+			},
+		});
+
+		beforeEach(() => {
+			isPrivateCredentialsEnabled.value = true;
+			projectsStore.searchProjects.mockResolvedValue({ count: 1, data: [createProjectListItem()] });
+		});
+
+		it('warns when moving a resolvable credential', async () => {
+			const { findByTestId } = renderComponent({ props: props(true) });
+
+			expect(await findByTestId('project-move-resource-modal-resolvable-warning')).toBeVisible();
+		});
+
+		it('does not warn when moving a non-resolvable credential', async () => {
+			const { queryByTestId } = renderComponent({ props: props(false) });
+			await vi.waitFor(() => expect(projectsStore.searchProjects).toHaveBeenCalled());
+
+			expect(queryByTestId('project-move-resource-modal-resolvable-warning')).toBeNull();
+		});
+
+		it('does not warn when private credentials are disabled', async () => {
+			isPrivateCredentialsEnabled.value = false;
+
+			const { queryByTestId } = renderComponent({ props: props(true) });
+			await vi.waitFor(() => expect(projectsStore.searchProjects).toHaveBeenCalled());
+
+			expect(queryByTestId('project-move-resource-modal-resolvable-warning')).toBeNull();
+		});
+
+		describe('destination filter', () => {
+			const personalProject = createProjectListItem(ProjectTypes.Personal);
+			const teamProject = {
+				...createProjectListItem(ProjectTypes.Team),
+				name: 'Team destination',
+			};
+
+			beforeEach(() => {
+				projectsStore.searchProjects.mockResolvedValue({
+					count: 2,
+					data: [personalProject, teamProject],
+				});
+			});
+
+			it('hides personal projects for a resolvable credential', async () => {
+				const { getByTestId } = renderComponent({ props: props(true) });
+
+				const dropdownItems = await getDropdownItems(getByTestId('project-sharing-select'));
+
+				expect(dropdownItems).toHaveLength(1);
+				expect(dropdownItems[0]).toHaveTextContent('Team destination');
+			});
+
+			it('hides personal projects even when private credentials are disabled', async () => {
+				// the backend rejects the move on `isResolvable` alone, regardless of the module
+				isPrivateCredentialsEnabled.value = false;
+
+				const { getByTestId } = renderComponent({ props: props(true) });
+
+				const dropdownItems = await getDropdownItems(getByTestId('project-sharing-select'));
+
+				expect(dropdownItems).toHaveLength(1);
+				expect(dropdownItems[0]).toHaveTextContent('Team destination');
+			});
+
+			it('keeps personal projects for a non-resolvable credential', async () => {
+				const { getByTestId } = renderComponent({ props: props(false) });
+
+				const dropdownItems = await getDropdownItems(getByTestId('project-sharing-select'));
+
+				expect(dropdownItems).toHaveLength(2);
+			});
+		});
+	});
+
 	it('should prevent duplicate submissions when button clicked multiple times', async () => {
 		const destinationProject = createProjectListItem();
-		projectsStore.availableProjects = [destinationProject];
+		projectsStore.searchProjects.mockResolvedValue({
+			count: 1,
+			data: [destinationProject],
+		});
 		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 
 		// Make moveResourceToProject take time to simulate slow operation
@@ -270,7 +386,7 @@ describe('ProjectMoveResourceModal', () => {
 		const { getByTestId } = renderComponent({ props });
 
 		// Select a project
-		const projectSelect = getByTestId('project-move-resource-modal-select');
+		const projectSelect = getByTestId('project-sharing-select');
 		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		await userEvent.click(projectSelectDropdownItems[0]);
 

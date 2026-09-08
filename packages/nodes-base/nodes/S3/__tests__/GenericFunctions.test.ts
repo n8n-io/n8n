@@ -7,25 +7,26 @@ import {
 	s3ApiRequestSOAP,
 	s3ApiRequestSOAPAllItems,
 } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('aws4');
-jest.mock('xml2js');
+vi.mock('aws4', () => ({ sign: vi.fn() }));
+vi.mock('xml2js');
 
 describe('S3 Node Generic Functions', () => {
 	let mockContext: any;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockContext = {
-			getNode: jest.fn().mockReturnValue({ name: 'S3' }),
-			getCredentials: jest.fn().mockResolvedValue({
+			getNode: vi.fn().mockReturnValue({ name: 'S3' }),
+			getCredentials: vi.fn().mockResolvedValue({
 				endpoint: 'https://s3.amazonaws.com',
 				accessKeyId: 'test-key',
 				secretAccessKey: 'test-secret',
 				region: 'us-east-1',
 			}),
 			helpers: {
-				request: jest.fn(),
+				request: vi.fn(),
 			},
 		};
 	});
@@ -105,7 +106,7 @@ describe('S3 Node Generic Functions', () => {
 			const mockParsedResponse = { root: { key: 'value' } };
 
 			mockContext.helpers.request.mockResolvedValueOnce(mockXmlResponse);
-			(parseString as jest.Mock).mockImplementation((_, __, callback) =>
+			(parseString as Mock).mockImplementation((_, __, callback) =>
 				callback(null, mockParsedResponse),
 			);
 
@@ -117,7 +118,7 @@ describe('S3 Node Generic Functions', () => {
 		it('should handle XML parsing errors', async () => {
 			const mockError = new Error('XML Parse Error');
 			mockContext.helpers.request.mockResolvedValueOnce('<invalid>xml');
-			(parseString as jest.Mock).mockImplementation((_, __, callback) => callback(mockError));
+			(parseString as Mock).mockImplementation((_, __, callback) => callback(mockError));
 
 			const result = await s3ApiRequestSOAP.call(mockContext, 'test-bucket', 'GET', '/');
 
@@ -145,7 +146,7 @@ describe('S3 Node Generic Functions', () => {
 				.mockResolvedValueOnce('<xml>first</xml>')
 				.mockResolvedValueOnce('<xml>second</xml>');
 
-			(parseString as jest.Mock)
+			(parseString as Mock)
 				.mockImplementationOnce((_, __, callback) => callback(null, firstResponse))
 				.mockImplementationOnce((_, __, callback) => callback(null, secondResponse));
 

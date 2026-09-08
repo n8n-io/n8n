@@ -12,11 +12,16 @@
 import type {
 	ConnectionTarget,
 	NodeInstance,
+	NodeChain,
 	IfElseComposite,
 	SwitchCaseComposite,
 } from '../../../types/base';
 import { isNodeChain } from '../../../types/base';
-import { isIfElseBuilder, isSwitchCaseBuilder } from '../../node-builders/node-builder';
+import {
+	isIfElseBuilder,
+	isInputTarget,
+	isSwitchCaseBuilder,
+} from '../../node-builders/node-builder';
 import {
 	isIfElseComposite,
 	isSwitchCaseComposite,
@@ -26,11 +31,65 @@ import {
 import type { MutablePluginContext } from '../types';
 
 /**
+ * Entry node for a builder created inline from a chain.
+ * a.to(ifNode).onTrue(...) yields a builder whose prefix chain is a → ifNode; edges into
+ * that composite enter at the chain head `a`. Builders without a prefix chain (standalone,
+ * or claimed by feeder chains) enter at their branching node via the guards below.
+ */
+export function getPrefixChainHead(target: unknown): { id: string; name: string } | undefined {
+	const candidate = target as { prefixChain?: { head: { id: string; name: string } } };
+	return candidate.prefixChain?.head;
+}
+
+/** All chains attached to a builder: the inline prefix chain plus every feeder chain. */
+function getBuilderChains(target: unknown): NodeChain[] {
+	const candidate = target as { prefixChain?: NodeChain; feederChains?: NodeChain[] };
+	const chains: NodeChain[] = [];
+	if (candidate.prefixChain) chains.push(candidate.prefixChain);
+	if (candidate.feederChains) chains.push(...candidate.feederChains);
+	return chains;
+}
+
+/**
+ * Collect pin data from every chain attached to a builder (prefix and feeders).
+ * Skips the builder itself: a feeder chain contains the builder as its tail.
+ */
+export function collectFromBuilderChains(
+	target: unknown,
+	collector: (node: NodeInstance<string, string, unknown>) => void,
+): void {
+	for (const chain of getBuilderChains(target)) {
+		for (const chainNode of chain.allNodes) {
+			if (chainNode && chainNode !== target) {
+				collector(chainNode);
+			}
+		}
+	}
+}
+
+/** Materialize every chain attached to a builder (prefix and feeders). */
+export function addBuilderChainsToGraph(target: unknown, ctx: MutablePluginContext): void {
+	for (const chain of getBuilderChains(target)) {
+		ctx.addBranchToGraph(chain);
+	}
+}
+
+/**
  * Get the head node ID from a target (which could be a node, chain, or composite).
  * Mirrors getTargetNodeName but returns .id instead of .name.
  */
 export function getTargetNodeId(target: unknown): string | undefined {
 	if (target === null || target === undefined) return undefined;
+
+	// A prefix chain overrides the builder guards: the composite entry is the chain head.
+	const prefixHead = getPrefixChainHead(target);
+	if (prefixHead) {
+		return prefixHead.id;
+	}
+
+	if (isInputTarget(target)) {
+		return target.node.id;
+	}
 
 	if (isNodeChain(target)) {
 		return target.head.id;
@@ -70,6 +129,17 @@ export function getTargetNodeId(target: unknown): string | undefined {
  */
 export function getTargetNodeName(target: unknown): string | undefined {
 	if (target === null || target === undefined) return undefined;
+
+	// A prefix chain overrides the builder guards: the composite entry is the chain head.
+	const prefixHead = getPrefixChainHead(target);
+	if (prefixHead) {
+		return prefixHead.name;
+	}
+
+	// Handle InputTarget (e.g. merge.input(1)) - return the underlying node's name
+	if (isInputTarget(target)) {
+		return target.node.name;
+	}
 
 	// Handle NodeChain
 	if (isNodeChain(target)) {
@@ -144,6 +214,13 @@ export function addBranchTargetNodes(target: unknown, ctx: MutablePluginContext)
 		return;
 	}
 
+	// Handle InputTarget (e.g. merge.input(1)) - add the underlying node so it
+	// participates in the graph. Idempotent if already added via .add(merge).
+	if (isInputTarget(target)) {
+		ctx.addBranchToGraph(target.node);
+		return;
+	}
+
 	// Add the branch using the context's addBranchToGraph method
 	ctx.addBranchToGraph(target);
 }
@@ -168,12 +245,20 @@ export function processBranchForComposite(
 		const targets: ConnectionTarget[] = [];
 		for (const branchNode of branch as Array<NodeInstance<string, string, unknown> | null>) {
 			if (branchNode === null) continue;
+			if (isInputTarget(branchNode)) {
+				const branchHead = ctx.addBranchToGraph(branchNode.node);
+				targets.push({ node: branchHead, type: 'main', index: branchNode.inputIndex });
+				continue;
+			}
 			const branchHead = ctx.addBranchToGraph(branchNode);
 			targets.push({ node: branchHead, type: 'main', index: 0 });
 		}
 		if (targets.length > 0) {
 			mainConns.set(outputIndex, targets);
 		}
+	} else if (isInputTarget(branch)) {
+		const branchHead = ctx.addBranchToGraph(branch.node);
+		mainConns.set(outputIndex, [{ node: branchHead, type: 'main', index: branch.inputIndex }]);
 	} else {
 		const branchHead = ctx.addBranchToGraph(branch);
 		mainConns.set(outputIndex, [{ node: branchHead, type: 'main', index: 0 }]);
@@ -203,7 +288,8 @@ export function processBranchForBuilder(
 		for (const t of branch) {
 			const targetName = getTargetNodeName(t);
 			if (targetName) {
-				targets.push({ node: targetName, type: 'main', index: 0 });
+				const targetIndex = isInputTarget(t) ? t.inputIndex : 0;
+				targets.push({ node: targetName, type: 'main', index: targetIndex });
 				const id = getTargetNodeId(t);
 				if (id) ids.push(id);
 			}
@@ -217,7 +303,8 @@ export function processBranchForBuilder(
 	} else {
 		const targetName = getTargetNodeName(branch);
 		if (targetName) {
-			mainConns.set(outputIndex, [{ node: targetName, type: 'main', index: 0 }]);
+			const targetIndex = isInputTarget(branch) ? branch.inputIndex : 0;
+			mainConns.set(outputIndex, [{ node: targetName, type: 'main', index: targetIndex }]);
 			const id = getTargetNodeId(branch);
 			if (targetNodeIds && id) {
 				targetNodeIds.set(outputIndex, [id]);

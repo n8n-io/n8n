@@ -61,7 +61,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 }));
 
 const mockShowError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mockShowError }),
 }));
 
@@ -153,7 +153,7 @@ const renderComponent = createComponentRenderer(ToolsManagerModal, {
 	global: {
 		stubs: {
 			ElDialog: ElDialogStub,
-			ToolSettingsContent: {
+			NodeToolSettingsContent: {
 				template: '<div data-test-id="tool-settings-content" />',
 				props: ['initialNode', 'existingToolNames'],
 			},

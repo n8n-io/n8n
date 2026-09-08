@@ -3,40 +3,41 @@ import type { IDataObject, IWebhookFunctions } from 'n8n-workflow';
 import { CurrentsTrigger } from '../CurrentsTrigger.node';
 
 // Mock the helper module
-jest.mock('../CurrentsTriggerHelpers', () => ({
-	verifyWebhook: jest.fn(),
+vi.mock('../CurrentsTriggerHelpers', () => ({
+	verifyWebhook: vi.fn(),
 }));
 
 import { verifyWebhook } from '../CurrentsTriggerHelpers';
+import type { Mock } from 'vitest';
 
 describe('CurrentsTrigger', () => {
 	let trigger: CurrentsTrigger;
 	let mockWebhookFunctions: Partial<IWebhookFunctions>;
-	let mockResponse: { status: jest.Mock; send: jest.Mock; end: jest.Mock };
+	let mockResponse: { status: Mock; send: Mock; end: Mock };
 
 	beforeEach(() => {
 		trigger = new CurrentsTrigger();
 		mockResponse = {
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
-			end: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
+			end: vi.fn().mockReturnThis(),
 		};
 
 		mockWebhookFunctions = {
-			getBodyData: jest.fn(),
-			getNodeParameter: jest.fn(),
-			getResponseObject: jest.fn().mockReturnValue(mockResponse),
+			getBodyData: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getResponseObject: vi.fn().mockReturnValue(mockResponse),
 			helpers: {
-				returnJsonArray: jest.fn((data) => data),
+				returnJsonArray: vi.fn((data) => data),
 			} as unknown as IWebhookFunctions['helpers'],
 		};
 
-		(verifyWebhook as jest.Mock).mockReturnValue(true);
+		(verifyWebhook as Mock).mockReturnValue(true);
 	});
 
 	describe('webhook', () => {
 		it('should return 401 when verification fails', async () => {
-			(verifyWebhook as jest.Mock).mockReturnValue(false);
+			(verifyWebhook as Mock).mockReturnValue(false);
 
 			const result = await trigger.webhook.call(mockWebhookFunctions as IWebhookFunctions);
 
@@ -52,11 +53,8 @@ describe('CurrentsTrigger', () => {
 				buildId: 'build-456',
 			};
 
-			(mockWebhookFunctions.getBodyData as jest.Mock).mockReturnValue(bodyData);
-			(mockWebhookFunctions.getNodeParameter as jest.Mock).mockReturnValue([
-				'RUN_FINISH',
-				'RUN_START',
-			]);
+			(mockWebhookFunctions.getBodyData as Mock).mockReturnValue(bodyData);
+			(mockWebhookFunctions.getNodeParameter as Mock).mockReturnValue(['RUN_FINISH', 'RUN_START']);
 
 			const result = await trigger.webhook.call(mockWebhookFunctions as IWebhookFunctions);
 
@@ -70,11 +68,8 @@ describe('CurrentsTrigger', () => {
 				runUrl: 'https://app.currents.dev/run/123',
 			};
 
-			(mockWebhookFunctions.getBodyData as jest.Mock).mockReturnValue(bodyData);
-			(mockWebhookFunctions.getNodeParameter as jest.Mock).mockReturnValue([
-				'RUN_FINISH',
-				'RUN_START',
-			]);
+			(mockWebhookFunctions.getBodyData as Mock).mockReturnValue(bodyData);
+			(mockWebhookFunctions.getNodeParameter as Mock).mockReturnValue(['RUN_FINISH', 'RUN_START']);
 
 			const result = await trigger.webhook.call(mockWebhookFunctions as IWebhookFunctions);
 
@@ -88,8 +83,8 @@ describe('CurrentsTrigger', () => {
 				runUrl: 'https://app.currents.dev/run/123',
 			};
 
-			(mockWebhookFunctions.getBodyData as jest.Mock).mockReturnValue(bodyData);
-			(mockWebhookFunctions.getNodeParameter as jest.Mock).mockReturnValue([]);
+			(mockWebhookFunctions.getBodyData as Mock).mockReturnValue(bodyData);
+			(mockWebhookFunctions.getNodeParameter as Mock).mockReturnValue([]);
 
 			const result = await trigger.webhook.call(mockWebhookFunctions as IWebhookFunctions);
 
@@ -113,8 +108,8 @@ describe('CurrentsTrigger', () => {
 				flaky: 2,
 			};
 
-			(mockWebhookFunctions.getBodyData as jest.Mock).mockReturnValue(bodyData);
-			(mockWebhookFunctions.getNodeParameter as jest.Mock).mockReturnValue(['RUN_FINISH']);
+			(mockWebhookFunctions.getBodyData as Mock).mockReturnValue(bodyData);
+			(mockWebhookFunctions.getNodeParameter as Mock).mockReturnValue(['RUN_FINISH']);
 
 			const result = await trigger.webhook.call(mockWebhookFunctions as IWebhookFunctions);
 

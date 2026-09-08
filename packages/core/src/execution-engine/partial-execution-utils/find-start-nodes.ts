@@ -25,8 +25,8 @@ export function isDirty(node: INode, runData: IRunData = {}, pinData: IPinData =
 		return true;
 	}
 
-	// TODO: implement
-	const hasAnError = false;
+	const hasAnError =
+		runData?.[node.name]?.some((taskData) => taskData.error !== undefined) ?? false;
 
 	if (hasAnError) {
 		return true;

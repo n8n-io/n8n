@@ -14,14 +14,13 @@ export class ExecutionData implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execution Data',
 		name: 'executionData',
-		icon: 'fa:tasks',
+		icon: 'node:execution-data',
 		group: ['input'],
 		iconColor: 'light-green',
 		version: [1, 1.1],
 		description: 'Add execution data for search',
 		defaults: {
 			name: 'Execution Data',
-			color: '#29A568',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -106,7 +105,6 @@ export class ExecutionData implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const dataProxy = this.getWorkflowDataProxy(0);
 		const nodeVersion = this.getNode().typeVersion;
 
 		const items = this.getInputData();
@@ -129,7 +127,7 @@ export class ExecutionData implements INodeType {
 						{} as { [key: string]: string },
 					);
 
-					dataProxy.$execution.customData.setAll(values);
+					this.customData.setAll(values);
 
 					returnData.push(items[i]);
 				} catch (error) {

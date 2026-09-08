@@ -81,7 +81,10 @@ export const descriptions: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
-		builderHint: { message: "Default to mode: 'list' which is easier for users to set up" },
+		builderHint: {
+			propertyHint:
+				"Default to mode: 'list', which is easiest for users to set up: it gives them the From-list picker at setup. Use mode: 'id' only when the user supplied a concrete spreadsheet ID; otherwise use mode: 'list' with an empty value and a cachedResultName placeholder (e.g. the sheet name from the prompt). Never invent or fabricate a spreadsheet ID. Resource locator value must be `{ __rl: true, mode, value }`, not a plain string or `expr()` wrapper.",
+		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -139,7 +142,10 @@ export const descriptions: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		// default: '', //empty string set to progresivly reveal fields
 		required: true,
-		builderHint: { message: "Default to mode: 'list' which is easier for users to set up" },
+		builderHint: {
+			propertyHint:
+				"Default to mode: 'list' when you have a real numeric sheet ID (gid) from explored resources. If you only know the sheet by its name, use mode: 'name' with that name — a title placed in list or id mode cannot resolve. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper.",
+		},
 		typeOptions: {
 			loadOptionsDependsOn: ['documentId.value'],
 		},

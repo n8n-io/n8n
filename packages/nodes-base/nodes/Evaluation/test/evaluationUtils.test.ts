@@ -1,32 +1,33 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { setInputs, setOutputs } from '../utils/evaluationUtils';
 
-jest.mock('../utils/evaluationTriggerUtils', () => ({
-	getGoogleSheet: jest.fn(),
-	getSheet: jest.fn(),
+vi.mock('../utils/evaluationTriggerUtils', () => ({
+	getGoogleSheet: vi.fn(),
+	getSheet: vi.fn(),
 }));
 
 import { getGoogleSheet, getSheet } from '../utils/evaluationTriggerUtils';
 
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 
 describe('setInputs', () => {
 	const mockThis = (options: Partial<any> = {}) =>
 		mockDeep<IExecuteFunctions>({
-			getNode: jest.fn().mockReturnValue({ name: 'EvalNode' }),
-			getParentNodes: jest
+			getNode: vi.fn().mockReturnValue({ name: 'EvalNode' }),
+			getParentNodes: vi
 				.fn()
 				.mockReturnValue([{ name: 'EvalTrigger', type: 'n8n-nodes-base.evaluationTrigger' }]),
-			evaluateExpression: jest.fn().mockReturnValue(true),
-			getNodeParameter: jest.fn().mockReturnValue([
+			evaluateExpression: vi.fn().mockReturnValue(true),
+			getNodeParameter: vi.fn().mockReturnValue([
 				{ inputName: 'foo', inputValue: 'bar' },
 				{ inputName: 'baz', inputValue: 'qux' },
 			]),
-			getInputData: jest.fn().mockReturnValue([{ json: { test: 1 } }]),
-			addExecutionHints: jest.fn(),
-			getMode: jest.fn().mockReturnValue('evaluation'),
+			getInputData: vi.fn().mockReturnValue([{ json: { test: 1 } }]),
+			addExecutionHints: vi.fn(),
+			getMode: vi.fn().mockReturnValue('evaluation'),
 			...options,
 		});
 
@@ -39,15 +40,15 @@ describe('setInputs', () => {
 
 	it('should throw UserError if no input fields are provided', () => {
 		const context = mockThis({
-			getNodeParameter: jest.fn().mockReturnValue([]),
+			getNodeParameter: vi.fn().mockReturnValue([]),
 		});
 		expect(() => setInputs.call(context)).toThrow(UserError);
 	});
 
 	it('should add execution hints and return input data if not started from evaluation trigger', () => {
 		const context = mockThis({
-			getParentNodes: jest.fn().mockReturnValue([]),
-			getInputData: jest.fn().mockReturnValue([{ json: { test: 2 } }]),
+			getParentNodes: vi.fn().mockReturnValue([]),
+			getInputData: vi.fn().mockReturnValue([{ json: { test: 2 } }]),
 		});
 		const result = setInputs.call(context);
 		expect(context.addExecutionHints).toHaveBeenCalledWith(
@@ -60,8 +61,8 @@ describe('setInputs', () => {
 
 	it('should add execution hints and return input data if evalTriggerOutput is falsy', () => {
 		const context = mockThis({
-			evaluateExpression: jest.fn().mockReturnValue(undefined),
-			getInputData: jest.fn().mockReturnValue([{ json: { test: 3 } }]),
+			evaluateExpression: vi.fn().mockReturnValue(undefined),
+			getInputData: vi.fn().mockReturnValue([{ json: { test: 3 } }]),
 		});
 		const result = setInputs.call(context);
 		expect(context.addExecutionHints).toHaveBeenCalled();
@@ -73,29 +74,29 @@ describe('setOutputs', () => {
 	describe('common', () => {
 		const mockThis = (options: Partial<IExecuteFunctions> = {}) =>
 			mockDeep<IExecuteFunctions>({
-				getNode: jest.fn().mockReturnValue({ name: 'EvalNode' }),
-				getParentNodes: jest
+				getNode: vi.fn().mockReturnValue({ name: 'EvalNode' }),
+				getParentNodes: vi
 					.fn()
 					.mockReturnValue([{ name: 'EvalTrigger', type: 'n8n-nodes-base.evaluationTrigger' }]),
-				evaluateExpression: jest.fn().mockImplementation((expr: string) => {
+				evaluateExpression: vi.fn().mockImplementation((expr: string) => {
 					if (expr.includes('isExecuted')) return true;
 					if (expr.includes('first().json')) return { row_id: 1, inputField: 'inputValue' };
 					return true;
 				}),
-				getNodeParameter: jest.fn().mockImplementation((param: string) => {
+				getNodeParameter: vi.fn().mockImplementation((param: string) => {
 					if (param === 'outputs.values') {
 						return [{ outputName: 'result', outputValue: 'success' }];
 					}
 				}),
-				getInputData: jest.fn().mockReturnValue([{ json: { test: 1 } }]),
-				addExecutionHints: jest.fn(),
-				getMode: jest.fn().mockReturnValue('evaluation'),
+				getInputData: vi.fn().mockReturnValue([{ json: { test: 1 } }]),
+				addExecutionHints: vi.fn(),
+				getMode: vi.fn().mockReturnValue('evaluation'),
 				...options,
 			});
 
 		it('should throw UserError if no output fields are provided', async () => {
 			const context = mockThis({
-				getNodeParameter: jest.fn().mockReturnValue([]),
+				getNodeParameter: vi.fn().mockReturnValue([]),
 			});
 			await expect(setOutputs.call(context)).rejects.toThrow(UserError);
 			await expect(setOutputs.call(context)).rejects.toThrow('No outputs to set');
@@ -103,8 +104,8 @@ describe('setOutputs', () => {
 
 		it('should add execution hints and return input data if not started from evaluation trigger', async () => {
 			const context = mockThis({
-				getParentNodes: jest.fn().mockReturnValue([]),
-				getInputData: jest.fn().mockReturnValue([{ json: { test: 2 } }]),
+				getParentNodes: vi.fn().mockReturnValue([]),
+				getInputData: vi.fn().mockReturnValue([{ json: { test: 2 } }]),
 			});
 			const result = await setOutputs.call(context);
 
@@ -119,11 +120,11 @@ describe('setOutputs', () => {
 
 		it('should add execution hints and return input data if evalTriggerOutput is falsy', async () => {
 			const context = mockThis({
-				evaluateExpression: jest.fn().mockImplementation((expr: string) => {
+				evaluateExpression: vi.fn().mockImplementation((expr: string) => {
 					if (expr.includes('isExecuted')) return false;
 					return true;
 				}),
-				getInputData: jest.fn().mockReturnValue([{ json: { test: 3 } }]),
+				getInputData: vi.fn().mockReturnValue([{ json: { test: 3 } }]),
 			});
 			const result = await setOutputs.call(context);
 
@@ -146,23 +147,23 @@ describe('setOutputs', () => {
 		];
 
 		const mockDataTable = {
-			updateRows: jest.fn(),
-			getColumns: jest.fn().mockReturnValue(outputValues.map((o) => ({ name: o.outputName }))),
-			addColumn: jest.fn(),
+			updateRows: vi.fn(),
+			getColumns: vi.fn().mockReturnValue(outputValues.map((o) => ({ name: o.outputName }))),
+			addColumn: vi.fn(),
 		};
 
 		const mockThis = (options: Partial<IExecuteFunctions> = {}) =>
 			mockDeep<IExecuteFunctions>({
-				getNode: jest.fn().mockReturnValue({ name: 'EvalNode' }),
-				getParentNodes: jest
+				getNode: vi.fn().mockReturnValue({ name: 'EvalNode' }),
+				getParentNodes: vi
 					.fn()
 					.mockReturnValue([{ name: 'EvalTrigger', type: 'n8n-nodes-base.evaluationTrigger' }]),
-				evaluateExpression: jest.fn().mockImplementation((expr: string) => {
+				evaluateExpression: vi.fn().mockImplementation((expr: string) => {
 					if (expr.includes('isExecuted')) return true;
 					if (expr.includes('first().json')) return { row_id: 1, inputField: 'inputValue' };
 					return true;
 				}),
-				getNodeParameter: jest.fn().mockImplementation((param: string) => {
+				getNodeParameter: vi.fn().mockImplementation((param: string) => {
 					if (param === 'outputs.values') {
 						return outputValues;
 					} else if (param === 'source') {
@@ -171,17 +172,17 @@ describe('setOutputs', () => {
 						return 'mockDataTableId';
 					}
 				}),
-				getInputData: jest.fn().mockReturnValue([{ json: { test: 1 } }]),
-				addExecutionHints: jest.fn(),
-				getMode: jest.fn().mockReturnValue('evaluation'),
+				getInputData: vi.fn().mockReturnValue([{ json: { test: 1 } }]),
+				addExecutionHints: vi.fn(),
+				getMode: vi.fn().mockReturnValue('evaluation'),
 				helpers: {
-					getDataTableProxy: jest.fn().mockResolvedValue(mockDataTable),
+					getDataTableProxy: vi.fn().mockResolvedValue(mockDataTable),
 				},
 				...options,
 			});
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should set outputs to Data table and return evaluation data', async () => {
@@ -222,7 +223,7 @@ describe('setOutputs', () => {
 
 		it('should set outputs to Data table, correct subsequent row', async () => {
 			const context = mockThis({
-				evaluateExpression: jest.fn().mockImplementation((expr: string) => {
+				evaluateExpression: vi.fn().mockImplementation((expr: string) => {
 					if (expr.includes('isExecuted')) return true;
 					if (expr.includes('first().json')) return { row_id: 3, inputField: 'inputValue' };
 					return true;
@@ -248,7 +249,7 @@ describe('setOutputs', () => {
 
 		it("should create columns if they don't exist, string", async () => {
 			const context = mockThis({
-				getNodeParameter: jest.fn().mockImplementation((param: string) => {
+				getNodeParameter: vi.fn().mockImplementation((param: string) => {
 					if (param === 'outputs.values') {
 						return [...outputValues, { outputName: 'new_column', outputValue: 'new_value' }];
 					} else if (param === 'source') {
@@ -299,7 +300,7 @@ describe('setOutputs', () => {
 
 		it("should create columns if they don't exist, number", async () => {
 			const context = mockThis({
-				getNodeParameter: jest.fn().mockImplementation((param: string) => {
+				getNodeParameter: vi.fn().mockImplementation((param: string) => {
 					if (param === 'outputs.values') {
 						return [...outputValues, { outputName: 'new_column', outputValue: 123.45 }];
 					} else if (param === 'source') {
@@ -319,7 +320,7 @@ describe('setOutputs', () => {
 
 		it("should create columns if they don't exist, boolean", async () => {
 			const context = mockThis({
-				getNodeParameter: jest.fn().mockImplementation((param: string) => {
+				getNodeParameter: vi.fn().mockImplementation((param: string) => {
 					if (param === 'outputs.values') {
 						return [...outputValues, { outputName: 'new_column', outputValue: true }];
 					} else if (param === 'source') {
@@ -339,7 +340,7 @@ describe('setOutputs', () => {
 
 		it("should create columns if they don't exist, date", async () => {
 			const context = mockThis({
-				getNodeParameter: jest.fn().mockImplementation((param: string) => {
+				getNodeParameter: vi.fn().mockImplementation((param: string) => {
 					if (param === 'outputs.values') {
 						return [...outputValues, { outputName: 'new_column', outputValue: new Date() }];
 					} else if (param === 'source') {
@@ -359,7 +360,7 @@ describe('setOutputs', () => {
 
 		it("should create columns if they don't exist, null", async () => {
 			const context = mockThis({
-				getNodeParameter: jest.fn().mockImplementation((param: string) => {
+				getNodeParameter: vi.fn().mockImplementation((param: string) => {
 					if (param === 'outputs.values') {
 						return [...outputValues, { outputName: 'new_column', outputValue: null }];
 					} else if (param === 'source') {
@@ -380,11 +381,11 @@ describe('setOutputs', () => {
 
 	describe('Google Sheets', () => {
 		const mockGoogleSheetInstance = {
-			updateRows: jest.fn(),
-			prepareDataForUpdatingByRowNumber: jest.fn().mockReturnValue({
+			updateRows: vi.fn(),
+			prepareDataForUpdatingByRowNumber: vi.fn().mockReturnValue({
 				updateData: [{ range: 'Sheet1!A2:C2', values: [['foo', 'bar']] }],
 			}),
-			batchUpdate: jest.fn(),
+			batchUpdate: vi.fn(),
 		};
 
 		const mockSheet = {
@@ -393,16 +394,16 @@ describe('setOutputs', () => {
 
 		const mockThis = (options: Partial<any> = {}) =>
 			mockDeep<IExecuteFunctions>({
-				getNode: jest.fn().mockReturnValue({ name: 'EvalNode' }),
-				getParentNodes: jest
+				getNode: vi.fn().mockReturnValue({ name: 'EvalNode' }),
+				getParentNodes: vi
 					.fn()
 					.mockReturnValue([{ name: 'EvalTrigger', type: 'n8n-nodes-base.evaluationTrigger' }]),
-				evaluateExpression: jest.fn().mockImplementation((expr) => {
+				evaluateExpression: vi.fn().mockImplementation((expr) => {
 					if (expr.includes('isExecuted')) return true;
 					if (expr.includes('first().json')) return { row_number: 2, inputField: 'inputValue' };
 					return true;
 				}),
-				getNodeParameter: jest.fn().mockImplementation((param: string) => {
+				getNodeParameter: vi.fn().mockImplementation((param: string) => {
 					if (param === 'outputs.values') {
 						return [
 							{ outputName: 'result', outputValue: 'success' },
@@ -412,16 +413,16 @@ describe('setOutputs', () => {
 						return 'googleSheets';
 					}
 				}),
-				getInputData: jest.fn().mockReturnValue([{ json: { test: 1 } }]),
-				addExecutionHints: jest.fn(),
-				getMode: jest.fn().mockReturnValue('evaluation'),
+				getInputData: vi.fn().mockReturnValue([{ json: { test: 1 } }]),
+				addExecutionHints: vi.fn(),
+				getMode: vi.fn().mockReturnValue('evaluation'),
 				...options,
 			});
 
 		beforeEach(() => {
-			jest.clearAllMocks();
-			(getGoogleSheet as jest.Mock).mockReturnValue(mockGoogleSheetInstance);
-			(getSheet as jest.Mock).mockResolvedValue(mockSheet);
+			vi.clearAllMocks();
+			(getGoogleSheet as Mock).mockReturnValue(mockGoogleSheetInstance);
+			(getSheet as Mock).mockResolvedValue(mockSheet);
 		});
 
 		it('should set outputs to Google Sheet and return evaluation data', async () => {
@@ -451,7 +452,7 @@ describe('setOutputs', () => {
 
 		it('should handle row_number as string "row_number" by using 1', async () => {
 			const context = mockThis({
-				evaluateExpression: jest.fn().mockImplementation((expr) => {
+				evaluateExpression: vi.fn().mockImplementation((expr) => {
 					if (expr.includes('isExecuted')) return true;
 					if (expr.includes('first().json'))
 						return { row_number: 'row_number', inputField: 'inputValue' };
@@ -470,12 +471,12 @@ describe('setOutputs', () => {
 
 		it('should add new column names that are not in existing columns', async () => {
 			const context = mockThis({
-				evaluateExpression: jest.fn().mockImplementation((expr) => {
+				evaluateExpression: vi.fn().mockImplementation((expr) => {
 					if (expr.includes('isExecuted')) return true;
 					if (expr.includes('first().json')) return { row_number: 2, existingCol: 'value' };
 					return true;
 				}),
-				getNodeParameter: jest.fn().mockImplementation((param) => {
+				getNodeParameter: vi.fn().mockImplementation((param) => {
 					if (param === 'outputs.values') {
 						return [{ outputName: 'newCol', outputValue: 'newValue' }];
 					} else if (param === 'source') {

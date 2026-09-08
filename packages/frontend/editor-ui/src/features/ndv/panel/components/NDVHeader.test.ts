@@ -2,6 +2,7 @@ import { userEvent } from '@testing-library/user-event';
 import NDVHeader from './NDVHeader.vue';
 import { renderComponent } from '@/__tests__/render';
 import type { ComponentProps } from 'vue-component-type-helpers';
+import { createTestingPinia } from '@pinia/testing';
 
 describe('NDVHeader', () => {
 	const defaultProps: Partial<ComponentProps<typeof NDVHeader>> = {
@@ -13,13 +14,17 @@ describe('NDVHeader', () => {
 	};
 
 	it('renders docs label', () => {
-		const { getByText } = renderComponent(NDVHeader, { props: defaultProps });
+		const { getByText } = renderComponent(NDVHeader, {
+			props: defaultProps,
+			pinia: createTestingPinia(),
+		});
 		expect(getByText('Docs')).toBeInTheDocument();
 	});
 
 	it('emits rename when inline text is changed', async () => {
 		const { getByTestId, emitted } = renderComponent(NDVHeader, {
 			props: defaultProps,
+			pinia: createTestingPinia(),
 		});
 
 		const input = getByTestId('inline-edit-input');
@@ -36,6 +41,7 @@ describe('NDVHeader', () => {
 	it('emits close when close button is clicked', async () => {
 		const { getByRole, emitted } = renderComponent(NDVHeader, {
 			props: defaultProps,
+			pinia: createTestingPinia(),
 		});
 
 		const closeButton = getByRole('button');

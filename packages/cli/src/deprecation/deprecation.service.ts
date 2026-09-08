@@ -63,6 +63,83 @@ export class DeprecationService {
 			message: `n8n has replaced \`tmpl\` with \`tournament\` as expression evaluator. ${SAFE_TO_REMOVE}`,
 		},
 		{
+			envVar: 'WEBHOOK_URL',
+			message:
+				'Use N8N_WEBHOOK_URL instead, which sets the base URL for both test and production webhooks.',
+		},
+		{
+			envVar: 'N8N_UNVERIFIED_PACKAGES_ENABLED',
+			message:
+				'The default for this variable will change to `false` in a future version. Set it to `true` explicitly to keep installing unverified community packages.',
+			checkValue: (value?: string) => value === undefined,
+		},
+		{
+			envVar: 'N8N_RUNNERS_MODE',
+			message:
+				'The `internal` mode is deprecated and will be removed in a future version. Run task runners as a separate process and set this variable to `external`.',
+			checkValue: (value?: string) => value === 'internal',
+		},
+		{
+			envVar: 'N8N_SSRF_PROTECTION_ENABLED',
+			message:
+				"The built-in blocked IP ranges will expand in a future version to include the shared address space (100.64.0.0/10) and IPv6 transition ranges. To keep the current list, set N8N_SSRF_BLOCKED_IP_RANGES to the literal ranges instead of the `default` keyword, which always expands to the running version's built-in list.",
+			checkValue: (value?: string) => ['true', '1'].includes(value?.toLowerCase() ?? ''),
+			// Literal block lists without the `default` keyword do not pick up the expanded built-in list.
+			disableIf: () => {
+				const ranges = process.env.N8N_SSRF_BLOCKED_IP_RANGES;
+				return (
+					ranges !== undefined &&
+					!ranges
+						.toLowerCase()
+						.split(',')
+						.some((r) => r.trim() === 'default')
+				);
+			},
+		},
+		{
+			envVar: 'N8N_RUNNERS_TASK_TIMEOUT',
+			message:
+				'The default for this variable will be reduced from 300 (5 minutes) to 60 (1 minute) in a future version. Set it explicitly to keep your current task timeout.',
+			checkValue: (value?: string) => value === undefined,
+		},
+		{
+			envVar: 'N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES',
+			message:
+				'The default for this variable will be reduced from 2 GiB to 256 MiB in a future version. Set it explicitly to keep your current limit.',
+			checkValue: (value?: string) => value === undefined,
+		},
+		{
+			envVar: 'N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES',
+			message:
+				'The default for this variable will be reduced from 5000 to 1000 in a future version. Set it explicitly to keep your current limit.',
+			checkValue: (value?: string) => value === undefined,
+		},
+		{
+			envVar: 'N8N_EXPRESSION_ENGINE',
+			message:
+				'The `legacy` expression engine runs expressions without isolation, is no longer considered secure, and will be removed in a future version. Remove this environment variable to use the default `vm` engine.',
+			checkValue: (value?: string) => value === 'legacy',
+		},
+		{
+			envVar: 'N8N_DEFAULT_BINARY_DATA_MODE',
+			message:
+				'In-memory binary data storage (`default` mode) will be removed in a future version. Switch to `filesystem`, `s3`, or `database`.',
+			checkValue: (value?: string) => value === 'default',
+		},
+		{
+			envVar: 'N8N_WORKFLOW_TAGS_DISABLED',
+			message:
+				'Disabling workflow tags is deprecated. Tags will always be enabled in a future version and this environment variable will be removed, so the tags feature will become visible again after upgrading.',
+			checkValue: (value?: string) =>
+				value !== undefined && ['true', '1'].includes(value.toLowerCase()),
+		},
+		{
+			envVar: 'N8N_OUTBOUND_PROXY_MODE',
+			message:
+				'This variable exists only for backward compatibility and will be removed in a future version. Remove it and list every internal endpoint that must be reached directly in NO_PROXY. Until that is in place, `main-only` keeps the historical behavior where only the main process routes its default outbound HTTP through the proxy environment variables (HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, NO_PROXY).',
+			checkValue: (value?: string) => value === 'main-only',
+		},
+		{
 			envVar: 'EXECUTIONS_PROCESS',
 			message: SAFE_TO_REMOVE,
 			checkValue: (value: string | undefined) => value !== undefined && value !== 'own',
@@ -71,7 +148,7 @@ export class DeprecationService {
 			envVar: 'EXECUTIONS_PROCESS',
 			message:
 				'n8n does not support `own` mode since May 2023. Please remove this environment variable to allow n8n to start. If you need the isolation and performance gains, please consider queue mode: https://docs.n8n.io/hosting/scaling/queue-mode/',
-			checkValue: (value: string) => value === 'own',
+			checkValue: (value: string | undefined): value is 'own' => value === 'own',
 		},
 	];
 
@@ -102,24 +179,27 @@ export class DeprecationService {
 			});
 		});
 
-		const mustWarn: Deprecation[] = [];
+		const mustWarn: string[] = [];
 		for (const [deprecation, metadata] of this.state.entries()) {
 			if (!metadata.mustWarn) {
 				continue;
 			}
 
-			mustWarn.push(deprecation);
+			mustWarn.push(` - ${deprecation.envVar} -> ${deprecation.message}\n`);
+		}
+
+		if (!this.instanceSettings.isDocker) {
+			mustWarn.push(
+				' - Running n8n outside a container is deprecated. Future versions will require running n8n via the official Docker image. See https://docs.n8n.io/deploy/host-n8n/install-options/install-with-docker\n',
+			);
 		}
 
 		if (mustWarn.length === 0) return;
 
 		const header = `There ${
 			mustWarn.length === 1 ? 'is a deprecation' : 'are deprecations'
-		} related to your environment variables. Please take the recommended actions to update your configuration`;
-		const deprecations = mustWarn
-			.map(({ envVar, message }) => ` - ${envVar} -> ${message}\n`)
-			.join('');
+		} related to your n8n setup. Please take the recommended actions to update your configuration`;
 
-		this.logger.warn(`\n${header}:\n${deprecations}`);
+		this.logger.warn(`\n${header}:\n${mustWarn.join('')}`);
 	}
 }

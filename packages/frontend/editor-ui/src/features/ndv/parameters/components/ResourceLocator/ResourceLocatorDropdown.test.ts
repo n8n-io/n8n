@@ -39,6 +39,20 @@ describe('ResourceLocatorDropdown', () => {
 		vi.useRealTimers();
 	});
 
+	it('should show search required message even when loading', () => {
+		renderComponent({
+			props: {
+				show: true,
+				filterRequired: true,
+				filter: '',
+				loading: true,
+				resources: [],
+			},
+		});
+
+		expect(screen.getByText('Enter a search term to show results')).toBeInTheDocument();
+	});
+
 	describe('slow loading hint', () => {
 		it('should show slow loading hint when loading and showSlowLoadNotice is true', () => {
 			const slowLoadNotice = 'This is taking longer than expected. Please wait...';

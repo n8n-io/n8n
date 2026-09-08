@@ -1,3 +1,5 @@
+import { Time } from '@n8n/constants';
+
 import { Config, Env } from '../decorators';
 
 @Config
@@ -8,14 +10,14 @@ export class ChatHubConfig {
 	 * After this TTL, responses from those executions are no longer captured or sent to the client.
 	 */
 	@Env('N8N_CHAT_HUB_EXECUTION_CONTEXT_TTL')
-	executionContextTtl: number = 3600;
+	executionContextTtl: number = 1 * Time.hours.toSeconds;
 
 	/**
 	 * Time to live in seconds for stream state in Chat Hub.
 	 * Inactive streams are cleaned up after this duration.
 	 */
 	@Env('N8N_CHAT_HUB_STREAM_STATE_TTL')
-	streamStateTtl: number = 300;
+	streamStateTtl: number = 5 * Time.minutes.toSeconds;
 
 	/** Maximum number of response chunks to buffer per stream for reconnection in Chat Hub. */
 	@Env('N8N_CHAT_HUB_MAX_BUFFERED_CHUNKS')

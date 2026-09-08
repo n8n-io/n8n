@@ -1,13 +1,20 @@
 import { baseConfig } from '@n8n/eslint-config/base';
+import { encryptionBoundaryConfig } from '@n8n/eslint-config/encryption-boundary';
 import playwrightPlugin from 'eslint-plugin-playwright';
 
 export default [
 	...baseConfig,
+	// Depends on n8n-core and @n8n/db, so the encryption guardrails must run
+	// here even though it is not on nodeConfig.
+	...encryptionBoundaryConfig,
 	playwrightPlugin.configs['flat/recommended'],
 	{
 		ignores: [
 			'playwright-report/**/*',
 			'ms-playwright-cache/**/*',
+			// Downloaded browser bundles. Gitignored, but flat config does not read
+			// .gitignore, and Chromium ships loose .js files under resources/.
+			'.playwright-browsers/**/*',
 			'coverage/**/*',
 			'scripts/**/*',
 			'janitor.config.mjs',

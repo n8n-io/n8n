@@ -63,4 +63,11 @@ export interface InstanceStorage {
 	 * Memory: No-op, returns 0
 	 */
 	cleanupStaleMembers(): Promise<number>;
+
+	/**
+	 * Cleanup resources (e.g. disconnect Redis client)
+	 * Redis: Disconnect dedicated client
+	 * Memory: No-op
+	 */
+	destroy(): Promise<void>;
 }

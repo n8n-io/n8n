@@ -1,9 +1,11 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import path from 'node:path';
 import type { WorkflowTestData } from 'n8n-workflow';
+import path from 'node:path';
 
 // CI has cold-start overhead on the first test (coverage instrumentation, module loading)
-jest.setTimeout(10_000);
+vi.setConfig({
+	testTimeout: 10000,
+});
 
 /**
  * Helper to create a standard OpenAI chat completion response.
@@ -114,6 +116,85 @@ describe('AgentTool V3 Integration', () => {
 						path: '/v1/chat/completions',
 						statusCode: 200,
 						responseBody: chatCompletionResponse('2+2 equals 4.'),
+					},
+				],
+			},
+		};
+
+		testHarness.setupTest(testData, { credentials });
+	});
+
+	describe('Agent as Tool with inner tool calls', () => {
+		// Regression test for the case where the sub-agent's LLM emits a tool
+		// call. Previously the sub-agent returned an EngineRequest that the
+		// parent's tool boundary rejected with
+		// "The Tool attempted to return an engine request, …" — this fixture
+		// proves the parent sees the sub-agent's real final answer instead.
+		const testData: WorkflowTestData = {
+			description:
+				'should let a sub-agent invoke its own tools inline and surface the result to the parent',
+			input: {
+				workflowData: testHarness.readWorkflowJSON('workflows/sub-agent-with-inner-tool.json'),
+			},
+			output: {
+				nodeData: {
+					'Parent Agent': [
+						[
+							{
+								json: {
+									output: '5 times 5 equals 25.',
+								},
+							},
+						],
+					],
+				},
+			},
+			nock: {
+				baseUrl,
+				mocks: [
+					// 1. Parent agent decides to call the sub-agent
+					{
+						method: 'post',
+						path: '/v1/chat/completions',
+						statusCode: 200,
+						responseBody: toolCallResponse([
+							{
+								id: 'call_parent_1',
+								name: 'MathSubAgent',
+								arguments: JSON.stringify({ input: 'What is 5 times 5?' }),
+							},
+						]),
+					},
+					// 2. Sub-agent's LLM decides to call the Calculator. Pre-fix
+					//    this would produce an EngineRequest the parent's tool
+					//    boundary couldn't fulfil.
+					{
+						method: 'post',
+						path: '/v1/chat/completions',
+						statusCode: 200,
+						responseBody: toolCallResponse([
+							{
+								id: 'call_calc_1',
+								name: 'Calculator',
+								arguments: JSON.stringify({ input: '5 * 5' }),
+							},
+						]),
+					},
+					// 3. Sub-agent's LLM receives the calculator result and
+					//    produces a final text answer.
+					{
+						method: 'post',
+						path: '/v1/chat/completions',
+						statusCode: 200,
+						responseBody: chatCompletionResponse('5 times 5 equals 25.'),
+					},
+					// 4. Parent agent receives the sub-agent's answer and
+					//    produces its own final response.
+					{
+						method: 'post',
+						path: '/v1/chat/completions',
+						statusCode: 200,
+						responseBody: chatCompletionResponse('5 times 5 equals 25.'),
 					},
 				],
 			},

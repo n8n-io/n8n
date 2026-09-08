@@ -33,9 +33,9 @@ import {
 	type IMenuItem,
 } from '@n8n/design-system';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import Banner from '@/app/components/Banner.vue';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
@@ -328,7 +328,7 @@ onMounted(async () => {
 									data-test-id="secrets-provider-read-only-notice"
 									:content="
 										i18n.baseText(
-											modal.canShareGlobally.value
+											modal.isSharedGlobally.value && modal.canShareGlobally.value
 												? 'settings.secretsProviderConnections.modal.readOnly.notice.admin'
 												: 'settings.secretsProviderConnections.modal.readOnly.notice.noPermission',
 										)
@@ -549,8 +549,8 @@ onMounted(async () => {
 
 .mainContent {
 	flex: 1;
-	overflow: auto;
 	padding-bottom: 60px;
+	padding-inline: var(--spacing--xs);
 }
 
 .icon {

@@ -1,40 +1,46 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { TypeToNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import type { InsightsCompactionService } from '../insights-compaction.service';
-import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
+
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn(),
+}));
+
+const user = mock<User>({ id: 'user-1' });
 
 describe('InsightsService', () => {
 	let insightsService: InsightsService;
 
 	let mockInsightsByPeriodRepository: MockProxy<InsightsByPeriodRepository>;
-	let mockCompactionService: MockProxy<InsightsCompactionService>;
-	let mockPruningService: MockProxy<InsightsPruningService>;
 	let mockLicenseState: MockProxy<LicenseState>;
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
+	let mockWorkflowSharingService: MockProxy<WorkflowSharingService>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockInsightsByPeriodRepository = mock<InsightsByPeriodRepository>();
-		mockCompactionService = mock<InsightsCompactionService>();
-		mockPruningService = mock<InsightsPruningService>();
 		mockLicenseState = mock<LicenseState>();
 		mockInstanceSettings = mock<InstanceSettings>();
+		mockWorkflowSharingService = mock<WorkflowSharingService>();
+		vi.mocked(userHasScopes).mockResolvedValue(true);
 
 		insightsService = new InsightsService(
 			mockInsightsByPeriodRepository,
-			mockCompactionService,
-			mockPruningService,
 			mockLicenseState,
 			mockInstanceSettings,
 			mockLogger(),
+			mockWorkflowSharingService,
 		);
 	});
 
@@ -55,6 +61,7 @@ describe('InsightsService', () => {
 			]);
 
 			const result = await insightsService.getInsightsSummary({
+				user,
 				startDate,
 				endDate,
 			});
@@ -188,6 +195,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -210,6 +218,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -232,6 +241,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -253,6 +263,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -277,6 +288,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -297,6 +309,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -318,6 +331,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -342,6 +356,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -368,6 +383,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -390,6 +406,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -414,6 +431,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -436,6 +454,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -458,6 +477,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -477,6 +497,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -499,6 +520,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -521,6 +543,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -544,6 +567,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -566,6 +590,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -588,6 +613,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -610,6 +636,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -633,6 +660,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -655,6 +683,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -677,6 +706,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -699,6 +729,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -722,6 +753,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -744,6 +776,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -765,6 +798,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -787,6 +821,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user,
 						startDate,
 						endDate,
 					});
@@ -794,6 +829,301 @@ describe('InsightsService', () => {
 					expect(result.timeSaved.value).toBe(120);
 					expect(result.timeSaved.deviation).toBeNull();
 				});
+			});
+		});
+
+		describe('project access', () => {
+			beforeEach(() => {
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+					[],
+				);
+			});
+
+			it('should not check project access when no project is requested', async () => {
+				await insightsService.getInsightsSummary({ user, startDate, endDate });
+
+				expect(userHasScopes).not.toHaveBeenCalled();
+			});
+
+			it('should throw a forbidden error when the requested project is not accessible', async () => {
+				vi.mocked(userHasScopes).mockResolvedValue(false);
+
+				await expect(
+					insightsService.getInsightsSummary({ user, startDate, endDate, projectId: 'project-1' }),
+				).rejects.toThrow('You do not have access to insights for this project.');
+
+				expect(
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+				).not.toHaveBeenCalled();
+			});
+
+			it('should query the requested project when it is accessible', async () => {
+				await insightsService.getInsightsSummary({
+					user,
+					startDate,
+					endDate,
+					projectId: 'project-1',
+				});
+
+				expect(userHasScopes).toHaveBeenCalledWith(user, ['workflow:read'], false, {
+					projectId: 'project-1',
+				});
+				expect(
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+				).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1' }));
+			});
+
+			it('should query without an access filter for users with the global workflow read scope', async () => {
+				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue(undefined);
+
+				await insightsService.getInsightsSummary({ user, startDate, endDate });
+
+				expect(
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+				).toHaveBeenCalledWith(expect.objectContaining({ accessFilter: undefined }));
+			});
+
+			it('should query with an access filter for users without the global workflow read scope', async () => {
+				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue({
+					projectRoles: ['project:viewer'],
+					workflowRoles: ['workflow:owner'],
+				});
+
+				await insightsService.getInsightsSummary({ user, startDate, endDate });
+
+				expect(
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+				).toHaveBeenCalledWith(
+					expect.objectContaining({
+						accessFilter: {
+							user,
+							projectRoles: ['project:viewer'],
+							workflowRoles: ['workflow:owner'],
+						},
+					}),
+				);
+			});
+		});
+	});
+
+	describe('timeZone forwarding', () => {
+		const startDate = new Date('2024-01-01');
+		const endDate = new Date('2024-01-07');
+
+		it('forwards timeZone to getPreviousAndCurrentPeriodTypeAggregates', async () => {
+			mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+				[],
+			);
+
+			await insightsService.getInsightsSummary({
+				user,
+				startDate,
+				endDate,
+				timeZone: 'Europe/Berlin',
+			});
+
+			expect(
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+			).toHaveBeenCalledWith(expect.objectContaining({ timeZone: 'Europe/Berlin' }));
+		});
+
+		it('forwards timeZone to getInsightsByWorkflow', async () => {
+			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+				count: 0,
+				rows: [],
+			});
+			mockWorkflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			await insightsService.getInsightsByWorkflow({
+				user: mock<User>(),
+				startDate,
+				endDate,
+				timeZone: 'Europe/Berlin',
+			});
+
+			expect(mockInsightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ timeZone: 'Europe/Berlin' }),
+			);
+		});
+
+		it('forwards timeZone to getInsightsByTime', async () => {
+			mockInsightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+
+			await insightsService.getInsightsByTime({
+				user,
+				startDate,
+				endDate,
+				timeZone: 'Europe/Berlin',
+			});
+
+			expect(mockInsightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
+				expect.objectContaining({ timeZone: 'Europe/Berlin' }),
+			);
+		});
+	});
+
+	describe('getInsightsByWorkflow', () => {
+		const startDate = new Date('2024-01-01');
+		const endDate = new Date('2024-01-07');
+
+		const makeRow = (workflowId: string | null) => ({
+			workflowId,
+			workflowName: workflowId ? `Workflow ${workflowId}` : 'Deleted workflow',
+			projectId: 'project-1',
+			projectName: 'Project 1',
+			total: 10,
+			succeeded: 8,
+			failed: 2,
+			failureRate: 0.2,
+			runTime: 1000,
+			averageRunTime: 100,
+			timeSaved: 60,
+		});
+
+		const makeUser = (scopes: string[]) =>
+			({ role: { scopes: scopes.map((slug) => ({ slug })) } }) as unknown as User;
+
+		beforeEach(() => {
+			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+				count: 0,
+				rows: [],
+			});
+		});
+
+		it('sets hasReadAccess true for a row with a workflowId', async () => {
+			const user = makeUser([]);
+			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+				count: 1,
+				rows: [makeRow('wf-1')],
+			});
+
+			const result = await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
+
+			expect(result.data[0].hasReadAccess).toBe(true);
+		});
+
+		it('sets hasReadAccess false for a row with a null workflowId (deleted workflow)', async () => {
+			const user = makeUser(['workflow:read']);
+			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+				count: 1,
+				rows: [makeRow(null)],
+			});
+
+			const result = await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
+
+			expect(result.data[0].hasReadAccess).toBe(false);
+		});
+
+		describe('project access', () => {
+			it('should not check project access when no project is requested', async () => {
+				await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
+
+				expect(userHasScopes).not.toHaveBeenCalled();
+			});
+
+			it('should throw a forbidden error when the requested project is not accessible', async () => {
+				vi.mocked(userHasScopes).mockResolvedValue(false);
+
+				await expect(
+					insightsService.getInsightsByWorkflow({
+						user,
+						startDate,
+						endDate,
+						projectId: 'project-1',
+					}),
+				).rejects.toThrow('You do not have access to insights for this project.');
+
+				expect(mockInsightsByPeriodRepository.getInsightsByWorkflow).not.toHaveBeenCalled();
+			});
+
+			it('should query without an access filter for users with the global workflow read scope', async () => {
+				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue(undefined);
+
+				await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
+
+				expect(mockInsightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith(
+					expect.objectContaining({ accessFilter: undefined }),
+				);
+			});
+
+			it('should query with an access filter for users without the global workflow read scope', async () => {
+				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue({
+					projectRoles: ['project:viewer'],
+					workflowRoles: ['workflow:owner'],
+				});
+
+				await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
+
+				expect(mockInsightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith(
+					expect.objectContaining({
+						accessFilter: {
+							user,
+							projectRoles: ['project:viewer'],
+							workflowRoles: ['workflow:owner'],
+						},
+					}),
+				);
+			});
+		});
+	});
+
+	describe('getInsightsByTime', () => {
+		const startDate = new Date('2024-01-01');
+		const endDate = new Date('2024-01-07');
+
+		beforeEach(() => {
+			mockInsightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+		});
+
+		describe('project access', () => {
+			it('should not check project access when no project is requested', async () => {
+				await insightsService.getInsightsByTime({ user, startDate, endDate });
+
+				expect(userHasScopes).not.toHaveBeenCalled();
+			});
+
+			it('should throw a forbidden error when the requested project is not accessible', async () => {
+				vi.mocked(userHasScopes).mockResolvedValue(false);
+
+				await expect(
+					insightsService.getInsightsByTime({
+						user,
+						startDate,
+						endDate,
+						projectId: 'project-1',
+					}),
+				).rejects.toThrow('You do not have access to insights for this project.');
+
+				expect(mockInsightsByPeriodRepository.getInsightsByTime).not.toHaveBeenCalled();
+			});
+
+			it('should query without an access filter for users with the global workflow read scope', async () => {
+				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue(undefined);
+
+				await insightsService.getInsightsByTime({ user, startDate, endDate });
+
+				expect(mockInsightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
+					expect.objectContaining({ accessFilter: undefined }),
+				);
+			});
+
+			it('should query with an access filter for users without the global workflow read scope', async () => {
+				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue({
+					projectRoles: ['project:viewer'],
+					workflowRoles: ['workflow:owner'],
+				});
+
+				await insightsService.getInsightsByTime({ user, startDate, endDate });
+
+				expect(mockInsightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
+					expect.objectContaining({
+						accessFilter: {
+							user,
+							projectRoles: ['project:viewer'],
+							workflowRoles: ['workflow:owner'],
+						},
+					}),
+				);
 			});
 		});
 	});

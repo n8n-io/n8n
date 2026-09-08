@@ -1,11 +1,15 @@
 import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { IExecutionBase, User } from '@n8n/db';
 import type { IRunExecutionData, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 
 export type ExecutionRedactionOptions = {
 	user: User;
 	ipAddress?: string;
 	userAgent?: string;
+	/** When true, the original execution is never mutated. If redaction is needed,
+	 *  a structuredClone is created and returned. If no redaction is needed, the
+	 *  original is returned as-is (caller can check referential equality). */
+	keepOriginal?: boolean;
 } & Pick<ExecutionRedactionQueryDto, 'redactExecutionData'>;
 
 export interface ExecutionRedaction {
@@ -32,6 +36,13 @@ export type RedactableExecution = {
 	id?: string;
 	mode: WorkflowExecuteMode;
 	workflowId: string;
-	data: IRunExecutionData;
+	data: Pick<IRunExecutionData, 'resultData' | 'executionData' | 'redactionInfo'>;
 	workflowData: Pick<IWorkflowBase, 'settings' | 'nodes'>;
 };
+
+/** Narrows a loaded execution to one the redaction strategies can process. */
+export function isRedactableExecution(
+	execution: IExecutionBase,
+): execution is IExecutionBase & RedactableExecution {
+	return 'data' in execution && 'workflowData' in execution;
+}

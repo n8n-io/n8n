@@ -49,6 +49,12 @@ test.describe(
 			await expect(n8n.canvas.nodeConnections()).toHaveCount(1);
 		});
 
+		test('should add a node by dropping a DataTransfer payload on the canvas', async ({ n8n }) => {
+			await n8n.canvas.dropNodeOnCanvas('n8n-nodes-base.code');
+
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
+		});
+
 		test('should open a category when trying to drag and drop it on the canvas', async ({
 			n8n,
 		}) => {
@@ -63,15 +69,6 @@ test.describe(
 
 			await expect(n8n.canvas.nodeCreatorCategoryItems()).toHaveCount(1);
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
-			await expect(n8n.canvas.nodeConnections()).toHaveCount(0);
-		});
-
-		test('should add disconnected node if nothing is selected', async ({ n8n }) => {
-			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-			await n8n.canvas.deselectAll();
-			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
-
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 			await expect(n8n.canvas.nodeConnections()).toHaveCount(0);
 		});
 

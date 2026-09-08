@@ -1,9 +1,14 @@
+import type { PolicyCleared } from '@n8n/decorators';
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import type { Cipher, BinaryDataService } from 'n8n-core';
 import { type IBinaryData, type INode, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { ChatHubAgent } from '../chat-hub-agent.entity';
 import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
@@ -14,12 +19,10 @@ import { ChatHubSession } from '../chat-hub-session.entity';
 import type { ChatHubToolService } from '../chat-hub-tool.service';
 import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
-import type { ChatHubSettingsService } from '../chat-hub.settings.service';
-import type { ChatHubMessageRepository } from '../chat-message.repository';
-
 import { NODE_NAMES } from '../chat-hub.constants';
-
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service';
+import type { SemanticSearchOptions } from '../chat-hub.types';
+import type { ChatHubMessageRepository } from '../chat-message.repository';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
@@ -34,6 +37,7 @@ describe('ChatHubWorkflowService', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 
 	const mockCipher = mock<Cipher>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;
@@ -46,12 +50,12 @@ describe('ChatHubWorkflowService', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		logger.scoped.mockReturnValue(logger);
 
 		// Mock cipher encrypt to return a simple string
-		mockCipher.encrypt.mockReturnValue('encrypted-metadata');
+		mockCipher.encryptV2.mockResolvedValue('encrypted-metadata');
 
 		// Create real ChatHubAttachmentService with mocked dependencies
 		chatHubAttachmentService = new ChatHubAttachmentService(binaryDataService, messageRepository);
@@ -67,27 +71,395 @@ describe('ChatHubWorkflowService', () => {
 			chatHubToolService,
 			workflowFinderService,
 			mockCipher,
+			policyEnforcementService,
 		);
 
 		// Mock repository methods
 		const mockEntityManager = {
-			save: jest.fn().mockImplementation(async (entity) => {
+			save: vi.fn().mockImplementation(async (entity) => {
 				// Return the entity with an ID added
 				return { ...entity, id: 'workflow-123' };
 			}),
 		} as any;
 
-		Object.defineProperty(workflowRepository, 'manager', {
-			value: {
-				transaction: jest.fn((cb) => cb(mockEntityManager)),
+		workflowRepository.runInTransaction.mockImplementation(
+			async (ctx: unknown, fn: (em: unknown, ctx: unknown) => Promise<unknown>) =>
+				await fn(mockEntityManager, ctx),
+		);
+		workflowRepository.createContent.mockImplementation(
+			async (workflow: unknown) => ({ ...(workflow as object), id: 'workflow-123' }) as never,
+		);
+		policyEnforcementService.enforceWorkflowSave.mockResolvedValue(mock());
+
+		(sharedWorkflowRepository.create as Mock) = vi.fn().mockReturnValue({});
+	});
+
+	describe('content policy', () => {
+		const cleared = mock<PolicyCleared<'workflowSave'>>();
+		const semanticSearchOptions: SemanticSearchOptions = {
+			embeddingModel: { provider: 'openai', credentialId: 'embedding-cred' },
+			vectorStore: {
+				nodeType: 'vectorStore',
+				credentialType: 'pineconeApi',
+				credentialId: 'vs-cred',
 			},
-			writable: true,
+		};
+
+		beforeEach(() => {
+			policyEnforcementService.enforceWorkflowSave.mockResolvedValue(cleared);
 		});
 
-		(sharedWorkflowRepository.create as jest.Mock) = jest.fn().mockReturnValue({});
+		// Chat workflows are system-generated but their nodes are real, so a blocked node type
+		// has to stop the run rather than reach the engine.
+		it('enforces the save and threads the clearance to the write', async () => {
+			await service.createChatWorkflow(
+				'user-123',
+				'session-456',
+				'project-789',
+				[],
+				'Hello',
+				[],
+				{},
+				{ provider: 'openai', model: 'gpt-4' },
+				undefined,
+				[],
+				'UTC',
+				null,
+				defaultExecutionMetadata,
+			);
+
+			expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
+				expect.objectContaining({ storedWorkflow: null, projectId: 'project-789' }),
+			);
+			expect(workflowRepository.createContent).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ policyCleared: cleared }),
+			);
+		});
+
+		it('writes nothing when the policy blocks the save', async () => {
+			policyEnforcementService.enforceWorkflowSave.mockRejectedValue(new Error('blocked'));
+
+			await expect(
+				service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{},
+					{ provider: 'openai', model: 'gpt-4' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+				),
+			).rejects.toThrow('blocked');
+
+			expect(workflowRepository.createContent).not.toHaveBeenCalled();
+		});
+
+		it('enforces the save for the title-generation workflow', async () => {
+			await service.createTitleGenerationWorkflow(
+				'user-123',
+				'session-456',
+				'project-789',
+				'Hello',
+				[],
+				{},
+				{ provider: 'openai', model: 'gpt-4' },
+			);
+
+			expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'project-789' }),
+			);
+			expect(workflowRepository.createContent).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ policyCleared: cleared }),
+			);
+		});
+
+		it('enforces the save for the embeddings-insertion workflow', async () => {
+			await service.createEmbeddingsInsertionWorkflow(
+				mock<User>({ id: 'user-1' }),
+				'project-1',
+				[
+					{
+						attachment: {
+							data: 'base64data',
+							mimeType: 'application/pdf',
+							fileName: 'doc.pdf',
+						} as IBinaryData,
+						knowledgeId: 'knowledge-1',
+					},
+				],
+				'agent-1',
+				semanticSearchOptions,
+				{},
+				'workflow-1',
+			);
+
+			// This site supplies its own id, so the clearance binds to that rather than to a hash.
+			expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow: expect.objectContaining({ id: 'workflow-1' }),
+					projectId: 'project-1',
+				}),
+			);
+			expect(workflowRepository.createContent).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ policyCleared: cleared }),
+			);
+		});
 	});
 
 	describe('createChatWorkflow', () => {
+		describe('provider settings', () => {
+			it('should set responsesApiEnabled to false on OpenAI model node when provider settings disable it', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						responsesApiEnabled: false,
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const modelNode = result.workflowData.nodes.find((node) => node.name === 'Chat Model');
+				expect(modelNode?.parameters).toHaveProperty('responsesApiEnabled', false);
+			});
+
+			it('should not set responsesApiEnabled when provider settings do not explicitly disable it', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const modelNode = result.workflowData.nodes.find((node) => node.name === 'Chat Model');
+				expect(modelNode?.parameters).not.toHaveProperty('responsesApiEnabled');
+			});
+
+			it('should not set responsesApiEnabled when provider settings explicitly enable it', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						responsesApiEnabled: true,
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const modelNode = result.workflowData.nodes.find((node) => node.name === 'Chat Model');
+				expect(modelNode?.parameters).not.toHaveProperty('responsesApiEnabled');
+			});
+
+			it('should use custom contextWindowLength from provider settings', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						contextWindowLength: 50,
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const memoryNode = result.workflowData.nodes.find((node) => node.name === 'Memory');
+				expect(memoryNode?.parameters).toHaveProperty('contextWindowLength', 50);
+			});
+
+			it('should default contextWindowLength to 20 when not set in provider settings', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+				);
+
+				const memoryNode = result.workflowData.nodes.find((node) => node.name === 'Memory');
+				expect(memoryNode?.parameters).toHaveProperty('contextWindowLength', 20);
+			});
+		});
+
+		describe('vector store nodes', () => {
+			const VECTOR_STORE_SEARCH = {
+				agentId: 'agent-1',
+				options: {
+					embeddingModel: { provider: 'openai' as const, credentialId: 'embedding-cred' },
+					vectorStore: {
+						nodeType: 'vectorStore',
+						credentialType: 'pineconeApi',
+						credentialId: 'vs-cred',
+					},
+				},
+			};
+
+			it('should include vector store and embeddings nodes when vectorStoreSearch is provided', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					VECTOR_STORE_SEARCH,
+					defaultExecutionMetadata,
+				);
+
+				const vectorStoreNode = result.workflowData.nodes.find(
+					(node) => node.name === NODE_NAMES.VECTOR_STORE,
+				);
+				expect(vectorStoreNode).toBeDefined();
+				expect(vectorStoreNode?.type).toBe(VECTOR_STORE_SEARCH.options.vectorStore.nodeType);
+				expect(vectorStoreNode?.credentials).toEqual({
+					[VECTOR_STORE_SEARCH.options.vectorStore.credentialType]: {
+						id: VECTOR_STORE_SEARCH.options.vectorStore.credentialId,
+						name: '',
+					},
+				});
+
+				const embeddingsNode = result.workflowData.nodes.find(
+					(node) => node.name === NODE_NAMES.EMBEDDINGS_MODEL,
+				);
+				expect(embeddingsNode).toBeDefined();
+				expect(embeddingsNode?.type).toBe('@n8n/n8n-nodes-langchain.embeddingsOpenAi');
+			});
+
+			it('should wire vector store to agent and embeddings to vector store', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					VECTOR_STORE_SEARCH,
+					defaultExecutionMetadata,
+				);
+
+				const { connections } = result.workflowData;
+				expect(connections[NODE_NAMES.VECTOR_STORE]?.ai_tool?.[0]).toContainEqual(
+					expect.objectContaining({ node: NODE_NAMES.REPLY_AGENT }),
+				);
+				expect(connections[NODE_NAMES.EMBEDDINGS_MODEL]?.ai_embedding?.[0]).toContainEqual(
+					expect.objectContaining({ node: NODE_NAMES.VECTOR_STORE }),
+				);
+			});
+
+			it('should not include vector store nodes when vectorStoreSearch is null', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+				);
+
+				const nodeNames = result.workflowData.nodes.map((n) => n.name);
+				expect(nodeNames).not.toContain(NODE_NAMES.VECTOR_STORE);
+				expect(nodeNames).not.toContain(NODE_NAMES.EMBEDDINGS_MODEL);
+			});
+		});
+
 		describe('message history handling', () => {
 			it('should handle empty history', async () => {
 				const mockHistory: ChatHubMessage[] = [];
@@ -784,7 +1156,7 @@ describe('ChatHubWorkflowService', () => {
 	});
 
 	describe('prepareExecutionData', () => {
-		it('should encrypt executionMetadata before adding to trigger item', () => {
+		it('should encrypt executionMetadata before adding to trigger item', async () => {
 			const triggerNode = {
 				name: 'Chat Trigger',
 				type: 'n8n-nodes-base.chatTrigger',
@@ -797,7 +1169,7 @@ describe('ChatHubWorkflowService', () => {
 				endpoint: '/api/chat/message',
 			};
 
-			const result = service.prepareExecutionData(
+			const result = await service.prepareExecutionData(
 				triggerNode,
 				'session-123',
 				'Hello',
@@ -805,7 +1177,7 @@ describe('ChatHubWorkflowService', () => {
 				executionMetadata,
 			);
 
-			expect(mockCipher.encrypt).toHaveBeenCalledWith(executionMetadata);
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith(executionMetadata);
 			expect(result[0].data.main[0]![0]).toMatchObject({
 				encryptedMetadata: 'encrypted-metadata',
 				json: {
@@ -816,9 +1188,9 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
-		it('should configure context establishment hook', () => {
+		it('should configure context establishment hook', async () => {
 			const triggerNode = { name: 'Chat Trigger', parameters: {} } as any;
-			const result = service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
+			const result = await service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
 				authToken: 'token',
 				browserId: undefined,
 				method: 'POST',
@@ -838,7 +1210,7 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
-		it('should preserve existing node parameters', () => {
+		it('should preserve existing node parameters', async () => {
 			const triggerNode = {
 				name: 'Chat Trigger',
 				parameters: {
@@ -847,7 +1219,7 @@ describe('ChatHubWorkflowService', () => {
 				},
 			} as any;
 
-			const result = service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
+			const result = await service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
 				authToken: 'token',
 				browserId: 'browser',
 				method: 'POST',
@@ -861,7 +1233,7 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
-		it('should handle attachments correctly', () => {
+		it('should handle attachments correctly', async () => {
 			const triggerNode = { name: 'Chat Trigger', parameters: {} } as any;
 			const attachments = [
 				{
@@ -873,7 +1245,7 @@ describe('ChatHubWorkflowService', () => {
 				},
 			];
 
-			const result = service.prepareExecutionData(
+			const result = await service.prepareExecutionData(
 				triggerNode,
 				'session-123',
 				'Hello',
@@ -893,6 +1265,68 @@ describe('ChatHubWorkflowService', () => {
 		});
 	});
 
+	describe('createEmbeddingsInsertionWorkflow', () => {
+		const SEMANTIC_SEARCH_OPTIONS: SemanticSearchOptions = {
+			embeddingModel: { provider: 'openai', credentialId: 'embedding-cred' },
+			vectorStore: {
+				nodeType: 'vectorStore',
+				credentialType: 'pineconeApi',
+				credentialId: 'vs-cred',
+			},
+		};
+
+		const attachment = {
+			attachment: {
+				data: 'base64data',
+				mimeType: 'application/pdf',
+				fileName: 'doc.pdf',
+			} as IBinaryData,
+			knowledgeId: 'knowledge-1',
+		};
+
+		it('should include a vector store node with the configured node type and credentials', async () => {
+			const result = await service.createEmbeddingsInsertionWorkflow(
+				mock<User>({ id: 'user-1' }),
+				'project-1',
+				[attachment],
+				'agent-1',
+				SEMANTIC_SEARCH_OPTIONS,
+				{},
+				'workflow-1',
+			);
+
+			const vectorStoreNode = result.workflowData.nodes.find(
+				(node) => node.name === NODE_NAMES.VECTOR_STORE,
+			);
+			expect(vectorStoreNode).toBeDefined();
+			expect(vectorStoreNode?.type).toBe(SEMANTIC_SEARCH_OPTIONS.vectorStore.nodeType);
+			expect(vectorStoreNode?.credentials).toEqual({
+				[SEMANTIC_SEARCH_OPTIONS.vectorStore.credentialType]: {
+					id: SEMANTIC_SEARCH_OPTIONS.vectorStore.credentialId,
+					name: '',
+				},
+			});
+		});
+
+		it('should include an embeddings model node with the provider node type', async () => {
+			const result = await service.createEmbeddingsInsertionWorkflow(
+				mock<User>({ id: 'user-1' }),
+				'project-1',
+				[attachment],
+				'agent-1',
+				SEMANTIC_SEARCH_OPTIONS,
+				{},
+				'workflow-1',
+			);
+
+			const embeddingsNode = result.workflowData.nodes.find(
+				(node) => node.name === NODE_NAMES.EMBEDDINGS_MODEL,
+			);
+			expect(embeddingsNode).toBeDefined();
+			expect(embeddingsNode?.type).toBe('@n8n/n8n-nodes-langchain.embeddingsOpenAi');
+		});
+	});
+
 	describe('system message building', () => {
 		async function getAgentNodeSystemMessage(agent: ChatHubAgent): Promise<string> {
 			const serviceWithRepo = new ChatHubWorkflowService(
@@ -906,6 +1340,7 @@ describe('ChatHubWorkflowService', () => {
 				chatHubToolService,
 				workflowFinderService,
 				mockCipher,
+				policyEnforcementService,
 			);
 
 			const mockTrx = mock<EntityManager>();
@@ -918,7 +1353,7 @@ describe('ChatHubWorkflowService', () => {
 			chatHubSettingsService.getSemanticSearchOptions.mockResolvedValue(null);
 			chatHubSettingsService.ensureModelIsAllowed.mockResolvedValue(undefined);
 			chatHubCredentialsService.findPersonalProject.mockResolvedValue({ id: 'project-789' } as any);
-			jest.spyOn(serviceWithRepo, 'getSystemMessageMetadata').mockReturnValue('__metadata__');
+			vi.spyOn(serviceWithRepo, 'getSystemMessageMetadata').mockReturnValue('__metadata__');
 
 			const result = await serviceWithRepo.prepareReplyWorkflow(
 				{ id: 'user-123' } as User,
@@ -930,7 +1365,7 @@ describe('ChatHubWorkflowService', () => {
 				[],
 				[],
 				'UTC',
-				mockTrx,
+				{},
 				defaultExecutionMetadata,
 			);
 
@@ -989,16 +1424,17 @@ __metadata__
 > - If unsure, say so explicitly
 > - Never invent information
 
-## Your Knowledge
+## Context Files
 
-You have access to the following files as a searchable knowledge base:
+You have access to the following user-uploaded files as a searchable context for the conversation:
 
 - technical-spec.pdf
 - product-roadmap.pdf
 - onboarding-guide.pdf
 
-Use the vector store tool to search the content of these files when answering questions that may be related to them.
-Do not proactively mention these files to the user."
+Use context_files_search tool to search these documents when answering questions that may be related to them.
+Do not proactively mention these files to the user.
+When you use information from these files, always cite the source using markdown footnote syntax (e.g. "Some fact.[^1]" with "[^1]: example.pdf, page 3" at the end of your response)."
 `);
 		});
 

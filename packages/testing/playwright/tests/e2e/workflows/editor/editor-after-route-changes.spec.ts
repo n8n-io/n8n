@@ -10,15 +10,13 @@ test.describe(
 			await n8n.api.enableFeature('debugInEditor');
 			await n8n.api.enableFeature('workflowHistory');
 
-			await n8n.workflowComposer.createWorkflowFromJsonFile(
-				'Lots_of_nodes.json',
-				'Lots of nodes test',
-			);
+			await n8n.start.fromImportedWorkflow('Lots_of_nodes.json');
 		});
 
 		test('should maintain zoom functionality after switching between Editor and Workflow history and Workflow list', async ({
 			n8n,
 		}) => {
+			await expect(n8n.canvas.getCanvasNodes().first()).toBeVisible();
 			const initialNodeCount = await n8n.canvas.getCanvasNodes().count();
 			expect(initialNodeCount).toBeGreaterThan(0);
 

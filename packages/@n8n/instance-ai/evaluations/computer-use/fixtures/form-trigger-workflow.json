@@ -1,0 +1,40 @@
+{
+	"name": "CU Eval — Form Trigger Test",
+	"nodes": [
+		{
+			"parameters": {
+				"formTitle": "Test Form",
+				"formDescription": "Submit name and email to test the workflow.",
+				"formFields": {
+					"values": [
+						{ "fieldLabel": "Name", "fieldType": "text", "requiredField": true },
+						{ "fieldLabel": "Email", "fieldType": "email", "requiredField": true }
+					]
+				},
+				"options": {}
+			},
+			"name": "Form Trigger",
+			"type": "n8n-nodes-base.formTrigger",
+			"typeVersion": 2.2,
+			"position": [240, 300]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": false,
+				"values": {
+					"string": [{ "name": "submitted", "value": "true" }]
+				}
+			},
+			"name": "Mark Submitted",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [480, 300]
+		}
+	],
+	"connections": {
+		"Form Trigger": {
+			"main": [[{ "node": "Mark Submitted", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {}
+}

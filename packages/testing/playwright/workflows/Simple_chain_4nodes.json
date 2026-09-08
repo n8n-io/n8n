@@ -1,0 +1,89 @@
+{
+	"name": "Simple chain 4 nodes",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1b2c3d4-0001-4000-8000-000000000001",
+			"name": "Manual",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [480, 580]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "a1b2c3d4-0002-4000-8000-000000000002",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [700, 580]
+		},
+		{
+			"parameters": {
+				"amount": 1,
+				"unit": "seconds"
+			},
+			"id": "a1b2c3d4-0003-4000-8000-000000000003",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1,
+			"position": [920, 580],
+			"webhookId": "00000000-0000-4000-8000-000000000099"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "a1b2c3d4-0004-4000-8000-000000000004",
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1140, 580]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Manual": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "00000000-0000-4000-8000-000000000100",
+	"id": "9999",
+	"meta": {
+		"instanceId": "test-instance"
+	},
+	"tags": []
+}

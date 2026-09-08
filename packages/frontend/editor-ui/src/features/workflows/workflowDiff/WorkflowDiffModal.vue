@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { WORKFLOW_DIFF_MODAL_KEY } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
 import type { SourceControlledFileStatus } from '@n8n/api-types';
@@ -13,6 +13,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
 import { computed, onMounted, onUnmounted, ref, useCssModule } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { telemetry } from '@/app/plugins/telemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { N8nIcon, N8nText } from '@n8n/design-system';
 
@@ -127,6 +129,11 @@ onMounted(async () => {
 	await nodeTypesStore.loadNodeTypesIfNotLoaded();
 	void remote.execute();
 	void local.execute();
+	telemetry.track('user_clicks_compare_workflows', {
+		instance_id: useRootStore().instanceId,
+		workflow_id: props.data.workflowId,
+		source: 'push_pull_modal',
+	});
 });
 
 onUnmounted(() => {
@@ -154,6 +161,7 @@ onUnmounted(() => {
 				:source-label="sourceLabel"
 				:target-label="targetLabel"
 				:show-back-button="true"
+				source="push_pull_modal"
 				@back="handleBeforeClose"
 			>
 				<template #sourceLabel>

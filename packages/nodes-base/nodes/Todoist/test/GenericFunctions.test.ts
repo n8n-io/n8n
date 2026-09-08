@@ -1,14 +1,14 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import type { Context } from '../GenericFunctions';
-import { todoistApiGetAllRequest } from '../GenericFunctions';
+import { todoistApiGetAllRequest, todoistSyncRequest } from '../GenericFunctions';
 
 const createMockContext = (typeVersion: number = 2.2) => {
-	const mockRequestWithAuth = jest.fn();
+	const mockRequestWithAuth = vi.fn();
 	const mockCtx = mock<IExecuteFunctions>({
 		getNode: () => mock<INode>({ typeVersion }),
-		getNodeParameter: jest.fn((param: string) => {
+		getNodeParameter: vi.fn((param: string) => {
 			if (param === 'authentication') return 'oAuth2';
 			return '';
 		}) as any,
@@ -27,7 +27,39 @@ const createMockContext = (typeVersion: number = 2.2) => {
 
 describe('GenericFunctions', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+	});
+
+	describe('todoistSyncRequest', () => {
+		it('should use api/v1 endpoint for node version >= 2.2', async () => {
+			const { ctx, mockRequestWithAuth } = createMockContext(2.2);
+			mockRequestWithAuth.mockResolvedValue({});
+
+			await todoistSyncRequest.call(ctx, { commands: [] });
+
+			const calledOptions = mockRequestWithAuth.mock.calls[0][2];
+			expect(calledOptions.uri).toBe('https://api.todoist.com/api/v1/sync');
+		});
+
+		it('should use sync/v9 endpoint for node version < 2.2', async () => {
+			const { ctx, mockRequestWithAuth } = createMockContext(2.1);
+			mockRequestWithAuth.mockResolvedValue({});
+
+			await todoistSyncRequest.call(ctx, { commands: [] });
+
+			const calledOptions = mockRequestWithAuth.mock.calls[0][2];
+			expect(calledOptions.uri).toBe('https://api.todoist.com/sync/v9/sync');
+		});
+
+		it('should use api/v1 endpoint for quick/add on version >= 2.2', async () => {
+			const { ctx, mockRequestWithAuth } = createMockContext(2.2);
+			mockRequestWithAuth.mockResolvedValue({});
+
+			await todoistSyncRequest.call(ctx, { text: 'test' }, {}, '/quick/add');
+
+			const calledOptions = mockRequestWithAuth.mock.calls[0][2];
+			expect(calledOptions.uri).toBe('https://api.todoist.com/api/v1/quick/add');
+		});
 	});
 
 	describe('todoistApiGetAllRequest', () => {

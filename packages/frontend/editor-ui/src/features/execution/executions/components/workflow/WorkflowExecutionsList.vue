@@ -16,11 +16,13 @@ const props = withDefaults(
 		executions: ExecutionSummary[];
 		execution?: ExecutionSummary;
 		loadingMore: boolean;
+		hasMore: boolean;
 	}>(),
 	{
 		loading: false,
 		executions: () => [] as ExecutionSummary[],
 		loadingMore: false,
+		hasMore: false,
 	},
 );
 
@@ -84,6 +86,7 @@ onBeforeRouteLeave(async (to, _, next) => {
 			:executions="executions"
 			:loading="loading && !executions.length"
 			:loading-more="loadingMore"
+			:has-more="hasMore"
 			:temporary-execution="temporaryExecution"
 			:workflow="workflow"
 			@update:auto-refresh="emit('update:auto-refresh', $event)"

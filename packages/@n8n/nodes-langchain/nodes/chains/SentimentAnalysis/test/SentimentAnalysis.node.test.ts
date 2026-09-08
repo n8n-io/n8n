@@ -1,13 +1,13 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { SentimentAnalysis } from '../SentimentAnalysis.node';
 
-jest.mock('@utils/tracing', () => ({
-	getTracingConfig: jest.fn().mockReturnValue({}),
+vi.mock('@utils/tracing', () => ({
+	getTracingConfig: vi.fn().mockReturnValue({}),
 }));
 
 const createExecuteFunctionsMock = (
@@ -53,13 +53,13 @@ const createExecuteFunctionsMock = (
 	mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
 	mockExecuteFunctions.helpers = {
-		constructExecutionMetaData: jest.fn().mockImplementation((data, options) => {
+		constructExecutionMetaData: vi.fn().mockImplementation((data, options) => {
 			return data.map((item: any) => ({
 				...item,
 				pairedItem: { item: options?.itemData?.item || 0 },
 			}));
 		}),
-		returnJsonArray: jest.fn().mockImplementation((data) => [{ json: data }]),
+		returnJsonArray: vi.fn().mockImplementation((data) => [{ json: data }]),
 	} as any;
 
 	return mockExecuteFunctions;
@@ -70,7 +70,7 @@ describe('SentimentAnalysis Node', () => {
 
 	beforeEach(() => {
 		node = new SentimentAnalysis();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('execute - basic functionality', () => {

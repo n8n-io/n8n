@@ -8,20 +8,24 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
-	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import {
 	NodeApiError,
 	NodeOperationError,
-	sleep,
 	removeCircularRefs,
 	NodeConnectionTypes,
-	isDomainAllowed,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
+import { sleep } from '@n8n/utils/sleep';
+
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
-import { replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
+import {
+	getAllowedDomains,
+	getSecrets,
+	replaceNullValues,
+	sanitizeUiMessage,
+} from '../GenericFunctions';
 interface OptionData {
 	name: string;
 	displayName: string;
@@ -624,24 +628,36 @@ export class HttpRequestV1 implements INodeType {
 		let oAuth1Api;
 		let oAuth2Api;
 
+		const authentication = this.getNodeParameter('authentication', 0) as string;
 		try {
-			httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			if (authentication === 'basicAuth') {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} else if (authentication === 'digestAuth') {
+				httpDigestAuth = await this.getCredentials('httpDigestAuth');
+			} else if (authentication === 'headerAuth') {
+				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} else if (authentication === 'queryAuth') {
+				httpQueryAuth = await this.getCredentials('httpQueryAuth');
+			} else if (authentication === 'oAuth1') {
+				oAuth1Api = await this.getCredentials('oAuth1Api');
+			} else if (authentication === 'oAuth2') {
+				oAuth2Api = await this.getCredentials('oAuth2Api');
+			}
 		} catch {}
-		try {
-			httpDigestAuth = await this.getCredentials('httpDigestAuth');
-		} catch {}
-		try {
-			httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-		} catch {}
-		try {
-			httpQueryAuth = await this.getCredentials('httpQueryAuth');
-		} catch {}
-		try {
-			oAuth1Api = await this.getCredentials('oAuth1Api');
-		} catch {}
-		try {
-			oAuth2Api = await this.getCredentials('oAuth2Api');
-		} catch {}
+
+		const secrets: string[] = [];
+		for (const credential of [
+			httpBasicAuth,
+			httpDigestAuth,
+			httpHeaderAuth,
+			httpQueryAuth,
+			oAuth1Api,
+			oAuth2Api,
+		]) {
+			if (credential) {
+				secrets.push(...getSecrets(credential));
+			}
+		}
 
 		let requestOptions: IRequestOptions;
 		let setUiParameter: IDataObject;
@@ -676,7 +692,21 @@ export class HttpRequestV1 implements INodeType {
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex);
 
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const url = this.getNodeParameter('url', itemIndex) as string;
+			let url = this.getNodeParameter('url', itemIndex);
+
+			if (typeof url !== 'string') {
+				const actualType = url === null ? 'null' : typeof url;
+				throw new NodeOperationError(
+					this.getNode(),
+					`URL parameter must be a string, got ${actualType}`,
+				);
+			}
+
+			url = url.trim();
+
+			if (!url) {
+				throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
+			}
 
 			if (!url.startsWith('http://') && !url.startsWith('https://')) {
 				throw new NodeOperationError(
@@ -684,44 +714,6 @@ export class HttpRequestV1 implements INodeType {
 					`Invalid URL: ${url}. URL must start with "http" or "https".`,
 				);
 			}
-
-			const checkDomainRestrictions = async (
-				credentialData: ICredentialDataDecryptedObject,
-				url: string,
-				credentialType?: string,
-			) => {
-				if (credentialData.allowedHttpRequestDomains === 'domains') {
-					const allowedDomains = credentialData.allowedDomains as string;
-
-					if (!allowedDomains || allowedDomains.trim() === '') {
-						throw new NodeOperationError(
-							this.getNode(),
-							'No allowed domains specified. Configure allowed domains or change restriction setting.',
-						);
-					}
-
-					if (!isDomainAllowed(url, { allowedDomains })) {
-						const credentialInfo = credentialType ? ` (${credentialType})` : '';
-						throw new NodeOperationError(
-							this.getNode(),
-							`Domain not allowed: This credential${credentialInfo} is restricted from accessing ${url}. ` +
-								`Only the following domains are allowed: ${allowedDomains}`,
-						);
-					}
-				} else if (credentialData.allowedHttpRequestDomains === 'none') {
-					throw new NodeOperationError(
-						this.getNode(),
-						'This credential is configured to prevent use within an HTTP Request node',
-					);
-				}
-			};
-
-			if (httpBasicAuth) await checkDomainRestrictions(httpBasicAuth, url);
-			if (httpDigestAuth) await checkDomainRestrictions(httpDigestAuth, url);
-			if (httpHeaderAuth) await checkDomainRestrictions(httpHeaderAuth, url);
-			if (httpQueryAuth) await checkDomainRestrictions(httpQueryAuth, url);
-			if (oAuth1Api) await checkDomainRestrictions(oAuth1Api, url);
-			if (oAuth2Api) await checkDomainRestrictions(oAuth2Api, url);
 
 			if (
 				itemIndex > 0 &&
@@ -959,31 +951,33 @@ export class HttpRequestV1 implements INodeType {
 			const authDataKeys: IAuthDataSanitizeKeys = {};
 
 			// Add credentials if any are set
+			let nonOauthCredentialUsed = true;
 			if (httpBasicAuth !== undefined) {
 				requestOptions.auth = {
 					user: httpBasicAuth.user as string,
 					pass: httpBasicAuth.password as string,
 				};
 				authDataKeys.auth = ['pass'];
-			}
-			if (httpHeaderAuth !== undefined) {
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), httpBasicAuth);
+			} else if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
 				authDataKeys.headers = [httpHeaderAuth.name as string];
-			}
-			if (httpQueryAuth !== undefined) {
-				if (!requestOptions.qs) {
-					requestOptions.qs = {};
-				}
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), httpHeaderAuth);
+			} else if (httpQueryAuth !== undefined) {
+				requestOptions.qs ??= {};
 				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
 				authDataKeys.qs = [httpQueryAuth.name as string];
-			}
-			if (httpDigestAuth !== undefined) {
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), httpQueryAuth);
+			} else if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
 					user: httpDigestAuth.user as string,
 					pass: httpDigestAuth.password as string,
 					sendImmediately: false,
 				};
 				authDataKeys.auth = ['pass'];
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), httpDigestAuth);
+			} else {
+				nonOauthCredentialUsed = false;
 			}
 
 			if (requestOptions.headers!.accept === undefined) {
@@ -999,14 +993,16 @@ export class HttpRequestV1 implements INodeType {
 			}
 
 			try {
-				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
+				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys, secrets));
 			} catch (e) {}
 
-			if (oAuth1Api) {
+			if (!nonOauthCredentialUsed && oAuth1Api) {
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), oAuth1Api);
 				const requestOAuth1 = this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
 				requestOAuth1.catch(() => {});
 				requestPromises.push(requestOAuth1);
-			} else if (oAuth2Api) {
+			} else if (!nonOauthCredentialUsed && oAuth2Api) {
+				requestOptions.allowedDomains = getAllowedDomains(this.getNode(), oAuth2Api);
 				const requestOAuth2 = this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
 					tokenType: 'Bearer',
 				});

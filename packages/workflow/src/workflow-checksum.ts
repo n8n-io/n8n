@@ -1,6 +1,12 @@
 import jsSHA from 'jssha';
 
-import type { IConnections, INode, IPinData, IWorkflowSettings } from './interfaces';
+import type {
+	IConnections,
+	INode,
+	IPinData,
+	IWorkflowGroup,
+	IWorkflowSettings,
+} from './interfaces';
 import { isObject } from './utils';
 
 /**
@@ -17,9 +23,10 @@ export interface WorkflowSnapshot {
 	pinData?: IPinData;
 	isArchived?: boolean;
 	activeVersionId?: string | null;
+	nodeGroups?: IWorkflowGroup[];
 }
 
-const CHECKSUM_FIELDS = [
+export const WORKFLOW_CHECKSUM_FIELDS = [
 	'name',
 	'description',
 	'nodes',
@@ -29,6 +36,7 @@ const CHECKSUM_FIELDS = [
 	'pinData',
 	'isArchived',
 	'activeVersionId',
+	'nodeGroups',
 ] as const satisfies ReadonlyArray<keyof WorkflowSnapshot>;
 
 /**
@@ -66,7 +74,7 @@ function sortObjectKeys(value: unknown): unknown {
 export async function calculateWorkflowChecksum(workflow: WorkflowSnapshot): Promise<string> {
 	const checksumPayload: Record<string, unknown> = {};
 
-	for (const field of CHECKSUM_FIELDS) {
+	for (const field of WORKFLOW_CHECKSUM_FIELDS) {
 		const value = workflow[field];
 		if (value !== undefined) {
 			checksumPayload[field] = value;

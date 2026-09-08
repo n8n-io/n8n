@@ -1,6 +1,8 @@
+import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 const runnerModeSchema = z.enum(['internal', 'external']);
 
@@ -50,7 +52,7 @@ export class TaskRunnersConfig {
 	 * Kept high for backwards compatibility - n8n v3 will reduce this to `60`
 	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
-	taskTimeout: number = 300; // 5 minutes
+	taskTimeout: number = 5 * Time.minutes.toSeconds;
 
 	/**
 	 * How long (in seconds) a task request can wait for a runner to become
@@ -60,9 +62,25 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_TASK_REQUEST_TIMEOUT')
 	taskRequestTimeout: number = 60;
 
+	/**
+	 * How long (in seconds) the broker waits for a runner or requester to
+	 * acknowledge a matched task before abandoning the match.
+	 * Must be greater than 0.
+	 * Increase on infrastructure where runners are slow to respond.
+	 */
+	@Env('N8N_RUNNERS_TASK_ACCEPT_TIMEOUT')
+	taskAcceptTimeout: number = 2;
+
 	/** Interval in seconds between heartbeats from runner to broker; missing heartbeats abort the task (and restart the runner in internal mode). Must be > 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
 	heartbeatInterval: number = 30;
+
+	/**
+	 * How long (in seconds) a grant token is valid for runner authentication.
+	 * Increase on slow hardware where the runner needs more time to start.
+	 */
+	@Env('N8N_RUNNERS_GRANT_TOKEN_TTL', positiveIntSchema)
+	grantTokenTtl: number = 30;
 
 	/**
 	 * Whether to disable all security measures in the task runner. **Discouraged for production use.**

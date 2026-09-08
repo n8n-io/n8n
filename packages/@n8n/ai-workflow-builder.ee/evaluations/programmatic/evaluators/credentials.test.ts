@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
 import type { INodeParameters } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types';
 import { validateCredentials } from '@/validation/checks/credentials';

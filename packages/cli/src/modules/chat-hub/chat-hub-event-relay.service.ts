@@ -14,7 +14,7 @@ export class ChatHubEventRelay {
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 
-		this.logger.info('initializing ChatHub event relay...');
+		this.logger.debug('initializing ChatHub event relay...');
 
 		this.eventService.on('user-deleted', async ({ targetUserId }) => {
 			if (!targetUserId) {

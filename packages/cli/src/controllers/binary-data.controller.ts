@@ -1,23 +1,36 @@
 import { BinaryDataQueryDto, BinaryDataSignedQueryDto, ViewableMimeTypes } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, Query, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 import { JsonWebTokenError } from 'jsonwebtoken';
-import { BinaryDataService, FileNotFoundError, isValidNonDefaultMode } from 'n8n-core';
+import {
+	BinaryDataService,
+	FileNotFoundError,
+	getHtmlSandboxCSP,
+	isValidNonDefaultMode,
+} from 'n8n-core';
 
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/binary-data')
 export class BinaryDataController {
-	constructor(private readonly binaryDataService: BinaryDataService) {}
+	constructor(
+		private readonly binaryDataService: BinaryDataService,
+		private readonly binaryDataAccessService: BinaryDataAccessService,
+	) {}
 
 	@Get('/')
 	async get(
-		_: Request,
+		req: AuthenticatedRequest,
 		res: Response,
 		@Query { id: binaryDataId, action, fileName, mimeType }: BinaryDataQueryDto,
 	) {
 		try {
 			this.validateBinaryDataId(binaryDataId);
+			if (!(await this.binaryDataAccessService.hasReadAccess(req.user, binaryDataId))) {
+				return res.status(404).end();
+			}
 			await this.setContentHeaders(binaryDataId, action, res, fileName, mimeType);
 			return await this.binaryDataService.getAsStream(binaryDataId);
 		} catch (error) {
@@ -64,6 +77,13 @@ export class BinaryDataController {
 		if (path === '' || path === '/' || path === '//') {
 			throw new BadRequestError('Malformed binary data ID');
 		}
+
+		// Reject `..` segments: the reader resolves the whole path, so traversal
+		// could read another execution's file after the authz check matched a prefix.
+		// Split on both separators so backslash traversal is caught on Windows too.
+		if (path.split(/[/\\]/).includes('..')) {
+			throw new BadRequestError('Malformed binary data ID');
+		}
 	}
 
 	private async setContentHeaders(
@@ -88,9 +108,15 @@ export class BinaryDataController {
 			res.setHeader('Content-Type', mimeType);
 		}
 
-		if (action === 'download' && fileName) {
-			const encodedFilename = encodeURIComponent(fileName);
-			res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`);
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+
+		if (action === 'download') {
+			if (fileName) {
+				const encodedFilename = encodeURIComponent(fileName);
+				res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`);
+			} else {
+				res.setHeader('Content-Disposition', 'attachment');
+			}
 		}
 	}
 }

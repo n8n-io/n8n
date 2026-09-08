@@ -3,7 +3,7 @@ import { i18n } from '@n8n/i18n';
 import { isExpression } from '@/app/utils/expressions';
 import {
 	FilterError,
-	executeFilterCondition,
+	executeFilterConditionAsync,
 	validateFieldType,
 	type FilterConditionValue,
 	type FilterOperatorType,
@@ -11,9 +11,11 @@ import {
 	type NodeParameterValue,
 	type INodeProperties,
 } from 'n8n-workflow';
+import { safeRegexAsync } from '@/app/utils/safeRegex';
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { ConditionResult, FilterOperator } from './types';
 import { DateTime } from 'luxon';
+import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 export const getFilterOperator = (key: string) =>
 	OPERATORS_BY_ID[key as FilterOperatorId] as FilterOperator;
@@ -81,24 +83,32 @@ export const resolveCondition = async ({
 	condition,
 	options,
 	index = 0,
+	workflowDocumentId,
 }: {
 	condition: FilterConditionValue;
 	options: FilterOptionsValue;
 	index?: number;
+	workflowDocumentId: WorkflowDocumentId;
 }): Promise<ConditionResult> => {
 	try {
 		const resolved = (await resolveParameter(
 			condition as unknown as NodeParameterValue,
+			workflowDocumentId,
 		)) as FilterConditionValue;
 
 		if (resolved.leftValue === undefined || resolved.rightValue === undefined) {
 			return { status: 'resolve_error' };
 		}
 		try {
-			const result = executeFilterCondition(resolved, options, {
-				index,
-				errorFormat: 'inline',
-			});
+			const result = await executeFilterConditionAsync(
+				resolved,
+				options,
+				async (pattern, input, flags) => await safeRegexAsync.test(pattern, input, flags),
+				{
+					index,
+					errorFormat: 'inline',
+				},
+			);
 			return { status: 'success', result, resolved };
 		} catch (error) {
 			let errorMessage = i18n.baseText('parameterInput.error');

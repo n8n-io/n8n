@@ -1,4 +1,11 @@
 // services/api-helper.ts
+import type {
+	ClusterInfoResponse,
+	InstanceAiEnsureThreadResponse,
+	InstanceAiPermissions,
+	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiThreadInfo,
+} from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import { setTimeout as wait } from 'node:timers/promises';
 
@@ -13,12 +20,17 @@ import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
+import { InstanceAiApiHelper } from './instance-ai-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
+import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
+import { MetricsApiHelper } from './metrics-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
+import { SecuritySettingsApiHelper } from './security-settings-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
+import { TokenExchangeApiHelper } from './token-exchange-api-helper';
 import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
@@ -27,6 +39,18 @@ import { WorkflowApiHelper } from './workflow-api-helper';
 export interface LoginResponseData {
 	id: string;
 	[key: string]: unknown;
+}
+
+export interface InstanceAiBackgroundTimeoutSimulation {
+	threadId: string;
+	timeoutAt: number;
+}
+
+export interface InstanceAiThreadStatus {
+	backgroundTasks: Array<{
+		taskId?: string;
+		status?: string;
+	}>;
 }
 
 export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
@@ -48,7 +72,9 @@ export class ApiHelpers {
 	request: APIRequestContext;
 	workflows: WorkflowApiHelper;
 	webhooks: WebhookApiHelper;
+	metrics: MetricsApiHelper;
 	mcp: McpApiHelper;
+	mcpOauth: McpOAuthApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
 	dynamicCredentials: DynamicCredentialApiHelper;
@@ -58,6 +84,9 @@ export class ApiHelpers {
 	tags: TagApiHelper;
 	roles: RoleApiHelper;
 	sourceControl: SourceControlApiHelper;
+	securitySettings: SecuritySettingsApiHelper;
+	tokenExchange: TokenExchangeApiHelper;
+	instanceAi: InstanceAiApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -65,7 +94,9 @@ export class ApiHelpers {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
+		this.metrics = new MetricsApiHelper(this);
 		this.mcp = new McpApiHelper(this);
+		this.mcpOauth = new McpOAuthApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
 		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
@@ -75,6 +106,9 @@ export class ApiHelpers {
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
 		this.sourceControl = new SourceControlApiHelper(this);
+		this.securitySettings = new SecuritySettingsApiHelper(this);
+		this.tokenExchange = new TokenExchangeApiHelper(this);
+		this.instanceAi = new InstanceAiApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}
@@ -200,6 +234,80 @@ export class ApiHelpers {
 		});
 	}
 
+	async countScheduledJobs(workflowId: string, nodeId: string): Promise<number> {
+		const response = await this.request.get('/rest/e2e/scheduled-jobs/count', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to count scheduled jobs: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as { data: { count: number } };
+		return data.count;
+	}
+
+	async getPollerCursor(
+		workflowId: string,
+		nodeId: string,
+	): Promise<Record<string, unknown> | null> {
+		const response = await this.request.get('/rest/e2e/poller-state', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to get poller cursor: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as {
+			data: { cursor: Record<string, unknown> | null };
+		};
+		return data.cursor;
+	}
+
+	async getPollerFailureState(
+		workflowId: string,
+		nodeId: string,
+	): Promise<{ consecutiveErrors: number; backoffUntil: string | null }> {
+		const response = await this.request.get('/rest/e2e/poller-state', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to get poller failure state: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as {
+			data: { consecutiveErrors: number; backoffUntil: string | null };
+		};
+		return { consecutiveErrors: data.consecutiveErrors, backoffUntil: data.backoffUntil };
+	}
+
+	async clearWorkflowStaticData(workflowId: string): Promise<void> {
+		const response = await this.request.post('/rest/e2e/workflow-static-data/clear', {
+			data: { workflowId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to clear workflow static data: ${await response.text()}`);
+		}
+	}
+
+	async fireScheduledJobsNow(workflowId: string, nodeId: string): Promise<void> {
+		const response = await this.request.post('/rest/e2e/scheduled-jobs/fire-now', {
+			data: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to fire scheduled jobs: ${await response.text()}`);
+		}
+	}
+
+	async backdateScheduledJob(
+		workflowId: string,
+		nodeId: string,
+		secondsAgo: number,
+	): Promise<void> {
+		const response = await this.request.post('/rest/e2e/scheduled-jobs/backdate', {
+			data: { workflowId, nodeId, secondsAgo },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to backdate scheduled job: ${await response.text()}`);
+		}
+	}
+
 	// ===== FEATURE FLAG METHODS =====
 
 	async setEnvFeatureFlags(flags: Record<string, string>): Promise<{
@@ -233,6 +341,23 @@ export class ApiHelpers {
 	}> {
 		const response = await this.request.get('/rest/e2e/env-feature-flags');
 		return await response.json();
+	}
+
+	/**
+	 * The backend modules this instance started with. A module the license did not
+	 * cover at boot is missing here, and `enableFeature` cannot add it later.
+	 */
+	async getActiveModules(): Promise<string[]> {
+		const response = await this.request.get('/rest/settings');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const { data } = await response.json();
+		return data.activeModules ?? [];
 	}
 
 	// ===== CONVENIENCE METHODS =====
@@ -271,6 +396,155 @@ export class ApiHelpers {
 		const userApi = new ApiHelpers(userContext);
 		await userApi.login({ email: user.email, password: user.password });
 		return userApi;
+	}
+
+	/**
+	 * Fetch cluster info from the instance registry endpoint.
+	 */
+	async getClusterInfo(): Promise<ClusterInfoResponse> {
+		const response = await this.request.get('/rest/instance-registry');
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-registry failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+		const plain = await response.json();
+		console.log('Cluster info: ', JSON.stringify(plain));
+		return (plain as { data: ClusterInfoResponse }).data;
+	}
+
+	async getInstanceAiToolTraceEvents(slug: string): Promise<unknown[]> {
+		const response = await this.request.get(`/rest/instance-ai/test/tool-trace/${slug}`);
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-ai/test/tool-trace/${slug} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data?: { events?: unknown[] } };
+		return body.data?.events ?? [];
+	}
+
+	async createInstanceAiThread(projectId?: string): Promise<InstanceAiThreadInfo> {
+		const resolvedProjectId = projectId ?? (await this.projects.getMyPersonalProject()).id;
+		const response = await this.request.post('/rest/instance-ai/threads', {
+			data: {
+				projectId: resolvedProjectId,
+				source: 'playwright',
+				origin: 'internal',
+			},
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/threads failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: InstanceAiEnsureThreadResponse };
+		return body.data.thread;
+	}
+
+	/** Start an Instance AI chat run on a thread; returns the started `runId`. */
+	async startInstanceAiChat(
+		threadId: string,
+		message: string,
+		timeZone = 'UTC',
+	): Promise<{ runId: string }> {
+		const response = await this.request.post(`/rest/instance-ai/chat/${threadId}`, {
+			data: { message, timeZone },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/chat/${threadId} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+		const body = (await response.json()) as { data: { runId: string } };
+		return body.data;
+	}
+
+	async renameInstanceAiThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {
+		const response = await this.request.patch(`/rest/instance-ai/threads/${threadId}`, {
+			data: { title },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PATCH /rest/instance-ai/threads/${threadId} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: { thread: InstanceAiThreadInfo } };
+		return body.data.thread;
+	}
+
+	async getInstanceAiThreadStatus(threadId: string): Promise<InstanceAiThreadStatus> {
+		const response = await this.request.get(`/rest/instance-ai/threads/${threadId}/status`);
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-ai/threads/${threadId}/status failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data?: Partial<InstanceAiThreadStatus> };
+		return { backgroundTasks: body.data?.backgroundTasks ?? [] };
+	}
+
+	async startInstanceAiBackgroundTimeoutSimulation(
+		userId: string,
+		threadId?: string,
+	): Promise<InstanceAiBackgroundTimeoutSimulation> {
+		const response = await this.request.post('/rest/instance-ai/test/background-timeout/start', {
+			data: { userId, ...(threadId ? { threadId } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/background-timeout/start failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: InstanceAiBackgroundTimeoutSimulation };
+		return body.data;
+	}
+
+	async cancelInstanceAiTask(threadId: string, taskId: string): Promise<void> {
+		const response = await this.request.post(
+			`/rest/instance-ai/chat/${threadId}/tasks/${taskId}/cancel`,
+		);
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/chat/${threadId}/tasks/${taskId}/cancel failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	async runInstanceAiLivenessSweep(now?: number): Promise<void> {
+		const response = await this.request.post('/rest/instance-ai/test/liveness-sweep', {
+			data: { ...(now !== undefined ? { now } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/liveness-sweep failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	async setInstanceAiPermissions(permissions: Partial<InstanceAiPermissions>): Promise<void> {
+		const response = await this.request.put('/rest/instance-ai/settings', {
+			data: { permissions },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	async updateInstanceAiSettings(settings: InstanceAiAdminSettingsUpdateRequest): Promise<void> {
+		const response = await this.request.put('/rest/instance-ai/settings', { data: settings });
+		if (!response.ok()) {
+			throw new TestError(
+				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
 	}
 
 	/**
@@ -323,6 +597,56 @@ export class ApiHelpers {
 
 		const result = await response.json();
 		// Handle both direct response and {data: ...} wrapped response
+		return result.data ?? result;
+	}
+
+	/**
+	 * Create a webhook destination for log streaming.
+	 * Requires the logStreaming feature to be enabled.
+	 *
+	 * @param config - Webhook destination configuration
+	 * @returns Created destination data
+	 */
+	async createWebhookDestination(config: {
+		url: string;
+		method?: string;
+		label?: string;
+		enabled?: boolean;
+		subscribedEvents?: string[];
+		anonymizeAuditMessages?: boolean;
+		sendHeaders?: boolean;
+		headerParameters?: Array<{ name: string; value: string }>;
+		authentication?: 'genericCredentialType' | 'none';
+		genericAuthType?: string;
+		credentials?: Record<string, { id: string; name: string }>;
+	}): Promise<{ id: string }> {
+		const response = await this.request.post('/rest/eventbus/destination', {
+			data: {
+				__type: '$$MessageEventBusDestinationWebhook',
+				url: config.url,
+				method: config.method ?? 'POST',
+				label: config.label ?? 'Webhook Endpoint',
+				// Destinations default to disabled in the backend; real events only
+				// reach enabled destinations (the test-message endpoint bypasses this).
+				enabled: config.enabled ?? true,
+				subscribedEvents: config.subscribedEvents ?? ['*'],
+				anonymizeAuditMessages: config.anonymizeAuditMessages ?? false,
+				authentication: config.authentication ?? 'none',
+				genericAuthType: config.genericAuthType ?? '',
+				sendHeaders: config.sendHeaders ?? Boolean(config.headerParameters),
+				specifyHeaders: config.headerParameters ? 'keypair' : '',
+				headerParameters: { parameters: config.headerParameters ?? [] },
+				credentials: config.credentials,
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to create webhook destination: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const result = await response.json();
 		return result.data ?? result;
 	}
 
@@ -381,6 +705,22 @@ export class ApiHelpers {
 		const destinations = await this.getLogStreamingDestinations();
 		for (const destination of destinations) {
 			await this.deleteLogStreamingDestination(destination.id);
+		}
+	}
+
+	// ===== MCP REGISTRY METHODS =====
+
+	/**
+	 * Seed the MCP registry with mock server data
+	 * This inserts data into the mcp_registry_server table and triggers
+	 * a node type refresh so the synthetic MCP nodes become available.
+	 */
+	async seedMcpRegistry(): Promise<void> {
+		const response = await this.request.post('/rest/mcp-registry/test/seed');
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to seed MCP registry: ${response.status()} ${await response.text()}`,
+			);
 		}
 	}
 

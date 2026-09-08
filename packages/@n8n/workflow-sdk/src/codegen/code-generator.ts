@@ -34,8 +34,8 @@ import {
 	isMergeType,
 	generateDefaultNodeName,
 } from './node-type-utils';
-import { escapeString, escapeRegexChars } from './string-utils';
-import { formatValue } from './subnode-generator';
+import { escapeString, escapeRegexChars, formatStringLiteral } from './string-utils';
+import { formatValue, formatCredentials } from './subnode-generator';
 import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 import { getVarName, getUniqueVarName } from './variable-names';
 import type { WorkflowJSON } from '../types/base';
@@ -59,6 +59,20 @@ export interface ExecutionContextOptions {
 }
 
 /**
+ * Options for {@link generateCode}
+ */
+export interface GenerateCodeOptions extends ExecutionContextOptions {
+	/**
+	 * Emit each node's saved `id` into its config so a rebuild of the generated code
+	 * preserves node identity instead of minting fresh uuids. Off by default: only
+	 * surfaces that round-trip code back into a saved workflow should opt in.
+	 */
+	includeNodeIds?: boolean;
+	/** Emit saved node positions. On by default; see `GenerateWorkflowCodeOptions`. */
+	includePositions?: boolean;
+}
+
+/**
  * Context for code generation
  */
 interface GenerationContext {
@@ -76,6 +90,44 @@ interface GenerationContext {
 	workflowStatusJSDoc?: string;
 	valuesExcluded?: boolean;
 	pinnedNodes?: Set<string>;
+	/** Graph node names allowed to emit their id; absent when id emission is off */
+	nodesWithEmittableId?: ReadonlySet<string>;
+	/** Leave `position` out of every node, subnode, and sticky note. */
+	omitPositions?: boolean;
+}
+
+/**
+ * Collect the graph nodes whose id is safe to emit.
+ *
+ * Keyed by the graph's node name — deduplicated by `buildSemanticGraph`, unlike the raw
+ * `json.name`, a few real workflows of which collide. Ids are claimed in graph order, so a
+ * duplicated id (present in ~1% of real saved workflows) is kept only by the node that
+ * appears first; two nodes cannot both own one, and the rest are reassigned on save.
+ * Precomputing (rather than dropping ids as they are emitted) keeps emission
+ * order-independent and idempotent.
+ */
+function collectNodesWithEmittableId(graph: SemanticGraph): ReadonlySet<string> {
+	const claimedIds = new Set<string>();
+	const nodeNames = new Set<string>();
+
+	for (const [nodeName, node] of graph.nodes) {
+		const id = node.json.id;
+		if (!id || claimedIds.has(id)) continue;
+		claimedIds.add(id);
+		nodeNames.add(nodeName);
+	}
+
+	return nodeNames;
+}
+
+/**
+ * Emit the node's stable id. Pushed before `name` so it stays next to the node head
+ * instead of being stranded after a large `parameters` object.
+ */
+function appendNodeId(parts: string[], node: SemanticNode, ctx: GenerationContext): void {
+	if (!node.json.id || !ctx.nodesWithEmittableId?.has(node.name)) return;
+
+	parts.push(`id: '${escapeString(node.json.id)}'`);
 }
 
 /**
@@ -101,6 +153,8 @@ function generateSubnodeCall(
 
 	const configParts: string[] = [];
 
+	appendNodeId(configParts, subnodeNode, ctx);
+
 	const defaultName = generateDefaultNodeName(subnodeNode.type);
 	if (subnodeNode.json.name && subnodeNode.json.name !== defaultName) {
 		configParts.push(`name: '${escapeString(subnodeNode.json.name)}'`);
@@ -110,14 +164,15 @@ function generateSubnodeCall(
 		configParts.push(`parameters: ${formatValue(subnodeNode.json.parameters, ctx)}`);
 	}
 
-	if (subnodeNode.json.credentials) {
-		configParts.push(`credentials: ${formatValue(subnodeNode.json.credentials, ctx)}`);
+	if (subnodeNode.json.credentials && Object.keys(subnodeNode.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(subnodeNode.json.credentials)}`);
 	}
 
 	const pos = subnodeNode.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
+	appendNodeConfigOptions(configParts, subnodeNode);
 
 	// Recursively include nested subnodes if this subnode has its own subnodes
 	const nestedSubnodesConfig = generateSubnodesConfigForNode(subnodeNode, ctx);
@@ -205,6 +260,42 @@ function generateSubnodesConfig(node: SemanticNode, ctx: GenerationContext): str
 	return generateSubnodesConfigForNode(node, ctx);
 }
 
+function appendNodeConfigOptions(configParts: string[], node: SemanticNode): void {
+	if (node.json.webhookId) {
+		configParts.push(`webhookId: '${escapeString(node.json.webhookId)}'`);
+	}
+	if (node.json.disabled) {
+		configParts.push('disabled: true');
+	}
+	if (node.json.notes) {
+		configParts.push(`notes: '${escapeString(node.json.notes)}'`);
+	}
+	if (node.json.notesInFlow) {
+		configParts.push('notesInFlow: true');
+	}
+	if (node.json.executeOnce) {
+		configParts.push('executeOnce: true');
+	}
+	if (node.json.retryOnFail) {
+		configParts.push('retryOnFail: true');
+	}
+	if (typeof node.json.maxTries === 'number') {
+		configParts.push(`maxTries: ${node.json.maxTries}`);
+	}
+	if (typeof node.json.waitBetweenTries === 'number') {
+		configParts.push(`waitBetweenTries: ${node.json.waitBetweenTries}`);
+	}
+	if (node.json.alwaysOutputData) {
+		configParts.push('alwaysOutputData: true');
+	}
+	if (node.json.onError) {
+		configParts.push(`onError: '${node.json.onError}'`);
+	}
+	if (node.json.extendsCredential) {
+		configParts.push(`extendsCredential: '${escapeString(node.json.extendsCredential)}'`);
+	}
+}
+
 /**
  * Recursively collect all subnodes from a node and add them to the context's subnodeVariables.
  * Processes nested subnodes first so they're declared before their parents.
@@ -254,6 +345,8 @@ function generateSubnodeCallWithVarRefs(
 
 	const configParts: string[] = [];
 
+	appendNodeId(configParts, subnodeNode, ctx);
+
 	const defaultName = generateDefaultNodeName(subnodeNode.type);
 	if (subnodeNode.json.name && subnodeNode.json.name !== defaultName) {
 		configParts.push(`name: '${escapeString(subnodeNode.json.name)}'`);
@@ -263,14 +356,15 @@ function generateSubnodeCallWithVarRefs(
 		configParts.push(`parameters: ${formatValue(subnodeNode.json.parameters, ctx)}`);
 	}
 
-	if (subnodeNode.json.credentials) {
-		configParts.push(`credentials: ${formatValue(subnodeNode.json.credentials, ctx)}`);
+	if (subnodeNode.json.credentials && Object.keys(subnodeNode.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(subnodeNode.json.credentials)}`);
 	}
 
 	const pos = subnodeNode.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
+	appendNodeConfigOptions(configParts, subnodeNode);
 
 	// Generate nested subnodes config using variable references
 	const nestedSubnodesConfig = generateSubnodesConfigWithVarRefs(subnodeNode, ctx);
@@ -380,29 +474,31 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 
 	const configParts: string[] = [];
 
+	appendNodeId(configParts, node, ctx);
+
 	// Always include name for proper roundtrip - parser defaults may differ from codegen defaults
 	if (node.json.name) {
 		configParts.push(`name: '${escapeString(node.json.name)}'`);
 	}
 
 	if (node.json.parameters && Object.keys(node.json.parameters).length > 0) {
-		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
+		// Parameters sit two levels inside the node call (call → config → parameters), so a
+		// multi-line value lays out relative to the config block, not the file margin.
+		configParts.push(
+			`parameters: ${formatValue(node.json.parameters, { ...ctx, indent: ctx.indent + 2 })}`,
+		);
 	}
 
-	if (node.json.credentials) {
-		configParts.push(`credentials: ${formatValue(node.json.credentials, ctx)}`);
+	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(node.json.credentials)}`);
 	}
 
 	// Include position if non-zero
 	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
-
-	// Include onError if set
-	if (node.json.onError) {
-		configParts.push(`onError: '${node.json.onError}'`);
-	}
+	appendNodeConfigOptions(configParts, node);
 
 	// Include subnodes config if this node has AI subnodes
 	// Use variable references if subnodes are declared as variables
@@ -527,13 +623,15 @@ function getNodesInsideSticky(stickyNode: SemanticNode, ctx: GenerationContext):
  * New signature: sticky(content, nodes, config?)
  */
 function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string {
-	const content = escapeString((node.json.parameters?.content as string) ?? '');
+	const content = formatStringLiteral((node.json.parameters?.content as string) ?? '');
 
 	// Get nodes inside this sticky's bounds
 	const nodesInside = getNodesInsideSticky(node, ctx);
 	const nodesStr = `[${nodesInside.join(', ')}]`;
 
 	const options: string[] = [];
+
+	appendNodeId(options, node, ctx);
 
 	// Only include name if it's truthy - parser will generate unique names for unnamed sticky notes
 	if (node.json.name) {
@@ -557,12 +655,12 @@ function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string 
 	}
 
 	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		options.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 
 	const optionsStr = options.length > 0 ? `, { ${options.join(', ')} }` : '';
-	return `sticky('${content}', ${nodesStr}${optionsStr})`;
+	return `sticky(${content}, ${nodesStr}${optionsStr})`;
 }
 
 /**
@@ -579,29 +677,31 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 
 	const configParts: string[] = [];
 
+	appendNodeId(configParts, node, ctx);
+
 	// Always include name for proper roundtrip
 	if (node.json.name) {
 		configParts.push(`name: '${escapeString(node.json.name)}'`);
 	}
 
 	if (node.json.parameters && Object.keys(node.json.parameters).length > 0) {
-		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
+		// Parameters sit two levels inside the node call (call → config → parameters), so a
+		// multi-line value lays out relative to the config block, not the file margin.
+		configParts.push(
+			`parameters: ${formatValue(node.json.parameters, { ...ctx, indent: ctx.indent + 2 })}`,
+		);
 	}
 
-	if (node.json.credentials) {
-		configParts.push(`credentials: ${formatValue(node.json.credentials, ctx)}`);
+	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(node.json.credentials)}`);
 	}
 
 	// Include position if non-zero
 	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
-
-	// Include onError if set
-	if (node.json.onError) {
-		configParts.push(`onError: '${node.json.onError}'`);
-	}
+	appendNodeConfigOptions(configParts, node);
 
 	if (configParts.length > 0) {
 		parts.push(`${innerIndent}config: { ${configParts.join(', ')} }`);
@@ -1299,7 +1399,7 @@ export function generateCode(
 	tree: CompositeTree,
 	json: WorkflowJSON,
 	graph: SemanticGraph,
-	executionContext?: ExecutionContextOptions,
+	executionContext?: GenerateCodeOptions,
 ): string {
 	const ctx: GenerationContext = {
 		indent: 0,
@@ -1316,6 +1416,10 @@ export function generateCode(
 		workflowStatusJSDoc: executionContext?.workflowStatusJSDoc,
 		valuesExcluded: executionContext?.valuesExcluded,
 		pinnedNodes: executionContext?.pinnedNodes,
+		nodesWithEmittableId: executionContext?.includeNodeIds
+			? collectNodesWithEmittableId(graph)
+			: undefined,
+		omitPositions: executionContext?.includePositions === false,
 	};
 
 	// Pre-register all node variable names to detect and resolve collisions.
@@ -1413,6 +1517,29 @@ export function generateCode(
 					workflowCalls.push(`  .${method}(${args})`);
 				}
 			}
+		}
+	}
+
+	// Emit node group definitions. Members are referenced by node variable (the declared
+	// `const`), so a workflow → code → build round-trip preserves groups.
+	if (json.nodeGroups && json.nodeGroups.length > 0) {
+		const idToNodeName = new Map<string, string>();
+		for (const node of json.nodes) {
+			if (node.name !== undefined) idToNodeName.set(node.id, node.name);
+		}
+		for (const group of json.nodeGroups) {
+			const memberVars = group.nodeIds.flatMap((id) => {
+				const nodeName = idToNodeName.get(id);
+				return nodeName !== undefined ? [getVarName(nodeName, ctx)] : [];
+			});
+
+			const options = group.description
+				? `, { description: '${escapeString(group.description)}' }`
+				: '';
+
+			workflowCalls.push(
+				`  .group('${escapeString(group.name)}', [${memberVars.join(', ')}]${options})`,
+			);
 		}
 	}
 

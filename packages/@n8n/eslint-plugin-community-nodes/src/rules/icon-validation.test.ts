@@ -147,6 +147,11 @@ ruleTester.run('icon-validation', IconValidationRule, {
 			code: createNodeCode('file:icons/TestNode.svg', true),
 		},
 		{
+			name: 'node with valid PNG string icon in description',
+			filename: nodeFilePath,
+			code: createNodeCode('file:icons/NotSvg.png', true),
+		},
+		{
 			name: 'node with valid light/dark icons in description',
 			filename: nodeFilePath,
 			code: createNodeCode(
@@ -161,6 +166,11 @@ ruleTester.run('icon-validation', IconValidationRule, {
 			name: 'credential with valid string icon',
 			filename: credentialFilePath,
 			code: createCredentialCode('file:icons/TestNode.svg'),
+		},
+		{
+			name: 'credential with valid PNG string icon',
+			filename: credentialFilePath,
+			code: createCredentialCode('file:icons/NotSvg.png'),
 		},
 		{
 			name: 'credential with valid light/dark icons',

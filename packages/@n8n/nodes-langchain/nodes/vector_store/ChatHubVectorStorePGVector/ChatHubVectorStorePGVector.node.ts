@@ -1,4 +1,4 @@
-import { PGVectorStore, type PGVectorStoreArgs } from '@langchain/community/vectorstores/pgvector';
+import { type PGVectorStoreArgs } from '@langchain/community/vectorstores/pgvector';
 import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
@@ -14,6 +14,14 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import type pg from 'pg';
+
+import { escapeQualifiedSqlIdentifier } from '@utils/sqlIdentifier';
+
+import {
+	filterChatHubMetadata,
+	filterChatHubInsertDocuments,
+	CHAT_HUB_RETRIEVE_METADATA_KEYS,
+} from '../shared/chatHub';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { ExtendedPGVectorStore } from '../VectorStorePGVector/VectorStorePGVector.node';
 
@@ -51,7 +59,7 @@ async function deleteDocuments(
 	if (!filter || Object.keys(filter).length === 0) {
 		// The table is user-scoped (one table per user), so dropping it is safe
 		// and avoids leaving empty ghost tables after user deletion.
-		await pool.query(`DROP TABLE IF EXISTS "${tableName}"`);
+		await pool.query(`DROP TABLE IF EXISTS ${escapeQualifiedSqlIdentifier(tableName)}`);
 		return null;
 	}
 
@@ -67,7 +75,10 @@ async function deleteDocuments(
 		values.push(key, value);
 		paramIndex += 2;
 	}
-	await pool.query(`DELETE FROM "${tableName}" WHERE ${conditions.join(' AND ')}`, values);
+	await pool.query(
+		`DELETE FROM ${escapeQualifiedSqlIdentifier(tableName)} WHERE ${conditions.join(' AND ')}`,
+		values,
+	);
 
 	return null;
 }
@@ -151,7 +162,21 @@ export class ChatHubVectorStorePGVector extends createVectorStoreNode({
 			filter,
 		};
 
-		return await ExtendedPGVectorStore.initialize(embeddings, config);
+		const store = await ExtendedPGVectorStore.initialize(embeddings, {
+			...config,
+			n8nNode: context.getNode(),
+		});
+
+		const originalSearch = store.similaritySearchVectorWithScore.bind(store);
+		store.similaritySearchVectorWithScore = async (...args) => {
+			const results = await originalSearch(...args);
+			return results.map(([doc, score]) => [
+				{ ...doc, metadata: filterChatHubMetadata(doc.metadata, CHAT_HUB_RETRIEVE_METADATA_KEYS) },
+				score,
+			]);
+		};
+
+		return store;
 	},
 
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
@@ -167,8 +192,18 @@ export class ChatHubVectorStorePGVector extends createVectorStoreNode({
 			tableName,
 		};
 
-		const vectorStore = await PGVectorStore.fromDocuments(documents, embeddings, config);
-		vectorStore.client?.release();
+		// Use ExtendedPGVectorStore (not PGVectorStore.fromDocuments, whose static
+		// helpers construct a plain PGVectorStore) so the identifier-quoting
+		// overrides apply on the insert path too.
+		const vectorStore = await ExtendedPGVectorStore.initialize(embeddings, {
+			...config,
+			n8nNode: context.getNode(),
+		});
+		try {
+			await vectorStore.addDocuments(filterChatHubInsertDocuments(documents));
+		} finally {
+			vectorStore.client?.release();
+		}
 	},
 
 	releaseVectorStoreClient(vectorStore) {

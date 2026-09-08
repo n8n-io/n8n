@@ -1,0 +1,28 @@
+delete:
+  x-eov-operation-id: clearDataTableRows
+  x-required-scope: dataTableRow:delete
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
+  tags:
+    - DataTable
+  summary: Clear all rows from a data table
+  description: Permanently deletes all rows from a data table. The table structure will be retained. This action cannot be undone.
+  operationId: clear-data-table-rows
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+  responses:
+    '200':
+      description: Rows cleared successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              deletedCount:
+                type: integer
+                description: The number of rows that were deleted
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []

@@ -9,36 +9,33 @@ const mockRequestPermission = vi.fn();
 // Store original Notification
 const originalNotification = global.Notification;
 
+const MockNotificationConstructor = vi.fn();
+
 function setupNotificationMock(permission: NotificationPermission = 'default') {
-	const MockNotification = vi
-		.fn()
-		.mockImplementation((title: string, options?: NotificationOptions) => ({
-			title,
-			...options,
-		}));
+	class MockNotification extends EventTarget {
+		constructor(
+			public title: string,
+			public options?: NotificationOptions,
+		) {
+			super();
 
-	Object.defineProperty(MockNotification, 'permission', {
-		value: permission,
-		writable: true,
-		configurable: true,
-	});
+			MockNotificationConstructor(title, options);
+		}
 
-	Object.defineProperty(MockNotification, 'requestPermission', {
-		value: mockRequestPermission,
-		writable: true,
-		configurable: true,
-	});
+		static init = vi.fn();
 
-	Object.defineProperty(global, 'Notification', {
-		value: MockNotification,
-		writable: true,
-		configurable: true,
-	});
+		static permission = permission;
+
+		static requestPermission = mockRequestPermission;
+	}
+
+	vi.stubGlobal('Notification', MockNotification);
 }
 
 describe('useBrowserNotifications', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.restoreAllMocks();
 		localStorage.clear();
 
 		// Reset Notification mock with default permission
@@ -287,7 +284,7 @@ describe('useBrowserNotifications', () => {
 			const notification = showNotification('Test Title', { body: 'Test Body' });
 
 			expect(notification).not.toBeNull();
-			expect(global.Notification).toHaveBeenCalledWith('Test Title', { body: 'Test Body' });
+			expect(MockNotificationConstructor).toHaveBeenCalledWith('Test Title', { body: 'Test Body' });
 		});
 
 		it('should return null when notifications are not enabled', () => {

@@ -1,3 +1,4 @@
+import { isIfNodeType, isSwitchNodeType } from './constants/node-types';
 import type {
 	WorkflowBuilder,
 	WorkflowBuilderStatic,
@@ -6,16 +7,24 @@ import type {
 	NodeInstance,
 	ConnectionTarget,
 	GraphNode,
+	AuthoredNodeGroup,
+	GroupMember,
+	GroupOptions,
 	IDataObject,
 	NodeChain,
 	GeneratePinDataOptions,
 	WorkflowBuilderOptions,
+	ToJSONOptions,
 } from './types/base';
 import { isNodeChain } from './types/base';
 import type { ValidationOptions, ValidationResult, ValidationErrorCode } from './validation/index';
 import { ValidationError, ValidationWarning } from './validation/index';
 import { resolveTargetNodeName as resolveTargetNodeNameUtil } from './workflow-builder/connection-utils';
-import { isInputTarget, cloneNodeWithId } from './workflow-builder/node-builders/node-builder';
+import {
+	isInputTarget,
+	isOutputSelector,
+	cloneNodeWithId,
+} from './workflow-builder/node-builders/node-builder';
 import { shouldGeneratePinData } from './workflow-builder/pin-data-utils';
 import { registerDefaultPlugins } from './workflow-builder/plugins/defaults';
 import { pluginRegistry, type PluginRegistry } from './workflow-builder/plugins/registry';
@@ -23,6 +32,7 @@ import { jsonSerializer } from './workflow-builder/plugins/serializers';
 import type {
 	PluginContext,
 	MutablePluginContext,
+	ResolvedNodeGroup,
 	ValidationIssue,
 	SerializerContext,
 } from './workflow-builder/plugins/types';
@@ -50,6 +60,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _branchDepth = 0;
 	private _dispatchedComposites = new WeakSet<object>();
 	private static readonly MAX_BRANCH_DEPTH = 500;
+	/** Node groups, carried by member node handle and resolved to IDs in toJSON(). */
+	private _nodeGroups: AuthoredNodeGroup[];
 
 	constructor(
 		id: string,
@@ -60,6 +72,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		pinData?: Record<string, IDataObject[]>,
 		meta?: { templateId?: string; instanceId?: string; [key: string]: unknown },
 		registry?: PluginRegistry,
+		nodeGroups?: AuthoredNodeGroup[],
 	) {
 		this.id = id;
 		this.name = name;
@@ -70,6 +83,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		this._pinData = pinData;
 		this._meta = meta;
 		this._registry = registry;
+		this._nodeGroups = nodeGroups ? nodeGroups.map((g) => ({ ...g, members: [...g.members] })) : [];
 	}
 
 	/**
@@ -131,6 +145,49 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * Collect pinData from a composite (builder) via its handler, including branch
+	 * targets and source-chain nodes.
+	 */
+	private collectPinDataFromComposite(
+		composite: unknown,
+		nameMapping?: Map<string, string>,
+	): Record<string, IDataObject[]> | undefined {
+		const registry = this._registry ?? pluginRegistry;
+		const handler = registry.findCompositeHandler(composite);
+		if (!handler?.collectPinData) {
+			return this._pinData;
+		}
+		let pinData = this._pinData;
+		// Handlers emit branch targets as-is, which can be chains or nested composites.
+		// Recurse into those so every concrete node's pins are collected.
+		const seen = new Set<unknown>([composite]);
+		const visit = (item: unknown): void => {
+			if (item === null || item === undefined || seen.has(item)) return;
+			seen.add(item);
+			if (isNodeChain(item)) {
+				for (const chainNode of item.allNodes) visit(chainNode);
+				return;
+			}
+			const nestedHandler = registry.findCompositeHandler(item);
+			if (nestedHandler?.collectPinData) {
+				nestedHandler.collectPinData(item, visit);
+				return;
+			}
+			if (isInputTarget(item)) {
+				visit(item.node);
+				return;
+			}
+			pinData = this.collectPinDataFromNode(
+				item as NodeInstance<string, string, unknown>,
+				pinData,
+				nameMapping,
+			);
+		};
+		handler.collectPinData(composite, visit);
+		return pinData;
+	}
+
+	/**
 	 * Collect pinData from all nodes in a chain
 	 */
 	private collectPinDataFromChain(chain: NodeChain): Record<string, IDataObject[]> | undefined {
@@ -153,27 +210,32 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Helper to collect pinData from a single node and merge with existing pinData
+	 * Helper to collect pinData from a single node and merge with existing pinData.
+	 * Keys by the deduped map key when the node was auto-renamed on a name collision.
 	 */
 	private collectPinDataFromNode(
 		node: NodeInstance<string, string, unknown>,
 		existingPinData: Record<string, IDataObject[]> | undefined,
+		nameMapping?: Map<string, string>,
 	): Record<string, IDataObject[]> | undefined {
 		const nodePinData = node.config?.pinData;
 		if (nodePinData && nodePinData.length > 0) {
 			return {
 				...existingPinData,
-				[node.name]: nodePinData,
+				[nameMapping?.get(node.id) ?? node.name]: nodePinData,
 			};
 		}
 		return existingPinData;
 	}
 
 	add(node: unknown): WorkflowBuilder {
+		assertNotOutputSelector(node, 'add');
+
 		// Handle plain array (fan-out)
 		// This adds all targets without creating a primary connection
 		if (Array.isArray(node)) {
 			for (const target of node) {
+				assertNotOutputSelector(target, 'add');
 				if (isInputTarget(target)) {
 					// InputTarget - add the target node
 					const inputTargetNode = target.node;
@@ -207,6 +269,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (addHandler) {
 			const ctx = this.createMutablePluginContext(this._nodes);
 			const headName = addHandler.addNodes(node, ctx);
+			this._pinData = this.collectPinDataFromComposite(node, ctx.nameMapping);
 			this._currentNode = headName;
 			this._currentOutput = 0;
 			return this;
@@ -262,6 +325,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	to(nodeOrComposite: unknown): WorkflowBuilder {
+		assertNotOutputSelector(nodeOrComposite, 'to');
+
 		// Handle InputTarget (e.g., mergeNode.input(0))
 		if (isInputTarget(nodeOrComposite)) {
 			const actualNode = nodeOrComposite.node;
@@ -313,22 +378,28 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (thenHandler) {
 			const ctx = this.createMutablePluginContext(this._nodes);
 			const headName = thenHandler.addNodes(nodeOrComposite, ctx);
+			// The incoming connection lands on the composite's entry node. When the composite
+			// was built from a chain (e.g. .to(a.to(b).onTrue(...))), the entry is the chain head.
+			const entryName =
+				thenRegistry.resolveCompositeHeadName(nodeOrComposite, ctx.nameMapping) ?? headName;
 
-			// Connect current node to head of composite
+			// Connect current node to entry of composite
 			if (this._currentNode) {
 				const currentGraphNode = this._nodes.get(this._currentNode);
 				if (currentGraphNode) {
 					const mainConns =
 						currentGraphNode.connections.get('main') ?? new Map<number, ConnectionTarget[]>();
 					const outputConns: ConnectionTarget[] = mainConns.get(this._currentOutput) ?? [];
-					outputConns.push({ node: headName, type: 'main', index: 0 });
+					outputConns.push({ node: entryName, type: 'main', index: 0 });
 					mainConns.set(this._currentOutput, outputConns);
 					currentGraphNode.connections.set('main', mainConns);
 				}
 			}
 
-			this._currentNode = headName;
-			this._currentOutput = 0;
+			this._pinData = this.collectPinDataFromComposite(nodeOrComposite, ctx.nameMapping);
+			const continuation = thenHandler.handleThen?.(nodeOrComposite, headName, 0, ctx);
+			this._currentNode = continuation?.currentNode ?? headName;
+			this._currentOutput = continuation?.currentOutput ?? 0;
 			return this;
 		}
 
@@ -367,6 +438,62 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		this._currentNode = actualKey;
 		this._currentOutput = 0;
 
+		return this;
+	}
+
+	onTrue(target: unknown): WorkflowBuilder {
+		return this.branchFromCurrent(0, target, 'onTrue');
+	}
+
+	onFalse(target: unknown): WorkflowBuilder {
+		return this.branchFromCurrent(1, target, 'onFalse');
+	}
+
+	onCase(index: number, target: unknown): WorkflowBuilder {
+		return this.branchFromCurrent(index, target, 'onCase');
+	}
+
+	/**
+	 * Connect a branch output of the node the cursor is on (the last node added
+	 * via `.to()`/`.add()`) to `target`, without advancing the cursor — so
+	 * sibling branches (`.onTrue().onFalse()`, `.onCase(0).onCase(1)`) all attach
+	 * to the same branching node.
+	 */
+	private branchFromCurrent(
+		outputIndex: number,
+		target: unknown,
+		methodName: 'onTrue' | 'onFalse' | 'onCase',
+	): WorkflowBuilder {
+		const sourceKey = this._currentNode;
+		const sourceType = sourceKey ? this._nodes.get(sourceKey)?.instance.type : undefined;
+		const wantsSwitch = methodName === 'onCase';
+		const matches = sourceType
+			? wantsSwitch
+				? isSwitchNodeType(sourceType)
+				: isIfNodeType(sourceType)
+			: false;
+		if (!matches) {
+			const expected = wantsSwitch ? 'Switch' : 'IF';
+			const usage = wantsSwitch
+				? 'workflow.add(trigger).to(switchNode).onCase(0, a).onCase(1, b)'
+				: 'workflow.add(trigger).to(ifNode).onTrue(a).onFalse(b)';
+			throw new Error(
+				`.${methodName}() must immediately follow adding a ${expected} node. Use it as ${usage}.`,
+			);
+		}
+
+		if (target === null || target === undefined) {
+			this._currentNode = sourceKey;
+			this._currentOutput = 0;
+			return this;
+		}
+
+		this._currentNode = sourceKey;
+		this._currentOutput = outputIndex;
+		this.to(target as NodeInstance<string, string, unknown>);
+		// Re-anchor the cursor on the branching node so the next sibling branch wires correctly.
+		this._currentNode = sourceKey;
+		this._currentOutput = 0;
 		return this;
 	}
 
@@ -424,6 +551,31 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return this;
 	}
 
+	group(name: string, members: GroupMember[], options?: GroupOptions): WorkflowBuilder {
+		this._nodeGroups.push({ ...options, name, members: [...members] });
+		return this;
+	}
+
+	/**
+	 * Resolve each group's members to the IDs the emitted nodes will carry. Each member
+	 * handle resolves to its current map key (stable across regenerateNodeIds() via
+	 * _staleIdToKeyMap, exactly as connection targets do); the live instance under that
+	 * key holds the ID the serializer emits. Unresolvable members are dropped.
+	 */
+	private resolveNodeGroups(): ResolvedNodeGroup[] {
+		return this._nodeGroups.map(({ members, ...group }) => {
+			const memberIds: string[] = [];
+			for (const member of members) {
+				const key = this.resolveTargetNodeName(member, this._staleIdToKeyMap);
+				const id = key ? this._nodes.get(key)?.instance.id : undefined;
+				if (id && !memberIds.includes(id)) {
+					memberIds.push(id);
+				}
+			}
+			return { ...group, memberIds };
+		});
+	}
+
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined {
 		// First try direct lookup (for backward compatibility and nodes added via add/then)
 		const directLookup = this._nodes.get(name);
@@ -439,7 +591,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return undefined;
 	}
 
-	toJSON(): WorkflowJSON {
+	toJSON(options?: ToJSONOptions): WorkflowJSON {
 		// Ensure composite targets from .onError() connections are added to the graph.
 		// This handles cases where a chain node has .onError(ifElseBuilder) — the composite
 		// isn't in the chain's allNodes, so it wasn't dispatched during chain processing.
@@ -456,7 +608,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			settings: this._settings,
 			pinData: this._pinData,
 			meta: this._meta,
+			tidyUp: options?.tidyUp ?? false,
 			resolveTargetNodeName: (target: unknown) => this.resolveTargetNodeName(target),
+			nodeGroups: this._nodeGroups.length > 0 ? this.resolveNodeGroups() : undefined,
+			existingGroupIdsByName: options?.existingGroupIdsByName,
 		};
 
 		return jsonSerializer.serialize(ctx);
@@ -534,8 +689,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 *
 	 * Node IDs are generated using SHA-256 hash of `${workflowId}:${nodeType}:${nodeName}`,
 	 * formatted as a valid UUID v4 structure.
+	 *
+	 * Precedence: an id declared in the source (`config.id`) is authoritative and is never
+	 * regenerated — it is the node's stable identity in n8n. Otherwise `existingIdsByName`
+	 * is consulted, and only then is a deterministic id derived.
+	 *
+	 * @param existingIdsByName - reuse these IDs (keyed by node name) instead of regenerating.
 	 */
-	regenerateNodeIds(): void {
+	regenerateNodeIds(existingIdsByName?: Map<string, string>): void {
 		const newNodes = new Map<string, GraphNode>();
 		// Build mapping from old instance IDs to map keys BEFORE cloning.
 		// Cloned instances' _connections still reference original target instances
@@ -546,9 +707,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		for (const [mapKey, graphNode] of this._nodes) {
 			const instance = graphNode.instance;
 			staleIdToKeyMap.set(instance.id, mapKey);
-			const newId = generateDeterministicNodeId(this.id, instance.type, mapKey);
+			const newId =
+				instance.config?.id ??
+				existingIdsByName?.get(mapKey) ??
+				generateDeterministicNodeId(this.id, instance.type, mapKey);
 
-			// Clone the instance with the new deterministic ID
+			// Clone the instance with the new ID
 			const newInstance = cloneNodeWithId(instance, newId);
 
 			newNodes.set(mapKey, {
@@ -640,6 +804,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						issue.parameterPath,
 						issue.originalName,
 						issue.violationLevel,
+						issue.severity === 'informational' ? 'informational' : 'warning',
 					),
 				);
 			}
@@ -860,7 +1025,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				this._dispatchedComposites.add(target);
 			}
 			const ctx = this.createMutablePluginContext(nodes, nameMapping);
-			return handler.addNodes(target, ctx);
+			const headName = handler.addNodes(target, ctx);
+			// Callers connect to the returned name, so resolve the composite's entry node:
+			// the source-chain head when the composite was built from a chain.
+			return registry.resolveCompositeHeadName(target, ctx.nameMapping) ?? headName;
 		}
 
 		return undefined;
@@ -897,6 +1065,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			if (node === null) {
 				return;
 			}
+
+			assertNotOutputSelector(node, 'to');
 
 			// Use addBranchToGraph to handle NodeChains properly
 			// This returns the head node name for connection
@@ -1160,6 +1330,18 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 }
 
+function assertNotOutputSelector(value: unknown, method: 'add' | 'to'): void {
+	if (!isOutputSelector(value)) return;
+	const sourceName = value.node.name;
+	throw new TypeError(
+		`Cannot pass an OutputSelector to .${method}(). ` +
+			`${sourceName}.output(${value.outputIndex}) by itself does not connect anything; ` +
+			'chain `.to(target)` on the selector first to produce a connection. ' +
+			`Example: .add(${sourceName}.output(${value.outputIndex}).to(targetNode)) ` +
+			`— not .add(${sourceName}.output(${value.outputIndex})).to(targetNode).`,
+	);
+}
+
 /**
  * Helper to check if options is a WorkflowBuilderOptions object
  */
@@ -1180,6 +1362,37 @@ function createWorkflow(
 	name: string,
 	options?: WorkflowSettings | WorkflowBuilderOptions,
 ): WorkflowBuilder {
+	if (typeof id !== 'string') {
+		const receivedId = Array.isArray(id) ? 'an array' : typeof id;
+		throw new TypeError(
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			'workflow() requires (id: string, name: string). ' +
+				`workflow() requires a string id as first argument, but received ${receivedId}. ` +
+				"Example: workflow('my-workflow-id', 'My Workflow Name')",
+		);
+	}
+	if (typeof name !== 'string') {
+		const receivedName = Array.isArray(name) ? 'an array' : typeof name;
+		throw new TypeError(
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			'workflow() requires (id: string, name: string). ' +
+				`workflow() requires a string name as second argument, but received ${receivedName}. ` +
+				"Example: workflow('my-workflow-id', 'My Workflow Name')",
+		);
+	}
+	if (
+		options !== undefined &&
+		(Array.isArray(options) ||
+			(typeof options === 'object' &&
+				options !== null &&
+				('nodes' in options || 'connections' in options)))
+	) {
+		throw new TypeError(
+			'workflow() third argument is settings, not workflow structure. ' +
+				'Do not pass nodes or connections here — use .add() and .to() to build the workflow. ' +
+				"Example: workflow('id', 'Name').add(trigger({...})).to(node({...}))",
+		);
+	}
 	if (isWorkflowBuilderOptions(options)) {
 		return new WorkflowBuilderImpl(
 			id,
@@ -1208,6 +1421,8 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 		parsed.lastNode,
 		parsed.pinData,
 		parsed.meta,
+		undefined,
+		parsed.nodeGroups,
 	);
 }
 

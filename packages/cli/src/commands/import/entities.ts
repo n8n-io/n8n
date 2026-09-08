@@ -1,10 +1,10 @@
-import { Command } from '@n8n/decorators';
-import { z } from 'zod';
-import { Container } from '@n8n/di';
-
-import { BaseCommand } from '../base-command';
-import { ImportService } from '../../services/import.service';
 import { safeJoinPath } from '@n8n/backend-common';
+import { Command } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import { z } from 'zod';
+
+import { ImportService } from '../../services/import.service';
+import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
 	inputDir: z
@@ -19,6 +19,10 @@ const flagsSchema = z.object({
 	skipMigrationChecks: z.coerce
 		.boolean()
 		.describe('Skip migration validation checks')
+		.default(false),
+	skipTogglingForeignKeyConstraints: z.coerce
+		.boolean()
+		.describe('Skip disabling foreign key constraints')
 		.default(false),
 });
 
@@ -44,6 +48,7 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		const truncateTables = this.flags.truncateTables;
 		const keyFilePath = this.flags.keyFile ? safeJoinPath(this.flags.keyFile) : undefined;
 		const skipMigrationChecks = this.flags.skipMigrationChecks ?? false;
+		const skipTogglingForeignKeyConstraints = this.flags.skipTogglingForeignKeyConstraints ?? false;
 
 		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
 		this.logger.info('\n🚀 Starting entity import...');
@@ -52,12 +57,16 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		if (skipMigrationChecks) {
 			this.logger.info('⏭️  Skipping migration checks');
 		}
+		if (skipTogglingForeignKeyConstraints) {
+			this.logger.info('⏭️  Skipping disabling foreign key constraints');
+		}
 
 		await Container.get(ImportService).importEntities(
 			inputDir,
 			truncateTables,
 			keyFilePath,
 			skipMigrationChecks,
+			skipTogglingForeignKeyConstraints,
 		);
 	}
 

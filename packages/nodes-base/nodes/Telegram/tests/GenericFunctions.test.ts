@@ -14,6 +14,7 @@ import {
 	getPropertyName,
 	getSecretToken,
 } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('Telegram > GenericFunctions', () => {
 	describe('apiRequest', () => {
@@ -21,17 +22,17 @@ describe('Telegram > GenericFunctions', () => {
 		const credentials = { baseUrl: 'https://api.telegram.org', accessToken: 'testToken' };
 		beforeEach(() => {
 			mockThis = {
-				getCredentials: jest.fn(),
+				getCredentials: vi.fn(),
 				helpers: {
-					request: jest.fn(),
+					request: vi.fn(),
 				},
-				getNode: jest.fn(),
+				getNode: vi.fn(),
 			} as unknown as IHookFunctions &
 				IExecuteFunctions &
 				ILoadOptionsFunctions &
 				IWebhookFunctions;
 
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should make a successful API request', async () => {
@@ -41,8 +42,8 @@ describe('Telegram > GenericFunctions', () => {
 			const query: IDataObject = { chat_id: '12345' };
 			const option: IDataObject = { headers: { 'Custom-Header': 'value' } };
 
-			(mockThis.getCredentials as jest.Mock).mockResolvedValue(credentials);
-			(mockThis.helpers.request as jest.Mock).mockResolvedValue({ success: true });
+			(mockThis.getCredentials as Mock).mockResolvedValue(credentials);
+			(mockThis.helpers.request as Mock).mockResolvedValue({ success: true });
 
 			const result = await apiRequest.call(mockThis, method, endpoint, body, query, option);
 
@@ -64,8 +65,8 @@ describe('Telegram > GenericFunctions', () => {
 			const body: IDataObject = {};
 			const query: IDataObject = {};
 
-			(mockThis.getCredentials as jest.Mock).mockResolvedValue(credentials);
-			(mockThis.helpers.request as jest.Mock).mockResolvedValue({ success: true });
+			(mockThis.getCredentials as Mock).mockResolvedValue(credentials);
+			(mockThis.helpers.request as Mock).mockResolvedValue({ success: true });
 
 			const result = await apiRequest.call(mockThis, method, endpoint, body, query);
 
@@ -84,8 +85,8 @@ describe('Telegram > GenericFunctions', () => {
 			const endpoint = 'sendMessage';
 			const body: IDataObject = { text: 'Hello, world!' };
 
-			(mockThis.getCredentials as jest.Mock).mockResolvedValue(credentials);
-			(mockThis.helpers.request as jest.Mock).mockResolvedValue({ success: true });
+			(mockThis.getCredentials as Mock).mockResolvedValue(credentials);
+			(mockThis.helpers.request as Mock).mockResolvedValue({ success: true });
 
 			const result = await apiRequest.call(mockThis, method, endpoint, body);
 
@@ -105,8 +106,8 @@ describe('Telegram > GenericFunctions', () => {
 			const endpoint = 'sendMessage';
 			const body: IDataObject = { text: 'Hello, world!' };
 
-			(mockThis.getCredentials as jest.Mock).mockResolvedValue(credentials);
-			(mockThis.helpers.request as jest.Mock).mockRejectedValue(new Error('Request failed'));
+			(mockThis.getCredentials as Mock).mockResolvedValue(credentials);
+			(mockThis.helpers.request as Mock).mockRejectedValue(new Error('Request failed'));
 
 			await expect(apiRequest.call(mockThis, method, endpoint, body)).rejects.toThrow(NodeApiError);
 
@@ -125,10 +126,10 @@ describe('Telegram > GenericFunctions', () => {
 
 		beforeEach(() => {
 			mockThis = {
-				getNodeParameter: jest.fn(),
+				getNodeParameter: vi.fn(),
 			} as unknown as IExecuteFunctions;
 
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should add additional fields and attribution for sendMessage operation', () => {
@@ -137,7 +138,7 @@ describe('Telegram > GenericFunctions', () => {
 			const nodeVersion = 1.1;
 			const instanceId = '45';
 
-			(mockThis.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			(mockThis.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'operation':
 						return 'sendMessage';
@@ -163,7 +164,7 @@ describe('Telegram > GenericFunctions', () => {
 			const body: IDataObject = { text: 'Hello, world!' };
 			const index = 0;
 
-			(mockThis.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			(mockThis.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'operation':
 						return 'sendMessage';
@@ -207,7 +208,7 @@ describe('Telegram > GenericFunctions', () => {
 			const body: IDataObject = { text: 'Hello, world!' };
 			const index = 0;
 
-			(mockThis.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			(mockThis.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'operation':
 						return 'sendMessage';
@@ -236,7 +237,7 @@ describe('Telegram > GenericFunctions', () => {
 			const body: IDataObject = { text: 'Hello, world!' };
 			const index = 0;
 
-			(mockThis.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			(mockThis.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'operation':
 						return 'sendMessage';
@@ -266,7 +267,7 @@ describe('Telegram > GenericFunctions', () => {
 			const index = 0;
 			const nodeVersion = 1.2;
 
-			(mockThis.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			(mockThis.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'operation':
 						return 'sendMessage';
@@ -310,12 +311,12 @@ describe('Telegram > GenericFunctions', () => {
 	});
 	describe('getSecretToken', () => {
 		const mockThis = {
-			getWorkflow: jest.fn().mockReturnValue({ id: 'workflow123' }),
-			getNode: jest.fn().mockReturnValue({ id: 'node123' }),
+			getWorkflow: vi.fn().mockReturnValue({ id: 'workflow123' }),
+			getNode: vi.fn().mockReturnValue({ id: 'node123' }),
 		} as unknown as IHookFunctions & IWebhookFunctions;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should return a valid secret token', () => {

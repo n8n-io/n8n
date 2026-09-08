@@ -6,7 +6,7 @@ describe('ProcessEnvAccessRule', () => {
 	let rule: ProcessEnvAccessRule;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		rule = new ProcessEnvAccessRule();
 	});
 

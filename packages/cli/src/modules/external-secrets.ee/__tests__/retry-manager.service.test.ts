@@ -4,7 +4,7 @@ import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from '
 import { ExternalSecretsRetryManager } from '../retry-manager.service';
 
 describe('RetryManager', () => {
-	jest.useFakeTimers();
+	vi.useFakeTimers();
 
 	let retryManager: ExternalSecretsRetryManager;
 
@@ -13,13 +13,13 @@ describe('RetryManager', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllTimers();
+		vi.clearAllTimers();
 		retryManager.cancelAll();
 	});
 
 	describe('runWithRetry', () => {
 		it('should return success result when operation succeeds', async () => {
-			const successOperation = jest.fn().mockResolvedValue({ success: true });
+			const successOperation = vi.fn().mockResolvedValue({ success: true });
 
 			const result = await retryManager.runWithRetry('test-key', successOperation);
 
@@ -30,7 +30,7 @@ describe('RetryManager', () => {
 
 		it('should schedule retry when operation fails', async () => {
 			const error = new Error('Connection failed');
-			const failOperation = jest.fn().mockResolvedValue({ success: false, error });
+			const failOperation = vi.fn().mockResolvedValue({ success: false, error });
 
 			const result = await retryManager.runWithRetry('test-key', failOperation);
 
@@ -41,7 +41,7 @@ describe('RetryManager', () => {
 
 		it('should retry with exponential backoff', async () => {
 			const error = new Error('Connection failed');
-			const failOperation = jest
+			const failOperation = vi
 				.fn()
 				.mockResolvedValueOnce({ success: false, error })
 				.mockResolvedValueOnce({ success: false, error })
@@ -52,12 +52,12 @@ describe('RetryManager', () => {
 			expect(failOperation).toHaveBeenCalledTimes(1);
 
 			// First retry (5000ms)
-			jest.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
+			vi.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
 			await Promise.resolve(); // Let promises resolve
 			expect(failOperation).toHaveBeenCalledTimes(2);
 
 			// Second retry (10000ms)
-			jest.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF * 2);
+			vi.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF * 2);
 			await Promise.resolve();
 			expect(failOperation).toHaveBeenCalledTimes(3);
 
@@ -65,15 +65,43 @@ describe('RetryManager', () => {
 			expect(retryManager.isRetrying('test-key')).toBe(false);
 		});
 
+		it('should spread retries over the second half of the backoff window', async () => {
+			const earliestOperation = vi
+				.fn()
+				.mockResolvedValue({ success: false, error: new Error('Connection failed') });
+			const latestOperation = vi
+				.fn()
+				.mockResolvedValue({ success: false, error: new Error('Connection failed') });
+
+			vi.spyOn(Math, 'random').mockReturnValue(0);
+			await retryManager.runWithRetry('earliest-key', earliestOperation);
+
+			vi.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF / 2 - 1);
+			await Promise.resolve();
+			expect(earliestOperation).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(1);
+			await Promise.resolve();
+			expect(earliestOperation).toHaveBeenCalledTimes(2);
+
+			// The nominal backoff stays the ceiling, which the other tests in this suite rely on.
+			vi.spyOn(Math, 'random').mockReturnValue(1);
+			await retryManager.runWithRetry('latest-key', latestOperation);
+
+			vi.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
+			await Promise.resolve();
+			expect(latestOperation).toHaveBeenCalledTimes(2);
+		});
+
 		it('should cap backoff at maximum value', async () => {
 			const error = new Error('Connection failed');
-			const failOperation = jest.fn().mockResolvedValue({ success: false, error });
+			const failOperation = vi.fn().mockResolvedValue({ success: false, error });
 
 			await retryManager.runWithRetry('test-key', failOperation);
 
 			// Advance through multiple retries to hit max backoff
 			for (let i = 0; i < 10; i++) {
-				jest.advanceTimersByTime(EXTERNAL_SECRETS_MAX_BACKOFF);
+				vi.advanceTimersByTime(EXTERNAL_SECRETS_MAX_BACKOFF);
 				await Promise.resolve();
 			}
 
@@ -84,7 +112,7 @@ describe('RetryManager', () => {
 
 	describe('cancelRetry', () => {
 		it('should cancel scheduled retry', async () => {
-			const failOperation = jest
+			const failOperation = vi
 				.fn()
 				.mockResolvedValue({ success: false, error: new Error('Failed') });
 
@@ -97,7 +125,7 @@ describe('RetryManager', () => {
 			expect(retryManager.isRetrying('test-key')).toBe(false);
 
 			// Advance time - operation should not be called again
-			jest.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
+			vi.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
 			await Promise.resolve();
 			expect(failOperation).toHaveBeenCalledTimes(1);
 		});
@@ -109,18 +137,14 @@ describe('RetryManager', () => {
 		});
 
 		it('should replace existing retry when scheduling new one for same key', async () => {
-			const operation1 = jest
-				.fn()
-				.mockResolvedValue({ success: false, error: new Error('Failed') });
-			const operation2 = jest
-				.fn()
-				.mockResolvedValue({ success: false, error: new Error('Failed') });
+			const operation1 = vi.fn().mockResolvedValue({ success: false, error: new Error('Failed') });
+			const operation2 = vi.fn().mockResolvedValue({ success: false, error: new Error('Failed') });
 
 			await retryManager.runWithRetry('test-key', operation1);
 			await retryManager.runWithRetry('test-key', operation2);
 
 			// Advance timer
-			jest.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
+			vi.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
 			await Promise.resolve();
 
 			// Only operation2 should be called on retry
@@ -131,12 +155,8 @@ describe('RetryManager', () => {
 
 	describe('cancelAll', () => {
 		it('should cancel all scheduled retries', async () => {
-			const operation1 = jest
-				.fn()
-				.mockResolvedValue({ success: false, error: new Error('Failed') });
-			const operation2 = jest
-				.fn()
-				.mockResolvedValue({ success: false, error: new Error('Failed') });
+			const operation1 = vi.fn().mockResolvedValue({ success: false, error: new Error('Failed') });
+			const operation2 = vi.fn().mockResolvedValue({ success: false, error: new Error('Failed') });
 
 			await retryManager.runWithRetry('key1', operation1);
 			await retryManager.runWithRetry('key2', operation2);
@@ -150,7 +170,7 @@ describe('RetryManager', () => {
 			expect(retryManager.isRetrying('key2')).toBe(false);
 
 			// Advance time - operations should not be called again
-			jest.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
+			vi.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
 			await Promise.resolve();
 			expect(operation1).toHaveBeenCalledTimes(1);
 			expect(operation2).toHaveBeenCalledTimes(1);
@@ -163,7 +183,7 @@ describe('RetryManager', () => {
 
 	describe('isRetrying', () => {
 		it('should return true when retry is scheduled', async () => {
-			const operation = jest.fn().mockResolvedValue({ success: false, error: new Error('Failed') });
+			const operation = vi.fn().mockResolvedValue({ success: false, error: new Error('Failed') });
 
 			await retryManager.runWithRetry('test-key', operation);
 
@@ -175,7 +195,7 @@ describe('RetryManager', () => {
 		});
 
 		it('should return false after successful retry', async () => {
-			const operation = jest
+			const operation = vi
 				.fn()
 				.mockResolvedValueOnce({ success: false, error: new Error('Failed') })
 				.mockResolvedValueOnce({ success: true });
@@ -183,7 +203,7 @@ describe('RetryManager', () => {
 			await retryManager.runWithRetry('test-key', operation);
 			expect(retryManager.isRetrying('test-key')).toBe(true);
 
-			jest.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
+			vi.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
 			await Promise.resolve();
 
 			expect(retryManager.isRetrying('test-key')).toBe(false);
@@ -192,7 +212,7 @@ describe('RetryManager', () => {
 
 	describe('getRetryInfo', () => {
 		it('should return retry information for scheduled retry', async () => {
-			const operation = jest.fn().mockResolvedValue({ success: false, error: new Error('Failed') });
+			const operation = vi.fn().mockResolvedValue({ success: false, error: new Error('Failed') });
 
 			await retryManager.runWithRetry('test-key', operation);
 
@@ -211,7 +231,7 @@ describe('RetryManager', () => {
 		});
 
 		it('should track increasing backoff value', async () => {
-			const operation = jest.fn().mockResolvedValue({ success: false, error: new Error('Failed') });
+			const operation = vi.fn().mockResolvedValue({ success: false, error: new Error('Failed') });
 
 			await retryManager.runWithRetry('test-key', operation);
 

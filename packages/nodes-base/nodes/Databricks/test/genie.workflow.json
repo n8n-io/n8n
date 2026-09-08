@@ -1,0 +1,146 @@
+{
+	"name": "Databricks Genie Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "genie",
+				"operation": "startConversation",
+				"spaceId": "space123",
+				"initialMessage": "Show me sales data for Q1 2024"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, -200],
+			"id": "genie-start-001",
+			"name": "Start Conversation",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "genie",
+				"operation": "createMessage",
+				"spaceId": "space123",
+				"conversationId": "conv-456",
+				"message": "What were the total sales?"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "genie-msg-001",
+			"name": "Create Message",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "genie",
+				"operation": "getMessage",
+				"spaceId": "space123",
+				"conversationId": "conv-456",
+				"messageId": "msg-789"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "genie-getmsg-001",
+			"name": "Get Message",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "genie",
+				"operation": "getSpace",
+				"spaceId": "space123"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "genie-space-001",
+			"name": "Get Space",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Start Conversation": [
+			{
+				"json": {
+					"conversation_id": "conv-456",
+					"message_id": "msg-789",
+					"space_id": "space123"
+				}
+			}
+		],
+		"Create Message": [
+			{
+				"json": {
+					"id": "msg-new",
+					"conversation_id": "conv-456",
+					"content": "What were the total sales?",
+					"status": "COMPLETED"
+				}
+			}
+		],
+		"Get Message": [
+			{
+				"json": {
+					"id": "msg-789",
+					"conversation_id": "conv-456",
+					"content": "Show me sales data for Q1 2024",
+					"status": "COMPLETED"
+				}
+			}
+		],
+		"Get Space": [
+			{
+				"json": {
+					"id": "space123",
+					"display_name": "Sales Analytics",
+					"description": "AI-powered sales data assistant"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Start Conversation", "type": "main", "index": 0 },
+					{ "node": "Create Message", "type": "main", "index": 0 },
+					{ "node": "Get Message", "type": "main", "index": 0 },
+					{ "node": "Get Space", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

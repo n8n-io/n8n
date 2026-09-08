@@ -5,12 +5,12 @@ import type {
 	UserSelfSettingsUpdateRequestDto,
 	UsersListFilterDto,
 	UserUpdateRequestDto,
-	Role,
 	UsersList,
 	User,
 } from '@n8n/api-types';
-import type { Scope } from '@n8n/permissions';
+import type { AssignableGlobalRole, Scope } from '@n8n/permissions';
 import type {
+	FeatureFlagPayloads,
 	FeatureFlags,
 	IDataObject,
 	IPersonalizationSurveyAnswersV4,
@@ -73,6 +73,7 @@ export interface IUserResponse extends User {
 
 export interface CurrentUserResponse extends IUserResponse {
 	featureFlags?: FeatureFlags;
+	featureFlagPayloads?: FeatureFlagPayloads;
 }
 
 export interface IUser extends IUserResponse {
@@ -116,28 +117,9 @@ export async function setupOwner(
 
 export async function validateSignupToken(
 	context: IRestApiContext,
-	params: { token?: string } | { inviterId?: string; inviteeId?: string },
+	params: { token: string },
 ): Promise<{ inviter: { firstName: string; lastName: string } }> {
 	return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
-}
-
-export async function signup(
-	context: IRestApiContext,
-	params: {
-		inviterId: string;
-		inviteeId: string;
-		firstName: string;
-		lastName: string;
-		password: string;
-	},
-): Promise<CurrentUserResponse> {
-	const { inviteeId, ...props } = params;
-	return await makeRestApiRequest(
-		context,
-		'POST',
-		`/users/${params.inviteeId}`,
-		props as unknown as IDataObject,
-	);
 }
 
 export async function sendForgotPasswordEmail(
@@ -234,7 +216,8 @@ export async function submitPersonalizationSurvey(
 
 export interface UpdateGlobalRolePayload {
 	id: string;
-	newRoleName: Role;
+	// Allows custom global role slugs in addition to built-in roles (assignable = any non-owner global role).
+	newRoleName: AssignableGlobalRole;
 }
 
 export async function updateGlobalRole(

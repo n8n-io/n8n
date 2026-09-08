@@ -8,7 +8,7 @@ import type {
 export class WolframAlphaApi implements ICredentialType {
 	name = 'wolframAlphaApi';
 
-	displayName = 'WolframAlphaApi';
+	displayName = 'Wolfram Alpha API';
 
 	documentationUrl = 'wolframalpha';
 

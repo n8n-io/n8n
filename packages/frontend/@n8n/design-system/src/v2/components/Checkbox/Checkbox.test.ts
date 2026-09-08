@@ -5,6 +5,31 @@ import Checkbox from './Checkbox.vue';
 
 describe('v2/components/Checkbox', () => {
 	describe('rendering', () => {
+		it('should forward attributes without Vue warnings', () => {
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			try {
+				const wrapper = render(Checkbox, {
+					attrs: {
+						class: 'custom-checkbox',
+						'aria-describedby': 'checkbox-description',
+					},
+				});
+
+				const warnings = warnSpy.mock.calls.flat().join(' ');
+				expect(warnings).not.toContain(
+					'toRefs() expects a reactive object but received a plain one',
+				);
+				expect(wrapper.container.firstElementChild).toHaveClass('custom-checkbox');
+				expect(wrapper.container.querySelector('[role="checkbox"]')).toHaveAttribute(
+					'aria-describedby',
+					'checkbox-description',
+				);
+			} finally {
+				warnSpy.mockRestore();
+			}
+		});
+
 		it('should render unchecked by default', () => {
 			const wrapper = render(Checkbox);
 			const checkbox = wrapper.container.querySelector('[role="checkbox"]');

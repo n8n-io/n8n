@@ -154,6 +154,20 @@ describe('ObservableObject', () => {
 		expect((testObject.a! as IDataObject).b).toEqual({ c: 2 });
 	});
 
+	test('should not stack overflow when create is called repeatedly on the same object', () => {
+		const source = { a: { b: { c: 1 } } };
+
+		for (let i = 0; i < 10_000; i++) {
+			ObservableObject.create(source);
+		}
+
+		const observable = ObservableObject.create(source);
+		expect(observable.__dataChanged).toBeFalsy();
+		((observable.a! as IDataObject).b! as IDataObject).c = 2;
+		expect(observable.__dataChanged).toBeTruthy();
+		expect(((observable.a! as IDataObject).b! as IDataObject).c).toEqual(2);
+	});
+
 	// test('xxxxxx', () => {
 	// 	const testObject = ObservableObject.create({ a: { } }, undefined, { ignoreEmptyOnFirstChild: true });
 	// 	expect(testObject.__dataChanged).toBeFalsy();

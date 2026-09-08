@@ -17,7 +17,7 @@ import * as upsert from '../../v2/actions/database/upsert.operation';
 import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
 
-const runQueries: QueriesRunner = jest.fn().mockResolvedValue([]);
+const runQueries: QueriesRunner = vi.fn().mockResolvedValue([]);
 
 const node: INode = {
 	id: '1',
@@ -65,7 +65,7 @@ const createMockDb = (columnInfo: ColumnInfo[]) => {
 // if node parameters copied from canvas all default parameters has to be added manually as JSON would not have them
 describe('Test PostgresV2, deleteTable operation', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('deleteCommand: delete, should call runQueries with', async () => {
@@ -231,7 +231,7 @@ describe('Test PostgresV2, deleteTable operation', () => {
 
 describe('Test PostgresV2, executeQuery operation', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should call runQueries with', async () => {
@@ -465,8 +465,8 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
-		jest.spyOn(utils, 'isJSON');
-		jest.spyOn(utils, 'stringToArray');
+		vi.spyOn(utils, 'isJSON');
+		vi.spyOn(utils, 'stringToArray');
 
 		await executeQuery.execute.call(
 			createMockExecuteFunction(nodeParameters),
@@ -491,8 +491,8 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
-		jest.spyOn(utils, 'isJSON');
-		jest.spyOn(utils, 'stringToArray');
+		vi.spyOn(utils, 'isJSON');
+		vi.spyOn(utils, 'stringToArray');
 
 		await executeQuery.execute.call(
 			createMockExecuteFunction(nodeParameters),
@@ -504,11 +504,93 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		expect(utils.isJSON).toHaveBeenCalledTimes(1);
 		expect(utils.stringToArray).toHaveBeenCalledTimes(1);
 	});
+
+	const createMockExecuteForArrayQuery = (
+		nodeParameters: IDataObject,
+		returnArray: unknown[],
+		matchString: string,
+	) =>
+		({
+			getNodeParameter(
+				parameterName: string,
+				_itemIndex: number,
+				fallbackValue?: IDataObject,
+				options?: IGetNodeParameterOptions,
+			) {
+				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
+				return get(nodeParameters, parameter, fallbackValue);
+			},
+			getNode() {
+				node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
+				return node;
+			},
+			evaluateExpression(str: string, _: number) {
+				if (str.includes(matchString)) {
+					return returnArray;
+				}
+				return str.replace('{{', '').replace('}}', '');
+			},
+		}) as unknown as IExecuteFunctions;
+
+	it.each([
+		{
+			description: 'spread string array across individual bind values',
+			query: 'INSERT INTO my_table (col1, col2, col3) VALUES ($1, $2, $3)',
+			queryReplacement: "={{ ['a', 'b', 'c'] }}",
+			matchString: "['a', 'b', 'c']",
+			returnArray: ['a', 'b', 'c'],
+			expectedValues: ['a', 'b', 'c'],
+		},
+		{
+			description: 'JSON.stringify object elements in array bind values',
+			query: 'INSERT INTO my_table (col1, col2) VALUES ($1, $2)',
+			queryReplacement: '={{ [{id: 1}, {id: 2}] }}',
+			matchString: '[{id: 1}, {id: 2}]',
+			returnArray: [{ id: 1 }, { id: 2 }],
+			expectedValues: ['{"id":1}', '{"id":2}'],
+		},
+		{
+			description: 'handle null, number, and boolean elements in array bind values',
+			query: 'INSERT INTO my_table (col1, col2, col3) VALUES ($1, $2, $3)',
+			queryReplacement: '={{ [null, 42, true] }}',
+			matchString: '[null, 42, true]',
+			returnArray: [null, 42, true],
+			expectedValues: [null, 42, true],
+		},
+	])(
+		'should $description',
+		async ({ query, queryReplacement, matchString, returnArray, expectedValues }) => {
+			const nodeParameters: IDataObject = {
+				operation: 'executeQuery',
+				query,
+				options: {
+					queryReplacement,
+					nodeVersion: 2.6,
+				},
+			};
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			const mockExecute = createMockExecuteForArrayQuery(nodeParameters, returnArray, matchString);
+
+			await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+			expect(runQueries).toHaveBeenCalledWith(
+				[
+					{
+						query,
+						values: expectedValues,
+						options: { partial: true },
+					},
+				],
+				nodeOptions,
+			);
+		},
+	);
 });
 
 describe('Test PostgresV2, insert operation', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('dataMode: define, should call runQueries with', async () => {
@@ -652,8 +734,8 @@ describe('Test PostgresV2, insert operation', () => {
 	});
 
 	it('dataMode: define, should accept an array with values if column is of type json', async () => {
-		const convertValuesToJsonWithPgpSpy = jest.spyOn(utils, 'convertValuesToJsonWithPgp');
-		const hasJsonDataTypeInSchemaSpy = jest.spyOn(utils, 'hasJsonDataTypeInSchema');
+		const convertValuesToJsonWithPgpSpy = vi.spyOn(utils, 'convertValuesToJsonWithPgp');
+		const hasJsonDataTypeInSchemaSpy = vi.spyOn(utils, 'hasJsonDataTypeInSchema');
 
 		const values = [
 			{ value: { id: 1, json: [], foo: 'data 1' }, expected: { id: 1, json: '[]', foo: 'data 1' } },
@@ -852,7 +934,7 @@ describe('Test PostgresV2, insert operation', () => {
 
 describe('Test PostgresV2, select operation', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('returnAll, should call runQueries with', async () => {
@@ -1007,7 +1089,7 @@ describe('Test PostgresV2, select operation', () => {
 
 describe('Test PostgresV2, update operation', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('dataMode: define, should call runQueries with', async () => {

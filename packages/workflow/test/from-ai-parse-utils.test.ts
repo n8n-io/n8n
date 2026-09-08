@@ -1,5 +1,6 @@
 /* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
 import { FROM_AI_AUTO_GENERATED_MARKER } from '../src/constants';
+import type { INodeProperties } from '../src/interfaces';
 import {
 	extractFromAICalls,
 	traverseNodeParameters,
@@ -7,6 +8,7 @@ import {
 	generateZodSchema,
 	isFromAIOnlyExpression,
 	findDisallowedChatToolExpressions,
+	collectExpressionDefaults,
 } from '../src/from-ai-parse-utils';
 
 // Note that for historic reasons a lot of testing of this file happens indirectly in `packages/core/test/CreateNodeAsTool.test.ts`
@@ -28,6 +30,13 @@ describe('extractFromAICalls', () => {
 		['{{ $fromAI("a", "b", "string", "5") }}', ['a', 'b', 'string', '5']],
 		['{{ $fromAI("a", "b", "string", "true") }}', ['a', 'b', 'string', 'true']],
 		['{{ $fromAI("a", "b", "string", "{}") }}', ['a', 'b', 'string', '{}']],
+		// The type argument is accepted case-insensitively, so it has to be normalized
+		// before it is used to coerce the default value.
+		['{{ $fromAI("a", "b", "String", "true") }}', ['a', 'b', 'string', 'true']],
+		['{{ $fromAI("a", "b", "STRING", "5") }}', ['a', 'b', 'string', '5']],
+		['{{ $fromAI("a", "b", "String", "{}") }}', ['a', 'b', 'string', '{}']],
+		['{{ $fromAI("a", "b", "Number", "5") }}', ['a', 'b', 'number', 5]],
+		['{{ $fromAI("a", "b", "Boolean", "true") }}', ['a', 'b', 'boolean', true]],
 	])('should parse args as expected for %s', (formula, [key, description, type, defaultValue]) => {
 		expect(extractFromAICalls(formula)).toEqual([
 			{
@@ -266,5 +275,99 @@ describe('findDisallowedChatToolExpressions', () => {
 			],
 		});
 		expect(result).toEqual([{ path: 'headers[0].value', value: '={{ $env.TOKEN }}' }]);
+	});
+
+	it('should skip expressions present in allowedExpressions', () => {
+		const allowed = new Set(['={{ $now }}', "={{ $now.plus(1, 'hour') }}"]);
+		const result = findDisallowedChatToolExpressions(
+			{
+				startTime: '={{ $now }}',
+				endTime: "={{ $now.plus(1, 'hour') }}",
+				url: '={{ $fromAI("url", "The URL") }}',
+			},
+			'',
+			allowed,
+		);
+		expect(result).toEqual([]);
+	});
+
+	it('should still flag non-allowed expressions when allowedExpressions is provided', () => {
+		const allowed = new Set(['={{ $now }}']);
+		const result = findDisallowedChatToolExpressions(
+			{
+				startTime: '={{ $now }}',
+				secret: '={{ $env.SECRET }}',
+			},
+			'',
+			allowed,
+		);
+		expect(result).toEqual([{ path: 'secret', value: '={{ $env.SECRET }}' }]);
+	});
+
+	it('should still allow $fromAI expressions alongside allowedExpressions', () => {
+		const allowed = new Set(['={{ $now }}']);
+		const result = findDisallowedChatToolExpressions(
+			{
+				startTime: '={{ $now }}',
+				name: '={{ $fromAI("name", "The name") }}',
+			},
+			'',
+			allowed,
+		);
+		expect(result).toEqual([]);
+	});
+});
+
+describe('collectExpressionDefaults', () => {
+	it('should collect expression defaults from flat properties', () => {
+		const properties: INodeProperties[] = [
+			{ displayName: 'Start', name: 'start', type: 'string', default: '={{ $now }}' },
+			{ displayName: 'Name', name: 'name', type: 'string', default: 'plain' },
+			{
+				displayName: 'End',
+				name: 'end',
+				type: 'string',
+				default: "={{ $now.plus(1, 'hour') }}",
+			},
+		];
+		const result = collectExpressionDefaults(properties);
+		expect(result).toEqual(new Set(['={{ $now }}', "={{ $now.plus(1, 'hour') }}"]));
+	});
+
+	it('should collect expression defaults from nested options (INodePropertyCollection)', () => {
+		const properties: INodeProperties[] = [
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Time Range',
+						name: 'timeRange',
+						values: [
+							{
+								displayName: 'Start',
+								name: 'start',
+								type: 'string',
+								default: '={{ $now }}',
+							},
+						],
+					},
+				],
+			},
+		];
+		const result = collectExpressionDefaults(properties);
+		expect(result).toEqual(new Set(['={{ $now }}']));
+	});
+
+	it('should ignore non-expression defaults', () => {
+		const properties: INodeProperties[] = [
+			{ displayName: 'Name', name: 'name', type: 'string', default: 'hello' },
+			{ displayName: 'Count', name: 'count', type: 'number', default: 5 },
+			{ displayName: 'Active', name: 'active', type: 'boolean', default: true },
+		];
+		const result = collectExpressionDefaults(properties);
+		expect(result).toEqual(new Set());
 	});
 });

@@ -1,84 +1,107 @@
-import type { StoryFn } from '@storybook/vue3-vite';
-import { action } from 'storybook/actions';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
 import N8nIconButton from './IconButton.vue';
 
-export default {
-	title: 'Core/Icon Button',
+const meta = {
+	title: 'Core/IconButton',
 	component: N8nIconButton,
 	argTypes: {
-		type: {
+		icon: {
+			control: 'text',
+		},
+		variant: {
 			control: 'select',
-			options: ['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'],
+			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
 		},
 		size: {
-			control: {
-				type: 'select',
-			},
-			options: ['mini', 'small', 'medium', 'large', 'xlarge'],
+			control: 'select',
+			options: ['xsmall', 'small', 'medium', 'large', 'xlarge'],
+		},
+		loading: {
+			control: 'boolean',
+		},
+		disabled: {
+			control: 'boolean',
 		},
 	},
 	parameters: {
-		backgrounds: { default: '--color--background--light-2' },
+		docs: {
+			description: {
+				component:
+					'An icon-only button. Prefer wrapping with `N8nTooltip` and always provide an accessible `aria-label`.',
+			},
+			source: { type: 'dynamic' },
+		},
+	},
+} satisfies Meta<typeof N8nIconButton>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+	render: (args) => ({
+		components: { N8nIconButton },
+		setup() {
+			return { args };
+		},
+		template: '<N8nIconButton v-bind="args" aria-label="Create" />',
+	}),
+	args: {
+		icon: 'plus',
+		variant: 'solid',
+		size: 'medium',
 	},
 };
 
-const methods = {
-	onClick: action('click'),
-};
-
-const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nIconButton,
+export const Variants: Story = {
+	render: () => ({
+		components: { N8nIconButton },
+		template: `
+			<div style="display: flex; gap: var(--spacing--xs); align-items: center; flex-wrap: wrap;">
+				<N8nIconButton icon="plus" aria-label="Create" variant="solid" />
+				<N8nIconButton icon="plus" aria-label="Create" variant="subtle" />
+				<N8nIconButton icon="plus" aria-label="Create" variant="outline" />
+				<N8nIconButton icon="plus" aria-label="Create" variant="ghost" />
+				<N8nIconButton icon="trash-2" aria-label="Delete" variant="destructive" />
+				<N8nIconButton icon="check" aria-label="Confirm" variant="success" />
+			</div>
+		`,
+	}),
+	args: {
+		icon: 'plus',
 	},
-	template: '<n8n-icon-button @click="onClick" v-bind="args" />',
-	methods,
-});
-
-export const Button = Template.bind({});
-Button.args = {
-	icon: 'plus',
-	title: 'my title',
 };
 
-const ManyTemplate: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nIconButton,
+export const Sizes: Story = {
+	render: () => ({
+		components: { N8nIconButton },
+		template: `
+			<div style="display: flex; gap: var(--spacing--xs); align-items: center; flex-wrap: wrap;">
+				<N8nIconButton icon="plus" aria-label="Create" variant="solid" size="xsmall" />
+				<N8nIconButton icon="plus" aria-label="Create" variant="solid" size="small" />
+				<N8nIconButton icon="plus" aria-label="Create" variant="solid" size="medium" />
+				<N8nIconButton icon="plus" aria-label="Create" variant="solid" size="large" />
+				<N8nIconButton icon="plus" aria-label="Create" variant="solid" size="xlarge" />
+			</div>
+		`,
+	}),
+	args: {
+		icon: 'plus',
 	},
-	template:
-		'<div> <n8n-icon-button v-bind="args" size="xlarge" @click="onClick" /> <n8n-icon-button v-bind="args" size="large" @click="onClick" />  <n8n-icon-button v-bind="args" size="medium" @click="onClick" />  <n8n-icon-button v-bind="args" size="small" @click="onClick" />  <n8n-icon-button v-bind="args" :loading="true" @click="onClick" />  <n8n-icon-button v-bind="args" :disabled="true" @click="onClick" /></div>',
-	methods,
-});
-
-export const Primary = ManyTemplate.bind({});
-Primary.args = {
-	icon: 'plus',
-	title: 'my title',
-	type: 'primary',
 };
 
-export const Outline = ManyTemplate.bind({});
-Outline.args = {
-	icon: 'plus',
-	title: 'my title',
-	type: 'primary',
-	outline: true,
-};
-
-export const Tertiary = ManyTemplate.bind({});
-Tertiary.args = {
-	icon: 'plus',
-	title: 'my title',
-	type: 'tertiary',
-};
-
-export const Text = ManyTemplate.bind({});
-Text.args = {
-	icon: 'plus',
-	title: 'my title',
-	type: 'text',
+export const States: Story = {
+	render: () => ({
+		components: { N8nIconButton },
+		template: `
+			<div style="display: flex; gap: var(--spacing--xs); align-items: center; flex-wrap: wrap;">
+				<N8nIconButton icon="plus" aria-label="Create" variant="solid" />
+				<N8nIconButton icon="plus" aria-label="Create" variant="solid" :loading="true" />
+				<N8nIconButton icon="plus" aria-label="Create" variant="solid" :disabled="true" />
+			</div>
+		`,
+	}),
+	args: {
+		icon: 'plus',
+	},
 };

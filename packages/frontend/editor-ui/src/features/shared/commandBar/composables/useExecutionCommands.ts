@@ -4,10 +4,10 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useToast } from '@/app/composables/useToast';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { getResourcePermissions } from '@n8n/permissions';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { executionRetryMessage } from '@/features/execution/executions/executions.utils';
@@ -35,7 +35,7 @@ export function useExecutionCommands(): CommandGroup {
 	const message = useMessage();
 	const telemetry = useTelemetry();
 
-	const workflowId = computed(() => route.params.name as string);
+	const workflowId = computed(() => route.params.workflowId as string);
 
 	const activeExecution = computed(() => {
 		return executionsStore.activeExecution as ExecutionSummary & {
@@ -122,13 +122,13 @@ export function useExecutionCommands(): CommandGroup {
 				await router
 					.replace({
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: workflowId.value, executionId: nextExecution.id },
+						params: { workflowId: workflowId.value, executionId: nextExecution.id },
 					})
 					.catch(() => {});
 			} else {
 				await router.replace({
 					name: VIEWS.EXECUTION_HOME,
-					params: { name: workflowId.value },
+					params: { workflowId: workflowId.value },
 				});
 			}
 
@@ -190,7 +190,7 @@ export function useExecutionCommands(): CommandGroup {
 		void router.push({
 			name: VIEWS.EXECUTION_DEBUG,
 			params: {
-				name: activeExecution.value.workflowId,
+				workflowId: activeExecution.value.workflowId,
 				executionId: activeExecution.value.id,
 			},
 		});

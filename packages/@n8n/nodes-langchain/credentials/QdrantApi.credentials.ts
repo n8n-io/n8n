@@ -8,7 +8,7 @@ import type {
 export class QdrantApi implements ICredentialType {
 	name = 'qdrantApi';
 
-	displayName = 'QdrantApi';
+	displayName = 'Qdrant API';
 
 	documentationUrl = 'https://docs.n8n.io/integrations/builtin/credentials/qdrant/';
 

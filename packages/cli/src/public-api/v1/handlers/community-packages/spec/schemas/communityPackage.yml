@@ -1,0 +1,38 @@
+type: object
+properties:
+  packageName:
+    type: string
+    description: npm package name
+  installedVersion:
+    type: string
+    description: Currently installed version
+  authorName:
+    type: string
+    description: Package author name
+  authorEmail:
+    type: string
+    description: Package author email
+  installedNodes:
+    type: array
+    description: Nodes included in this package
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        latestVersion:
+          type: number
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time
+  updateAvailable:
+    type: string
+    description: Version available for update, if any
+  failedLoading:
+    type: boolean
+    description: Whether the package failed to load
