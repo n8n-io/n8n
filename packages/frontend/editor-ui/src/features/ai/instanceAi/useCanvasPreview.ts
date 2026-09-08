@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import type { IconName } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import {
 	getLatestBuildResult,
@@ -37,10 +38,9 @@ const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 	recording: 'circle-dot',
 };
 
-/** Stable synthetic id for the one live-recording tab a thread can have at a time. */
-function recordingTabId(threadId: string): string {
-	return `recording:${threadId}`;
-}
+/** Synthetic id for the one live-recording tab a thread view can have at a time — one
+ *  `useCanvasPreview` instance covers exactly one thread, so a plain constant is enough. */
+const RECORDING_TAB_ID = 'recording';
 
 interface UseCanvasPreviewOptions {
 	thread: ThreadRuntime;
@@ -49,6 +49,8 @@ interface UseCanvasPreviewOptions {
 }
 
 export function useCanvasPreview({ thread, threadId, initialAgentId }: UseCanvasPreviewOptions) {
+	const i18n = useI18n();
+
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 	const isPreviewOpen = ref(false);
@@ -76,9 +78,9 @@ export function useCanvasPreview({ thread, threadId, initialAgentId }: UseCanvas
 		}
 		if (liveRecording.isRecording.value) {
 			result.push({
-				id: recordingTabId(threadId()),
+				id: RECORDING_TAB_ID,
 				type: 'recording',
-				name: 'Recording',
+				name: i18n.baseText('instanceAi.recordingPreview.title'),
 				icon: ARTIFACT_ICON_MAP.recording,
 				building: true,
 			});
@@ -87,10 +89,11 @@ export function useCanvasPreview({ thread, threadId, initialAgentId }: UseCanvas
 		return result;
 	});
 
-	const activeRecordingId = computed(() => {
-		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
-		return tab?.type === 'recording' ? tab.id : null;
-	});
+	const activeRecordingId = computed(() =>
+		allArtifactTabs.value.find((t) => t.id === activeTabId.value)?.type === 'recording'
+			? RECORDING_TAB_ID
+			: null,
+	);
 
 	// Auto-open the recording artifact the moment it goes live, mirroring the
 	// auto-open behavior for a fresh build result below.
@@ -98,7 +101,7 @@ export function useCanvasPreview({ thread, threadId, initialAgentId }: UseCanvas
 		() => liveRecording.isRecording.value,
 		(isRecording) => {
 			if (!isRecording) return;
-			activeTabId.value = recordingTabId(threadId());
+			activeTabId.value = RECORDING_TAB_ID;
 			isPreviewOpen.value = true;
 		},
 		{ flush: 'sync' },

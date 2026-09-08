@@ -81,4 +81,15 @@ describe('useLiveRecordingState', () => {
 
 		expect(state.elapsedMs.value).toBe(0);
 	});
+
+	it('runs no ticking timer before a recording starts, or after it ends', () => {
+		useLiveRecordingState(() => 'thread-1');
+		expect(vi.getTimerCount()).toBe(0);
+
+		emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 0 });
+		expect(vi.getTimerCount()).toBe(1);
+
+		emitRecordingState({ threadId: 'thread-1', status: 'stopped', actionCount: 0 });
+		expect(vi.getTimerCount()).toBe(0);
+	});
 });
