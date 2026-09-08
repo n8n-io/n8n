@@ -399,8 +399,8 @@ export function buildContextResourcesBlock(
 		header,
 		...lines,
 		pendingAgentGuidance,
-		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
 		...diagnosticsBlocks,
+		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
 	]
 		.filter(Boolean)
 		.join('\n');

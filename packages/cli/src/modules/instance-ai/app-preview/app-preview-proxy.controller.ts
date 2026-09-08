@@ -24,6 +24,20 @@ export type AppPreviewRequest = IncomingMessage & {
 const SANDBOX_RESTARTED_HEADER = 'x-sandbox-restarted';
 
 /**
+ * The path is forwarded verbatim under the key-bearing `/sandboxes/<id>/ports/<port>`
+ * prefix, so no segment may climb out of it, encoded or not.
+ */
+function hasDotDotSegment(segments: string[]): boolean {
+	return segments.some((segment) => {
+		try {
+			return decodeURIComponent(segment).split(/[\\/]/).includes('..');
+		} catch {
+			return true;
+		}
+	});
+}
+
+/**
  * Reverse proxy from `/apps-preview/<token>/…` to the dev server in the
  * thread's sandbox. The token in the path is the credential
  * (`AppPreviewService.resolveToken`), so the router skips session auth: the
@@ -79,7 +93,7 @@ export class AppPreviewProxyController {
 				}
 				const restarted =
 					proxyRes.statusCode === 409 && proxyRes.headers[SANDBOX_RESTARTED_HEADER] !== undefined;
-				if ((restarted || proxyRes.statusCode === 502) && req.appPreview) {
+				if (restarted && req.appPreview) {
 					this.appPreviewService.markDead(req.appPreview);
 				}
 			},
@@ -103,9 +117,10 @@ export class AppPreviewProxyController {
 		private readonly userRepository: UserRepository,
 	) {}
 
-	async handle(req: Request, res: Response, next: NextFunction): Promise<void> {
+	async handle(req: Request & AppPreviewRequest, res: Response, next: NextFunction): Promise<void> {
 		const [, token, ...rest] = req.path.split('/');
-		const entry = token ? this.appPreviewService.resolveToken(token) : undefined;
+		const entry =
+			token && !hasDotDotSegment(rest) ? this.appPreviewService.resolveToken(token) : undefined;
 		if (!entry) {
 			res.status(404).type('text').send('Not found');
 			return;
@@ -120,7 +135,7 @@ export class AppPreviewProxyController {
 			res.status(404).type('text').send('Not found');
 			return;
 		}
-		(req as AppPreviewRequest).appPreview = entry;
+		req.appPreview = entry;
 		await this.proxy(req, res, next);
 	}
 
@@ -129,7 +144,10 @@ export class AppPreviewProxyController {
 		server.on('upgrade', (req: AppPreviewRequest, socket: Socket, head: Buffer) => {
 			const pathname = URL.parse(req.url ?? '', 'http://localhost')?.pathname;
 			if (!pathname?.startsWith(`${APP_PREVIEW_PATH_PREFIX}/`)) return;
-			const entry = this.appPreviewService.resolveToken(pathname.split('/')[2] ?? '');
+			const [, , token, ...rest] = pathname.split('/');
+			const entry = hasDotDotSegment(rest)
+				? undefined
+				: this.appPreviewService.resolveToken(token ?? '');
 			if (!entry) {
 				socket.destroy();
 				return;

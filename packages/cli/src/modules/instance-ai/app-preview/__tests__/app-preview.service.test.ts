@@ -68,7 +68,7 @@ describe('AppPreviewService', () => {
 		vi.useRealTimers();
 		vi.stubGlobal('fetch', fetchMock);
 		jwtService.sign.mockImplementation((payload, options) => jwt.sign(payload, SECRET, options));
-		jwtService.verify.mockImplementation((token) => jwt.verify(token, SECRET));
+		jwtService.verify.mockImplementation((token, options) => jwt.verify(token, SECRET, options));
 		sandboxClient.getSandbox.mockResolvedValue(mock<SandboxRecord>());
 		sandboxClient.stat.mockResolvedValue({});
 		sandboxClient.exec.mockResolvedValue(execOk);
@@ -144,9 +144,9 @@ describe('AppPreviewService', () => {
 		});
 
 		it.each([501, 404])(
-			'returns unsupported/port-route on %i from the port route and caches it',
+			'returns unsupported/port-route on a plain %i from the port route and caches it',
 			async (status) => {
-				fetchMock.mockResolvedValue(httpResponse(status));
+				fetchMock.mockResolvedValue(httpResponse(status, { 'Content-Type': 'text/plain' }));
 
 				await expect(service.ensure(input)).resolves.toEqual({
 					status: 'unsupported',
@@ -159,6 +159,19 @@ describe('AppPreviewService', () => {
 				expect(fetchMock).toHaveBeenCalledTimes(1);
 			},
 		);
+
+		it('treats an HTML 404 from the port route as a gone dev server, not a missing route', async () => {
+			await service.ensure(input);
+			fetchMock
+				.mockResolvedValueOnce(httpResponse(404, { 'Content-Type': 'text/html; charset=utf-8' }))
+				.mockResolvedValue(httpResponse(200));
+
+			await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(4);
+			await expect(service.ensure({ ...input, appId: 'app-2' })).resolves.toMatchObject({
+				status: 'ready',
+			});
+		});
 
 		it('treats a 404 from the port route as gone when the sandbox is gone too', async () => {
 			await service.ensure(input);
@@ -225,6 +238,82 @@ describe('AppPreviewService', () => {
 			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
 		});
 
+		it('hands off to polling when the start outlasts the handoff window', async () => {
+			vi.useFakeTimers();
+			let finishStart: (result: ExecResult) => void = () => {};
+			sandboxClient.exec
+				.mockResolvedValueOnce(execOk)
+				.mockImplementationOnce(
+					async () => await new Promise<ExecResult>((resolve) => (finishStart = resolve)),
+				);
+
+			const first = service.ensure(input);
+			await vi.advanceTimersByTimeAsync(1_999);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
+			await vi.advanceTimersByTimeAsync(1);
+			await expect(first).resolves.toEqual({ status: 'starting' });
+			await expect(service.ensure(input)).resolves.toEqual({ status: 'starting' });
+
+			finishStart(execOk);
+			await vi.advanceTimersByTimeAsync(0);
+			await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
+		});
+
+		it('lets a sibling start settle before replacing it, so its probe never poisons the route cache', async () => {
+			const starts: Array<(result: ExecResult) => void> = [];
+			let liveToken = '';
+			sandboxClient.exec.mockImplementation(async (_id, request) => {
+				const base = /APP_BASE=\/apps-preview\/([\w.-]+)\//.exec(request.command);
+				if (!base) return execOk;
+				liveToken = base[1];
+				return await new Promise<ExecResult>((resolve) => starts.push(resolve));
+			});
+			// Like Vite: only the base of the dev server that is running answers; anything else is an HTML 404.
+			fetchMock.mockImplementation(async (url) =>
+				String(url).includes(`/apps-preview/${liveToken}/`)
+					? httpResponse(200)
+					: httpResponse(404, { 'Content-Type': 'text/html' }),
+			);
+
+			const first = service.ensure(input);
+			await vi.waitFor(() => expect(starts).toHaveLength(1));
+			const second = service.ensure({ ...input, appId: 'app-2', namespace: 'other' });
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			expect(starts).toHaveLength(1);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
+
+			starts[0](execOk);
+			await expect(first).resolves.toMatchObject({ status: 'ready' });
+			await vi.waitFor(() => expect(starts).toHaveLength(2));
+			starts[1](execOk);
+			const result = await second;
+
+			expect(result.status).toBe('ready');
+			expect(service.resolveToken(tokenOf(await first))).toBeUndefined();
+			expect(service.resolveToken(tokenOf(result))).toMatchObject({ appId: 'app-2' });
+			await expect(
+				service.ensure({ ...input, appId: 'app-2', namespace: 'other' }),
+			).resolves.toEqual(result);
+		});
+
+		it('does not resurrect an entry that was cleared while it was starting', async () => {
+			let finishStart: (result: ExecResult) => void = () => {};
+			sandboxClient.exec
+				.mockResolvedValueOnce(execOk)
+				.mockImplementationOnce(
+					async () => await new Promise<ExecResult>((resolve) => (finishStart = resolve)),
+				);
+
+			const first = service.ensure(input);
+			await vi.waitFor(() => expect(sandboxClient.exec).toHaveBeenCalledTimes(2));
+			service.clearThread('thread-1');
+			finishStart(execOk);
+			const result = await first;
+
+			expect(service.resolveToken(tokenOf(result))).toBeUndefined();
+		});
+
 		it('replaces the dev server of another app in the same sandbox', async () => {
 			const first = await service.ensure(input);
 			const second = await service.ensure({ ...input, appId: 'app-2', namespace: 'other' });
@@ -277,10 +366,21 @@ describe('AppPreviewService', () => {
 			expect(service.resolveToken(tokenOf(result))).toBeUndefined();
 		});
 
+		it('rejects a token with the same claims signed for another audience', async () => {
+			const result = await service.ensure(input);
+			const { aud, ...claims } = jwt.decode(tokenOf(result)) as jwt.JwtPayload;
+			expect(aud).toBe('app-preview');
+
+			expect(service.resolveToken(jwt.sign(claims, SECRET))).toBeUndefined();
+			expect(service.resolveToken(jwt.sign(claims, SECRET, { audience: 'other' }))).toBeUndefined();
+			expect(service.resolveToken(tokenOf(result))).toBeDefined();
+		});
+
 		it('rejects a validly signed token with an unknown jti', () => {
 			const token = jwt.sign(
 				{ sub: 'user-1', appId: 'app-1', threadId: 'thread-1', jti: 'unknown' },
 				SECRET,
+				{ audience: 'app-preview' },
 			);
 
 			expect(service.resolveToken(token)).toBeUndefined();

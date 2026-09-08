@@ -74,7 +74,6 @@ import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
-import { AppPreviewProxyController } from './modules/instance-ai/app-preview/app-preview-proxy.controller';
 import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
@@ -544,7 +543,7 @@ export class Server extends AbstractServer {
 		Container.get(WorkflowIndexService).init();
 	}
 
-	protected setupPushServer(): void {
+	protected async setupPushServer(): Promise<void> {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
@@ -552,6 +551,10 @@ export class Server extends AbstractServer {
 		if (moduleRegistry.isActive('instance-ai')) {
 			Container.get(BrowserUseServer).setup(server, app);
 			if (moduleRegistry.isActive('apps')) {
+				// Already loaded by the instance-ai module init when the apps module is active.
+				const { AppPreviewProxyController } = await import(
+					'./modules/instance-ai/app-preview/app-preview-proxy.controller.js'
+				);
 				Container.get(AppPreviewProxyController).setupUpgrade(server);
 			}
 		}

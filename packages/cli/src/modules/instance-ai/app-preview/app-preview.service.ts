@@ -12,7 +12,11 @@ import { buildThreadScopedSandboxUuid } from '../sandbox/instance-ai-sandbox.ser
 export const APP_PREVIEW_PORT = 5173;
 export const APP_PREVIEW_PATH_PREFIX = '/apps-preview';
 const TOKEN_TTL_SECONDS = 8 * 60 * 60;
+/** Separates preview tokens from the session, invite and reset tokens signed with the same secret. */
+const TOKEN_AUDIENCE = 'app-preview';
 const PROBE_TIMEOUT_MS = 3_000;
+/** A start slower than this (cold `npm install`) answers `starting` and lets the client poll. */
+const START_HANDOFF_MS = 2_000;
 const START_TIMEOUT_MS = 600_000;
 const UNSUPPORTED_ROUTE_CACHE_MS = 10 * 60 * 1000;
 const LOG_TAIL_BYTES = 4096;
@@ -137,7 +141,10 @@ export class AppPreviewService {
 			threadId: input.threadId,
 			jti,
 		};
-		const token = this.jwtService.sign(claims, { expiresIn: TOKEN_TTL_SECONDS });
+		const token = this.jwtService.sign(claims, {
+			expiresIn: TOKEN_TTL_SECONDS,
+			audience: TOKEN_AUDIENCE,
+		});
 		const startedAt = new Date();
 		const entry: AppPreviewEntry = {
 			token,
@@ -153,8 +160,11 @@ export class AppPreviewService {
 			startedAt,
 			expiresAt: new Date(startedAt.getTime() + TOKEN_TTL_SECONDS * 1000),
 		};
-		entry.starting = this.runStart(entry).then(
+		// A sibling start or `clearThread` may have replaced or removed this entry meanwhile;
+		// only the entry still in the map may settle itself.
+		const starting = this.runStart(entry).then(
 			(status) => {
+				if (this.entries.get(key) !== entry) return status;
 				if (status.status === 'ready') {
 					this.entries.set(key, { ...entry, starting: undefined });
 				} else {
@@ -163,7 +173,7 @@ export class AppPreviewService {
 				return status;
 			},
 			(error: unknown) => {
-				this.entries.delete(key);
+				if (this.entries.get(key) === entry) this.entries.delete(key);
 				this.logger.warn('App preview dev server start failed', {
 					appId: input.appId,
 					error: error instanceof Error ? error.message : String(error),
@@ -171,8 +181,13 @@ export class AppPreviewService {
 				return { status: 'unavailable', reason: 'sandbox' } satisfies AppPreviewStatus;
 			},
 		);
+		entry.starting = starting;
 		this.entries.set(key, entry);
-		return await entry.starting;
+		const handoff = new Promise<AppPreviewStatus>((resolve) => {
+			const timer = setTimeout(() => resolve({ status: 'starting' }), START_HANDOFF_MS);
+			void starting.finally(() => clearTimeout(timer));
+		});
+		return await Promise.race([starting, handoff]);
 	}
 
 	private async runStart(entry: AppPreviewEntry): Promise<AppPreviewStatus> {
@@ -194,11 +209,12 @@ export class AppPreviewService {
 		}
 
 		// One dev server per sandbox: a preview of another app in this thread must yield its port.
-		for (const other of this.entries.values()) {
-			if (other.sandboxId === entry.sandboxId && other.jti !== entry.jti) {
-				this.entries.delete(entryKey(other.threadId, other.appId));
-			}
-		}
+		// A sibling still starting settles first, so its probe never hits this entry's dev server.
+		const siblings = [...this.entries.values()].filter(
+			(other) => other.sandboxId === entry.sandboxId && other.jti !== entry.jti,
+		);
+		await Promise.allSettled(siblings.map(async (other) => await other.starting));
+		for (const other of siblings) this.markDead(other);
 		await client.exec(entry.sandboxId, {
 			command: 'pkill -f "vite --host" || true',
 			workdir: N8N_SANDBOX_WORKSPACE_ROOT,
@@ -233,9 +249,11 @@ export class AppPreviewService {
 				signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
 			});
 			if (response.ok) return 'ready';
+			// Vite answers an HTML 404 for a path outside its base; the service's route 404 is plain.
+			const isHtml = response.headers.get('content-type')?.includes('text/html') ?? false;
 			if (
 				response.status === 501 ||
-				(response.status === 404 && (await this.sandboxExists(entry)))
+				(response.status === 404 && !isHtml && (await this.sandboxExists(entry)))
 			) {
 				this.portRouteUnsupportedUntil = Date.now() + UNSUPPORTED_ROUTE_CACHE_MS;
 				return 'unsupported';
@@ -262,7 +280,9 @@ export class AppPreviewService {
 
 	private verify(token: string): AppPreviewTokenClaims | undefined {
 		try {
-			const claims = this.jwtService.verify<Partial<AppPreviewTokenClaims>>(token);
+			const claims = this.jwtService.verify<Partial<AppPreviewTokenClaims>>(token, {
+				audience: TOKEN_AUDIENCE,
+			});
 			const { sub, appId, threadId, jti } = claims;
 			if (
 				typeof sub !== 'string' ||

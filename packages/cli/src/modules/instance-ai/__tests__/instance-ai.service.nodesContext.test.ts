@@ -175,7 +175,7 @@ describe('buildContextResourcesBlock — app preview diagnostics attachment', ()
 		],
 	};
 
-	it('renders the errors as a fenced text block after the app context', () => {
+	it('renders the errors as a fenced text block between the app context and the passive-context sentence', () => {
 		const app: InstanceAiAppAttachment = {
 			type: 'app',
 			appId: 'app-1',
@@ -196,6 +196,9 @@ describe('buildContextResourcesBlock — app preview diagnostics attachment', ()
 		);
 		expect(prose).toContain(
 			'    at onClick (Home.vue:12:3)\n\n[2026-09-08T10:00:01.000Z] vite-error: Unexpected token\n```',
+		);
+		expect(prose.indexOf('Errors observed in the live preview')).toBeLessThan(
+			prose.indexOf('Treat this purely as context'),
 		);
 	});
 

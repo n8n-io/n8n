@@ -1,7 +1,7 @@
 import type { User, UserRepository } from '@n8n/db';
 import express from 'express';
 import type { AddressInfo, Socket } from 'node:net';
-import { createServer, type IncomingMessage, type Server as HttpServer } from 'node:http';
+import { createServer, request, type IncomingMessage, type Server as HttpServer } from 'node:http';
 import { mock } from 'vitest-mock-extended';
 import { WebSocket, WebSocketServer } from 'ws';
 
@@ -97,6 +97,18 @@ describe('AppPreviewProxyController', () => {
 	const get = async (path: string, headers: Record<string, string> = {}) =>
 		await fetch(`${baseUrl}${path}`, { headers, redirect: 'manual' });
 
+	/** `fetch` normalizes dot segments away; this sends the path as is. */
+	const getRaw = async (path: string) =>
+		await new Promise<IncomingMessage>((resolve, reject) => {
+			const { hostname, port } = new URL(baseUrl);
+			request({ hostname, port, path, method: 'GET' }, (response) => {
+				response.resume();
+				resolve(response);
+			})
+				.on('error', reject)
+				.end();
+		});
+
 	it('answers 404 without a live token', async () => {
 		const response = await get('/apps-preview/unknown/src/main.ts', { cookie: 'n8n-auth=secret' });
 
@@ -107,6 +119,31 @@ describe('AppPreviewProxyController', () => {
 	it('answers 404 for the bare prefix', async () => {
 		expect((await get('/apps-preview')).status).toBe(404);
 		expect((await get('/apps-preview/')).status).toBe(404);
+	});
+
+	it.each([
+		'/../../sandboxes/other/exec',
+		'/src/..%2F..%2F..%2Fsandboxes/other/exec',
+		'/%2e%2e/%2e%2e/sandboxes/other/exec',
+		'/src/.%2e/..',
+		'/%zz',
+	])(
+		'answers 404 without proxying when the path climbs out of the token prefix (%s)',
+		async (suffix) => {
+			const response = await getRaw(`/apps-preview/${LIVE_TOKEN}${suffix}`);
+
+			expect(response.statusCode).toBe(404);
+			expect(upstreamRequests).toHaveLength(0);
+		},
+	);
+
+	it('proxies a path with a dot segment that stays inside the token prefix', async () => {
+		const response = await getRaw(`/apps-preview/${LIVE_TOKEN}/src/./main.ts`);
+
+		expect(response.statusCode).toBe(200);
+		expect(upstreamRequests[0].url).toBe(
+			`/sandboxes/sandbox-1/ports/5173/apps-preview/${LIVE_TOKEN}/src/./main.ts`,
+		);
 	});
 
 	it('redirects the slash-less token URL to the slashed form', async () => {
@@ -241,6 +278,24 @@ describe('AppPreviewProxyController', () => {
 		expect(response.status).toBe(409);
 		expect(appPreviewService.markDead).toHaveBeenCalledWith(restartedEntry);
 		await new Promise<void>((resolve) => restartedUpstream.close(() => resolve()));
+	});
+
+	it('relays an upstream 502 without marking the entry dead', async () => {
+		const flakyUpstream = createServer((_req, res) => {
+			res.writeHead(502);
+			res.end();
+		});
+		await new Promise<void>((resolve) => flakyUpstream.listen(0, '127.0.0.1', resolve));
+		appPreviewService.resolveToken.mockReturnValue({
+			...entry,
+			sandbox: { url: `http://127.0.0.1:${(flakyUpstream.address() as AddressInfo).port}` },
+		});
+
+		const response = await get(`/apps-preview/${LIVE_TOKEN}/src/main.ts`);
+
+		expect(response.status).toBe(502);
+		expect(appPreviewService.markDead).not.toHaveBeenCalled();
+		await new Promise<void>((resolve) => flakyUpstream.close(() => resolve()));
 	});
 
 	it('answers 502 and marks the entry dead when the upstream refuses the connection', async () => {
