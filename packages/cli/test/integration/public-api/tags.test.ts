@@ -119,6 +119,15 @@ describe('GET /tags/:id', () => {
 		expect(createdAt).toEqual(tag.createdAt.toISOString());
 		expect(updatedAt).toEqual(tag.updatedAt.toISOString());
 	});
+
+	test('should ignore an undocumented query parameter', async () => {
+		const tag = await createTag({});
+
+		const response = await authMemberAgent.get(`/tags/${tag.id}?bogus=1`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.id).toEqual(tag.id);
+	});
 });
 
 describe('DELETE /tags/:id', () => {
@@ -191,6 +200,29 @@ describe('POST /tags', () => {
 		const response = await authOwnerAgent.post('/tags').send({});
 
 		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe("request/body must have required property 'name'");
+	});
+
+	test('should reject a read-only property', async () => {
+		const response = await authOwnerAgent
+			.post('/tags')
+			.send({ name: 'Tag 1', id: 'gZqmqiGAuo1dHT7q' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('request/body/id is read-only');
+	});
+
+	test('should report a name the entity rejects as a conflict', async () => {
+		const response = await authOwnerAgent.post('/tags').send({ name: 'a'.repeat(30) });
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.message).toBe('Tag already exists');
+	});
+
+	test('should reject an unknown property', async () => {
+		const response = await authOwnerAgent.post('/tags').send({ name: 'Tag 1', colour: 'red' });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should create tag', async () => {
@@ -259,6 +291,18 @@ describe('PUT /tags/:id', () => {
 		const response = await authOwnerAgent.put('/tags/gZqmqiGAuo1dHT7q').send({});
 
 		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe("request/body must have required property 'name'");
+	});
+
+	test('should reject a read-only property', async () => {
+		const tag = await createTag({});
+
+		const response = await authOwnerAgent
+			.put(`/tags/${tag.id}`)
+			.send({ name: 'New name', updatedAt: new Date().toISOString() });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('request/body/updatedAt is read-only');
 	});
 
 	test('should update tag', async () => {
@@ -277,6 +321,8 @@ describe('PUT /tags/:id', () => {
 		expect(id).toBe(tag.id);
 		expect(name).toBe(payload.name);
 		expect(updatedAt).not.toBe(tag.updatedAt.toISOString());
+		// An update saves only the changed fields, so the response has never carried a `createdAt`.
+		expect(response.body).not.toHaveProperty('createdAt');
 
 		// check updated tag in DB
 		const dbTag = await Container.get(TagRepository).findOne({
