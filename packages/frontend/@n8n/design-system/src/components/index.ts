@@ -38,6 +38,7 @@ export { default as N8nCard } from './N8nCard';
 export { default as N8nCircleLoader } from './N8nCircleLoader';
 export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';
+export { default as N8nCopyInput } from './N8nCopyInput';
 export { default as N8nDatatable } from './N8nDatatable';
 export { default as N8nEmptyState } from './N8nEmptyState';
 export type { EmptyStateCardIcon, EmptyStateIconCards } from './N8nEmptyState';
