@@ -27,6 +27,23 @@ export const pageRouteSchema = z
 	.max(255)
 	.regex(PAGE_ROUTE_REGEX, PAGE_ROUTE_ERROR_MESSAGE);
 
+// Flat CSS custom-property overrides applied on top of the shadcn-vue template's
+// default :root/.dark block. Keep this allowlist in sync with the Theme tab's fields.
+export const appThemeVarsSchema = z
+	.object({
+		'--primary': z.string().trim().min(1).max(120).optional(),
+		'--font-sans': z.string().trim().min(1).max(120).optional(),
+		'--radius': z.string().trim().min(1).max(120).optional(),
+	})
+	.strict();
+
+export const appThemeSchema = z.object({
+	mode: z.enum(['light', 'dark', 'system']),
+	vars: appThemeVarsSchema,
+});
+
+export type AppTheme = z.infer<typeof appThemeSchema>;
+
 export const appVersionSchema = z.object({
 	id: z.string(),
 	appId: z.string(),

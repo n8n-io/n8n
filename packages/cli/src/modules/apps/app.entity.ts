@@ -1,3 +1,4 @@
+import type { AppTheme } from '@n8n/api-types';
 import { Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
@@ -15,7 +16,7 @@ export class App extends WithTimestampsAndStringId {
 	namespace: string;
 
 	@Column({ type: 'json', nullable: true })
-	theme: Record<string, unknown> | null;
+	theme: AppTheme | null;
 
 	@ManyToOne(() => Project)
 	@JoinColumn({ name: 'projectId' })

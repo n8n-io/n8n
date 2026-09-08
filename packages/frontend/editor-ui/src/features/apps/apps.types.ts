@@ -1,8 +1,18 @@
+/** Flat CSS custom-property overrides on top of the shadcn-vue template's default :root/.dark block. */
+export interface AppTheme {
+	mode: 'light' | 'dark' | 'system';
+	vars: {
+		'--primary'?: string;
+		'--font-sans'?: string;
+		'--radius'?: string;
+	};
+}
+
 export interface App {
 	id: string;
 	name: string;
 	namespace: string;
-	theme: Record<string, unknown> | null;
+	theme: AppTheme | null;
 	projectId: string;
 	/** Version served at `/apps/<namespace>/`; null until the first build. */
 	activeVersionId: string | null;
@@ -30,4 +40,10 @@ export interface DataWorkflowOption {
 export interface UpdatePageInput {
 	route?: string;
 	dataWorkflowId?: string | null;
+}
+
+export interface UpdateAppInput {
+	name?: string;
+	namespace?: string;
+	theme?: AppTheme;
 }
