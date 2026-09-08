@@ -20,6 +20,7 @@
  * data before the normalizer falls back to a minimal envelope.
  */
 
+import { isRecord } from '@n8n/utils/is-record';
 import { evalCanvasPng } from 'n8n-core';
 
 /** The subset of the mock response spec these normalizers read/mutate. */
@@ -50,10 +51,6 @@ function placeholderImageB64(): string {
 // one — the node interpolates it into a follow-up `/contact/vid/{vid}/profile`
 // URL, so it must be a number.
 const DEFAULT_HUBSPOT_VID = 3234574;
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function nowUnix(): number {
 	return Math.floor(Date.now() / 1000);
@@ -111,7 +108,7 @@ function isGmailMessagesList(host: string, path: string, method: string): boolea
 function extractAnswerText(body: unknown): string {
 	if (body === null || body === undefined) return '';
 	if (typeof body === 'string') return body;
-	if (!isPlainObject(body)) return String(body as number | boolean | bigint);
+	if (!isRecord(body)) return String(body as number | boolean | bigint);
 
 	if (typeof body.text === 'string') return body.text;
 	if (typeof body.content === 'string') return body.content;
@@ -138,14 +135,14 @@ function normalizeOpenAiImages(spec: NormalizableSpec): void {
 	let base: Record<string, unknown> = {};
 	let rawEntries: unknown[] | undefined;
 
-	if (isPlainObject(body) && Array.isArray(body.data)) {
+	if (isRecord(body) && Array.isArray(body.data)) {
 		base = body;
 		rawEntries = body.data;
 	} else if (Array.isArray(body)) {
 		rawEntries = body;
-	} else if (isPlainObject(body) && ('b64_json' in body || 'url' in body)) {
+	} else if (isRecord(body) && ('b64_json' in body || 'url' in body)) {
 		rawEntries = [body];
-	} else if (isPlainObject(body)) {
+	} else if (isRecord(body)) {
 		base = body;
 	}
 
@@ -158,7 +155,7 @@ function normalizeOpenAiImages(spec: NormalizableSpec): void {
 function coerceImageEntry(entry: unknown): Record<string, unknown> {
 	// Every entry gets real bytes (the node's default b64_json mode crashes on a
 	// missing field even when the model answered url-style); `url` is preserved.
-	const base = isPlainObject(entry) ? entry : {};
+	const base = isRecord(entry) ? entry : {};
 	return { ...base, b64_json: placeholderImageB64() };
 }
 
@@ -177,14 +174,14 @@ function coerceImageEntry(entry: unknown): Record<string, unknown> {
  */
 function normalizeOpenAiCompletionText(spec: NormalizableSpec, kind: 'responses' | 'chat'): void {
 	const body = spec.body;
-	if (!isPlainObject(body)) return;
+	if (!isRecord(body)) return;
 
 	if (kind === 'responses') {
 		if (Array.isArray(body.output)) {
 			for (const item of body.output) {
-				if (!isPlainObject(item) || !Array.isArray(item.content)) continue;
+				if (!isRecord(item) || !Array.isArray(item.content)) continue;
 				for (const part of item.content) {
-					if (isPlainObject(part) && 'text' in part && typeof part.text !== 'string') {
+					if (isRecord(part) && 'text' in part && typeof part.text !== 'string') {
 						part.text = JSON.stringify(part.text);
 					}
 				}
@@ -198,7 +195,7 @@ function normalizeOpenAiCompletionText(spec: NormalizableSpec, kind: 'responses'
 
 	if (Array.isArray(body.choices)) {
 		for (const choice of body.choices) {
-			if (!isPlainObject(choice) || !isPlainObject(choice.message)) continue;
+			if (!isRecord(choice) || !isRecord(choice.message)) continue;
 			const content = choice.message.content;
 			// null (tool-calls-only turn) and content-part arrays are valid shapes.
 			if (content !== null && content !== undefined && typeof content !== 'string') {
@@ -228,11 +225,11 @@ function normalizeGemini(spec: NormalizableSpec): void {
 }
 
 function hasGeminiCandidates(body: unknown): boolean {
-	if (!isPlainObject(body) || !Array.isArray(body.candidates) || body.candidates.length === 0) {
+	if (!isRecord(body) || !Array.isArray(body.candidates) || body.candidates.length === 0) {
 		return false;
 	}
 	const first: unknown = body.candidates[0];
-	if (!isPlainObject(first) || !isPlainObject(first.content)) return false;
+	if (!isRecord(first) || !isRecord(first.content)) return false;
 	return Array.isArray(first.content.parts) && first.content.parts.length > 0;
 }
 
@@ -254,16 +251,16 @@ function normalizeReddit(spec: NormalizableSpec, kind: 'submit' | 'comment'): vo
 
 /** Peel any existing `{ json: { data } }` / `{ data }` wrapper down to the payload object. */
 function extractRedditData(body: unknown): Record<string, unknown> {
-	if (isPlainObject(body) && isPlainObject(body.json) && isPlainObject(body.json.data)) {
+	if (isRecord(body) && isRecord(body.json) && isRecord(body.json.data)) {
 		return body.json.data;
 	}
-	if (isPlainObject(body) && isPlainObject(body.data)) return body.data;
-	if (isPlainObject(body)) return body;
+	if (isRecord(body) && isRecord(body.data)) return body.data;
+	if (isRecord(body)) return body;
 	return {};
 }
 
 function existingRedditErrors(body: unknown): unknown[] {
-	if (isPlainObject(body) && isPlainObject(body.json) && Array.isArray(body.json.errors)) {
+	if (isRecord(body) && isRecord(body.json) && Array.isArray(body.json.errors)) {
 		return body.json.errors;
 	}
 	return [];
@@ -271,7 +268,7 @@ function existingRedditErrors(body: unknown): unknown[] {
 
 /** Ensure the comment envelope's `things[0].data` path exists. */
 function ensureRedditThings(data: Record<string, unknown>): Record<string, unknown> {
-	if (Array.isArray(data.things) && isPlainObject(data.things[0]) && data.things[0].data) {
+	if (Array.isArray(data.things) && isRecord(data.things[0]) && data.things[0].data) {
 		return data;
 	}
 	return { things: [{ kind: 't1', data }] };
@@ -287,7 +284,7 @@ function ensureRedditThings(data: Record<string, unknown>): Record<string, unkno
  * and a boolean `isNew`.
  */
 function normalizeHubspotUpsert(spec: NormalizableSpec): void {
-	const body = isPlainObject(spec.body) ? spec.body : {};
+	const body = isRecord(spec.body) ? spec.body : {};
 	spec.body = {
 		...body,
 		vid: resolveHubspotVid(body),
@@ -328,7 +325,7 @@ function normalizeGmailMessagesList(spec: NormalizableSpec): void {
  * array — one empty reply object is a valid response (e.g. for insertText).
  */
 function normalizeGoogleDocsBatchUpdate(spec: NormalizableSpec): void {
-	const body = isPlainObject(spec.body) ? spec.body : {};
+	const body = isRecord(spec.body) ? spec.body : {};
 	const replies = Array.isArray(body.replies) && body.replies.length > 0 ? body.replies : [{}];
 	spec.body = { ...body, replies };
 }
@@ -393,14 +390,13 @@ function gmailMessagesListViolation(body: unknown): string | undefined {
 }
 
 function openAiImagesViolation(body: unknown): string | undefined {
-	const data = isPlainObject(body) ? body.data : undefined;
+	const data = isRecord(body) ? body.data : undefined;
 	if (!Array.isArray(data) || data.length === 0) {
 		return 'Invalid: OpenAI /v1/images/generations must return a JSON object with a `data` ARRAY of image objects, e.g. `{ "created": <unix>, "data": [{ "b64_json": "..." }] }`. Resubmit with that envelope.';
 	}
 	const brokenEntry = data.some(
 		(entry) =>
-			!isPlainObject(entry) ||
-			(typeof entry.b64_json !== 'string' && typeof entry.url !== 'string'),
+			!isRecord(entry) || (typeof entry.b64_json !== 'string' && typeof entry.url !== 'string'),
 	);
 	if (brokenEntry) {
 		return 'Invalid: every OpenAI image `data[]` entry must carry a `b64_json` (base64 string) — the node decodes it. Resubmit with `data: [{ "b64_json": "..." }]`.';
@@ -412,12 +408,12 @@ function openAiCompletionTextViolation(
 	body: unknown,
 	kind: 'responses' | 'chat',
 ): string | undefined {
-	if (!isPlainObject(body)) return undefined;
+	if (!isRecord(body)) return undefined;
 	if (kind === 'responses' && Array.isArray(body.output)) {
 		for (const item of body.output) {
-			if (!isPlainObject(item) || !Array.isArray(item.content)) continue;
+			if (!isRecord(item) || !Array.isArray(item.content)) continue;
 			for (const part of item.content) {
-				if (isPlainObject(part) && 'text' in part && typeof part.text !== 'string') {
+				if (isRecord(part) && 'text' in part && typeof part.text !== 'string') {
 					return 'Invalid: OpenAI /v1/responses `output[].content[].text` must be a STRING — when the answer is JSON, JSON-encode it into the string (e.g. "{\\"quotes\\":[...]}"), never embed the parsed object. Resubmit with `text` as a string.';
 				}
 			}
@@ -425,7 +421,7 @@ function openAiCompletionTextViolation(
 	}
 	if (kind === 'chat' && Array.isArray(body.choices)) {
 		for (const choice of body.choices) {
-			if (!isPlainObject(choice) || !isPlainObject(choice.message)) continue;
+			if (!isRecord(choice) || !isRecord(choice.message)) continue;
 			const content = choice.message.content;
 			if (content !== null && content !== undefined && typeof content !== 'string') {
 				if (!Array.isArray(content)) {
@@ -443,13 +439,13 @@ function geminiViolation(body: unknown): string | undefined {
 }
 
 function redditViolation(body: unknown, kind: 'submit' | 'comment'): string | undefined {
-	const data = isPlainObject(body) && isPlainObject(body.json) ? body.json.data : undefined;
-	if (!isPlainObject(data)) {
+	const data = isRecord(body) && isRecord(body.json) ? body.json.data : undefined;
+	if (!isRecord(data)) {
 		return 'Invalid: Reddit write responses must use the `{ "json": { "errors": [], "data": { ... } } }` envelope — the node reads response.json.data. Resubmit wrapped in that shape.';
 	}
 	if (kind === 'comment') {
 		const things = data.things;
-		if (!Array.isArray(things) || !isPlainObject(things[0]) || !things[0].data) {
+		if (!Array.isArray(things) || !isRecord(things[0]) || !things[0].data) {
 			return 'Invalid: Reddit api/comment responses put the comment under `json.data.things[0].data`. Resubmit with `{ "json": { "data": { "things": [{ "kind": "t1", "data": { ... } }] } } }`.';
 		}
 	}
@@ -457,13 +453,13 @@ function redditViolation(body: unknown, kind: 'submit' | 'comment'): string | un
 }
 
 function hubspotViolation(body: unknown): string | undefined {
-	const vid = isPlainObject(body) ? body.vid : undefined;
+	const vid = isRecord(body) ? body.vid : undefined;
 	if (typeof vid === 'number' || (typeof vid === 'string' && /^\d+$/.test(vid))) return undefined;
 	return 'Invalid: HubSpot contacts/v1 createOrUpdate returns `{ "vid": <number>, "isNew": <bool> }` — the node reads response.vid. Resubmit with a numeric `vid`.';
 }
 
 function googleDocsViolation(body: unknown): string | undefined {
-	const replies = isPlainObject(body) ? body.replies : undefined;
+	const replies = isRecord(body) ? body.replies : undefined;
 	if (Array.isArray(replies) && replies.length > 0) return undefined;
 	return 'Invalid: Google Docs batchUpdate returns `{ "documentId": "...", "replies": [ ... ] }` with one reply per request — the node reads response.replies[0]. Resubmit with a non-empty `replies` array.';
 }

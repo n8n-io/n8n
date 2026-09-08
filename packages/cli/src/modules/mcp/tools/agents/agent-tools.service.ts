@@ -5,6 +5,7 @@ import {
 	rejectIfUnsupportedNativeWebSearch,
 	type AgentConfigValidationMessages,
 } from '@n8n/ai-utilities/agent-config';
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import {
 	AGENT_MODEL_PROVIDERS,
 	AgentJsonConfigBaseSchema,
@@ -25,7 +26,6 @@ import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -132,7 +132,7 @@ function integrationsChanged(current: AgentJsonConfig, next: unknown): boolean {
 	);
 }
 
-const TELEGRAM_SETTINGS_JSON_SCHEMA = zodToJsonSchema(AgentTelegramSettingsSchema);
+const TELEGRAM_SETTINGS_JSON_SCHEMA = zodSchemaToJsonSchema(AgentTelegramSettingsSchema);
 
 const httpUrlSchema = z
 	.string()
