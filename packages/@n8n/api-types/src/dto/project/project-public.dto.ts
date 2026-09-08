@@ -1,6 +1,5 @@
 import '../../openapi-extend';
 
-import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
 import {
@@ -14,11 +13,9 @@ import {
 	projectNameSchema,
 	projectTypeSchema,
 } from '../../schemas/project.schema';
+import { readOnlyPublicSchema } from '../../schemas/read-only-public.schema';
 import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
-
-const readOnlyPublicSchema = (descriptor: ZodOpenAPIMetadata) =>
-	z.undefined({ invalid_type_error: 'is read-only' }).openapi(descriptor);
 
 export const projectPublicSchema = z.object({
 	id: z.string().openapi(projectFieldDocs.id),
