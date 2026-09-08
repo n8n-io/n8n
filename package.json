@@ -1,12 +1,12 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.37.0",
+  "version": "2.39.0",
   "private": true,
   "engines": {
     "node": ">=24.0.0",
-    "pnpm": ">=11.25.0"
+    "pnpm": ">=12.3.4"
   },
-  "packageManager": "pnpm@11.25.0",
+  "packageManager": "pnpm@12.3.4",
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
@@ -42,12 +42,12 @@
     "format": "turbo run format && node scripts/format.mjs",
     "grind": "node scripts/grind.mjs",
     "inspect:activity": "node scripts/instance-seeding/inspectActivity.mjs",
-		"seed:account": "node scripts/instance-seeding/seedInstance.mjs",
-		"seed:history": "node scripts/instance-seeding/seedHistory.mjs",
-		"seed:preference": "cross-env PROFILE=preference pnpm seed:account && pnpm seed:history",
-		"seed:account:check": "node scripts/instance-seeding/checkPreferenceProfile.mjs",
-		"seed:test": "node --test scripts/instance-seeding/*.test.mjs",
-		"nathan": "node scripts/nathan.mjs",
+    "seed:account": "node scripts/instance-seeding/seedInstance.mjs",
+    "seed:history": "node scripts/instance-seeding/seedHistory.mjs",
+    "seed:preference": "cross-env PROFILE=preference pnpm seed:account && pnpm seed:history",
+    "seed:account:check": "node scripts/instance-seeding/checkPreferenceProfile.mjs",
+    "seed:test": "node --test scripts/instance-seeding/*.test.mjs",
+    "nathan": "node scripts/nathan.mjs",
     "agent:setup": "node scripts/agent-setup.mjs",
     "format:check": "turbo run format:check",
     "lint": "turbo run lint",
@@ -88,7 +88,7 @@
     "worker": "./packages/cli/bin/n8n worker",
     "dev:computer-use": "pnpm --filter @n8n/computer-use build && node packages/@n8n/computer-use/dist/cli.js serve",
     "stop:computer-use": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'computer-use stopped'",
-    "install-workflow-scripts": "pnpm install --dir .github/scripts --ignore-workspace"
+    "install-workflow-scripts": "pnpm install --dir .github/scripts --lockfile-dir . --ignore-workspace"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",

@@ -1,0 +1,53 @@
+name: 'Test: Validate Release SBOM'
+
+on:
+  workflow_call:
+    inputs:
+      sha:
+        description: 'Trusted full commit SHA to validate'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate-sbom:
+    name: Validate release SBOM
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 15
+    steps:
+      - name: Checkout workflow source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      # Poutine flags all runtime-selected checkouts. The only caller gets this
+      # value from GitHub's scheduled-run response or GITHUB_SHA, and this step
+      # independently rejects non-SHA values before fetch.
+      # poutine: untrusted_checkout_exec
+      - name: Checkout SBOM source
+        env:
+          SOURCE_SHA: ${{ inputs.sha }}
+        run: |
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::The SBOM source must be a full commit SHA.'
+            exit 1
+          fi
+          git fetch --depth=1 origin "$SOURCE_SHA"
+          git checkout --detach "$SOURCE_SHA"
+
+      - name: Build production deployment artifact
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm build:deploy'
+        env:
+          N8N_GENERATE_LICENSES: 'true'
+
+      # build:deploy already runs this gate. Run it again against the final file
+      # so validation cannot report success without checking that artifact.
+      - name: Gate SBOM on resolved SPDX licenses
+        run: |
+          node scripts/licenses/check-sbom-licenses.mjs \
+            sbom-source.cdx.json \
+            --allow-ref=LicenseRef-n8n-sustainable-use --allow-ref=LicenseRef-n8n-enterprise

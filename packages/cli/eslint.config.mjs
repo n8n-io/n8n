@@ -417,9 +417,6 @@ export default defineConfig(
 		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 		files: [
 			'./src/license.ts',
-			'./src/modules/agents/integrations/n8n-checkpoint-storage.ts',
-			'./src/modules/insights/insights.service.ts',
-			'./src/modules/instance-ai/instance-ai.service.ts',
 			'./src/modules/instance-reporting/instance-reporting-scheduler.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',
 			'./src/services/pruning/workflow-history-compaction.service.ts',

@@ -26,8 +26,6 @@ import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-
 import type { InsightsByPeriod } from '../database/entities/insights-by-period';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
-import type { InsightsCompactionService } from '../insights-compaction.service';
-import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
 
 describe('InsightsService (Integration)', () => {
@@ -54,25 +52,19 @@ describe('InsightsService (Integration)', () => {
 		await testDb.terminate();
 	});
 
-	describe('startTimers', () => {
+	describe('collection lifecycle', () => {
 		let insightsService: InsightsService;
-		let compactionService: InsightsCompactionService;
-		let pruningService: InsightsPruningService;
 		let instanceSettings: MockProxy<InstanceSettings>;
 		let realCollectionService: InsightsCollectionService;
 		let initSpy: MockInstance;
 		let shutdownSpy: MockInstance;
 
 		beforeEach(() => {
-			compactionService = mock<InsightsCompactionService>();
-			pruningService = mock<InsightsPruningService>();
 			instanceSettings = mock<InstanceSettings>({
 				instanceType: 'main',
 			});
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
-				compactionService,
-				pruningService,
 				mock<LicenseState>(),
 				instanceSettings,
 				mockLogger(),
@@ -95,51 +87,32 @@ describe('InsightsService (Integration)', () => {
 			shutdownSpy.mockRestore();
 		});
 
-		const setupMocks = (instanceType: InstanceType, isLeader: boolean = false) => {
+		const setupMocks = (instanceType: InstanceType) => {
 			(instanceSettings as any).instanceType = instanceType;
-			Object.defineProperty(instanceSettings, 'isLeader', {
-				get: vi.fn(() => isLeader),
-			});
 		};
 
-		test('starts flushing timer for main instance', async () => {
-			setupMocks('main', false);
+		test('starts collection for main instance', async () => {
+			setupMocks('main');
 
 			await insightsService.init();
 
 			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 
-		test('starts compaction, flushing and pruning timers for main leader instances', async () => {
-			setupMocks('main', true);
+		test('starts collection for webhook instance', async () => {
+			setupMocks('webhook');
 
 			await insightsService.init();
 
 			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).toHaveBeenCalled();
 		});
 
-		test('starts only collection flushing timer for webhook instance', async () => {
-			setupMocks('webhook', false);
-
-			await insightsService.init();
-
-			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
-		});
-
-		test('do no start any timers for non-main instances', async () => {
-			setupMocks('worker', false);
+		test('does not start collection for non-main instances', async () => {
+			setupMocks('worker');
 
 			await insightsService.init();
 
 			expect(initSpy).not.toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1440,8 +1413,6 @@ describe('InsightsService (Integration)', () => {
 			licenseStateMock = mock<LicenseState>();
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
-				mock<InsightsCompactionService>(),
-				mock<InsightsPruningService>(),
 				licenseStateMock,
 				mock<InstanceSettings>(),
 				mockLogger(),
@@ -1538,19 +1509,9 @@ describe('InsightsService (Integration)', () => {
 	describe('shutdown', () => {
 		let insightsService: InsightsService;
 
-		const mockCompactionService = mock<InsightsCompactionService>({
-			stopCompactionTimer: vi.fn(),
-		});
-
-		const mockPruningService = mock<InsightsPruningService>({
-			stopPruningTimer: vi.fn(),
-		});
-
 		beforeAll(() => {
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
-				mockCompactionService,
-				mockPruningService,
 				mock<LicenseState>(),
 				mock<InstanceSettings>({ instanceType: 'main' }),
 				mockLogger(),
@@ -1558,14 +1519,7 @@ describe('InsightsService (Integration)', () => {
 			);
 		});
 
-		beforeEach(() => {
-			mockCompactionService.stopCompactionTimer.mockReset();
-			mockCompactionService.stopCompactionTimer.mockResolvedValue(undefined);
-			mockPruningService.stopPruningTimer.mockReset();
-			mockPruningService.stopPruningTimer.mockReturnValue(undefined);
-		});
-
-		test('shutdown stops timers and shuts down services', async () => {
+		test('shutdown stops the collection service', async () => {
 			// ARRANGE
 			// Get the real service from the container and spy on it
 			const realCollectionService = Container.get(InsightsCollectionService);
@@ -1576,33 +1530,6 @@ describe('InsightsService (Integration)', () => {
 
 			// ASSERT
 			expect(shutdownSpy).toHaveBeenCalled();
-			expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
-			expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
-		});
-
-		test('stops pruning before waiting for compaction to finish', async () => {
-			// ARRANGE
-			const callOrder: string[] = [];
-			let resolveCompaction!: () => void;
-			mockCompactionService.stopCompactionTimer.mockImplementation(async () => {
-				callOrder.push('compaction');
-				await new Promise<void>((resolve) => {
-					resolveCompaction = resolve;
-				});
-			});
-			mockPruningService.stopPruningTimer.mockImplementation(() => {
-				callOrder.push('pruning');
-			});
-
-			// ACT
-			const stopPromise = insightsService.stopCompactionAndPruningTimers();
-			await Promise.resolve();
-
-			// ASSERT
-			expect(callOrder).toEqual(['pruning', 'compaction']);
-
-			resolveCompaction();
-			await stopPromise;
 		});
 	});
 });
