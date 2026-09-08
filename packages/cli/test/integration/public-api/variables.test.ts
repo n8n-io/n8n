@@ -103,6 +103,125 @@ describe('Variables in Public API', () => {
 			);
 		});
 
+		it('if licensed, should only return the documented variable fields', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+			await createVariable();
+			await createProjectVariable('projectKey', 'projectValue', project);
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).get('/variables');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			expect(response.body.data).toHaveLength(2);
+			for (const variable of response.body.data) {
+				expect(Object.keys(variable).sort()).toEqual(['id', 'key', 'project', 'type', 'value']);
+				if (variable.project !== null) {
+					expect(Object.keys(variable.project).sort()).toEqual(['id', 'name', 'type']);
+				}
+			}
+			expect(response.body.data.filter((v: Variables) => v.project === null)).toHaveLength(1);
+		});
+
+		it('if licensed, should paginate with an opaque cursor', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+			await Promise.all([createVariable(), createVariable(), createVariable()]);
+
+			/**
+			 * Act
+			 */
+			const first = await testServer.publicApiAgentFor(owner).get('/variables').query({ limit: 2 });
+			const second = await testServer
+				.publicApiAgentFor(owner)
+				.get('/variables')
+				.query({ cursor: first.body.nextCursor });
+
+			/**
+			 * Assert
+			 */
+			expect(first.status).toBe(200);
+			expect(first.body.data).toHaveLength(2);
+			expect(first.body.nextCursor).not.toBeNull();
+			expect(second.status).toBe(200);
+			expect(second.body.data).toHaveLength(1);
+			expect(second.body.nextCursor).toBeNull();
+		});
+
+		it('should reject a non-numeric limit', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/variables')
+				.query({ limit: 'abc' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty(
+				'message',
+				'request/query/limit Param `limit` must be a valid integer',
+			);
+		});
+
+		it('should reject an invalid cursor', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/variables')
+				.query({ cursor: 'not-a-cursor' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty('message', 'An invalid cursor was provided');
+		});
+
+		it('should reject an API key without the "variable:list" scope', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+			const ownerWithoutScope = await createOwnerWithApiKey({ scopes: ['variable:create'] });
+			await createVariable();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(ownerWithoutScope).get('/variables');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message', 'Forbidden');
+		});
+
 		it('if not licensed, should reject', async () => {
 			/**
 			 * Act

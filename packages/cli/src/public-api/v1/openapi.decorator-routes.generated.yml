@@ -118,6 +118,9 @@ paths:
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml
+  /variables:
+    get:
+      $ref: ./handlers/variables/spec/paths/getVariables.generated.yml
   /workflows:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflows.generated.yml
