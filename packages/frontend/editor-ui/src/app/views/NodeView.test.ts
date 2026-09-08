@@ -18,10 +18,10 @@ import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionK
 import { computed, defineComponent, shallowRef } from 'vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 
-const mockMcpJsonNudgeTrigger = vi.hoisted(() => vi.fn());
+const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
 
 vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger', () => ({
-	useMcpJsonNudgeTrigger: () => ({ trigger: mockMcpJsonNudgeTrigger }),
+	useMcpJsonNudgeTrigger: () => ({ gate: mockMcpJsonNudgeGate }),
 }));
 
 const routerMock = vi.hoisted(() => ({
@@ -245,16 +245,52 @@ describe('NodeView', () => {
 	});
 
 	describe('Import / Export', () => {
+		const imported = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'Imported' });
+
 		beforeEach(() => {
-			mockMcpJsonNudgeTrigger.mockClear();
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
+			]);
+			// Default: nudge not eligible, the gate runs the import straight away.
+			mockMcpJsonNudgeGate.mockReset().mockImplementation(async (_surface, action) => {
+				await action();
+			});
 		});
 
-		it('triggers the MCP JSON nudge for the import_file surface when a workflow is imported from file', async () => {
+		it('gates the file import behind the import_file nudge', async () => {
 			renderNodeView();
 
-			nodeViewEventBus.emit('importWorkflowData', { data: { nodes: [], connections: {} } });
+			nodeViewEventBus.emit('importWorkflowData', {
+				data: { nodes: [imported], connections: {} },
+			});
 
-			await waitFor(() => expect(mockMcpJsonNudgeTrigger).toHaveBeenCalledWith('import_file'));
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('import_file', expect.any(Function)),
+			);
+			await waitFor(() =>
+				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Imported']),
+			);
+		});
+
+		it('does not land imported nodes until the nudge continues', async () => {
+			let deferred: (() => void | Promise<void>) | undefined;
+			mockMcpJsonNudgeGate.mockImplementation(async (_surface, action) => {
+				deferred = action;
+			});
+			renderNodeView();
+
+			nodeViewEventBus.emit('importWorkflowData', {
+				data: { nodes: [imported], connections: {} },
+			});
+
+			await waitFor(() => expect(deferred).toBeDefined());
+			expect(workflowDocumentStore.allNodes).toHaveLength(0);
+
+			await deferred?.();
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Imported']),
+			);
 		});
 	});
 });

@@ -31,9 +31,12 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { MCP_JSON_NUDGE_MODAL_KEY } from '@/experiments/mcpJsonNudge/constants';
 
+const mockMcpNudgeCanShow = vi.hoisted(() => vi.fn(() => true));
+const saveAsMock = vi.hoisted(() => vi.fn());
+
 vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility', () => ({
 	useMcpJsonNudgeEligibility: () => ({
-		canShow: () => true,
+		canShow: mockMcpNudgeCanShow,
 		recordImpression: vi.fn(),
 	}),
 }));
@@ -100,8 +103,8 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 }));
 
 vi.mock('file-saver', () => ({
-	default: vi.fn(),
-	saveAs: vi.fn(),
+	default: saveAsMock,
+	saveAs: saveAsMock,
 }));
 
 const initialState = {
@@ -208,6 +211,7 @@ describe('WorkflowDetails', () => {
 
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
+		mockMcpNudgeCanShow.mockReturnValue(true);
 		workflowsListStore.workflowsById = {
 			'1': workflow,
 			'123': workflow,
@@ -263,7 +267,7 @@ describe('WorkflowDetails', () => {
 	});
 
 	describe('Workflow menu', () => {
-		it('triggers the MCP JSON nudge for the export surface when downloading the workflow', async () => {
+		it('shows the MCP JSON nudge and holds the export until the user continues', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
 			const { getByTestId } = renderComponent({
@@ -277,8 +281,33 @@ describe('WorkflowDetails', () => {
 
 			expect(openModalSpy).toHaveBeenCalledWith({
 				name: MCP_JSON_NUDGE_MODAL_KEY,
-				data: { surface: 'export' },
+				data: { surface: 'export', onContinue: expect.any(Function) },
 			});
+			expect(saveAsMock).not.toHaveBeenCalled();
+
+			const { onContinue } = openModalSpy.mock.calls[0][0].data as { onContinue: () => void };
+			onContinue();
+
+			expect(saveAsMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('exports immediately when the MCP JSON nudge is not eligible', async () => {
+			mockMcpNudgeCanShow.mockReturnValue(false);
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultProps,
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-download'));
+
+			expect(saveAsMock).toHaveBeenCalledTimes(1);
+			expect(openModalSpy).not.toHaveBeenCalledWith(
+				expect.objectContaining({ name: MCP_JSON_NUDGE_MODAL_KEY }),
+			);
 		});
 
 		it('should not have workflow duplicate and import when branch is read-only', async () => {

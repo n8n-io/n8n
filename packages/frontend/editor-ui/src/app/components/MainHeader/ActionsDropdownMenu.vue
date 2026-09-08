@@ -389,8 +389,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			name = sanitizeFilename(name);
 
 			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
-			mcpJsonNudgeTrigger.trigger('export');
-			saveAs(blob, name + '.json');
+			await mcpJsonNudgeTrigger.gate('export', () => saveAs(blob, name + '.json'));
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {

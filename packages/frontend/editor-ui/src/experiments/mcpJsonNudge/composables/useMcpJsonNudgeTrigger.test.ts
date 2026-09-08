@@ -25,28 +25,50 @@ describe('useMcpJsonNudgeTrigger', () => {
 		mockRecordImpression.mockClear();
 	});
 
-	it.each(['export', 'import_file', 'import_url'] as const)(
-		'opens the MCP JSON nudge modal and records an impression for the %s surface when eligible',
-		(surface) => {
-			const { trigger } = useMcpJsonNudgeTrigger();
+	describe('when eligible', () => {
+		it.each(['export', 'import_file', 'import_url'] as const)(
+			'opens the modal for the %s surface, defers the action to onContinue, and records an impression',
+			async (surface) => {
+				const action = vi.fn();
+				const { gate } = useMcpJsonNudgeTrigger();
 
-			trigger(surface);
+				await gate(surface, action);
 
-			expect(mockOpenModalWithData).toHaveBeenCalledWith({
-				name: MCP_JSON_NUDGE_MODAL_KEY,
-				data: { surface },
+				expect(mockOpenModalWithData).toHaveBeenCalledWith({
+					name: MCP_JSON_NUDGE_MODAL_KEY,
+					data: { surface, onContinue: action },
+				});
+				expect(mockRecordImpression).toHaveBeenCalled();
+				expect(action).not.toHaveBeenCalled();
+			},
+		);
+	});
+
+	describe('when ineligible', () => {
+		it('runs the action immediately without opening the modal or recording an impression', async () => {
+			mockCanShow.mockReturnValue(false);
+			const action = vi.fn();
+			const { gate } = useMcpJsonNudgeTrigger();
+
+			await gate('export', action);
+
+			expect(action).toHaveBeenCalledTimes(1);
+			expect(mockOpenModalWithData).not.toHaveBeenCalled();
+			expect(mockRecordImpression).not.toHaveBeenCalled();
+		});
+
+		it('awaits an async action', async () => {
+			mockCanShow.mockReturnValue(false);
+			let settled = false;
+			const action = vi.fn(async () => {
+				await Promise.resolve();
+				settled = true;
 			});
-			expect(mockRecordImpression).toHaveBeenCalled();
-		},
-	);
+			const { gate } = useMcpJsonNudgeTrigger();
 
-	it('does not open the modal or record an impression when ineligible', () => {
-		mockCanShow.mockReturnValue(false);
-		const { trigger } = useMcpJsonNudgeTrigger();
+			await gate('import_file', action);
 
-		trigger('export');
-
-		expect(mockOpenModalWithData).not.toHaveBeenCalled();
-		expect(mockRecordImpression).not.toHaveBeenCalled();
+			expect(settled).toBe(true);
+		});
 	});
 });

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import { useMcpJsonNudgeEligibility } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility';
+import type { McpJsonNudgeAction } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 import McpClientLogoCards from '@/features/ai/mcpAccess/components/McpClientLogoCards.vue';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
 	MCP_JSON_NUDGE_MODAL_KEY,
@@ -15,20 +17,24 @@ import {
 const props = defineProps<{
 	data: {
 		surface: McpJsonNudgeSurface;
+		/** The gated export/import. Runs on Skip or dismiss; Connect abandons it. */
+		onContinue?: McpJsonNudgeAction;
 	};
 }>();
 
 const i18n = useI18n();
 const router = useRouter();
 const eligibility = useMcpJsonNudgeEligibility();
+const modalBus = createEventBus();
+
+const closedByAction = ref(false);
+const dontShowAgain = ref(false);
 
 const title = computed(() =>
 	props.data.surface === 'export'
 		? i18n.baseText('experiments.mcpJsonNudge.modal.export.title')
 		: i18n.baseText('experiments.mcpJsonNudge.modal.import.title'),
 );
-
-const dontShowAgain = ref(false);
 
 function onDontShowAgainChange(value: boolean) {
 	dontShowAgain.value = value;
@@ -38,17 +44,36 @@ function onDontShowAgainChange(value: boolean) {
 }
 
 function onConnect(close: () => void) {
+	closedByAction.value = true;
 	void router.push({ name: MCP_SETTINGS_VIEW });
 	close();
 }
 
 function onSkip(close: () => void) {
+	closedByAction.value = true;
+	void props.data.onContinue?.();
 	close();
 }
+
+// × / esc / click-outside: the user did not pick an action, so the original
+// export/import still completes.
+function onModalClosed() {
+	if (!closedByAction.value) {
+		void props.data.onContinue?.();
+	}
+}
+
+onMounted(() => {
+	modalBus.on('closed', onModalClosed);
+});
+
+onBeforeUnmount(() => {
+	modalBus.off('closed', onModalClosed);
+});
 </script>
 
 <template>
-	<Modal :name="MCP_JSON_NUDGE_MODAL_KEY" :title="title" width="480px">
+	<Modal :name="MCP_JSON_NUDGE_MODAL_KEY" :title="title" width="480px" :event-bus="modalBus">
 		<template #content>
 			<McpClientLogoCards :class="$style.logoCards" />
 			<N8nText color="text-base">

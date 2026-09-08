@@ -894,31 +894,34 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 	const trackEvents = typeof data.trackEvents === 'boolean' ? data.trackEvents : undefined;
 	const setStateDirty = typeof data.setStateDirty === 'boolean' ? data.setStateDirty : undefined;
 
-	await importWorkflowData(workflowData, 'file', {
-		viewport: viewportBoundaries.value,
-		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
-		trackEvents,
-		setStateDirty,
-	});
-	mcpJsonNudgeTrigger.trigger('import_file');
+	const importFile = async () => {
+		await importWorkflowData(workflowData, 'file', {
+			viewport: viewportBoundaries.value,
+			regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
+			trackEvents,
+			setStateDirty,
+		});
 
-	await nextTick();
-	fitView();
+		await nextTick();
+		fitView();
 
-	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
-	if (data.tidyUp) {
-		const nodesIdsToTidyUp = data.nodesIdsToTidyUp as string[];
-		setTimeout(async () => {
-			canvasEventBus.emit('tidyUp', {
-				source: 'import-workflow-data',
-				nodeIdsFilter: nodesIdsToTidyUp,
-				trackEvents,
-			});
+		selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
+		if (data.tidyUp) {
+			const nodesIdsToTidyUp = data.nodesIdsToTidyUp as string[];
+			setTimeout(async () => {
+				canvasEventBus.emit('tidyUp', {
+					source: 'import-workflow-data',
+					nodeIdsFilter: nodesIdsToTidyUp,
+					trackEvents,
+				});
 
-			await nextTick();
-			fitView();
-		}, 0);
-	}
+				await nextTick();
+				fitView();
+			}, 0);
+		}
+	};
+
+	await mcpJsonNudgeTrigger.gate('import_file', importFile);
 }
 
 async function onImportWorkflowUrlEvent(data: IDataObject) {
@@ -927,12 +930,15 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 		return;
 	}
 
-	await importWorkflowData(workflowData, 'url', {
-		viewport: viewportBoundaries.value,
-	});
-	mcpJsonNudgeTrigger.trigger('import_url');
+	const importUrl = async () => {
+		await importWorkflowData(workflowData, 'url', {
+			viewport: viewportBoundaries.value,
+		});
 
-	canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
+		canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
+	};
+
+	await mcpJsonNudgeTrigger.gate('import_url', importUrl);
 }
 
 function addImportEventBindings() {
