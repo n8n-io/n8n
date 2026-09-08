@@ -71,6 +71,9 @@ describe('raceTimeout', () => {
 			const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
 			const raced = raceTimeout(new Promise(() => {}), 1000, options);
 			const timer = setTimeoutSpy.mock.results[0].value as NodeJS.Timeout;
+			// Restored while the fake timers are still installed, so the spy cannot
+			// outlive the test.
+			setTimeoutSpy.mockRestore();
 			return { raced, timer };
 		};
 

@@ -455,6 +455,26 @@ describe('PollTriggerTaskHandler', () => {
 			expect(vi.getTimerCount()).toBe(0);
 		});
 
+		test("counts the node's synchronous setup against the timeout", async () => {
+			// The deadline is armed before poll() is called, so setup that runs before
+			// the node returns its promise still lands in the timeout branch.
+			triggersAndPollers.runPollFunction.mockImplementation(async () => {
+				vi.advanceTimersByTime(pollTimeoutMs); // setup burns the whole budget
+				return await new Promise(() => {});
+			});
+
+			const executing = handler.execute(buildTask(), report);
+			// No further time is granted: a deadline armed only after the setup would
+			// leave the tick hanging here instead of timing out.
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(eventService.emit).toHaveBeenCalledWith('poll-tick-timed-out', {
+				nodeType: triggerNode.type,
+			});
+			await expect(executing).resolves.toBeDefined();
+			expect(vi.getTimerCount()).toBe(0);
+		});
+
 		test('discards the data of an abandoned poll that resolves after the timeout', async () => {
 			let resolvePoll: (data: INodeExecutionData[][]) => void = () => {};
 			triggersAndPollers.runPollFunction.mockReturnValue(
