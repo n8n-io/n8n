@@ -45,20 +45,11 @@ export const mentionsField: INodeProperties = {
 };
 
 /**
- * Users or team tags, for the two channel operations. A standalone literal rather than a spread
- * of `mentionsField`, which it would have to override almost entirely; the invariants the two
- * share are pinned by a test instead.
+ * Users or team tags, for the two channel operations. `mentionsField` with its own description
+ * and the mention type discriminator in front of the two pickers.
  */
 export const channelMentionsField: INodeProperties = {
-	displayName: 'Mentions',
-	name: 'mentions',
-	type: 'fixedCollection',
-	placeholder: 'Add Mention',
-	default: {},
-	typeOptions: {
-		multipleValues: true,
-		sortable: true,
-	},
+	...mentionsField,
 	description:
 		'People or team tags to @mention. A team tag notifies everyone who carries it. The Mention Placement option decides whether the tokens go before or after the message text, and adding a mention makes the message render as HTML even when Content Type is Text.',
 	options: [

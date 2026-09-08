@@ -196,9 +196,11 @@ describe('Microsoft Teams V2, create per item', () => {
 				return (name in params ? params[name] : fallback) as NodeParameterValueType;
 			},
 		);
-		apiRequest.mockImplementation(async (_method: string, resourcePath: string) =>
-			resourcePath in TAGS ? TAGS[resourcePath] : { id: 'sent' },
-		);
+		apiRequest.mockImplementation(async (method: string, resourcePath: string) => {
+			if (method !== 'GET') return { id: 'sent' };
+			if (!(resourcePath in TAGS)) throw new Error(`unexpected GET ${resourcePath}`);
+			return TAGS[resourcePath];
+		});
 
 		await node.execute.call(ctx);
 
