@@ -37,7 +37,9 @@ export class AppRuntimeController {
 		private readonly errorReporter: ErrorReporter,
 	) {}
 
-	@Options('/:namespace/api{/*path}', { skipAuth: true, ipRateLimit: rateLimit })
+	// No rate limit: the browser preflights every call, so a limit here would halve the
+	// budget of the POST route.
+	@Options('/:namespace/api{/*path}', { skipAuth: true })
 	preflight(_req: Request, res: Response) {
 		setCorsHeaders(res);
 		res.status(204).end();
@@ -48,7 +50,8 @@ export class AppRuntimeController {
 	async runWorkflow(req: Request<{ namespace: string; key: string }>, res: Response) {
 		setCorsHeaders(res);
 
-		if (req.rawBody.length > MAX_BODY_BYTES) {
+		// `rawBody` is unset when the body parser skipped the request (multipart).
+		if ((req.rawBody?.length ?? 0) > MAX_BODY_BYTES) {
 			res.status(413).json({
 				code: 'payload_too_large',
 				message: `The request body must be at most ${MAX_BODY_BYTES} bytes.`,

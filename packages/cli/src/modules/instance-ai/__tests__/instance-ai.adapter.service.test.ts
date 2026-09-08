@@ -4911,6 +4911,7 @@ describe('createContext — app service wiring', () => {
 		name: 'Greeter',
 		namespace: 'greeter',
 		projectId: 'proj-1',
+		bindings: [{ key: 'submit', kind: 'workflow' as const, workflowId: 'wf-1' }],
 		createdAt: new Date('2024-01-01T00:00:00.000Z'),
 	};
 
@@ -5083,7 +5084,10 @@ describe('createContext — app service wiring', () => {
 		});
 		const appService = service.createContext(mockUser).appService;
 
-		await expect(appService?.getBindings('app-1')).resolves.toEqual(described);
+		await expect(appService?.getBindings('app-1')).resolves.toEqual({
+			...described,
+			stored: app.bindings,
+		});
 		expect(describeBindings).toHaveBeenCalledWith(app);
 		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:read'], false, {
 			projectId: 'proj-1',

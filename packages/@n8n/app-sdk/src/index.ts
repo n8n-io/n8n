@@ -79,6 +79,15 @@ export function createClient(opts: { baseUrl?: string } = {}): N8nAppClient {
 					headers: [['Content-Type', 'application/json']],
 					body: JSON.stringify(input ?? {}),
 					signal: opts?.signal,
+				}).catch((error: unknown) => {
+					// A 429 from the rate limiter carries no CORS headers, so the browser reports it
+					// as a network error. The caller's own abort stays an AbortError.
+					if (opts?.signal?.aborted) throw error;
+					throw new N8nAppError(
+						0,
+						'request_failed',
+						'The request did not reach n8n: network error, or a rate-limited response the browser could not read.',
+					);
 				});
 				const body = await readJson(response);
 

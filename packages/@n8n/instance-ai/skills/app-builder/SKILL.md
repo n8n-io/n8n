@@ -115,7 +115,7 @@ bound first. Bind before you write the code that calls it.
    Executed by Another Workflow" (`n8n-nodes-base.executeWorkflowTrigger`) in
    the app's project. `workflows(action="list", projectId)` shows candidates.
    If the user has no such workflow, build one with the `workflows` tool and
-   the `build-workflow` skill, publish it, then continue here.
+   the `workflow-builder` skill, publish it, then continue here.
 2. `apps(action="bind", appId, bindings=[{ key: "submit", kind: "workflow",
    workflowId }])`. Choose the key: a short lowercase slug the app uses in
    code (`^[a-z][a-z0-9-]{0,63}$`). The result lists every binding with its
@@ -124,7 +124,9 @@ bound first. Bind before you write the code that calls it.
    fail with `workflow_not_published` until it is published). It also
    rewrites `src/n8n-bindings.d.ts`, so `n8n.workflows.run` is typed for that
    key. `{ denied, reason }` means the workflow is in another project, lacks
-   the trigger, or the key is invalid: read `reason`.
+   the trigger, or the key is invalid: read `reason`. Every write re-checks
+   all bindings, so a `reason` that names another key means that binding's
+   workflow was deleted or broken: `unbind` that key first.
 3. Call it from the app:
 
    ```ts

@@ -46,6 +46,10 @@ const NOTIFY_BINDING = {
 	published: false,
 	input: 'passthrough' as const,
 };
+const STORED_BINDINGS = [
+	{ key: 'submit', kind: 'workflow' as const, workflowId: 'wf-1' },
+	{ key: 'notify', kind: 'workflow' as const, workflowId: 'wf-2' },
+];
 const TYPES_PATH = 'apps/greeter/src/n8n-bindings.d.ts';
 
 const ok = (stdout = '') => ({ exitCode: 0, stdout, stderr: '' });
@@ -60,7 +64,7 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 			.fn()
 			.mockResolvedValue({ versionId: 'v-1', url: 'http://localhost:5678/apps/greeter/' }),
 		setBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [] }),
-		getBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [] }),
+		getBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [], stored: [] }),
 		getSdkTarball: vi.fn().mockResolvedValue({ filename: 'n8n-app-sdk.tgz', data: SDK_TARBALL }),
 	};
 	return {
@@ -791,11 +795,12 @@ describe('apps tool', () => {
 	});
 
 	describe('bind', () => {
-		it('upserts by key over the current bindings, saves them and regenerates the types', async () => {
+		it('upserts by key over the stored bindings, saves them and regenerates the types', async () => {
 			const context = createMockContext();
 			appServiceMock(context, 'getBindings').mockResolvedValue({
 				bindings: [SUBMIT_BINDING, NOTIFY_BINDING],
 				warnings: [],
+				stored: STORED_BINDINGS,
 			});
 			const saved = {
 				bindings: [NOTIFY_BINDING, { ...SUBMIT_BINDING, workflowId: 'wf-9' }],
@@ -882,6 +887,7 @@ describe('apps tool', () => {
 			appServiceMock(context, 'getBindings').mockResolvedValue({
 				bindings: [SUBMIT_BINDING, NOTIFY_BINDING],
 				warnings: [],
+				stored: STORED_BINDINGS,
 			});
 			appServiceMock(context, 'setBindings').mockResolvedValue({
 				bindings: [NOTIFY_BINDING],
@@ -905,6 +911,21 @@ describe('apps tool', () => {
 				warnings: [],
 			});
 		});
+
+		it('keeps a stored binding that describe left out of the list', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'getBindings').mockResolvedValue({
+				bindings: [NOTIFY_BINDING],
+				warnings: ['Binding \'submit\': workflow "Echo" no longer starts with a trigger.'],
+				stored: STORED_BINDINGS,
+			});
+
+			await runAction(context, { action: 'unbind', key: 'notify' });
+
+			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalledWith('app-1', [
+				STORED_BINDINGS[0],
+			]);
+		});
 	});
 
 	describe('bindings', () => {
@@ -913,6 +934,7 @@ describe('apps tool', () => {
 			appServiceMock(context, 'getBindings').mockResolvedValue({
 				bindings: [SUBMIT_BINDING],
 				warnings: ['w'],
+				stored: [STORED_BINDINGS[0]],
 			});
 
 			const result = await runAction(context, { action: 'bindings' });

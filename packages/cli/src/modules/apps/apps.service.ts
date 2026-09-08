@@ -112,7 +112,7 @@ export class AppsService {
 				user,
 				['workflow:execute'],
 			);
-			if (!workflow) throw new BindingWorkflowNotFoundError(binding.workflowId);
+			if (!workflow) throw new BindingWorkflowNotFoundError(binding.key, binding.workflowId);
 
 			const ownerProjectId = workflow.shared.find((s) => s.role === 'workflow:owner')?.projectId;
 			if (ownerProjectId !== app.projectId) {

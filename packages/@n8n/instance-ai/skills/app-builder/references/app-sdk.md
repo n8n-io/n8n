@@ -34,7 +34,7 @@ declare module '@n8n/app-sdk' {
 Field types follow the trigger's `workflowInputs`: `string | null` (default),
 `number | null`, `boolean | null`, `unknown[] | null` (array),
 `Record<string, unknown> | null` (object), `unknown` (any). Every field is
-optional; a missing field reaches the workflow as `null`. A trigger without
+optional; a missing field is absent from the workflow's input item. A trigger without
 declared fields (passthrough) accepts any object. `output` is `unknown`: narrow
 it in the app.
 
@@ -102,7 +102,7 @@ class N8nAppError extends Error {
 | `invalid_input`          | 400  | The body does not match the trigger fields; `issues` lists the fields. Fix the call.        |
 | `payload_too_large`      | 413  | The body is over 1 MiB.                                                                     |
 | `execution_failed`       | 500  | n8n could not start the run. Retry later; the message is safe to show.                      |
-| `request_failed`         | any  | Non-JSON error body, for example a 429 from the rate limiter. Retry later.                  |
+| `request_failed`         | 0/any | No readable response: network error, or a 429 from the rate limiter (the browser hides it, `status` is 0). Retry later. |
 
 Show `error.message` to the user; it is written for people.
 

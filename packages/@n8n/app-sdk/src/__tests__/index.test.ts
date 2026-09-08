@@ -98,4 +98,28 @@ describe('createClient', () => {
 			code: 'request_failed',
 		});
 	});
+
+	it('throws N8nAppError with status 0 when fetch itself fails', async () => {
+		fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+		const error = await createClient({ baseUrl: '/x' })
+			.workflows.run('submit')
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(N8nAppError);
+		expect(error).toMatchObject({ status: 0, code: 'request_failed' });
+	});
+
+	it('rethrows the abort error of the caller unchanged', async () => {
+		const controller = new AbortController();
+		const abortError = new DOMException('Aborted', 'AbortError');
+		controller.abort();
+		fetchMock.mockRejectedValue(abortError);
+
+		await expect(
+			createClient({ baseUrl: '/x' }).workflows.run('submit', undefined, {
+				signal: controller.signal,
+			}),
+		).rejects.toBe(abortError);
+	});
 });

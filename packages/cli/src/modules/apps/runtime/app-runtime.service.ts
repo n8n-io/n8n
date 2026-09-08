@@ -20,6 +20,7 @@ import {
 	extractResult,
 	formatResult,
 	inferInputSchema,
+	isWorkflowToolResponse,
 	validateCompatibility,
 } from '@/modules/agents/tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
@@ -52,10 +53,6 @@ export type AppRuntimeRunResult =
 /** The input arrived as a JSON body, so a parsed object is JSON-compatible. */
 function isDataObject(value: unknown): value is IDataObject {
 	return isRecord(value);
-}
-
-function isWebhookResponse(value: unknown): value is IExecuteResponsePromiseData {
-	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);
 }
 
 @Service()
@@ -94,8 +91,13 @@ export class AppRuntimeService {
 		try {
 			validateCompatibility(workflow);
 		} catch (error) {
+			// Fixed text: the original names the private workflow's nodes to an anonymous caller.
 			if (error instanceof WorkflowToolUnavailableError) {
-				throw new AppRuntimeError(409, 'workflow_incompatible', error.message);
+				throw new AppRuntimeError(
+					409,
+					'workflow_incompatible',
+					'The bound workflow cannot be run from an app. Check its trigger and nodes in n8n.',
+				);
 			}
 			throw error;
 		}
@@ -107,7 +109,7 @@ export class AppRuntimeService {
 				throw new AppRuntimeError(
 					403,
 					'workflow_not_callable',
-					`Workflow "${workflow.name}" does not allow this app to call it. Check its "This workflow can be called by" setting.`,
+					'The bound workflow does not allow this app to call it. Check its "This workflow can be called by" setting.',
 				);
 			}
 			throw error;
@@ -209,7 +211,7 @@ export class AppRuntimeService {
 			: await extractResult(executionId, false);
 		const base = { executionId, status: result.status, error: result.error, principal: null };
 
-		if (isWebhookResponse(webhookResponse)) {
+		if (isWorkflowToolResponse(webhookResponse)) {
 			const { body } = await this.webhookResponseRelay.restoreOffloadedBody(webhookResponse, {
 				reclaim: true,
 				context: { workflowId: workflow.id, executionId },

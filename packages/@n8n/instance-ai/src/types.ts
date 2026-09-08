@@ -1059,7 +1059,10 @@ export interface InstanceAiAppService {
 		appId: string,
 		bindings: AppBinding[],
 	): Promise<{ bindings: DescribedBinding[]; warnings: string[] }>;
-	getBindings(appId: string): Promise<{ bindings: DescribedBinding[]; warnings: string[] }>;
+	/** `stored` is the saved list as-is; `bindings` describes only the ones whose draft still resolves. */
+	getBindings(
+		appId: string,
+	): Promise<{ bindings: DescribedBinding[]; warnings: string[]; stored: AppBinding[] }>;
 	/** `@n8n/app-sdk` as an npm tarball for the app's `vendor/` dir; same bytes on every call. */
 	getSdkTarball(): Promise<{ filename: string; data: Uint8Array }>;
 }

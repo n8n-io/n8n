@@ -63,7 +63,9 @@ const createSchema = z.object({
 	template: z
 		.enum(['vue', 'none'])
 		.optional()
-		.describe('Starter files to copy (default "vue"). "none" leaves the app directory empty.'),
+		.describe(
+			'Starter files to copy (default "vue"). "none" writes only vendor/n8n-app-sdk.tgz and src/n8n-bindings.d.ts.',
+		),
 });
 
 const buildSchema = z.object({
@@ -688,21 +690,17 @@ async function writeBindingsTypes(
 
 type DescribedBindings = { bindings: DescribedBinding[]; warnings: string[] };
 
-const toAppBinding = ({ key, kind, workflowId }: DescribedBinding): AppBinding => ({
-	key,
-	kind,
-	workflowId,
-});
-
 /**
  * Every binding check (scope, project, trigger, key format) lives in the app service,
- * so anything it throws is a refusal the model can act on.
+ * so anything it throws is a refusal the model can act on. The upsert starts from the
+ * stored list, not the described one: describe omits a binding whose draft is broken
+ * while its published version still runs, and a write must not drop it silently.
  */
 async function replaceBindings(
 	context: InstanceAiContext,
 	appId: string,
 	namespace: string,
-	next: (current: DescribedBinding[]) => AppBinding[],
+	next: (current: AppBinding[]) => AppBinding[],
 	abortSignal?: AbortSignal,
 ) {
 	const appService = requireAppService(context);
@@ -711,7 +709,7 @@ async function replaceBindings(
 	let described: DescribedBindings;
 	try {
 		const current = await appService.getBindings(appId);
-		described = await appService.setBindings(appId, next(current.bindings));
+		described = await appService.setBindings(appId, next(current.stored));
 	} catch (error) {
 		return { denied: true, reason: getErrorMessage(error) };
 	}
@@ -749,10 +747,7 @@ async function handleBind(context: InstanceAiContext, input: BindInput, abortSig
 		context,
 		app.id,
 		app.namespace,
-		(current) => [
-			...current.filter((binding) => !replaced.has(binding.key)).map(toAppBinding),
-			...input.bindings,
-		],
+		(current) => [...current.filter((binding) => !replaced.has(binding.key)), ...input.bindings],
 		abortSignal,
 	);
 }
@@ -767,7 +762,7 @@ async function handleUnbind(
 		context,
 		app.id,
 		app.namespace,
-		(current) => current.filter((binding) => binding.key !== input.key).map(toAppBinding),
+		(current) => current.filter((binding) => binding.key !== input.key),
 		abortSignal,
 	);
 }

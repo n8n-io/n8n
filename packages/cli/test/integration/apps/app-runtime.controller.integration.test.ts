@@ -12,6 +12,7 @@ import { Header } from 'tar';
 
 import { AppVersionService } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
+import { AppRuntimeService } from '@/modules/apps/runtime/app-runtime.service';
 import { createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -199,6 +200,32 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 			.expect(413);
 
 		expect(response.body).toMatchObject({ code: 'payload_too_large' });
+	});
+
+	test('resolves a multipart request like any other instead of failing on the size check', async () => {
+		const workflow = await createEchoWorkflow({ published: true });
+		await createBoundApp(workflow.id);
+
+		const response = await visitor
+			.post('/apps/runner/api/workflows/nope')
+			.field('message', 'hi')
+			.expect(404);
+
+		expect(response.body).toMatchObject({ code: 'binding_not_found' });
+	});
+
+	test('answers 500 execution_failed with CORS headers when the run cannot start', async () => {
+		vi.spyOn(Container.get(AppRuntimeService), 'runWorkflow').mockRejectedValueOnce(
+			new Error('db down'),
+		);
+
+		const response = await visitor.post('/apps/runner/api/workflows/submit').send({}).expect(500);
+
+		expect(response.body).toEqual({
+			code: 'execution_failed',
+			message: 'The workflow could not be run.',
+		});
+		expect(response.headers['access-control-allow-origin']).toBe('*');
 	});
 });
 
