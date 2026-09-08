@@ -78,8 +78,13 @@ async function runLifecycleRouting(
 	return (await routingNode.runNode())?.[0] ?? [];
 }
 
-/** The static-data keys a trigger manages: whatever its create step stores. */
+/**
+ * The static-data keys a trigger manages: whatever its create step stores, or
+ * the explicit list a node declares when create is a function and so has no
+ * `store` to read them from.
+ */
 function managedKeys(trigger: IDeclarativeWebhookTrigger): string[] {
+	if (trigger.managedKeys) return trigger.managedKeys;
 	const create = trigger.lifecycle.create;
 	if (typeof create === 'function' || !create.store) return [];
 	return Object.keys(create.store);
@@ -141,6 +146,9 @@ function createCheckExists(
 		if (!config.matchOn) {
 			const idKey = config.idKey ?? 'webhookId';
 			if (staticData[idKey] === undefined) return false;
+			// An empty required key (typically the signing secret) leaves the stored hook
+			// unable to serve deliveries, so report it absent and let create replace it.
+			if (config.requireKeys?.some((key) => !staticData[key])) return false;
 			try {
 				await runLifecycleRouting(this, nodeType, config.routing, extraKeys);
 				return true;

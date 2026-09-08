@@ -256,6 +256,61 @@ describe('createDeclarativeWebhookMethods', () => {
 			await expect(checkExists()).rejects.toThrow();
 			expect(staticData().webhookId).toBe(7);
 		});
+
+		describe('requireKeys', () => {
+			const withSecret: IDeclarativeWebhookTrigger = {
+				...byIdTrigger,
+				lifecycle: {
+					...byIdTrigger.lifecycle,
+					checkExists: {
+						routing: {
+							request: { method: 'GET', url: '={{ "/hooks/" + $staticData.webhookId }}' },
+						},
+						requireKeys: ['webhookSecret'],
+					},
+				},
+			};
+
+			test.each([
+				['missing', undefined],
+				['blank', ''],
+			])('a %s required key ⇒ false without a request', async (_label, secret) => {
+				const { checkExists, staticData } = setup(withSecret);
+				staticData().webhookId = 7;
+				staticData().webhookSecret = secret;
+
+				expect(await checkExists()).toBe(false);
+				expect(httpRequest).not.toHaveBeenCalled();
+			});
+
+			test('a populated required key still asks the vendor', async () => {
+				const { checkExists, staticData } = setup(withSecret);
+				staticData().webhookId = 7;
+				staticData().webhookSecret = 'shhh';
+				respond({ id: 7 });
+
+				expect(await checkExists()).toBe(true);
+			});
+		});
+
+		test('managedKeys names the owned keys when create is a function', async () => {
+			const trigger: IDeclarativeWebhookTrigger = {
+				...byIdTrigger,
+				lifecycle: {
+					...byIdTrigger.lifecycle,
+					create: async () => true,
+				},
+				managedKeys: ['webhookId', 'webhookSecret'],
+			};
+			const { checkExists, staticData } = setup(trigger);
+			Object.assign(staticData(), { webhookId: 7, webhookSecret: 'shhh', keep: 'me' });
+			respondNotFound();
+
+			expect(await checkExists()).toBe(false);
+			expect(staticData().webhookId).toBeUndefined();
+			expect(staticData().webhookSecret).toBeUndefined();
+			expect(staticData().keep).toBe('me');
+		});
 	});
 
 	describe('create', () => {
