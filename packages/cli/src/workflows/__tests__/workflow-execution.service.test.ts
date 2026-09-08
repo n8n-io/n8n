@@ -2,7 +2,6 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
-	ExecutionRepository,
 	Project,
 	User,
 	WorkflowEntity,
@@ -10,6 +9,7 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { toITaskData } from '@test/helpers';
 import type { ErrorReporter } from 'n8n-core';
 import {
 	NodeConnectionTypes,
@@ -26,21 +26,22 @@ import {
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowRequest } from '../workflow.request';
+
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import type { EventService } from '@/events/event.service';
+import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
+import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
-import { toITaskData } from '@test/helpers';
-
-import type { WorkflowRequest } from '../workflow.request';
 
 const webhookNode: INode = {
 	name: 'Webhook',
@@ -106,7 +107,7 @@ describe('WorkflowExecutionService', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const pollCursorService = mock<PollCursorService>();
-	const executionRepository = mock<ExecutionRepository>();
+	const executionCrashService = mock<ExecutionCrashService>();
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
 	const workflowExecutionService = new WorkflowExecutionService(
@@ -126,7 +127,7 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		pollCursorService,
-		executionRepository,
+		executionCrashService,
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -233,6 +234,7 @@ describe('WorkflowExecutionService', () => {
 			});
 			workflowRunner.run.mockResolvedValue('exec-9');
 			workflowRunner.establishContextForPersistence.mockResolvedValue(undefined);
+			workflowRunner.prepareNewExecution.mockResolvedValue(undefined);
 		});
 
 		test('commits the poll items as the trigger data of a new execution for the polled node', async () => {
@@ -271,7 +273,39 @@ describe('WorkflowExecutionService', () => {
 			expect(returned).toBe('exec-9');
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({ workflowData: workflow }),
+				false,
+				undefined,
+				{ executionId: 'exec-9', expectedStatus: 'new' },
+				responsePromise,
+			);
+		});
+
+		test('prepares the new execution before commit, then starts the run without reloading static data', async () => {
+			const callOrder: string[] = [];
+			workflowRunner.prepareNewExecution.mockImplementation(async () => {
+				callOrder.push('prepare');
+				return undefined;
+			});
+			pollCursorService.commitWithExecution.mockImplementation(async ({ payload }) => {
+				callOrder.push('commit');
+				committedPayloads.push(capture(payload));
+				return { executionId: 'exec-9' };
+			});
+			workflowRunner.run.mockImplementation(async () => {
+				callOrder.push('run');
+				return 'exec-9';
+			});
+
+			await runPolledWorkflow();
+
+			expect(callOrder).toEqual(['prepare', 'commit', 'run']);
+			expect(workflowRunner.prepareNewExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowData: workflow }),
 				true,
+			);
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowData: workflow }),
+				false,
 				undefined,
 				{ executionId: 'exec-9', expectedStatus: 'new' },
 				responsePromise,
@@ -300,6 +334,29 @@ describe('WorkflowExecutionService', () => {
 			expect(errorReporter.error).toHaveBeenCalledWith(contextError, { shouldBeLogged: false });
 		});
 
+		test('commits neither the cursor nor an execution when preExecute blocks the run', async () => {
+			const blocked = new Error('execution limit reached');
+			workflowRunner.prepareNewExecution.mockRejectedValue(new PreExecuteBlockedError(blocked));
+
+			const returned = await runPolledWorkflow();
+
+			expect(returned).toBeUndefined();
+			expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(responsePromise.reject).toHaveBeenCalledWith(blocked);
+		});
+
+		test('rethrows unexpected preExecute-gate errors so they are not treated as a hook block', async () => {
+			const unexpected = new Error('failed to build workflow');
+			workflowRunner.prepareNewExecution.mockRejectedValue(unexpected);
+
+			await expect(runPolledWorkflow()).rejects.toBe(unexpected);
+
+			expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(responsePromise.reject).not.toHaveBeenCalled();
+		});
+
 		test('crashes the committed execution when the runner refuses to start it', async () => {
 			const runError = new Error('concurrency queue torn down');
 			workflowRunner.run.mockRejectedValue(runError);
@@ -307,7 +364,7 @@ describe('WorkflowExecutionService', () => {
 			const returned = await runPolledWorkflow();
 
 			expect(returned).toBe('exec-9');
-			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith('exec-9');
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith('exec-9');
 			expect(responsePromise.reject).toHaveBeenCalledWith(runError);
 			expect(errorReporter.error).toHaveBeenCalledWith(runError, expect.anything());
 		});
@@ -318,7 +375,7 @@ describe('WorkflowExecutionService', () => {
 			const returned = await runPolledWorkflow();
 
 			expect(returned).toBe('exec-9');
-			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+			expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
 			expect(responsePromise.reject).not.toHaveBeenCalled();
 		});
 

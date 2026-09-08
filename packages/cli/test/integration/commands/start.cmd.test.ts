@@ -26,7 +26,6 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { Start } from '@/commands/start';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import { ExternalHooks } from '@/external-hooks';
-import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { Push } from '@/push';
 import { PubSubEventBus } from '@/scaling/pubsub/pubsub.eventbus';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
@@ -55,7 +54,6 @@ mockInstance(ExternalHooks);
 mockInstance(ExecutionsPruningService);
 mockInstance(WorkflowHistoryCompactionService);
 mockInstance(WorkflowStatisticsRollupService);
-mockInstance(N8NCheckpointStorage);
 mockInstance(DurableScheduler);
 // Also proves `run()`'s dynamic `.js` import resolves to the same module as this
 // static one - otherwise the mock would silently not apply and the real recovery
