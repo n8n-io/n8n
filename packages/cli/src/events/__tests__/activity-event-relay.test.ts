@@ -414,6 +414,22 @@ describe('ActivityEventRelay', () => {
 			expect(recordedData()).toEqual({ source: 'ui', nodeCount: 2 });
 		});
 
+		it('leaves empty-group placeholders out of the count and the type delta', async () => {
+			relayWith(true);
+
+			savedWith({
+				workflow: workflowWith([
+					node('n8n-nodes-base.slack'),
+					node('n8n-nodes-base.groupPlaceholder'),
+				]),
+				previousWorkflow: workflowWith([node('n8n-nodes-base.slack')]),
+				source: 'ui',
+			});
+			await flushPromises();
+
+			expect(recordedData()).toEqual({ source: 'ui', nodeCount: 1 });
+		});
+
 		/**
 		 * The repository replaces an over-budget payload wholesale with a truncation marker, which
 		 * would take `source` with it — and provenance is the field this entry exists to carry.

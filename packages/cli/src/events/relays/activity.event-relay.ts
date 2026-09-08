@@ -8,6 +8,7 @@ import {
 } from '@n8n/db';
 import type { ActivityEventInput } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isGroupPlaceholderNode } from 'n8n-workflow';
 import type { IDataObject, INode, IWorkflowBase } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
@@ -358,7 +359,9 @@ export class ActivityEventRelay extends EventRelay {
 }
 
 function nodeCount(workflow: Pick<IWorkflowBase, 'nodes'>): number {
-	return workflow.nodes?.length ?? 0;
+	// Group placeholders are hidden stand-ins for empty groups; they are not
+	// real nodes the user added, so they stay out of the count.
+	return (workflow.nodes ?? []).filter((node) => !isGroupPlaceholderNode(node)).length;
 }
 
 /**
@@ -385,7 +388,7 @@ function shortNodeType(node: INode): string {
 }
 
 function distinctNodeTypes(nodes: INode[] | undefined): Set<string> {
-	return new Set((nodes ?? []).map(shortNodeType));
+	return new Set((nodes ?? []).filter((node) => !isGroupPlaceholderNode(node)).map(shortNodeType));
 }
 
 /**
