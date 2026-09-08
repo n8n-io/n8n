@@ -123,7 +123,13 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 
 	/**
 	 * Everything the feed holds about one resource, newest first — the history shown when a reader
-	 * expands a single entry. Served by the `(resourceType, resourceId, id)` index.
+	 * expands a single entry.
+	 *
+	 * There is no `(resourceType, resourceId, id)` index yet, so this walks the project index and
+	 * filters. That is affordable because it runs only when a reader expands an entry, never on the
+	 * per-turn path, and the scan is bounded by one project's entries. A dedicated index is worth
+	 * adding if expansion becomes common; this is the highest-write table in the schema, so the
+	 * insert cost of a third index should be paid for by a read that needs it.
 	 *
 	 * `resourceType` is part of the query, not just the index prefix: ids are unique per resource
 	 * kind but nothing in the schema says so, and an entry is a dangling pointer by design.

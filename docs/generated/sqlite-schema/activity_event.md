@@ -40,7 +40,6 @@ CREATE TABLE "activity_event" ("id" integer PRIMARY KEY NOT NULL, "category" var
 | Name | Definition |
 | ---- | ---------- |
 | IDX_activity_event_project | CREATE INDEX "IDX_activity_event_project" ON "activity_event" ("projectId", "id")  |
-| IDX_activity_event_resource | CREATE INDEX "IDX_activity_event_resource" ON "activity_event" ("resourceType", "resourceId", "id")  |
 | IDX_activity_event_user | CREATE INDEX "IDX_activity_event_user" ON "activity_event" ("userId", "id")  |
 
 ## Relations
