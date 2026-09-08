@@ -1,8 +1,9 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
+import { N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { runMultiTurnConversation } from '../harness/chat-loop';
 import type { EvalLogger } from '../harness/logger';
+import { reseedScenarioTables } from '../harness/seed-tables';
 import type { CapturedEvent } from '../types';
 
 const client = mock<N8nClient>();
@@ -33,7 +34,7 @@ function saved(workflowId: string, success = true): CapturedEvent {
 async function run(
 	runWorkflowId = 'primary',
 	events: CapturedEvent[] = [saved('primary'), saved('helper')],
-	beforeUserExecution?: () => Promise<void>,
+	beforeUserExecution?: (deadline: number) => Promise<void>,
 ) {
 	const decisions = [
 		{ kind: 'followUp', message: 'I ran it', runWorkflowId } as const,
@@ -59,6 +60,11 @@ async function run(
 }
 
 describe('user execution during a conversation', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		client.getThreadStatus.mockResolvedValue({ backgroundTasks: [] } as never);
@@ -153,6 +159,56 @@ describe('user execution during a conversation', () => {
 		client.stopExecution.mockResolvedValueOnce(undefined);
 		await expect(run()).rejects.toThrow('Request timed out');
 		expect(client.stopExecution).toHaveBeenCalledWith('execution');
+		expect(client.sendMessage).not.toHaveBeenCalled();
+	});
+
+	it('aborts input seeding at the case deadline before starting another table or workflow', async () => {
+		let now = 1_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		const fetchMock = vi.fn(async (_url: string, options: RequestInit) => {
+			return await new Promise<Response>((_resolve, reject) => {
+				const timer = setTimeout(() => reject(new Error('Request exceeded test allowance')), 1_000);
+				options.signal?.addEventListener(
+					'abort',
+					() => {
+						clearTimeout(timer);
+						const reason: unknown = options.signal?.reason;
+						reject(reason instanceof Error ? reason : new Error(String(reason)));
+					},
+					{ once: true },
+				);
+			});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const seedClient = new N8nClient('http://n8n.test');
+		const prepare = async (deadline: number) => {
+			now += 9_800;
+			await reseedScenarioTables(
+				seedClient,
+				{
+					name: 'inputs',
+					description: '',
+					dataSetup: '',
+					successCriteria: '',
+					seedDataTables: [
+						{ id: 'first-table', name: 'first', columns: [] },
+						{ id: 'second-table', name: 'second', columns: [] },
+					],
+				},
+				'thread',
+				{ first: 'first-table', second: 'second-table' },
+				logger,
+				deadline,
+			);
+		};
+
+		await expect(run('primary', [saved('primary')], prepare)).rejects.toMatchObject({
+			name: 'TimeoutError',
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(true);
+		expect(client.getWorkflow).not.toHaveBeenCalled();
+		expect(client.executeWorkflow).not.toHaveBeenCalled();
 		expect(client.sendMessage).not.toHaveBeenCalled();
 	});
 });

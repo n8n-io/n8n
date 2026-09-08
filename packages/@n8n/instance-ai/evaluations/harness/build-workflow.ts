@@ -114,7 +114,7 @@ interface MultiTurnDriverConfig {
 	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
 	buildMode?: InstanceAiBuildMode;
 	allowUserExecution?: boolean;
-	beforeUserExecution?: () => Promise<void>;
+	beforeUserExecution?: (deadline: number) => Promise<void>;
 	events: CapturedEvent[];
 	approvedRequests: Set<string>;
 	startTime: number;
@@ -977,10 +977,17 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				messageBudget: config.messageBudget,
 				buildMode: resolveEvalBuildMode(config.buildMode),
 				allowUserExecution: config.allowUserExecution,
-				beforeUserExecution: async () => {
+				beforeUserExecution: async (deadline) => {
 					const scenario = config.executionScenarios?.[0];
 					if (scenario) {
-						await reseedScenarioTables(client, scenario, threadId, scenarioTableIdsByName, logger);
+						await reseedScenarioTables(
+							client,
+							scenario,
+							threadId,
+							scenarioTableIdsByName,
+							logger,
+							deadline,
+						);
 					}
 				},
 				events,

@@ -12,6 +12,7 @@ import {
 	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
 	formatAttachmentSizeLimit,
+	instanceAiBuildModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type InstanceAiBuildMode,
@@ -1284,6 +1285,7 @@ export class InstanceAiService {
 				// Host run id, persisted with checkpoints so the interrupted-run
 				// sweep can match a crashed run's checkpoint exactly.
 				hostRunId: runId,
+				hostMetadata: { buildMode: this.runState.getBuildMode(threadId) ?? null },
 			},
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -1311,7 +1313,12 @@ export class InstanceAiService {
 			abortSignal: signal,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
-			persistence: { resourceId: user.id, threadId, hostRunId: runId },
+			persistence: {
+				resourceId: user.id,
+				threadId,
+				hostRunId: runId,
+				hostMetadata: { buildMode: this.runState.getBuildMode(threadId) ?? null },
+			},
 			// Must mirror buildOrchestratorAgentStreamOptions: without this request-level
 			// cache directive, resumed (HITL) turns send no cache_control, so Anthropic
 			// reprocesses the whole conversation uncached on every resume (~100K tokens).
@@ -5052,6 +5059,9 @@ export class InstanceAiService {
 		try {
 			const state = await this.checkpointStore.load(orphan.checkpointKey);
 			if (!state) return { kind: 'no-checkpoint' };
+			// Restore before rebuilding the prompt and tools. Older checkpoints use control.
+			const mode = instanceAiBuildModeSchema.safeParse(state.persistence?.hostMetadata?.buildMode);
+			this.runState.setBuildMode(orphan.threadId, mode.success ? mode.data : undefined);
 		} catch (error: unknown) {
 			return { kind: 'no-checkpoint', error };
 		}

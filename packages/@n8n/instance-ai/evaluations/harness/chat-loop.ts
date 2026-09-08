@@ -296,7 +296,7 @@ export type NextMessageDecision =
 export interface MultiTurnConfig extends WaitConfig {
 	nextMessageDecider: () => Promise<NextMessageDecision>;
 	/** Restore the case's declared input rows before a normal user execution. */
-	beforeUserExecution?: () => Promise<void>;
+	beforeUserExecution?: (deadline: number) => Promise<void>;
 	allowUserExecution?: boolean;
 	/** Sent with every follow-up message — the mode is per-message on the wire
 	 *  and the backend keeps "latest message wins", so a follow-up that omitted
@@ -425,7 +425,7 @@ async function applyUserExecution(config: MultiTurnConfig, workflowId: string): 
 		return remaining;
 	};
 	remainingMs();
-	await config.beforeUserExecution?.();
+	await config.beforeUserExecution?.(config.startTime + config.timeoutMs);
 	const workflow = await config.client.getWorkflow(workflowId, remainingMs());
 	if (Object.keys(workflow.pinData ?? {}).length > 0) {
 		throw new Error('User-run evals require a workflow without pinned data');

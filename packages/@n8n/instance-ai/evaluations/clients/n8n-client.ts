@@ -940,8 +940,10 @@ export class N8nClient {
 		threadId: string,
 		tableId: string,
 		rows: Array<Record<string, string | number | boolean | null>>,
+		timeoutMs?: number,
 	): Promise<void> {
 		await this.fetch('/rest/instance-ai/eval/seed-data-table-rows', {
+			timeoutMs,
 			method: 'POST',
 			body: { threadId, tableId, rows },
 		});

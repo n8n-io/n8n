@@ -1,11 +1,12 @@
 import type { User } from '@n8n/db';
-import { RunDebugBuffer } from '@n8n/instance-ai';
+import { RunDebugBuffer, RunStateRegistry } from '@n8n/instance-ai';
 
 import { InstanceAiService } from '../instance-ai.service';
 
 type RunDebugGatingInternals = {
 	instanceAiConfig: { runDebugEnabled: boolean };
 	runDebugBuffer: RunDebugBuffer;
+	runState: RunStateRegistry<User>;
 	buildOrchestratorAgentStreamOptions: (
 		user: User,
 		threadId: string,
@@ -27,6 +28,7 @@ function createRunDebugGatingService(runDebugEnabled: boolean): RunDebugGatingIn
 	const service = Object.create(InstanceAiService.prototype) as RunDebugGatingInternals;
 	service.instanceAiConfig = { runDebugEnabled };
 	service.runDebugBuffer = new RunDebugBuffer();
+	service.runState = new RunStateRegistry((user: User) => user.id);
 	return service;
 }
 

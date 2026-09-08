@@ -652,6 +652,7 @@ type ShutdownServiceInternals = {
 type TerminalGuardOrderServiceInternals = {
 	terminalOutcome: InstanceAiTerminalOutcomeService;
 	runState: {
+		getBuildMode: Mock;
 		getRunIdsForMessageGroup: Mock;
 		cancelThread: Mock;
 		clearActiveRun: Mock;
@@ -756,6 +757,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		InstanceAiService.prototype,
 	) as unknown as TerminalGuardOrderServiceInternals;
 	service.runState = {
+		getBuildMode: vi.fn(() => undefined),
 		getRunIdsForMessageGroup: vi.fn(() => ['run-1']),
 		cancelThread: vi.fn(),
 		clearActiveRun: vi.fn(),
