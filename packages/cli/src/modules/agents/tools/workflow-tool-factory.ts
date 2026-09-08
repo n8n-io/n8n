@@ -784,8 +784,8 @@ async function backgroundWaitingExecution(
 }
 
 /**
- * Return the tool result even if the delivery status cannot be saved.
- * If this write fails, a later wake can repeat the result.
+ * Catch errors here so the caller can still return the tool result.
+ * If this DB write fails, a later wake can repeat the result.
  */
 async function consumeInlineMail(
 	jobService: AgentBackgroundJobService,

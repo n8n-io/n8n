@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
-import { AGENT_BACKGROUND_WAKE_TAG } from './background/background-job-messages';
+import { AGENT_BACKGROUND_WAKE_OPEN_TAG } from './background/background-job-messages';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { N8nMemory } from './integrations/n8n-memory';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -38,7 +38,7 @@ export class AgentTestChatService {
 					(part) =>
 						part.type === 'text' &&
 						typeof part.text === 'string' &&
-						part.text.startsWith(AGENT_BACKGROUND_WAKE_TAG),
+						part.text.startsWith(AGENT_BACKGROUND_WAKE_OPEN_TAG),
 				),
 		);
 	}

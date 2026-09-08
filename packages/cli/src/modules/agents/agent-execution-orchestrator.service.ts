@@ -760,8 +760,10 @@ export class AgentExecutionOrchestratorService {
 	async executeForWake(config: ExecuteForWakeConfig): Promise<void> {
 		const { agentId, projectId, message, memory, identity, abortSignal } = config;
 		const isDraft = identity.type === 'draft';
+
 		// Draft wakes skip the quota hook, like other test chat runs.
 		if (!isDraft) await this.externalHooks.run('agent.preExecute', [agentId]);
+
 		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
@@ -792,6 +794,7 @@ export class AgentExecutionOrchestratorService {
 				hideUserMessageFromTranscript: true,
 				isWakeRun: true,
 			});
+
 			// The runtime returns model errors as stream chunks. Throw here so the caller
 			// leaves the job results pending for a retry.
 			let runError: unknown;

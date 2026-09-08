@@ -9,12 +9,17 @@ import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import {
 	AgentExecutionOrchestratorService,
 	type ExecuteForWakeConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
+import {
+	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
+	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
+	formatWakeMessage,
+} from './background-job-messages';
+import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
@@ -24,7 +29,6 @@ import {
 	integrationTypeFromMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 } from '../utils/agent-memory-scope';
-import { AGENT_BACKGROUND_UPDATES_TAG, formatWakeMessage } from './background-job-messages';
 
 export const WAKE_DEBOUNCE_MS = 5_000;
 export const MAX_CONSECUTIVE_FAILED_WAKES = 3;
@@ -112,7 +116,7 @@ export class AgentWakeService {
 				return `${JSON.stringify(title)} (${job.status})`;
 			})
 			.join(', ');
-		return `${AGENT_BACKGROUND_UPDATES_TAG}${jobs.length} background job(s) settled: ${summaries}. Call check_background_jobs before you finish this turn.</background-updates>`;
+		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${jobs.length} background job(s) settled: ${summaries}. Call check_background_jobs before you finish this turn.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
 	}
 
 	private scheduleLocal(threadId: string): void {

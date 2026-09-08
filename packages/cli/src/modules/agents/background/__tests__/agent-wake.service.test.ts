@@ -437,7 +437,7 @@ describe('AgentWakeService', () => {
 			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		});
 
-		it('uses the published runtime for a valid integration identity', async () => {
+		it('passes a published identity to the orchestrator for a valid integration', async () => {
 			const { service, jobRepository, orchestrator } = setup();
 			jobRepository.findWakeableUnconsumedSettled.mockResolvedValue([
 				makeJob({
