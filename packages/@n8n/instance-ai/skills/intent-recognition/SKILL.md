@@ -76,7 +76,7 @@ Two orthogonal decisions per request, or per part for compound requests:
   (running or triggering a workflow the user already has, debugging a failed
   execution, listing or managing workflows or agents, querying data) are not
   classified by this skill at all — route them through their normal paths.
-  Per the system prompt's "Existing Automations" section, check
+  Per the system prompt's "Existing Resources" section, check
   `workflows(action="list")` before reading "trigger my X" as a build: a
   workflow's own name can contain a build verb ("X — Create"), and a link to
   a service you integrate with is an input value, not a request to build an

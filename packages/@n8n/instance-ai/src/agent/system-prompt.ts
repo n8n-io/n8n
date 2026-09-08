@@ -104,7 +104,7 @@ If the user asks you to create something in, move something to, or use a credent
 }
 
 /**
- * Routing for requests that point at an automation the user ALREADY has.
+ * Routing for requests that point at a resource the user ALREADY has.
  *
  * Always-on, and deliberately not a skill: the agent must check the inventory
  * before it can know whether the request is a build at all, so a catalog entry it
@@ -113,19 +113,28 @@ If the user asks you to create something in, move something to, or use a credent
  * workflow intent and `executions`' own description only RESTRICTS `action="run"` —
  * so "trigger <name>" fell through to the builder and the agent opened with
  * build-design questions instead of looking (INS-1379).
+ *
+ * Kept general on purpose. The reported failure was one verb (run) on one resource
+ * (workflow), but the shape is not verb-specific, and the bug it replaces was itself
+ * a closed list that happened to omit "running" — so this states the principle and
+ * treats its verbs as examples. Data tables are deliberately absent: the
+ * `data-table-manager` skill description already claims that intent, and this
+ * section is only for intents no skill owns.
+ *
+ * The examples must not reuse the wording of the eval that measures this section
+ * (case #708), or the measurement degrades into string matching.
  */
-function getExistingAutomationsSection(): string {
+function getExistingResourcesSection(): string {
 	return `
-## Existing Automations
+## Existing Resources
 
-When the user speaks about an automation as one they already have — "trigger/run <name>", "my X workflow", "the X automation" — resolve that reference against \`workflows(action="list")\` BEFORE treating the request as a build, then act on the workflow you matched. Ask how to build something only once the inventory shows no match.
+Before treating a request as a build, work out whether it points at something the user already has. When they refer to a workflow or agent as theirs — "run/trigger <name>", "my X", "the X we set up" — find it first with \`workflows(action="list")\` or \`agents(action="list")\` and act on what you matched. Ask how to build something only once the lookup shows no match.
 
-- **A workflow name can contain a build verb.** "trigger onboarding packet - create" names a workflow called "Onboarding Packet — Create"; it is not an instruction to create one. Match the whole phrase against the list before reading any word inside it as a verb.
-- **A link to a service you integrate with is an input value**, not a request to build an integration for that service. Pass it to the workflow as \`inputData\`.
-- **Run it yourself** with \`executions(action="run")\`. Never answer by telling the user to open the workflow and run it from the editor.
-- Other operations on resources that already exist (rename, duplicate, publish, archive, inspect executions) go the same way: use the \`workflows\` / \`executions\` tools directly and do not start the builder.
+- **Read the reference as a name, not as an instruction.** Resource names routinely contain verbs — "Create Monthly Report", "Invoice Sync — Rebuild" — so "run create monthly report" asks you to run something called *Create Monthly Report*. Match the whole phrase against the list before reading any word inside it as a verb.
+- **Concrete values the user supplies are inputs, not requirements.** A link, record id, or file they name is what the existing resource should act on — not evidence they want something built around that service. Pass it as \`inputData\`.
+- **Do the operation yourself** with the \`workflows\` / \`executions\` / \`agents\` tools — running, renaming, publishing, archiving, inspecting past runs, and anything else that acts on what already exists. Do not start the builder for it, and never hand the work back ("open it in the editor and run it from there").
 
-This section is about requests that point at something existing. A request to build something new goes straight to the build path — do not list first.
+A request to build something genuinely new goes straight to the build path — no lookup first.
 `;
 }
 
@@ -197,7 +206,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
-${getExistingAutomationsSection()}
+${getExistingResourcesSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
