@@ -1332,6 +1332,7 @@ describe('JobProcessor', () => {
 							}),
 					),
 				);
+
 				const executionPersistence = mock<ExecutionPersistence>();
 				executionPersistence.findSingleExecution.mockResolvedValue(
 					mock<IExecutionResponse>({
@@ -1341,6 +1342,7 @@ describe('JobProcessor', () => {
 						data: mock<IRunExecutionData>({ executionData: undefined }),
 					}),
 				);
+
 				const nodeTypes = mock<NodeTypes>();
 				nodeTypes.getByNameAndVersion.mockReturnValue({
 					description: {
@@ -1350,6 +1352,7 @@ describe('JobProcessor', () => {
 					},
 					supplyData: vi.fn().mockResolvedValue({ response: toolkit, closeFunction }),
 				} as never);
+
 				const jobProcessor = new JobProcessor(
 					logger,
 					mock(),
@@ -1362,6 +1365,7 @@ describe('JobProcessor', () => {
 					mock(),
 					mock(),
 				);
+
 				const job = mock<Job>();
 				job.data = {
 					workflowId: 'wf-1',
