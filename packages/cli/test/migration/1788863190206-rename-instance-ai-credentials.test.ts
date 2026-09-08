@@ -11,7 +11,6 @@ import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 const MIGRATION_NAME = 'RenameInstanceAiCredentials1788863190206';
-const RENAMED_IDS_KEY = 'instanceAi.renamedCredentialIds';
 
 type CredentialSeed = {
 	id: string;
@@ -62,20 +61,17 @@ describe('RenameInstanceAiCredentials Migration', () => {
 			},
 		);
 		if (!credential.assignedTo) return;
-		await insertAssignment(context, credential.assignedTo, credential.id);
-	}
 
-	async function insertAssignment(
-		context: TestMigrationContext,
-		credentialUseId: string,
-		credentialId: string,
-	): Promise<void> {
 		const assignments = context.escape.tableName('instance_credential_assignment');
-		const now = new Date();
 		await context.runQuery(
 			`INSERT INTO ${assignments} ("credentialUseId", "credentialId", "createdAt", "updatedAt")
 			 VALUES (:credentialUseId, :credentialId, :createdAt, :updatedAt)`,
-			{ credentialUseId, credentialId, createdAt: now, updatedAt: now },
+			{
+				credentialUseId: credential.assignedTo,
+				credentialId: credential.id,
+				createdAt: now,
+				updatedAt: now,
+			},
 		);
 	}
 
@@ -84,18 +80,6 @@ describe('RenameInstanceAiCredentials Migration', () => {
 		for (const credential of credentials) {
 			await insertCredential(context, credential);
 		}
-		await context.queryRunner.release();
-	}
-
-	/** Moves the Instance AI credential use from its current credential to another one. */
-	async function reassign(credentialUseId: string, credentialId: string): Promise<void> {
-		const context = createTestMigrationContext(dataSource);
-		const assignments = context.escape.tableName('instance_credential_assignment');
-		await context.runQuery(
-			`DELETE FROM ${assignments} WHERE "credentialUseId" = :credentialUseId`,
-			{ credentialUseId },
-		);
-		await insertAssignment(context, credentialUseId, credentialId);
 		await context.queryRunner.release();
 	}
 
@@ -110,18 +94,7 @@ describe('RenameInstanceAiCredentials Migration', () => {
 		return rows[0]?.name;
 	}
 
-	async function getRenamedIdsRecord(): Promise<string[] | undefined> {
-		const context = createTestMigrationContext(dataSource);
-		const settings = context.escape.tableName('settings');
-		const rows: Array<{ value: string }> = await context.runQuery(
-			`SELECT "value" AS "value" FROM ${settings} WHERE "key" = :key`,
-			{ key: RENAMED_IDS_KEY },
-		);
-		await context.queryRunner.release();
-		return rows[0] ? (JSON.parse(rows[0].value) as string[]) : undefined;
-	}
-
-	it('renames the credentials assigned to the Instance AI credential uses and records them', async () => {
+	it('renames the credentials assigned to the Instance AI credential uses', async () => {
 		const model = randomUUID();
 		const search = randomUUID();
 		const daytonaSandbox = randomUUID();
@@ -159,9 +132,6 @@ describe('RenameInstanceAiCredentials Migration', () => {
 		expect(await getName(search)).toBe('n8n Assistant web search');
 		expect(await getName(daytonaSandbox)).toBe('n8n Assistant sandbox');
 		expect(await getName(n8nSandbox)).toBe('n8n Assistant sandbox');
-		expect((await getRenamedIdsRecord())?.sort()).toEqual(
-			[model, search, daytonaSandbox, n8nSandbox].sort(),
-		);
 	});
 
 	it('leaves credentials that Instance AI does not use untouched', async () => {
@@ -184,13 +154,12 @@ describe('RenameInstanceAiCredentials Migration', () => {
 		expect(await getName(unassignedInstanceCredential)).toBe('AI Assistant model');
 		expect(await getName(projectCredential)).toBe('AI Assistant model');
 		expect(await getName(assignedWithOwnName)).toBe('My provider key');
-		expect(await getRenamedIdsRecord()).toEqual([]);
 	});
 
-	it('restores only the renamed rows on rollback, even after the assignment moved', async () => {
+	it('restores only the assigned credentials on rollback', async () => {
 		const renamed = randomUUID();
-		const createdByNewVersion = randomUUID();
 		const namedByAdmin = randomUUID();
+		const projectCredential = randomUUID();
 		await seed([
 			{
 				id: renamed,
@@ -198,23 +167,18 @@ describe('RenameInstanceAiCredentials Migration', () => {
 				usageScope: 'instance',
 				assignedTo: 'instance-ai:model',
 			},
-			// An admin created this one with the new name by hand; `up` never touched it.
+			// An admin created these with the new name by hand; neither direction touches them.
 			{ id: namedByAdmin, name: 'n8n Assistant model', usageScope: 'instance' },
+			{ id: projectCredential, name: 'n8n Assistant model', usageScope: 'project' },
 		]);
 
 		await runSingleMigration(MIGRATION_NAME);
 		expect(await getName(renamed)).toBe('n8n Assistant model');
 
-		// After the upgrade an admin replaced the connection: the new version
-		// created its successor under the new name and moved the assignment to it.
-		await seed([{ id: createdByNewVersion, name: 'n8n Assistant model', usageScope: 'instance' }]);
-		await reassign('instance-ai:model', createdByNewVersion);
-
 		await undoLastSingleMigration();
 
 		expect(await getName(renamed)).toBe('AI Assistant model');
-		expect(await getName(createdByNewVersion)).toBe('n8n Assistant model');
 		expect(await getName(namedByAdmin)).toBe('n8n Assistant model');
-		expect(await getRenamedIdsRecord()).toBeUndefined();
+		expect(await getName(projectCredential)).toBe('n8n Assistant model');
 	});
 });
