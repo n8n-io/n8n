@@ -111,12 +111,10 @@ describe('Test MicrosoftTeamsV2, channelMessage => create with mentions', () => 
 		customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
 	});
 
-	// This fixture is the on-disk shape of a workflow saved before the mention type existed, so
-	// it stays byte-identical. What it kills is a wrong default on `mentionType`: the options are
-	// listed alphabetically for the lint rule, so `Team Tag` comes first, and a default of `tag`
-	// would materialise into every row here, drop `userId` as not displayed, and fail at "No team
-	// tag selected".
-	it('sends the two user mentions of a workflow saved without a mention type', () => {
+	// The harness run above is what kills a wrong `mentionType` default. This guards its premise:
+	// the fixture is the on-disk shape of a workflow saved before the mention type existed, and
+	// adding a mention type here would silently make that run prove nothing.
+	it('keeps the harness fixture free of a mention type', () => {
 		const workflow = jsonParse<{ nodes: INode[] }>(
 			readFileSync(join(__dirname, 'create.mentions.workflow.json'), 'utf8'),
 		);

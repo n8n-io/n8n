@@ -346,8 +346,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		],
 	};
 
-	// The whole namespace, so the trigger also registers pickers it never references
-	// (`getTags`). Harmless: an unreferenced list-search method is never even warned about.
 	methods = {
 		listSearch,
 	};

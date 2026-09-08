@@ -58,14 +58,15 @@ const mentionMessages = (row: number): UserTargetMessages => ({
 });
 
 /**
- * Rewrites the 403 Graph returns when the credential cannot read team tags into copy that names
- * the n8n action. Returns `undefined` for every other error, so both tag call sites stay one line
- * and the two descriptions cannot drift apart.
+ * Rewrites Graph's 403 for a missing team-tag scope into copy that names the n8n action. Returns
+ * `undefined` for every other error, so both tag call sites stay one line and the two
+ * descriptions cannot drift apart.
  *
- * The text has to be read from all three fields. The delegated transport branch passes
- * `errorOptions.message`, which puts Graph's text in `.message` and clears `.description`; a
- * `NodeApiError` built from a raw response body leaves it in `.description` and `.messages`.
- * Gating on one field alone is green in tests and dead in production.
+ * The text has to be read from all three fields. The delegated transport branch in
+ * `utils/microsoft/transport.ts` passes `errorOptions.message`, which puts Graph's text in
+ * `.message` and clears `.description`; a `NodeApiError` built from a raw response body leaves it
+ * in `.description` and `.messages`. Gating on one field alone is green in tests and dead in
+ * production.
  */
 export function tagPermissionError(
 	error: unknown,
@@ -115,8 +116,8 @@ async function findUserByMail(
  * truthiness: the everyday "row added, nobody picked yet" state is the RLC default
  * `{ __rl: true, mode: 'list', value: '' }`, and unwrapping it on truthiness would pass the whole
  * object down and tell the user to remove slashes from an ID they never typed. One deliberate
- * delta from `extractValue`: `isResourceLocatorValue` also requires `__rl`, so an object carrying
- * a `value` but no `__rl`/`mode` keeps today's rejection instead of becoming newly accepted.
+ * delta from `extractValue`: `isResourceLocatorValue` also requires `__rl`, so a `{ mode, value }`
+ * without it keeps today's rejection instead of becoming newly accepted.
  */
 const rlcValue = (value: unknown): string =>
 	String((isResourceLocatorValue(value) ? value.value : value) ?? '').trim();
@@ -139,19 +140,20 @@ async function resolveTagMention(
 		// `buildTeamsPath`, not `encodeURIComponent`: a tag ID is base64 over `[A-Za-z0-9=]` only
 		// (see `teamworkTagRLC`), which needs no encoding, and Graph's own docs interpolate it
 		// raw. The user branch encodes only because a B2B guest UPN carries `#EXT#`, which
-		// `buildTeamsPath` rejects, so the asymmetry is deliberate and not a pattern to copy.
-		// It is built inside this try so the catch below attributes a malformed ID to its item.
+		// `buildTeamsPath` rejects. It is built inside this try so the catch below attributes a
+		// malformed ID to its item.
 		const response = (await microsoftApiRequest.call(
 			this,
 			'GET',
 			buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/tags/', { id: tagId }]),
 		)) as IDataObject;
 		// The v1.0 get-by-id docs example wraps the entity in `value` while the list endpoint
-		// returns an array under the same key. Drop the fallback once the live spike settles it.
+		// returns an array under the same key. Drop the fallback once the ENT-350 live spike
+		// settles it.
 		tag = (response.value ?? response) as IDataObject;
 	} catch (error) {
 		// Only a tag row rewrites its 403. A user row in the same loop keeps Graph's own message,
-		// by ENT-324's choice; changing that is out of scope here.
+		// by ENT-324's choice.
 		const denied = tagPermissionError(error, node, 'Could not read the team tag', itemIndex);
 		if (denied) throw denied;
 		if (error instanceof NodeApiError && error.httpCode === '404') {
@@ -228,7 +230,7 @@ export async function resolveMentions(
 
 	for (let index = 0; index < rows.length; index++) {
 		// A null or non-object row used to fall through lodash `get` to the read's fallback.
-		const row = (rows[index] ?? {}) as IDataObject;
+		const row: IDataObject = rows[index] ?? {};
 		const { mentionType } = row;
 
 		if (mentionType === 'tag') {
@@ -237,6 +239,14 @@ export async function resolveMentions(
 				throw new NodeOperationError(node, `No team tag selected for mention ${index + 1}`, {
 					itemIndex,
 					description: 'Pick the tag from the list, or enter a tag ID.',
+				});
+			}
+			// `undefined` is a chat message, which has no team and no tag picker; `''` is a
+			// channel message whose Team field is empty.
+			if (teamId === undefined) {
+				throw new NodeOperationError(node, 'Team tags are not available in a chat message', {
+					itemIndex,
+					description: `Remove mention ${index + 1} or use a channel message.`,
 				});
 			}
 			if (!teamId) {
@@ -267,9 +277,10 @@ export async function resolveMentions(
 			continue;
 		}
 
-		// `undefined` is the on-disk shape of a row saved before the discriminator existed. An
-		// unknown value is an error rather than a silent user mention, because it reaches here
-		// from imported JSON, the public API and a surviving `$fromAI()` expression.
+		// `undefined` is what `chatMessage:create` always sends: its row declares only `userRLC`,
+		// so there is no discriminator to read. An unknown value is an error rather than a silent
+		// user mention, because it reaches here from imported JSON, the public API and a
+		// surviving `$fromAI()` expression.
 		if (mentionType !== undefined && mentionType !== 'user') {
 			throw new NodeOperationError(node, `The mention type for mention ${index + 1} is not valid`, {
 				itemIndex,

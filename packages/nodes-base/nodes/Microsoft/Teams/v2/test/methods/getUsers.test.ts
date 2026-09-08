@@ -203,6 +203,13 @@ describe('Microsoft Teams v2, mention picker wiring', () => {
 	const mentionTagRlc = (resource: string, operation = 'create') =>
 		mentionRow(resource, operation).find((value) => value.name === 'tagId');
 
+	const tagByIdRegex = () => {
+		const byId = mentionTagRlc('channelMessage')?.modes?.find((mode) => mode.name === 'id');
+		const { regex } = (byId?.validation?.[0] as unknown as { properties: { regex: string } })
+			.properties;
+		return new RegExp(regex);
+	};
+
 	it.each([
 		['channelMessage', 'create'],
 		['channelMessage', 'reply'],
@@ -297,6 +304,8 @@ describe('Microsoft Teams v2, mention picker wiring', () => {
 		expect((field?.options ?? [])[0]?.name).toBe('mention');
 		// Rows are reorderable because `prepareMessage` numbers the tokens by array order.
 		expect(field?.typeOptions?.sortable).toBe(true);
+		// Without it the rows stop being an array and every mention is dropped on a green run.
+		expect(field?.typeOptions?.multipleValues).toBe(true);
 	});
 
 	it.each([
@@ -305,16 +314,19 @@ describe('Microsoft Teams v2, mention picker wiring', () => {
 		// percent-decodes before validating, so the same value is accepted at run time.
 		['a percent-encoded value', 'abc%3D'],
 	])('rejects %s in the tag By ID mode', (_label, value) => {
-		const byId = mentionTagRlc('channelMessage')?.modes?.find((mode) => mode.name === 'id');
-		const { regex } = (byId?.validation?.[0] as unknown as { properties: { regex: string } })
-			.properties;
-
-		expect(new RegExp(regex).test(value)).toBe(false);
+		expect(tagByIdRegex().test(value)).toBe(false);
 	});
 
-	// Blocked on the D7 live spike. The only documented sample id is malformed (117 characters
-	// ending in `==`, which is not valid padded base64), and synthesizing one would make the
-	// test and the regex agree on a fiction. Assert a captured id, and the same id with a
-	// trailing space, which is the only thing that kills a `[ \t]*$` deletion.
+	// The value the workflow fixtures ship as a tag ID. The trailing space keeps the editor
+	// agreeing with `rlcValue`, which trims before it looks the tag up.
+	it.each([
+		['base64 padding', 'RW5naW5lZXJpbmc='],
+		['a trailing space', 'RW5naW5lZXJpbmc= '],
+	])('accepts a tag ID with %s in the By ID mode', (_label, value) => {
+		expect(tagByIdRegex().test(value)).toBe(true);
+	});
+
+	// Blocked on the D7 live spike. The rows above use a synthetic id, so only an id captured
+	// from a real tenant can pin the charset and the length of a real one.
 	it.todo('accepts a real tag ID in the By ID mode');
 });

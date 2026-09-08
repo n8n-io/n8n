@@ -24,6 +24,8 @@ vi.mock('../../transport', async () => {
 	};
 });
 
+// Byte-identical to a live 403, captured 2026-09-08 against `/beta/teams/{id}/tags`. The node
+// calls `/v1.0`: same permission check, but the v1.0 wording is not separately confirmed (D7).
 const TAG_SCOPE_TEXT =
 	"API requires one of 'TeamworkTag.Read, TeamworkTag.ReadWrite, TeamSettings.ReadWrite.All'";
 
@@ -40,10 +42,7 @@ describe('Microsoft Teams v2, getTags', () => {
 	// has to say what the team is.
 	const selectTeam = (teamId: string) => ctx.getCurrentNodeParameter.mockReturnValue(teamId);
 
-	// The delegated transport branch (`utils/microsoft/transport.ts:309-326`) passes
-	// `errorOptions.message`, which moves Graph's text into `.message` and clears
-	// `.description`; a NodeApiError built from a raw body leaves it in `.description` and
-	// `.messages`. The gate reads all three, so both shapes run for every case.
+	// The two shapes a Graph error reaches the gate in, see `tagPermissionError`.
 	const graphError = (shape: Shape, statusCode: number, message: string) =>
 		new NodeApiError(node, { message, statusCode }, shape === 'production' ? { message } : {});
 
@@ -60,6 +59,9 @@ describe('Microsoft Teams v2, getTags', () => {
 
 		await getTags.call(ctx);
 
+		// Without `extractValue` the read hands back the resource locator object and the path
+		// throws for every user.
+		expect(ctx.getCurrentNodeParameter).toHaveBeenCalledWith('teamId', { extractValue: true });
 		expect(apiRequestAllItems).toHaveBeenCalledWith('value', 'GET', '/v1.0/teams/team-1/tags');
 		// A single `microsoftApiRequest` would stop at the first page.
 		expect(apiRequest).not.toHaveBeenCalled();
@@ -134,9 +136,10 @@ describe('Microsoft Teams v2, getTags', () => {
 		await expect(getTags.call(ctx)).rejects.toBe(original);
 	});
 
+	// The scope text, so the status is the only thing keeping this out of the permission rewrite.
 	it.each(SHAPES)('passes a %s-shaped rate-limit error through', async (shape) => {
 		selectTeam('team-1');
-		const original = graphError(shape, 429, 'Rate limit is exceeded');
+		const original = graphError(shape, 429, TAG_SCOPE_TEXT);
 		apiRequestAllItems.mockRejectedValue(original);
 
 		await expect(getTags.call(ctx)).rejects.toBe(original);

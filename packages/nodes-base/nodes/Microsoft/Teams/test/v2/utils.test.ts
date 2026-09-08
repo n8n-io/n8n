@@ -43,6 +43,8 @@ const userOf = (entry: Mention) => {
 	return entry.mentioned.user;
 };
 
+// Byte-identical to a live 403, captured 2026-09-08 against `/beta/teams/{id}/tags`. The node
+// calls `/v1.0`: same permission check, but the v1.0 wording is not separately confirmed (D7).
 const TAG_SCOPE_TEXT =
 	"API requires one of 'TeamworkTag.Read, TeamworkTag.ReadWrite, TeamSettings.ReadWrite.All'";
 
@@ -487,10 +489,7 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 	describe('team tag rows', () => {
 		const tagRow = (tagId: string) => setMentionRows({ mentionType: 'tag', tagId });
 
-		// The delegated transport branch (`utils/microsoft/transport.ts:309-326`) passes
-		// `errorOptions.message`, which moves Graph's text into `.message` and clears
-		// `.description`; a NodeApiError built from a raw body leaves it in `.description` and
-		// `.messages`. The gate reads all three, so both shapes run for every case.
+		// The two shapes a Graph error reaches the gate in, see `tagPermissionError`.
 		const graphError = (shape: Shape, statusCode: number, message: string) =>
 			new NodeApiError(node, { message, statusCode }, shape === 'production' ? { message } : {});
 
@@ -504,25 +503,19 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 			expect(mentions).toEqual([tagMention('tag-1', 'Engineering')]);
 		});
 
-		it('leaves the base64 padding of a tag ID unencoded in the path', async () => {
-			tagRow('YWJjZA==');
-			apiRequest.mockResolvedValue({ id: 'YWJjZA==', displayName: 'Engineering' });
+		// `validateMicrosoftGraphId` decodes before validating, so a percent-encoded ID is
+		// accepted here even though the By ID field rejects it in the editor. The user branch
+		// diverges the other way and rejects `jane%40example.com` outright.
+		it.each([
+			['leaves base64 padding unencoded', 'YWJjZA==', '/v1.0/teams/team-1/tags/YWJjZA=='],
+			['decodes a percent-encoded ID', 'abc%3D', '/v1.0/teams/team-1/tags/abc='],
+		])('%s in the path', async (_label, tagId, expected) => {
+			tagRow(tagId);
+			apiRequest.mockResolvedValue({ id: tagId, displayName: 'Engineering' });
 
 			await resolveMentions.call(ctx, 0, 'team-1');
 
-			expect(apiRequest).toHaveBeenCalledWith('GET', '/v1.0/teams/team-1/tags/YWJjZA==');
-		});
-
-		it('sends a percent-encoded tag ID decoded', async () => {
-			// `validateMicrosoftGraphId` decodes before validating, so this is accepted here even
-			// though the By ID field rejects it in the editor. The user branch diverges the other
-			// way and rejects `jane%40example.com` outright.
-			tagRow('abc%3D');
-			apiRequest.mockResolvedValue({ id: 'abc=', displayName: 'Engineering' });
-
-			await resolveMentions.call(ctx, 0, 'team-1');
-
-			expect(apiRequest).toHaveBeenCalledWith('GET', '/v1.0/teams/team-1/tags/abc=');
+			expect(apiRequest).toHaveBeenCalledWith('GET', expected);
 		});
 
 		it('takes the tag ID from the Graph response, not from the input', async () => {
@@ -609,9 +602,23 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		it('names the row when the team is empty', async () => {
 			tagRow('tag-1');
 
-			const error = (await resolveMentions.call(ctx, 0, '').catch((e) => e)) as NodeOperationError;
+			const error = (await resolveMentions.call(ctx, 3, '').catch((e) => e)) as NodeOperationError;
 
 			expect(error.message).toBe('No team selected for the team tag in mention 1');
+			expect(error.context.itemIndex).toBe(3);
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it('rejects a tag row on a chat message', async () => {
+			// A chat message passes no team. Only a hand-edited row or the public API gets here,
+			// because the chat form offers no tag picker.
+			tagRow('tag-1');
+
+			const error = (await resolveMentions.call(ctx, 3).catch((e) => e)) as NodeOperationError;
+
+			expect(error.message).toBe('Team tags are not available in a chat message');
+			expect(error.description).toBe('Remove mention 1 or use a channel message.');
+			expect(error.context.itemIndex).toBe(3);
 			expect(apiRequest).not.toHaveBeenCalled();
 		});
 
@@ -651,9 +658,10 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 			await expect(resolveMentions.call(ctx, 0, 'team-1')).rejects.toBe(original);
 		});
 
+		// The scope text, so the status is the only thing keeping this out of the rewrite.
 		it.each(SHAPES)('passes a %s-shaped server error through', async (shape) => {
 			tagRow('tag-1');
-			const original = graphError(shape, 500, 'Something went wrong');
+			const original = graphError(shape, 500, TAG_SCOPE_TEXT);
 			apiRequest.mockRejectedValue(original);
 
 			await expect(resolveMentions.call(ctx, 0, 'team-1')).rejects.toBe(original);

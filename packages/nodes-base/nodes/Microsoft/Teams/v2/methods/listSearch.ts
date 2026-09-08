@@ -200,8 +200,7 @@ export async function getTags(
 ): Promise<INodeListSearchResult> {
 	const teamId = this.getCurrentNodeParameter('teamId', { extractValue: true }) as string;
 	// Deliberate divergence from `getChannels`, which has no such guard and lets `buildTeamsPath`
-	// emit the generic "A required ID is empty" on the same node. Mirroring the guard there would
-	// change a shipped picker, so `getChannels` stays untouched.
+	// emit the generic "A required ID is empty" on the same node.
 	if (!teamId) {
 		throw new NodeOperationError(this.getNode(), 'Select a team first');
 	}
