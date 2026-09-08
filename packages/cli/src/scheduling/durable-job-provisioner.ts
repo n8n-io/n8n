@@ -28,7 +28,7 @@ import type {
 import { Tracing } from 'n8n-core';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
-import { MAX_MISFIRE_GRACE_SECONDS, resolveMisfireGraceSeconds } from './misfire-grace';
+import { MAX_MISFIRE_GRACE_SECONDS, clampMisfireGraceSeconds } from './misfire-grace';
 import { rowSchedule, scheduleColumns } from './schedule-columns';
 import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
@@ -303,15 +303,12 @@ export class DurableJobProvisioner {
 	}
 
 	private resolveMisfireGraceSeconds(requested: unknown, owner: ScheduledJobOwner): number {
+		const effective = clampMisfireGraceSeconds(requested, this.globalConfig.scheduler);
+		if (effective === null) return this.globalConfig.scheduler.misfireGraceSeconds;
+
 		const numeric = Number(requested);
 		const truncated = Math.trunc(numeric);
-		const effective = resolveMisfireGraceSeconds(requested, this.globalConfig.scheduler);
-
-		if (
-			Number.isFinite(numeric) &&
-			truncated >= 1 &&
-			(effective !== truncated || numeric > MAX_MISFIRE_GRACE_SECONDS)
-		) {
+		if (effective !== truncated || numeric > MAX_MISFIRE_GRACE_SECONDS) {
 			this.logger.warn(
 				effective > truncated
 					? "Raised a node's misfire grace to the scheduler's minimum"

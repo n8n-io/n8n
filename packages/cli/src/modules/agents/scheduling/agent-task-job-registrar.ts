@@ -23,7 +23,8 @@ import { AgentRepository } from '../repositories/agent.repository';
  * own payload. A task can be added or removed without a change to its siblings.
  *
  * Reconciles are plain database writes, so any main can apply one directly,
- * with no leader and no pubsub. The scheduler drops missed occurrences
+ * with no leader and no pubsub. Each job carries the misfire policy and grace
+ * of its snapshot. Without them the scheduler drops missed occurrences
  * (`skip`), the same as the in-memory scheduler that this replaces.
  */
 @Service()

@@ -174,15 +174,16 @@ describe('agent tasks across two mains over one database', () => {
 		await registrar.reconcile(agentId);
 		const job = await jobRepo.findOneByOrFail({ ownerId: agentId, taskType: AGENT_TASK_TASK_TYPE });
 		await taskRepo.delete({ jobId: job.id });
-		await jobRepo.update(
-			{ id: job.id },
-			{ nextRunAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
-		);
+		const backlogStart = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+		await jobRepo.update({ id: job.id }, { nextRunAt: backlogStart });
 
 		await mainA.materialize();
+		// The backlog collapses onto its newest missed midnight; the older instants
+		// are discarded rather than run back to back.
 		const occurrences = await taskRepo.findBy({ jobId: job.id });
 		expect(occurrences).toHaveLength(1);
-		expect(occurrences[0].scheduledFor.getTime()).toBeLessThan(Date.now() - 60_000);
+		expect(occurrences[0].scheduledFor.getTime()).toBeGreaterThan(backlogStart.getTime());
+		expect(occurrences[0].scheduledFor.getTime()).toBeLessThanOrEqual(Date.now());
 
 		await mainA.execute();
 		await retryUntil(async () => {

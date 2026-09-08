@@ -100,7 +100,10 @@ directly on that object — there is no \`value\` wrapper. For example:
 - task.upsert: Set \`task\` to the complete task body. Omit \`taskId\` to create and attach a new
   scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.
   On a replace, an omitted \`timezone\` keeps the zone the task already has; send \`null\` to move it
-  back to the instance timezone.
+  back to the instance timezone. \`misfirePolicy\` decides what happens to executions missed during
+  downtime: \`skip\` (default) drops them, \`coalesce\` runs the most recent one once, late.
+  \`misfireGraceSeconds\` is how late an execution may start before the policy applies; 0 or omitted
+  uses the instance setting. Both apply only when durable agent scheduling is enabled.
 - task.delete: Set \`taskId\` to the task to delete; its config reference is removed.
 - customTool.upsert: Set \`code\` to the tool source; it is compiled, validated, stored, and attached.
   Only \`@n8n/agents\` and \`zod\` imports are available. The default export must be a Tool builder

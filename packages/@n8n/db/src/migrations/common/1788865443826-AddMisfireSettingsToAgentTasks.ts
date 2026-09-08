@@ -19,8 +19,10 @@ export class AddMisfireSettingsToAgentTasks1788865443826 implements ReversibleMi
 		}
 	}
 
-	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
+	async down({ schemaBuilder: { dropColumns, dropEnumCheck } }: MigrationContext) {
 		for (const table of ['agent_task_definition', 'agent_task_snapshot']) {
+			// The CHECK would otherwise survive the SQLite table rebuild without its column.
+			await dropEnumCheck(table, 'misfirePolicy', { recreatesOnSqlite: true });
 			await dropColumns(table, ['misfirePolicy', 'misfireGraceSeconds'], {
 				recreatesOnSqlite: true,
 			});
