@@ -5,7 +5,7 @@ type NodeMap = {
 	channelMessage: 'create' | 'get' | 'getAll' | 'getAllReplies' | 'reply';
 	chatMember: 'getAll';
 	chatMessage: 'create' | 'get' | 'getAll' | 'sendAndWait';
-	onlineMeeting: 'create' | 'get';
+	onlineMeeting: 'create' | 'deleteMeeting' | 'get';
 	task: 'create' | 'deleteTask' | 'get' | 'getAll' | 'update';
 };
 
