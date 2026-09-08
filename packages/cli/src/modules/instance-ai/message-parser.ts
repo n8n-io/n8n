@@ -1,10 +1,11 @@
+import type { AgentDbMessage } from '@n8n/agents';
 import { normalizeAgentTree } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import type { AgentDbMessage, AgentTreeSnapshot } from '@n8n/instance-ai';
+import type { AgentTreeSnapshot } from '@n8n/instance-ai';
 import { z } from 'zod';
 
 import {

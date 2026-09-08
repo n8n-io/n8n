@@ -99,10 +99,10 @@ function resolveHostDepVersion(name: string): string {
  * `--no-audit` matters most: npm otherwise posts the whole tree to the registry's
  * advisories endpoint and blocks until it answers or its 300s fetch timeout expires,
  * so a slow registry turns a 10s install into minutes. Nobody reads the audit or
- * funding output in a sandbox. `--prefer-offline` lets a warm npm cache skip
- * freshness checks against the registry.
+ * funding output in a sandbox. Refresh registry metadata so a cached sandbox
+ * can install a newly published SDK version.
  */
-export const NPM_INSTALL_FLAGS = '--ignore-scripts --no-audit --no-fund --prefer-offline';
+export const NPM_INSTALL_FLAGS = '--ignore-scripts --no-audit --no-fund --prefer-online';
 
 /**
  * Versions pinned from the host's installed packages. Pinning is load-bearing

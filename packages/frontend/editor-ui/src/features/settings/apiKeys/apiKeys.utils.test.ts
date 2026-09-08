@@ -33,6 +33,7 @@ describe('classifyScope', () => {
 		['execution:retry', 'write'],
 		['securityAudit:generate', 'write'],
 		['sourceControl:pull', 'write'],
+		['sourceControl:push', 'write'],
 		['sourceControl:read', 'read'],
 		['communityPackage:install', 'write'],
 		['dataTableRow:upsert', 'write'],
