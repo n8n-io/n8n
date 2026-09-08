@@ -1,4 +1,3 @@
-import '@n8n/design-system/theme.css';
 import './style.css';
 import { createApp } from 'vue';
 

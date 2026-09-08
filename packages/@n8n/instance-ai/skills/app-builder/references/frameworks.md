@@ -18,9 +18,21 @@ or 137 (killed) means you exceeded it. For every framework:
 - The build script bundles only. Keep type checking out of it: no `vue-tsc`,
   `tsc`, `svelte-check` or `astro check` in `build`. Put them in a separate
   `typecheck` script and run it before `build` when you changed TypeScript.
-- Do not import `@n8n/design-system` components (`N8n*`); use
-  `@n8n/design-system/theme.css` tokens instead. Avoid other large component
-  libraries (element-plus, MUI, Ant Design) for the same reason.
+- Do not import `@n8n/design-system` components (`N8n*`). Avoid other large
+  component libraries (element-plus, MUI, Ant Design) for the same reason.
+  Tailwind v4 (`tailwindcss` + `@tailwindcss/vite`, Rust engine) and `reka-ui`
+  fit: the template builds in about 300 MiB with both.
+
+## Styling in another framework
+
+The Vue template's `src/style.css` (theme import + Tailwind + `@theme` token
+mapping) is plain CSS and portable: copy it into any Vite project, add
+`@tailwindcss/vite` to the plugins and `@n8n/design-system` + `tailwindcss` +
+`@tailwindcss/vite` to `package.json`, import the file once in the entry
+module. The utility names in `references/design-system.md` then work the same.
+For non-Vite frameworks use `@tailwindcss/postcss` instead of the Vite plugin.
+`reka-ui` is Vue-only; in React use `radix-ui` primitives with the same
+utilities.
 - Prefer Vite for small apps. If another framework's build dies with 134/137,
   tell the user the sandbox is too small for that stack instead of retrying.
 - Raising `NODE_OPTIONS=--max-old-space-size` does not help: the limit is the

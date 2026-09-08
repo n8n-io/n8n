@@ -74,10 +74,13 @@ the user the app source is not available in this conversation.
   changed TypeScript). Do not import `@n8n/design-system` components: bundling
   them needs more than 1 GiB and the build dies (see
   `references/design-system.md`).
-- Look: style plain elements with the design-system CSS tokens
-  (`import '@n8n/design-system/theme.css'`, works in any stack) and the
-  classes in the template's `src/style.css`; only build a different look when
-  the user asks for one.
+- Look: Tailwind utilities whose names are the n8n design-system tokens
+  (`bg-brand`, `text-text`, `p-md`, `rounded-lg`); the template's
+  `src/style.css` sets this up and works in any Vite stack. Tailwind's own
+  palette and scales are removed, so read `references/design-system.md` for
+  the names before you write classes. No hex colors, no px values, no inline
+  styles. Interactive widgets come from `reka-ui`, styled with the same
+  utilities. Only build a different look when the user asks for one.
 - Keep dependencies few. Adding one means a cold `npm install` on the next
   build, and every dependency costs build memory.
 - Never paste file contents into the chat; point at the file path.
@@ -86,7 +89,7 @@ the user the app source is not available in this conversation.
 
 `apps(action="create")` with the default `template: "vue"` copies
 `${N8N_SKILL_DIR}/templates/vue` into the app directory: Vite + Vue 3 + TS +
-vue-router + the `@n8n/design-system` CSS tokens, with a committed
+vue-router + Tailwind v4 on the `@n8n/design-system` tokens + reka-ui, with a committed
 `package-lock.json` so the first build installs pinned versions. `template: "none"` gives an empty
 directory for other stacks; write `package.json` yourself.
 
@@ -98,8 +101,8 @@ apps/<namespace>/
   index.html
   package.json       scripts: build = vite build, typecheck = vue-tsc -b
   vite.config.ts     base: process.env.APP_BASE ?? '/'
-  src/main.ts        theme.css + style.css + router
-  src/style.css      shared classes: .button, .button--secondary, .card, .heading, .text
+  src/main.ts        style.css + router
+  src/style.css      theme.css + Tailwind + @theme token mapping (the utility names)
   src/router.ts      createWebHistory(import.meta.env.BASE_URL)
   src/App.vue        RouterView shell
   src/pages/Home.vue one component per route
