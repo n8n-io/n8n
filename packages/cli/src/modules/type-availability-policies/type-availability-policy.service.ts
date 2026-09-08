@@ -427,10 +427,15 @@ export class TypeAvailabilityPolicyService {
 
 			// Attaching a document to a project scope makes its rules that project's policy, so
 			// a document carrying `delegate` is rejected the same way a direct project write is.
+			// The documents are read under the same row lock `updatePolicyDocument` takes, so a
+			// concurrent edit cannot slip a `delegate` in between this check and the attach: one
+			// of the two waits, and the loser either sees the new rules here or fails that path's
+			// own "attached while updating" conflict check.
 			if (scope.projectId !== null && attachments.length > 0) {
 				const policies = await this.policyRepository.findManyByIds(
 					attachments.map((a) => a.policyId),
 					ctx,
+					true,
 				);
 				if (policies.some((policy) => rulesContainDelegate(policy.rules))) {
 					throw new UserError(DELEGATE_RULE_AT_PROJECT_SCOPE);

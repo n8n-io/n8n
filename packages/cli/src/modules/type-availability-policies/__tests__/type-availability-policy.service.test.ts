@@ -560,7 +560,8 @@ describe('TypeAvailabilityPolicyService', () => {
 				),
 			).rejects.toThrow(DELEGATE_RULE_AT_PROJECT_SCOPE);
 
-			expect(policyRepository.findManyByIds).toHaveBeenCalledWith(['p1', 'p2'], ROOT);
+			// Locked read: the check must hold against a concurrent document edit.
+			expect(policyRepository.findManyByIds).toHaveBeenCalledWith(['p1', 'p2'], ROOT, true);
 			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
 			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
