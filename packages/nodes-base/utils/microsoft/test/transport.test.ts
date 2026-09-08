@@ -10,7 +10,7 @@ import {
 	validateMicrosoftGraphId,
 } from '../transport';
 
-const { getCredentialType, microsoftApiRequest, microsoftApiRequestAllItems } =
+const { getCredentialType, getGraphBaseUrl, microsoftApiRequest, microsoftApiRequestAllItems } =
 	createMicrosoftGraphTransport({ defaultCredentialType: 'microsoftTeamsOAuth2Api' });
 
 describe('Microsoft Graph transport kernel', () => {
@@ -98,6 +98,17 @@ describe('Microsoft Graph transport kernel', () => {
 						json: true,
 					}),
 				);
+			});
+
+			// The base URL is read through `getGraphBaseUrl`, which must not add a
+			// second credential read to every request.
+			it('reads the credential once per request', async () => {
+				mockRequestOAuth2.mockResolvedValue({ data: 'test' });
+				mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
 			});
 		});
 
@@ -462,6 +473,28 @@ describe('Microsoft Graph transport kernel', () => {
 		});
 	});
 
+	// The commercial / empty / sovereign matrix is already covered through
+	// `microsoftApiRequest` above; only the refusals live here.
+	describe('getGraphBaseUrl', () => {
+		it('refuses a base URL that cannot be parsed', async () => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'not-a-url' });
+
+			await expect(getGraphBaseUrl.call(mockExecuteFunctions)).rejects.toThrow(
+				'Refusing to send credentials to an unexpected host',
+			);
+		});
+
+		it('refuses a base URL whose scheme has no origin', async () => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				graphApiBaseUrl: 'foo://graph.microsoft.com',
+			});
+
+			await expect(getGraphBaseUrl.call(mockExecuteFunctions)).rejects.toThrow(
+				'Refusing to send credentials to an unexpected host',
+			);
+		});
+	});
+
 	describe('validateMicrosoftGraphId', () => {
 		it('accepts a GUID and a Planner-style id', () => {
 			expect(() =>
@@ -758,6 +791,26 @@ describe('Microsoft Graph transport kernel', () => {
 			expect(result).toEqual([{ id: '1' }, { id: '2' }]);
 			expect(requestOAuth2).toHaveBeenCalledTimes(2);
 			expect(optionsOfCall(requestOAuth2, 0).qs).toEqual({});
+		});
+
+		it('stops on a null @odata.nextLink instead of re-requesting the first page', async () => {
+			// The trip wire matters: without it a regression re-sends the identical request
+			// forever and the test hangs to the vitest timeout instead of failing.
+			const requestOAuth2 = vi
+				.fn()
+				.mockResolvedValueOnce({ value: [{ id: '1' }], '@odata.nextLink': null })
+				.mockRejectedValue(new Error('second page must not be requested'));
+			const ctx = makeContext(requestOAuth2);
+
+			const result = await microsoftApiRequestAllItems.call(
+				ctx,
+				'value',
+				'GET',
+				'/v1.0/teams/1/channels',
+			);
+
+			expect(result).toEqual([{ id: '1' }]);
+			expect(requestOAuth2).toHaveBeenCalledTimes(1);
 		});
 
 		it('refuses to follow a cross-origin @odata.nextLink', async () => {

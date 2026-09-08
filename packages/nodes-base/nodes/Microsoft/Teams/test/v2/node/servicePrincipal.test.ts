@@ -82,6 +82,32 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
 	});
 
+	it.each(['create', 'get', 'getAll'])(
+		'chat:%s throws a static error and issues no request under SP',
+		async (operation) => {
+			selectSp({
+				resource: 'chat',
+				operation,
+				chatId: 'chatID',
+				returnAll: true,
+				chatType: 'oneOnOne',
+				// a participant row, so moving the guard below the row loop fires a GET /v1.0/users/...
+				'members.member': [
+					{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
+				],
+				'members.member[0].userId': '714c1202-cbac-40ff-9160-53ab5c4df9b8',
+			});
+
+			await expect(node.execute.call(ctx)).rejects.toThrow(
+				'Chats are not available with the Service Principal credential',
+			);
+			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
+			// the guard reads only the `authentication` parameter, never the credential itself
+			expect(ctx.getCredentials).not.toHaveBeenCalled();
+		},
+	);
+
 	it.each(['getAll'])(
 		'chatMember:%s throws a static error and issues no request under SP',
 		async (operation) => {
