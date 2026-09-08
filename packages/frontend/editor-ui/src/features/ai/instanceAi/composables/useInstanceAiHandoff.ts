@@ -231,10 +231,12 @@ export function stashPendingAppAttachment(
 export function getPendingAppAttachment(threadId: string): InstanceAiAppAttachment | null {
 	const raw = localStorage.getItem(pendingAppAttachmentKey(threadId));
 	if (!raw) return null;
-	const parsed = instanceAiAppAttachmentSchema.safeParse(
-		jsonParse(raw, { fallbackValue: undefined }),
-	);
-	return parsed.success ? parsed.data : null;
+	try {
+		const parsed = instanceAiAppAttachmentSchema.safeParse(JSON.parse(raw));
+		return parsed.success ? parsed.data : null;
+	} catch {
+		return null;
+	}
 }
 
 export function clearPendingAppAttachment(threadId: string): void {

@@ -1056,7 +1056,14 @@ function handleSubmit(
 				clearPendingAgentAttachment(props.threadId);
 				pendingAgentAttachment.value = null;
 			}
-			if (queuedAppAttachment && pendingAppAttachment.value === queuedAppAttachment) {
+			// The create-result watcher may have swapped the queued object for its
+			// resolved copy mid-send, so match the app itself and not only the identity.
+			const pendingApp = pendingAppAttachment.value;
+			const isQueuedApp =
+				pendingApp === queuedAppAttachment ||
+				(pendingApp?.projectId === queuedAppAttachment?.projectId &&
+					pendingApp?.namespace === queuedAppAttachment?.namespace);
+			if (queuedAppAttachment && pendingApp && isQueuedApp) {
 				clearPendingAppAttachment(props.threadId);
 				pendingAppAttachment.value = null;
 			}

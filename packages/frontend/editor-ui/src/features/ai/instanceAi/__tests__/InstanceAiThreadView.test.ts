@@ -1479,6 +1479,41 @@ describe('InstanceAiThreadView', () => {
 			);
 		});
 
+		it('drops the chip when the create result resolves it while the send is in flight', async () => {
+			const send = Promise.withResolvers<boolean>();
+			vi.mocked(thread.sendMessage).mockReturnValueOnce(send.promise);
+			stashPendingAppAttachment('thread-1', {
+				type: 'app',
+				projectId: 'project-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				isNewApp: true,
+			});
+
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await vi.waitFor(() => {
+				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Greeter');
+			});
+
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+			thread.producedArtifacts.set('app-1', {
+				type: 'app',
+				id: 'app-1',
+				projectId: 'project-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+			});
+			await findByTestId('instance-ai-app-preview-stub');
+			expect(getPendingAppAttachment('thread-1')).toMatchObject({ appId: 'app-1' });
+
+			send.resolve(true);
+
+			await vi.waitFor(() => {
+				expect(getPendingAppAttachment('thread-1')).toBeNull();
+				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			});
+		});
+
 		it('binds the thread when the create result arrives after the chip was sent', async () => {
 			stashPendingAppAttachment('thread-1', {
 				type: 'app',

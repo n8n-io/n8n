@@ -427,6 +427,12 @@ describe('useInstanceAiHandoff', () => {
 		expect(mocks.showError).toHaveBeenCalled();
 	});
 
+	it('drops a stashed app attachment that is not valid JSON', () => {
+		localStorage.setItem('n8n-instance-ai-app-attachment:thread-1', '{not json');
+
+		expect(getPendingAppAttachment('thread-1')).toBeNull();
+	});
+
 	it('drops a stashed app attachment that no longer matches the schema', () => {
 		stashPendingAppAttachment('thread-1', {
 			type: 'app',
