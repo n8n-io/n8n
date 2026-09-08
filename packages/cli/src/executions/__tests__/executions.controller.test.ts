@@ -95,33 +95,36 @@ describe('ExecutionsController', () => {
 			count: 0,
 			estimated: false,
 			results: [],
+			nextCursor: null,
 			concurrentExecutionsCount: -1,
 		};
+
+		const CURSOR_BEFORE = { timestamp: '2026-01-01T00:00:00.000Z', id: '999' };
 
 		const QUERIES_WITH_EITHER_STATUS_OR_RANGE: ExecutionSummaries.RangeQuery[] = [
 			{
 				kind: 'range',
 				workflowId: undefined,
 				status: undefined,
-				range: { lastId: '999', firstId: '111', limit: 20 },
+				range: { limit: 20, before: CURSOR_BEFORE },
 			},
 			{
 				kind: 'range',
 				workflowId: undefined,
 				status: [],
-				range: { lastId: '999', firstId: '111', limit: 20 },
+				range: { limit: 20, before: CURSOR_BEFORE },
 			},
 			{
 				kind: 'range',
 				workflowId: undefined,
 				status: ['waiting'],
-				range: { lastId: undefined, firstId: undefined, limit: 20 },
+				range: { limit: 20, before: undefined },
 			},
 			{
 				kind: 'range',
 				workflowId: undefined,
 				status: [],
-				range: { lastId: '999', firstId: '111', limit: 20 },
+				range: { limit: 20, before: CURSOR_BEFORE },
 			},
 		];
 
@@ -130,13 +133,13 @@ describe('ExecutionsController', () => {
 				kind: 'range',
 				workflowId: undefined,
 				status: undefined,
-				range: { lastId: undefined, firstId: undefined, limit: 20 },
+				range: { limit: 20, before: undefined },
 			},
 			{
 				kind: 'range',
 				workflowId: undefined,
 				status: [],
-				range: { lastId: undefined, firstId: undefined, limit: 20 },
+				range: { limit: 20, before: undefined },
 			},
 		];
 
@@ -196,7 +199,7 @@ describe('ExecutionsController', () => {
 					kind: 'range',
 					workflowId: undefined,
 					status: ['success'],
-					range: { lastId: '999', firstId: '111', limit: 5 },
+					range: { limit: 5, before: CURSOR_BEFORE },
 				};
 
 				const req = mock<ExecutionRequest.GetMany>({ rangeQuery });

@@ -1,7 +1,9 @@
+import type { SerializedCursor } from '@n8n/api-types';
 import type { NextFunction } from 'express';
 import type * as express from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { encodeExecutionCursor } from '@/executions/execution-cursor';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { parseRangeQuery } from '@/executions/parse-range-query.middleware';
 
@@ -80,8 +82,7 @@ describe('`parseRangeQuery` middleware', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
 					cursor: undefined,
-					filter:
-						'{ "startedBefore": "2021-01-01", "startedAfter": "2020-01-01", "waitTill": "true" }',
+					filter: '{ "startedBefore": "2021-01-01", "startedAfter": "2020-01-01" }',
 					limit: undefined,
 					firstId: undefined,
 					lastId: undefined,
@@ -92,7 +93,6 @@ describe('`parseRangeQuery` middleware', () => {
 
 			expect(req.rangeQuery.startedBefore).toBe('2021-01-01');
 			expect(req.rangeQuery.startedAfter).toBe('2020-01-01');
-			expect(req.rangeQuery.waitTill).toBe(true);
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
@@ -200,6 +200,59 @@ describe('`parseRangeQuery` middleware', () => {
 
 			expect(req.rangeQuery.range.limit).toEqual(20);
 			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should leave `before` unset without a cursor', () => {
+			const req = mock<ExecutionRequest.GetMany>({
+				query: {
+					cursor: undefined,
+					filter: undefined,
+					limit: undefined,
+					firstId: undefined,
+					lastId: undefined,
+				},
+			});
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(req.rangeQuery.range.before).toBeUndefined();
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should set range.before from a valid cursor', () => {
+			const position = { timestamp: '2026-01-01T00:00:00.000Z', id: '123' };
+			const cursor = encodeExecutionCursor({ version: 1, v1: position }) as SerializedCursor;
+			const req = mock<ExecutionRequest.GetMany>({
+				query: {
+					cursor,
+					filter: undefined,
+					limit: undefined,
+					firstId: undefined,
+					lastId: undefined,
+				},
+			});
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(req.rangeQuery.range.before).toEqual(position);
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should reject an invalid cursor', () => {
+			const req = mock<ExecutionRequest.GetMany>({
+				query: {
+					cursor: 'not-a-real-cursor' as SerializedCursor,
+					filter: undefined,
+					limit: undefined,
+					firstId: undefined,
+					lastId: undefined,
+				},
+			});
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(nextFn).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -16,7 +16,7 @@ import type { WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
-import type { IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import type { ExecutionSummary, IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -974,6 +974,66 @@ describe('ExecutionService', () => {
 				['wf-1'],
 				expect.objectContaining({ startedAfter, startedBefore }),
 			);
+		});
+	});
+
+	describe('nextCursor', () => {
+		beforeEach(() => {
+			executionRepository.getLiveExecutionRowsOnPostgres.mockResolvedValue(-1);
+			executionRepository.fetchCount.mockResolvedValue(0);
+		});
+
+		it('findRangeWithCount returns a cursor for the last row when the page is full', async () => {
+			executionRepository.findManyByRangeQuery.mockResolvedValue([
+				mock<ExecutionSummary>({
+					id: '1',
+					startedAt: new Date('2024-01-02T00:00:00.000Z'),
+					createdAt: new Date(),
+				}),
+				mock<ExecutionSummary>({
+					id: '2',
+					startedAt: new Date('2024-01-01T00:00:00.000Z'),
+					createdAt: new Date(),
+				}),
+			]);
+
+			const { nextCursor } = await executionService.findRangeWithCount(
+				mock({ range: { limit: 2 } }),
+			);
+
+			expect(nextCursor).not.toBeNull();
+		});
+
+		it('findRangeWithCount returns null when the page is partial', async () => {
+			executionRepository.findManyByRangeQuery.mockResolvedValue([
+				mock<ExecutionSummary>({ id: '1', startedAt: new Date(), createdAt: new Date() }),
+			]);
+
+			const { nextCursor } = await executionService.findRangeWithCount(
+				mock({ range: { limit: 20 } }),
+			);
+
+			expect(nextCursor).toBeNull();
+		});
+
+		it('findLatestCurrentAndCompleted derives the cursor from the completed page, not current', async () => {
+			executionRepository.findManyByRangeQuery.mockImplementation(async (query) =>
+				query.status?.includes('running')
+					? [mock<ExecutionSummary>({ id: 'current-1' })]
+					: [
+							mock<ExecutionSummary>({
+								id: 'completed-1',
+								startedAt: new Date('2024-01-01T00:00:00.000Z'),
+								createdAt: new Date(),
+							}),
+						],
+			);
+
+			const { nextCursor } = await executionService.findLatestCurrentAndCompleted(
+				mock({ range: { limit: 1 } }),
+			);
+
+			expect(nextCursor).not.toBeNull();
 		});
 	});
 
