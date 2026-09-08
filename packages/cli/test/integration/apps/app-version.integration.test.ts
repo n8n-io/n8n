@@ -16,6 +16,7 @@ import { AppVersionRepository } from '@/modules/apps/app-version.repository';
 import { MAX_TARBALL_BYTES } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -138,6 +139,52 @@ describe('POST /projects/:projectId/apps/:appId/versions', () => {
 			.attach('source', sourceTgz(), 'src.tgz')
 			.attach('dist', distTgz(), 'dist.tgz')
 			.expect(403);
+	});
+
+	test('rejects the upload on a protected instance with 403', async () => {
+		const app = await createApp();
+		const writeAccess = Container.get(InstanceWriteAccessService);
+		writeAccess.setReadOnly(true);
+
+		try {
+			await upload(app.id).expect(403);
+		} finally {
+			writeAccess.setReadOnly(false);
+		}
+		expect(await appVersionRepository.listByAppId(app.id)).toHaveLength(0);
+	});
+
+	test('rejects an extra form field with 400', async () => {
+		const app = await createApp();
+
+		await upload(app.id).field('extra', 'x').expect(400);
+	});
+
+	test('rejects a dist without index.html with 400', async () => {
+		const app = await createApp();
+		const noIndex = tgz([{ path: './assets/app.js', content: APP_JS }]);
+
+		const response = await upload(app.id, sourceTgz(), noIndex).expect(400);
+
+		expect(response.body.message).toContain('index.html');
+		expect(await appVersionRepository.listByAppId(app.id)).toHaveLength(0);
+	});
+
+	test('rejects a tarball that unpacks past the size budget with 400', async () => {
+		const app = await createApp();
+		const MB = 1024 * 1024;
+		const header = new Header({ path: './big', type: 'File', size: 201 * MB, mtime: new Date(0) });
+		header.encode();
+		// Concatenated gzip members keep the fixture small; gunzip reads them as one stream.
+		const bomb = Buffer.concat([
+			gzipSync(header.block!),
+			...Array<Buffer>(201).fill(gzipSync(Buffer.alloc(MB))),
+			gzipSync(Buffer.alloc(1024)),
+		]);
+
+		const response = await upload(app.id, bomb).expect(400);
+
+		expect(response.body.message).toContain('unpacks to more than');
 	});
 
 	test('rejects a missing tarball with 400', async () => {

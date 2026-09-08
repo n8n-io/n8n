@@ -1,5 +1,6 @@
 import { CreateAppDto, CreatePageDto, UpdateAppDto, UpdatePageDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
+import { Container } from '@n8n/di';
 import {
 	Body,
 	Delete,
@@ -19,6 +20,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+import { sendErrorResponse } from '@/response-helper';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { MAX_TARBALL_BYTES } from './app-version.service';
@@ -31,13 +33,25 @@ type TarballUploadRequest = AuthenticatedRequest<{ projectId: string }> & {
 	fileUploadError?: Error;
 };
 
+const READ_ONLY_MESSAGE =
+	'Cannot modify apps on a protected instance. This instance is in read-only mode.';
+
 const tarballFields = multer({
 	storage: multer.memoryStorage(),
-	limits: { fileSize: MAX_TARBALL_BYTES, files: 2 },
+	limits: { fileSize: MAX_TARBALL_BYTES, files: 2, fields: 0 },
 }).fields([
 	{ name: 'source', maxCount: 1 },
 	{ name: 'dist', maxCount: 1 },
 ]);
+
+/** Runs before multer so a protected instance answers 403 without buffering the upload. */
+const rejectUploadWhenReadOnly: RequestHandler = (_req, res, next) => {
+	if (Container.get(InstanceWriteAccessService).isReadOnly()) {
+		sendErrorResponse(res, new ForbiddenError(READ_ONLY_MESSAGE));
+		return;
+	}
+	next();
+};
 
 /** Parks a multer failure on the request so the handler can answer 400 instead of the default 500. */
 const uploadTarballs: RequestHandler = (req, res, next) => {
@@ -63,11 +77,7 @@ export class AppsController {
 	) {}
 
 	private checkInstanceWriteAccess(): void {
-		if (this.instanceWriteAccess.isReadOnly()) {
-			throw new ForbiddenError(
-				'Cannot modify apps on a protected instance. This instance is in read-only mode.',
-			);
-		}
+		if (this.instanceWriteAccess.isReadOnly()) throw new ForbiddenError(READ_ONLY_MESSAGE);
 	}
 
 	private handleAppError(e: unknown): never {
@@ -156,10 +166,9 @@ export class AppsController {
 		await this.appsService.deleteApp(appId);
 	}
 
-	@Post('/:appId/versions', { middlewares: [uploadTarballs] })
+	@Post('/:appId/versions', { middlewares: [rejectUploadWhenReadOnly, uploadTarballs] })
 	@ProjectScope('app:update')
 	async createVersion(req: TarballUploadRequest, _res: Response, @Param('appId') appId: string) {
-		this.checkInstanceWriteAccess();
 		if (req.fileUploadError) {
 			const message =
 				req.fileUploadError instanceof multer.MulterError

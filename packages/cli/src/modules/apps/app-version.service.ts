@@ -14,9 +14,12 @@ import { AppVersionRepository } from './app-version.repository';
 import { AppRepository } from './app.repository';
 import { AppNotFoundError } from './errors/app-not-found.error';
 import { InvalidAppVersionTarballError } from './errors/invalid-app-version-tarball.error';
-import { createDistTarFilter } from './serving/dist-tar-filter';
+import { createDistTarFilter, DIST_TAR_LIMITS } from './serving/dist-tar-filter';
 
 export const MAX_TARBALL_BYTES = 20 * 1024 * 1024;
+
+/** Bound on what a tarball may unpack to, so a small upload cannot cost gigabytes of gunzip. */
+const MAX_UNPACKED_BYTES = { source: 200 * 1024 * 1024, dist: DIST_TAR_LIMITS.maxBytes };
 
 /**
  * The newest five dist tarballs of an app are kept; the active version's dist is
@@ -40,30 +43,44 @@ export class AppVersionService {
 
 	async create(appId: string, source: Buffer, dist: Buffer): Promise<AppVersion> {
 		await this.assertTarball('source', source);
-		await this.assertTarball('dist', dist, createDistTarFilter());
+		const distEntries = await this.assertTarball('dist', dist, createDistTarFilter());
+		if (!distEntries.some((entry) => path.posix.normalize(entry) === 'index.html')) {
+			throw new InvalidAppVersionTarballError('dist', 'has no index.html at its root');
+		}
 		if (!(await this.appRepository.existsBy({ id: appId }))) throw new AppNotFoundError(appId);
 
 		const versionId = generateNanoId();
-		const sourceBlob = await this.blobStore.write({ appId, versionId, kind: 'source' }, source);
-		const distBlob = await this.blobStore.write({ appId, versionId, kind: 'dist' }, dist);
+		const version = await this.storeVersion(appId, versionId, source, dist);
+		await this.appRepository.setActiveVersionId(appId, versionId);
+		await this.pruneDist(appId, versionId);
 
-		const version = await this.appVersionRepository
-			.insertVersion({
+		return version;
+	}
+
+	/** Writes both blobs and the row; a failure at any step deletes the blobs written so far. */
+	private async storeVersion(
+		appId: string,
+		versionId: string,
+		source: Buffer,
+		dist: Buffer,
+	): Promise<AppVersion> {
+		const written: StoredAppVersionBlob[] = [];
+		try {
+			const sourceBlob = await this.blobStore.write({ appId, versionId, kind: 'source' }, source);
+			written.push(sourceBlob);
+			const distBlob = await this.blobStore.write({ appId, versionId, kind: 'dist' }, dist);
+			written.push(distBlob);
+			return await this.appVersionRepository.insertVersion({
 				id: versionId,
 				appId,
 				storedAt: sourceBlob.storedAt,
 				sourceStorageKey: sourceBlob.storageKey,
 				distStorageKey: distBlob.storageKey,
-			})
-			.catch(async (error: unknown) => {
-				await this.blobStore.delete([sourceBlob, distBlob]);
-				throw error;
 			});
-
-		await this.appRepository.setActiveVersionId(appId, versionId);
-		await this.pruneDist(appId, versionId);
-
-		return version;
+		} catch (error) {
+			await this.blobStore.delete(written);
+			throw error;
+		}
 	}
 
 	async list(appId: string): Promise<AppVersion[]> {
@@ -142,27 +159,45 @@ export class AppVersionService {
 		await this.removeCacheDirs(prunable.map((version) => version.id));
 	}
 
+	/** Paths of the entries the filter accepted. */
 	private async assertTarball(
 		kind: 'source' | 'dist',
 		body: Buffer,
 		filter?: ReturnType<typeof createDistTarFilter>,
-	): Promise<void> {
+	): Promise<string[]> {
 		if (body.length > MAX_TARBALL_BYTES) {
 			throw new InvalidAppVersionTarballError(kind, `larger than ${MAX_TARBALL_BYTES} bytes`);
 		}
 		if (body.length < 2 || !body.subarray(0, 2).equals(GZIP_MAGIC)) {
 			throw new InvalidAppVersionTarballError(kind, 'not a gzip file');
 		}
+		const maxUnpackedBytes = MAX_UNPACKED_BYTES[kind];
+		const entries: string[] = [];
 		// `strict` turns malformed headers, truncation and gunzip failures into errors.
-		const parser = listTar({ strict: true, filter });
+		// The whole body goes in with one write, so tar's decompression ratio is
+		// checked against the full compressed size and acts as an unpacked-bytes budget.
+		const parser = listTar({
+			strict: true,
+			filter,
+			maxDecompressionRatio: maxUnpackedBytes / body.length,
+			onentry: (entry) => entries.push(entry.path),
+		});
 		await new Promise<void>((resolve, reject) => {
 			parser.on('error', reject);
 			parser.on('end', resolve);
 			parser.end(body);
 		}).catch((error: unknown) => {
+			// tar's own abort carries `TAR_ABORT`; a gunzip failure keeps its zlib code.
+			if (isErrnoCode(error, ['TAR_ABORT'])) {
+				throw new InvalidAppVersionTarballError(
+					kind,
+					`unpacks to more than ${maxUnpackedBytes} bytes`,
+				);
+			}
 			const reason = error instanceof Error ? error.message : String(error);
 			throw new InvalidAppVersionTarballError(kind, `not a tar archive (${reason})`);
 		});
+		return entries;
 	}
 
 	private async extract(tarball: Buffer, cwd: string): Promise<void> {

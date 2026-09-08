@@ -6,6 +6,7 @@ import {
 } from '@n8n/blob-storage';
 import { BinaryDataRepository, type ExecutionDataStorageLocation } from '@n8n/db';
 import { Service } from '@n8n/di';
+import chunk from 'lodash/chunk';
 import { ErrorReporter, FsByteStoreService, StorageConfig } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
@@ -18,6 +19,9 @@ export type StoredAppVersionBlob = {
 export type AppVersionBlobKind = 'source' | 'dist';
 
 const TARBALL_MIME_TYPE = 'application/gzip';
+
+/** Keeps a `DELETE ... WHERE fileId IN (...)` under SQLite's bound-parameter limit. */
+const DELETE_BATCH_SIZE = 500;
 
 /**
  * Stores app version tarballs wherever the execution data storage mode points:
@@ -85,13 +89,17 @@ export class AppVersionBlobStore {
 
 		const groups = new Map<ExecutionDataStorageLocation, string[]>();
 		for (const blob of blobs) {
-			groups.set(blob.storedAt, [...(groups.get(blob.storedAt) ?? []), blob.storageKey]);
+			const keys = groups.get(blob.storedAt) ?? [];
+			keys.push(blob.storageKey);
+			groups.set(blob.storedAt, keys);
 		}
 
 		await Promise.all(
 			[...groups].map(async ([loc, keys]) => {
 				if (loc === 'db') {
-					await this.binaryDataRepository.deleteByFileIds(keys);
+					for (const batch of chunk(keys, DELETE_BATCH_SIZE)) {
+						await this.binaryDataRepository.deleteByFileIds(batch);
+					}
 					return;
 				}
 
