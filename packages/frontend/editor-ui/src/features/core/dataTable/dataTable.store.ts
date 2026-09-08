@@ -7,6 +7,7 @@ import {
 	createDataTableApi,
 	deleteDataTableApi,
 	updateDataTableApi,
+	updateDataTableMetadataApi,
 	addDataTableColumnApi,
 	deleteDataTableColumnApi,
 	moveDataTableColumnApi,
@@ -32,7 +33,7 @@ import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import type { DataTableListSortBy } from '@n8n/api-types';
+import type { DataTableListSortBy, DataTableMetadata } from '@n8n/api-types';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
@@ -204,6 +205,15 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return deleted;
 	};
 
+	const updateDataTableMetadata = async (
+		dataTableId: string,
+		projectId: string,
+		metadata: DataTableMetadata,
+	) => {
+		await updateDataTableMetadataApi(rootStore.restApiContext, dataTableId, projectId, metadata);
+		return await fetchDataTableDetails(dataTableId, projectId);
+	};
+
 	const updateDataTable = async (dataTableId: string, name: string, projectId: string) => {
 		const updated = await updateDataTableApi(
 			rootStore.restApiContext,
@@ -243,9 +253,9 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return response.data[0] ?? null;
 	};
 
-	const fetchOrFindDataTable = async (dataTableId: string, projectId: string) => {
+	const fetchOrFindDataTable = async (dataTableId: string, projectId: string, forceRefresh = false) => {
 		const existingTable = dataTables.value.find((table) => table.id === dataTableId);
-		if (existingTable) {
+		if (existingTable && !forceRefresh) {
 			return existingTable;
 		}
 		return await fetchDataTableDetails(dataTableId, projectId);
@@ -452,6 +462,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		importCsvToDataTable,
 		deleteDataTable,
 		updateDataTable,
+		updateDataTableMetadata,
 		fetchDataTableDetails,
 		fetchDataTableById,
 		fetchOrFindDataTable,

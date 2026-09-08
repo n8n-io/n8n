@@ -1,6 +1,7 @@
 import {
 	DATA_TABLE_COLUMN_ERROR_MESSAGE,
 	type DataTableCreateColumnSchema,
+	type DataTableMetadata,
 	type ListDataTableQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -26,6 +27,17 @@ import { isValidColumnName, toTableId, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataTableRepository extends Repository<DataTable> {
+	async updateProperties(
+		dataTableId: string,
+		projectId: string,
+		properties: {
+			name?: string;
+			metadata?: DataTableMetadata;
+		},
+	) {
+		await this.update({ id: dataTableId, projectId }, properties);
+	}
+
 	constructor(
 		dataSource: DataSource,
 		private ddlService: DataTableDDLService,
@@ -315,6 +327,8 @@ export class DataTableRepository extends Repository<DataTable> {
 			`${alias}.id`,
 			`${alias}.name`,
 			`${alias}.type`,
+			`${alias}.options`,
+			`${alias}.defaultValue`,
 			`${alias}.createdAt`,
 			`${alias}.updatedAt`,
 			`${alias}.index`,

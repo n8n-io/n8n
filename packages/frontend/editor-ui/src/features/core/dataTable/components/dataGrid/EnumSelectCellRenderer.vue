@@ -15,7 +15,7 @@ const updateValue = (value: unknown) => {
 	if (typeof value !== 'string' && value !== null) return;
 	const column = props.params.column;
 	if (!column) return;
-	props.params.node.setDataValue(column, value);
+	props.params.node.setDataValue(column, value === '' ? null : value);
 };
 </script>
 

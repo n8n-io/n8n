@@ -50,7 +50,16 @@ export const dataTableEnumOptionsSchema = z
 		}
 	});
 
-export const dataTableMetadataSchema = z.object({});
+export const dataTableMetadataSchema = z
+	.object({
+		view: z.enum(['table', 'kanban']).optional(),
+		kanban: z
+			.object({
+				groupByColumnId: z.string().min(1).max(36),
+				titleColumnId: z.string().min(1).max(36).nullable().optional(),
+			})
+			.optional(),
+	});
 export type DataTableMetadata = z.infer<typeof dataTableMetadataSchema>;
 
 export const dataTableCreateColumnBaseSchema = z.object({

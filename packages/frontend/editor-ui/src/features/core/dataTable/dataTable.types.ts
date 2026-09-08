@@ -1,11 +1,12 @@
 import type { Project } from '@/features/collaboration/projects/projects.types';
+import type { DataTableMetadata } from '@n8n/api-types';
 
 export type DataTable = {
 	id: string;
 	name: string;
 	sizeBytes: number;
 	columns: DataTableColumn[];
-	metadata?: Record<string, never>;
+	metadata?: DataTableMetadata;
 	createdAt: string;
 	updatedAt: string;
 	projectId: string;

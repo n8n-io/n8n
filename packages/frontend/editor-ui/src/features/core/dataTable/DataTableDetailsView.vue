@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import type { DataTableMetadata } from '@n8n/api-types';
 import type {
 	AddColumnResponse,
 	DataTable,
@@ -14,6 +15,7 @@ import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
+import DataTableViewSettings from './components/DataTableViewSettings.vue';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -29,6 +31,10 @@ import {
 } from '@n8n/design-system';
 import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useDependencies } from '@/app/composables/useDependencies';
+
+const DataTableKanban = defineAsyncComponent(
+	async () => await import('./components/DataTableKanban.vue'),
+);
 
 type Props = {
 	id: string;
@@ -53,7 +59,48 @@ const dataTableHasDependents = computed(() => hasDependencies(props.id));
 const loading = ref(false);
 const saving = ref(false);
 const dataTable = ref<DataTable | null>(null);
+const showLoading = computed(() => loading.value && dataTable.value === null);
 const dataTableTableRef = ref<InstanceType<typeof DataTableTable>>();
+const dataTableKanbanRef = ref<InstanceType<typeof DataTableKanban>>();
+const rowReadOnly = computed(
+	() => readOnlyEnv.value || !dataTableStore.projectPermissions.dataTable.writeRow,
+);
+const settingsReadOnly = computed(
+	() => readOnlyEnv.value || !dataTableStore.projectPermissions.dataTable.update,
+);
+const view = computed(() =>
+	dataTable.value?.metadata?.view === 'kanban' &&
+	dataTable.value.columns.some(
+		(column) =>
+			column.id === dataTable.value?.metadata?.kanban?.groupByColumnId && column.type === 'enum',
+	)
+		? 'kanban'
+		: 'table',
+);
+const invalidKanban = computed(
+	() => dataTable.value?.metadata?.view === 'kanban' && view.value === 'table',
+);
+
+const saveViewSettings = async (metadata: DataTableMetadata) => {
+	if (settingsReadOnly.value) return;
+	onToggleSave(true);
+	try {
+		const response = await dataTableStore.updateDataTableMetadata(
+			props.id,
+			props.projectId,
+			metadata,
+		);
+		if (!response) throw new Error(i18n.baseText('dataTable.notFound'));
+		dataTable.value = response;
+	} finally {
+		onToggleSave(false);
+	}
+};
+
+const addRow = () => {
+	if (view.value === 'kanban') dataTableKanbanRef.value?.addRow();
+	else dataTableTableRef.value?.addRow();
+};
 const searchQuery = ref('');
 
 const { debounce } = useDebounce();
@@ -67,9 +114,15 @@ const showErrorAndGoBackToList = async (error: unknown) => {
 };
 
 const initialize = async () => {
+	if (
+		dataTable.value?.id !== props.id ||
+		(dataTable.value !== null && dataTable.value.projectId !== props.projectId)
+	) {
+		dataTable.value = null;
+	}
 	loading.value = true;
 	try {
-		const response = await dataTableStore.fetchOrFindDataTable(props.id, props.projectId);
+		const response = await dataTableStore.fetchOrFindDataTable(props.id, props.projectId, true);
 		if (response) {
 			dataTable.value = response;
 			documentTitle.set(`${i18n.baseText('dataTable.dataTables')} > ${response.name}`);
@@ -109,6 +162,20 @@ const onToggleSave = (value: boolean) => {
 };
 
 const onAddColumn = async (column: DataTableColumnCreatePayload): Promise<AddColumnResponse> => {
+	if (view.value === 'kanban') {
+		try {
+			await dataTableStore.addDataTableColumn(props.id, props.projectId, column);
+			dataTable.value = await dataTableStore.fetchDataTableDetails(props.id, props.projectId);
+			await dataTableKanbanRef.value?.fetchRows();
+			return { success: true };
+		} catch (error) {
+			return {
+				success: false,
+				errorMessage:
+					error instanceof Error ? error.message : i18n.baseText('generic.unknownError'),
+			};
+		}
+	}
 	if (!dataTableTableRef.value) {
 		return {
 			success: false,
@@ -119,6 +186,10 @@ const onAddColumn = async (column: DataTableColumnCreatePayload): Promise<AddCol
 };
 
 const onCsvImported = async () => {
+	if (view.value === 'kanban') {
+		await dataTableKanbanRef.value?.fetchRows();
+		return;
+	}
 	await dataTableTableRef.value?.fetchDataTableRows();
 };
 
@@ -141,7 +212,7 @@ const handleSourceControlPull = async () => {
 };
 
 watch(
-	() => props.id,
+	() => [props.id, props.projectId],
 	async () => {
 		await initialize();
 	},
@@ -161,7 +232,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div :class="$style['data-table-details-view']" data-test-id="data-table-details-view">
-		<div v-if="loading" data-test-id="data-table-details-loading">
+		<div v-if="showLoading" data-test-id="data-table-details-loading">
 			<N8nLoading
 				variant="h1"
 				:loading="true"
@@ -171,7 +242,7 @@ onBeforeUnmount(() => {
 			/>
 			<N8nLoading :loading="true" variant="h1" :rows="10" :shrink-last="false" />
 		</div>
-		<div v-else-if="dataTable">
+		<div v-else-if="dataTable" :class="$style.loaded">
 			<div :class="$style.header">
 				<DataTableBreadcrumbs
 					:data-table="dataTable"
@@ -183,6 +254,12 @@ onBeforeUnmount(() => {
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
+					<DataTableViewSettings
+						:data-table="dataTable"
+						:view="view"
+						:disabled="settingsReadOnly || saving"
+						:save="saveViewSettings"
+					/>
 					<DependencyPill
 						v-if="dataTableHasDependents"
 						resource-type="dataTable"
@@ -213,20 +290,33 @@ onBeforeUnmount(() => {
 					</N8nInput>
 					<N8nButton
 						data-test-id="data-table-header-add-row-button"
-						:disabled="readOnlyEnv"
-						@click="dataTableTableRef?.addRow"
+						:disabled="rowReadOnly"
+						@click="addRow"
 						>{{ i18n.baseText('dataTable.addRow.label') }}</N8nButton
 					>
 					<AddColumnButton
 						:use-text-trigger="true"
 						:popover-id="'ds-details-add-column-popover'"
 						:params="{ onAddColumn }"
-						:disabled="readOnlyEnv"
+						:disabled="readOnlyEnv || !dataTableStore.projectPermissions.dataTable.writeColumn"
 					/>
 				</div>
 			</div>
 			<div :class="$style.content">
+				<N8nText v-if="invalidKanban">{{
+					i18n.baseText('dataTable.kanban.invalidGrouping')
+				}}</N8nText>
+				<DataTableKanban
+					v-if="view === 'kanban'"
+					:key="dataTable.id"
+					ref="dataTableKanbanRef"
+					:data-table="dataTable"
+					:search="searchQuery"
+					:read-only="rowReadOnly"
+					@toggle-save="onToggleSave"
+				/>
 				<DataTableTable
+					v-else
 					ref="dataTableTableRef"
 					:data-table="dataTable"
 					:search="searchQuery"
@@ -239,6 +329,13 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+.loaded,
+.content {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
 .data-table-details-view {
 	display: flex;
 	flex-direction: column;
@@ -256,6 +353,7 @@ onBeforeUnmount(() => {
 
 .header {
 	display: flex;
+	flex-wrap: wrap;
 	gap: var(--spacing--lg);
 	align-items: center;
 }

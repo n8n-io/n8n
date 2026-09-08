@@ -8,7 +8,7 @@ import type {
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import type { DataTablesSizeResult } from 'n8n-workflow';
-import type { DataTableListSortBy } from '@n8n/api-types';
+import type { DataTableListSortBy, DataTableMetadata } from '@n8n/api-types';
 
 export const fetchDataTablesApi = async (
 	context: IRestApiContext,
@@ -89,6 +89,19 @@ export const updateDataTableApi = async (
 		},
 	);
 };
+
+export const updateDataTableMetadataApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	metadata: DataTableMetadata,
+) =>
+	await makeRestApiRequest<boolean>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataTableId}`,
+		{ metadata },
+	);
 
 export const addDataTableColumnApi = async (
 	context: IRestApiContext,

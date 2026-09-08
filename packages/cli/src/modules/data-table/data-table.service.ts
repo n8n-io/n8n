@@ -222,12 +222,43 @@ export class DataTableService {
 		}
 	}
 
-	// Updates data table properties (currently limited to renaming)
 	async updateDataTable(dataTableId: string, projectId: string, dto: UpdateDataTableDto) {
-		await this.validateDataTableExists(dataTableId, projectId);
-		await this.validateUniqueName(dto.name, projectId);
-
-		await this.dataTableRepository.update({ id: dataTableId }, { name: dto.name });
+		const table = await this.validateDataTableExists(dataTableId, projectId);
+		if (dto.name === undefined && dto.metadata === undefined) {
+			throw new DataTableValidationError('Provide a name or view settings');
+		}
+		if (dto.name !== undefined && dto.name !== table.name) {
+			await this.validateUniqueName(dto.name, projectId);
+		}
+		const metadata =
+			dto.metadata === undefined ? undefined : { ...table.metadata, ...dto.metadata };
+		if (metadata) {
+			if (metadata.view === 'kanban' && !metadata.kanban) {
+				throw new DataTableValidationError('Select an enum column to use the kanban view');
+			}
+			if (metadata.kanban && (dto.metadata?.kanban || metadata.view === 'kanban')) {
+				const groupingColumn = await this.dataTableColumnRepository.findOneBy({
+					id: metadata.kanban.groupByColumnId,
+					dataTableId,
+				});
+				if (groupingColumn?.type !== 'enum') {
+					throw new DataTableValidationError('Select an enum column from this table');
+				}
+				if (metadata.kanban.titleColumnId) {
+					const titleColumn = await this.dataTableColumnRepository.findOneBy({
+						id: metadata.kanban.titleColumnId,
+						dataTableId,
+					});
+					if (!titleColumn) {
+						throw new DataTableValidationError('Select a title column from this table');
+					}
+				}
+			}
+		}
+		await this.dataTableRepository.updateProperties(dataTableId, projectId, {
+			...(dto.name === undefined ? {} : { name: dto.name }),
+			...(metadata === undefined ? {} : { metadata }),
+		});
 
 		return true;
 	}
@@ -501,16 +532,15 @@ export class DataTableService {
 				updatedColumnIds,
 				trx,
 			);
-			const beforeRows =
-				updateCapture.shouldCapture
-					? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
-							dataTableId,
-							filter,
-							columns,
-							false,
-							trx,
-						)
-					: [];
+			const beforeRows = updateCapture.shouldCapture
+				? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
+						dataTableId,
+						filter,
+						columns,
+						false,
+						trx,
+					)
+				: [];
 			const updated = await this.dataTableRowsRepository.updateRows(
 				dataTableId,
 				data,
@@ -656,16 +686,15 @@ export class DataTableService {
 				updatedColumnIds,
 				trx,
 			);
-			const beforeRows =
-				capture.shouldCapture
-					? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
-							dataTableId,
-							filter,
-							columns,
-							false,
-							trx,
-						)
-					: [];
+			const beforeRows = capture.shouldCapture
+				? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
+						dataTableId,
+						filter,
+						columns,
+						false,
+						trx,
+					)
+				: [];
 			const updated = await this.dataTableRowsRepository.updateRows(
 				dataTableId,
 				data,
@@ -882,7 +911,9 @@ export class DataTableService {
 		const defaults = columns
 			.filter(
 				(column): column is typeof column & { defaultValue: string } =>
-					column.type === 'enum' && column.defaultValue !== null && column.defaultValue !== undefined,
+					column.type === 'enum' &&
+					column.defaultValue !== null &&
+					column.defaultValue !== undefined,
 			)
 			.map((column) => [column.name, column.defaultValue] as const);
 

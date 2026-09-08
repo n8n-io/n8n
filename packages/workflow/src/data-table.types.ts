@@ -29,7 +29,7 @@ export type DataTableColumn = {
 	defaultValue?: string | null;
 };
 
-export type DataTableMetadata = Record<string, never>;
+export type DataTableMetadata = Record<string, unknown>;
 
 export type DataTable = {
 	id: string;
