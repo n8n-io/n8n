@@ -6,7 +6,12 @@ import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type { User } from '../entities';
 import { WorkflowDependency, WorkflowEntity } from '../entities';
 
-const INDEX_VERSION_ID = 1;
+// When a change to the indexer alters what it extracts, bump this version and
+// add a migration that deletes rows with an older version. The startup rebuild
+// then reindexes the affected workflows.
+// Version 2: the indexer records `workflowCall` rows for sub-workflow tool and
+// retriever nodes, not only for the Execute Sub-workflow node.
+const INDEX_VERSION_ID = 2;
 
 /**
  * Which workflows an aggregate over the index may span. The roles come from the caller
