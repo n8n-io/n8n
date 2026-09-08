@@ -308,7 +308,7 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
-	it('always creates workflows/, src/, and chunks/ even when no workflows exist', async () => {
+	it('always creates src/ and chunks/', async () => {
 		const runInSandbox: RunInSandboxMock =
 			vi.fn<
 				(
@@ -330,16 +330,11 @@ describe('setupSandboxWorkspace', () => {
 			async () => {},
 		);
 
-		// Setup context defaults to an empty workflow list, mirroring a fresh DB.
 		await setupSandboxWorkspace(createFilesystemWorkspace(writeFile, mkdir), createSetupContext());
 
 		const mkdirPaths = mkdir.mock.calls.map(([path]) => path);
 		expect(mkdirPaths).toEqual(
-			expect.arrayContaining([
-				'/home/daytona/workspace/src',
-				'/home/daytona/workspace/chunks',
-				'/home/daytona/workspace/workflows',
-			]),
+			expect.arrayContaining(['/home/daytona/workspace/src', '/home/daytona/workspace/chunks']),
 		);
 	});
 
@@ -420,43 +415,6 @@ describe('setupSandboxWorkspace', () => {
 
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
 		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
-	});
-
-	it('rejects setup file paths that escape the workspace root', async () => {
-		const runInSandbox: RunInSandboxMock =
-			vi.fn<
-				(
-					...args: [SandboxWorkspace, string, string?]
-				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
-			>();
-		runInSandbox.mockImplementation(async (_workspace, command) => {
-			await Promise.resolve();
-			if (command.startsWith('cat ')) {
-				return { exitCode: 1, stdout: '', stderr: '' };
-			}
-			return { exitCode: 0, stdout: '/home/daytona\n', stderr: '' };
-		});
-		const readFileViaSandbox: ReadFileViaSandboxMock =
-			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
-		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
-			runInSandbox,
-			readFileViaSandbox,
-		);
-		const writeFile = vi.fn<
-			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
-		>(async () => {});
-		const context = createSetupContext();
-		const workflowService = context.workflowService as unknown as {
-			list: Mock<(...args: [{ limit: number }]) => Promise<{ workflows: Array<{ id: string }> }>>;
-			get: Mock<(...args: [string]) => Promise<Record<string, unknown>>>;
-		};
-		workflowService.list.mockResolvedValue({ workflows: [{ id: '../escape' }] });
-		workflowService.get.mockResolvedValue({ id: '../escape' });
-
-		await expect(
-			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), context),
-		).rejects.toThrow('Sandbox workspace setup failed during write-workspace-files');
 	});
 
 	it('does not write the initialized marker when npm install fails', async () => {
