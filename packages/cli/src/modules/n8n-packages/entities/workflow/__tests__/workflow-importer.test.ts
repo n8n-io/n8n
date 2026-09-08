@@ -392,6 +392,7 @@ describe('WorkflowImporter.plan', () => {
 					entity,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			{
@@ -432,6 +433,7 @@ describe('WorkflowImporter.plan', () => {
 					entity,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			{
