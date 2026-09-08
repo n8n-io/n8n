@@ -4,6 +4,7 @@ import type { FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { ActivityEvent } from '../entities';
+import type { ActivityResourceType } from '../entities';
 
 /** Long enough for any name a list needs to show, short enough that a row stays a pointer. */
 export const activityResourceNameMaxLength = 128;
@@ -105,9 +106,57 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		return await this.find({ where, order: { id: 'DESC' }, take: query.limit });
 	}
 
+	/**
+	 * One entry by id, or null when it is not in scope — which is also what a pruned id returns.
+	 * The two are deliberately indistinguishable: an id is a guess a reader may get wrong, and a
+	 * distinct "exists but not yours" would turn this into a probe for what other projects hold.
+	 *
+	 * Scoped here rather than by the caller, so the guarantee holds for every future caller.
+	 */
+	async findEntry(query: { id: number; projectIds: string[] }): Promise<ActivityEvent | null> {
+		if (query.projectIds.length === 0) return null;
+
+		return await this.findOne({
+			where: { id: query.id, projectId: In(query.projectIds) },
+		});
+	}
+
+	/**
+	 * Everything the feed holds about one resource, newest first — the history shown when a reader
+	 * expands a single entry.
+	 *
+	 * There is no `(resourceType, resourceId, id)` index yet, so this walks the project index and
+	 * filters. That is affordable because it runs only when a reader expands an entry, never on the
+	 * per-turn path, and the scan is bounded by one project's entries. A dedicated index is worth
+	 * adding if expansion becomes common; this is the highest-write table in the schema, so the
+	 * insert cost of a third index should be paid for by a read that needs it.
+	 *
+	 * `resourceType` is part of the query, not just the index prefix: ids are unique per resource
+	 * kind but nothing in the schema says so, and an entry is a dangling pointer by design.
+	 */
+	async findByResource(query: {
+		resourceType: ActivityResourceType;
+		resourceId: string;
+		projectIds: string[];
+		limit: number;
+	}): Promise<ActivityEvent[]> {
+		if (isEmptyPage(query.limit)) return [];
+		if (query.projectIds.length === 0) return [];
+
+		return await this.find({
+			where: {
+				resourceType: query.resourceType,
+				resourceId: query.resourceId,
+				projectId: In(query.projectIds),
+			},
+			order: { id: 'DESC' },
+			take: query.limit,
+		});
+	}
+
 	/** Retention by age. Returns how many entries went, so a caller can log a sweep worth noticing. */
-	async deleteOlderThan(cutoff: Date): Promise<number> {
-		return await this.deleteInBatches({ createdAt: LessThan(cutoff) });
+	async deleteOlderThan(cutoff: Date, signal?: AbortSignal): Promise<number> {
+		return await this.deleteInBatches({ createdAt: LessThan(cutoff) }, undefined, signal);
 	}
 
 	/**
@@ -115,7 +164,7 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 * more in a day than the window is meant to hold. Finds the oldest entry worth keeping and
 	 * deletes below it, rather than counting rows twice.
 	 */
-	async deleteBeyondNewest(keep: number): Promise<number> {
+	async deleteBeyondNewest(keep: number, signal?: AbortSignal): Promise<number> {
 		// A cap of 0 means unlimited, as it does for `EXECUTIONS_DATA_PRUNE_MAX_COUNT`. Reading it
 		// as "keep nothing" would empty the table on a config typo. Also guards `skip: keep - 1`,
 		// which would otherwise ask the driver for a negative offset.
@@ -129,7 +178,7 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		});
 		if (!oldestKept) return 0;
 
-		return await this.deleteInBatches({}, LessThan(oldestKept.id));
+		return await this.deleteInBatches({}, LessThan(oldestKept.id), signal);
 	}
 
 	/**
@@ -143,10 +192,14 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 *
 	 * `idBound` is taken apart from `scope` so the per-batch bound can be *added* to it rather
 	 * than replacing it. A caller cannot hand over a batch predicate that drops its own scope.
+	 *
+	 * `signal` stops the walk at a batch boundary. Without it a long backlog holds its caller for
+	 * as many round trips as it takes, which on a sweeper means blocking shutdown and stepdown.
 	 */
 	private async deleteInBatches(
 		scope: Omit<FindOptionsWhere<ActivityEvent>, 'id'>,
 		idBound?: FindOperator<number>,
+		signal?: AbortSignal,
 	): Promise<number> {
 		const scoped: FindOptionsWhere<ActivityEvent> = idBound ? { ...scope, id: idBound } : scope;
 		let total = 0;
@@ -168,6 +221,9 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 			total += affected ?? 0;
 
 			if (batch.length < retentionBatchSize) return total;
+			// Checked between passes, so a caller that has to stop — a shutdown, or a leader losing
+			// the role — waits for one bounded delete rather than the whole backlog.
+			if (signal?.aborted) return total;
 		}
 	}
 }

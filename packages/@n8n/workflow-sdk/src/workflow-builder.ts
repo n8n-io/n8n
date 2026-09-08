@@ -145,6 +145,49 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * Collect pinData from a composite (builder) via its handler, including branch
+	 * targets and source-chain nodes.
+	 */
+	private collectPinDataFromComposite(
+		composite: unknown,
+		nameMapping?: Map<string, string>,
+	): Record<string, IDataObject[]> | undefined {
+		const registry = this._registry ?? pluginRegistry;
+		const handler = registry.findCompositeHandler(composite);
+		if (!handler?.collectPinData) {
+			return this._pinData;
+		}
+		let pinData = this._pinData;
+		// Handlers emit branch targets as-is, which can be chains or nested composites.
+		// Recurse into those so every concrete node's pins are collected.
+		const seen = new Set<unknown>([composite]);
+		const visit = (item: unknown): void => {
+			if (item === null || item === undefined || seen.has(item)) return;
+			seen.add(item);
+			if (isNodeChain(item)) {
+				for (const chainNode of item.allNodes) visit(chainNode);
+				return;
+			}
+			const nestedHandler = registry.findCompositeHandler(item);
+			if (nestedHandler?.collectPinData) {
+				nestedHandler.collectPinData(item, visit);
+				return;
+			}
+			if (isInputTarget(item)) {
+				visit(item.node);
+				return;
+			}
+			pinData = this.collectPinDataFromNode(
+				item as NodeInstance<string, string, unknown>,
+				pinData,
+				nameMapping,
+			);
+		};
+		handler.collectPinData(composite, visit);
+		return pinData;
+	}
+
+	/**
 	 * Collect pinData from all nodes in a chain
 	 */
 	private collectPinDataFromChain(chain: NodeChain): Record<string, IDataObject[]> | undefined {
@@ -167,17 +210,19 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Helper to collect pinData from a single node and merge with existing pinData
+	 * Helper to collect pinData from a single node and merge with existing pinData.
+	 * Keys by the deduped map key when the node was auto-renamed on a name collision.
 	 */
 	private collectPinDataFromNode(
 		node: NodeInstance<string, string, unknown>,
 		existingPinData: Record<string, IDataObject[]> | undefined,
+		nameMapping?: Map<string, string>,
 	): Record<string, IDataObject[]> | undefined {
 		const nodePinData = node.config?.pinData;
 		if (nodePinData && nodePinData.length > 0) {
 			return {
 				...existingPinData,
-				[node.name]: nodePinData,
+				[nameMapping?.get(node.id) ?? node.name]: nodePinData,
 			};
 		}
 		return existingPinData;
@@ -224,6 +269,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (addHandler) {
 			const ctx = this.createMutablePluginContext(this._nodes);
 			const headName = addHandler.addNodes(node, ctx);
+			this._pinData = this.collectPinDataFromComposite(node, ctx.nameMapping);
 			this._currentNode = headName;
 			this._currentOutput = 0;
 			return this;
@@ -332,20 +378,25 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (thenHandler) {
 			const ctx = this.createMutablePluginContext(this._nodes);
 			const headName = thenHandler.addNodes(nodeOrComposite, ctx);
+			// The incoming connection lands on the composite's entry node. When the composite
+			// was built from a chain (e.g. .to(a.to(b).onTrue(...))), the entry is the chain head.
+			const entryName =
+				thenRegistry.resolveCompositeHeadName(nodeOrComposite, ctx.nameMapping) ?? headName;
 
-			// Connect current node to head of composite
+			// Connect current node to entry of composite
 			if (this._currentNode) {
 				const currentGraphNode = this._nodes.get(this._currentNode);
 				if (currentGraphNode) {
 					const mainConns =
 						currentGraphNode.connections.get('main') ?? new Map<number, ConnectionTarget[]>();
 					const outputConns: ConnectionTarget[] = mainConns.get(this._currentOutput) ?? [];
-					outputConns.push({ node: headName, type: 'main', index: 0 });
+					outputConns.push({ node: entryName, type: 'main', index: 0 });
 					mainConns.set(this._currentOutput, outputConns);
 					currentGraphNode.connections.set('main', mainConns);
 				}
 			}
 
+			this._pinData = this.collectPinDataFromComposite(nodeOrComposite, ctx.nameMapping);
 			const continuation = thenHandler.handleThen?.(nodeOrComposite, headName, 0, ctx);
 			this._currentNode = continuation?.currentNode ?? headName;
 			this._currentOutput = continuation?.currentOutput ?? 0;
@@ -974,7 +1025,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				this._dispatchedComposites.add(target);
 			}
 			const ctx = this.createMutablePluginContext(nodes, nameMapping);
-			return handler.addNodes(target, ctx);
+			const headName = handler.addNodes(target, ctx);
+			// Callers connect to the returned name, so resolve the composite's entry node:
+			// the source-chain head when the composite was built from a chain.
+			return registry.resolveCompositeHeadName(target, ctx.nameMapping) ?? headName;
 		}
 
 		return undefined;

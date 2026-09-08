@@ -11,6 +11,7 @@ export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
 export * from './instance-registry-types';
+export type * from './worker-pools';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -125,6 +126,16 @@ export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
+export {
+	credentialIdParamSchema,
+	executionIdParamSchema,
+	gitConnectionIdParamSchema,
+	projectIdParamSchema,
+	roleMappingRuleIdParamSchema,
+	roleSlugParamSchema,
+	workflowIdParamSchema,
+	workflowVersionIdParamSchema,
+} from './schemas/public-api-path-params.schema';
 export { folderNameSchema, folderIdSchema } from './schemas/folder.schema';
 export {
 	SYSTEM_RESOLVER_ID,
@@ -365,7 +376,10 @@ export {
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	CANVAS_NODE_CONTEXT_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
@@ -399,6 +413,7 @@ export {
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
+	InstanceAiPersistPendingAgentRequest,
 	instanceAiAgentAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
@@ -432,6 +447,7 @@ export {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	INSTANCE_AI_RUN_LIMIT_REASONS,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -446,6 +462,8 @@ export type {
 	InstanceAiWebSearchSource,
 	InstanceAiSetupState,
 	InstanceAiSetupStateInput,
+	InstanceAiRunLimitReason,
+	InstanceAiRunLimitMeta,
 } from './schemas/instance-ai.schema';
 
 export type {

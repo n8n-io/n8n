@@ -10,7 +10,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
-import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import {
@@ -21,7 +21,7 @@ import {
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentResource } from '../types';
-import { AGENT_BUILDER_VIEW, AGENT_PREVIEW_VIEW, NEW_SESSION_PARAM } from '../constants';
+import { AGENT_BUILDER_VIEW, NEW_SESSION_PARAM } from '../constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import AgentCard from '../components/AgentCard.vue';
@@ -114,7 +114,7 @@ function onSelectAgent(agentId: string, agentProjectId: string) {
 
 function onNewAgentChat(agentId: string, agentProjectId: string) {
 	void router.push({
-		name: AGENT_PREVIEW_VIEW,
+		name: AGENT_BUILDER_VIEW,
 		params: { projectId: agentProjectId, agentId },
 		query: { [NEW_SESSION_PARAM]: 'true' },
 	});

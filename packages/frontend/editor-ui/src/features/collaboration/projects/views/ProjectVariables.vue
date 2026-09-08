@@ -33,7 +33,7 @@ import {
 import { useAsyncState } from '@vueuse/core';
 import pickBy from 'lodash/pickBy';
 import type { ComponentExposed } from 'vue-component-type-helpers';
-import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
 import VariablesUsageBadge from '@/features/settings/environments.ee/components/VariablesUsageBadge.vue';
