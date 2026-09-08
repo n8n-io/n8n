@@ -27,6 +27,9 @@ LANGTRACER_URL=https://lang-tracer.n8n-maintenance.workers.dev
 LANGTRACER_API_KEY=<langtracer-key>
 ```
 
+Generate the LangTracer key on the
+[API keys page](https://lang-tracer.n8n-maintenance.workers.dev/account?section=api).
+
 Use the n8n sandbox service instead of Daytona when it is available. Set
 `N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox`,
 `N8N_SANDBOX_SERVICE_URL`, and, when required,

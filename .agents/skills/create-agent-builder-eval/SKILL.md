@@ -141,9 +141,10 @@ pnpm exec dotenvx run -f ../../../.env.local -- \
   pnpm eval:langtracer-push --suite agents --changed
 ```
 
-The push needs `LANGTRACER_URL` and `LANGTRACER_API_KEY`. Report the case and
-suite as clickable LangTracer links. Delete the local JSON after a successful
-push.
+The push needs `LANGTRACER_URL` and `LANGTRACER_API_KEY`. Generate a key on the
+[LangTracer API page](https://lang-tracer.n8n-maintenance.workers.dev/account?section=api).
+Report the case and suite as clickable LangTracer links. Delete the local JSON
+after a successful push.
 
 ## Completion checklist
 
