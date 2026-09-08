@@ -581,7 +581,12 @@ const resizable = computed(() => {
 					:class="$style.contextChip"
 					:data-test-id="props.contextChip.testId ?? 'instance-ai-handoff-context-chip'"
 				>
-					<N8nTag :text="props.contextChip.label" :clickable="false" size="lg">
+					<N8nTag
+						:class="$style.contextChipTag"
+						:text="props.contextChip.label"
+						:clickable="false"
+						size="lg"
+					>
 						<template #tag>
 							<span :class="$style.contextChipContent">
 								<N8nIcon
@@ -589,7 +594,9 @@ const resizable = computed(() => {
 									size="small"
 									data-test-id="instance-ai-handoff-context-chip-icon"
 								/>
-								<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
+								<span :class="$style.contextChipText" :title="props.contextChip.label">{{
+									props.contextChip.label
+								}}</span>
 								<button
 									type="button"
 									:class="$style.contextChipClose"
@@ -681,15 +688,25 @@ const resizable = computed(() => {
 	max-width: 100%;
 }
 
+.contextChipTag {
+	min-width: 0;
+	max-width: 100%;
+}
+
 .contextChipContent {
 	display: inline-flex;
 	align-items: center;
+	min-width: 0;
 	gap: var(--spacing--4xs);
 	line-height: var(--line-height--xs);
 }
 
 .contextChipText {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
+	line-height: var(--line-height--sm);
 }
 
 .contextChipClose {
