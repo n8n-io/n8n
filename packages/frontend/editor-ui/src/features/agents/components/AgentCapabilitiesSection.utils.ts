@@ -21,6 +21,8 @@ type BaseToolRow = {
 	openTarget: ToolOpenTarget;
 	invalid: boolean;
 	invalidReasons: string[];
+	warning: boolean;
+	warningReasons: string[];
 };
 
 function toUngroupedToolRow(row: BaseToolRow): ToolRow {
@@ -41,6 +43,8 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		fallbackIcon: row.fallbackIcon,
 		invalid: row.invalid,
 		invalidReasons: row.invalidReasons,
+		warning: row.warning,
+		warningReasons: row.warningReasons,
 		isGrouped: false,
 		tool: item,
 	};
@@ -57,6 +61,8 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 		fallbackIcon: first.fallbackIcon,
 		invalid: group.some((row) => row.invalid),
 		invalidReasons: [...new Set(group.flatMap((row) => row.invalidReasons))],
+		warning: group.some((row) => row.warning),
+		warningReasons: [...new Set(group.flatMap((row) => row.warningReasons))],
 		isGrouped: true,
 		tools: group.map((row) => ({
 			index: row.index,

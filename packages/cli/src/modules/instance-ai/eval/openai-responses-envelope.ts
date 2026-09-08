@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { EvalMockHttpResponse } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -231,14 +232,10 @@ export function isOpenAiResponsesUrl(url: string): boolean {
 	}
 }
 
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 /** Coerce one content part to `{ type: 'output_text', text, annotations }`. */
 function normalizeContentPart(part: unknown): Record<string, unknown> | undefined {
 	if (typeof part === 'string') return { type: 'output_text', text: part, annotations: [] };
-	if (!isPlainRecord(part)) return undefined;
+	if (!isRecord(part)) return undefined;
 	// The real API carries text as a STRING even for JSON output (json_object
 	// format returns a JSON-encoded string); a generated part sometimes embeds
 	// the parsed object — serialize it instead of dropping the part (dropping
@@ -246,7 +243,7 @@ function normalizeContentPart(part: unknown): Record<string, unknown> | undefine
 	const text =
 		typeof part.text === 'string'
 			? part.text
-			: isPlainRecord(part.text) || Array.isArray(part.text)
+			: isRecord(part.text) || Array.isArray(part.text)
 				? JSON.stringify(part.text)
 				: undefined;
 	if (text === undefined) return undefined;
@@ -265,7 +262,7 @@ function normalizeContentPart(part: unknown): Record<string, unknown> | undefine
  * Returns undefined for unsalvageable entries.
  */
 function normalizeOutputItem(item: unknown, index: number): Record<string, unknown> | undefined {
-	if (!isPlainRecord(item)) return undefined;
+	if (!isRecord(item)) return undefined;
 	if (item.type === 'function_call') {
 		if (typeof item.name !== 'string' || typeof item.arguments !== 'string') return undefined;
 		return {
@@ -311,13 +308,13 @@ export function normalizeOpenAiResponsesMockResponse(
 ): EvalMockHttpResponse {
 	const body = mockResponse.body;
 	if (
-		isPlainRecord(body) &&
+		isRecord(body) &&
 		('_evalMockError' in body || (body.error !== null && body.error !== undefined))
 	) {
 		return mockResponse;
 	}
 
-	if (isPlainRecord(body) && Array.isArray(body.output)) {
+	if (isRecord(body) && Array.isArray(body.output)) {
 		const output = body.output
 			.map(normalizeOutputItem)
 			.filter((item): item is Record<string, unknown> => item !== undefined);
@@ -336,7 +333,7 @@ export function normalizeOpenAiResponsesMockResponse(
 					created_at:
 						typeof body.created_at === 'number' ? body.created_at : Math.floor(Date.now() / 1000),
 					output,
-					usage: isPlainRecord(body.usage)
+					usage: isRecord(body.usage)
 						? body.usage
 						: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
 				},
@@ -391,7 +388,7 @@ function extractResponsesContent(body: unknown): string {
 	const obj = body as Record<string, unknown>;
 
 	if (typeof obj.output_text === 'string') return obj.output_text;
-	if (isPlainRecord(obj.output_text) || Array.isArray(obj.output_text)) {
+	if (isRecord(obj.output_text) || Array.isArray(obj.output_text)) {
 		return JSON.stringify(obj.output_text);
 	}
 
@@ -406,7 +403,7 @@ function extractResponsesContent(body: unknown): string {
 				const text = (first as { text?: unknown }).text;
 				if (typeof text === 'string') return text;
 				// Object-embedded JSON: the real API would carry it JSON-encoded.
-				if (isPlainRecord(text) || Array.isArray(text)) return JSON.stringify(text);
+				if (isRecord(text) || Array.isArray(text)) return JSON.stringify(text);
 			}
 		}
 	}

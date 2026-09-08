@@ -53,6 +53,7 @@
     "@anthropic-ai/sdk": "0.91.1",
     "@axe-core/playwright": "^4.13.0",
     "@currents/playwright": "catalog:e2e",
+    "@n8n/eslint-config": "workspace:*",
     "@types/debug": "^4.1.12",
     "@memlab/api": "2.0.0",
     "@memlab/heap-analysis": "2.0.0",

@@ -67,13 +67,28 @@ describe('CredentialsHelper', () => {
 	const dynamicCredentialProxy = new DynamicCredentialsProxy(mockLogger);
 
 	// Setup cipher for testing
+	const encryptionKeyProxy = new EncryptionKeyProxy();
 	const cipher = new Cipher(
 		mock<InstanceSettings>({ encryptionKey: 'test_key_for_testing' }),
 		new CipherAes256GCM(),
 		new CipherAes256CBC(),
-		new EncryptionKeyProxy(),
+		encryptionKeyProxy,
 	);
 	Container.set(Cipher, cipher);
+
+	// The default deployment: no rotation, so the active key is the legacy
+	// instance-key descriptor (no-prefix, instance-key-wrapped).
+	const legacyDescriptor = {
+		id: 'instance-key',
+		value: cipher.encryptDEKWithInstanceKey('test_key_for_testing'),
+		algorithm: 'aes-256-cbc' as const,
+		format: 'no-prefix' as const,
+	};
+	encryptionKeyProxy.setProvider({
+		getActiveKey: async () => legacyDescriptor,
+		getKeyById: async () => null,
+		getLegacyKey: async () => legacyDescriptor,
+	});
 
 	const credentialsHelper = new CredentialsHelper(
 		new CredentialTypes(mockNodesAndCredentials),
@@ -1389,6 +1404,56 @@ describe('CredentialsHelper', () => {
 				executionId: '29021',
 			});
 			expect(result).toEqual(syntheticCred);
+		});
+
+		it('should forward the executing node to getSyntheticCredential', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+				policyEnforcementService,
+			);
+
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({ apiKey: 'mock-jwt' });
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-123',
+				workflowId: undefined,
+				projectId: undefined,
+				executionId: undefined,
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+			const executeData = mock<IExecuteData>({
+				node: {
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.5,
+					parameters: {},
+					position: [0, 0],
+				},
+			});
+
+			await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'openAiApi',
+				'manual',
+				executeData,
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ node: executeData.node }),
+			);
 		});
 	});
 

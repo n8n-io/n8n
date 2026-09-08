@@ -28,6 +28,20 @@ describe('OtelModule', () => {
 		it('should leave availability to the shell, which knows the current scopes', () => {
 			expect(settingsPage()?.available).toBeUndefined();
 		});
+
+		it('should declare both fields as plain data, with no accessor and no i18n read', () => {
+			// The shell manifest imports this descriptor at boot, before `App.vue` calls
+			// `setLanguage`. The earlier fix for that was a `label` getter; the declarative
+			// form removes the read altogether, so neither field may become an accessor
+			// again — a getter is what puts an i18n or store read back in the descriptor.
+			const page = settingsPage();
+
+			for (const field of ['labelKey', 'requiredScopes'] as const) {
+				const descriptor = Object.getOwnPropertyDescriptor(page, field);
+				expect(descriptor?.get).toBeUndefined();
+				expect(typeof descriptor?.value).toBe('string');
+			}
+		});
 	});
 
 	describe('route', () => {

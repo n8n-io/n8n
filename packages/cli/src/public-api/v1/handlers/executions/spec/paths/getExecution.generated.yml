@@ -1,6 +1,6 @@
 operationId: getExecution
 tags:
-  - Execution
+  - Executions
 summary: Retrieve an execution
 description: Retrieve an execution from your instance.
 x-required-scope: execution:read

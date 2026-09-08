@@ -234,6 +234,8 @@ export class GitConnectionsService {
 					includeVariableValues: true,
 					canExportVariableValues: true,
 					includeTags: true,
+					// Archived workflows travel too, so the target archives them instead of removing them.
+					includeArchivedWorkflows: true,
 					// personal projects are excluded, so a team workflow calling a personal
 					// sub-workflow blocks the whole push; intended for now, see LIGO-1089
 					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
