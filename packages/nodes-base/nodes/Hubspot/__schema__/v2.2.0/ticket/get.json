@@ -45,6 +45,9 @@
                                     "name": {
                                         "type": "string"
                                     },
+                                    "persistenceTimestamp": {
+                                        "type": "integer"
+                                    },
                                     "requestId": {
                                         "type": "string"
                                     },
@@ -150,5 +153,5 @@
             }
         }
     },
-    "version": 4
+    "version": 5
 }

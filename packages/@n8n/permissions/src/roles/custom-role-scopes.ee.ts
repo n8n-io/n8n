@@ -1,5 +1,5 @@
-import type { RESOURCES } from '@/constants.ee';
-import type { Scope } from '@/types.ee';
+import type { RESOURCES } from '../constants.ee';
+import type { Scope } from '../types.ee';
 
 /**
  * UI-visible operations per resource for the project role editor.

@@ -88,7 +88,8 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 		return null;
 	}
 
-	private static getVenvPath() {
+	/** Public so tests can decide synchronously whether the runner can be started. */
+	static getVenvPath() {
 		const pythonDir = path.join(__dirname, '../../../@n8n/task-runner-python');
 		const isWindows = process.platform === 'win32';
 		const venvBin = isWindows ? 'Scripts' : 'bin';

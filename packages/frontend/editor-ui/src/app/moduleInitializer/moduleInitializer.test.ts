@@ -20,7 +20,7 @@ import {
 	DOWNLOAD_DATA_TABLE_MODAL_KEY,
 	IMPORT_CSV_MODAL_KEY,
 } from '@/features/core/dataTable/constants';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
 describe('registerModuleModals', () => {
 	beforeEach(() => {

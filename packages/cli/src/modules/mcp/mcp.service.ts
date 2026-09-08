@@ -77,7 +77,7 @@ import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool'
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
 import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
-import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
+import { createListN8nGatewayServicesTool } from './tools/list-n8n-gateway-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
 import { createMoveWorkflowsToFolderTool } from './tools/move-workflows-to-folder.tool';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
@@ -560,13 +560,13 @@ export class McpService {
 			this.aiGatewayService,
 		);
 
-		const listN8nConnectServicesTool = createListN8nConnectServicesTool(
+		const listN8nGatewayServicesTool = createListN8nGatewayServicesTool(
 			user,
 			this.aiGatewayService,
 			this.telemetry,
 		);
 		registerIfAllowed(listCredentialsTool);
-		registerIfAllowed(listN8nConnectServicesTool);
+		registerIfAllowed(listN8nGatewayServicesTool);
 
 		if (!this.globalConfig.tags.disabled) {
 			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);

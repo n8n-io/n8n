@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.37.0",
+  "version": "2.39.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -124,6 +124,7 @@
       "dist/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.js",
       "dist/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.js",
       "dist/nodes/llms/LmChatCohere/LmChatCohere.node.js",
+      "dist/nodes/llms/LmChatDatabricks/LmChatDatabricks.node.js",
       "dist/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.js",
       "dist/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.js",
       "dist/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.js",

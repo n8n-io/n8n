@@ -69,11 +69,12 @@ jobs:
           persist-credentials: false # we push with an explicit token URL instead
 
       # Node + pnpm toolchain for the mechanical lockfile resolution
-      # (`pnpm install --lockfile-only`). No dependency install, no build.
+      # (`pnpm install --lockfile-only`). Only the script deps, no build.
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          install-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
           build-command: ''
 
       - name: Sync master into 3.x

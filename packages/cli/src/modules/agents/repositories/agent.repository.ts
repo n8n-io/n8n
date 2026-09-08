@@ -4,6 +4,7 @@ import {
 	DataSource,
 	In,
 	IsNull,
+	Not,
 	Repository,
 	type EntityManager,
 	type SelectQueryBuilder,
@@ -169,7 +170,7 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
-	async findCredentialIndexAgentIdsBatch(
+	async findDependencyIndexAgentIdsBatch(
 		afterId: string | null,
 		batchSize: number,
 	): Promise<Array<Pick<Agent, 'id'>>> {
@@ -302,6 +303,17 @@ export class AgentRepository extends Repository<Agent> {
 		return await this.createQueryBuilder('agent')
 			.innerJoinAndSelect('agent.activeVersion', 'activeVersion')
 			.getMany();
+	}
+
+	/** The ids, from the given list, that belong to an agent with a published version. */
+	async findPublishedIds(agentIds: string[]): Promise<Set<string>> {
+		if (agentIds.length === 0) return new Set();
+
+		const rows = await this.find({
+			where: { id: In(agentIds), activeVersionId: Not(IsNull()) },
+			select: ['id'],
+		});
+		return new Set(rows.map((row) => row.id));
 	}
 
 	/**

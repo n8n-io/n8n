@@ -7,7 +7,7 @@ import {
 	shareWorkflowWithUsers,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { ExecutionEntity, User } from '@n8n/db';
+import type { ExecutionEntity, IExecutionResponse, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { type ExecutionStatus } from 'n8n-workflow';
@@ -94,6 +94,15 @@ describe('GET /executions/:id', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/executions/1', null));
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions/1', 'abcXYZ'));
+
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authOwnerAgent.get(`/executions/${executionId}`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
 
 	test('owner should be able to get an execution owned by him', async () => {
 		const workflow = await createWorkflow({}, owner);
@@ -258,6 +267,15 @@ describe('DELETE /executions/:id', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('delete', '/executions/1', 'abcXYZ'));
 
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authOwnerAgent.delete(`/executions/${executionId}`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('should delete an execution', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createSuccessfulExecution(workflow);
@@ -292,9 +310,67 @@ describe('DELETE /executions/:id', () => {
 
 		await authOwnerAgent.get(`/executions/${execution.id}`).expect(404);
 	});
+
+	test('should return 400 when deleting a running execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const execution = await createdExecutionWithStatus(workflow, 'running');
+
+		const response = await authOwnerAgent.delete(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(400);
+
+		await authOwnerAgent.get(`/executions/${execution.id}`).expect(200);
+	});
+
+	test('member should not delete an execution of another user', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.delete(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(404);
+
+		await authOwnerAgent.get(`/executions/${execution.id}`).expect(200);
+	});
 });
 
 describe('POST /executions/:id/retry', () => {
+	const retryServiceResponse = (overrides: Record<string, unknown> = {}) =>
+		({
+			id: '1001',
+			mode: 'retry',
+			startedAt: new Date('2026-01-01T00:00:00.000Z'),
+			workflowId: 'workflow-1',
+			finished: false,
+			retryOf: '1000',
+			status: 'waiting',
+			waitTill: new Date('2026-01-01T00:05:00.000Z'),
+			data: { resultData: { runData: {} } },
+			workflowData: { id: 'workflow-1', name: 'My workflow', nodes: [], connections: {} },
+			customData: { key: 'value' },
+			annotation: { id: 1, vote: 'up', tags: [{ id: 'tag-1', name: 'important' }] },
+			storedAt: 'db',
+			...overrides,
+		}) as unknown as Omit<IExecutionResponse, 'createdAt'>;
+
+	const retryResponseBody = {
+		id: '1001',
+		mode: 'retry',
+		startedAt: '2026-01-01T00:00:00.000Z',
+		workflowId: 'workflow-1',
+		finished: false,
+		retryOf: '1000',
+		status: 'waiting',
+		waitTill: '2026-01-01T00:05:00.000Z',
+		data: { resultData: { runData: {} } },
+		workflowData: { id: 'workflow-1', name: 'My workflow', nodes: [], connections: {} },
+		customData: { key: 'value' },
+		annotation: { id: 1, vote: 'up', tags: [{ id: 'tag-1', name: 'important' }] },
+		storedAt: 'db',
+	};
+
 	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/1/retry', null));
 
 	test(
@@ -302,11 +378,19 @@ describe('POST /executions/:id/retry', () => {
 		testWithAPIKey('post', '/executions/1/retry', 'abcXYZ'),
 	);
 
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authUser1Agent.post(`/executions/${executionId}/retry`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('should retry an execution', async () => {
-		const mockedExecutionResponse = { status: 'waiting' } as any;
 		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
-			.mockResolvedValue(mockedExecutionResponse);
+			.mockResolvedValue(retryServiceResponse());
 
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createSuccessfulExecution(workflow);
@@ -314,7 +398,47 @@ describe('POST /executions/:id/retry', () => {
 		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual(mockedExecutionResponse);
+		expect(response.body).toEqual(retryResponseBody);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should omit waitTill when the retried execution has none', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(retryServiceResponse({ waitTill: undefined, annotation: undefined }));
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('waitTill');
+		expect(response.body).not.toHaveProperty('annotation');
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should pass loadWorkflow from the request body to the service', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(retryServiceResponse());
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent
+			.post(`/executions/${execution.id}/retry`)
+			.send({ loadWorkflow: true });
+
+		expect(response.statusCode).toBe(200);
+		expect(executionServiceSpy).toHaveBeenCalledWith({
+			executionId: execution.id,
+			options: { loadWorkflow: true },
+			sharedWorkflowIds: expect.arrayContaining([workflow.id]),
+			user: expect.objectContaining({ id: user1.id }),
+		});
 
 		executionServiceSpy.mockRestore();
 	});
@@ -394,10 +518,9 @@ describe('POST /executions/:id/retry', () => {
 	test('should retry an execution when user has execute access via project editor role', async () => {
 		testServer.license.enable('feat:sharing');
 
-		const mockedExecutionResponse = { status: 'waiting' } as any;
 		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
-			.mockResolvedValue(mockedExecutionResponse);
+			.mockResolvedValue(retryServiceResponse());
 
 		const project = await createTeamProject('project with editor', owner);
 		await linkUserToProject(user1, project, 'project:editor');
@@ -408,7 +531,7 @@ describe('POST /executions/:id/retry', () => {
 		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual(mockedExecutionResponse);
+		expect(response.body).toEqual(retryResponseBody);
 
 		executionServiceSpy.mockRestore();
 	});
@@ -497,6 +620,126 @@ describe('GET /executions', () => {
 			expect(waitTill).toBeNull();
 			expect(status).toBe(successfulExecutions[i].status);
 		}
+	});
+
+	test('should bound a forged cursor limit instead of querying with it', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+
+		const forge = (limit: unknown) =>
+			Buffer.from(JSON.stringify({ lastId: '999999', limit })).toString('base64');
+
+		const cases: Array<[unknown, number]> = [
+			[-1, 1],
+			[0, 1],
+			[2, 2],
+			['abc', 3],
+			[null, 3],
+		];
+
+		for (const [limit, expected] of cases) {
+			const response = await authOwnerAgent.get('/executions').query({ cursor: forge(limit) });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(expected);
+		}
+	});
+
+	test('should keep dataTooLargeToDisplay on a list item that exceeds the display size limit', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				jsonSizeBytes: 200 * 1024 * 1024,
+				data: '[]',
+			},
+			workflow,
+		);
+
+		const response = await authOwnerAgent.get('/executions').query({ includeData: true });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].dataTooLargeToDisplay).toBe(true);
+		expect(response.body.data[0].data?.resultData?.runData).toEqual({});
+	});
+
+	test('should return 400 for an invalid cursor', async () => {
+		const response = await authOwnerAgent.get('/executions').query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+
+	test('should keep the legacy accept and reject boundary for odd cursor shapes', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+
+		const encode = (payload: unknown) => Buffer.from(JSON.stringify(payload)).toString('base64');
+
+		const tolerated: Array<[unknown, number]> = [
+			[{}, 3],
+			[{ limit: 2 }, 2],
+			[{ lastId: null }, 3],
+			[{ lastId: { id: '1' } }, 3],
+			[[], 3],
+		];
+
+		for (const [payload, rows] of tolerated) {
+			const response = await authOwnerAgent.get('/executions').query({ cursor: encode(payload) });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(rows);
+		}
+
+		for (const payload of ['a string', 42]) {
+			const response = await authOwnerAgent.get('/executions').query({ cursor: encode(payload) });
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe('An invalid cursor was provided');
+		}
+	});
+
+	test('should accept a numeric lastId, as the legacy handler did', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const first = await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+
+		const cursor = Buffer.from(
+			JSON.stringify({ lastId: Number(first.id) + 1, limit: 10 }),
+		).toString('base64');
+		const response = await authOwnerAgent.get('/executions').query({ cursor });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].id).toBe(first.id);
+	});
+
+	test('should accept a cursor in either the lastId or the offset form', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+
+		const encode = (payload: unknown) => Buffer.from(JSON.stringify(payload)).toString('base64');
+
+		const cursorForm = await authOwnerAgent
+			.get('/executions')
+			.query({ cursor: encode({ lastId: '999999', limit: 1 }) });
+
+		expect(cursorForm.statusCode).toBe(200);
+		expect(cursorForm.body.data).toHaveLength(1);
+
+		const offsetForm = await authOwnerAgent
+			.get('/executions')
+			.query({ cursor: encode({ offset: 0, limit: 1 }) });
+
+		expect(offsetForm.statusCode).toBe(200);
+		expect(offsetForm.body.data).toHaveLength(1);
 	});
 
 	describe('with query status', () => {
@@ -834,6 +1077,23 @@ describe('GET /executions', () => {
 			]);
 		});
 
+		test('should accept an RFC3339 value with a numeric timezone offset', async () => {
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-07-01T00:00:00+02:00',
+				startedBefore: '2020-09-01T00:00:00-05:00',
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('should return 400 for a value with no timezone', async () => {
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-07-01T00:00:00',
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+
 		test('should return 400 for a malformed startedAfter value', async () => {
 			const response = await authOwnerAgent.get('/executions').query({
 				startedAfter: 'not-a-date',
@@ -915,6 +1175,15 @@ describe('GET /executions/:id/tags', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authOwnerAgent.get(`/executions/${executionId}/tags`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('should return empty array for execution with no tags', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createSuccessfulExecution(workflow);
@@ -923,6 +1192,26 @@ describe('GET /executions/:id/tags', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual([]);
+	});
+
+	test('should return the tags of an execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+		const [tag] = await createAnnotationTags(['dataset']);
+
+		await authOwnerAgent.put(`/executions/${execution.id}/tags`).send([{ id: tag.id }]);
+
+		const response = await authOwnerAgent.get(`/executions/${execution.id}/tags`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual([
+			{
+				id: tag.id,
+				name: 'dataset',
+				createdAt: tag.createdAt.toISOString(),
+				updatedAt: tag.updatedAt.toISOString(),
+			},
+		]);
 	});
 
 	test('member should not get tags from execution in inaccessible workflow', async () => {
@@ -944,6 +1233,15 @@ describe('PUT /executions/:id/tags', () => {
 		const response = await authOwnerAgent.put('/executions/999/tags').send([]);
 		expect(response.statusCode).toBe(404);
 	});
+
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authOwnerAgent.put(`/executions/${executionId}/tags`).send([]);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
 
 	test('should set tags on execution', async () => {
 		const workflow = await createWorkflow({}, owner);
@@ -1005,6 +1303,20 @@ describe('PUT /executions/:id/tags', () => {
 		expect(response.body.message).toBe('Some tags not found');
 	});
 
+	test.each([
+		['not an array', { id: 'tag-1' }],
+		['an item without an id', [{}]],
+		['an item with an unknown property', [{ id: 'tag-1', name: 'dataset' }]],
+		['an item with a non-string id', [{ id: 1 }]],
+	])('should return 400 when the body is %s', async (_label, body) => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authOwnerAgent.put(`/executions/${execution.id}/tags`).send(body);
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('member should not update tags on execution in inaccessible workflow', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createSuccessfulExecution(workflow);
@@ -1042,6 +1354,15 @@ describe('POST /executions/:id/stop', () => {
 	test(
 		'should fail due to invalid API Key',
 		testWithAPIKey('post', '/executions/1/stop', 'abcXYZ'),
+	);
+
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authUser1Agent.post(`/executions/${executionId}/stop`);
+
+			expect(response.statusCode).toBe(400);
+		},
 	);
 
 	test('should stop a running execution', async () => {
@@ -1125,6 +1446,83 @@ describe('POST /executions/:id/stop', () => {
 
 		executionServiceSpy.mockRestore();
 	});
+
+	test('should omit stoppedAt when the service returns none', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stop')
+			.mockResolvedValue({
+				mode: 'manual',
+				startedAt: new Date(),
+				stoppedAt: undefined,
+				finished: false,
+				status: 'canceled',
+			});
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('stoppedAt');
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 404 when the execution is missing but a workflow is accessible', async () => {
+		await createWorkflow({}, user1);
+
+		const response = await authUser1Agent.post('/executions/99999999/stop');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Failed to find execution to stop');
+	});
+
+	test('should return 409 when the execution is in a state that cannot be stopped', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.message).toContain('is currently success');
+	});
+
+	test('should stop when the API key has the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:stop'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stop')
+			.mockResolvedValue({
+				mode: 'manual',
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				finished: false,
+				status: 'canceled',
+			});
+
+		const workflow = await createWorkflow({}, scopedOwner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await scopedAgent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(200);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 403 when the API key lacks the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:read'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		const workflow = await createWorkflow({}, scopedOwner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await scopedAgent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(403);
+	});
 });
 
 describe('POST /executions/stop', () => {
@@ -1144,8 +1542,7 @@ describe('POST /executions/stop', () => {
 		const response = await authUser1Agent.post('/executions/stop').send({ status: [] });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain('Status filter is required');
-		expect(response.body.example).toBeDefined();
+		expect(response.body.message).toBe('request/body/status must include at least one status');
 	});
 
 	test('should stop multiple running executions', async () => {
@@ -1311,5 +1708,86 @@ describe('POST /executions/stop', () => {
 		expect(calledWithWorkflowIds).toContain(workflow3.id);
 
 		executionServiceSpy.mockRestore();
+	});
+
+	test('should map the queued status to the internal new status', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(1);
+
+		await createWorkflow({}, user1);
+
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['queued', 'running'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(executionServiceSpy.mock.calls[0][0].status).toEqual(['new', 'running']);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 400 for a status outside the stoppable set', async () => {
+		const response = await authUser1Agent.post('/executions/stop').send({ status: ['success'] });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 404 for a workflowId the caller cannot access', async () => {
+		await createWorkflow({}, user1);
+		const otherWorkflow = await createWorkflow({}, owner);
+
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['running'], workflowId: otherWorkflow.id });
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow not found or not accessible');
+	});
+
+	test('should accept "all" as the workflowId', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(4);
+
+		await createWorkflow({}, user1);
+
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['running'], workflowId: 'all' });
+
+		expect(response.statusCode).toBe(200);
+		expect(executionServiceSpy.mock.calls[0][0].workflowId).toBe('all');
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should stop many when the API key has the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:stop'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(2);
+
+		await createWorkflow({}, scopedOwner);
+
+		const response = await scopedAgent.post('/executions/stop').send({ status: ['running'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ stopped: 2 });
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 403 when the API key lacks the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:read'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		await createWorkflow({}, scopedOwner);
+
+		const response = await scopedAgent.post('/executions/stop').send({ status: ['running'] });
+
+		expect(response.statusCode).toBe(403);
 	});
 });

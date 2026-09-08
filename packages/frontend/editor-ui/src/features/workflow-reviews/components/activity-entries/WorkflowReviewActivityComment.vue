@@ -36,7 +36,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 					>
 						{{ authorName(message) }}
 					</N8nText>
-					<N8nText size="small" color="text-light">
+					<N8nText size="medium" color="text-light">
 						<time
 							:datetime="message.createdAt"
 							data-test-id="workflow-review-activity-comment-time"
@@ -58,7 +58,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 				<N8nText
 					v-else
 					size="medium"
-					color="text-light"
+					color="text-dark"
 					:class="[$style.body, $style.line]"
 					data-test-id="workflow-review-activity-comment-body"
 				>
@@ -101,7 +101,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 }
 
 .timeStamp {
-	padding-left: var(--spacing--3xs);
+	padding-left: var(--spacing--4xs);
 }
 
 .body {

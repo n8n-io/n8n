@@ -112,6 +112,22 @@ void (0 as unknown as [
 
 export type WorkflowDocumentId = `${string}@${string}`;
 
+/**
+ * `GET /workflows/:id` only assembles `homeProject` when the sharing license
+ * is active; otherwise it returns the raw `shared` relation instead. Derive
+ * the owning project from `shared` so features that depend on `homeProject`
+ * (e.g. the evaluations wizard) work regardless of the sharing license.
+ */
+export function deriveHomeProject(
+	workflow: Pick<IWorkflowDb, 'homeProject' | 'shared'>,
+): ProjectSharingData | null {
+	return (
+		workflow.homeProject ??
+		workflow.shared?.find((share) => share.role === 'workflow:owner')?.project ??
+		null
+	);
+}
+
 export function createWorkflowDocumentId(
 	workflowId: string,
 	version: string = 'latest',
@@ -324,15 +340,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				activeVersion: workflow.activeVersion ?? null,
 			});
 			workflowDocumentIsArchived.setIsArchived(workflow.isArchived ?? false);
-			// `GET /workflows/:id` only assembles `homeProject` when the sharing
-			// license is active; otherwise it returns the raw `shared` relation.
-			// Derive the owning project from `shared` so features that depend on it
-			// (e.g. the evaluations wizard) work regardless of the sharing license.
-			const homeProject =
-				workflow.homeProject ??
-				workflow.shared?.find((share) => share.role === 'workflow:owner')?.project ??
-				null;
-			workflowDocumentHomeProject.setHomeProject(homeProject);
+			workflowDocumentHomeProject.setHomeProject(deriveHomeProject(workflow));
 			workflowDocumentSharedWithProjects.setSharedWithProjects(workflow.sharedWithProjects ?? []);
 			workflowDocumentScopes.setScopes(workflow.scopes ?? []);
 			workflowDocumentTags.setTags(workflow.tags ?? []);
@@ -510,6 +518,20 @@ export function disposeWorkflowDocumentStore(store: WorkflowDocumentStore) {
 	if (pinia) {
 		delete pinia.state.value[store.$id];
 	}
+}
+
+/**
+ * The live store for this document if one exists — never creates one.
+ * Existence is read from pinia's state registry: creation writes the key,
+ * `disposeWorkflowDocumentStore` deletes it. The `in` check is reactive, so
+ * a computed caller follows dispose/recreate cycles.
+ */
+export function useExistingWorkflowDocumentStore(
+	id: WorkflowDocumentId,
+): WorkflowDocumentStore | undefined {
+	const pinia = getActivePinia();
+	if (!pinia || !(getWorkflowDocumentStoreId(id) in pinia.state.value)) return undefined;
+	return useWorkflowDocumentStore(id);
 }
 
 /**

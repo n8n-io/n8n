@@ -21,7 +21,7 @@ const SERVICE_GATEWAY_CONFIG = {
 	providerConfig: {},
 } as unknown as AiGatewayConfigDto;
 
-const SENTINEL = { id: null, name: 'n8n credits', __aiGatewayManaged: true } as const;
+const SENTINEL = { id: null, name: 'Gateway credits', __aiGatewayManaged: true } as const;
 
 const NO_OWNED = new Set<string>();
 
