@@ -2074,12 +2074,12 @@ export class InstanceAiService {
 		} else {
 			this.logger.debug('No stale Instance AI checkpoints to expire');
 		}
-		if (signal?.aborted) return;
-		await this.hardDeleteExpiredCheckpoints(now);
-		if (signal?.aborted) return;
-		await this.suspendedThreads.pruneStalePendingConfirmations(now);
-		if (signal?.aborted) return;
-		await this.pruneExpiredThreads(signal);
+		if (!signal?.aborted) await this.hardDeleteExpiredCheckpoints(now);
+		if (!signal?.aborted) await this.suspendedThreads.pruneStalePendingConfirmations(now);
+		if (!signal?.aborted) await this.pruneExpiredThreads(signal);
+		if (signal?.aborted) {
+			this.logger.debug('Stopped the Instance AI prune pass early because the run was aborted');
+		}
 	}
 
 	/**
@@ -2107,12 +2107,7 @@ export class InstanceAiService {
 		}
 	}
 
-	/**
-	 * Delete conversation threads older than the configured TTL as part of the
-	 * recurring leader prune. Has its own try/catch so a failure here never
-	 * disrupts checkpoint pruning or the next scheduled run. No-op when
-	 * `threadTtlDays` is 0 (handled inside `cleanupExpiredThreads`).
-	 */
+	/** Deletes conversation threads past their TTL and logs instead of throwing on failure. */
 	private async pruneExpiredThreads(signal?: AbortSignal): Promise<void> {
 		try {
 			await this.memoryService.cleanupExpiredThreads(

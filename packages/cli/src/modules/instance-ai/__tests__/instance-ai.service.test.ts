@@ -1790,6 +1790,25 @@ describe('InstanceAiService — expired data pruning', () => {
 		expect(service.checkpointStore.hardDeleteExpiredOlderThan).not.toHaveBeenCalled();
 		expect(service.suspendedThreads.pruneStalePendingConfirmations).not.toHaveBeenCalled();
 		expect(service.pruneExpiredThreads).not.toHaveBeenCalled();
+		expect(service.logger.debug).toHaveBeenCalledWith(
+			'Stopped the Instance AI prune pass early because the run was aborted',
+		);
+	});
+
+	it('logs an early stop when the signal aborts during the thread sweep', async () => {
+		const service = createCheckpointPruneService();
+		const controller = new AbortController();
+		service.pruneExpiredThreads.mockImplementation(async () => controller.abort());
+
+		await service.pruneExpiredData(
+			new Date('2026-05-13T12:00:00.000Z').getTime(),
+			controller.signal,
+		);
+
+		expect(service.pruneExpiredThreads).toHaveBeenCalledTimes(1);
+		expect(service.logger.debug).toHaveBeenCalledWith(
+			'Stopped the Instance AI prune pass early because the run was aborted',
+		);
 	});
 
 	it('skips hard-deleting tombstones when the GC retention is disabled', async () => {
