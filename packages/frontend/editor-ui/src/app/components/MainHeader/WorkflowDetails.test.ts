@@ -29,6 +29,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { MCP_JSON_NUDGE_MODAL_KEY } from '@/experiments/mcpJsonNudge/constants';
 
 // No workflow route meta on purpose: the menu renders both on workflow-layout
 // routes and in host-embedded editors without a workflow route (e.g. the AI
@@ -89,6 +90,11 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({
 		saveCurrentWorkflow: mockSaveCurrentWorkflow,
 	}),
+}));
+
+vi.mock('file-saver', () => ({
+	default: vi.fn(),
+	saveAs: vi.fn(),
 }));
 
 const initialState = {
@@ -250,6 +256,24 @@ describe('WorkflowDetails', () => {
 	});
 
 	describe('Workflow menu', () => {
+		it('triggers the MCP JSON nudge for the export surface when downloading the workflow', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultProps,
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-download'));
+
+			expect(openModalSpy).toHaveBeenCalledWith({
+				name: MCP_JSON_NUDGE_MODAL_KEY,
+				data: { surface: 'export' },
+			});
+		});
+
 		it('should not have workflow duplicate and import when branch is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 

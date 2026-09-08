@@ -122,6 +122,7 @@ import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { usePostMessageControls } from '@/app/composables/usePostMessageHandler';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useMcpJsonNudgeTrigger } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -209,6 +210,7 @@ const evaluationsWizardSidepanelStore = useEvaluationsWizardSidepanelStore();
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
 const builderStore = useBuilderStore();
+const mcpJsonNudgeTrigger = useMcpJsonNudgeTrigger();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
@@ -898,6 +900,7 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 		trackEvents,
 		setStateDirty,
 	});
+	mcpJsonNudgeTrigger.trigger('import_file');
 
 	await nextTick();
 	fitView();
@@ -927,6 +930,7 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 	await importWorkflowData(workflowData, 'url', {
 		viewport: viewportBoundaries.value,
 	});
+	mcpJsonNudgeTrigger.trigger('import_url');
 
 	canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
 }

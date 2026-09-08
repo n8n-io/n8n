@@ -41,6 +41,7 @@ import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useMoveResourceToProjectToast } from '@/features/collaboration/projects/composables/useMoveResourceToProjectToast';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useMcpJsonNudgeTrigger } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -73,6 +74,7 @@ const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
 const favoritesStore = useFavoritesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const mcpJsonNudgeTrigger = useMcpJsonNudgeTrigger();
 
 const onExecutionsTab = computed(() => {
 	return [
@@ -387,6 +389,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			name = sanitizeFilename(name);
 
 			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
+			mcpJsonNudgeTrigger.trigger('export');
 			saveAs(blob, name + '.json');
 			break;
 		}

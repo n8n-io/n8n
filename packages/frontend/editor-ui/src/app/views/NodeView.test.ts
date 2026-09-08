@@ -16,6 +16,13 @@ import NodeView from './NodeView.vue';
 import { VIEWS } from '../constants';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
 import { computed, defineComponent, shallowRef } from 'vue';
+import { nodeViewEventBus } from '@/app/event-bus';
+
+const mockMcpJsonNudgeTrigger = vi.hoisted(() => vi.fn());
+
+vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger', () => ({
+	useMcpJsonNudgeTrigger: () => ({ trigger: mockMcpJsonNudgeTrigger }),
+}));
 
 const routerMock = vi.hoisted(() => ({
 	push: vi.fn(),
@@ -234,6 +241,20 @@ describe('NodeView', () => {
 			const { findByTestId } = renderNodeView();
 
 			expect(await findByTestId('execute-workflow-button')).toBeInTheDocument();
+		});
+	});
+
+	describe('Import / Export', () => {
+		beforeEach(() => {
+			mockMcpJsonNudgeTrigger.mockClear();
+		});
+
+		it('triggers the MCP JSON nudge for the import_file surface when a workflow is imported from file', async () => {
+			renderNodeView();
+
+			nodeViewEventBus.emit('importWorkflowData', { data: { nodes: [], connections: {} } });
+
+			await waitFor(() => expect(mockMcpJsonNudgeTrigger).toHaveBeenCalledWith('import_file'));
 		});
 	});
 });
