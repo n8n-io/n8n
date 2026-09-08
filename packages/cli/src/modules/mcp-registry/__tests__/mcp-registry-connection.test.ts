@@ -1,4 +1,4 @@
-import type { McpRegistryConnection } from 'n8n-workflow';
+import type { McpOAuth2CredentialType, McpRegistryConnection } from 'n8n-workflow';
 
 import {
 	prepareMcpRegistryConnection,
@@ -6,18 +6,20 @@ import {
 } from '../mcp-registry-connection';
 import { notionMockServer } from '../registry/mock-servers';
 
+const credentialType: McpOAuth2CredentialType = 'exampleMcpOAuth2Api';
+
 const connection: McpRegistryConnection = {
 	nodeTypeName: '@n8n/mcp-registry.example',
-	credentialType: 'exampleMcpOAuth2Api',
 	endpointUrl: 'https://example.com/mcp',
 	endpointHostname: 'example.com',
 	transport: 'httpStreamable',
+	credentialBindings: [{ credentialType, selector: 'oAuth2' }],
 	isTemplated: false,
 };
 
 const templatedConnection: McpRegistryConnection = {
 	nodeTypeName: '@n8n/mcp-registry.example',
-	credentialType: 'exampleMcpOAuth2Api',
+	credentialBindings: [{ credentialType, selector: 'oAuth2' }],
 	urlTemplate: '={{$self["host"]}}/api/2.0/mcp/genie',
 	transport: 'httpStreamable',
 	isTemplated: true,
@@ -55,7 +57,12 @@ describe('resolveMcpRegistryConnection', () => {
 
 		expect(result).toEqual({
 			nodeTypeName: '@n8n/mcp-registry.notion',
-			credentialType: 'notionMcpOAuth2Api',
+			credentialBindings: [
+				{
+					credentialType: 'notionMcpOAuth2Api',
+					selector: 'oAuth2',
+				},
+			],
 			urlTemplate: '={{$self["host"]}}/api/2.0/mcp/genie',
 			transport: 'httpStreamable',
 			isTemplated: true,
@@ -79,6 +86,7 @@ describe('prepareMcpRegistryConnection', () => {
 	it('rejects an empty access token', () => {
 		const result = prepareMcpRegistryConnection({
 			connection,
+			credentialType,
 			credentialData: { oauthTokenData: { access_token: '' } },
 		});
 
@@ -91,9 +99,26 @@ describe('prepareMcpRegistryConnection', () => {
 		});
 	});
 
+	it('rejects a credential type the server does not bind', () => {
+		const result = prepareMcpRegistryConnection({
+			connection,
+			credentialType: 'otherMcpOAuth2Api',
+			credentialData: { oauthTokenData: { access_token: 'token' } },
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'unsupported_credential',
+				message: 'Credential type "otherMcpOAuth2Api" is not supported by this MCP registry server',
+			},
+		});
+	});
+
 	it('uses already refreshed headers instead of stale credential data', () => {
 		const result = prepareMcpRegistryConnection({
 			connection,
+			credentialType,
 			credentialData: { oauthTokenData: { access_token: 'stale-token' } },
 			headers: { Authorization: 'Bearer refreshed-token' },
 		});
@@ -102,7 +127,7 @@ describe('prepareMcpRegistryConnection', () => {
 			ok: true,
 			value: {
 				nodeTypeName: connection.nodeTypeName,
-				credentialType: connection.credentialType,
+				credentialType,
 				transport: connection.transport,
 				endpointUrl: 'https://example.com/mcp',
 				headers: { Authorization: 'Bearer refreshed-token' },
@@ -114,6 +139,7 @@ describe('prepareMcpRegistryConnection', () => {
 	it('resolves a templated connection and pins the domain to the resolved host', () => {
 		const result = prepareMcpRegistryConnection({
 			connection: templatedConnection,
+			credentialType,
 			credentialData: {
 				oauthTokenData: { access_token: 'token' },
 				serverUrl: 'https://acme.cloud.databricks.com/api/2.0/mcp/genie',
@@ -127,7 +153,7 @@ describe('prepareMcpRegistryConnection', () => {
 			ok: true,
 			value: {
 				nodeTypeName: templatedConnection.nodeTypeName,
-				credentialType: templatedConnection.credentialType,
+				credentialType,
 				transport: templatedConnection.transport,
 				headers: { Authorization: 'Bearer token' },
 				endpointUrl: 'https://acme.cloud.databricks.com/api/2.0/mcp/genie',
@@ -143,6 +169,7 @@ describe('prepareMcpRegistryConnection', () => {
 	])('rejects a templated connection whose serverUrl is %s', (_label, serverUrl) => {
 		const result = prepareMcpRegistryConnection({
 			connection: templatedConnection,
+			credentialType,
 			credentialData: { oauthTokenData: { access_token: 'token' }, serverUrl },
 		});
 
@@ -158,6 +185,7 @@ describe('prepareMcpRegistryConnection', () => {
 	it('rejects a templated connection when the credential has no resolved serverUrl', () => {
 		const result = prepareMcpRegistryConnection({
 			connection: templatedConnection,
+			credentialType,
 			credentialData: { oauthTokenData: { access_token: 'token' } },
 		});
 

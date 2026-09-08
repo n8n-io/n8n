@@ -3,7 +3,10 @@ import { BackendModule } from '@n8n/decorators';
 
 @BackendModule({ name: 'type-availability-policies' })
 export class TypeAvailabilityPoliciesModule implements ModuleInterface {
-	async init() {}
+	async init() {
+		// Side-effecting import: registers the controller's routes via `@RestController`.
+		await import('./type-availability-policy-instance.controller.js');
+	}
 
 	async entities() {
 		const { TypeAvailabilityPolicy } = await import(

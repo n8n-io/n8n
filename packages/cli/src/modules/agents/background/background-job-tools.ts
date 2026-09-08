@@ -19,9 +19,16 @@ export interface BackgroundJobToolsOptions {
 	availableSubAgents: Array<{ id: string; name: string; useWhen?: string }>;
 	projectId: string;
 	parentAgentId: string;
+	// The workspace handle is principal-scoped, not thread-scoped. The sandbox
+	// outlives the parent turn, so capture it when the tool is built.
 	runContext: Pick<
 		SubAgentRunContext,
-		'credentialProvider' | 'runType' | 'workflowToolExecutionMode' | 'user' | 'instrumentation'
+		| 'credentialProvider'
+		| 'runType'
+		| 'workflowToolExecutionMode'
+		| 'user'
+		| 'instrumentation'
+		| 'parentWorkspaceHandle'
 	>;
 }
 
@@ -180,6 +187,7 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 					...(job.error !== null ? { error: truncateResult(job.error) } : {}),
 					startedAt: job.createdAt.toISOString(),
 					...(job.timeoutAt !== null ? { timeoutAt: job.timeoutAt.toISOString() } : {}),
+					...(job.childExecutionId !== null ? { executionId: job.childExecutionId } : {}),
 				})),
 				runningCount: jobs.filter((job) => job.status === 'running').length,
 			};
