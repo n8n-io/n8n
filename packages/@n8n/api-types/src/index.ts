@@ -190,6 +190,13 @@ export {
 	appRouteSchema,
 	type AppRoute,
 } from './schemas/app.schema';
+export {
+	appBindingSchema,
+	appBindingsSchema,
+	workflowBindingSchema,
+	type AppBinding,
+	type DescribedBinding,
+} from './schemas/app-binding.schema';
 
 export {
 	insightsSummarySchema,
