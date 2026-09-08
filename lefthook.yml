@@ -1,3 +1,7 @@
+output:
+  - execution_out
+  - failure
+
 pre-commit:
   commands:
     biome_check:
