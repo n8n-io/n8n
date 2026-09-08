@@ -25,6 +25,19 @@ const state = {
 };
 
 vi.mock('./composables/useConnection', () => ({ useConnection: () => state }));
+vi.mock('./composables/useRecording', () => ({
+	useRecording: () => ({
+		recording: ref(null),
+		errorMessage: ref(''),
+		start: vi.fn(),
+		stop: vi.fn(),
+		submit: vi.fn(),
+		discard: vi.fn(),
+		recordAgain: vi.fn(),
+		removeAction: vi.fn(),
+		maskAction: vi.fn(),
+	}),
+}));
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -53,13 +66,14 @@ describe('connect prompt', () => {
 
 // What the child renders is its own spec; App owns where it appears and the wiring.
 describe('remembered hosts', () => {
-	it('can be reviewed while nothing is connected', () => {
+	it('can be reviewed while nothing is connected', async () => {
 		state.hasRelayUrl.value = false;
 		state.approvedHosts.value = ['acme.app.n8n.cloud'];
 
-		expect(mount(App).findComponent(RememberedHosts).props('hosts')).toEqual([
-			'acme.app.n8n.cloud',
-		]);
+		const wrapper = mount(App);
+		await wrapper.find('[aria-label="Settings"]').trigger('click');
+
+		expect(wrapper.findComponent(RememberedHosts).props('hosts')).toEqual(['acme.app.n8n.cloud']);
 	});
 
 	it('can be revoked while connected to a different instance', async () => {
@@ -67,6 +81,7 @@ describe('remembered hosts', () => {
 		state.approvedHosts.value = ['localhost:5678'];
 
 		const wrapper = mount(App);
+		await wrapper.find('[aria-label="Settings"]').trigger('click');
 		wrapper.findComponent(RememberedHosts).vm.$emit('forget', 'localhost:5678');
 		await wrapper.vm.$nextTick();
 

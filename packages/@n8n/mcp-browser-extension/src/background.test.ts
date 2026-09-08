@@ -35,6 +35,7 @@ const chromeMock = {
 		update: vi.fn().mockResolvedValue(undefined),
 		remove: vi.fn().mockResolvedValue(undefined),
 		reload: vi.fn().mockResolvedValue(undefined),
+		onActivated: { addListener: vi.fn() },
 		onCreated: { addListener: vi.fn() },
 		onRemoved: {
 			addListener: vi.fn((fn: (tabId: number) => void) => tabRemovedListeners.push(fn)),
@@ -56,7 +57,10 @@ const chromeMock = {
 		},
 		local: { get: vi.fn().mockResolvedValue({}), set: vi.fn().mockResolvedValue(undefined) },
 	},
-	webNavigation: { onCreatedNavigationTarget: { addListener: vi.fn() } },
+	webNavigation: {
+		onCommitted: { addListener: vi.fn() },
+		onCreatedNavigationTarget: { addListener: vi.fn() },
+	},
 	action: {
 		setBadgeText: vi.fn(),
 		setBadgeBackgroundColor: vi.fn(),
