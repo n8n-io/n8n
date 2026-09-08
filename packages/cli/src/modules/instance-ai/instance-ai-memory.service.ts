@@ -1,3 +1,4 @@
+import type { AgentDbMessage } from '@n8n/agents';
 import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiEvent,
@@ -18,7 +19,6 @@ import {
 	patchThread,
 	withBoundAgentTarget,
 	type AgentBuilderTarget,
-	type AgentDbMessage,
 	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
 
