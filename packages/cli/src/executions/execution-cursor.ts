@@ -8,7 +8,6 @@ const timestamp = z.string().datetime({ offset: true });
 const Cursor = z
 	.object({
 		version: z.literal(1),
-		// TODO: add a `v2` position for engine 2.0 (UUID) execution ids, as a followup.
 		v1: z
 			.object({
 				timestamp,
@@ -17,12 +16,16 @@ const Cursor = z
 					.regex(/^[1-9]\d*$/)
 					.refine((id) => Number(id) <= 2147483647),
 			})
-			.strict(),
+			.strict()
+			.optional(),
+		/** The data plane's continuation position, for engine 2.0 (UUID) execution ids. */
+		v2: z.object({ timestamp, id: z.string().uuid() }).strict().optional(),
 	})
-	.strict();
+	.strict()
+	.refine((cursor) => cursor.v1 ?? cursor.v2, 'A cursor must carry at least one position');
 
 export type ExecutionCursor = z.infer<typeof Cursor>;
-export type ExecutionPosition = ExecutionCursor['v1'];
+export type ExecutionPosition = NonNullable<ExecutionCursor['v1']>;
 
 /** Parse a cursor, or return `undefined` when the caller asks for the first page. */
 export function parseExecutionCursor(value?: string): ExecutionCursor | undefined {

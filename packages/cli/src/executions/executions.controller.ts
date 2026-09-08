@@ -12,6 +12,7 @@ import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { isExecutionIdV2 } from './execution-id';
+import { ExecutionListService } from './execution-list.service';
 import { ExecutionService } from './execution.service';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { ExecutionRequest } from './execution.types';
@@ -25,6 +26,7 @@ export class ExecutionsController {
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly license: License,
+		private readonly executionListService: ExecutionListService,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
@@ -43,27 +45,8 @@ export class ExecutionsController {
 			delete query.annotationTags;
 		}
 
-		const noStatus = !query.status || query.status.length === 0;
-
-		// Without a status filter, every page keeps the current/completed split, so that
-		// "load more" pages only completed rows and the count stays completed-only.
-		if (noStatus) {
-			const [executions, concurrentExecutionsCount] = await Promise.all([
-				this.executionService.findLatestCurrentAndCompleted(query),
-				this.executionService.getConcurrentExecutionsCount(),
-			]);
-			await this.executionService.addScopes(
-				req.user,
-				executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
-			);
-			return {
-				...executions,
-				concurrentExecutionsCount,
-			};
-		}
-
 		const [executions, concurrentExecutionsCount] = await Promise.all([
-			this.executionService.findRangeWithCount(query),
+			this.executionListService.findMany(query, req.query.cursor),
 			this.executionService.getConcurrentExecutionsCount(),
 		]);
 		await this.executionService.addScopes(

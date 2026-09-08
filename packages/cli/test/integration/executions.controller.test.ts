@@ -148,7 +148,11 @@ describe('GET /executions/:id', () => {
 		const getExecution = vi.fn();
 
 		beforeAll(() => {
-			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
+			Container.get(EngineDataPlaneProxyService).registerProvider({
+				startExecution,
+				getExecution,
+				searchExecutions: vi.fn().mockResolvedValue({ items: [], hasMore: false, total: 0 }),
+			});
 		});
 
 		beforeEach(() => {
