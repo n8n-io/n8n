@@ -117,6 +117,20 @@ describe('AddWakeColumnsToAgentBackgroundJob migration', () => {
 		}));
 	}
 
+	async function indexDefinitions(context: TestMigrationContext): Promise<string[]> {
+		if (context.isSqlite) {
+			const rows = (await context.queryRunner.query(
+				`SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ${context.escape.tableName('agent_background_job')}`,
+			)) as Array<{ sql: string | null }>;
+			return rows.map((row) => row.sql ?? '');
+		}
+		const rows = (await context.queryRunner.query(
+			'SELECT indexdef FROM pg_indexes WHERE tablename = $1',
+			[`${context.tablePrefix}agent_background_job`],
+		)) as Array<{ indexdef: string }>;
+		return rows.map((row) => row.indexdef);
+	}
+
 	async function countJobs(context: TestMigrationContext): Promise<number> {
 		const rows = await context.runQuery<Array<{ count: number | string }>>(
 			`SELECT COUNT(*) AS "count" FROM ${context.escape.tableName('agent_background_job')}`,
@@ -148,25 +162,21 @@ describe('AddWakeColumnsToAgentBackgroundJob migration', () => {
 			});
 
 			// The table is recreated on SQLite; the partial unique index that keeps
-			// one tracker per workflow execution must survive.
-			const indexDefinitions: string[] = context.isSqlite
-				? (
-						(await context.queryRunner.query(
-							`SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ${context.escape.tableName('agent_background_job')}`,
-						)) as Array<{ sql: string | null }>
-					).map((row) => row.sql ?? '')
-				: (
-						(await context.queryRunner.query(
-							'SELECT indexdef FROM pg_indexes WHERE tablename = $1',
-							[`${context.tablePrefix}agent_background_job`],
-						)) as Array<{ indexdef: string }>
-					).map((row) => row.indexdef);
+			// one tracker per workflow execution must survive, and the pending-mail
+			// index must exist.
+			const indexes = await indexDefinitions(context);
 			expect(
-				indexDefinitions.some(
+				indexes.some(
 					(definition) =>
 						/UNIQUE/i.test(definition) &&
 						definition.includes('childExecutionId') &&
 						/IS NOT NULL/i.test(definition),
+				),
+			).toBe(true);
+			expect(
+				indexes.some(
+					(definition) =>
+						definition.includes('parentThreadId') && /notifiedAt.*IS NULL/i.test(definition),
 				),
 			).toBe(true);
 		});
@@ -208,6 +218,8 @@ describe('AddWakeColumnsToAgentBackgroundJob migration', () => {
 				{ jobId },
 			);
 			expect(rows).toEqual([{ id: jobId }]);
+			const indexes = await indexDefinitions(context);
+			expect(indexes.some((definition) => definition.includes('notifiedAt'))).toBe(false);
 		});
 	});
 });

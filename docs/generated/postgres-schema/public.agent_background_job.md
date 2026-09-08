@@ -49,6 +49,7 @@
 | ---- | ---------- |
 | IDX_93d62baabe9858816b5adafb44 | CREATE INDEX "IDX_93d62baabe9858816b5adafb44" ON public.agent_background_job USING btree ("parentThreadId", status) |
 | IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON public.agent_background_job USING btree ("childExecutionId") WHERE ("childExecutionId" IS NOT NULL) |
+| IDX_agent_background_job_parentThreadId | CREATE INDEX "IDX_agent_background_job_parentThreadId" ON public.agent_background_job USING btree ("parentThreadId") WHERE (("settledAt" IS NOT NULL) AND ("notifiedAt" IS NULL)) |
 | IDX_agent_background_job_timeoutAt | CREATE INDEX "IDX_agent_background_job_timeoutAt" ON public.agent_background_job USING btree ("timeoutAt") WHERE ((status)::text = 'running'::text) |
 | IDX_d46c6f00730c2ef8bcb6ee24b6 | CREATE INDEX "IDX_d46c6f00730c2ef8bcb6ee24b6" ON public.agent_background_job USING btree ("parentAgentId") |
 | IDX_e43e630272995a93dfeb94ab3e | CREATE INDEX "IDX_e43e630272995a93dfeb94ab3e" ON public.agent_background_job USING btree ("settledAt") |

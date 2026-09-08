@@ -51,6 +51,7 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 | ---- | ---------- |
 | IDX_93d62baabe9858816b5adafb44 | CREATE INDEX "IDX_93d62baabe9858816b5adafb44" ON "agent_background_job" ("parentThreadId", "status")  |
 | IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON "agent_background_job" ("childExecutionId") WHERE "childExecutionId" IS NOT NULL |
+| IDX_agent_background_job_parentThreadId | CREATE INDEX "IDX_agent_background_job_parentThreadId" ON "agent_background_job" ("parentThreadId") WHERE "settledAt" IS NOT NULL AND "notifiedAt" IS NULL |
 | IDX_agent_background_job_timeoutAt | CREATE INDEX "IDX_agent_background_job_timeoutAt" ON "agent_background_job" ("timeoutAt") WHERE "status" = 'running' |
 | IDX_d46c6f00730c2ef8bcb6ee24b6 | CREATE INDEX "IDX_d46c6f00730c2ef8bcb6ee24b6" ON "agent_background_job" ("parentAgentId")  |
 | IDX_e43e630272995a93dfeb94ab3e | CREATE INDEX "IDX_e43e630272995a93dfeb94ab3e" ON "agent_background_job" ("settledAt")  |
