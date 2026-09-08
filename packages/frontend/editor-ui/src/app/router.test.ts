@@ -5,6 +5,7 @@ import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
+import { CONTEXT_PREFERENCES_FLAG } from '@/features/settings/context/context.constants';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -222,6 +223,38 @@ describe('router', () => {
 		await router.push('/settings/n8n-connect');
 
 		expect(router.currentRoute.value.name).toBe(VIEWS.AI_GATEWAY_SETTINGS);
+	});
+
+	describe('context settings route guard', () => {
+		beforeEach(async () => {
+			// Reset to a neutral route so each push below actually triggers the guard.
+			await router.push('/workflows');
+		});
+
+		afterEach(() => {
+			delete usePostHog().overrides[CONTEXT_PREFERENCES_FLAG];
+		});
+
+		test.each([
+			['/settings/context', VIEWS.SETTINGS_CONTEXT],
+			['/settings/context/preferences', VIEWS.SETTINGS_CONTEXT_PREFERENCES],
+		])('allows enrolled users to reach %s', async (path, name) => {
+			usePostHog().overrides[CONTEXT_PREFERENCES_FLAG] = { value: true };
+
+			await router.push(path);
+
+			expect(router.currentRoute.value.name).toBe(name);
+		});
+
+		test.each(['/settings/context', '/settings/context/preferences'])(
+			'redirects users without the flag away from %s',
+			async (path) => {
+				await router.push(path);
+
+				expect(router.currentRoute.value.name).not.toBe(VIEWS.SETTINGS_CONTEXT);
+				expect(router.currentRoute.value.name).not.toBe(VIEWS.SETTINGS_CONTEXT_PREFERENCES);
+			},
+		);
 	});
 
 	describe('resource center route guard', () => {
