@@ -245,7 +245,6 @@ export namespace ExecutionSummaries {
 	type RangeFields = {
 		range: {
 			limit: number;
-			lastId?: string;
 			before?: { timestamp: string; id: string };
 		};
 	};
