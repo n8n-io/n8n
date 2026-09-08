@@ -9,6 +9,7 @@ import {
 	InstanceSettings,
 	WorkflowExecute,
 	SupplyDataContext,
+	StructuredToolkit,
 } from 'n8n-core';
 import type {
 	ExecutionStatus,
@@ -58,6 +59,15 @@ import type {
 	SendChunkMessage,
 } from './scaling.types';
 import { WebhookResponseRelay } from './webhook-response-relay';
+
+function isInvokableTool(value: unknown): value is Pick<Tool, 'invoke'> {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'invoke' in value &&
+		typeof value.invoke === 'function'
+	);
+}
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -384,6 +394,7 @@ export class JobProcessor {
 						await this.invokeTool({
 							workflow,
 							sourceNodeName,
+							toolName,
 							toolArgs,
 							toolInput: job.data.mcpToolInput,
 							additionalData,
@@ -525,6 +536,7 @@ export class JobProcessor {
 	private async invokeTool({
 		workflow,
 		sourceNodeName,
+		toolName,
 		toolArgs,
 		toolInput,
 		additionalData,
@@ -533,6 +545,7 @@ export class JobProcessor {
 	}: {
 		workflow: Workflow;
 		sourceNodeName: string;
+		toolName: string;
 		toolArgs: Record<string, unknown>;
 		toolInput?: IDataObject;
 		additionalData: Awaited<ReturnType<typeof WorkflowExecuteAdditionalData.getBase>>;
@@ -604,9 +617,21 @@ export class JobProcessor {
 		try {
 			if (nodeType.supplyData) {
 				const supplyDataResult = await nodeType.supplyData.call(context, 0);
-				const tool = supplyDataResult.response as Tool;
+				if (supplyDataResult.closeFunction) {
+					closeFunctions.push(supplyDataResult.closeFunction);
+				}
 
-				if (!tool || typeof tool.invoke !== 'function') {
+				let tool = supplyDataResult.response;
+				if (tool instanceof StructuredToolkit) {
+					tool = tool.tools.find((member) => member.name === toolName);
+					if (!tool) {
+						throw new UnexpectedError(
+							`Tool "${toolName}" not found in toolkit from node "${sourceNodeName}"`,
+						);
+					}
+				}
+
+				if (!isInvokableTool(tool)) {
 					throw new UnexpectedError(`Tool node "${sourceNodeName}" did not return a valid Tool`);
 				}
 

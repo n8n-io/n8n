@@ -1,3 +1,4 @@
+import type { AgentDbMessage } from '@n8n/agents';
 import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiEvent,
@@ -18,7 +19,6 @@ import {
 	patchThread,
 	withBoundAgentTarget,
 	type AgentBuilderTarget,
-	type AgentDbMessage,
 	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
 
@@ -633,10 +633,12 @@ export class InstanceAiMemoryService {
 	/**
 	 * Delete conversation threads older than the configured TTL. Invoked on a
 	 * recurring schedule by the leader instance's prune job. Idempotent and
-	 * safe to call repeatedly — no-op if threadTtlDays is 0 (disabled).
+	 * safe to call repeatedly — no-op if threadTtlDays is 0 (disabled). Stops
+	 * before the next thread once `signal` aborts.
 	 */
 	async cleanupExpiredThreads(
 		onThreadDeleted?: (threadId: string) => Promise<void>,
+		signal?: AbortSignal,
 	): Promise<number> {
 		const ttlDays = this.instanceAiConfig.threadTtlDays;
 		if (!ttlDays || ttlDays <= 0) return 0;
@@ -650,7 +652,7 @@ export class InstanceAiMemoryService {
 		const perPage = 100;
 		let hasMore = true;
 
-		while (hasMore) {
+		while (hasMore && !signal?.aborted) {
 			const result = await this.agentMemory.listThreads({
 				perPage,
 				page: 0,
@@ -658,6 +660,7 @@ export class InstanceAiMemoryService {
 			});
 			let deletedInPage = 0;
 			for (const thread of result.threads) {
+				if (signal?.aborted) break;
 				if (thread.updatedAt < cutoff) {
 					try {
 						await onThreadDeleted?.(thread.id);
