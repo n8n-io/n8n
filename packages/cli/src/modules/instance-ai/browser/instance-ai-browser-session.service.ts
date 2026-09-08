@@ -55,12 +55,18 @@ interface BrowserSession {
 	connection: BrowserConnection;
 	mcpServer: BrowserLocalMcpServer;
 	completedRecordingIds: Set<string>;
+	/** Thread that asked Instance AI to start this recording, if any — set by `startRecording()`,
+	 *  consumed (and cleared) the moment the recording completes. */
+	pendingRecordingThreadId?: string;
 }
 
 interface BrowserRecordingCompletion {
 	userId: string;
 	projectId: string;
 	recording: BrowserRecording;
+	/** The thread that triggered this recording, so completion can resume it instead of
+	 *  opening a new thread. Absent for recordings started manually from the extension. */
+	originThreadId?: string;
 }
 
 interface BrowserRecordingCompletionResult {
@@ -137,6 +143,35 @@ export class InstanceAiBrowserSessionService {
 	findMcpServer(userId: string): BrowserLocalMcpServer | undefined {
 		const session = this.sessions.get(userId);
 		return session?.connected ? session.mcpServer : undefined;
+	}
+
+	/** Ask the paired extension to start recording, on behalf of the given thread. Returns
+	 *  false if there's no paired session to ask. */
+	startRecording(userId: string, threadId: string): boolean {
+		const session = this.sessions.get(userId);
+		if (!session?.connected) return false;
+		session.pendingRecordingThreadId = threadId;
+		session.relay.startRecording().catch((error) => {
+			this.logger.warn('Failed to start browser recording', {
+				userId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+		return true;
+	}
+
+	/** Ask the paired extension to stop the active recording and submit it immediately.
+	 *  Returns false if there's no paired session to ask. */
+	stopAndSubmitRecording(userId: string): boolean {
+		const session = this.sessions.get(userId);
+		if (!session?.connected) return false;
+		session.relay.stopAndSubmitRecording().catch((error) => {
+			this.logger.warn('Failed to stop browser recording', {
+				userId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+		return true;
 	}
 
 	isConnected(userId: string): boolean {
@@ -248,6 +283,7 @@ export class InstanceAiBrowserSessionService {
 		session.connected = false;
 		session.connectedAt = null;
 		session.completedRecordingIds.clear();
+		session.pendingRecordingThreadId = undefined;
 	}
 
 	private async handleRecordingCompleted(
@@ -259,12 +295,15 @@ export class InstanceAiBrowserSessionService {
 		if (!session || !handler || session.completedRecordingIds.has(recording.id)) return {};
 
 		session.completedRecordingIds.add(recording.id);
+		const originThreadId = session.pendingRecordingThreadId;
+		session.pendingRecordingThreadId = undefined;
 		try {
 			const project = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 			const { threadId } = await handler({
 				userId,
 				projectId: project.id,
 				recording,
+				originThreadId,
 			});
 			return {
 				threadUrl: `${this.urlService.getInstanceBaseUrl().replace(/\/$/, '')}/assistant/${threadId}`,

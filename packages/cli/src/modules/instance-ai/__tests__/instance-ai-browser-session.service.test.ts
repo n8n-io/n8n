@@ -22,9 +22,12 @@ vi.mock('@n8n/mcp-browser', () => {
 	class MockRelay {
 		onExtensionConnect?: () => void;
 		onExtensionDisconnect?: () => void;
+		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
 		attachExtension = vi.fn();
 		attachController = vi.fn();
 		stop = vi.fn();
+		startRecording = vi.fn(async () => undefined);
+		stopAndSubmitRecording = vi.fn(async () => undefined);
 		constructor() {
 			createdRelays.push(this);
 		}
@@ -45,18 +48,24 @@ const mcpBrowserMock: {
 	__createdRelays: Array<{
 		onExtensionConnect?: () => void;
 		onExtensionDisconnect?: () => void;
+		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
 		attachExtension: Mock;
 		attachController: Mock;
 		stop: Mock;
+		startRecording: Mock;
+		stopAndSubmitRecording: Mock;
 	}>;
 	createBrowserTools: Mock;
 } = mcpBrowser as unknown as {
 	__createdRelays: Array<{
 		onExtensionConnect?: () => void;
 		onExtensionDisconnect?: () => void;
+		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
 		attachExtension: Mock;
 		attachController: Mock;
 		stop: Mock;
+		startRecording: Mock;
+		stopAndSubmitRecording: Mock;
 	}>;
 	createBrowserTools: Mock;
 };
@@ -371,6 +380,80 @@ describe('InstanceAiBrowserSessionService', () => {
 			expect(service.getExtensionTraceContext(USER_ID)).toEqual({
 				connectionState: 'disconnected',
 			});
+		});
+	});
+
+	describe('startRecording / stopAndSubmitRecording', () => {
+		it('returns false and sends nothing when the extension is not connected', async () => {
+			const { relay } = await createSession(service);
+
+			expect(service.startRecording(USER_ID, 'thread-1')).toBe(false);
+			expect(service.stopAndSubmitRecording(USER_ID)).toBe(false);
+			expect(relay.startRecording).not.toHaveBeenCalled();
+			expect(relay.stopAndSubmitRecording).not.toHaveBeenCalled();
+		});
+
+		it('asks the connected extension to start recording, attributed to the given thread', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+
+			expect(service.startRecording(USER_ID, 'thread-1')).toBe(true);
+			expect(relay.startRecording).toHaveBeenCalledTimes(1);
+		});
+
+		it('asks the connected extension to stop and submit', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+
+			expect(service.stopAndSubmitRecording(USER_ID)).toBe(true);
+			expect(relay.stopAndSubmitRecording).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('recording completion', () => {
+		const recording = { id: 'rec-1' } as never;
+
+		it('passes the origin thread from startRecording through to the completion handler, then clears it', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'project-1',
+			} as never);
+			const handler = vi.fn(async () => ({ threadId: 'thread-1' }));
+			service.setRecordingCompletionHandler(handler);
+
+			service.startRecording(USER_ID, 'thread-1');
+			await relay.onRecordingCompleted?.(recording);
+
+			expect(handler).toHaveBeenCalledWith({
+				userId: USER_ID,
+				projectId: 'project-1',
+				recording,
+				originThreadId: 'thread-1',
+			});
+
+			// A second, unrelated recording completing must not inherit the earlier thread.
+			await relay.onRecordingCompleted?.({ id: 'rec-2' } as never);
+			expect(handler).toHaveBeenLastCalledWith({
+				userId: USER_ID,
+				projectId: 'project-1',
+				recording: { id: 'rec-2' },
+				originThreadId: undefined,
+			});
+		});
+
+		it('passes no origin thread for a recording started manually (from the extension popup)', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'project-1',
+			} as never);
+			const handler = vi.fn(async () => ({ threadId: 'thread-1' }));
+			service.setRecordingCompletionHandler(handler);
+
+			await relay.onRecordingCompleted?.(recording);
+
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining({ originThreadId: undefined }));
 		});
 	});
 });
