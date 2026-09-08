@@ -76,6 +76,13 @@ describe('DeprecationService', () => {
 		['N8N_OUTBOUND_PROXY_MODE', 'main-only', true],
 		['N8N_OUTBOUND_PROXY_MODE', 'all', false],
 		['N8N_OUTBOUND_PROXY_MODE', undefined, false],
+		['N8N_RUNNERS_MODE', 'internal', true],
+		['N8N_RUNNERS_MODE', 'external', false],
+		['N8N_RUNNERS_MODE', undefined, false],
+		['N8N_SSRF_PROTECTION_ENABLED', 'true', true],
+		['N8N_SSRF_PROTECTION_ENABLED', '1', true],
+		['N8N_SSRF_PROTECTION_ENABLED', 'false', false],
+		['N8N_SSRF_PROTECTION_ENABLED', undefined, false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});

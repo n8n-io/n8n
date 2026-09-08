@@ -74,6 +74,18 @@ export class DeprecationService {
 			checkValue: (value?: string) => value === undefined,
 		},
 		{
+			envVar: 'N8N_RUNNERS_MODE',
+			message:
+				'The `internal` mode is deprecated and will be removed in a future version. Run task runners as a separate process and set this variable to `external`.',
+			checkValue: (value?: string) => value === 'internal',
+		},
+		{
+			envVar: 'N8N_SSRF_PROTECTION_ENABLED',
+			message:
+				'The default blocked IP ranges will expand in a future version to include the shared address space (100.64.0.0/10) and IPv6 transition ranges. Set N8N_SSRF_BLOCKED_IP_RANGES explicitly to keep your current block list.',
+			checkValue: (value?: string) => ['true', '1'].includes(value?.toLowerCase() ?? ''),
+		},
+		{
 			envVar: 'N8N_RUNNERS_TASK_TIMEOUT',
 			message:
 				'The default for this variable will be reduced from 300 (5 minutes) to 60 (1 minute) in a future version. Set it explicitly to keep your current task timeout.',
