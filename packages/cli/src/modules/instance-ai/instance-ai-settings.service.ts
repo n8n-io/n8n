@@ -287,7 +287,7 @@ export class InstanceAiSettingsService {
 	/** Whether n8n Agent is enabled for this instance. */
 	private enabled = true;
 
-	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	private mcpAccessEnabled = true;
 
 	/** Per-action HITL permission overrides. */
@@ -579,12 +579,12 @@ export class InstanceAiSettingsService {
 			? await Promise.all([
 					this.prepareConnection(
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-						'AI Assistant model',
+						'n8n Assistant model',
 						modelConnection,
 					),
 					this.prepareConnection(
 						INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
-						'AI Assistant web search',
+						'n8n Assistant web search',
 						searchConnection,
 					),
 					this.prepareSandboxConnection(sandboxConnection),
@@ -608,7 +608,7 @@ export class InstanceAiSettingsService {
 					modelCredentialId = await this.upsertConnection(
 						user,
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-						'AI Assistant model',
+						'n8n Assistant model',
 						modelConnection,
 						ctx,
 						modelPrepared,
@@ -618,7 +618,7 @@ export class InstanceAiSettingsService {
 					searchCredentialId = await this.upsertConnection(
 						user,
 						INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
-						'AI Assistant web search',
+						'n8n Assistant web search',
 						searchConnection,
 						ctx,
 						searchPrepared,
@@ -933,7 +933,7 @@ export class InstanceAiSettingsService {
 				`Connection type "${connection.type}" is not supported for the sandbox`,
 			);
 		}
-		return await this.prepareConnection(policy, 'AI Assistant sandbox', connection);
+		return await this.prepareConnection(policy, 'n8n Assistant sandbox', connection);
 	}
 
 	private async runConnectionHooks(
@@ -960,7 +960,7 @@ export class InstanceAiSettingsService {
 		n8nSandboxCredentialId: string | null;
 		sandboxProvider?: InstanceAiSandboxProvider;
 	}> {
-		const name = 'AI Assistant sandbox';
+		const name = 'n8n Assistant sandbox';
 		if (connection === null) {
 			return {
 				daytonaCredentialId: await this.upsertConnection(
@@ -1086,7 +1086,7 @@ export class InstanceAiSettingsService {
 	): Promise<InstanceAiConnectionUpdate> {
 		const prepared = await this.prepareConnection(
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-			'AI Assistant model',
+			'n8n Assistant model',
 			connection,
 		);
 		return this.connectionForVerification(prepared);
@@ -1104,7 +1104,7 @@ export class InstanceAiSettingsService {
 	): Promise<InstanceAiConnectionUpdate> {
 		const prepared = await this.prepareConnection(
 			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
-			'AI Assistant web search',
+			'n8n Assistant web search',
 			connection,
 		);
 		return this.connectionForVerification(prepared);
@@ -1248,7 +1248,7 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
-	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	isMcpAccessEnabled(): boolean {
 		return this.mcpAccessEnabled;
 	}

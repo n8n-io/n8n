@@ -205,7 +205,7 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Open the inline AI Assistant workflow setup card for credential and parameter configuration. Use for setup routing after a build.',
+			'Open the inline n8n Assistant workflow setup card for credential and parameter configuration. Use for setup routing after a build.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),

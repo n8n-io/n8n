@@ -1728,7 +1728,7 @@ function userWithScopes(scopes: string[], overrides: Partial<User> = {}): User {
 }
 
 describe('InstanceAiService — revalidateActiveUser', () => {
-	it('returns the user when active and scoped for AI Assistant', async () => {
+	it('returns the user when active and scoped for n8n Assistant', async () => {
 		const service = createRevalidationService();
 		const fresh = userWithScopes(['instanceAi:message']);
 		service.userRepository.findOne.mockResolvedValue(fresh);
@@ -2043,7 +2043,7 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		expect(service.runState.resolvePendingConfirmation).not.toHaveBeenCalled();
 		expect(service.cancelRun).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Rejecting confirmation: user no longer authorized for AI Assistant',
+			'Rejecting confirmation: user no longer authorized for n8n Assistant',
 			expect.objectContaining({ userId: 'user-1', requestId: 'req-1' }),
 		);
 	});
@@ -2211,7 +2211,7 @@ describe('InstanceAiService — planned task user revalidation', () => {
 		expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
 		expect(service.createPlannedTaskState).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Cancelling run: user no longer authorized for AI Assistant',
+			'Cancelling run: user no longer authorized for n8n Assistant',
 			expect.objectContaining({ userId: 'user-1', threadId: 'thread-a' }),
 		);
 	});
@@ -2500,7 +2500,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		expect(service.runState.activateSuspendedRun).not.toHaveBeenCalled();
 		expect(service.processResumedStream).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Cancelling suspended run: user no longer authorized for AI Assistant',
+			'Cancelling suspended run: user no longer authorized for n8n Assistant',
 			expect.objectContaining({ userId: 'user-1', threadId: 'thread-a', requestId: 'req-1' }),
 		);
 	});

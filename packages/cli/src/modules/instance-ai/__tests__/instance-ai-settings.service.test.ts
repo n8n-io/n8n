@@ -370,7 +370,7 @@ describe('InstanceAiSettingsService', () => {
 					expect.objectContaining({
 						type: 'openAiApi',
 						usageScope: 'instance',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 					}),
 					adminUser,
 					operationContext,
@@ -392,7 +392,7 @@ describe('InstanceAiSettingsService', () => {
 					order.push('hooks');
 					return {
 						id: '',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: 'encrypted',
 					} as never;
@@ -412,7 +412,7 @@ describe('InstanceAiSettingsService', () => {
 				expect(order.slice(0, 2)).toEqual(['hooks', 'transaction']);
 				expect(credentialsService.runInstanceCredentialHooks).toHaveBeenCalledWith('create', {
 					id: null,
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'k' },
 				});
@@ -421,7 +421,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should run the update hook when the connection targets the current credential', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'cred-1',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'k2' },
 				});
@@ -433,7 +433,7 @@ describe('InstanceAiSettingsService', () => {
 
 				expect(credentialsService.runInstanceCredentialHooks).toHaveBeenCalledWith('update', {
 					id: 'cred-1',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'k2' },
 				});
@@ -442,7 +442,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should unredact updates before running credential hooks', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'cred-1',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'saved-key' },
 				});
@@ -471,13 +471,13 @@ describe('InstanceAiSettingsService', () => {
 				instanceCredentialBroker.resolveForUse
 					.mockResolvedValueOnce({
 						id: 'cred-1',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'k1' },
 					})
 					.mockResolvedValueOnce({
 						id: 'cred-2',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'k2' },
 					});
@@ -495,7 +495,7 @@ describe('InstanceAiSettingsService', () => {
 				instanceCredentialBroker.resolveForUse
 					.mockResolvedValueOnce({
 						id: 'cred-1',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'saved-key' },
 					})
@@ -522,13 +522,13 @@ describe('InstanceAiSettingsService', () => {
 				instanceCredentialBroker.resolveForUse
 					.mockResolvedValueOnce({
 						id: 'cred-1',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'old-key' },
 					})
 					.mockResolvedValueOnce({
 						id: 'cred-1',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'new-key' },
 					});
@@ -563,7 +563,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should update the existing credential in place when the type is unchanged', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'cred-1',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'k2' },
 				});
@@ -576,7 +576,7 @@ describe('InstanceAiSettingsService', () => {
 					adminUser,
 					'cred-1',
 					{
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'k2' },
 					},
@@ -597,7 +597,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should replace the assignment without deleting the reusable old credential', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'old-cred',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'k' },
 				});
@@ -621,7 +621,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should switch the sandbox provider and clear the other slot', async () => {
 				instanceCredentialBroker.resolveForUse.mockImplementation(async (policy) =>
 					policy.id === 'instance-ai:sandbox:n8n'
-						? { id: 'old-n8n', name: 'AI Assistant sandbox', type: 'httpHeaderAuth', data: {} }
+						? { id: 'old-n8n', name: 'n8n Assistant sandbox', type: 'httpHeaderAuth', data: {} }
 						: null,
 				);
 				instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
@@ -747,7 +747,7 @@ describe('InstanceAiSettingsService', () => {
 					.mockRejectedValueOnce(new UnprocessableRequestError('not valid'))
 					.mockResolvedValue({
 						id: 'new-cred',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'k' },
 					});
@@ -791,7 +791,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should reject an inline model connection whose saved data fails validation', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValueOnce(null).mockResolvedValue({
 					id: 'new-cred',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'anthropicApi',
 					data: {},
 				});
@@ -1011,7 +1011,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should reject incomplete Daytona credentials', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'daytona-cred',
-					name: 'AI Assistant sandbox',
+					name: 'n8n Assistant sandbox',
 					type: 'daytonaApi',
 					data: { apiUrl: 'https://daytona.example.com', apiKey: ' ' },
 				});
@@ -1027,7 +1027,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should reject invalid SearXNG URLs', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'search-cred',
-					name: 'AI Assistant web search',
+					name: 'n8n Assistant web search',
 					type: 'searXngApi',
 					data: { apiUrl: 'not-a-url' },
 				});

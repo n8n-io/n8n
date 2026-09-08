@@ -18,7 +18,7 @@ test.describe(
 	},
 	() => {
 		test(
-			'treatment user opens a workflow card into the AI Assistant',
+			'treatment user opens a workflow card into the n8n Assistant',
 			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
 			async ({ n8n, api, setupRequirements }) => {
 				await setupRequirements(requirements);

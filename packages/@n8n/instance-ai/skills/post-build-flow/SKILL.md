@@ -48,7 +48,7 @@ verification.
 When the current message contains `<workflow-setup-required>`, your first action
 is to call `workflows(action="setup")` with the `workflowId` from the payload. Do
 not verify, do not ask, do not write a message first — the inline setup card in
-the AI Assistant panel is the user-visible surface. If it returns `deferred:
+the n8n Assistant panel is the user-visible surface. If it returns `deferred:
 true`, respect the user's choice and do not retry with any other setup tool.
 A result carrying `skippedByUser` names credentials the user already passed on:
 never re-open setup for those, in this turn or any later one — see
@@ -93,7 +93,7 @@ it has you fetch, never from memory:
 - `placeholders` — one entry per marker: `name`, user-facing `title`, an
   optional `info` clarifying the value itself — its format or which of the
   provider's tokens it is (e.g. "Starts with tvly-"). Never where to obtain
-  it, and never a URL or domain: the user asks the AI Assistant for that from
+  it, and never a URL or domain: the user asks the n8n Assistant for that from
   the credential form. `type` is `password` unless clearly non-secret (at
   least one placeholder must stay `password`). Add `optional: true` only when
   the provider documents the value as optional (e.g. an org/region
@@ -101,7 +101,7 @@ it has you fetch, never from memory:
   omitted from the request.
 - `docsUrl` — the provider page where a logged-in user CREATES/COPIES the
   secret (e.g. `https://replicate.com/account/api-tokens`) — never the API
-  reference. Not shown in the form: the AI Assistant help thread uses it to
+  reference. Not shown in the form: the n8n Assistant help thread uses it to
   send the user to the exact page. Found via the `credential-recipe-research`
   procedure; omit when it finds nothing conclusive.
 - `testUrl` — a documented side-effect-free GET that rejects a bad key with
@@ -285,7 +285,7 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
   has more than one entry, call it once per trigger with `triggerNodeName`.
 - If `verificationReadiness.status === "needs_setup"`, call
   `workflows(action="setup")` with the workflowId so the user can configure it
-  through the inline setup card in the AI Assistant panel.
+  through the inline setup card in the n8n Assistant panel.
 - If `verificationReadiness.status === "not_verifiable"`, do not infer
   lower-level verification conditions; use the readiness guidance to give a
   clear warning or manual-test note. This is a warning completion state, not

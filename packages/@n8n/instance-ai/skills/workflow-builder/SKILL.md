@@ -973,7 +973,7 @@ store its own public endpoint.
 For a successful build, finish with one concise sentence naming the workflow and
 what changed. Include the workflow ID when it is available. If setup is
 required, say plainly that setup is needed; do not tell the user to open a setup
-wizard or navigate away from the AI Assistant panel. When the workflow exposes
+wizard or navigate away from the n8n Assistant panel. When the workflow exposes
 a Webhook, Form, or Chat Trigger, follow [Trigger URL Sharing](#trigger-url-sharing)
 and include the correct end-user URL (or in-editor chat guidance) in that
 summary.

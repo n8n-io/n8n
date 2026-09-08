@@ -306,7 +306,7 @@ describe('toggleOptionInGroup', () => {
 		expect(input).toEqual([...manageAll.scopes]);
 	});
 
-	describe('settings "Manage all settings" acts as a select-all over MCP/AI Assistant', () => {
+	describe('settings "Manage all settings" acts as a select-all over MCP/n8n Assistant', () => {
 		const settingsGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'settings')!;
 		const manageAllSettings = settingsGroup.options.find((o) => o.key === 'Manage')!;
 		const mcpUse = settingsGroup.options.find((o) => o.key === 'Mcp use')!;
@@ -314,7 +314,7 @@ describe('toggleOptionInGroup', () => {
 		const aiAssistantUse = settingsGroup.options.find((o) => o.key === 'AiAssistant use')!;
 		const aiAssistantManage = settingsGroup.options.find((o) => o.key === 'AiAssistant manage')!;
 
-		it('checking "Manage all settings" checks MCP and AI Assistant use/manage too', () => {
+		it('checking "Manage all settings" checks MCP and n8n Assistant use/manage too', () => {
 			const scopes = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
 			expect(getOptionState(scopes, mcpUse.scopes)).toBe('checked');
 			expect(getOptionState(scopes, mcpManage.scopes)).toBe('checked');
@@ -322,7 +322,7 @@ describe('toggleOptionInGroup', () => {
 			expect(getOptionState(scopes, aiAssistantManage.scopes)).toBe('checked');
 		});
 
-		it('all four MCP/AI Assistant options stay independently toggleable while "Manage all settings" is checked (none implied/disabled by it)', () => {
+		it('all four MCP/n8n Assistant options stay independently toggleable while "Manage all settings" is checked (none implied/disabled by it)', () => {
 			// Unlike apiKey's "Manage own"/"Manage all" tiering, none of these four
 			// are superseded by another option in this group — "Manage all settings"
 			// checks them via plain scope-superset arithmetic, not implication, so

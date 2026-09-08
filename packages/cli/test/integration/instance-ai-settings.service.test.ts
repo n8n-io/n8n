@@ -94,7 +94,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 	it('keeps the previous credential when a replacing update fails at the settings write', async () => {
 		const credential = await Container.get(CredentialsService).createInstanceCredential(
 			{
-				name: 'AI Assistant model',
+				name: 'n8n Assistant model',
 				type: 'openAiApi',
 				data: { apiKey: 'test-key' },
 				usageScope: 'instance',

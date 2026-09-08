@@ -402,7 +402,7 @@ async function handleEnable() {
 		if (
 			!(await testSavedCredential(
 				sandboxCredentialId.value,
-				'AI Assistant sandbox',
+				'n8n Assistant sandbox',
 				isDaytona ? 'daytonaApi' : 'httpHeaderAuth',
 			))
 		) {

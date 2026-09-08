@@ -54,7 +54,7 @@ describe('custom role scope whitelists', () => {
 		expect(bundle).toContain('chatHub:message');
 	});
 
-	it('exposes AI Assistant and n8n Agent scopes as their own use/manage options', () => {
+	it('exposes n8n Assistant and n8n Agent scopes as their own use/manage options', () => {
 		const { 'AiAssistant use': use, 'AiAssistant manage': manage } =
 			GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings;
 
@@ -67,7 +67,7 @@ describe('custom role scope whitelists', () => {
 	});
 
 	it('"AiAssistant use" matches GLOBAL_MEMBER_SCOPES\' instanceAi:* grants exactly', () => {
-		// Member's baseline AI Assistant access is `instanceAi:message` +
+		// Member's baseline n8n Assistant access is `instanceAi:message` +
 		// `instanceAi:gateway` (computer-use gateway pairing). A custom role built
 		// to mirror Member must get both, or it ends up strictly weaker than Member.
 		const use = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings['AiAssistant use'];
@@ -87,7 +87,7 @@ describe('custom role scope whitelists', () => {
 		expect(manage).toContain('mcpApiKey:rotate');
 	});
 
-	it('includes MCP and AI Assistant scopes in the general settings.Manage bundle, as a superset of their own options', () => {
+	it('includes MCP and n8n Assistant scopes in the general settings.Manage bundle, as a superset of their own options', () => {
 		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage;
 
 		for (const scope of [
