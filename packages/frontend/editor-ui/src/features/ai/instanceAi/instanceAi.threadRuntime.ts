@@ -1,4 +1,4 @@
-import { computed, reactive, ref, triggerRef, watch } from 'vue';
+import { computed, effectScope, reactive, ref, triggerRef, watch, type EffectScope } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -366,16 +366,35 @@ export function buildRoutingFromMessages(messages: InstanceAiMessage[]): {
 	return { runStateByGroupId, groupIdByRunId };
 }
 
-export type ThreadRuntime = ReturnType<typeof createThreadRuntime>;
+export type ThreadRuntime = ReturnType<typeof setupThreadRuntime>;
 
 /**
  * Owns state for exactly one thread: messages, SSE, reducer state, hydration,
  * feedback and resource registries.
+ *
+ * The runtime's watchers live in their own detached scope: the store creates
+ * a runtime from whichever component first reads the thread, and that instance
+ * can be a Suspense duplicate that is discarded during a layout transition
+ * while the runtime stays in the store (see the unmount guard in
+ * InstanceAiThreadView). Bound to the caller's scope, the watchers would stop
+ * with it and the registry would freeze for the live instance.
  */
 export function createThreadRuntime(
 	threadId: string,
 	hooks: ThreadRuntimeHooks,
 	initialProjectId?: string,
+): ThreadRuntime {
+	const scope = effectScope(true);
+	const runtime = scope.run(() => setupThreadRuntime(threadId, hooks, initialProjectId, scope));
+	if (!runtime) throw new Error(`Thread runtime scope for ${threadId} is not active`);
+	return runtime;
+}
+
+function setupThreadRuntime(
+	threadId: string,
+	hooks: ThreadRuntimeHooks,
+	initialProjectId: string | undefined,
+	scope: EffectScope,
 ) {
 	const rootStore = useRootStore();
 	const workflowsListStore = useWorkflowsListStore();
@@ -1059,6 +1078,7 @@ export function createThreadRuntime(
 	function dispose(): void {
 		closeSSE();
 		resetState();
+		scope.stop();
 	}
 
 	async function loadHistoricalMessages(): Promise<HistoricalHydrationStatus> {
