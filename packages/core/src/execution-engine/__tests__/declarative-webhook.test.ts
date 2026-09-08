@@ -668,14 +668,61 @@ describe('createDeclarativeWebhook', () => {
 	});
 
 	describe('output', () => {
-		test('data expression selects what is emitted; arrays fan out', async () => {
+		test('postReceive rootProperty selects what is emitted; arrays fan out', async () => {
 			const trigger: IDeclarativeWebhookTrigger = {
 				...registryTrigger,
-				handler: { output: { data: '={{ $request.body.records }}' } },
+				handler: {
+					output: {
+						postReceive: [{ type: 'rootProperty', properties: { property: 'records' } }],
+					},
+				},
 			};
 			const { run } = webhookSetup(trigger, { records: [{ a: 1 }, { a: 2 }] });
 
 			expect(await run()).toEqual({ workflowData: [[{ json: { a: 1 } }, { json: { a: 2 } }]] });
+		});
+
+		test('postReceive actions chain, with $response meaning the delivery', async () => {
+			const trigger: IDeclarativeWebhookTrigger = {
+				...registryTrigger,
+				handler: {
+					output: {
+						postReceive: [
+							{ type: 'rootProperty', properties: { property: 'records' } },
+							{ type: 'filter', properties: { pass: '={{ $responseItem.a > 1 }}' } },
+							{
+								type: 'setKeyValue',
+								properties: { a: '={{ $responseItem.a }}', from: '={{ $response.body.source }}' },
+							},
+						],
+					},
+				},
+			};
+			const { run } = webhookSetup(trigger, { source: 'vendor', records: [{ a: 1 }, { a: 2 }] });
+
+			expect(await run()).toEqual({
+				workflowData: [[{ json: { a: 2, from: 'vendor' } }]],
+			});
+		});
+
+		test('a function postReceive action gets items and the delivery-as-response', async () => {
+			const trigger: IDeclarativeWebhookTrigger = {
+				...registryTrigger,
+				handler: {
+					output: {
+						postReceive: [
+							async function (items, response) {
+								return items.map((item) => ({
+									json: { ...item.json, status: response.statusCode },
+								}));
+							},
+						],
+					},
+				},
+			};
+			const { run } = webhookSetup(trigger, { n: 1 });
+
+			expect(await run()).toEqual({ workflowData: [[{ json: { n: 1, status: 200 } }]] });
 		});
 
 		test('includeMeta wraps as { body, headers, query }', async () => {

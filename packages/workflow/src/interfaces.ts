@@ -2923,14 +2923,15 @@ export interface DeclarativeWebhookHandler {
 	 * accepts everything (e.g. '*').
 	 */
 	filter?: { allowed: string; actual: string; wildcard?: string };
-	/** Shape of the emitted item. Omitted: the request body. */
+	/** Shape of the emitted items. Omitted: the request body (arrays fan out). */
 	output?: {
 		/**
-		 * Expression selecting the emitted data, over `$request`. Default: the
-		 * request body. Arrays fan out into one item each.
+		 * Item shaping with the same vocabulary as routing (`rootProperty`,
+		 * `filter`, `sort`, `limit`, `setKeyValue`, or functions). The delivery
+		 * stands in for the response: `$response.body` is the request body.
 		 */
-		data?: string;
-		/** Wrap the emitted data as `{ body, headers, query }` — the classic trigger item shape. */
+		postReceive?: PostReceiveAction[];
+		/** Wrap each emitted item as `{ body, headers, query }` — the classic trigger item shape. */
 		includeMeta?: boolean;
 	};
 }

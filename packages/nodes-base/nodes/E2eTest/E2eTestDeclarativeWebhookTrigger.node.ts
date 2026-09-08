@@ -62,9 +62,6 @@ export class E2eTestDeclarativeWebhookTrigger implements INodeType {
 					matchOn: [{ itemProperty: 'target_url', value: '={{ $webhookUrl }}' }],
 					store: { webhookId: '={{ $item.id }}' },
 				},
-				// TEMPORARY (handshake-store verification): create does NOT mint or send a
-				// secret, so the handshake below is the only way webhookSecret can enter
-				// static data. Revert to the generate/$generated version afterwards.
 				create: {
 					routing: {
 						request: {
@@ -73,10 +70,15 @@ export class E2eTestDeclarativeWebhookTrigger implements INodeType {
 							body: {
 								target_url: '={{ $webhookUrl }}',
 								events: '={{ $parameter.events }}',
+								secret: '={{ $generated.webhookSecret }}',
 							},
 						},
 					},
-					store: { webhookId: '={{ $response.id }}' },
+					generate: { webhookSecret: { type: 'hex', length: 32 } },
+					store: {
+						webhookId: '={{ $response.id }}',
+						webhookSecret: '={{ $generated.webhookSecret }}',
+					},
 				},
 				delete: {
 					routing: {
@@ -88,9 +90,9 @@ export class E2eTestDeclarativeWebhookTrigger implements INodeType {
 				},
 			},
 			handler: {
-				// TEMPORARY (handshake-store verification): the secret arrives in a
-				// handshake request and is stored during webhook handling — the exact
-				// write path under test.
+				// Asana-style secret exchange, for testing handshake `store`: a delivery
+				// carrying x-hook-secret is answered with the echoed header and its value
+				// replaces the registration-time secret in static data.
 				handshake: {
 					when: '={{ $request.headers["x-hook-secret"] !== undefined }}',
 					store: { webhookSecret: '={{ $request.headers["x-hook-secret"] }}' },

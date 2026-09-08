@@ -9,6 +9,7 @@ import type {
 	IDataObject,
 	IDeclarativeWebhookTrigger,
 	IHookFunctions,
+	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodePropertyRouting,
 	INodeType,
@@ -25,7 +26,13 @@ import {
 } from 'n8n-workflow';
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 
-import { ExecuteContext, HookContext, WebhookContext } from './node-execution-context';
+import {
+	ExecuteContext,
+	ExecuteSingleContext,
+	HookContext,
+	WebhookContext,
+} from './node-execution-context';
+import { runPostReceiveAction } from './post-receive';
 import { RoutingNode } from './routing-node';
 
 type LifecycleSlots = NonNullable<NonNullable<INodeType['webhookMethods']>['default']>;
@@ -430,12 +437,65 @@ export function createDeclarativeWebhook(
 			if (!wildcardHit && !allowed.includes(actual)) return {};
 		}
 
-		const data = output?.data ? resolveValue(this, output.data, requestKeys) : this.getBodyData();
-		const emitted = output?.includeMeta
-			? { body: data, headers: this.getHeaderData(), query: this.getQueryData() }
-			: data;
-		return {
-			workflowData: [this.helpers.returnJsonArray(emitted as IDataObject | IDataObject[])],
-		};
+		const body = this.getBodyData();
+		let items = this.helpers.returnJsonArray(body);
+
+		if (output?.postReceive?.length) {
+			// The delivery stands in for the response the actions expect.
+			const response: IN8nHttpFullResponse = {
+				body,
+				headers: this.getHeaderData(),
+				statusCode: 200,
+			};
+			const { workflow, node, additionalData, mode } = this;
+			const executeData = { node, data: {}, source: null };
+			const executeSingleFunctions = new ExecuteSingleContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				createRunExecutionData(),
+				0,
+				[],
+				{ main: [[{ json: {} }]] },
+				0,
+				executeData,
+			);
+			for (const action of output.postReceive) {
+				items = await runPostReceiveAction(
+					executeSingleFunctions,
+					action,
+					items,
+					response,
+					undefined,
+					0,
+					0,
+					{
+						node,
+						resolveValue: (value, itemIndex, runIndex, actionExecuteData, additionalKeys) =>
+							workflow.expression.getParameterValue(
+								value,
+								null,
+								runIndex,
+								itemIndex,
+								node.name,
+								[],
+								mode,
+								additionalKeys,
+								actionExecuteData,
+							),
+						extraKeys: requestKeys,
+					},
+				);
+			}
+		}
+
+		if (output?.includeMeta) {
+			const headers = this.getHeaderData();
+			const query = this.getQueryData();
+			items = items.map((item) => ({ json: { body: item.json, headers, query } }));
+		}
+
+		return { workflowData: [items] };
 	};
 }
