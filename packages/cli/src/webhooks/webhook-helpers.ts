@@ -64,6 +64,7 @@ import { finished } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
+import { AdmissionLimitError } from '@/errors/admission-limit.error';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -410,6 +411,20 @@ export function setupResponseNodePromise(
 				`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 				{ executionId, workflowId: workflow.id },
 			);
+
+			// Admission limit reached (HTTP 429).
+			// Note: this branch is unreachable when responseMode === 'onReceived' because
+			// setupResponseNodePromise() is only wired up for responseMode === 'responseNode'.
+			// It is kept here as defensive belt-and-suspenders protection in case the
+			// call-site changes in the future.
+			if (error instanceof AdmissionLimitError) {
+				responseCallback(null, {
+					data: { message: error.message },
+					responseCode: 429,
+				});
+				return;
+			}
+
 			responseCallback(error, {});
 		});
 }
@@ -1081,6 +1096,7 @@ export async function executeWebhook(
 			// An execution id here means we are resuming one that is waiting on this webhook
 			executionId ? { executionId, expectedStatus: 'waiting' } : undefined,
 			responsePromise as IDeferredPromise<IExecuteResponsePromiseData> | undefined,
+			responseMode,
 		);
 
 		/**
@@ -1289,6 +1305,12 @@ export async function executeWebhook(
 		let error: Error;
 		if (e instanceof ResponseError && e.httpStatusCode < 500) {
 			error = e;
+		} else if (e instanceof AdmissionLimitError) {
+			responseCallback(null, {
+				data: { message: e.message },
+				responseCode: 429,
+			});
+			return;
 		} else if (routesToEngineV2 && e instanceof UserError) {
 			// The v2 path never falls back to v1, so its reason is the answer. The
 			// branch below would replace it with a generic 500 and report it as a bug.
