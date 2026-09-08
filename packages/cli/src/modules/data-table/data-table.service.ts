@@ -1061,6 +1061,7 @@ export class DataTableService {
 		}>,
 		includeSystemColumns = false,
 		skipDateTransform = false,
+		allowUnknownEnumValues = false,
 	): DataTableRows {
 		// Include system columns like 'id' if requested
 		const allColumns = includeSystemColumns
@@ -1093,6 +1094,7 @@ export class DataTableService {
 					columnTypeMap,
 					enumOptionsMap,
 					skipDateTransform,
+					allowUnknownEnumValues,
 				);
 			}
 			return transformedRow;
@@ -1165,6 +1167,7 @@ export class DataTableService {
 		columnTypeMap: Map<string, string>,
 		enumOptionsMap: Map<string, DataTableEnumOption[]>,
 		skipDateTransform = false,
+		allowUnknownEnumValues = false,
 	): DataTableColumnJsType {
 		if (cell === null) return null;
 
@@ -1182,6 +1185,7 @@ export class DataTableService {
 							)
 					: undefined;
 			if (!option) {
+				if (allowUnknownEnumValues && typeof cell === 'string') return cell;
 				throw new DataTableValidationError(
 					`value '${String(cell)}' is not an option for enum column '${key}'`,
 				);
@@ -1288,6 +1292,7 @@ export class DataTableService {
 				};
 			}),
 			columns,
+			true,
 			true,
 			true,
 		);
