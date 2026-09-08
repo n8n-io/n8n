@@ -10,6 +10,7 @@ type NodeMap = {
 		| 'reply'
 		| 'softDeleteMessage'
 		| 'undoSoftDeleteMessage';
+	chat: 'get' | 'getAll';
 	chatMember: 'add' | 'getAll' | 'remove';
 	chatMessage:
 		| 'create'
