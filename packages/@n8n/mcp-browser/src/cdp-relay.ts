@@ -615,6 +615,18 @@ export class CDPRelayServer {
 		return result;
 	}
 
+	/** Tell the extension to start a semantic recording, as if the user had clicked Start Recording. */
+	async startRecording(): Promise<void> {
+		if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
+		await this.extensionConn.send('startRecording', {});
+	}
+
+	/** Tell the extension to stop the active recording and submit it immediately. */
+	async stopAndSubmitRecording(): Promise<void> {
+		if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
+		await this.extensionConn.send('stopAndSubmitRecording', {});
+	}
+
 	/** Close a tab via the extension. */
 	async closeTab(id: string): Promise<void> {
 		if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');

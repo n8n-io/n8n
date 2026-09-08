@@ -9,7 +9,7 @@ import type { BrowserRecording } from '@n8n/api-types';
  */
 
 /** Version of the extension protocol. Bump when commands/events change. */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 // ---------------------------------------------------------------------------
 // Commands: relay → extension
@@ -58,6 +58,14 @@ export interface ExtensionCommands {
 			accepted: boolean;
 			threadUrl?: string;
 		};
+	};
+	/** Start a semantic recording, as if the user had clicked Start Recording. */
+	startRecording: {
+		params: Record<string, never>;
+	};
+	/** Stop the active recording and submit it immediately, skipping the review step. */
+	stopAndSubmitRecording: {
+		params: Record<string, never>;
 	};
 }
 
