@@ -290,6 +290,32 @@ Discovery reads the build's SSE tool-result stream (in `outcome/event-parser.ts`
 
 Not yet covered: an automatic "unexpected artifact" fail (a build producing an artifact the case never mentions). That's parked until the signals exist, to be added later as a binary check or per-dataset rather than as a case-schema field.
 
+### Setup panel Execute cases
+
+A seeded workflow attachment can send the panel's Execute request:
+
+```json
+{
+	"role": "user",
+	"text": "Run a test execution of this workflow and tell me how it went.",
+	"attach": {
+		"workflow": "seed-workflow-id",
+		"source": "setup-panel-execute"
+	}
+}
+```
+
+Use this attachment on the opening turn. The seed must declare the workflow ID.
+The harness remaps that ID and sends the normal chat request with the workflow
+attachment and structured handoff context. The transcript records the Execute
+action so process expectations can check the response.
+
+Start each panel eval instance with `N8N_INSTANCE_AI_SETUP_PANEL_ENABLED=true`.
+Set this variable on the n8n server process or in the lane's environment file.
+Setting it only on the eval client does not enable the server feature.
+Run the normal PR tier with the flag on and off. Run the `setup-panel-v2` tier
+with the flag on.
+
 ## Environment variables
 
 | Variable | Required | Description |

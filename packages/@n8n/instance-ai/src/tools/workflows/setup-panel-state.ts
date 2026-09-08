@@ -276,7 +276,11 @@ export function formatWorkflowSetupStateNote(
 			'workflow execution. Never ask ' +
 			'for secrets in chat. `settledSinceLastTurn` names items that were open at your previous ' +
 			'look and are not anymore (configured, or removed from the workflow). Trust this over older ' +
-			'tool results.',
+			'tool results. When settledSinceLastTurn is non-empty, open is empty, and there are no validation warnings, ' +
+			'load post-build-flow to verify the current configuration on this user turn. ' +
+			'Use verify-built-workflow to refresh verification after setup. Use executions(action="run") ' +
+			'when the user asks for a test, including an Execute request from the setup panel. ' +
+			'Do not treat the earlier mocked result as a live execution result.',
 		JSON.stringify({ workflows }),
 	].join('\n');
 }

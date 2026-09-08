@@ -10,6 +10,10 @@ import {
 	MAX_VERIFY_ATTEMPTS,
 	terminalRemediationFromState,
 } from '../../../workflow-loop/remediation';
+import {
+	canVerifyPendingSetup,
+	isNeedsSetupRemediation,
+} from '../../../workflow-loop/setup-verification-policy';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 
 export interface ResolvedVerificationTarget {
@@ -80,7 +84,11 @@ export async function resolveVerificationTarget(
 		stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
 			? terminalRemediationFromState(stateBefore, context.runId)
 			: undefined;
-	if (terminalRemediation) {
+	const canVerifyBeforePanelSetup =
+		context.setupPanelEnabled === true &&
+		canVerifyPendingSetup(buildOutcome) &&
+		isNeedsSetupRemediation(terminalRemediation);
+	if (terminalRemediation && !canVerifyBeforePanelSetup) {
 		return {
 			kind: 'blocked',
 			result: {

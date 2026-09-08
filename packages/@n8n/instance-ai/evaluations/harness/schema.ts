@@ -41,7 +41,10 @@ export const ConversationTurnSchema = z.object({
 	 *  `workflow` is the id as the seed declares it; the harness swaps in the
 	 *  per-run remapped id. Opening turn only (refined below). */
 	attach: z
-		.object({ workflow: z.string().min(1) })
+		.object({
+			workflow: z.string().min(1),
+			source: z.literal('setup-panel-execute').optional(),
+		})
 		.strict()
 		.optional(),
 });

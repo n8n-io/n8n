@@ -1,4 +1,8 @@
-import { setupRemediationBlocksVerification } from './setup-verification-policy';
+import {
+	canVerifyPendingSetup,
+	isNeedsSetupRemediation,
+	setupRemediationBlocksVerification,
+} from './setup-verification-policy';
 import type {
 	AttemptRecord,
 	WorkflowBuildOwner,
@@ -25,6 +29,7 @@ export interface DeriveWorkflowVerificationObligationOptions {
 	owner?: WorkflowBuildOwner;
 	plannedTaskId?: string;
 	updatedAt?: string;
+	setupPanelEnabled?: boolean;
 }
 
 /** Blocking-reason text for one-off builds whose verification is optional. */
@@ -186,8 +191,23 @@ export function deriveWorkflowVerificationObligation(
 	record: WorkflowVerificationObligationRecord,
 	options: DeriveWorkflowVerificationObligationOptions = {},
 ): WorkflowVerificationObligation {
-	const outcome = record.lastBuildOutcome;
-	const status = deriveStatus(record.state, outcome);
+	const savedOutcome = record.lastBuildOutcome;
+	const canVerifyBeforeSetup =
+		options.setupPanelEnabled === true &&
+		savedOutcome !== undefined &&
+		canVerifyPendingSetup(savedOutcome);
+	const outcome: WorkflowBuildOutcome | undefined =
+		canVerifyBeforeSetup && savedOutcome
+			? { ...savedOutcome, verificationReadiness: { status: 'ready' } }
+			: savedOutcome;
+	const blockedOnlyBySetup =
+		isNeedsSetupRemediation(record.state.lastRemediation) ||
+		(record.state.lastRemediation === undefined && savedOutcome?.needsUserInput === true);
+	const state: WorkflowLoopState =
+		canVerifyBeforeSetup && record.state.status === 'blocked' && blockedOnlyBySetup
+			? { ...record.state, status: 'active' }
+			: record.state;
+	const status = deriveStatus(state, outcome);
 	const updatedAt =
 		options.updatedAt ?? lastAttemptTimestamp(record.attempts) ?? new Date().toISOString();
 	const owner = resolveWorkflowBuildOwner(options, record.state, outcome);
@@ -209,7 +229,7 @@ export function deriveWorkflowVerificationObligation(
 		setupRequirement: outcome?.setupRequirement,
 		evidence: outcome?.verification,
 		executionIntent: outcome?.executionIntent,
-		blockingReason: deriveBlockingReason(record.state, outcome),
+		blockingReason: deriveBlockingReason(state, outcome),
 		updatedAt,
 	};
 }

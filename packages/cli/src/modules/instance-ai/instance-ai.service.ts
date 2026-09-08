@@ -179,6 +179,7 @@ import {
 	getProjectContextSection,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
+	buildWorkflowTestRequestBlock,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -838,7 +839,9 @@ export class InstanceAiService {
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
-		this.workflowObligations = new WorkflowVerificationObligationService(this.agentMemory);
+		this.workflowObligations = new WorkflowVerificationObligationService(this.agentMemory, () =>
+			this.settingsService.isInstanceAiSetupPanelEnabled(),
+		);
 		this.taskProjector = new WorkflowVerificationTaskProjector(
 			this.agentMemory,
 			this.eventBus,
@@ -3889,6 +3892,8 @@ export class InstanceAiService {
 				await saveAgentBuilderTarget(context, resolved.target, {
 					previewSession: context.agentPreviewSession,
 				});
+			} else if (handoffContext?.source === 'setup-panel-execute' && isSetupPanelEnabled(context)) {
+				handoffContextBlock = buildWorkflowTestRequestBlock(handoffContext.workflowId);
 			} else {
 				handoffContextBlock = buildHandoffContextBlock(handoffContext);
 			}

@@ -10,6 +10,18 @@ export function shouldVerifyBeforeSetup(outcome: WorkflowBuildOutcome): boolean 
 	return outcome.submitted && outcome.verificationReadiness?.status === 'ready';
 }
 
+/** Older outcomes can require setup even when a simulation plan is available. */
+export function canVerifyPendingSetup(outcome: WorkflowBuildOutcome): boolean {
+	return (
+		outcome.submitted &&
+		!!outcome.workflowId &&
+		outcome.executionIntent !== 'one-off' &&
+		outcome.verificationReadiness?.status === 'needs_setup' &&
+		outcome.nodeSimulationPlan !== undefined &&
+		outcome.verification?.attempted !== true
+	);
+}
+
 export function buildRemediationForVerification(
 	outcome: WorkflowBuildOutcome,
 	remediation: RemediationMetadata | undefined,

@@ -414,6 +414,15 @@ This observation reads saved bindings and checks required values and placeholder
 It does not test credentials or fetch provider resource lists. It does not produce
 fresh connection-test warnings. Live checks remain part of setup and verification.
 
+When setup finishes between turns, the agent verifies the current configuration
+on the next user turn. Setup changes do not start an agent run by themselves.
+The panel's Execute action sends a normal chat message with
+`handoffContext: { source: 'setup-panel-execute', workflowId }`. With the flag on,
+the host adds a private `workflow-test-request` block that identifies the target.
+The agent runs the saved workflow through `executions(action="run")`, inspects
+the output, and reports the test result in chat. Execution approval policy still
+applies. The new panel does not use the wizard's trigger-test resume loop.
+
 ### `workflows(action="publish")`
 
 Publish a workflow version to production. Makes it active — it will run on triggers.

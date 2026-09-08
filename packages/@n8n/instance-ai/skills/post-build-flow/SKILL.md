@@ -33,6 +33,38 @@ For trigger `inputData` shapes, read
 the sandbox workspace when available, or load this skill's
 `references/trigger-input-data-shapes.md` linked file.
 
+## Setup panel
+
+Use this section when the system prompt describes the persistent setup panel,
+setup returns `announced: true`, or the message contains
+`<workflow-test-request>`. Otherwise, keep the setup card flow below.
+
+- Verify what the build can simulate before asking the user to finish setup.
+  Missing credentials do not prevent this verification. Report which outputs
+  were simulated. A simulated result does not prove a live connection.
+- When setup returns `announced: true`, summarize the open items and any
+  validation warnings. End the turn. The user can complete setup in the panel
+  while chat stays available. Do not wait, poll, or open a trigger-test card.
+- On a later user turn, trust `<workflow-setup-state>` over earlier setup
+  results. If items settled and none remain open, verify the current saved
+  configuration with `verify-built-workflow`. It refreshes the credential plan.
+  Report remaining simulations or connection failures. Do not claim live
+  success from the earlier build result.
+- `<workflow-test-request>` means the user clicked Execute. Use its workflow ID.
+  Read the saved workflow and check that the required setup is complete. Then
+  use `executions(action="run")` with suitable trigger input. The user has
+  already requested this test; do not ask whether they want it. The execution
+  tool still enforces its approval policy. Do not publish the workflow to test it.
+- Read the execution output and summarize what ran and what it returned. For
+  failures, inspect `executions(action="debug")`. Fix the same workflow when
+  possible. Use the current saved source so panel edits are preserved. Report
+  unresolved setup or failures in chat. After a repair, test the updated workflow
+  and inspect its output. Do not substitute mocked verification
+  for the requested execution.
+
+A setup card that was already open keeps its apply and trigger-test resume
+flow. Its result is not a panel announcement unless it has `announced: true`.
+
 ## Verification follow-up
 
 When the current message contains `<workflow-verification-follow-up>`, verify
@@ -48,7 +80,9 @@ verification.
 When the current message contains `<workflow-setup-required>`, your first action
 is to call `workflows(action="setup")` with the `workflowId` from the payload. Do
 not verify, do not ask, do not write a message first — the inline setup card in
-the AI Assistant panel is the user-visible surface. If it returns `deferred:
+the AI Assistant panel is the user-visible surface. If the result has
+`announced: true`, use the persistent panel instructions above and end the turn.
+If it returns `deferred:
 true`, respect the user's choice and do not retry with any other setup tool.
 A result carrying `skippedByUser` names credentials the user already passed on:
 never re-open setup for those, in this turn or any later one — see
@@ -210,7 +244,7 @@ when the inspected result confirms success and that every required node on the
 claimed path ran. Do not count it if mocked, simulated, fixture, or pinned output
 was used. You may offer publishing after that confirmation.
 
-For workflows produced by `build-workflow`, **always verify with
+For post-build verification of workflows produced by `build-workflow`, **always verify with
 `verify-built-workflow`, never with raw `executions(action="run")`.** It reuses
 the build outcome simulation plan, mocked credentials, and temporary pin data, so
 destructive nodes are pinned and it is safe to call repeatedly. A raw
@@ -285,7 +319,10 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
   has more than one entry, call it once per trigger with `triggerNodeName`.
 - If `verificationReadiness.status === "needs_setup"`, call
   `workflows(action="setup")` with the workflowId so the user can configure it
-  through the inline setup card in the AI Assistant panel.
+  through the inline setup card in the AI Assistant panel. With the persistent
+  setup panel, first try `verify-built-workflow` when verification has not run.
+  It can verify simulated paths or report that a simulation plan is unavailable.
+  Then announce setup. Do not use a live execution to work around a blocker.
 - If `verificationReadiness.status === "not_verifiable"`, do not infer
   lower-level verification conditions; use the readiness guidance to give a
   clear warning or manual-test note. This is a warning completion state, not
@@ -320,7 +357,9 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
 3. After verification handling, if `setupRequirement.status === "required"` and
    setup has not already run for this build, call `workflows(action="setup")`
    with the workflowId.
-4. When `workflows(action="setup")` opens the inline setup card, the card is the
+4. When `workflows(action="setup")` returns `announced: true`, summarize the
+   panel state and end the turn. The live-test follow-up waits for a later user
+   turn or Execute request. When the tool opens the inline setup card, the card is the
    user-visible surface. Do not tell the user to open the editor, use the canvas,
    or click a Setup button; the user does not need to navigate anywhere.
 5. When `workflows(action="setup")` returns `deferred: true`, or reports
@@ -417,6 +456,8 @@ After workflow setup completes or is applied, if the latest verification for
 that workflow used mocked credentials, simulated node output, fixture overrides,
 temporary pin data, or another mocked input, ask whether the user wants a live
 test without mocks. Ask only about the live test. Do not run it automatically.
+An explicit test request, including `<workflow-test-request>`, already answers
+this question. Run the requested test through `executions(action="run")`.
 Do not offer publishing as an alternative or describe the workflow as ready to
 use or publish.
 
