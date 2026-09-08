@@ -101,6 +101,7 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiRecordingPreview from './components/InstanceAiRecordingPreview.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -1429,6 +1430,12 @@ async function dismissComposerContextChip() {
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
+							/>
+							<InstanceAiRecordingPreview
+								v-if="preview.isPreviewVisible.value && preview.activeRecordingId.value"
+								:class="$style.previewSlot"
+								:action-count="preview.liveRecording.actionCount.value"
+								:elapsed-ms="preview.liveRecording.elapsedMs.value"
 							/>
 						</div>
 					</TabsRoot>

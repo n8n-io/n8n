@@ -14,17 +14,19 @@ import {
 	type ExecutionResult,
 } from './canvasPreview.utils';
 import { useBuildingArtifactIds } from './composables/useBuildingArtifactIds';
+import { useLiveRecordingState } from './composables/useLiveRecordingState';
 import type { ThreadRuntime } from './instanceAi.store';
 
 export interface ArtifactTab {
 	id: string;
-	type: 'workflow' | 'data-table' | 'agent';
+	type: 'workflow' | 'data-table' | 'agent' | 'recording';
 	name: string;
 	icon: IconName;
 	projectId?: string;
 	/** An agent artifact with no agent row behind it yet. */
 	pending?: boolean;
-	/** The AI is actively mutating this artifact right now. */
+	/** The AI is actively mutating this artifact right now (or, for a recording, that it's
+	 *  still in progress). */
 	building?: boolean;
 }
 
@@ -32,7 +34,13 @@ const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
+	recording: 'circle-dot',
 };
+
+/** Stable synthetic id for the one live-recording tab a thread can have at a time. */
+function recordingTabId(threadId: string): string {
+	return `recording:${threadId}`;
+}
 
 interface UseCanvasPreviewOptions {
 	thread: ThreadRuntime;
@@ -40,14 +48,17 @@ interface UseCanvasPreviewOptions {
 	initialAgentId?: () => string | undefined;
 }
 
-export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({ thread, threadId, initialAgentId }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 	const isPreviewOpen = ref(false);
 
 	const buildingArtifactIds = useBuildingArtifactIds(thread);
+	const liveRecording = useLiveRecordingState(threadId);
 
-	// All previewable artifacts in the current thread, derived from resource registry.
+	// All previewable artifacts in the current thread, derived from resource registry —
+	// plus a synthetic 'recording' tab while one is live, which isn't a durable resource
+	// with tool-call history behind it, so it's driven by push state instead.
 	const allArtifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
 		for (const entry of thread.producedArtifacts.values()) {
@@ -63,9 +74,35 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 				});
 			}
 		}
+		if (liveRecording.isRecording.value) {
+			result.push({
+				id: recordingTabId(threadId()),
+				type: 'recording',
+				name: 'Recording',
+				icon: ARTIFACT_ICON_MAP.recording,
+				building: true,
+			});
+		}
 
 		return result;
 	});
+
+	const activeRecordingId = computed(() => {
+		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'recording' ? tab.id : null;
+	});
+
+	// Auto-open the recording artifact the moment it goes live, mirroring the
+	// auto-open behavior for a fresh build result below.
+	watch(
+		() => liveRecording.isRecording.value,
+		(isRecording) => {
+			if (!isRecording) return;
+			activeTabId.value = recordingTabId(threadId());
+			isPreviewOpen.value = true;
+		},
+		{ flush: 'sync' },
+	);
 
 	// Derived preview state from active tab
 	const activeWorkflowId = computed(() => {
@@ -460,6 +497,8 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		activeAgentId,
 		activeAgentProjectId,
 		activeAgentPending,
+		activeRecordingId,
+		liveRecording,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,
