@@ -63,8 +63,11 @@
       "config": {
         "description": "View and update CLI configuration"
       },
-      "git-connections": {
-        "description": "Create and manage Git repository connections"
+      "promotion-provider": {
+        "description": "Create and manage the providers that hold promotion credentials"
+      },
+      "promotion-connection": {
+        "description": "Create and manage promotion connections, and promote or apply packages"
       },
       "source-control": {
         "description": "Pull changes from the configured source control provider"
