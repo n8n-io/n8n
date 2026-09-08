@@ -1,13 +1,11 @@
-import type { DbConnection } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowHistoryCompactionTrimTask } from '../workflow-history-compaction-trim.task';
 import type { WorkflowHistoryCompactionService } from '../workflow-history-compaction.service';
 
 describe('WorkflowHistoryCompactionTrimTask', () => {
-	const dbConnection = mock<DbConnection>({ connectionState: { migrated: true } });
 	let compactionService = mock<WorkflowHistoryCompactionService>();
-	let task = new WorkflowHistoryCompactionTrimTask(dbConnection, compactionService);
+	let task = new WorkflowHistoryCompactionTrimTask(compactionService);
 
 	const setService = ({ enabled = true, trimmingEnabled = true } = {}) => {
 		Object.defineProperty(compactionService, 'isEnabled', { value: enabled });
@@ -16,7 +14,7 @@ describe('WorkflowHistoryCompactionTrimTask', () => {
 
 	beforeEach(() => {
 		compactionService = mock<WorkflowHistoryCompactionService>();
-		task = new WorkflowHistoryCompactionTrimTask(dbConnection, compactionService);
+		task = new WorkflowHistoryCompactionTrimTask(compactionService);
 	});
 
 	afterEach(() => {

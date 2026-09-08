@@ -1,6 +1,5 @@
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { DbConnection } from '@n8n/db';
 import { SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
 
@@ -25,12 +24,10 @@ export class ExecutionPruningSoftDeleteTask implements SystemTask {
 
 	constructor(
 		private readonly executionsConfig: ExecutionsConfig,
-		private readonly dbConnection: DbConnection,
 		private readonly pruningService: ExecutionsPruningService,
 	) {}
 
 	async run(): Promise<void> {
-		if (!this.pruningService.isEnabled || !this.dbConnection.connectionState.migrated) return;
 		await this.pruningService.softDelete();
 	}
 }
