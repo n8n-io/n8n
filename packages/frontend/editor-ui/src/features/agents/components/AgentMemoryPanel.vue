@@ -4,6 +4,7 @@ import {
 	N8nDialog,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nTooltip,
 	N8nButton,
 	N8nText,
 	N8nSwitch,
@@ -227,16 +228,19 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 		:description="i18n.baseText('agents.builder.memory.description')"
 	>
 		<template #header-actions>
-			<N8nButton
-				variant="subtle"
-				size="medium"
-				icon="cog"
-				:aria-label="i18n.baseText('generic.settings')"
-				:disabled="props.disabled"
-				data-testid="agent-memory-settings-button"
-				@click="settingsDialogOpen = true"
-				>{{ i18n.baseText('generic.settings') }}
-			</N8nButton>
+			<N8nTooltip :content="i18n.baseText('generic.settings')">
+				<N8nButton
+					variant="ghost"
+					size="medium"
+					icon="cog"
+					icon-size="large"
+					icon-only
+					:aria-label="i18n.baseText('generic.settings')"
+					:disabled="props.disabled"
+					data-testid="agent-memory-settings-button"
+					@click="settingsDialogOpen = true"
+				/>
+			</N8nTooltip>
 		</template>
 
 		<div :class="$style.row">
@@ -255,73 +259,75 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 				@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
 			/>
 		</div>
-	</AgentPanel>
-	<N8nDialog :open="settingsDialogOpen" size="medium" @update:open="settingsDialogOpen = $event">
-		<N8nDialogHeader>
-			<N8nDialogTitle>
-				{{ i18n.baseText('agents.builder.memory.settings.title' as BaseTextKey) }}
-			</N8nDialogTitle>
-		</N8nDialogHeader>
-		<div :class="$style.dialogContent">
-			<div :class="$style.row">
-				<div :class="$style.titleGroup">
-					<N8nText step="sm" bold :class="shared.dataEntryLabel">
-						{{ i18n.baseText('agents.builder.memory.recallModel.label') }}
-					</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('agents.builder.memory.recallModel.hint') }}
-					</N8nText>
+		<N8nDialog :open="settingsDialogOpen" size="medium" @update:open="settingsDialogOpen = $event">
+			<N8nDialogHeader>
+				<N8nDialogTitle>
+					{{ i18n.baseText('agents.builder.memory.settings.title' as BaseTextKey) }}
+				</N8nDialogTitle>
+			</N8nDialogHeader>
+			<div :class="$style.dialogContent">
+				<div :class="$style.row">
+					<div :class="$style.titleGroup">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">
+							{{ i18n.baseText('agents.builder.memory.recallModel.label') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('agents.builder.memory.recallModel.hint') }}
+						</N8nText>
+					</div>
+					<div :class="$style.modelSelector">
+						<AgentModelSelector
+							:selected-model="selectedAgent"
+							:credentials="credentialsByProvider"
+							:models-by-provider="filteredAgents"
+							:is-loading="isLoading"
+							:project-id="projectId"
+							:warn-missing-credentials="true"
+							:bound-credential-id="configuredMemoryCredential"
+							credential-modal-append-to-body
+							data-testid="agent-memory-recall-model-selector"
+							@change="onMemoryRecallModelChange"
+							@select-credential="onSelectCredential"
+						/>
+					</div>
 				</div>
-				<div :class="$style.modelSelector">
-					<AgentModelSelector
-						:selected-model="selectedAgent"
-						:credentials="credentialsByProvider"
-						:models-by-provider="filteredAgents"
-						:is-loading="isLoading"
-						:project-id="projectId"
-						:warn-missing-credentials="true"
-						:bound-credential-id="configuredMemoryCredential"
-						credential-modal-append-to-body
-						data-testid="agent-memory-recall-model-selector"
-						@change="onMemoryRecallModelChange"
-						@select-credential="onSelectCredential"
-					/>
-				</div>
-			</div>
 
-			<div v-if="!isAiAssistantProxyEnabled" :class="$style.row">
-				<div :class="$style.titleGroup">
-					<N8nText step="sm" bold :class="shared.dataEntryLabel">
-						{{
-							i18n.baseText('agents.builder.memory.episodicMemory.credential.label' as BaseTextKey)
-						}}
-					</N8nText>
-					<N8nText size="small" color="text-light">
-						{{
-							i18n.baseText('agents.builder.memory.episodicMemory.credential.hint' as BaseTextKey)
-						}}
-					</N8nText>
-				</div>
-				<div :class="$style.credentialPicker">
-					<CredentialPicker
-						app-name="OpenAI"
-						size="medium"
-						button-size="large"
-						:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
-						:selected-credential-id="selectedEpisodicMemoryCredential"
-						:project-id="projectId"
-						:show-delete="false"
-						:hide-create-new="false"
-						:teleported="false"
-						credential-modal-append-to-body
-						:class="$style.credentialPicker"
-						data-testid="agent-episodic-memory-credential-picker"
-						@credential-selected="enableEpisodicMemory"
-					/>
+				<div v-if="!isAiAssistantProxyEnabled" :class="$style.row">
+					<div :class="$style.titleGroup">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">
+							{{
+								i18n.baseText(
+									'agents.builder.memory.episodicMemory.credential.label' as BaseTextKey,
+								)
+							}}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{
+								i18n.baseText('agents.builder.memory.episodicMemory.credential.hint' as BaseTextKey)
+							}}
+						</N8nText>
+					</div>
+					<div :class="$style.credentialPicker">
+						<CredentialPicker
+							app-name="OpenAI"
+							size="medium"
+							button-size="large"
+							:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
+							:selected-credential-id="selectedEpisodicMemoryCredential"
+							:project-id="projectId"
+							:show-delete="false"
+							:hide-create-new="false"
+							:teleported="false"
+							credential-modal-append-to-body
+							:class="$style.credentialPicker"
+							data-testid="agent-episodic-memory-credential-picker"
+							@credential-selected="enableEpisodicMemory"
+						/>
+					</div>
 				</div>
 			</div>
-		</div>
-	</N8nDialog>
+		</N8nDialog>
+	</AgentPanel>
 </template>
 
 <style module>
