@@ -65,27 +65,28 @@ async function disconnectFromInstance() {
 	<div class="card">
 		<div class="content">
 			<div class="header">
-				<N8nLogo class="logo" size="small" :collapsed="false" />
-				<N8nIconButton
+				<N8nButton
 					v-if="showSettings && (isConnected || !hasRelayUrl)"
+					class="settings-back"
+					variant="ghost"
+					size="small"
 					icon="arrow-left"
-					variant="ghost"
-					size="small"
-					title="Back"
-					aria-label="Back"
 					@click="showSettings = false"
-				/>
-				<N8nIconButton
-					v-else-if="
-						(isConnected && (!recording || recording.status === 'submitted')) || !hasRelayUrl
-					"
-					icon="settings"
-					variant="ghost"
-					size="small"
-					title="Settings"
-					aria-label="Settings"
-					@click="showSettings = true"
-				/>
+				>
+					Back
+				</N8nButton>
+				<template v-else>
+					<N8nLogo class="logo" size="small" :collapsed="false" />
+					<N8nIconButton
+						v-if="(isConnected && (!recording || recording.status === 'submitted')) || !hasRelayUrl"
+						icon="settings"
+						variant="ghost"
+						size="small"
+						title="Settings"
+						aria-label="Settings"
+						@click="showSettings = true"
+					/>
+				</template>
 			</div>
 
 			<template v-if="isConnected && showSettings">
@@ -315,6 +316,7 @@ async function disconnectFromInstance() {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	height: var(--spacing--xl);
 	margin-bottom: var(--spacing--lg);
 }
 
@@ -326,6 +328,10 @@ async function disconnectFromInstance() {
 		width: auto;
 		height: 24px;
 	}
+}
+
+.settings-back {
+	margin-left: calc(-1 * var(--spacing--xs));
 }
 
 .title {
