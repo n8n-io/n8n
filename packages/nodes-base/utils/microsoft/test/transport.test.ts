@@ -785,6 +785,26 @@ describe('Microsoft Graph transport kernel', () => {
 			expect(optionsOfCall(requestOAuth2, 0).qs).toEqual({});
 		});
 
+		it('stops on a null @odata.nextLink instead of re-requesting the first page', async () => {
+			// The trip wire matters: without it a regression re-sends the identical request
+			// forever and the test hangs to the vitest timeout instead of failing.
+			const requestOAuth2 = vi
+				.fn()
+				.mockResolvedValueOnce({ value: [{ id: '1' }], '@odata.nextLink': null })
+				.mockRejectedValue(new Error('second page must not be requested'));
+			const ctx = makeContext(requestOAuth2);
+
+			const result = await microsoftApiRequestAllItems.call(
+				ctx,
+				'value',
+				'GET',
+				'/v1.0/teams/1/channels',
+			);
+
+			expect(result).toEqual([{ id: '1' }]);
+			expect(requestOAuth2).toHaveBeenCalledTimes(1);
+		});
+
 		it('refuses to follow a cross-origin @odata.nextLink', async () => {
 			const requestOAuth2 = vi.fn().mockResolvedValue({
 				value: [{ id: '1' }],

@@ -384,7 +384,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 			}
 			// `uri`, not `responseData['@odata.nextLink']`: a literal `null` next link is not
 			// `undefined`, and with `uri` falsy the identical request would be re-sent forever.
-		} while (responseData['@odata.nextLink'] !== undefined);
+		} while (uri);
 
 		return returnData;
 	}
