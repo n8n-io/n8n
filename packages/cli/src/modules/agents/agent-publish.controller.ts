@@ -35,15 +35,15 @@ export class AgentPublishController {
 			{ by: 'user', trigger: 'explicit' },
 			payload?.versionId,
 		);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId: req.params.projectId, agentId },
+			req.headers?.['push-ref'],
+		);
 		const result = await this.agentRunnableStateService.addRunnableState(
 			agent,
 			req.params.projectId,
 			req.user,
 			draftValidation,
-		);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId: req.params.projectId, agentId },
-			req.headers?.['push-ref'],
 		);
 		return result;
 	}
@@ -61,14 +61,14 @@ export class AgentPublishController {
 			req.user,
 			'user',
 		);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId: req.params.projectId, agentId },
+			req.headers?.['push-ref'],
+		);
 		const result = await this.agentRunnableStateService.addRunnableState(
 			agent,
 			req.params.projectId,
 			req.user,
-		);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId: req.params.projectId, agentId },
-			req.headers?.['push-ref'],
 		);
 		return result;
 	}
@@ -86,14 +86,14 @@ export class AgentPublishController {
 			req.user,
 			'user',
 		);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId: req.params.projectId, agentId },
+			req.headers?.['push-ref'],
+		);
 		const result = await this.agentRunnableStateService.addRunnableState(
 			agent,
 			req.params.projectId,
 			req.user,
-		);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId: req.params.projectId, agentId },
-			req.headers?.['push-ref'],
 		);
 		return result;
 	}
@@ -113,14 +113,14 @@ export class AgentPublishController {
 			req.user,
 			'user',
 		);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId: req.params.projectId, agentId },
+			req.headers?.['push-ref'],
+		);
 		const result = await this.agentRunnableStateService.addRunnableState(
 			agent,
 			req.params.projectId,
 			req.user,
-		);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId: req.params.projectId, agentId },
-			req.headers?.['push-ref'],
 		);
 		return result;
 	}
