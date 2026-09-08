@@ -22,6 +22,7 @@ import {
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import {
+	StorageSerializers,
 	onClickOutside,
 	useDebounceFn,
 	useElementSize,
@@ -36,7 +37,6 @@ import type {
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	DEBOUNCE_TIME,
 	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
@@ -130,7 +130,6 @@ const settingsStore = useInstanceAiSettingsStore();
 const thread = provideThread(props.threadId);
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
-const usersStore = useUsersStore();
 const i18n = useI18n();
 const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
@@ -299,35 +298,21 @@ watch(
 );
 
 // --- Canvas / data table preview ---
-const artifactPreviewOpenStorageKey = computed(() =>
-	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN(
-		usersStore.currentUserId ?? 'anonymous',
-		props.threadId,
-	),
-);
-function readPersistedArtifactPreviewOpen(): boolean | undefined {
-	const value = localStorage.getItem(artifactPreviewOpenStorageKey.value);
-	if (value === 'true') return true;
-	if (value === 'false') return false;
-	return undefined;
-}
-const persistedArtifactPreviewOpen = ref(readPersistedArtifactPreviewOpen());
-watch(
-	artifactPreviewOpenStorageKey,
-	() => {
-		persistedArtifactPreviewOpen.value = readPersistedArtifactPreviewOpen();
-	},
-	{ flush: 'sync' },
+// null = no preference yet, so the first artifact still opens the preview.
+// Sync flush keeps a thread switch from exposing the old thread's value for a tick.
+const persistedArtifactPreviewOpen = useLocalStorage<boolean | null>(
+	() => LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN(props.threadId),
+	null,
+	{ serializer: StorageSerializers.boolean, writeDefaults: false, flush: 'sync' },
 );
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
-	previewOpenState: () => persistedArtifactPreviewOpen.value,
+	previewOpenState: () => persistedArtifactPreviewOpen.value ?? undefined,
 	onPreviewOpenChange: (open) => {
 		persistedArtifactPreviewOpen.value = open;
-		localStorage.setItem(artifactPreviewOpenStorageKey.value, String(open));
 	},
 });
 const activeAgentPreviewSessionId = computed(() => {

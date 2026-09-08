@@ -12,7 +12,6 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useUsersStore } from '@n8n/stores/users.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import { NEW_CONVERSATION_TITLE } from '../constants';
 import {
@@ -492,7 +491,6 @@ describe('InstanceAiThreadView', () => {
 		useSettingsStore().moduleSettings = {
 			'instance-ai': { ...defaultModuleSettings },
 		};
-		useUsersStore().currentUserId = 'user-1';
 		workflowPreviewEmit = null;
 
 		thread = reactive({
@@ -1597,10 +1595,7 @@ describe('InstanceAiThreadView', () => {
 		thread.producedArtifacts = new Map([
 			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'Lead enrichment workflow' }],
 		]) as typeof thread.producedArtifacts;
-		localStorage.setItem(
-			LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('user-1', 'thread-1'),
-			'true',
-		);
+		localStorage.setItem(LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('thread-1'), 'true');
 
 		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -1940,9 +1935,9 @@ describe('InstanceAiThreadView', () => {
 		expect(firstRender.queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
 		expect(firstRender.getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
 		expect(firstRender.getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
-		expect(
-			localStorage.getItem(LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('user-1', 'thread-1')),
-		).toBe('false');
+		expect(localStorage.getItem(LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('thread-1'))).toBe(
+			'false',
+		);
 
 		store.threads = [
 			{
