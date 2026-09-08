@@ -335,6 +335,10 @@ describe('mapAgentChunkToEvent', () => {
 					],
 					domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 					credentialFlow: { stage: 'generic' },
+					credentialDestination: {
+						origin: 'https://api.example.com',
+						nodeNames: ['Fetch account'],
+					},
 					setupRequests: [validSetupNode],
 					workflowId: 'wf-1',
 					resourceDecision: {
@@ -369,6 +373,10 @@ describe('mapAgentChunkToEvent', () => {
 				inputType: 'plan-review',
 				domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 				credentialFlow: { stage: 'generic' },
+				credentialDestination: {
+					origin: 'https://api.example.com',
+					nodeNames: ['Fetch account'],
+				},
 				setupRequests: [validSetupNode],
 				workflowId: 'wf-1',
 				questions: [
@@ -432,6 +440,10 @@ describe('mapAgentChunkToEvent', () => {
 				domainAccess: { url: 'https://example.com' },
 				webSearch: { invalid: true },
 				credentialFlow: { stage: 'unknown' },
+				credentialDestination: {
+					origin: 'https://api.example.com/path',
+					nodeNames: ['Fetch account'],
+				},
 				setupRequests: [{ invalid: true }],
 				workflowId: 42,
 			},
@@ -592,7 +604,9 @@ describe('mapAgentChunkToEvent', () => {
 								serverSlug: 'brave',
 								title: 'Brave',
 								tagline: 'Search the web with Brave Search',
-								credentialType: 'braveMcpOAuth2Api',
+								usesCredentials: [
+									{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+								],
 							},
 						],
 					},
@@ -615,7 +629,9 @@ describe('mapAgentChunkToEvent', () => {
 							serverSlug: 'brave',
 							title: 'Brave',
 							tagline: 'Search the web with Brave Search',
-							credentialType: 'braveMcpOAuth2Api',
+							usesCredentials: [
+								{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
 						},
 					],
 				},

@@ -2,7 +2,7 @@ import { Config, Env, ExecutionsConfig } from '@n8n/config';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import { InstanceSettings } from '@/instance-settings';
+import { InstanceSettings, type DeploymentStateRepo } from '@/instance-settings';
 import { StorageConfig } from '@/storage.config';
 
 export const BINARY_DATA_MODES = ['default', 'filesystem', 's3', 'azure', 'database'] as const;
@@ -69,30 +69,25 @@ export class BinaryDataConfig {
 	 * Must be called after DB migrations complete, before any signed-URL generation.
 	 * Precedence: N8N_BINARY_DATA_SIGNING_SECRET env → DB active row → derive-from-key (and persist)
 	 */
-	async initialize(repo: {
-		findActiveByType(type: string): Promise<{ value: string } | null>;
-		insertOrIgnore(entity: {
-			type: string;
-			value: string;
-			status: string;
-			algorithm: null;
-		}): Promise<void>;
-	}): Promise<void> {
+	async initialize(
+		repo: Pick<DeploymentStateRepo, 'findActiveSigningSecret' | 'seedSigningSecret'>,
+	): Promise<void> {
 		if (process.env.N8N_BINARY_DATA_SIGNING_SECRET) {
 			return;
 		}
-		const existing = await repo.findActiveByType('signing.binary_data');
-		if (existing) {
-			this.signingSecret = existing.value;
+		const existing = await repo.findActiveSigningSecret('signing.binary_data', {
+			rewrapLegacy: true,
+		});
+		if (existing !== null) {
+			this.signingSecret = existing;
 			return;
 		}
-		await repo.insertOrIgnore({
-			type: 'signing.binary_data',
-			value: this.signingSecret,
-			status: 'active',
-			algorithm: null,
+		await repo.seedSigningSecret('signing.binary_data', this.signingSecret);
+		// The winner may be a pre-wrap row inserted concurrently by an older
+		// process — rewrap on this read too, so startup always leaves it wrapped.
+		const winner = await repo.findActiveSigningSecret('signing.binary_data', {
+			rewrapLegacy: true,
 		});
-		const winner = await repo.findActiveByType('signing.binary_data');
-		if (winner) this.signingSecret = winner.value;
+		if (winner !== null) this.signingSecret = winner;
 	}
 }

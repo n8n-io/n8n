@@ -11,6 +11,7 @@ export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
 export * from './instance-registry-types';
+export type * from './worker-pools';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -306,6 +307,7 @@ export {
 export {
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
+	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
@@ -364,11 +366,17 @@ export {
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	CANVAS_NODE_CONTEXT_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
+	credentialDestinationSchema,
+	credentialDestinationDecisionSchema,
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
@@ -395,9 +403,11 @@ export {
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
+	InstanceAiPersistPendingAgentRequest,
 	instanceAiAgentAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
+	instanceAiNodesAttachmentSchema,
 	base64EncodedSize,
 	exceedsAttachmentSizeLimit,
 	formatAttachmentSizeLimit,
@@ -427,6 +437,7 @@ export {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	INSTANCE_AI_RUN_LIMIT_REASONS,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -441,6 +452,8 @@ export type {
 	InstanceAiWebSearchSource,
 	InstanceAiSetupState,
 	InstanceAiSetupStateInput,
+	InstanceAiRunLimitReason,
+	InstanceAiRunLimitMeta,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -538,6 +551,8 @@ export type {
 	DomainAccessMeta,
 	WebSearchMeta,
 	InstanceAiCredentialFlow,
+	InstanceAiCredentialDestination,
+	InstanceAiCredentialDestinationDecision,
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
@@ -739,4 +754,5 @@ export {
 	BLOCK_ACCESS_ASSIGNMENT,
 	SSO_ERROR_ACCESS_DENIED,
 	SSO_ERROR_QUERY_PARAM,
+	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';

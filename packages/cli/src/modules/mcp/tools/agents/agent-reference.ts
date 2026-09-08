@@ -1,4 +1,5 @@
-import { AgentJsonConfigBaseSchema } from '@n8n/api-types';
+import { AgentJsonConfigBaseSchema, WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME } from '@n8n/api-types';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export const AGENT_BUILDER_REFERENCE_URI = 'n8n://agents/reference';
@@ -47,7 +48,9 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 7. Report that the draft is ready, include a clickable link using the \`url\` returned by
    validate_agent, and ask whether the user wants to publish it.
 8. Call publish_agent only when the user explicitly requested publication, activation, deployment,
-   or making the Agent live, or confirms publication after the build.
+   or making the Agent live, or confirms publication after the build. If publish_agent fails because
+   the Agent uses workflows that are not published, name those workflows to the user. Publish them
+   with publish_workflow only when the user asks, then call publish_agent again.
 9. Use update_agent_integration to configure chat integrations. Configuration never publishes the
    Agent. A configured channel stays inactive until explicit publication unless the Agent already has an active version.
 
@@ -128,6 +131,10 @@ Tool references use these forms:
 
 - Custom tool: { "type": "custom", "id": "tool_name" }
 - Workflow tool: { "type": "workflow", "workflow": "Workflow Name", "name": "tool_name" }
+  A workflow tool must start with a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger
+  (${EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE}) and must be published before the published Agent can
+  call it; validate_agent reports incompatible_reference with reason no_supported_trigger or
+  not_published otherwise.
 - Node tool: { "type": "node", "name": "tool_name", "node": { "nodeType": "...",
   "nodeTypeVersion": 1, "nodeParameters": {}, "credentials": {} } }
 

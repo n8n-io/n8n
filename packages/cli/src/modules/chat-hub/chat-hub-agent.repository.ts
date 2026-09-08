@@ -1,12 +1,13 @@
+import { BaseRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager } from '@n8n/typeorm';
 
 import { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 
 @Service()
-export class ChatHubAgentRepository extends Repository<ChatHubAgent> {
-	constructor(dataSource: DataSource) {
-		super(ChatHubAgent, dataSource.manager);
+export class ChatHubAgentRepository extends BaseRepository<ChatHubAgent> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(ChatHubAgent, dataSource.manager, transactionRunner);
 	}
 
 	async createAgent(

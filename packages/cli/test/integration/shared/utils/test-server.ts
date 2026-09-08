@@ -125,7 +125,11 @@ export const setupTestServer = ({
 
 	// Mock all telemetry and logging
 	Container.set(Logger, mockLogger());
-	mockInstance(PostHogClient);
+	const postHog = mockInstance(PostHogClient);
+	postHog.getFeatureFlagsAndPayloads.mockResolvedValue({
+		featureFlags: {},
+		featureFlagPayloads: {},
+	});
 	mockInstance(Push);
 	mockInstance(Telemetry);
 
@@ -409,6 +413,12 @@ export const setupTestServer = ({
 
 					case 'test-webhooks':
 						await import('@/webhooks/test-webhooks.controller.js');
+						break;
+
+					case 'type-availability-policies':
+						await import(
+							'@/modules/type-availability-policies/type-availability-policies.module.js'
+						);
 						break;
 				}
 			}

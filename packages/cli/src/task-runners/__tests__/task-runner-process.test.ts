@@ -9,7 +9,7 @@ import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task
 import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 
 import { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
-import { restartRetryDelay } from '../task-runner-process-base';
+import { restartRetryDelay, RUNNER_EXIT_GRACE_MS } from '../task-runner-process-base';
 
 // Source imports `spawn` from `node:child_process` as an ESM binding, so mutating
 // `require('child_process').spawn` does not intercept it — mock the module instead.
@@ -95,6 +95,44 @@ describe('TaskRunnerProcess', () => {
 				'runner:unresponsive',
 				expect.any(Function),
 			);
+		});
+	});
+
+	describe('stop', () => {
+		let child: ChildProcess;
+
+		beforeEach(async () => {
+			vi.useFakeTimers();
+			taskRunnerProcess = new JsTaskRunnerProcess(logger, runnerConfig, authService, mock());
+			authService.createGrantToken.mockResolvedValue('grantToken');
+			child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should not force-kill a runner that exits within the grace period', async () => {
+			const stopPromise = taskRunnerProcess.stop();
+			await vi.advanceTimersByTimeAsync(0); // let stop() send the graceful kill
+			child.emit('exit', 0);
+			await stopPromise;
+			await vi.advanceTimersByTimeAsync(RUNNER_EXIT_GRACE_MS); // no late force-kill
+
+			expect(child.kill).toHaveBeenCalledTimes(1);
+			expect(child.kill).not.toHaveBeenCalledWith('SIGKILL');
+		});
+
+		it('should force-kill a runner that does not exit within the grace period', async () => {
+			const stopPromise = taskRunnerProcess.stop();
+			await vi.advanceTimersByTimeAsync(RUNNER_EXIT_GRACE_MS);
+
+			expect(child.kill).toHaveBeenCalledWith('SIGKILL');
+
+			child.emit('exit', 0);
+			await stopPromise;
 		});
 	});
 

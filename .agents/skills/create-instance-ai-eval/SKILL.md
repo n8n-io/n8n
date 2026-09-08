@@ -53,7 +53,7 @@ trim), **calibration** (classify each red and resolve keep/loosen/drop), and
 
 | Level | Who decides when to stop | Behaviour |
 |---|---|---|
-| **autonomous** | agent | Runs all four gates start-to-finish; reports a **decision log** at the end for the driver to review — with the pushed case, its suite, and the source thread as **links** ([Share links, never bare ids](#share-links-never-bare-ids)), and a Linear ticket **proposal** for any kept capability-gap red ([Capability gap → propose a Linear ticket](#capability-gap--propose-a-linear-ticket)). |
+| **autonomous** | agent | Runs all four gates start-to-finish; reports a **decision log** at the end for the driver to review — with the pushed case, its suite, and the source thread as **links** ([Share links, never bare ids](#share-links-never-bare-ids)); includes the observation id when the driver opted to record one; and includes a Linear ticket **proposal** for any kept capability-gap red ([Capability gap → propose a Linear ticket](#capability-gap--propose-a-linear-ticket)). |
 | **checkpoint** | driver, per gate | Stops at each gate with a compact **proposal + recommendation**; driver says "go" or redirects. At the **calibration** gate, hands the driver a link to the just-built thread on the live instance plus login credentials so they can review the real conversation and workflow themselves before confirming (below). |
 
 **Calibration is special-cased at both levels.** A calibration verdict that
@@ -62,6 +62,15 @@ any loosening that would let a known-bad build pass — is **surfaced explicitly
 (interactively in checkpoint; in the decision log in autonomous), never silently
 committed. It's the one call where a quiet mistake corrupts the suite, so it
 never fully auto-commits.
+
+**Recording a source observation is optional, not a fifth gate.** After a real
+thread passes selection, offer to save why it was selected and what the developer
+observed with LangTracer's `create_observation` tool (see
+[`sourcing-cases.md`](sourcing-cases.md#optional-record-the-selection-as-an-observation)).
+If the driver declines, has not stated a preference in autonomous mode, or the
+write fails, continue with the eval. Never block drafting, calibration, or push
+on an observation. `create_observation` and `update_observation` write only to
+LangTracer; do not add a LangSmith feedback or sync step.
 
 **Checkpoint calibration — review the real thread on the instance.** Because the
 calibration verdict is trust-critical, in checkpoint mode you don't ask the
@@ -198,7 +207,8 @@ the combinatorial bulk. A case that never builds tests nothing.
 ## Workflow
 
 These steps map to the four gates from [Set the autonomy level first](#set-the-autonomy-level-first):
-sourcing (before step 1) is the **selection** gate; steps 1–2 are the **shape +
+sourcing (before step 1) is the **selection** gate, including the optional offer
+to record a source observation; steps 1–2 are the **shape +
 expectations** gate; steps 5–6 are the **calibration** gate; steps 7–8 are the
 **push** gate. In *autonomous* mode you flow through all of them and summarize in
 a decision log; in *checkpoint* mode you pause at each with a proposal, and at
