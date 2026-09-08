@@ -903,6 +903,7 @@ function handleSelectAction(params: INodeParameters) {
 }
 
 .workflowCallers {
+	margin-top: var(--spacing--sm);
 	margin-bottom: var(--spacing--xs);
 }
 
