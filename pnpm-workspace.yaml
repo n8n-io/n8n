@@ -116,7 +116,7 @@ catalog:
   '@modelcontextprotocol/sdk': 1.26.0
   '@modelcontextprotocol/server': 2.0.0
   '@mozilla/readability': ^0.6.0
-  '@n8n_io/ai-assistant-sdk': 1.26.0
+  '@n8n_io/ai-assistant-sdk': 1.27.0
   '@openrouter/ai-sdk-provider': ^3.0.0
   '@opentelemetry/api': 1.9.1
   '@pinecone-database/pinecone': ^5.0.2
@@ -355,6 +355,7 @@ overrides:
   '@lezer/common': ^1.2.0
   '@mistralai/mistralai': ^1.10.0
   '@n8n/typeorm>@sentry/node': catalog:sentry
+  'mssql@12.7.0>tedious': 20.0.5
   '@opentelemetry/api': 'catalog:'
   '@opentelemetry/core': 2.10.0
   '@opentelemetry/propagator-jaeger': 2.10.0
@@ -381,7 +382,7 @@ overrides:
   nodemailer: 8.0.10
   validator: 13.15.26
   zod: 3.25.76
-  js-yaml: 4.3.1
+  js-yaml: 4.3.2
   katex: 0.18.2
   body-parser: 2.3.0
   glob@10: 10.5.0

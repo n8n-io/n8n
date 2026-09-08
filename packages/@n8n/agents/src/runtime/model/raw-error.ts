@@ -1,6 +1,6 @@
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 
-import { getModelProvider } from './prompt-cache';
 import { type ProviderId } from './provider-credentials';
 import type { ModelTurnErrorType } from '../loop/run-output-sink';
 
@@ -61,6 +61,6 @@ const RAW_ERROR_READERS: Partial<Record<ProviderId, () => RawErrorReader>> = {
  * (same convention as `createModel`).
  */
 export function createRawErrorReader(modelId: string): RawErrorReader | undefined {
-	const provider = getModelProvider(modelId) as ProviderId;
+	const provider = getProviderPrefix(modelId) as ProviderId;
 	return RAW_ERROR_READERS[provider]?.();
 }

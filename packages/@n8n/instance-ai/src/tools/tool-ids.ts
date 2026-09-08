@@ -2,7 +2,6 @@ import { isAgentFeatureEnabled } from '../utils/agent-feature-enabled';
 
 export const DOMAIN_TOOL_IDS = {
 	WORKFLOWS: 'workflows',
-	EVALS: 'evals',
 	EVAL_CONFIG: 'eval-config',
 	EXECUTIONS: 'executions',
 	CREDENTIALS: 'credentials',
@@ -16,6 +15,7 @@ export const DOMAIN_TOOL_IDS = {
 	PARSE_FILE: 'parse-file',
 	AGENTS: 'agents',
 	MCP_SERVERS: 'mcp-servers',
+	CONVERSATION_HISTORY: 'conversation-history',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -31,8 +31,6 @@ export const AGENT_SNAPSHOT_TRACE_RUN_NAME = 'agent-snapshot';
 export const ORCHESTRATION_TOOL_IDS = {
 	CREATE_TASKS: 'create-tasks',
 	TASK_CONTROL: 'task-control',
-	EVAL_SETUP_WITH_AGENT: 'eval-setup-with-agent',
-	EVAL_DATA: 'eval-data',
 	COMPLETE_CHECKPOINT: 'complete-checkpoint',
 	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
@@ -75,6 +73,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// nothing is connected, which is exactly when `search_tools` has no MCP tool
 	// to surface and the agent concludes the integration is unavailable.
 	DOMAIN_TOOL_IDS.MCP_SERVERS,
+	DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
 	'web-search',
 	'fetch-url',
 	// build-agent is the primary route for agent-anchored intents; deferring it

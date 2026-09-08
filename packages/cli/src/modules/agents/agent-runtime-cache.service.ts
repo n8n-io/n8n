@@ -42,6 +42,8 @@ export interface GetRuntimeParams {
 	 */
 	user?: User;
 	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
+	/** Disable background-job tools and wake hints for task-triggered runtimes. */
+	allowBackgroundTasks?: boolean;
 }
 
 /**
@@ -121,6 +123,7 @@ export class AgentRuntimeCacheService {
 		const sandboxEnabled = this.agentSandboxRuntimeService.isEnabled();
 		const parts = [params.agentId, params.usePublishedVersion ? 'published' : 'draft'];
 		if (params.integrationType) parts.push(params.integrationType);
+		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
 		// Per-user runtimes have node/workflow tools filtered by that user's
 		// access — keying by user id keeps them from colliding with each other
 		// or with the unscoped (no-user) runtime.
@@ -339,8 +342,15 @@ export class AgentRuntimeCacheService {
 	}
 
 	private async reconstructRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {
-		const { agentId, projectId, integrationType, usePublishedVersion, user, sandboxPrincipalHash } =
-			params;
+		const {
+			agentId,
+			projectId,
+			integrationType,
+			usePublishedVersion,
+			user,
+			sandboxPrincipalHash,
+			allowBackgroundTasks,
+		} = params;
 
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
@@ -369,6 +379,8 @@ export class AgentRuntimeCacheService {
 			undefined,
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
+			undefined,
+			allowBackgroundTasks,
 		);
 		const { agent: agentInstance, toolRegistry, userToolAccessSnapshot } = await reconstruction;
 

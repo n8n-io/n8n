@@ -392,6 +392,7 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowsPushed,
 		credsPushed,
 		variablesPushed,
+		publicApi,
 	}: RelayEventMap['source-control-user-finished-push-ui']) {
 		this.telemetry.track('User finished push via UI', {
 			user_id: userId,
@@ -399,6 +400,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflows_pushed: workflowsPushed,
 			creds_pushed: credsPushed,
 			variables_pushed: variablesPushed,
+			public_api: publicApi,
 		});
 	}
 
@@ -1122,6 +1124,7 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		counts,
 		credentialExportPolicy,
+		includeArchivedWorkflows,
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
@@ -1132,6 +1135,7 @@ export class TelemetryEventRelay extends EventRelay {
 			variable_count: counts.variables,
 			tag_count: counts.tags,
 			credential_export_policy: credentialExportPolicy,
+			include_archived_workflows: includeArchivedWorkflows,
 		});
 	}
 
