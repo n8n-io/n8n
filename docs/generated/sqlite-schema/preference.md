@@ -41,7 +41,6 @@ CREATE TABLE "preference" ("id" varchar PRIMARY KEY NOT NULL, "scope" varchar(16
 | Name | Definition |
 | ---- | ---------- |
 | IDX_0990a6dd2425968d479f4bb91e | CREATE INDEX "IDX_0990a6dd2425968d479f4bb91e" ON "preference" ("userId")  |
-| IDX_47d9aa5a32442eee284f45314e | CREATE INDEX "IDX_47d9aa5a32442eee284f45314e" ON "preference" ("createdById")  |
 | IDX_635b7d66838830328bc32423ef | CREATE INDEX "IDX_635b7d66838830328bc32423ef" ON "preference" ("projectId")  |
 | sqlite_autoindex_preference_1 | PRIMARY KEY (id) |
 

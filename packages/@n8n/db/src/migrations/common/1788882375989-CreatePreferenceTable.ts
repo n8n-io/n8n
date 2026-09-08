@@ -26,7 +26,6 @@ export class CreatePreferenceTable1788882375989 implements ReversibleMigration {
 			)
 			.withTimestamps.withIndexOn(['userId'])
 			.withIndexOn(['projectId'])
-			.withIndexOn(['createdById'])
 			.withForeignKey('userId', {
 				tableName: USER_TABLE,
 				columnName: 'id',

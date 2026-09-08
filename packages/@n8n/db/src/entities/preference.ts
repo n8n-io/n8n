@@ -47,7 +47,6 @@ export class Preference extends WithTimestamps {
 	@JoinColumn({ name: 'projectId' })
 	project: Relation<Project> | null;
 
-	@Index()
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
 

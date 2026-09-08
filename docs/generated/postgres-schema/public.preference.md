@@ -34,7 +34,6 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_0990a6dd2425968d479f4bb91e | CREATE INDEX "IDX_0990a6dd2425968d479f4bb91e" ON public.preference USING btree ("userId") |
-| IDX_47d9aa5a32442eee284f45314e | CREATE INDEX "IDX_47d9aa5a32442eee284f45314e" ON public.preference USING btree ("createdById") |
 | IDX_635b7d66838830328bc32423ef | CREATE INDEX "IDX_635b7d66838830328bc32423ef" ON public.preference USING btree ("projectId") |
 | PK_5c4cbf49a1e97dcbc695bf462a6 | CREATE UNIQUE INDEX "PK_5c4cbf49a1e97dcbc695bf462a6" ON public.preference USING btree (id) |
 

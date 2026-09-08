@@ -130,16 +130,23 @@ describe('CreatePreferenceTable migration', () => {
 		expect(rows.map((row) => row.scope)).toEqual(['global', 'personal', 'project']);
 	});
 
-	it.each([
+	it.each<[string, { scope: string; userId?: string; projectId?: string }]>([
 		['a personal preference without a user', { scope: 'personal' }],
+		['a personal preference with a project', { scope: 'personal', userId: 'u', projectId: 'p' }],
 		['a project preference without a project', { scope: 'project' }],
+		['a project preference with a user', { scope: 'project', userId: 'u', projectId: 'p' }],
+		['a global preference with a user', { scope: 'global', userId: 'u' }],
 		['a global preference with a project', { scope: 'global', projectId: 'p' }],
 		['an unknown scope', { scope: 'team' }],
 	])('rejects %s', async (_, row) => {
+		const userId = row.userId ? randomUUID() : null;
+		const projectId = row.projectId ? randomUUID() : null;
+
 		await expect(
 			withContext(async (context) => {
-				if (row.projectId) await insertProject(context, row.projectId);
-				await insertPreference(context, row);
+				if (userId) await insertUser(context, userId);
+				if (projectId) await insertProject(context, projectId);
+				await insertPreference(context, { ...row, userId, projectId });
 			}),
 		).rejects.toThrow();
 	});
