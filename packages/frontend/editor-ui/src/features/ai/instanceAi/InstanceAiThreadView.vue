@@ -25,6 +25,7 @@ import {
 	onClickOutside,
 	useDebounceFn,
 	useElementSize,
+	useLocalStorage,
 	useScroll,
 	useWindowSize,
 } from '@vueuse/core';
@@ -36,7 +37,11 @@ import type {
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { DEBOUNCE_TIME, LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN } from '@/app/constants';
+import {
+	DEBOUNCE_TIME,
+	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
+	LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO,
+} from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
@@ -487,8 +492,11 @@ const isAgentPreviewDockOpen = ref(false);
 const MIN_SPLIT_PANEL_WIDTH = 400;
 const MIN_SPLIT_CONTAINER_WIDTH = MIN_SPLIT_PANEL_WIDTH * 2;
 const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
-const preferredChatPanelWidthRatio = ref<number | null>(null);
-const previewPanelWidthBeforeResize = ref<number | null>(null);
+// Stored as a share of the thread area so the split survives window and sidebar resizes.
+// -1 means no preference yet; the chat then keeps its default content width.
+const chatPanelWidthRatio = useLocalStorage(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO, -1, {
+	writeDefaults: false,
+});
 
 watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 	if (activeTabId !== previousActiveTabId) {
@@ -500,13 +508,6 @@ function isValidPanelWidthRatio(value: unknown): value is number {
 	return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
-const persistedChatPanelWidthRatio = computed(() => {
-	const ratio = settingsStore.preferences?.chatPanelWidthRatio;
-	return isValidPanelWidthRatio(ratio) ? ratio : null;
-});
-const chatPanelWidthRatio = computed(
-	() => preferredChatPanelWidthRatio.value ?? persistedChatPanelWidthRatio.value,
-);
 const previewMinWidth = computed(() =>
 	threadAreaWidth.value <= MIN_SPLIT_CONTAINER_WIDTH
 		? Math.round(threadAreaWidth.value / 2)
@@ -522,10 +523,9 @@ const previewPanelWidth = computed(() => {
 		return Math.round(threadAreaWidth.value / 2);
 	}
 
-	const preferredChatPanelWidth =
-		chatPanelWidthRatio.value === null
-			? DEFAULT_CHAT_PANEL_CONTENT_WIDTH
-			: threadAreaWidth.value * chatPanelWidthRatio.value;
+	const preferredChatPanelWidth = isValidPanelWidthRatio(chatPanelWidthRatio.value)
+		? threadAreaWidth.value * chatPanelWidthRatio.value
+		: DEFAULT_CHAT_PANEL_CONTENT_WIDTH;
 	const preferredWidth = threadAreaWidth.value - preferredChatPanelWidth;
 	return Math.round(
 		Math.max(previewMinWidth.value, Math.min(preferredWidth, previewMaxWidth.value)),
@@ -575,27 +575,9 @@ function handleAgentPreviewDockOpenChange(open: boolean) {
 }
 
 function handlePreviewResize({ width }: { width: number }) {
+	// The wrapper clamps the width, so an unchanged value means the drag hit a limit: keep the stored ratio.
 	if (threadAreaWidth.value <= 0 || Math.round(width) === previewPanelWidth.value) return;
-	const ratio = (threadAreaWidth.value - width) / threadAreaWidth.value;
-	preferredChatPanelWidthRatio.value = ratio;
-}
-
-function handlePreviewResizeStart() {
-	isResizingPreview.value = true;
-	previewPanelWidthBeforeResize.value = previewPanelWidth.value;
-}
-
-function handlePreviewResizeEnd() {
-	isResizingPreview.value = false;
-	const ratio = preferredChatPanelWidthRatio.value;
-	if (
-		ratio !== null &&
-		previewPanelWidthBeforeResize.value !== null &&
-		previewPanelWidth.value !== previewPanelWidthBeforeResize.value
-	) {
-		void settingsStore.persistChatPanelWidthRatio(ratio);
-	}
-	previewPanelWidthBeforeResize.value = null;
+	chatPanelWidthRatio.value = (threadAreaWidth.value - width) / threadAreaWidth.value;
 }
 
 function handlePreviewPanelAfterEnter() {
@@ -646,12 +628,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-watch(persistedChatPanelWidthRatio, (ratio, previousRatio) => {
-	if (ratio !== previousRatio && ratio !== null && preview.isPreviewVisible.value) {
-		previewPanelTransitionGate.suppressUntilStableRender();
-	}
-});
 
 watch(isArtifactsPanelInLayout, (isInLayout) => {
 	isArtifactsPanelRevealed.value = false;
@@ -1493,8 +1469,8 @@ async function dismissComposerContextChip() {
 					:is-resizing-enabled="isPreviewResizeEnabled"
 					:grid-size="8"
 					@resize="handlePreviewResize"
-					@resizestart="handlePreviewResizeStart"
-					@resizeend="handlePreviewResizeEnd"
+					@resizestart="isResizingPreview = true"
+					@resizeend="isResizingPreview = false"
 				>
 					<TabsRoot
 						v-model="preview.activeTabId.value"

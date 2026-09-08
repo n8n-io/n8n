@@ -9,14 +9,16 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
-import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import { NEW_CONVERSATION_TITLE } from '../constants';
-import { LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN } from '@/app/constants';
+import {
+	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
+	LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO,
+} from '@/app/constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 import type {
 	FrontendModuleSettings,
@@ -1705,14 +1707,9 @@ describe('InstanceAiThreadView', () => {
 		await vi.waitFor(() => {
 			expect(previewPanel).toHaveClass('agentPreviewLayoutTransition');
 		});
-		const instanceAiSettingsStore = mockedStore(useInstanceAiSettingsStore);
-		expect(instanceAiSettingsStore.persistChatPanelWidthRatio).toHaveBeenCalledWith(0.6);
-		instanceAiSettingsStore.persistChatPanelWidthRatio.mockClear();
-
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: -80 });
-		await fireEvent.mouseUp(window);
-
-		expect(instanceAiSettingsStore.persistChatPanelWidthRatio).not.toHaveBeenCalled();
+		expect(localStorageState.store.get(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO)).toBe(
+			'0.6',
+		);
 
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 
@@ -1766,6 +1763,13 @@ describe('InstanceAiThreadView', () => {
 
 		mockThreadAreaSizeState.width.value = 1600;
 		await vi.waitFor(() => expect(previewPanel.style.width).toBe('800px'));
+	});
+
+	it('restores the stored chat panel width ratio', async () => {
+		localStorageState.store.set(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO, '0.6');
+		const { getByTestId } = await renderAgentArtifact({ threadAreaWidth: 1200 });
+
+		expect(getByTestId('instance-ai-preview-panel').style.width).toBe('480px');
 	});
 
 	it('keeps expanded preview state independent from the agent dock', async () => {
