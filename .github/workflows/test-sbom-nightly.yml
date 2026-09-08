@@ -18,6 +18,7 @@ jobs:
     name: Resolve nightly Docker build
     if: github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-slim
+    timeout-minutes: 130
     permissions:
       actions: read
       contents: read
@@ -36,29 +37,42 @@ jobs:
             exit 0
           fi
 
-          RUN=$(gh run list \
-            --repo "$GITHUB_REPOSITORY" \
-            --workflow docker-build-push.yml \
-            --event schedule \
-            --limit 1 \
-            --json conclusion,createdAt,headSha,status)
-          STATUS=$(jq -r '.[0].status // empty' <<< "$RUN")
-          CONCLUSION=$(jq -r '.[0].conclusion // empty' <<< "$RUN")
-          CREATED_AT=$(jq -r '.[0].createdAt // empty' <<< "$RUN")
-          SHA=$(jq -r '.[0].headSha // empty' <<< "$RUN")
+          for ATTEMPT in $(seq 1 25); do
+            RUN=$(gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow docker-build-push.yml \
+              --event schedule \
+              --limit 1 \
+              --json conclusion,createdAt,headSha,status)
+            STATUS=$(jq -r '.[0].status // empty' <<< "$RUN")
+            CONCLUSION=$(jq -r '.[0].conclusion // empty' <<< "$RUN")
+            CREATED_AT=$(jq -r '.[0].createdAt // empty' <<< "$RUN")
+            SHA=$(jq -r '.[0].headSha // empty' <<< "$RUN")
 
-          if [ "$STATUS" != 'completed' ] || [ "$CONCLUSION" != 'success' ] || [ -z "$SHA" ]; then
-            echo '::error::The latest scheduled Docker build did not complete successfully.'
-            exit 1
-          fi
+            if [ -n "$CREATED_AT" ]; then
+              AGE_SECONDS=$(($(date -u +%s) - $(date -d "$CREATED_AT" +%s)))
+            else
+              AGE_SECONDS=21601
+            fi
 
-          AGE_SECONDS=$(($(date -u +%s) - $(date -d "$CREATED_AT" +%s)))
-          if [ "$AGE_SECONDS" -gt 21600 ]; then
-            echo "::error::The latest successful scheduled Docker build is more than six hours old ($CREATED_AT)."
-            exit 1
-          fi
+            if [ "$STATUS" = 'completed' ] && [ "$CONCLUSION" = 'success' ] && [ -n "$SHA" ] && [ "$AGE_SECONDS" -le 21600 ]; then
+              echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
 
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+            if [ "$STATUS" = 'completed' ] && [ -n "$CREATED_AT" ] && [ "$AGE_SECONDS" -le 21600 ]; then
+              echo "::error::The current scheduled Docker build completed with conclusion '$CONCLUSION'."
+              exit 1
+            fi
+
+            if [ "$ATTEMPT" -lt 25 ]; then
+              echo "Waiting for the current scheduled Docker build (attempt $ATTEMPT of 25)."
+              sleep 300
+            fi
+          done
+
+          echo '::error::No successful scheduled Docker build appeared within two hours.'
+          exit 1
 
       - name: Checkout workflow source
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

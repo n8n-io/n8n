@@ -916,8 +916,8 @@ Packages whose license cannot be resolved from disk go in
 `scripts/licenses/license-overrides.json` with a verified `source` citation — the upstream
 LICENSE file, not registry metadata.
 
-`test-sbom-nightly.yml` runs at 04:00 UTC. It requires a successful scheduled Docker build
-from the last six hours. It builds the production deployment closure at that run's SHA and
+`test-sbom-nightly.yml` runs at 04:00 UTC. It waits up to two hours for the current scheduled
+Docker build to complete. It builds the production deployment closure at that run's SHA and
 validates the release SBOM. It also resolves the four immutable SHA image tags from that
 build and validates each image SBOM. The validation uses the same enrichment and SPDX gates
 as a release. It does not publish, attest, or upload an artifact. A failure reports to the
