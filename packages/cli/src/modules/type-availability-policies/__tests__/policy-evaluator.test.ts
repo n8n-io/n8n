@@ -264,6 +264,28 @@ describe('evaluateComposedType', () => {
 		});
 	});
 
+	it('an instance delegate with an explicit project deny rule is attributed to the project', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy({ attachments: [denyRule('project-deny')] });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'project',
+			matchedRuleId: 'project-deny',
+		});
+	});
+
+	it('an instance delegate with a project defaultAction of deny is attributed to the project', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy({ defaultAction: 'deny' });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'project',
+			matchedRuleId: null,
+		});
+	});
+
 	it('an instance allow lets a project deny rule restrict further', () => {
 		const instance = scopePolicy({ attachments: [allowRule('instance-allow')] });
 		const project = scopePolicy({ attachments: [denyRule('project-deny')] });

@@ -86,6 +86,10 @@ export function evaluateType(
  * since that would let an unconfigured project silently satisfy a delegation it never actually
  * addressed.
  *
+ * `scope` names the scope whose verdict decided. A denial under an instance `delegate` is the
+ * project's when the project restricted the type itself (by rule or by a `deny` default), and
+ * the instance's only when the project left the type at its bare `allow` default.
+ *
  * A project-authored `delegate` is treated as `deny` here (fail-closed): validation rejects it
  * at write time, so this is defense in depth, not the primary guard.
  */
@@ -106,6 +110,13 @@ export function evaluateComposedType(
 		if (projectVerdict.action === 'allow' && projectVerdict.matchedRuleId !== null) {
 			return { action: 'allow', scope: 'project', matchedRuleId: projectVerdict.matchedRuleId };
 		}
+		// The project restricted the type itself, by rule or by a `deny` default: the denial
+		// is the project's decision, not the unsatisfied delegation's.
+		if (projectVerdict.action !== 'allow') {
+			return { action: 'deny', scope: 'project', matchedRuleId: projectVerdict.matchedRuleId };
+		}
+		// A bare project `allow` default never satisfies a delegation, so the unsatisfied
+		// instance `delegate` is what denies here.
 		return { action: 'deny', scope: 'instance', matchedRuleId: instanceVerdict.matchedRuleId };
 	}
 

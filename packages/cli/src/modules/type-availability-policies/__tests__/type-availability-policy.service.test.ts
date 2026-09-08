@@ -22,6 +22,14 @@ const RULE: PolicyRule = {
 	selector: { kind: 'name', value: 'n8n-nodes-base.slack' },
 };
 
+const DELEGATE_RULE: PolicyRule = {
+	id: 'r-delegate',
+	action: 'delegate',
+	selector: { kind: 'name', value: 'n8n-nodes-base.slack' },
+};
+
+const DELEGATE_RULE_AT_PROJECT_SCOPE = 'A rule cannot use action "delegate" at project scope';
+
 function makeScope(overrides: Partial<TypeAvailabilityPolicyScope> = {}) {
 	return Object.assign(new TypeAvailabilityPolicyScope(), {
 		id: 'scope-1',
@@ -257,6 +265,55 @@ describe('TypeAvailabilityPolicyService', () => {
 		beforeEach(() => {
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
 			scopeRepository.lockScopesByIds.mockResolvedValue([]);
+			scopeRepository.containsProjectScope.mockResolvedValue(false);
+		});
+
+		it('rejects a delegate rule when the document is attached to a project scope, before reading it', async () => {
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
+			scopeRepository.lockScopesByIds.mockResolvedValue(['scope-1']);
+			scopeRepository.containsProjectScope.mockResolvedValue(true);
+
+			await expect(
+				service.updatePolicyDocument('policy-1', [DELEGATE_RULE], 1, 'user-2'),
+			).rejects.toThrow(DELEGATE_RULE_AT_PROJECT_SCOPE);
+
+			expect(scopeRepository.containsProjectScope).toHaveBeenCalledWith(['scope-1'], ROOT);
+			expect(policyRepository.findById).not.toHaveBeenCalled();
+			expect(policyRepository.updateRules).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('still accepts a delegate rule when the document is attached to instance scope only', async () => {
+			const before = makePolicy({ rules: [], version: 1 });
+			policyRepository.findById.mockResolvedValue(before);
+			policyRepository.updateRules.mockResolvedValue(
+				makePolicy({ rules: [DELEGATE_RULE], version: 2 }),
+			);
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
+			scopeRepository.lockScopesByIds.mockResolvedValue(['scope-1']);
+			scopeRepository.containsProjectScope.mockResolvedValue(false);
+
+			await expect(
+				service.updatePolicyDocument(before.id, [DELEGATE_RULE], 1, 'user-2'),
+			).resolves.not.toThrow();
+
+			expect(policyRepository.updateRules).toHaveBeenCalledWith(
+				before.id,
+				[DELEGATE_RULE],
+				'user-2',
+				ROOT,
+			);
+		});
+
+		it('does not look up the scope kinds when the rules carry no delegate', async () => {
+			policyRepository.findById.mockResolvedValue(makePolicy({ rules: [], version: 1 }));
+			policyRepository.updateRules.mockResolvedValue(makePolicy({ rules: [RULE], version: 2 }));
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
+			scopeRepository.lockScopesByIds.mockResolvedValue(['scope-1']);
+
+			await service.updatePolicyDocument('policy-1', [RULE], 1, 'user-2');
+
+			expect(scopeRepository.containsProjectScope).not.toHaveBeenCalled();
 		});
 
 		it('throws NotFoundError when the document does not exist', async () => {
@@ -484,9 +541,107 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			expect(result.version).toBe(2);
 		});
+
+		it('rejects attaching a document with a delegate rule to a project scope, and writes nothing', async () => {
+			scopeRepository.findScopeById.mockResolvedValue(makeScope({ projectId: 'project-1' }));
+			policyRepository.findManyByIds.mockResolvedValue([
+				makePolicy({ id: 'p1', rules: [RULE] }),
+				makePolicy({ id: 'p2', rules: [DELEGATE_RULE] }),
+			]);
+
+			await expect(
+				service.replaceAttachments(
+					'scope-1',
+					[
+						{ policyId: 'p1', priority: 0, isFloor: false },
+						{ policyId: 'p2', priority: 1, isFloor: false },
+					],
+					'user-1',
+				),
+			).rejects.toThrow(DELEGATE_RULE_AT_PROJECT_SCOPE);
+
+			expect(policyRepository.findManyByIds).toHaveBeenCalledWith(['p1', 'p2'], ROOT);
+			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('does not inspect the documents when attaching to instance scope', async () => {
+			scopeRepository.findScopeById.mockResolvedValue(makeScope({ projectId: null }));
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+
+			await service.replaceAttachments(
+				'scope-1',
+				[{ policyId: 'p-delegating', priority: 0, isFloor: false }],
+				'user-1',
+			);
+
+			expect(policyRepository.findManyByIds).not.toHaveBeenCalled();
+			expect(attachmentRepository.replaceAttachmentsForScope).toHaveBeenCalled();
+		});
 	});
 
 	describe('setEffectivePolicy', () => {
+		beforeEach(() => {
+			// By default a scope's document is attached to that scope alone.
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
+		});
+
+		it('throws ConflictError when the scope has several attached documents, and writes nothing', async () => {
+			const scope = makeScope({ projectId: 'project-1', defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(scope);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: 'policy-1', rules: [], priority: 0, isFloor: false },
+				{ policyId: 'policy-2', rules: [], priority: 1, isFloor: false },
+			]);
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					'project-1',
+					{ rules: [RULE], defaultAction: 'deny' },
+					1,
+					'user-2',
+				),
+			).rejects.toThrow(ConflictError);
+
+			expect(scopeRepository.updateDefaultAction).not.toHaveBeenCalled();
+			expect(policyRepository.updateRules).not.toHaveBeenCalled();
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('throws ConflictError when the attached document is shared with another scope, and writes nothing', async () => {
+			const scope = makeScope({ projectId: 'project-1', defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(scope);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: 'policy-1', rules: [], priority: 0, isFloor: false },
+			]);
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([
+				scope.id,
+				'instance-scope',
+			]);
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					'project-1',
+					{ rules: [RULE], defaultAction: 'deny' },
+					1,
+					'user-2',
+				),
+			).rejects.toThrow(ConflictError);
+
+			expect(attachmentRepository.listScopeIdsAttachedToPolicy).toHaveBeenCalledWith(
+				'policy-1',
+				ROOT,
+			);
+			expect(scopeRepository.updateDefaultAction).not.toHaveBeenCalled();
+			expect(policyRepository.updateRules).not.toHaveBeenCalled();
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('rejects a delegate defaultAction at project scope before opening a transaction', async () => {
 			await expect(
 				service.setEffectivePolicy(

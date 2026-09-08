@@ -55,6 +55,12 @@ function flattenRules(attachments: readonly PolicyAttachment[]): PolicyRule[] {
 	return orderedAttachments(attachments).flatMap((attachment) => [...attachment.rules]);
 }
 
+function rulesContainDelegate(rules: readonly PolicyRule[]): boolean {
+	return rules.some((rule) => rule.action === 'delegate');
+}
+
+const DELEGATE_RULE_AT_PROJECT_SCOPE = 'A rule cannot use action "delegate" at project scope';
+
 /**
  * `delegate` is only satisfiable at instance scope. A project write never accepts it — not in
  * a rule's `action` (already rejected by `PutProjectPolicyDto`'s schema) and not in
@@ -62,6 +68,9 @@ function flattenRules(attachments: readonly PolicyAttachment[]): PolicyRule[] {
  * the DTO's rule-level check does not cover it on its own. Defense in depth: a future caller
  * reaching this service directly, not only through the project controller, still can't write an
  * unsatisfiable `delegate` on a project row.
+ *
+ * The composed write is not the only way rules reach a project row: `replaceAttachments` and
+ * `updatePolicyDocument` guard the same invariant on their own paths.
  */
 function assertNoDelegateAtProjectScope(
 	projectId: string | null,
@@ -73,8 +82,8 @@ function assertNoDelegateAtProjectScope(
 	if (defaultAction === 'delegate') {
 		throw new UserError('defaultAction cannot be "delegate" at project scope');
 	}
-	if (rules.some((rule) => rule.action === 'delegate')) {
-		throw new UserError('A rule cannot use action "delegate" at project scope');
+	if (rulesContainDelegate(rules)) {
+		throw new UserError(DELEGATE_RULE_AT_PROJECT_SCOPE);
 	}
 }
 
@@ -282,6 +291,15 @@ export class TypeAvailabilityPolicyService {
 			);
 			const lockedScopeIds = await this.scopeRepository.lockScopesByIds(attachedScopeIds, ctx);
 
+			// A document attached to a project scope is part of that project's policy, so the
+			// same `delegate` rejection as a direct project write applies to editing it.
+			if (
+				rulesContainDelegate(rules) &&
+				(await this.scopeRepository.containsProjectScope(lockedScopeIds, ctx))
+			) {
+				throw new UserError(DELEGATE_RULE_AT_PROJECT_SCOPE);
+			}
+
 			const existing = await this.policyRepository.findById(policyId, ctx, true);
 			if (!existing) {
 				throw new NotFoundError(`Policy document not found: ${policyId}`);
@@ -407,6 +425,18 @@ export class TypeAvailabilityPolicyService {
 				throw new NotFoundError(`Policy scope not found: ${scopeId}`);
 			}
 
+			// Attaching a document to a project scope makes its rules that project's policy, so
+			// a document carrying `delegate` is rejected the same way a direct project write is.
+			if (scope.projectId !== null && attachments.length > 0) {
+				const policies = await this.policyRepository.findManyByIds(
+					attachments.map((a) => a.policyId),
+					ctx,
+				);
+				if (policies.some((policy) => rulesContainDelegate(policy.rules))) {
+					throw new UserError(DELEGATE_RULE_AT_PROJECT_SCOPE);
+				}
+			}
+
 			const before = await this.attachmentRepository.listAttachmentsForScope(scopeId, ctx);
 
 			await this.attachmentRepository.replaceAttachmentsForScope(
@@ -490,6 +520,37 @@ export class TypeAvailabilityPolicyService {
 				? { defaultAction: scope.defaultAction, version: scope.version }
 				: null;
 
+			const existingAttachments = scope
+				? await this.attachmentRepository.listAttachmentsForScope(scope.id, ctx)
+				: [];
+
+			// This write edits the scope's single document in place. It refuses when that would
+			// reach further than the scope itself: several attachments (editing only the first
+			// would silently leave the rest in force), or a document also attached elsewhere
+			// (editing it would change every other scope that uses it — at project scope, that
+			// would let a project admin rewrite the instance policy). Both states can only be
+			// produced through the instance-only attachment management, so the same admin can
+			// undo them there. Checked before any write, so a refusal leaves nothing to roll back.
+			if (existingAttachments.length > 1) {
+				throw new ConflictError(
+					`Cannot replace the policy of a scope with ${existingAttachments.length} attached documents; manage its attachments instead`,
+				);
+			}
+
+			const existingDocumentId = existingAttachments[0]?.policyId ?? null;
+
+			if (scope && existingDocumentId) {
+				const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
+					existingDocumentId,
+					ctx,
+				);
+				if (attachedScopeIds.some((id) => id !== scope.id)) {
+					throw new ConflictError(
+						'Cannot replace a policy document that is attached to other scopes; manage its attachments instead',
+					);
+				}
+			}
+
 			const scopeId = scope
 				? scope.id
 				: (
@@ -507,11 +568,6 @@ export class TypeAvailabilityPolicyService {
 					ctx,
 				);
 			}
-
-			const existingAttachments = scope
-				? await this.attachmentRepository.listAttachmentsForScope(scopeId, ctx)
-				: [];
-			const existingDocumentId = existingAttachments[0]?.policyId ?? null;
 
 			let documentBefore: { rules: readonly PolicyRule[]; version: number } | null = null;
 			let documentAfter: { rules: readonly PolicyRule[]; version: number };
