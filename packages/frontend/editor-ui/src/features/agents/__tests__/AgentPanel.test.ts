@@ -1,6 +1,7 @@
 /** eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { VisuallyHidden } from 'reka-ui';
 
 import AgentPanel from '../components/AgentPanel.vue';
 import AgentPanelHeader from '../components/AgentPanelHeader.vue';
@@ -25,19 +26,37 @@ describe('AgentPanel', function describeAgentPanel() {
 		});
 		const headerId = wrapper.get('h3').attributes('id');
 
+		expect(wrapper.vm.$options.props).toMatchObject({
+			header: { type: String, required: true },
+		});
 		expect(headerId).toBeTruthy();
 		expect(wrapper.get('section').attributes('aria-labelledby')).toBe(headerId);
 		expect(wrapper.get('h3').text()).toBe('Settings');
 	});
 
-	it('removes the heading reference when the heading is hidden', async function testHiddenHeader() {
+	it('keeps the heading reference when the heading is visually hidden', async function testHiddenHeader() {
 		const wrapper = mount(AgentPanel, {
-			props: { header: 'Settings' },
+			props: { header: 'Settings', description: 'Manage your settings.' },
+			slots: { 'header-actions': '<button>Save</button>' },
 		});
+		const headerId = wrapper.get('h3').attributes('id');
 
-		await wrapper.setProps({ showHeader: false });
+		await wrapper.setProps({ headerVisibility: 'visually-hidden' });
 
-		expect(wrapper.find('h3').exists()).toBe(false);
-		expect(wrapper.get('section').attributes('aria-labelledby')).toBeUndefined();
+		const hiddenHeading = wrapper.getComponent(VisuallyHidden);
+		expect(hiddenHeading.element).toBe(wrapper.get('h3').element);
+		expect(hiddenHeading.text()).toBe('Settings');
+		expect(wrapper.get('h3').attributes('id')).toBe(headerId);
+		expect(wrapper.get('section').attributes('aria-labelledby')).toBe(headerId);
+		expect(wrapper.text()).not.toContain('Manage your settings.');
+		expect(wrapper.get('button').isVisible()).toBe(true);
+		expect(hiddenHeading.find('button').exists()).toBe(false);
+
+		await wrapper.setProps({ headerVisibility: 'visible' });
+
+		expect(wrapper.findComponent(VisuallyHidden).exists()).toBe(false);
+		expect(wrapper.get('h3').attributes('id')).toBe(headerId);
+		expect(wrapper.get('section').attributes('aria-labelledby')).toBe(headerId);
+		expect(wrapper.text()).toContain('Manage your settings.');
 	});
 });

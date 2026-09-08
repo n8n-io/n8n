@@ -187,6 +187,7 @@ const i18n = useI18n();
 					</AgentPanel>
 
 					<AgentMemoryPanel
+						v-if="canEditAgent"
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						data-testid="agent-memory-panel"

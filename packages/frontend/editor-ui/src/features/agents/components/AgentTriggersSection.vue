@@ -3,7 +3,7 @@ import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-t
 import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 import { agentsEventBus } from '../agents.eventBus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
@@ -149,9 +149,10 @@ agentsEventBus.on('agentUpdated', onChannelSetup);
 
 onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onChannelSetup));
 
-watch([() => props.projectId, () => props.agentId], () => {
-	void loadChannelDetails();
-});
+watch(
+	[toRef(props, 'projectId'), toRef(props, 'agentId'), toRef(props, 'agentUnsaved')],
+	loadChannelDetails,
+);
 
 // After IAI builds an agent we shold refetch credentials and channels
 function onExternalAgentUpdated(event?: { agentId?: string; source?: string }) {
@@ -225,6 +226,7 @@ function handleChannelDisconnected(channelType: string) {
 			:is-published="props.isPublished"
 			:reload-key="props.reloadKey"
 			:agent-unsaved="props.agentUnsaved"
+			:ensure-agent-persisted="props.ensureAgentPersisted"
 			:validation-issues="props.validationIssues"
 			@toggle-task="emit('toggle-task', $event)"
 			@tasks-changed="emit('tasks-changed')"

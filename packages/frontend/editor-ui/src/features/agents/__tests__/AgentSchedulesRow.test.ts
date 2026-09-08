@@ -103,6 +103,39 @@ describe('AgentSchedulesRow', () => {
 		expect(getAgentTasksSpy).not.toHaveBeenCalled();
 	});
 
+	it('loads tasks after same-ID persistence', async function loadPersistedTasks() {
+		getAgentTasksSpy.mockResolvedValue([makeTask()]);
+		const wrapper = mountRow([], { agentUnsaved: true });
+		await flushPromises();
+
+		expect(getAgentTasksSpy).not.toHaveBeenCalled();
+
+		await wrapper.setProps({ agentUnsaved: false });
+		await flushPromises();
+
+		expect(getAgentTasksSpy).toHaveBeenCalledExactlyOnceWith({}, 'project-id', 'agent-id');
+		expect(wrapper.text()).toContain('Daily summary');
+	});
+
+	it('forwards persistence to the new task modal', async function forwardPersistenceToModal() {
+		const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+		const wrapper = mountRow([], { agentUnsaved: true, ensureAgentPersisted });
+		await flushPromises();
+
+		await wrapper.find('[data-testid="agent-capabilities-add-task"]').trigger('click');
+
+		expect(openModalWithDataSpy).toHaveBeenCalledWith({
+			name: AGENT_TASK_MODAL_KEY,
+			data: expect.objectContaining({
+				projectId: 'project-id',
+				agentId: 'agent-id',
+				task: null,
+				ensureAgentPersisted,
+			}),
+		});
+		expect(ensureAgentPersisted).not.toHaveBeenCalled();
+	});
+
 	it('reloads task bodies when the agent changes', async () => {
 		getAgentTasksSpy.mockImplementation(
 			async (_context: unknown, _projectId: string, agentId: string) =>

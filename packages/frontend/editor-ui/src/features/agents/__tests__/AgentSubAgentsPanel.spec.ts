@@ -35,7 +35,7 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string) =>
 			({
 				'agents.builder.subAgents.title': 'Sub-agents',
-				'agents.builder.subAgents.description': 'Sub-agents description',
+				'agents.builder.subAgents.settings.description': 'Sub-agent settings description',
 				'agents.builder.subAgents.maxChildren.label': 'Max parallel sub-agents',
 				'agents.builder.subAgents.maxChildren.hint': 'Max children hint',
 				'agents.builder.subAgents.customModelRouting.label': 'Custom model routing',
@@ -232,11 +232,11 @@ describe('AgentSubAgentsPanel', () => {
 		);
 	});
 
-	it('does not render a standalone settings section heading', async () => {
+	it('renders the settings section heading and description', async function rendersSettingsHeading() {
 		const wrapper = await mountPanel();
 
-		expect(wrapper.text()).not.toContain('Sub-agents');
-		expect(wrapper.text()).not.toContain('Sub-agents description');
+		expect(wrapper.text()).toContain('Sub-agents');
+		expect(wrapper.text()).toContain('Sub-agent settings description');
 	});
 
 	it('passes the managed tag as the difficulty selector credential', async () => {

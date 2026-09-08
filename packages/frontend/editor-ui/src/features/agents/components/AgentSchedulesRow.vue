@@ -3,7 +3,7 @@ import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } fr
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, toRef, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAgentTasks } from '../composables/useAgentApi';
 import { AGENT_TASK_MODAL_KEY } from '../constants';
@@ -19,6 +19,7 @@ const props = withDefaults(
 		reloadKey?: number;
 		/** No agent row exists yet, so an unsaved agent has no tasks to load. */
 		agentUnsaved?: boolean;
+		ensureAgentPersisted?: () => Promise<void>;
 		validationIssues?: AgentConfigValidationIssue[];
 	}>(),
 	{
@@ -111,6 +112,7 @@ function openTaskModal(task: TaskRow | null) {
 		data: {
 			projectId: props.projectId,
 			agentId: props.agentId,
+			ensureAgentPersisted: props.ensureAgentPersisted,
 			task,
 			isPublished: props.isPublished,
 			taskState: task
@@ -127,13 +129,17 @@ function openTaskModal(task: TaskRow | null) {
 	});
 }
 
-onMounted(() => {
-	void reloadTasks();
-});
+onMounted(reloadTasks);
 
-watch([() => props.reloadKey, () => props.projectId, () => props.agentId], () => {
-	void reloadTasks();
-});
+watch(
+	[
+		toRef(props, 'reloadKey'),
+		toRef(props, 'projectId'),
+		toRef(props, 'agentId'),
+		toRef(props, 'agentUnsaved'),
+	],
+	reloadTasks,
+);
 </script>
 
 <template>

@@ -64,7 +64,6 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
 			({
 				'agents.builder.agent.instructions.label': 'Instructions',
-				'agents.builder.agent.instructions.placeholder': 'Enter instructions here',
 				'agents.builder.agent.instructions.characterCount': `${options?.interpolate?.count ?? '0'} characters`,
 				'agents.builder.agent.model.defaultSelected.title': 'Default model selected',
 				'agents.builder.agent.model.defaultSelected.description':
@@ -172,6 +171,8 @@ function mountPanel(
 	instructions = '# Role\nHelp users.',
 	overrides: Partial<{
 		showModel: boolean;
+		showInstructions: boolean;
+		embedded: boolean;
 		config: Record<string, unknown>;
 	}> = {},
 ) {
@@ -216,7 +217,46 @@ describe('AgentInfoPanel', () => {
 		defaultModelHolder.value = null;
 	});
 
-	it('renders instructions as a ghost markdown editor with a floating toolbar', () => {
+	it('names the Model & instructions card in the builder', function rendersCardHeader() {
+		const wrapper = mountPanel(undefined, { showModel: true, embedded: false });
+		const header = wrapper.getComponent({ name: 'AgentPanelHeader' });
+
+		expect(header.props()).toMatchObject({
+			title: 'agents.builder.agent.title',
+			description: 'agents.builder.agent.description',
+		});
+		expect(wrapper.attributes('aria-labelledby')).toBe(header.props('headerId'));
+	});
+
+	it('keeps the card heading accessible in embedded controls', function hidesEmbeddedHeader() {
+		const wrapper = mountPanel();
+		const header = wrapper.getComponent({ name: 'AgentPanelHeader' });
+
+		expect(header.props()).toMatchObject({
+			title: 'agents.builder.agent.title',
+			headerVisibility: 'visually-hidden',
+			description: undefined,
+		});
+		expect(wrapper.get('h3').text()).toBe('agents.builder.agent.title');
+		expect(wrapper.attributes('aria-labelledby')).toBe(wrapper.get('h3').attributes('id'));
+		expect(wrapper.text()).not.toContain('agents.builder.agent.description');
+	});
+
+	it.each([
+		{ showModel: true, showInstructions: true, hasDivider: true },
+		{ showModel: true, showInstructions: false, hasDivider: false },
+		{ showModel: false, showInstructions: true, hasDivider: false },
+		{ showModel: false, showInstructions: false, hasDivider: false },
+	])(
+		'shows a divider only between visible sections: $showModel / $showInstructions',
+		function rendersSectionDivider({ showModel, showInstructions, hasDivider }) {
+			const wrapper = mountPanel(undefined, { showModel, showInstructions });
+
+			expect(wrapper.find('[aria-hidden="true"]').exists()).toBe(hasDivider);
+		},
+	);
+
+	it('renders instructions as a ghost markdown editor with a floating toolbar', function rendersInstructions() {
 		const wrapper = mountPanel();
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
@@ -225,20 +265,18 @@ describe('AgentInfoPanel', () => {
 			variant: 'ghost',
 			showToolbar: 'floating',
 			maxHeight: '360px',
+			placeholder: 'agents.builder.agent.instructions.placeholder',
 		});
-		expect(editor.props('placeholder')).toBeUndefined();
 		expect(wrapper.find('[data-testid="agent-instructions-document"]').exists()).toBe(true);
 		expect(wrapper.text()).not.toContain('characters');
-		expect(wrapper.text()).not.toContain('Enter instructions here');
 	});
 
-	it('does not pass placeholder text to the instructions editor', () => {
+	it('passes a placeholder to the empty instructions editor', function passesInstructionsPlaceholder() {
 		const wrapper = mountPanel('');
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props('modelValue')).toBe('');
-		expect(editor.props('placeholder')).toBeUndefined();
-		expect(wrapper.text()).not.toContain('Enter instructions here');
+		expect(editor.props('placeholder')).toBe('agents.builder.agent.instructions.placeholder');
 	});
 
 	it('removes reasoning immediately when selecting a model that does not support it', async () => {

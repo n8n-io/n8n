@@ -22,8 +22,9 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nDialogHeader: { template: '<div><slot /></div>' },
 	N8nDialogTitle: { template: '<div><slot /></div>' },
-	N8nIconButton: {
-		template: '<button :data-testid="$attrs[\'data-testid\']" @click="$emit(\'click\', $event)" />',
+	N8nButton: {
+		template:
+			'<button :disabled="disabled" :data-testid="$attrs[\'data-testid\']" @click="$emit(\'click\', $event)" />',
 		props: ['disabled'],
 		emits: ['click'],
 	},

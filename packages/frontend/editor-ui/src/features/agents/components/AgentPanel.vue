@@ -4,29 +4,25 @@ import { useId } from 'vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
 interface AgentPanelProps {
-	header?: string;
+	header: string;
 	description?: string;
-	showHeader?: boolean;
+	headerVisibility?: 'visible' | 'visually-hidden';
 }
 
 const props = withDefaults(defineProps<AgentPanelProps>(), {
-	header: undefined,
 	description: undefined,
-	showHeader: true,
+	headerVisibility: 'visible',
 });
 
 const headerId = useId();
 </script>
 
 <template>
-	<section
-		:class="$style.panelContainer"
-		:aria-labelledby="props.showHeader && props.header ? headerId : undefined"
-	>
+	<section :class="$style.panelContainer" :aria-labelledby="headerId">
 		<AgentPanelHeader
-			v-if="props.showHeader && props.header"
 			:header-id="headerId"
 			:title="props.header"
+			:header-visibility="props.headerVisibility"
 			:description="props.description"
 		>
 			<template v-if="$slots['header-actions']" #actions>

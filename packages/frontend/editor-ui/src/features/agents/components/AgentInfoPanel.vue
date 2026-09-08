@@ -371,7 +371,11 @@ function onInstructionsInput(value: string) {
 </script>
 
 <template>
-	<AgentPanel :show-header="false" data-testid="agent-info-panel">
+	<AgentPanel
+		:header="i18n.baseText('agents.builder.agent.title')"
+		header-visibility="visually-hidden"
+		data-testid="agent-info-panel"
+	>
 		<div :class="$style.panels">
 			<div v-if="props.showModel" data-testid="agent-model-panel">
 				<div :class="$style.field">
@@ -446,7 +450,11 @@ function onInstructionsInput(value: string) {
 					</N8nText>
 				</div>
 			</div>
-			<div :class="$style.divider" aria-hidden="true"></div>
+			<div
+				v-if="props.showModel && props.showInstructions"
+				:class="$style.divider"
+				aria-hidden="true"
+			></div>
 			<div
 				v-if="props.showInstructions"
 				:class="$style.field"
@@ -466,6 +474,7 @@ function onInstructionsInput(value: string) {
 					:model-value="instructions"
 					:disabled="props.disabled"
 					:max-height="props.instructionsMaxHeight"
+					:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
 					show-toolbar="floating"
 					variant="ghost"
 					data-testid="agent-instructions-document"
@@ -493,7 +502,7 @@ function onInstructionsInput(value: string) {
 .instructionsDocument {
 	display: block;
 	width: 100%;
-	margin-inline: -12px;
+	margin-inline: calc(var(--spacing--xs) * -1);
 }
 
 .instructionsDocument:disabled {
