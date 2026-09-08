@@ -204,13 +204,24 @@ describe('loadModules routes', () => {
 		expect(importOtel).not.toHaveBeenCalled();
 	});
 
-	it('should not import a manifest module that is disabled', async () => {
-		process.env.N8N_DISABLED_MODULES = 'insights';
+	it('should import an eligible manifest module when no names are given', async () => {
 		const importInsights = vi.fn().mockResolvedValue({});
 		const moduleRegistry = newRegistry();
+		vi.spyOn(moduleRegistry, 'eligibleModules', 'get').mockReturnValue(['insights']);
 		moduleRegistry.registerPackagedModules({ insights: importInsights });
 
-		await moduleRegistry.loadModules([]);
+		await moduleRegistry.loadModules(); // no names - the registry reads `eligibleModules`
+
+		expect(importInsights).toHaveBeenCalledTimes(1);
+	});
+
+	it('should not import a manifest module that is ineligible', async () => {
+		const importInsights = vi.fn().mockResolvedValue({});
+		const moduleRegistry = newRegistry();
+		vi.spyOn(moduleRegistry, 'eligibleModules', 'get').mockReturnValue([]);
+		moduleRegistry.registerPackagedModules({ insights: importInsights });
+
+		await moduleRegistry.loadModules();
 
 		expect(importInsights).not.toHaveBeenCalled();
 	});
