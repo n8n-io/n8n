@@ -1,0 +1,28 @@
+packages/@n8n/db/src/migrations/common/1788527465971-AddWakeColumnsToAgentBackgroundJob.ts
+  s_bd2c53981ea354::t_ebabda52597d3c 4-8
+  s_bd2c53981ea354::t_2497013e4435b0 30-40,43-45
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_bd2c53981ea354::t_d5b815a12fa5d0 20
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 52
+packages/cli/test/migration/1788527465971-add-wake-columns-to-agent-background-job.test.ts
+  s_bd2c53981ea354::t_1c33cc44190928 120-133,165-167,169,176-181,221-222
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f06e3008c4160ae6e1be9066045c18f6b8655a5",
+  "prompts": {},
+  "sessions": {
+    "s_bd2c53981ea354": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dae65258-6737-4a15-af4b-bbcfa1bd9afd",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
