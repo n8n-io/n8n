@@ -38,8 +38,8 @@ describe('AgentUpdateBroadcaster', () => {
 	});
 
 	it('sends updates to enabled users with global agent read access', async () => {
-		roleService.rolesWithScope.mockImplementation(async (namespace) =>
-			namespace === 'global' ? ['global:admin'] : [],
+		roleService.rolesWithScope.mockImplementation(async (namespace, scopes) =>
+			namespace === 'global' && scopes.includes('agent:read') ? ['global:admin'] : [],
 		);
 		userRepository.findIdsWithGlobalOrProjectRoles.mockResolvedValue(['global-reader']);
 
@@ -60,8 +60,8 @@ describe('AgentUpdateBroadcaster', () => {
 	});
 
 	it('sends updates to project members with agent read access and relays across mains', async () => {
-		roleService.rolesWithScope.mockImplementation(async (namespace) =>
-			namespace === 'project' ? ['project:editor'] : [],
+		roleService.rolesWithScope.mockImplementation(async (namespace, scopes) =>
+			namespace === 'project' && scopes.includes('agent:read') ? ['project:editor'] : [],
 		);
 		userRepository.findIdsWithGlobalOrProjectRoles.mockResolvedValue(['project-reader']);
 

@@ -36,6 +36,7 @@ describe('AgentSkillsService', () => {
 	let agentRepository: Mocked<AgentRepository>;
 	let runtimeCacheService: Mocked<AgentRuntimeCacheService>;
 	let modificationTelemetry: Mocked<AgentModificationTelemetryService>;
+	let agentUpdateBroadcaster: Mocked<AgentUpdateBroadcaster>;
 
 	const skill = {
 		name: 'Summarize Notes',
@@ -52,11 +53,12 @@ describe('AgentSkillsService', () => {
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		agentRepository.saveDraftFenced.mockResolvedValue(true);
 		modificationTelemetry = mock<AgentModificationTelemetryService>();
+		agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 		service = new AgentSkillsService(
 			mockLogger(),
 			agentRepository,
 			modificationTelemetry,
-			mock<AgentUpdateBroadcaster>(),
+			agentUpdateBroadcaster,
 		);
 	});
 
@@ -277,7 +279,7 @@ describe('AgentSkillsService', () => {
 			{
 				description: 'Summarizes support notes',
 			},
-			telemetryContext,
+			{ ...telemetryContext, pushRef: 'writer-push-ref' },
 			getAgentSkillHash(skillWithReferences),
 		);
 
@@ -300,6 +302,10 @@ describe('AgentSkillsService', () => {
 			summarize_notes: result.skill,
 		});
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+			{ projectId, agentId },
+			'writer-push-ref',
+		);
 	});
 
 	it('rejects an update based on a stale skill without mutating the agent', async () => {
@@ -321,6 +327,7 @@ describe('AgentSkillsService', () => {
 		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 		expect(modificationTelemetry.record).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 	});
 
 	it('removes optional list fields when an update clears them', async () => {
