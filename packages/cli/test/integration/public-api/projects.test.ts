@@ -324,7 +324,7 @@ describe('Projects in Public API', () => {
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty(
 				'message',
-				'request/body must NOT have additional properties',
+				"request/body Unrecognized key(s) in object: 'icon'",
 			);
 		});
 

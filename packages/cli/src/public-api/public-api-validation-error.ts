@@ -22,9 +22,5 @@ export function formatValidationError(location: 'body' | 'query', error: ZodErro
 
 	const path = issue.path.length > 0 ? `/${issue.path.join('/')}` : '';
 
-	if (issue.code === 'unrecognized_keys') {
-		return `request/${location}${path} must NOT have additional properties`;
-	}
-
 	return `request/${location}${path} ${issue.message}`;
 }

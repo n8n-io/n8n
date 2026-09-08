@@ -83,25 +83,6 @@ describe('formatValidationError', () => {
 		});
 	});
 
-	describe('an unknown key keeps the legacy shape', () => {
-		it('blames the containing object without naming the key', () => {
-			const message = formatValidationError('body', errorFrom(widget, { name: 'w', extra: 1 }));
-
-			expect(message).toBe('request/body must NOT have additional properties');
-		});
-
-		it('names the nested object that holds the key', () => {
-			const strictNested = z.object({ nested: z.object({ label: z.string() }).strict() });
-
-			const message = formatValidationError(
-				'body',
-				errorFrom(strictNested, { nested: { label: 'l', extra: 1 } }),
-			);
-
-			expect(message).toBe('request/body/nested must NOT have additional properties');
-		});
-	});
-
 	it('falls back when the error carries no issues', () => {
 		expect(formatValidationError('body', new ZodError([]))).toBe('Invalid request');
 	});
