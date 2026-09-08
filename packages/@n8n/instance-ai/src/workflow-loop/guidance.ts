@@ -11,8 +11,20 @@ export interface WorkflowLoopGuidanceOptions {
  * was the strongest license for the false success claims in AIA-31.
  */
 function formatClaimLead(claim: VerificationClaim | undefined): string {
-	// Inline rather than via isVerifiedClaim: this branch must narrow `claim`.
-	if (claim === undefined || claim.level === 'verified') return 'Workflow verified successfully.';
+	if (claim?.level === 'verified') return 'Workflow verified successfully.';
+
+	// No claim means no verification run recorded a verdict for this build — a
+	// trigger-only workflow, or a verdict reported without verifying. Saying
+	// "verified successfully" here let a model reach that sentence with no run
+	// evidence at all. A live run the model inspected is still valid evidence,
+	// so ask it to name that rather than refusing the claim outright.
+	if (claim === undefined) {
+		return (
+			'Build complete. No automatic verification evidence is recorded for this workflow. ' +
+			'If you are relying on a live run you inspected, say which execution. ' +
+			'Otherwise do NOT call the workflow verified, tested, or working.'
+		);
+	}
 
 	// The claim is the only honest reading of the run, and nothing else tells
 	// the user how strong it is, so these rules carry the whole disclosure.
@@ -26,9 +38,7 @@ function formatClaimLead(claim: VerificationClaim | undefined): string {
 }
 
 function isVerifiedClaim(claim: VerificationClaim | undefined): boolean {
-	// A missing claim means no run reported one (e.g. a trigger-only build), so
-	// the pre-claim wording still applies.
-	return claim === undefined || claim.level === 'verified';
+	return claim?.level === 'verified';
 }
 
 function formatSourceFileInstruction(sourceFilePath: string | undefined): string {

@@ -20,14 +20,18 @@ describe('formatWorkflowLoopGuidance', () => {
 	// ── done ────────────────────────────────────────────────────────────────────
 
 	describe('action type "done"', () => {
-		it('should report completion without workflowId', () => {
+		it('should not claim verification when no run recorded a claim', () => {
+			// A `verified` verdict reported without verifying leaves no claim. This
+			// sentence used to say "Workflow verified successfully", which handed
+			// the model the exact wording with no run evidence behind it.
 			const action: WorkflowLoopAction = {
 				type: 'done',
 				summary: 'All good',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('Workflow verified successfully');
-			expect(result).toContain('Report completion');
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('No automatic verification evidence is recorded');
+			expect(result).toContain('do NOT call the workflow verified');
 			expect(result).not.toContain('Workflow ID:');
 		});
 
@@ -132,7 +136,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).not.toContain('credentials(action="setup")');
-			expect(result).toContain('Report completion');
+			expect(result).toContain('Report the outcome');
 		});
 
 		it('should include credential instructions when mockedCredentialTypes has entries', () => {
