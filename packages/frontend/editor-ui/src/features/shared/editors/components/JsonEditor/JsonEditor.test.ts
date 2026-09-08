@@ -1,13 +1,28 @@
 import { createTestingPinia } from '@pinia/testing';
 import JsonEditor from '@/features/shared/editors/components/JsonEditor/JsonEditor.vue';
 import { renderComponent } from '@/__tests__/render';
+import { undo } from '@codemirror/commands';
 import { EditorView } from '@codemirror/view';
 import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 
-function editorState(container: Element) {
+function editorView(container: Element) {
 	const dom = container.querySelector<HTMLElement>('.cm-editor');
-	return dom ? EditorView.findFromDOM(dom)?.state : undefined;
+	return dom ? EditorView.findFromDOM(dom) : null;
+}
+
+function editorState(container: Element) {
+	return editorView(container)?.state;
+}
+
+async function cycleReadOnly(
+	container: Element,
+	rerender: (props: Record<string, unknown>) => Promise<void>,
+) {
+	await rerender({ isReadOnly: true });
+	await waitFor(() => expect(editorState(container)?.readOnly).toBe(true));
+	await rerender({ isReadOnly: false });
+	await waitFor(() => expect(editorState(container)?.readOnly).toBe(false));
 }
 
 describe('JsonEditor', () => {
@@ -87,6 +102,20 @@ describe('JsonEditor', () => {
 
 			await waitFor(() => expect(editorState(container)?.readOnly).toBe(true));
 			expect(getByRole('textbox').textContent).toEqual('test{ "test": 1 }');
+		});
+
+		it('keeps the undo history across a read-only toggle', async () => {
+			const { container, getByRole, rerender } = renderEditor('{ "test": 1 }');
+
+			await userEvent.type(await waitFor(() => getByRole('textbox')), 'XY');
+			await waitFor(() => expect(getByRole('textbox').textContent).toEqual('XY{ "test": 1 }'));
+
+			await cycleReadOnly(container, rerender);
+
+			const view = editorView(container);
+			undo({ state: view!.state, dispatch: (tr) => view!.dispatch(tr) });
+
+			expect(view!.state.doc.toString()).toEqual('{ "test": 1 }');
 		});
 	});
 });

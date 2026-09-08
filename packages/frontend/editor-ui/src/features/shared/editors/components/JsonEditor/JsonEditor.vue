@@ -43,6 +43,9 @@ const editorState = ref<EditorState | null>(null);
 const extensions = computed(() => {
 	const extensionsToApply: Extension[] = [
 		json(),
+		// Keep history in both configurations so the undo stack survives a
+		// read-only toggle. `undo`/`redo` are no-ops while the state is read-only.
+		history(),
 		lineNumbers(),
 		EditorView.lineWrapping,
 		EditorState.readOnly.of(props.isReadOnly),
@@ -55,7 +58,6 @@ const extensions = computed(() => {
 	];
 	if (!props.isReadOnly) {
 		extensionsToApply.push(
-			history(),
 			Prec.highest(keymap.of(editorKeymap)),
 			createLinter(jsonParseLinter()),
 			lintGutter(),
