@@ -35,6 +35,7 @@ export { ExecutionDataRepository } from './execution-data.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,
+	type CrashedExecution,
 	type ExecutionDeletionCriteria,
 	type UpdateExecutionConditions,
 } from './execution.repository';
@@ -80,7 +81,7 @@ export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
-export { WorkflowRepository } from './workflow.repository';
+export { WorkflowRepository, agentToolReferenceWhere } from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
 export {
 	WorkflowPublicationTriggerStatusRepository,

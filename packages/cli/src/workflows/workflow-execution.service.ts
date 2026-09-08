@@ -7,7 +7,7 @@ import type {
 	WorkflowEntity,
 	PollLeaseFence,
 } from '@n8n/db';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -40,7 +40,9 @@ import {
 } from 'n8n-workflow';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { EventService } from '@/events/event.service';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -74,7 +76,7 @@ export class WorkflowExecutionService {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly pollCursorService: PollCursorService,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionCrashService: ExecutionCrashService,
 	) {}
 
 	async runWorkflow(
@@ -183,6 +185,24 @@ export class WorkflowExecutionService {
 			return undefined;
 		}
 
+		try {
+			await this.workflowRunner.prepareNewExecution(runData, true);
+		} catch (error) {
+			if (error instanceof PreExecuteBlockedError) {
+				this.logger.error('Blocked a polled execution before its row was committed', {
+					workflowId: workflowData.id,
+					nodeName: node.name,
+					error: error.cause,
+				});
+
+				responsePromise?.reject(error.cause);
+
+				return undefined;
+			}
+
+			throw error;
+		}
+
 		const payload: CreateExecutionPayload = {
 			data: executionData,
 			mode,
@@ -221,7 +241,7 @@ export class WorkflowExecutionService {
 		try {
 			await this.workflowRunner.run(
 				runData,
-				true,
+				false,
 				undefined,
 				{ executionId, expectedStatus: 'new' },
 				responsePromise,
@@ -256,7 +276,7 @@ export class WorkflowExecutionService {
 
 		responsePromise?.reject(ensureError(error));
 
-		await this.executionRepository.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashed(executionId);
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {

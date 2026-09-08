@@ -958,6 +958,7 @@ export class AgentRuntimeReconstructionService {
 					delegation: subAgentDelegation,
 					user,
 					instrumentation,
+					...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				});
 			}
 		}
@@ -1068,6 +1069,7 @@ export class AgentRuntimeReconstructionService {
 		delegation: SubAgentDelegationConfig;
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
+		parentWorkspaceHandle?: AgentSandboxRuntime;
 	}): Promise<void> {
 		const { agent, parentAgentId, projectId, delegation, ...runContext } = params;
 		const {

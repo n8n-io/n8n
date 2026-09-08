@@ -71,6 +71,29 @@ import type { BuilderTemplatesService } from './workspace/builder-templates-serv
 
 export type InstanceAiToolRegistry = Map<string, BuiltTool>;
 
+/** A workflow's folder, with its root-relative path. */
+export interface WorkflowFolderRef {
+	id: string;
+	name: string;
+	/** Root-relative folder names joined with "/". Equals `name` for a root folder. */
+	path: string;
+}
+
+/**
+ * Why a requested folder did not resolve to exactly one folder. `candidates`
+ * are root-relative paths in scope, sorted and capped. They are offered so the
+ * caller can ask or retry — never as a substitute result set.
+ */
+export interface FolderResolutionFailure {
+	requested: string;
+	/**
+	 * `scope-too-wide`: the listing spans more projects than the folder scan
+	 * will cover; the caller must pass `projectId`.
+	 */
+	reason: 'not-found' | 'ambiguous' | 'unsupported' | 'scope-too-wide';
+	candidates: string[];
+}
+
 export interface WorkflowSummary {
 	id: string;
 	name: string;
@@ -87,6 +110,12 @@ export interface WorkflowSummary {
 	 * workflow belongs to.
 	 */
 	project?: { id: string; name: string };
+	/**
+	 * The folder the workflow sits in. Absent for root-level workflows. Also
+	 * absent for every row while folder exploration is off for the run, so the
+	 * flag-off rows keep the pre-feature shape.
+	 */
+	folder?: WorkflowFolderRef;
 }
 
 export interface WorkflowDetail extends WorkflowSummary {
@@ -319,6 +348,11 @@ export interface WorkflowListResult {
 	 * from the full inventory.
 	 */
 	totalInScope: number;
+	/**
+	 * Present only when a folder was requested and did not resolve. `workflows`
+	 * is then empty on purpose: a wider set must never stand in for the folder.
+	 */
+	folderResolution?: FolderResolutionFailure;
 }
 
 /**
@@ -357,6 +391,16 @@ export interface InstanceAiWorkflowService {
 		 * instead of a fetch per workflow.
 		 */
 		nodeTypes?: string[];
+		/**
+		 * Restrict to one folder, named the way the user named it ("Clients/Acme",
+		 * "Acme"). Resolved strictly: exact path, exact name, path suffix. Never
+		 * fuzzy. Ignored while folder exploration is off for the run.
+		 */
+		folderPath?: string;
+		/** Restrict to one folder by id, when a prior listing supplied it. */
+		folderId?: string;
+		/** Include nested subfolders. Defaults to true. */
+		recursive?: boolean;
 	}): Promise<WorkflowListResult>;
 	/**
 	 * Node-type usage across the workflows in scope, read from the dependency index rather than by
@@ -395,10 +439,19 @@ export interface InstanceAiWorkflowService {
 	getWorkflowSnapshot(
 		workflowId: string,
 	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number }>;
-	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
+	/**
+	 * Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.).
+	 *
+	 * `folderPath` / `folderId` place the new workflow in a folder of the bound
+	 * project, resolved with the same strict rules as `list`. An unresolved folder
+	 * throws `FolderResolutionError` before anything is written: a workflow left at
+	 * the root when the user named a folder is a silent degradation. Ignored while
+	 * folder exploration is off for the run. The returned detail carries `folder`
+	 * when the workflow was placed.
+	 */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
-		options?: { markAsAiTemporary?: boolean },
+		options?: { markAsAiTemporary?: boolean; folderPath?: string; folderId?: string },
 	): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
 	updateFromWorkflowJSON(
@@ -1224,6 +1277,12 @@ export interface InstanceAiContext {
 	tracing?: InstanceAiTraceContext;
 	projectId?: string;
 	/**
+	 * Per-run folder-exploration gate, resolved by the host before the context
+	 * is built. When true, the `workflows` list action advertises folder fields
+	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
+	 */
+	folderExplorationEnabled?: boolean;
+	/**
 	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
 	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
 	 * destructiveness classification), which otherwise resolve an eval model
@@ -1771,70 +1830,11 @@ export interface InstanceAiTraceContext {
 
 /** Structured result from a background task. The `text` field is the human-readable
  *  summary; `outcome` carries an optional typed payload consumed by the workflow
- *  loop controller (additive — existing callers that return a plain string still work). */
+ *  loop controller. */
 export interface BackgroundTaskResult {
 	text: string;
 	outcome?: Record<string, unknown>;
 }
-
-export interface SpawnBackgroundTaskOptions {
-	taskId: string;
-	threadId: string;
-	agentId: string;
-	role: string;
-	/** Existing trace context for legacy callers. Prefer createTraceContext for new background tasks. */
-	traceContext?: InstanceAiTraceContext;
-	/** Lazily creates the background trace only after the task is accepted and starts executing. */
-	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
-	/** When set, links the background task back to a planned task in the scheduler. */
-	plannedTaskId?: string;
-	/** Unique work item ID for workflow loop tracking. When set, the service
-	 *  uses the workflow loop controller to manage verify/repair transitions. */
-	workItemId?: string;
-	/**
-	 * Identity used for single-flight dedupe. When present, a spawn with the same
-	 * `plannedTaskId` (primary) or `role + workflowId` (fallback) as a currently-running
-	 * task returns `{ status: 'duplicate', existing }` instead of starting a new task.
-	 */
-	dedupeKey?: {
-		plannedTaskId?: string;
-		workflowId?: string;
-		role: string;
-	};
-	/**
-	 * Link this background task to a running checkpoint in the planned-task
-	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
-	 * research, data-table) from inside a
-	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
-	 * net defers failing the checkpoint while a child with this id is still
-	 * running, and settlement re-emits the checkpoint follow-up when the last
-	 * child settles — so the orchestrator re-enters the checkpoint context
-	 * instead of a bare `<background-task-completed>` shell.
-	 */
-	parentCheckpointId?: string;
-	run: (
-		signal: AbortSignal,
-		drainCorrections: () => string[],
-		waitForCorrection: () => Promise<void>,
-		taskContext: { traceContext?: InstanceAiTraceContext },
-	) => Promise<string | BackgroundTaskResult>;
-}
-
-/** Result of a {@link SpawnBackgroundTaskOptions} spawn. */
-export type SpawnBackgroundTaskResult =
-	| { status: 'started'; taskId: string; agentId: string }
-	| { status: 'limit-reached' }
-	| {
-			status: 'duplicate';
-			/** The live background task that matched on `dedupeKey`. */
-			existing: {
-				taskId: string;
-				agentId: string;
-				role: string;
-				plannedTaskId?: string;
-				workItemId?: string;
-			};
-	  };
 
 export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
@@ -1855,7 +1855,6 @@ export interface OrchestrationContext {
 	projectId?: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
-	checkpointStore?: CheckpointStore;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
@@ -1873,28 +1872,12 @@ export interface OrchestrationContext {
 		usage: BuilderUsageItem[],
 		status: TraceStatus,
 	) => Promise<void>;
-	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
 	tracing?: InstanceAiTraceContext;
-	waitForConfirmation?: (requestId: string) => Promise<{
-		approved: boolean;
-		credentialId?: string;
-		credentials?: Record<string, string>;
-		autoSetup?: { credentialType: string };
-		userInput?: string;
-		domainAccessAction?: string;
-		resourceDecision?: string;
-		answers?: Array<{
-			questionId: string;
-			selectedOptions: string[];
-			customText?: string;
-			skipped?: boolean;
-		}>;
-	}>;
 	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */
 	localMcpServer?: LocalMcpServer;
-	/** Safe MCP tools loaded from external servers and the local Computer Use gateway. */
+	/** Validated, approval-wrapped MCP tools available to Agent Builder. */
 	mcpTools?: InstanceAiToolRegistry;
 	/**
 	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
@@ -1912,8 +1895,6 @@ export interface OrchestrationContext {
 	webhookBaseUrl?: string;
 	/** Form base URL for the n8n instance (e.g. http://localhost:5678/form) — distinct from webhookBaseUrl since Form Triggers serve at /form/, not /webhook/ */
 	formBaseUrl?: string;
-	/** Spawn a detached background task that outlives the current orchestrator run */
-	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => SpawnBackgroundTaskResult;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
 	/** Persist and inspect dependency-aware planned tasks for this thread. */
@@ -1928,8 +1909,6 @@ export interface OrchestrationContext {
 	workspaceRoot?: string;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
-	/** Native memory store — used to retrieve thread message history for sub-agents. */
-	memory?: BuiltMemory;
 	/** The current user message being processed — needed because memory history only
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
@@ -1958,11 +1937,6 @@ export interface OrchestrationContext {
 	touchBackgroundTask?: (taskId: string) => boolean;
 	/** Shared workflow-task state service for build / verify / credential-finalize flows */
 	workflowTaskService?: WorkflowTaskService;
-	/** When set, LangSmith traces are routed through the AI service proxy. */
-	tracingProxyConfig?: ServiceProxyConfig;
-	/** Summaries of currently running background tasks in this thread.
-	 *  Used to give sub-agents thread-state awareness (what else is happening). */
-	getRunningTaskSummaries?: () => Array<{ taskId: string; role: string; goal?: string }>;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Propagated to sub-agents
 	 *  so they can resolve "now" consistently with the orchestrator. */
 	timeZone?: string;
