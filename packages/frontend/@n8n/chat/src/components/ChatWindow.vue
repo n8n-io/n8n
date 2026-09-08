@@ -4,8 +4,10 @@ import IconChevronDown from 'virtual:icons/mdi/chevron-down';
 import { nextTick, ref } from 'vue';
 
 import Chat from '@n8n/chat/components/Chat.vue';
+import { useI18n } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
+const { t } = useI18n();
 const isOpen = ref(false);
 
 function toggle() {
@@ -26,12 +28,18 @@ function toggle() {
 				<Chat />
 			</div>
 		</Transition>
-		<button type="button" class="chat-window-toggle" @click="toggle">
+		<button
+			type="button"
+			class="chat-window-toggle"
+			:aria-label="t(isOpen ? 'closeButtonTooltip' : 'openButtonTooltip')"
+			:aria-expanded="isOpen"
+			@click="toggle"
+		>
 			<Transition name="chat-window-toggle-transition" mode="out-in">
-				<IconChat v-if="!isOpen" height="32" width="32" />
-				<IconChevronDown v-else height="32" width="32" />
+				<IconChat v-if="!isOpen" height="32" width="32" aria-hidden="true" />
+				<IconChevronDown v-else height="32" width="32" aria-hidden="true" />
 			</Transition>
-		</div>
+		</button>
 	</div>
 </template>
 
@@ -75,7 +83,9 @@ function toggle() {
 		cursor: pointer;
 		width: var(--chat--toggle--width);
 		height: var(--chat--toggle--height);
+		border: 0;
 		border-radius: var(--chat--toggle--border-radius, 50%);
+		padding: 0;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;

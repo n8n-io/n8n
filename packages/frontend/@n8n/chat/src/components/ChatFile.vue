@@ -52,8 +52,8 @@ function onDelete() {
 		role="button"
 		tabindex="0"
 		@click="onClick"
-		@keydown.enter="onClick"
-		@keydown.space.prevent="onClick"
+		@keydown.enter.self="onClick"
+		@keydown.space.self.prevent="onClick"
 	>
 		<TypeIcon class="chat-icon" />
 		<p class="chat-file-name">{{ file.name }}</p>
