@@ -1,3 +1,5 @@
+import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-workflow';
+
 import type { McpRegistryServer } from './mcp-registry.types';
 
 export const notionMockServer = {
@@ -129,6 +131,7 @@ export const databricksGenieTemplatedMockServer: McpRegistryServer = {
 			// Trailing slash stripped in case the customer pastes the host straight
 			// from the browser, matching DatabricksOAuth2Api's own accessTokenUrl/authUrl.
 			url: '={{$self["host"].replace(/\\/$/, "")}}/api/2.0/mcp/genie',
+			headers: { 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
 		},
 	],
 	tools: [],

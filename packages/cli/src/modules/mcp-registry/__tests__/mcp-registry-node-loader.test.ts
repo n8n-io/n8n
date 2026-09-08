@@ -394,13 +394,10 @@ describe('McpRegistryNodeLoader', () => {
 			return runtime.prepareConnection;
 		}
 
-		it('adds the Databricks partner User-Agent header for a credential extending databricksOAuth2Api', async () => {
+		it('merges the registry-configured headers (e.g. the Databricks partner User-Agent) into the connection headers', async () => {
 			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials({
 				knownCredentialTypes: ['databricksOAuth2Api'],
 			});
-			// Simulates the post-boot state: the app merges every loader's `known`
-			// output (including this loader's own synthetic credentials) into the
-			// shared registry that `getParentCredentialTypes` reads from.
 			(
 				loadNodesAndCredentials.knownCredentials as Record<string, unknown>
 			).databricksGenieMcpOAuth2Api = { extends: ['databricksOAuth2Api'] };
@@ -427,38 +424,7 @@ describe('McpRegistryNodeLoader', () => {
 			});
 		});
 
-		it('adds the Databricks partner User-Agent header for a server bound directly to databricksOAuth2Api', async () => {
-			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials({
-				knownCredentialTypes: ['databricksOAuth2Api'],
-			});
-			const directDatabricksServer = {
-				...githubUsesCredentialsMockServer,
-				slug: 'databricks-direct',
-				usesCredentials: [
-					{ credentialType: 'databricksOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-				],
-			} satisfies McpRegistryServer;
-
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
-			loader.setServers([directDatabricksServer]);
-			await loader.loadAll();
-
-			const connection = loader.getConnection('@n8n/mcp-registry.databricksDirect');
-			const result = getRegisteredPrepareConnection(baseNode)({
-				connection,
-				credentialType: 'databricksOAuth2Api',
-				credentialData: { oauthTokenData: { access_token: 'token' } },
-			});
-
-			expect(result).toMatchObject({
-				ok: true,
-				value: {
-					headers: { Authorization: 'Bearer token', 'User-Agent': 'n8n_DatabricksNode' },
-				},
-			});
-		});
-
-		it('does not add the Databricks User-Agent header for an unrelated credential', async () => {
+		it('does not add any extra header for a server with no headers configured on its remote', async () => {
 			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials();
 			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
 			loader.setServers([notionMockServer]);

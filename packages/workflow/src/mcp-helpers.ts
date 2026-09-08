@@ -12,6 +12,8 @@ interface McpRegistryConnectionBase {
 	nodeTypeName: string;
 	transport: 'httpStreamable' | 'sse';
 	credentialBindings: readonly McpRegistryCredentialBinding[];
+	/** Extra headers configured on the registry row (e.g. a partner User-Agent), sent as-is on every request. */
+	headers?: Record<string, string>;
 }
 
 export interface McpRegistryCredentialBinding {

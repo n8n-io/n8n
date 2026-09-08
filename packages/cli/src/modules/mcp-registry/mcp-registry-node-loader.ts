@@ -3,7 +3,6 @@ import { camelCase } from 'change-case';
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
-	DATABRICKS_PARTNER_USER_AGENT,
 	NodeHelpers,
 	type ICredentialType,
 	type ICredentialTypeData,
@@ -29,7 +28,6 @@ import {
 	type IsKnownCredentialType,
 } from './node-description-transform';
 import {
-	DATABRICKS_OAUTH2_CREDENTIAL_TYPE,
 	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,
 	resolveMcpRegistryConnection,
@@ -152,19 +150,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 							: connection.credentialBindings.find((candidate) => candidate.selector === selector);
 					return binding ? { connection, binding } : undefined;
 				},
-				prepareConnection: (input) => {
-					const result = prepareMcpRegistryConnection(input);
-					if (!result.ok || !this.isDatabricksBoundCredential(input.credentialType)) {
-						return result;
-					}
-					return {
-						...result,
-						value: {
-							...result.value,
-							headers: { ...result.value.headers, 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
-						},
-					};
-				},
+				prepareConnection: prepareMcpRegistryConnection,
 			});
 		}
 	}
@@ -243,13 +229,5 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 		const parents = this.loadNodesAndCredentials.knownCredentials[name]?.extends ?? [];
 		return parents.flatMap((parent) => [parent, ...this.getParentCredentialTypes(parent, seen)]);
-	}
-
-	/** Whether a (possibly synthetic, `extendsCredential`) credential type is Databricks-bound. */
-	private isDatabricksBoundCredential(credentialType: string): boolean {
-		return (
-			credentialType === DATABRICKS_OAUTH2_CREDENTIAL_TYPE ||
-			this.getParentCredentialTypes(credentialType).includes(DATABRICKS_OAUTH2_CREDENTIAL_TYPE)
-		);
 	}
 }

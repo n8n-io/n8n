@@ -19,9 +19,6 @@ export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 export const MCP_REGISTRY_BASE_NODE_NAME = 'mcpRegistryClientTool';
 export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
 
-/** Parent credential a registry row's synthetic credential extends to be Databricks-bound. */
-export const DATABRICKS_OAUTH2_CREDENTIAL_TYPE = 'databricksOAuth2Api';
-
 export function getMcpRegistryCredentialTypeName(
 	server: McpRegistryServer,
 ): McpOAuth2CredentialType {
@@ -83,6 +80,7 @@ export function resolveMcpRegistryConnection(
 			urlTemplate: remote.url,
 			transport: 'httpStreamable',
 			isTemplated: true,
+			headers: remote.headers,
 		};
 	}
 
@@ -95,6 +93,7 @@ export function resolveMcpRegistryConnection(
 			transport: remote.type === 'streamable-http' ? 'httpStreamable' : 'sse',
 			credentialBindings,
 			isTemplated: false,
+			headers: remote.headers,
 		};
 	} catch {
 		return null;
@@ -131,6 +130,8 @@ export function prepareMcpRegistryConnection({
 	}
 
 	const { nodeTypeName, transport } = connection;
+	// Registry-configured headers (e.g. a partner User-Agent) win over the auth headers above.
+	const mergedHeaders = { ...headers, ...connection.headers };
 
 	if (connection.isTemplated) {
 		const serverUrl = credentialData.serverUrl;
@@ -154,7 +155,7 @@ export function prepareMcpRegistryConnection({
 				credentialType,
 				transport,
 				endpointUrl: endpoint.toString(),
-				headers,
+				headers: mergedHeaders,
 				// Pinned to the host actually being called, so the restriction can
 				// never guard a different host than the request goes to.
 				allowedDomains: endpoint.hostname,
@@ -169,7 +170,7 @@ export function prepareMcpRegistryConnection({
 			credentialType,
 			transport,
 			endpointUrl: connection.endpointUrl,
-			headers,
+			headers: mergedHeaders,
 			allowedDomains: connection.endpointHostname,
 		},
 	};
