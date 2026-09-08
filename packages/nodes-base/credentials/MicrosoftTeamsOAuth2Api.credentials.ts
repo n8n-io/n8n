@@ -12,6 +12,8 @@ const defaultScopes = [
 	'OnlineMeetings.ReadWrite',
 ];
 
+const CHAT_MEMBER_REMOVE_SCOPE = 'ChatMember.ReadWrite';
+
 export class MicrosoftTeamsOAuth2Api implements ICredentialType {
 	name = 'microsoftTeamsOAuth2Api';
 
@@ -54,11 +56,28 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
 			description: 'Scopes that should be enabled',
 		},
 		{
+			// A plain boolean rather than a Custom Scopes instruction: on Cloud, managed OAuth
+			// hides the scope fields, and this stays visible there. The scope needs tenant admin
+			// consent, so it is never in the defaults.
+			displayName: 'Include Chat Member Scope',
+			name: 'includeChatMemberScope',
+			type: 'boolean',
+			default: false,
+			description:
+				'Grants the ChatMember.ReadWrite scope, needed to remove chat members. It requires tenant admin consent. Reconnect the credential after changing this.',
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'={{$self["customScopes"] ? $self["enabledScopes"] : "' + defaultScopes.join(' ') + '"}}',
+				'={{($self["customScopes"] ? $self["enabledScopes"] : "' +
+				defaultScopes.join(' ') +
+				'") + ($self["includeChatMemberScope"] && !($self["customScopes"] ? $self["enabledScopes"] : "").split(" ").includes("' +
+				CHAT_MEMBER_REMOVE_SCOPE +
+				'") ? " ' +
+				CHAT_MEMBER_REMOVE_SCOPE +
+				'" : "")}}',
 		},
 		{
 			displayName: `
@@ -68,8 +87,6 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
       <br><code>Team.ReadBasic.All</code>
       <br><code>Subscription.Read.All</code>
       <br>Configure these permissions in <a href="https://portal.azure.com">Microsoft Entra</a>
-      <br><br>Chat Member > Remove requires <code>ChatMember.ReadWrite</code>, which needs tenant admin consent and is not requested by default.
-      <br>Enable Custom Scopes, add it to Enabled Scopes, and reconnect.
     `,
 			name: 'notice',
 			type: 'notice',

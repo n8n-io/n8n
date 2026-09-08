@@ -15,8 +15,9 @@ const properties: INodeProperties[] = [
 	{
 		// Not a default scope: it needs tenant admin consent, and putting it in the defaults
 		// would block every new or reconnected Teams credential until an admin re-consents.
+		// The credential toggle appends it; see MicrosoftTeamsOAuth2Api.credentials.ts.
 		displayName:
-			'Removing a member needs the <code>ChatMember.ReadWrite</code> permission, which is not requested by default because it needs tenant admin consent. On the credential, enable Custom Scopes, add it to Enabled Scopes, and reconnect.',
+			'Removing a member needs the <code>ChatMember.ReadWrite</code> permission, which is not requested by default because it needs tenant admin consent. Turn on "Include Chat Member Scope" on the credential and reconnect.',
 		name: 'chatMemberRemoveScopeNotice',
 		type: 'notice',
 		default: '',
@@ -65,7 +66,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			throw new NodeOperationError(this.getNode(), error, {
 				itemIndex: i,
 				description:
-					'Removing a member needs the ChatMember.ReadWrite permission, which is not requested by default. On the credential, enable Custom Scopes, add ChatMember.ReadWrite to Enabled Scopes, and reconnect (a tenant admin may have to consent). Microsoft also refuses this call on a one-on-one chat, when removing the last owner, and when removing yourself.',
+					'Removing a member needs the ChatMember.ReadWrite permission, which is not requested by default. Turn on "Include Chat Member Scope" on the credential and reconnect (a tenant admin may have to consent). Microsoft also refuses this call on a one-on-one chat, when removing the last owner, and when removing yourself.',
 			});
 		}
 		throw error;
