@@ -21,7 +21,7 @@ export function zodToJsonSchema(schema?: unknown): JSONSchema7 | null {
 	if (!schema) return null;
 	try {
 		if (isZodSchema(schema)) return zodSchemaToJsonSchema(schema);
-		if (typeof schema === 'object') return schema;
+		if (typeof schema === 'object' && !Array.isArray(schema)) return schema;
 		return null;
 	} catch {
 		return null;

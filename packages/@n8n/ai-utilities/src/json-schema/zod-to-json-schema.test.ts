@@ -25,9 +25,12 @@ describe('zodToJsonSchema', () => {
 		expect(zodToJsonSchema(schema)).toBe(schema);
 	});
 
-	it.each([undefined, null, '', 42])('returns null for unsupported input %s', (value) => {
-		expect(zodToJsonSchema(value)).toBeNull();
-	});
+	it.each([[undefined], [null], [''], [42], [['not', 'a', 'schema']]])(
+		'returns null for unsupported input %s',
+		(value) => {
+			expect(zodToJsonSchema(value)).toBeNull();
+		},
+	);
 
 	it('returns null when schema conversion fails', () => {
 		const schema = {
