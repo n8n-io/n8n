@@ -141,12 +141,20 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// outcome is discarded. The cursor never moves on that path (it only moves
 				// through the staged commit or __emit below), so an abandoned tick leaves
 				// the poll window untouched for the next occurrence to cover.
-				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
-				// Deliberately not chained: keeps an abandoned poll's eventual rejection from
-				// surfacing as an unhandled rejection once the race has moved on.
-				poll.catch(() => {});
-
-				const pollResponse = await raceTimeout(poll, this.pollTimeoutMs);
+				// Called through a factory so the deadline is armed before poll() starts:
+				// any synchronous setup the node does counts against the poll timeout.
+				const pollResponse = await raceTimeout(
+					async () => {
+						const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
+						// Deliberately not chained: keeps an abandoned poll's eventual rejection from
+						// surfacing as an unhandled rejection once the race has moved on.
+						poll.catch(() => {});
+						return await poll;
+					},
+					this.pollTimeoutMs,
+					// An abandoned poll's deadline must not hold the event loop open.
+					{ unref: true },
+				);
 				if (pollResponse === TIMED_OUT) {
 					this.eventService.emit('poll-tick-timed-out', { nodeType: node.type });
 					this.logger.warn('Poll exceeded its timeout and was abandoned', {

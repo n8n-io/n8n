@@ -253,6 +253,9 @@ export class WorkflowPublicationOutboxConsumer {
 		const controller = new AbortController();
 		const work = this.processRecord(record, controller.signal);
 
+		// Both deadlines stay ref'd (the default): during shutdown the poll timer is
+		// already cleared, so an unref'd deadline could let the process exit before
+		// the abort and the abandon reporting below run.
 		if ((await raceTimeout(work, abortAfterMs)) !== TIMED_OUT) return true;
 
 		controller.abort(new OperationalError('Workflow publication processing exceeded its deadline'));
