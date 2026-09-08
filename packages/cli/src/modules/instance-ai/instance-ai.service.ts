@@ -14,6 +14,7 @@ import {
 	formatAttachmentSizeLimit,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type BrowserRecording,
+	type BrowserRecordingAction,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -112,6 +113,8 @@ import {
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
+	generateValidatedJson,
+	HAIKU_MODEL,
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
@@ -121,6 +124,7 @@ import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { redactString } from '@n8n/mcp-browser';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { z } from 'zod';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
@@ -853,6 +857,9 @@ export class InstanceAiService {
 		this.browserSessionService.setRecordingCompletionHandler(
 			async (input) => await this.launchBrowserRecording(input),
 		);
+		this.browserSessionService.setActionCaptionHandler(
+			async (input) => await this.summarizeRecordingActions(input),
+		);
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
 		this.workflowObligations = new WorkflowVerificationObligationService(this.agentMemory);
 		this.taskProjector = new WorkflowVerificationTaskProjector(
@@ -1467,6 +1474,9 @@ export class InstanceAiService {
 		/** The thread that asked for this recording, if any. When set, the recording is
 		 *  analyzed in that same conversation instead of opening a new thread. */
 		originThreadId?: string;
+		/** Running summary generated while the recording was in progress, if any — a head
+		 *  start for the recap, not shown anywhere in the UI. */
+		caption?: string;
 	}): Promise<{ threadId: string }> {
 		if (
 			!this.settingsService.isInstanceAiEnabled() ||
@@ -1511,7 +1521,11 @@ export class InstanceAiService {
 					'Never ask the user for passwords, tokens, or other credential values.',
 				];
 		const recordingContext = redactString(
-			JSON.stringify({ instructions, recording: input.recording }),
+			JSON.stringify({
+				instructions,
+				recording: input.recording,
+				...(input.originThreadId && input.caption ? { progressSoFar: input.caption } : {}),
+			}),
 		);
 		const message = withBrowserRecordingContext(
 			'Build a workflow from my browser recording.',
@@ -1524,6 +1538,32 @@ export class InstanceAiService {
 			throw error;
 		}
 		return { threadId };
+	}
+
+	private static readonly recordingActionCaptionSchema = z.object({ summary: z.string() });
+
+	/** Summarize actions accumulated since the last caption tick, for a recording still in
+	 *  progress. Never throws — a failed summary just means no caption is available yet. */
+	private async summarizeRecordingActions(input: {
+		userId: string;
+		actions: BrowserRecordingAction[];
+	}): Promise<string | undefined> {
+		const user = await this.revalidateActiveUser(input.userId);
+		if (!user) return undefined;
+
+		const fallbackModelConfig = await this.resolveAgentModelConfig(user);
+		const result = await generateValidatedJson('recording-action-summarizer', {
+			model: HAIKU_MODEL,
+			instructions:
+				'Summarize what the user has done so far in one short sentence, from these browser ' +
+				'actions. Describe the outcome, not the clicks (e.g. "Composed an email in Gmail", not ' +
+				'"Clicked the compose button"). Output a single JSON object {"summary": string}. Return ' +
+				'only the JSON object — no prose, no markdown fences.',
+			userText: JSON.stringify(input.actions),
+			schema: InstanceAiService.recordingActionCaptionSchema,
+			fallbackModelConfig,
+		});
+		return result.ok ? result.data.summary : undefined;
 	}
 
 	/** Get the current messageGroupId for a thread (used by SSE sync). */

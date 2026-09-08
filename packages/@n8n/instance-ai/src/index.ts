@@ -190,6 +190,8 @@ export { parseModelHeadersJson } from './utils/parse-model-headers';
 export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
+export { generateValidatedJson } from './utils/generate-validated-json';
+export { HAIKU_MODEL } from './utils/eval-agents';
 export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
 export { WorkflowEditorLockedError } from './errors/workflow-editor-locked.error';

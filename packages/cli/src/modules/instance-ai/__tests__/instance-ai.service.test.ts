@@ -1785,6 +1785,103 @@ describe('InstanceAiService — revalidateActiveUser', () => {
 	});
 });
 
+type BrowserRecordingServiceInternals = {
+	launchBrowserRecording: (input: {
+		userId: string;
+		projectId: string;
+		recording: { id: string; startedAt: string; status: string; actions: unknown[] };
+		originThreadId?: string;
+		caption?: string;
+	}) => Promise<{ threadId: string }>;
+	summarizeRecordingActions: (input: {
+		userId: string;
+		actions: unknown[];
+	}) => Promise<string | undefined>;
+	settingsService: {
+		isInstanceAiEnabled: Mock;
+		isBrowserUseEnabled: Mock;
+		isModelConfigured: Mock;
+	};
+	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
+	memoryService: { ensureThread: Mock; deleteThread: Mock };
+	startRun: Mock;
+	resolveAgentModelConfig: Mock;
+};
+
+function createBrowserRecordingService(): BrowserRecordingServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as BrowserRecordingServiceInternals;
+	service.settingsService = {
+		isInstanceAiEnabled: vi.fn(() => true),
+		isBrowserUseEnabled: vi.fn(() => true),
+		isModelConfigured: vi.fn(async () => true),
+	};
+	service.revalidateActiveUser = vi.fn(async () => userWithScopes(['instanceAi:message']));
+	service.memoryService = {
+		ensureThread: vi.fn(async () => {}),
+		deleteThread: vi.fn(async () => {}),
+	};
+	service.startRun = vi.fn(() => 'run-1');
+	service.resolveAgentModelConfig = vi.fn(async () => undefined);
+	return service;
+}
+
+const RECORDING = {
+	id: 'rec-1',
+	startedAt: new Date().toISOString(),
+	status: 'submitted',
+	actions: [],
+};
+
+describe('InstanceAiService — launchBrowserRecording', () => {
+	it('folds the caption into the recap context only for AI-triggered recordings', async () => {
+		const service = createBrowserRecordingService();
+
+		await service.launchBrowserRecording({
+			userId: 'user-1',
+			projectId: 'project-1',
+			recording: RECORDING,
+			originThreadId: 'thread-1',
+			caption: 'Composed an email in Gmail',
+		});
+
+		expect(service.startRun).toHaveBeenCalledWith(
+			expect.anything(),
+			'thread-1',
+			expect.stringContaining('Composed an email in Gmail'),
+		);
+	});
+
+	it('does not carry a caption into the manual (non-AI-triggered) flow', async () => {
+		const service = createBrowserRecordingService();
+
+		await service.launchBrowserRecording({
+			userId: 'user-1',
+			projectId: 'project-1',
+			recording: RECORDING,
+			caption: 'Composed an email in Gmail',
+		});
+
+		expect(service.startRun).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.any(String),
+			expect.not.stringContaining('Composed an email in Gmail'),
+		);
+	});
+});
+
+describe('InstanceAiService — summarizeRecordingActions', () => {
+	it('returns undefined when the user can no longer be revalidated', async () => {
+		const service = createBrowserRecordingService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+
+		const result = await service.summarizeRecordingActions({ userId: 'user-1', actions: [] });
+
+		expect(result).toBeUndefined();
+	});
+});
+
 type ResolveConfirmationServiceInternals = {
 	resolveConfirmation: (
 		requestingUserId: string,
