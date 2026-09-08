@@ -33,12 +33,13 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// JWTs: `eyJ<header>.eyJ<payload>.<signature>` (both leading segments are
 	// base64url of a `{"` object, which makes this highly distinctive).
 	/\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
-	// Authorization-header substrings. Right after an `Authorization:` label
-	// (quoted or not) any value is the credential; elsewhere a 12+ char minimum
-	// keeps prose such as "a Bearer token" or "basic usage" readable. Bearer
-	// values are opaque in practice (`id|secret`, `user:key`), so they run to
-	// the next delimiter rather than a token68 character class.
-	/(?<=\bauthorization\s*[:=]\s*["']?)Bearer\s+[^\s"',;]+/gi,
+	// Authorization-header substrings. After an `Authorization:` label, match
+	// the `Bearer`, `Basic`, and `Token` schemes with values of any length. The
+	// value can be quoted. Elsewhere, a 12+ character minimum keeps prose such
+	// as "a Bearer token" or "basic usage" readable. Scheme values are opaque
+	// in practice (`id|secret`, `user:key`), so they run to the next delimiter
+	// rather than a token68 character class.
+	/(?<=\bauthorization\s*[:=]\s*["']?)(?:Bearer|Basic|Token)\s+[^\s"',;]+/gi,
 	/\b(?:Bearer\s+[^\s"',;]{12,}|(?:Basic|Token)\s+[A-Za-z0-9._~+/=-]{12,})/gi,
 	// OpenAI / Anthropic API keys
 	/\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}/g,
