@@ -20,6 +20,7 @@ import {
 	useInstanceAiAvailable,
 	useInstanceAiReady,
 } from './composables/useInstanceAiAvailability';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { canManageInstanceAi } from './instanceAiPermissions';
 
 /**
@@ -32,7 +33,15 @@ import { canManageInstanceAi } from './instanceAiPermissions';
  * Experiment cleanup: drop the treatment term with openWorkflowInAssistant.
  */
 function hasInstanceAiSettingsContent(): boolean {
-	return canManageInstanceAi() || useOpenWorkflowInAssistantStore().isTreatment;
+	if (canManageInstanceAi()) return true;
+
+	// The view drops the default editor row while the assistant is off — it shows
+	// the empty state instead — so the row is the member's only reason to visit.
+	// A member never loads the admin settings, so `enabled` on the module
+	// settings is the flag the view falls back to for them.
+	const isAssistantEnabled = useSettingsStore().moduleSettings['instance-ai']?.enabled === true;
+
+	return isAssistantEnabled && useOpenWorkflowInAssistantStore().isTreatment;
 }
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');

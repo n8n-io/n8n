@@ -3,7 +3,9 @@ import { setActivePinia } from 'pinia';
 import { ref } from 'vue';
 import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router';
 import { GLOBAL_MEMBER_SCOPES, GLOBAL_OWNER_SCOPES, type Scope } from '@n8n/permissions';
+import type { FrontendModuleSettings } from '@n8n/api-types';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -53,6 +55,22 @@ function setGlobalScopes(scopes: Scope[]) {
 	useRBACStore().globalScopes = [...scopes];
 }
 
+const instanceAiModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
+	enabled: true,
+	localGatewayDisabled: false,
+	browserUseEnabled: true,
+	proxyEnabled: false,
+	cloudManaged: false,
+	sandboxEnabled: true,
+	workflowBuilderAvailable: true,
+	sandboxUnavailableReason: null,
+	runDebugEnabled: false,
+};
+
+function setAssistantEnabled(enabled: boolean) {
+	useSettingsStore().moduleSettings = { 'instance-ai': { ...instanceAiModuleSettings, enabled } };
+}
+
 let posthogStore: ReturnType<typeof mockedStore<typeof usePostHog>>;
 
 function setOpenWorkflowInAssistantTreatment(isTreatment: boolean) {
@@ -65,6 +83,7 @@ beforeEach(() => {
 	posthogStore = mockedStore(usePostHog);
 	setOpenWorkflowInAssistantTreatment(false);
 	setGlobalScopes(GLOBAL_OWNER_SCOPES);
+	setAssistantEnabled(true);
 });
 
 describe('InstanceAiModule legacy route redirects', () => {
@@ -153,6 +172,23 @@ describe('InstanceAiModule settings page access', () => {
 			await router.push('/settings/assistant');
 
 			expect(router.currentRoute.value.name).toBe(INSTANCE_AI_SETTINGS_VIEW);
+		});
+
+		describe('while the assistant is off, which hides the row', () => {
+			beforeEach(() => {
+				setAssistantEnabled(false);
+			});
+
+			it('is not offered the settings page', () => {
+				expect(isSettingsPageAvailable()).toBe(false);
+			});
+
+			it('is sent to the homepage', async () => {
+				const router = createTestRouter();
+				await router.push('/settings/assistant');
+
+				expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+			});
 		});
 	});
 });
