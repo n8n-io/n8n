@@ -181,6 +181,15 @@ export function useSettingsItems() {
 			route: { to: { name: VIEWS.COMMUNITY_NODES } },
 		});
 
+		menuItems.push({
+			id: 'settings-context',
+			icon: 'brain',
+			label: i18n.baseText('settings.context.title'),
+			position: 'top',
+			available: canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
+			route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
+		});
+
 		if (MIGRATION_REPORT_TARGET_VERSION) {
 			menuItems.push({
 				id: 'settings-migration-report',

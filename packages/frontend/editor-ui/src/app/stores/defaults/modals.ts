@@ -53,6 +53,7 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 } from '@/features/settings/communityNodes/communityNodes.constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
+import { PREFERENCE_MODAL_KEY } from '@/features/settings/context/context.constants';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import {
 	DELETE_USER_MODAL_KEY,
@@ -187,6 +188,7 @@ export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = O
 	[TAGS_MANAGER_MODAL_KEY]: { open: false },
 	[TRIAL_INTRO_MODAL_KEY]: { open: false },
 	[VARIABLE_MODAL_KEY]: { open: false },
+	[PREFERENCE_MODAL_KEY]: { open: false },
 	[VERSIONS_MODAL_KEY]: { open: false },
 	[WHATS_NEW_MODAL_KEY]: {
 		open: false,
