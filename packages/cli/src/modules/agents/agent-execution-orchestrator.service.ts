@@ -476,6 +476,7 @@ export class AgentExecutionOrchestratorService {
 				userMessage: null,
 				...(executionSource !== undefined ? { source: executionSource } : {}),
 				telemetry: {
+					userId: user?.id,
 					runType,
 					configuration: runtime.telemetryConfiguration,
 				},
@@ -517,6 +518,7 @@ export class AgentExecutionOrchestratorService {
 						record: messageRecord,
 						hitlStatus: recorder.suspended ? 'suspended' : 'resumed',
 						telemetry: {
+							userId: user?.id,
 							runType,
 							configuration: runtime.telemetryConfiguration,
 						},
@@ -799,7 +801,7 @@ export class AgentExecutionOrchestratorService {
 				source,
 				taskId,
 				taskVersionId,
-				telemetry,
+				telemetry: { ...telemetry, userId },
 			};
 			executionId = await this.tryStartExecution(
 				startParams,
@@ -848,7 +850,7 @@ export class AgentExecutionOrchestratorService {
 					source,
 					taskId,
 					taskVersionId,
-					telemetry,
+					telemetry: { ...telemetry, userId },
 				},
 			});
 		}

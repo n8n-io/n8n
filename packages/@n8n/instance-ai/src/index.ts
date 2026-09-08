@@ -25,7 +25,6 @@ import type * as RuntimeSkillsMod from './skills/runtime-skills';
 import type * as StorageMod from './storage';
 import type * as MapChunkMod from './stream/map-chunk';
 import type * as UsageAccumulatorMod from './stream/usage-accumulator';
-import type * as ToolsMod from './tools';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
@@ -108,7 +107,6 @@ const loadSystemPrompt = lazyModule(
 const loadSanitizeWebContent = lazyModule(
 	() => require('./tools/web-research/sanitize-web-content') as typeof SanitizeWebContentMod,
 );
-const loadTools = lazyModule(() => require('./tools') as typeof ToolsMod);
 const loadAgentPersistence = lazyModule(
 	() => require('./tools/orchestration/agent-persistence') as typeof AgentPersistenceMod,
 );
@@ -193,6 +191,7 @@ export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-mode
 export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
 export { WorkflowEditorLockedError } from './errors/workflow-editor-locked.error';
+export { FolderResolutionError } from './errors/folder-resolution.error';
 export {
 	LEGACY_PLANNED_TASK_KINDS,
 	PLANNED_TASK_KINDS,
@@ -215,8 +214,12 @@ export {
 	agentBuilderTargetMetadata,
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
+	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
+	threadAuthorizesAgentAdoption,
+	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
+export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
@@ -337,9 +340,6 @@ export const resolveAIAReasoning: typeof AiaModelDefaultsMod.resolveAIAReasoning
 
 export const getDateTimeSection: typeof SystemPromptMod.getDateTimeSection = lazyFunction(
 	() => loadSystemPrompt().getDateTimeSection,
-);
-export const createAllTools: typeof ToolsMod.createAllTools = lazyFunction(
-	() => loadTools().createAllTools,
 );
 export const createSubAgentResourceIdPrefix: typeof AgentPersistenceMod.createSubAgentResourceIdPrefix =
 	lazyFunction(() => loadAgentPersistence().createSubAgentResourceIdPrefix);
@@ -659,8 +659,6 @@ export type {
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
 	OrchestrationContext,
-	SpawnBackgroundTaskOptions,
-	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,
 	InstanceAiToolTraceOptions,
 	InstanceAiTraceContext,
@@ -669,6 +667,8 @@ export type {
 	InstanceAiTraceRunInit,
 	WorkflowTaskService,
 	WorkflowSummary,
+	WorkflowFolderRef,
+	FolderResolutionFailure,
 	WorkflowDetail,
 	NodeUsageResult,
 	WorkflowNode,

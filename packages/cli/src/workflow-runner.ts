@@ -32,12 +32,15 @@ import {
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
+import { EventService } from './events/event.service';
+
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 // `no-cycle` still reports a cycle here, but only through the dynamic import
 // in `execute-error-workflow`, which creates no evaluation-order edge.
-// eslint-disable-next-line import-x/no-cycle
+
 import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
@@ -45,7 +48,10 @@ import {
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import {
+	CredentialsPermissionChecker,
+	WorkflowPreExecute,
+} from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
@@ -57,7 +63,6 @@ import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-import { EventService } from './events/event.service';
 /** Interval between keepalive writes on streaming responses to prevent proxy timeouts */
 const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
 
@@ -98,6 +103,7 @@ export class WorkflowRunner {
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,
 		private readonly engineV2Dispatcher: EngineV2Dispatcher,
+		private readonly workflowPreExecute: WorkflowPreExecute,
 	) {}
 
 	/** The process did error */
@@ -259,6 +265,28 @@ export class WorkflowRunner {
 
 		const establishContextError = await this.establishContextForPersistence(data);
 
+		if (!establishContextError) {
+			try {
+				await this.credentialsPermissionChecker.check(
+					data.workflowData.id,
+					data.workflowData.nodes,
+				);
+			} catch (error) {
+				const executionId = await this.activeExecutions.add(data, existingExecution);
+				await this.failExecution(data, executionId, error, responsePromise);
+				return executionId;
+			}
+		}
+
+		let executionWorkflow: Workflow | undefined;
+		if (!existingExecution && !establishContextError) {
+			try {
+				executionWorkflow = await this.prepareNewExecution(data, loadStaticData);
+			} catch (error) {
+				throw PreExecuteBlockedError.unwrap(error);
+			}
+		}
+
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, existingExecution);
 
@@ -267,14 +295,7 @@ export class WorkflowRunner {
 			return executionId;
 		}
 
-		const { id: workflowId, nodes } = data.workflowData;
-
-		try {
-			await this.credentialsPermissionChecker.check(workflowId, nodes);
-		} catch (error) {
-			await this.failExecution(data, executionId, error, responsePromise);
-			return executionId;
-		}
+		const { id: workflowId } = data.workflowData;
 
 		if (responsePromise) {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
@@ -300,13 +321,15 @@ export class WorkflowRunner {
 				? this.executionsConfig.mode === 'queue'
 				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
+		const shouldReloadStaticData = Boolean(existingExecution && loadStaticData);
+
 		try {
 			if (shouldEnqueue) {
 				await this.enqueueExecution(
 					executionId,
 					workflowId,
 					data,
-					loadStaticData,
+					shouldReloadStaticData,
 					realtime,
 					existingExecution?.executionId,
 				);
@@ -314,8 +337,9 @@ export class WorkflowRunner {
 				await this.runMainProcess(
 					executionId,
 					data,
-					loadStaticData,
+					shouldReloadStaticData,
 					existingExecution?.executionId,
+					executionWorkflow,
 				);
 			}
 		} catch (error) {
@@ -361,6 +385,31 @@ export class WorkflowRunner {
 		return executionId;
 	}
 
+	private resolvePinData(data: IWorkflowExecutionDataProcess): IPinData | undefined {
+		if (['manual', 'evaluation'].includes(data.executionMode)) {
+			return data.pinData ?? data.workflowData.pinData;
+		}
+		return undefined;
+	}
+
+	async prepareNewExecution(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+	): Promise<Workflow | undefined> {
+		if (loadStaticData === true && data.workflowData.id) {
+			data.workflowData.staticData = await this.workflowStaticDataService.getStaticDataById(
+				data.workflowData.id,
+			);
+		}
+
+		return await this.workflowPreExecute.run(
+			data.workflowData,
+			data.executionMode,
+			data.source,
+			this.resolvePinData(data),
+		);
+	}
+
 	/** Run the workflow in current process */
 
 	private async runMainProcess(
@@ -368,6 +417,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
+		executionWorkflow?: Workflow,
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
@@ -386,22 +436,20 @@ export class WorkflowRunner {
 			workflowTimeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout);
 		}
 
-		let pinData: IPinData | undefined;
-		if (['manual', 'evaluation'].includes(data.executionMode)) {
-			pinData = data.pinData ?? data.workflowData.pinData;
-		}
-
-		const workflow = new Workflow({
-			id: workflowId,
-			name: data.workflowData.name,
-			nodes: data.workflowData.nodes,
-			connections: data.workflowData.connections,
-			active: data.workflowData.activeVersionId !== null,
-			nodeTypes: this.nodeTypes,
-			staticData: data.workflowData.staticData,
-			settings: workflowSettings,
-			pinData,
-		});
+		const pinData = this.resolvePinData(data);
+		const workflow =
+			executionWorkflow ??
+			new Workflow({
+				id: workflowId,
+				name: data.workflowData.name,
+				nodes: data.workflowData.nodes,
+				connections: data.workflowData.connections,
+				active: data.workflowData.activeVersionId !== null,
+				nodeTypes: this.nodeTypes,
+				staticData: data.workflowData.staticData,
+				settings: workflowSettings,
+				pinData,
+			});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			userId: data.userId,
