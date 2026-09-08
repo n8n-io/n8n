@@ -27,6 +27,8 @@ export interface ErrorSentinel {
 interface ObjectMetadata {
 	__isObject: true;
 	__keys: string[];
+	/** Set only when the host value overrides `toString` — see `overriddenStringForm`. */
+	__stringForm?: string;
 }
 
 interface ArrayMetadata {
@@ -86,7 +88,9 @@ export function getProxyPath(obj: object): string[] | undefined {
  * - `array` proxies wrap an array target so `Array.isArray(proxy)` is `true`
  *   and structured clone / `Array.prototype.map` iterate indices correctly.
  */
-export type ProxyMeta = { kind: 'object'; keys?: string[] } | { kind: 'array'; length: number };
+export type ProxyMeta =
+	| { kind: 'object'; keys?: string[]; stringForm?: string }
+	| { kind: 'array'; length: number };
 
 /**
  * Creates a deep lazy-loading proxy for workflow data.
@@ -125,10 +129,12 @@ export function createDeepLazyProxy(
 	const isArray = meta?.kind === 'array';
 	const arrayLength = isArray ? meta.length : 0;
 	const objectKeys = meta?.kind === 'object' ? meta.keys : undefined;
+	const metaStringForm = meta?.kind === 'object' ? meta.stringForm : undefined;
 
 	// Cache for keys fetched from the bridge (root object proxies without known keys).
 	// Shared between ownKeys and getOwnPropertyDescriptor for consistency.
 	let fetchedKeys: string[] | undefined;
+	let fetchedStringForm: string | undefined;
 
 	function resolveObjectKeys(): string[] {
 		if (objectKeys) return objectKeys;
@@ -137,9 +143,30 @@ export function createDeepLazyProxy(
 		throwIfErrorSentinel(value);
 		if (isObjectMetadata(value)) {
 			fetchedKeys = value.__keys;
+			fetchedStringForm = value.__stringForm;
 			return fetchedKeys;
 		}
 		return [];
+	}
+
+	/**
+	 * The host's string form for this value, if it had an overridden `toString`.
+	 *
+	 * Deliberately never triggers a bridge call. `toString()` on a proxy is
+	 * required to cost nothing — `lazy-proxy.test.ts` asserts `getValueAtPath` is
+	 * not called for it — so this reads the metadata the proxy was built with, or
+	 * what a previous fetch already cached, and otherwise gives up and lets
+	 * `Object.prototype.toString` answer.
+	 *
+	 * The consequence is that a proxy created with no metadata at all
+	 * (`$item(n)`, `$('Node')`, `$input`) whose value is itself a class instance
+	 * keeps returning `[object Object]`. Those roots are always item or
+	 * collection objects in practice, and paying a host round-trip on every
+	 * `toString()` to cover a case that cannot occur is the wrong trade against
+	 * an invariant the suite pins.
+	 */
+	function resolveStringForm(): string | undefined {
+		return metaStringForm ?? fetchedStringForm;
 	}
 
 	function isInArrayBounds(prop: string): number | undefined {
@@ -160,7 +187,11 @@ export function createDeepLazyProxy(
 		}
 		if (isObjectMetadata(value)) {
 			const path = [...basePath, propOrIdx];
-			return createDeepLazyProxy(path, { kind: 'object', keys: value.__keys }, callbacks);
+			return createDeepLazyProxy(
+				path,
+				{ kind: 'object', keys: value.__keys, stringForm: value.__stringForm },
+				callbacks,
+			);
 		}
 		return value;
 	}
@@ -297,6 +328,23 @@ export function createDeepLazyProxy(
 			// Array length is known at construction — no bridge call needed
 			if (isArray && prop === 'length') {
 				return arrayLength;
+			}
+
+			// Only `Object.keys` crosses the boundary, so a class instance arrives
+			// as a plain shape and loses the `toString` that carried its meaning:
+			// `$json._id.toString()` on a BSON ObjectId returned the hex before the
+			// isolate runtime and `[object Object]` after. The host captured that
+			// string when — and only when — `toString` was genuinely overridden, so
+			// plain objects keep native `Object.prototype.toString`. A cached entry
+			// or a declared data key of the same name still takes precedence.
+			if (
+				prop === 'toString' &&
+				!isArray &&
+				!Object.prototype.hasOwnProperty.call(targetObj, prop) &&
+				!objectKeys?.includes(prop)
+			) {
+				const resolved = resolveStringForm();
+				if (resolved !== undefined) return () => resolved;
 			}
 
 			// Check cache - if already fetched, return cached value
