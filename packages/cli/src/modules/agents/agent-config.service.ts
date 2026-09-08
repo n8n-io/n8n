@@ -178,8 +178,8 @@ export class AgentConfigService {
 				validatedConfig.tools,
 				new Set(accessibleCredentials.map((credential) => credential.type)),
 			);
-			await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig.tools, projectId);
 		}
+		await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig, projectId);
 
 		const tasksProvided = validatedConfig.tasks !== undefined;
 		const existingTaskIds = tasksProvided

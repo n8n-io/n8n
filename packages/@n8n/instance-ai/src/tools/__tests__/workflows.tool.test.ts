@@ -155,9 +155,10 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
-function getInputSchema(tool: unknown): { safeParse: (input: unknown) => { success: boolean } } {
-	return (tool as { inputSchema: { safeParse: (input: unknown) => { success: boolean } } })
-		.inputSchema;
+type SafeParseResult = { success: true; data: unknown } | { success: false; error: unknown };
+
+function getInputSchema(tool: unknown): { safeParse: (input: unknown) => SafeParseResult } {
+	return (tool as { inputSchema: { safeParse: (input: unknown) => SafeParseResult } }).inputSchema;
 }
 
 function getDescription(tool: unknown): string {
@@ -650,6 +651,254 @@ describe('workflows tool', () => {
 			const result = await executeTool(tool, { action: 'list' }, {} as never);
 
 			expect(result).toEqual({ workflows: [], total: 0, totalInScope: 0 });
+		});
+
+		describe('folder scope', () => {
+			it('does not advertise folder fields while folder exploration is off', () => {
+				const context = createMockContext();
+				const schema = getInputSchema(createWorkflowsTool(context, 'full'));
+
+				const parsed = schema.safeParse({ action: 'list', folderPath: 'Triggers' });
+
+				// Either rejected or stripped — an agent with the flag off must never be able to pass it.
+				expect(parsed.success && 'folderPath' in (parsed.data as object)).toBe(false);
+			});
+
+			it('advertises folderPath, folderId and recursive while folder exploration is on', () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				const schema = getInputSchema(createWorkflowsTool(context, 'full'));
+
+				const parsed = schema.safeParse({
+					action: 'list',
+					folderPath: 'Clients/Acme',
+					folderId: 'f1',
+					recursive: false,
+				});
+
+				expect(parsed.success).toBe(true);
+				expect(parsed.success && parsed.data).toMatchObject({
+					folderPath: 'Clients/Acme',
+					folderId: 'f1',
+					recursive: false,
+				});
+			});
+
+			it('still builds the orchestrator surface with folder exploration on', () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+
+				expect(() => createWorkflowsTool(context, 'orchestrator')).not.toThrow();
+			});
+
+			it('forwards folderPath and omits recursive when not given', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue(emptyList);
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'list', folderPath: 'Clients/Acme' }, {} as never);
+
+				expect(context.workflowService.list).toHaveBeenCalledWith({ folderPath: 'Clients/Acme' });
+			});
+
+			it('forwards folderId and recursive: false', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue(emptyList);
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'list', folderId: 'f1', recursive: false }, {} as never);
+
+				expect(context.workflowService.list).toHaveBeenCalledWith({
+					folderId: 'f1',
+					recursive: false,
+				});
+			});
+
+			it('forwards an empty folderPath so the adapter reports the miss', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue(emptyList);
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'list', folderPath: '' }, {} as never);
+
+				expect(context.workflowService.list).toHaveBeenCalledWith({ folderPath: '' });
+			});
+
+			it('forwards an empty folderId so the adapter reports the miss', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue(emptyList);
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'list', folderId: '' }, {} as never);
+
+				expect(context.workflowService.list).toHaveBeenCalledWith({ folderId: '' });
+			});
+
+			const folderRow = {
+				id: 'wf1',
+				name: 'Slack inbound',
+				versionId: 'v1',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				folder: { id: 'f1', name: 'Triggers', path: 'Triggers' },
+			};
+
+			it('puts the unresolved-folder note first and forbids a query substitute', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: {
+						requested: 'Trigger',
+						reason: 'not-found',
+						candidates: ['Clients/Acme', 'Triggers'],
+					},
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{
+					note: string;
+					folderResolution: { reason: string };
+				}>(tool, { action: 'list', folderPath: 'Trigger', limit: 1 }, {} as never);
+
+				expect(result.note.startsWith('Folder "Trigger" was not found')).toBe(true);
+				expect(result.note).toContain('Clients/Acme');
+				expect(result.note).toContain('Triggers');
+				expect(result.note).toContain('Do NOT substitute a `query` name filter');
+				expect(result.folderResolution).toEqual(expect.objectContaining({ reason: 'not-found' }));
+			});
+
+			it('names an ambiguous folder and lists only the colliding paths', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: {
+						requested: 'Acme',
+						reason: 'ambiguous',
+						candidates: ['Archive/Acme', 'Clients/Acme'],
+					},
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ note: string }>(
+					tool,
+					{ action: 'list', folderPath: 'Acme' },
+					{} as never,
+				);
+
+				expect(result.note).toContain('matches more than one folder');
+				expect(result.note).toContain('Archive/Acme');
+				expect(result.note).toContain('Clients/Acme');
+			});
+
+			it('explains identical ambiguous paths as a cross-project collision', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: {
+						requested: 'Clients/Acme',
+						reason: 'ambiguous',
+						candidates: ['Clients/Acme', 'Clients/Acme'],
+					},
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ note: string }>(
+					tool,
+					{ action: 'list', folderPath: 'Clients/Acme' },
+					{} as never,
+				);
+
+				expect(result.note).toContain('more than one project');
+				expect(result.note).toContain('projectId');
+			});
+
+			it('asks for a projectId when the listing spans too many projects to scan', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: { requested: 'Clients', reason: 'scope-too-wide', candidates: [] },
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ note: string }>(
+					tool,
+					{ action: 'list', scope: 'instance', folderPath: 'Clients' },
+					{} as never,
+				);
+
+				expect(result.note).toContain('spans too many projects');
+				expect(result.note).toContain('Do NOT substitute a `query` name filter');
+				expect(result.note).toContain('workspace(action="list-projects")');
+				expect(result.note).toContain('narrow to one project');
+			});
+
+			it('keeps the folder note ahead of the name-filter note', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 1,
+					totalInScope: 3,
+					folderResolution: { requested: 'Trigger', reason: 'not-found', candidates: [] },
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ note: string }>(
+					tool,
+					{ action: 'list', folderPath: 'Trigger', query: 'x' },
+					{} as never,
+				);
+
+				expect(result.note.startsWith('Folder "')).toBe(true);
+				expect(result.note).toContain('matched 1 of 3');
+			});
+
+			it('says folders are unavailable when the instance does not support them', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: { requested: 'Acme', reason: 'unsupported', candidates: [] },
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ note: string }>(
+					tool,
+					{ action: 'list', folderPath: 'Acme' },
+					{} as never,
+				);
+
+				expect(result.note).toContain('Folders are not available on this instance');
+				expect(result.note).toContain('Do NOT substitute a `query` name filter');
+				expect(result.note).toContain('ask the user');
+			});
+
+			it('passes folder attribution through and adds no folder note when resolved', async () => {
+				const context = createMockContext({ folderExplorationEnabled: true });
+				(context.workflowService.list as Mock).mockResolvedValue({
+					workflows: [folderRow],
+					total: 1,
+					totalInScope: 1,
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool<{ workflows: unknown[]; note?: string }>(
+					tool,
+					{ action: 'list', folderPath: 'Triggers' },
+					{} as never,
+				);
+
+				expect(result.workflows).toEqual([folderRow]);
+				expect(result.note).toBeUndefined();
+			});
 		});
 	});
 
