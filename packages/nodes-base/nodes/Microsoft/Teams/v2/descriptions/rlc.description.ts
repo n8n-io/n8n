@@ -383,6 +383,7 @@ export const teamworkTagRLC: INodeProperties = {
 			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
+			hint: 'The base64 tag ID from the Microsoft Graph tags endpoint',
 			validation: [
 				{
 					type: 'regex',
