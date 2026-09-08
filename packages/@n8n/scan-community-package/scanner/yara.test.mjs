@@ -45,6 +45,7 @@ describe('yara rules', () => {
 				file: 'package.json',
 				line: 1,
 				column: expect.any(Number),
+				text: expect.stringContaining('preinstall'),
 			}),
 		]);
 	});

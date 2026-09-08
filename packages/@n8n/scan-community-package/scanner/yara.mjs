@@ -80,12 +80,18 @@ const appliesTo = (metadata, relativePath) => {
 	return (!include || matches(include)) && !matches(exclude);
 };
 
-/** 1-based line and column of a byte offset. */
+/** 1-based line and column of a byte offset, plus the trimmed source line. */
 const positionAt = (content, offset) => {
 	const before = content.subarray(0, offset).toString('utf8');
 	const line = before.split('\n').length;
 	const column = before.length - before.lastIndexOf('\n');
-	return { line, column };
+	const start = before.lastIndexOf('\n') + 1;
+	const end = content.indexOf('\n', offset);
+	const text = content
+		.subarray(start, end === -1 ? undefined : end)
+		.toString('utf8')
+		.trim();
+	return { line, column, text: text.length > 160 ? `${text.slice(0, 157)}...` : text };
 };
 
 function* walk(dir) {
@@ -103,8 +109,13 @@ export const formatYaraFindings = (findings) => {
 	const blocks = [...byFile].map(([file, rows]) => {
 		const pos = rows.map((f) => `${f.line}:${f.column}`);
 		const msg = rows.map((f) => f.message);
-		const lines = rows.map(
-			(f, i) => `  ${pos[i].padStart(width(pos))}  error  ${msg[i].padEnd(width(msg))}  ${f.rule}`,
+		const lines = rows.map((f, i) =>
+			[
+				`  ${pos[i].padStart(width(pos))}  error  ${msg[i].padEnd(width(msg))}  ${f.rule}`,
+				f.text && `  ${' '.repeat(width(pos))}  ${f.text}`,
+			]
+				.filter(Boolean)
+				.join('\n'),
 		);
 		return `${file}\n${lines.join('\n')}`;
 	});
@@ -114,7 +125,7 @@ export const formatYaraFindings = (findings) => {
 
 /**
  * @param {string} packageDir extracted tarball contents (the `package/` root)
- * @returns {Promise<{ passed: boolean, summary: string, message?: string, details?: string, findings: Array<{ rule, file, line, column, message }> }>}
+ * @returns {Promise<{ passed: boolean, summary: string, message?: string, details?: string, findings: Array<{ rule, file, line, column, text, message }> }>}
  */
 export const runYaraRules = async (packageDir) => {
 	const { rules, ruleNames } = await loadRules();
@@ -139,13 +150,16 @@ export const runYaraRules = async (packageDir) => {
 				.flatMap((p) => p.matches)
 				.map((m) => m.offset)
 				.sort((a, b) => a - b)[0];
-			const { line, column } =
-				firstOffset === undefined ? { line: 1, column: 1 } : positionAt(content, firstOffset);
+			const { line, column, text } =
+				firstOffset === undefined
+					? { line: 1, column: 1, text: '' }
+					: positionAt(content, firstOffset);
 			findings.push({
 				rule,
 				file: relativePath,
 				line,
 				column,
+				text,
 				message: metadata.description ?? rule,
 			});
 		}
