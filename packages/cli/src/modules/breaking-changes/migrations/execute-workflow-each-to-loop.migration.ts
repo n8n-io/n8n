@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
 import type { IConnection, IConnections, INode, NodeInputConnections } from 'n8n-workflow';
 import { deepCopy, NodeConnectionTypes } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import type { WorkflowMigration } from './node-migration';
 
@@ -22,15 +22,14 @@ const uniqueNodeName = (base: string, taken: Set<string>): string => {
 	}
 };
 
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
 /** Whether any string inside `value` references `nodeName` through `$('…')`, `$node['…']` or `$items('…')`. */
 const referencesNodeByName = (value: unknown, nodeName: string): boolean => {
-	const pattern = new RegExp(
-		String.raw`\$(?:\(|node\[|items\()\s*['"]${escapeRegExp(nodeName)}['"]`,
-	);
+	const needles = ['$(', '$node[', '$items('].flatMap((prefix) => [
+		`${prefix}'${nodeName}'`,
+		`${prefix}"${nodeName}"`,
+	]);
 	const visit = (candidate: unknown): boolean => {
-		if (typeof candidate === 'string') return pattern.test(candidate);
+		if (typeof candidate === 'string') return needles.some((needle) => candidate.includes(needle));
 		if (Array.isArray(candidate)) return candidate.some(visit);
 		if (candidate && typeof candidate === 'object') return Object.values(candidate).some(visit);
 		return false;
