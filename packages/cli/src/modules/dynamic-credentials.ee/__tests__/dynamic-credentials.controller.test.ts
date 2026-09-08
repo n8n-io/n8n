@@ -71,27 +71,40 @@ describe('DynamicCredentialsController', () => {
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
 	});
 
+	// Neither endpoint asks for a scope on the shared credential. Both key on the
+	// caller's own identity server side — the connect binds the callback to it (see
+	// 'binds the state to the intended n8n user'), and the delete derives its storage
+	// key from it — so a session user resolves the credential by id, the same path a
+	// static-token caller takes.
 	describe('in-app access control', () => {
-		it('returns 404 when an authenticated user cannot access the credential', async () => {
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
-			const user = mock<AuthenticatedRequest['user']>({ id: 'user-123' });
-			const req = mock<AuthenticatedRequest>({
-				user,
+		const foreignCredentialRequest = () =>
+			mock<AuthenticatedRequest>({
+				user: mock<AuthenticatedRequest['user']>({ id: 'user-123' }),
 				params: { id: 'foreign-credential' },
 				query: { resolverId: 'resolver-123' },
 				headers: { authorization: 'Bearer token123' },
 			});
-			const res = mock<Response>();
 
-			await expect(controller.authorizeCredential(req, res)).rejects.toThrow(
+		it('resolves the credential by id when connecting, not by the caller scopes', async () => {
+			enterpriseCredentialsService.getOne.mockResolvedValue(null);
+			const req = foreignCredentialRequest();
+
+			await expect(controller.authorizeCredential(req, mock<Response>())).rejects.toThrow(
 				'Credential not found',
 			);
-			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
-				'foreign-credential',
-				user,
-				['credential:update'],
+			expect(enterpriseCredentialsService.getOne).toHaveBeenCalledWith('foreign-credential');
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+		});
+
+		it('resolves the credential by id when disconnecting, not by the caller scopes', async () => {
+			enterpriseCredentialsService.getOne.mockResolvedValue(null);
+			const req = foreignCredentialRequest();
+
+			await expect(controller.revokeCredential(req, mock<Response>())).rejects.toThrow(
+				'Credential not found',
 			);
-			expect(enterpriseCredentialsService.getOne).not.toHaveBeenCalled();
+			expect(enterpriseCredentialsService.getOne).toHaveBeenCalledWith('foreign-credential');
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 		});
 	});
 

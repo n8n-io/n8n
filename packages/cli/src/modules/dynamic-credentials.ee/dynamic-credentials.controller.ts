@@ -171,6 +171,17 @@ export class DynamicCredentialsController {
 		this.dynamicCredentialCorsService.preflightHandler(req, res, ['post', 'options']);
 	}
 
+	/**
+	 * POST /credentials/:id/authorize
+	 *
+	 * Mints a provider authorization URL for the caller's own connection.
+	 *
+	 * Not gated by a scope on the credential, for the same reason as `/revoke`: the
+	 * connection binds to the caller's own identity (the CSRF state carries their
+	 * context, and the callback stores the token under their key), so no caller can
+	 * connect an account on someone else's behalf. A project viewer who connected
+	 * through a form or chat panel needs this to reconnect after disconnecting.
+	 */
 	@Post('/:id/authorize', {
 		allowUnauthenticated: true,
 		middlewares: getDynamicCredentialMiddlewares(),
@@ -182,8 +193,7 @@ export class DynamicCredentialsController {
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const user = isAuthenticatedRequest(req) ? req.user : undefined;
-		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:update');
+		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);

@@ -312,15 +312,19 @@ describe('Dynamic Credentials API', () => {
 		});
 
 		describe("when an unrelated authenticated member targets another user's credential", () => {
-			it('should not return an authorization URL for a credential the member cannot access', async () => {
+			it('mints an authorization URL bound to the caller', async () => {
+				// No scope on the shared credential is required: the flow binds to the
+				// caller's own identity, so the connection can only ever populate their
+				// own entry. The URL itself carries no secret — client id, redirect uri,
+				// scopes and a single-use state token.
 				const response = await testServer
 					.authAgentFor(unrelatedMember)
 					.post(`/credentials/${savedCredential.id}/authorize`)
 					.query({ resolverId: resolver.id })
-					.set('Authorization', 'Bearer test-token');
+					.set('Authorization', 'Bearer test-token')
+					.expect(200);
 
-				expect([403, 404]).toContain(response.status);
-				expect(response.body?.data).toBeUndefined();
+				expect(response.body.data).toContain('https://test.domain/oauth2/auth');
 			});
 
 			it("confines the delete to the caller's own entry", async () => {
@@ -410,6 +414,13 @@ describe('Dynamic Credentials API', () => {
 				.delete(`/credentials/${credentialId}/revoke`)
 				.query({ resolverId: SYSTEM_RESOLVER_ID, authSource: 'cookie' });
 
+		/** The panel's reconnect: the first connect consumed its one-time link, so it mints a new one. */
+		const reconnectAs = (user: User, credentialId: string) =>
+			testServer
+				.authAgentFor(user)
+				.post(`/credentials/${credentialId}/authorize`)
+				.query({ resolverId: SYSTEM_RESOLVER_ID, authSource: 'cookie' });
+
 		beforeAll(async () => {
 			teamProject = await createTeamProject(undefined, owner);
 			viewer = await createMember();
@@ -431,6 +442,24 @@ describe('Dynamic Credentials API', () => {
 					config: await Container.get(Cipher).encryptV2({}),
 				}),
 			);
+		});
+
+		it('lets a project viewer reconnect after disconnecting', async () => {
+			const credential = await saveResolvableCredential();
+			await seedUserEntry(credential.id, viewer.id);
+
+			await disconnectAs(viewer, credential.id).expect(204);
+
+			const response = await reconnectAs(viewer, credential.id).expect(200);
+			expect(response.body.data).toContain('https://test.domain/oauth2/auth');
+		});
+
+		it('lets a user without project access reconnect their own connection', async () => {
+			const outsider = await createMember();
+			const credential = await saveResolvableCredential();
+
+			const response = await reconnectAs(outsider, credential.id).expect(200);
+			expect(response.body.data).toContain('https://test.domain/oauth2/auth');
 		});
 
 		it('lets a project viewer disconnect their own connection', async () => {
