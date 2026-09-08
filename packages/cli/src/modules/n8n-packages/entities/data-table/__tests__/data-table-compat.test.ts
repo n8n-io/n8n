@@ -76,7 +76,17 @@ describe('findSchemaIncompatibility', () => {
 		expect(
 			findSchemaIncompatibility(
 				[{ name: 'priority', type: 'enum', index: 0, options: ['Low', 'High'] }],
-				[{ name: 'priority', type: 'enum', options: ['Low', 'Medium', 'High'] }],
+				[
+					{
+						name: 'priority',
+						type: 'enum',
+						options: [
+							{ id: 'low', text: 'Low', color: '#6366F1' },
+							{ id: 'medium', text: 'Medium', color: '#14B8A6' },
+							{ id: 'high', text: 'High', color: '#F59E0B' },
+						],
+					},
+				],
 			),
 		).toBeNull();
 	});
@@ -85,7 +95,13 @@ describe('findSchemaIncompatibility', () => {
 		expect(
 			findSchemaIncompatibility(
 				[{ name: 'priority', type: 'enum', index: 0, options: ['Low', 'High'] }],
-				[{ name: 'priority', type: 'enum', options: ['Low'] }],
+				[
+					{
+						name: 'priority',
+						type: 'enum',
+						options: [{ id: 'low', text: 'Low', color: '#6366F1' }],
+					},
+				],
 			),
 		).toEqual({
 			missingColumns: [],

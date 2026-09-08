@@ -761,7 +761,7 @@ export interface DataTableColumnInfo {
 	name: string;
 	type: 'string' | 'number' | 'boolean' | 'date' | 'enum';
 	index: number;
-	options?: string[];
+	options?: Array<{ id: string; text: string; color: string }>;
 	defaultValue?: string;
 }
 

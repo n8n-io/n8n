@@ -5,14 +5,18 @@ import type {
 	DataTableColumnCreatePayload,
 	DataTableColumnType,
 } from '@/features/core/dataTable/dataTable.types';
+import type { DataTableEnumOption } from '@n8n/api-types';
+import { getDefaultDataTableEnumColor } from '@n8n/api-types';
 import { DATA_TABLE_COLUMN_TYPES } from '@/features/core/dataTable/dataTable.types';
 import { useI18n } from '@n8n/i18n';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/core/dataTable/constants';
 import { useDebounce } from '@n8n/composables/useDebounce';
+import { nanoid } from 'nanoid';
 
 import {
 	N8nButton,
+	N8nColorPicker,
 	N8nIcon,
 	N8nIconButton,
 	N8nInput,
@@ -20,7 +24,6 @@ import {
 	N8nOption,
 	N8nPopover,
 	N8nSelect,
-	N8nTagsInput2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -56,7 +59,8 @@ const nameInputRef = ref<HTMLInputElement | null>(null);
 
 const columnName = ref('');
 const columnType = ref<DataTableColumnType>('string');
-const enumOptions = ref<string[]>([]);
+const enumOptions = ref<DataTableEnumOption[]>([]);
+const enumOptionInput = ref('');
 const enumDefaultValue = ref<string | null>(null);
 
 const columnTypes: DataTableColumnType[] = [...DATA_TABLE_COLUMN_TYPES];
@@ -65,19 +69,23 @@ const error = ref<FormError | null>(null);
 const enumOptionsValid = computed(() => {
 	if (columnType.value !== 'enum') return true;
 	if (enumOptions.value.length < 1 || enumOptions.value.length > 100) return false;
-	if (enumOptions.value.some((option) => option.length > 128)) return false;
-	return new Set(enumOptions.value.map((option) => option.toLowerCase())).size === enumOptions.value.length;
+	if (enumOptions.value.some((option) => !option.text.trim() || option.text.trim().length > 128))
+		return false;
+	return (
+		new Set(enumOptions.value.map((option) => option.text.trim().toLowerCase())).size ===
+		enumOptions.value.length
+	);
 });
-const normalizeEnumOption = (option: string) => option.trim();
-const canSubmit = computed(
-	() =>
-		Boolean(
-			columnName.value &&
-				columnType.value &&
-				!error.value &&
-				enumOptionsValid.value &&
-				(columnType.value !== 'enum' || enumDefaultValue.value),
-		),
+const selectedDefaultOption = computed(() =>
+	enumOptions.value.find((option) => option.id === enumDefaultValue.value),
+);
+const canSubmit = computed(() =>
+	Boolean(
+		columnName.value &&
+			columnType.value &&
+			!error.value &&
+			enumOptionsValid.value,
+	),
 );
 
 // Handling popover state manually to prevent it closing when interacting with dropdown
@@ -104,7 +112,10 @@ const onAddButtonClicked = async () => {
 		name: columnName.value,
 		type: columnType.value,
 		...(columnType.value === 'enum'
-			? { options: enumOptions.value, defaultValue: enumDefaultValue.value }
+			? {
+					options: enumOptions.value,
+					...(enumDefaultValue.value ? { defaultValue: enumDefaultValue.value } : {}),
+				}
 			: {}),
 	});
 
@@ -132,6 +143,7 @@ const onAddButtonClicked = async () => {
 	columnName.value = '';
 	columnType.value = 'string';
 	enumOptions.value = [];
+	enumOptionInput.value = '';
 	enumDefaultValue.value = null;
 	popoverOpen.value = false;
 };
@@ -165,18 +177,45 @@ const validateName = () => {
 
 const onInput = debounce(validateName, { debounceTime: 100 });
 
+const addEnumOption = () => {
+	const text = enumOptionInput.value.trim();
+	if (
+		!text ||
+		enumOptions.value.some((option) => option.text.toLowerCase() === text.toLowerCase()) ||
+		enumOptions.value.length >= 100
+	) {
+		return;
+	}
+	enumOptions.value.push({
+		id: nanoid(),
+		text,
+		color: getDefaultDataTableEnumColor(enumOptions.value.length),
+	});
+	enumOptionInput.value = '';
+};
+
+const removeEnumOption = (optionId: string) => {
+	enumOptions.value = enumOptions.value.filter((option) => option.id !== optionId);
+	if (enumDefaultValue.value === optionId) enumDefaultValue.value = null;
+};
+
 watch(columnType, (type) => {
 	if (type !== 'enum') {
 		enumOptions.value = [];
+		enumOptionInput.value = '';
 		enumDefaultValue.value = null;
 	}
 });
 
-watch(enumOptions, (options) => {
-	if (enumDefaultValue.value && !options.includes(enumDefaultValue.value)) {
-		enumDefaultValue.value = null;
-	}
-});
+watch(
+	enumOptions,
+	(options) => {
+		if (enumDefaultValue.value && !options.some((option) => option.id === enumDefaultValue.value)) {
+			enumDefaultValue.value = null;
+		}
+	},
+	{ deep: true },
+);
 </script>
 
 <template>
@@ -276,15 +315,48 @@ watch(enumOptions, (options) => {
 								:label="i18n.baseText('dataTable.addColumn.enumOptions.label')"
 								:required="true"
 							>
-								<N8nTagsInput2
-									v-model="enumOptions"
-									:placeholder="i18n.baseText('dataTable.addColumn.enumOptions.placeholder')"
-									:convert-value="normalizeEnumOption"
-									delimiter=","
-									add-on-paste
-									add-on-blur
-									data-test-id="add-column-enum-options-input"
-								/>
+								<div class="enum-option-creator">
+									<N8nInput
+										v-model="enumOptionInput"
+										:placeholder="i18n.baseText('dataTable.addColumn.enumOptions.placeholder')"
+										data-test-id="add-column-enum-options-input"
+										@keyup.enter.prevent="addEnumOption"
+									/>
+									<N8nIconButton
+										icon="plus"
+										type="button"
+										:aria-label="i18n.baseText('dataTable.addColumn.enumOptions.add')"
+										:disabled="!enumOptionInput.trim() || enumOptions.length >= 100"
+										data-test-id="add-column-enum-option-add"
+										@click="addEnumOption"
+									/>
+								</div>
+								<div v-if="enumOptions.length" class="enum-option-list">
+									<div v-for="option in enumOptions" :key="option.id" class="enum-option-row">
+										<N8nInput
+											v-model="option.text"
+											size="small"
+											:maxlength="128"
+											:aria-label="i18n.baseText('dataTable.addColumn.enumOptions.name')"
+										/>
+										<N8nColorPicker
+											v-model="option.color"
+											size="small"
+											:show-input="false"
+											:teleported="false"
+											:aria-label="i18n.baseText('dataTable.addColumn.enumOptions.color')"
+											@click.stop
+										/>
+										<N8nIconButton
+											icon="x"
+											size="small"
+											variant="ghost"
+											type="button"
+											:aria-label="i18n.baseText('dataTable.addColumn.enumOptions.remove')"
+											@click="removeEnumOption(option.id)"
+										/>
+									</div>
+								</div>
 								<N8nText
 									v-if="enumOptions.length > 0 && !enumOptionsValid"
 									size="small"
@@ -305,12 +377,23 @@ watch(enumOptions, (options) => {
 									data-test-id="add-column-enum-default-select"
 									@visible-change="isSelectOpen = $event"
 								>
+									<template v-if="selectedDefaultOption" #prefix>
+										<span
+											class="enum-option-swatch"
+											:style="{ backgroundColor: selectedDefaultOption.color }"
+										/>
+									</template>
 									<N8nOption
 										v-for="option in enumOptions"
-										:key="option"
-										:label="option"
-										:value="option"
-									/>
+										:key="option.id"
+										:label="option.text"
+										:value="option.id"
+									>
+										<div class="enum-option-select-item">
+											<span class="enum-option-swatch" :style="{ backgroundColor: option.color }" />
+											<span>{{ option.text }}</span>
+										</div>
+									</N8nOption>
 								</N8nSelect>
 							</N8nInputLabel>
 							<N8nButton
@@ -364,5 +447,29 @@ watch(enumOptions, (options) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+}
+.enum-option-creator,
+.enum-option-row,
+.enum-option-select-item {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+.enum-option-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	margin-top: var(--spacing--2xs);
+}
+.enum-option-row {
+	:global(.n8n-input) {
+		flex: 1;
+	}
+}
+.enum-option-swatch {
+	flex: 0 0 var(--spacing--2xs);
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: var(--radius--round);
 }
 </style>

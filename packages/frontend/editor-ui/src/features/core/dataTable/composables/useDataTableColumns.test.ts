@@ -164,14 +164,24 @@ describe('useDataTableColumns', () => {
 				name: 'Status',
 				type: 'enum',
 				index: 0,
-				options: ['Todo', 'Done'],
+				options: [
+					{ id: 'todo', text: 'Todo', color: '#6366F1' },
+					{ id: 'done', text: 'Done', color: '#14B8A6' },
+				],
 			});
 
 			expect(colDef.editable).toBe(false);
-			expect(colDef.cellRendererSelector?.({ data: { id: 1 }, value: 'Todo' } as never)).toMatchObject({
-				component: { name: 'EnumSelectCellRenderer' },
-				params: { options: ['Todo', 'Done'] },
-			});
+			expect(colDef.cellRendererSelector?.({ data: { id: 1 }, value: 'todo' } as never)).toMatchObject(
+				{
+					component: { name: 'EnumSelectCellRenderer' },
+					params: {
+						options: [
+							{ id: 'todo', text: 'Todo', color: '#6366F1' },
+							{ id: 'done', text: 'Done', color: '#14B8A6' },
+						],
+					},
+				},
+			);
 		});
 
 		it('should merge extra props', () => {

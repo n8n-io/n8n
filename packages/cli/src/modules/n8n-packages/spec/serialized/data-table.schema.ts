@@ -1,7 +1,7 @@
 import {
 	dataTableColumnNameSchema,
 	dataTableColumnTypeSchema,
-	dataTableEnumOptionsSchema,
+	dataTableEnumOptionsInputSchema,
 	dataTableIdSchema,
 	dataTableMetadataSchema,
 	dataTableNameSchema,
@@ -20,7 +20,7 @@ export const serializedDataTableColumnSchema = z
 		name: dataTableColumnNameSchema,
 		type: dataTableColumnTypeSchema,
 		index: z.number().int(),
-		options: dataTableEnumOptionsSchema.optional(),
+		options: dataTableEnumOptionsInputSchema.optional(),
 		defaultValue: z.string().trim().min(1).max(128).optional(),
 	})
 	.strict();

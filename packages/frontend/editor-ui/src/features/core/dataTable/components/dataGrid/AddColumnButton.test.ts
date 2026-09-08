@@ -45,6 +45,10 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'dataTable.addColumn.typeInput.label': 'Column type',
 				'dataTable.addColumn.enumOptions.label': 'Options',
 				'dataTable.addColumn.enumOptions.placeholder': 'Low, Medium, High',
+				'dataTable.addColumn.enumOptions.add': 'Add option',
+				'dataTable.addColumn.enumOptions.name': 'Option name',
+				'dataTable.addColumn.enumOptions.color': 'Option color',
+				'dataTable.addColumn.enumOptions.remove': 'Remove option',
 				'dataTable.addColumn.enumOptions.invalid': 'Invalid enum options',
 				'dataTable.addColumn.enumDefaultValue.label': 'Default status',
 				'dataTable.addColumn.enumDefaultValue.placeholder': 'Select a default status',
@@ -165,9 +169,8 @@ describe('AddColumnButton', () => {
 		});
 	});
 
-	it('should split comma-separated enum options into badges and submit the default', async () => {
+	it('should add enum options and submit the default', async () => {
 		const {
-			getAllByTestId,
 			getByPlaceholderText,
 			getByRole,
 			getByTestId,
@@ -179,21 +182,27 @@ describe('AddColumnButton', () => {
 		await openPopover();
 		await setColumnName('priority');
 		await selectType('enum');
-		const optionsInput = getByTestId('add-column-enum-options-input').querySelector('input');
-		expect(optionsInput).not.toBeNull();
-		await user.type(optionsInput!, 'Low, Medium, High,');
+		const optionsInput = getByTestId<HTMLInputElement>('add-column-enum-options-input');
+		for (const option of ['Low', 'Medium', 'High']) {
+			await user.type(optionsInput, option);
+			await user.click(getByTestId('add-column-enum-option-add'));
+		}
 
-		expect(getAllByTestId('tags-input-tag')).toHaveLength(3);
 		await user.click(getByPlaceholderText('Select a default status'));
 		await user.click(getByRole('option', { name: 'Medium' }));
 		await submit();
 
-		expect(addColumnHandler).toHaveBeenCalledWith({
+		const payload = addColumnHandler.mock.calls[0]?.[0];
+		expect(payload).toMatchObject({
 			name: 'priority',
 			type: 'enum',
-			options: ['Low', 'Medium', 'High'],
-			defaultValue: 'Medium',
+			options: [
+				{ text: 'Low', color: '#6366F1' },
+				{ text: 'Medium', color: '#14B8A6' },
+				{ text: 'High', color: '#F59E0B' },
+			],
 		});
+		expect(payload.defaultValue).toBe(payload.options[1].id);
 	});
 
 	it('should disable submit button when name is empty', async () => {

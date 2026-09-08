@@ -14,6 +14,7 @@ import type {
 import { randomUUID } from 'node:crypto';
 
 import type { DataTableColumn } from './data-table-column.entity';
+import { resolveEnumRows, resolveEnumValue } from './data-table-enum.utils';
 
 type DataTableMutationListener = {
 	event: DataTableTriggerEvent;
@@ -87,8 +88,9 @@ export class DataTableMutationEventRecorder {
 		rows: DataTableRowReturn[],
 		subscriptions: DataTableTriggerSubscription[],
 		trx: EntityManager,
+		columns: DataTableColumn[] = [],
 	): Promise<void> {
-		await this.recordRows('rowInserted', dataTableId, rows, subscriptions, trx);
+		await this.recordRows('rowInserted', dataTableId, rows, subscriptions, trx, columns);
 	}
 
 	async recordDeleted(
@@ -96,8 +98,9 @@ export class DataTableMutationEventRecorder {
 		rows: DataTableRowReturn[],
 		subscriptions: DataTableTriggerSubscription[],
 		trx: EntityManager,
+		columns: DataTableColumn[] = [],
 	): Promise<void> {
-		await this.recordRows('rowDeleted', dataTableId, rows, subscriptions, trx);
+		await this.recordRows('rowDeleted', dataTableId, rows, subscriptions, trx, columns);
 	}
 
 	async recordUpdated(
@@ -135,8 +138,8 @@ export class DataTableMutationEventRecorder {
 				changesByColumnId.set(columnId, {
 					columnId,
 					columnName: column.name,
-					before: beforeValue,
-					after: afterValue,
+					before: resolveEnumValue(beforeValue, column),
+					after: resolveEnumValue(afterValue, column),
 				});
 			}
 
@@ -148,7 +151,8 @@ export class DataTableMutationEventRecorder {
 					(subscription) => subscription.columnId && changedColumnIds.has(subscription.columnId),
 				)
 				.map(({ workflowId, nodeId }) => ({ workflowId, nodeId }));
-			const payload = this.createPayload('columnUpdated', dataTableId, row, changes);
+			const [resolvedRow] = resolveEnumRows([row], columns);
+			const payload = this.createPayload('columnUpdated', dataTableId, resolvedRow, changes);
 			events.push({ payload, recipients });
 		}
 
@@ -161,10 +165,11 @@ export class DataTableMutationEventRecorder {
 		rows: DataTableRowReturn[],
 		subscriptions: DataTableTriggerSubscription[],
 		trx: EntityManager,
+		columns: DataTableColumn[],
 	): Promise<void> {
 		const recipients = subscriptions.map(({ workflowId, nodeId }) => ({ workflowId, nodeId }));
 		await this.persistAndNotify(
-			rows.map((row) => ({
+			resolveEnumRows(rows, columns).map((row) => ({
 				payload: this.createPayload(event, dataTableId, row),
 				recipients,
 			})),

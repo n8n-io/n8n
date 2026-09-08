@@ -1,3 +1,5 @@
+import type { DataTableEnumOption, DataTableEnumOptionInput } from '@n8n/api-types';
+
 import type { DataTableColumnTypeMismatch, DataTableEnumOptionsMismatch } from './data-table.types';
 import type { SerializedDataTableColumn } from '../../spec/serialized/data-table.schema';
 
@@ -16,7 +18,7 @@ export interface SchemaIncompatibility {
  */
 export function findSchemaIncompatibility(
 	packageColumns: SerializedDataTableColumn[],
-	targetColumns: Array<{ name: string; type: string; options?: string[] | null }>,
+	targetColumns: Array<{ name: string; type: string; options?: DataTableEnumOption[] | null }>,
 	strictEnumOptions = false,
 ): SchemaIncompatibility | null {
 	const targetByName = new Map(targetColumns.map((column) => [column.name, column]));
@@ -38,9 +40,13 @@ export function findSchemaIncompatibility(
 		} else if (column.type === 'enum') {
 			const expected = column.options ?? [];
 			const actual = target.options ?? [];
-			const missingOptions = expected.filter((option) => !actual.includes(option));
+			const missingOptions = expected
+				.filter((option) => !actual.some((candidate) => optionsMatch(option, candidate)))
+				.map(optionLabel);
 			const extraOptions = strictEnumOptions
-				? actual.filter((option) => !expected.includes(option))
+				? actual
+						.filter((option) => !expected.some((candidate) => optionsMatch(candidate, option)))
+						.map(optionLabel)
 				: [];
 			if (missingOptions.length > 0 || extraOptions.length > 0) {
 				enumOptionMismatches.push({
@@ -64,4 +70,13 @@ export function findSchemaIncompatibility(
 		typeMismatches,
 		...(enumOptionMismatches.length > 0 ? { enumOptionMismatches } : {}),
 	};
+}
+
+function optionsMatch(input: DataTableEnumOptionInput, stored: DataTableEnumOption): boolean {
+	if (typeof input === 'string') return input === stored.text;
+	return input.id ? input.id === stored.id && input.text === stored.text : input.text === stored.text;
+}
+
+function optionLabel(option: DataTableEnumOptionInput | DataTableEnumOption): string {
+	return typeof option === 'string' ? option : option.text;
 }

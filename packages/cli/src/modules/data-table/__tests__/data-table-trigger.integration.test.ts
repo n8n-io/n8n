@@ -10,6 +10,11 @@ import { DataTableService } from '../data-table.service';
 import { DataTableMutationEventRecorder } from '../data-table-mutation-event.repository';
 import { mockDataTableSizeValidator } from './test-helpers';
 
+const priorityOptions = [
+	{ id: 'low', text: 'Low', color: '#6366F1' },
+	{ id: 'high', text: 'High', color: '#14B8A6' },
+];
+
 describe('Data Table durable triggers', () => {
 	let dataTableService: DataTableService;
 
@@ -43,9 +48,9 @@ describe('Data Table durable triggers', () => {
 		const workflow = await createWorkflow({}, project);
 		const table = await dataTableService.createDataTable(project.id, {
 			name: 'priorities',
-			columns: [{ name: 'priority', type: 'enum', options: ['Low', 'High'] }],
+			columns: [{ name: 'priority', type: 'enum', options: priorityOptions }],
 		});
-		expect(table.columns[0].options).toEqual(['Low', 'High']);
+		expect(table.columns[0].options).toEqual(priorityOptions);
 		await Container.get(DataTableTriggerSubscriptionRepository).replaceForWorkflow(workflow.id, [
 			{
 				workflowId: workflow.id,
@@ -60,7 +65,7 @@ describe('Data Table durable triggers', () => {
 		const [row] = await dataTableService.insertRows(
 			table.id,
 			project.id,
-			[{ priority: 'High' }],
+			[{ priority: 'high' }],
 			'all',
 		);
 
@@ -76,7 +81,7 @@ describe('Data Table durable triggers', () => {
 			event: 'rowInserted',
 			dataTableId: table.id,
 			rowId: row.id,
-			row: { priority: 'High' },
+			row: { priority: 'high' },
 		});
 		expect(delivery).toMatchObject({
 			workflowId: workflow.id,
@@ -97,7 +102,7 @@ describe('Data Table durable triggers', () => {
 		const project = await createTeamProject();
 		const table = await dataTableService.createDataTable(project.id, {
 			name: 'priorities',
-			columns: [{ name: 'priority', type: 'enum', options: ['Low', 'High'] }],
+			columns: [{ name: 'priority', type: 'enum', options: priorityOptions }],
 		});
 
 		await expect(
@@ -113,8 +118,8 @@ describe('Data Table durable triggers', () => {
 				{
 					name: 'priority',
 					type: 'enum',
-					options: ['Low', 'High'],
-					defaultValue: 'Low',
+					options: priorityOptions,
+					defaultValue: 'low',
 				},
 			],
 		});
@@ -122,13 +127,13 @@ describe('Data Table durable triggers', () => {
 		const rows = await dataTableService.insertRows(
 			table.id,
 			project.id,
-			[{}, { priority: 'High' }],
+			[{}, { priority: 'high' }],
 			'all',
 		);
 
 		expect(rows).toEqual([
-			expect.objectContaining({ priority: 'Low' }),
-			expect.objectContaining({ priority: 'High' }),
+			expect.objectContaining({ priority: 'low' }),
+			expect.objectContaining({ priority: 'high' }),
 		]);
 	});
 

@@ -207,7 +207,7 @@ export const useDataTableOperations = ({
 			const newColumn = await dataTableStore.addDataTableColumn(dataTableId, projectId, column);
 			addGridColumn(newColumn);
 			rowData.value = rowData.value.map((row) => {
-				return { ...row, [newColumn.name]: null };
+				return { ...row, [newColumn.name]: newColumn.defaultValue ?? null };
 			});
 			setGridData({ colDefs: colDefs.value, rowData: rowData.value });
 			telemetry.track('User added data table column', {

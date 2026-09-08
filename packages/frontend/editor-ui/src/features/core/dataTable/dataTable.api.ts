@@ -169,6 +169,21 @@ export const renameDataTableColumnApi = async (
 	);
 };
 
+export const updateDataTableEnumOptionColorApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	columnId: string,
+	optionId: string,
+	color: string,
+) =>
+	await makeRestApiRequest<DataTableColumn>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataTableId}/columns/${columnId}/enum-options/${optionId}/color`,
+		{ color },
+	);
+
 export const getDataTableRowsApi = async (
 	context: IRestApiContext,
 	dataTableId: string,

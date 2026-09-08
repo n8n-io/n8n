@@ -305,6 +305,7 @@ export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
+export { UpdateDataTableEnumOptionColorDto } from './data-table/update-data-table-enum-option-color.dto';
 export {
 	updateDataTableColumnSchema,
 	type UpdateDataTableColumnDto,

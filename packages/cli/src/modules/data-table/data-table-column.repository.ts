@@ -98,25 +98,25 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 
 	async addColumn(dataTableId: string, schema: DataTableCreateColumnSchema, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
-			schema = normalizeColumn(schema);
-			this.validateNotSystemColumn(schema.name);
-			await this.validateUniqueColumnName(schema.name, dataTableId, em);
+			const normalizedSchema = normalizeColumn(schema);
+			this.validateNotSystemColumn(normalizedSchema.name);
+			await this.validateUniqueColumnName(normalizedSchema.name, dataTableId, em);
 
 			const columns = await this.getColumns(dataTableId, em);
 			const columnCount = columns.length;
-			schema.index = this.normalizeAddColumnIndex(schema.index, columnCount);
+			normalizedSchema.index = this.normalizeAddColumnIndex(normalizedSchema.index, columnCount);
 
-			if (schema.index < columnCount) {
-				await this.shiftColumns(dataTableId, schema.index, 1, em);
+			if (normalizedSchema.index < columnCount) {
+				await this.shiftColumns(dataTableId, normalizedSchema.index, 1, em);
 			}
 
 			const column = em.create(DataTableColumn, {
 				dataTableId,
-				name: schema.name,
-				type: schema.type,
-				index: schema.index,
-				options: schema.options ?? null,
-				defaultValue: schema.defaultValue ?? null,
+				name: normalizedSchema.name,
+				type: normalizedSchema.type,
+				index: normalizedSchema.index,
+				options: normalizedSchema.options ?? null,
+				defaultValue: normalizedSchema.defaultValue ?? null,
 			});
 
 			await em.insert(DataTableColumn, column);
@@ -170,6 +170,29 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 			await this.shiftColumns(dataTableId, column.index, -1, em);
 			await this.shiftColumns(dataTableId, targetIndex, 1, em);
 			await em.update(DataTableColumn, { id: column.id }, { index: targetIndex });
+		});
+	}
+
+	async updateEnumOptionColor(
+		dataTableId: string,
+		columnId: string,
+		optionId: string,
+		color: string,
+		trx?: EntityManager,
+	): Promise<DataTableColumn> {
+		return await withTransaction(this.manager, trx, async (em) => {
+			const column = await em.findOneBy(DataTableColumn, { id: columnId, dataTableId });
+			if (column?.type !== 'enum' || !column.options) {
+				throw new DataTableValidationError('Select an enum column from this table');
+			}
+			if (!column.options.some((option) => option.id === optionId)) {
+				throw new DataTableValidationError('Select an enum option from this column');
+			}
+			column.options = column.options.map((option) =>
+				option.id === optionId ? { ...option, color } : option,
+			);
+			await em.update(DataTableColumn, { id: columnId, dataTableId }, { options: column.options });
+			return column;
 		});
 	}
 

@@ -1,5 +1,9 @@
 import type { Project } from '@/features/collaboration/projects/projects.types';
-import type { DataTableMetadata } from '@n8n/api-types';
+import type {
+	DataTableEnumOption,
+	DataTableEnumOptionInput,
+	DataTableMetadata,
+} from '@n8n/api-types';
 
 export type DataTable = {
 	id: string;
@@ -32,17 +36,23 @@ export type DataTableColumn = {
 	name: string;
 	type: DataTableColumnType;
 	index: number;
-	options?: string[] | null;
+	options?: DataTableEnumOption[] | null;
 	defaultValue?: string | null;
 };
 
 export type DataTableColumnCreatePayload = Pick<DataTableColumn, 'name' | 'type'> & {
 	csvColumnName?: string;
-	options?: string[];
+	options?: DataTableEnumOptionInput[];
 	defaultValue?: string | null;
 };
 
-export type DataTableValue = string | number | boolean | Date | null;
+export type DataTableEnumValue = {
+	id: string;
+	value: string;
+	color: string;
+};
+
+export type DataTableValue = string | number | boolean | Date | DataTableEnumValue | null;
 
 export type DataTableRow = Record<string, DataTableValue>;
 

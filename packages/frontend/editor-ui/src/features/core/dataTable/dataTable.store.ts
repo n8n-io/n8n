@@ -17,6 +17,7 @@ import {
 	getDataTableKanbanLanePageApi,
 	insertDataTableRowApi,
 	updateDataTableRowsApi,
+	updateDataTableEnumOptionColorApi,
 	deleteDataTableRowsApi,
 	fetchDataTableGlobalLimitInBytes,
 	downloadDataTableCsvApi,
@@ -338,6 +339,27 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		}
 	};
 
+	const updateDataTableEnumOptionColor = async (
+		dataTableId: string,
+		projectId: string,
+		columnId: string,
+		optionId: string,
+		color: string,
+	) => {
+		const updatedColumn = await updateDataTableEnumOptionColorApi(
+			rootStore.restApiContext,
+			dataTableId,
+			projectId,
+			columnId,
+			optionId,
+			color,
+		);
+		const table = dataTables.value.find((candidate) => candidate.id === dataTableId);
+		const columnIndex = table?.columns.findIndex((column) => column.id === columnId) ?? -1;
+		if (table && columnIndex >= 0) table.columns[columnIndex] = updatedColumn;
+		return updatedColumn;
+	};
+
 	const fetchDataTableContent = async (
 		dataTableId: string,
 		projectId: string,
@@ -523,6 +545,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		deleteDataTableColumn,
 		moveDataTableColumn,
 		renameDataTableColumn,
+		updateDataTableEnumOptionColor,
 		fetchDataTableContent,
 		fetchDataTableKanbanBoard,
 		fetchDataTableKanbanLanePage,

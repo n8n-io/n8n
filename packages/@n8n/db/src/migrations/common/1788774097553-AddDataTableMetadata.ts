@@ -14,8 +14,8 @@ export class AddDataTableMetadata1788774097553 implements ReversibleMigration {
 		await addColumns(
 			'data_table_column',
 			[
-				column('options').json.comment('Allowed values for an enum column'),
-				column('defaultValue').varchar(128).comment('Default value for an enum column'),
+				column('options').json.comment('Option IDs, text, and colors for an enum column'),
+				column('defaultValue').varchar(128).comment('Default option ID for an enum column'),
 			],
 			{ recreatesOnSqlite: true },
 		);

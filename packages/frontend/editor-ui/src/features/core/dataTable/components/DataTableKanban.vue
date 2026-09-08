@@ -1,16 +1,25 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Draggable from 'vuedraggable';
-import { N8nButton, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nColorPicker, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { TIME } from '@/app/constants/durations';
-import type { DataTable, DataTableRow, DataTableValue } from '../dataTable.types';
+import type { DataTable, DataTableColumn, DataTableRow, DataTableValue } from '../dataTable.types';
+import type { DataTableEnumOption } from '@n8n/api-types';
 import { useDataTableStore } from '../dataTable.store';
 import DataTableRowDialog from './DataTableRowDialog.vue';
 
-const props = defineProps<{ dataTable: DataTable; search: string; readOnly: boolean }>();
-const emit = defineEmits<{ toggleSave: [value: boolean] }>();
+const props = defineProps<{
+	dataTable: DataTable;
+	search: string;
+	readOnly: boolean;
+	optionsReadOnly: boolean;
+}>();
+const emit = defineEmits<{
+	toggleSave: [value: boolean];
+	enumColumnUpdated: [column: DataTableColumn];
+}>();
 const store = useDataTableStore();
 const i18n = useI18n();
 const toast = useToast();
@@ -18,6 +27,7 @@ const PAGE_SIZE = 50;
 type Lane = {
 	key: string;
 	value: string | null;
+	option?: DataTableEnumOption;
 	rows: DataTableRow[];
 	count: number;
 	nextCursor: string | null;
@@ -30,16 +40,12 @@ type Lane = {
 const lanes = ref<Lane[]>([]);
 const dragging = ref(false);
 const saving = ref(false);
+const updatingColor = ref<string | null>(null);
 const dialog = ref<{ row?: DataTableRow; initialValues?: DataTableRow }>();
 const groupColumn = computed(() =>
 	props.dataTable.columns.find(
 		(column) =>
 			column.id === props.dataTable.metadata?.kanban?.groupByColumnId && column.type === 'enum',
-	),
-);
-const titleColumn = computed(() =>
-	props.dataTable.columns.find(
-		(column) => column.id === props.dataTable.metadata?.kanban?.titleColumnId,
 	),
 );
 const previewColumns = computed(() =>
@@ -48,8 +54,7 @@ const previewColumns = computed(() =>
 		.filter(
 			(column) =>
 				!['id', 'createdAt', 'updatedAt'].includes(column.name) &&
-				column.id !== groupColumn.value?.id &&
-				column.id !== titleColumn.value?.id,
+				column.id !== groupColumn.value?.id,
 		)
 		.slice(0, 5),
 );
@@ -59,19 +64,24 @@ let polling: ReturnType<typeof setInterval> | undefined;
 let revision = '';
 const busy = computed(() => saving.value || lanes.value.some((lane) => lane.initialLoading));
 
-function formatValue(value: DataTableValue | undefined) {
+function formatValue(value: DataTableValue | undefined, column?: DataTableColumn) {
 	if (value === null || value === undefined || value === '')
 		return i18n.baseText('dataTable.kanban.emptyValue');
 	if (typeof value === 'boolean')
 		return i18n.baseText(value ? 'dataTable.kanban.true' : 'dataTable.kanban.false');
+	if (typeof value === 'object' && !(value instanceof Date)) return value.value;
+	if (column?.type === 'enum' && typeof value === 'string') {
+		return column.options?.find((option) => option.id === value)?.text ?? value;
+	}
 	return value instanceof Date ? value.toLocaleString() : String(value);
 }
 
 function emptyLanes(): Lane[] {
 	return [
-		...(groupColumn.value?.options ?? []).map((value, index) => ({
-			key: String(index),
-			value,
+		...(groupColumn.value?.options ?? []).map((option) => ({
+			key: option.id,
+			value: option.id,
+			option: { ...option },
 			rows: [],
 			count: 0,
 			nextCursor: null,
@@ -132,6 +142,10 @@ async function hydrateLane(
 	return {
 		key: lane.value === null ? 'lane:null' : `lane:${lane.value}`,
 		value: lane.value,
+		option:
+			lane.value === null
+				? undefined
+				: groupColumn.value.options?.find((option) => option.id === lane.value),
 		rows: [...new Map(rows.map((row) => [row.id, row])).values()],
 		count: lane.count,
 		nextCursor,
@@ -222,7 +236,7 @@ watch(
 		props.dataTable.projectId,
 		groupColumn.value?.id,
 		groupColumn.value?.name,
-		groupColumn.value?.options,
+		groupColumn.value?.options?.map((option) => option.id),
 		props.search,
 	],
 	async () => {
@@ -240,6 +254,38 @@ function addRow(value?: string | null) {
 
 function editRow(row: DataTableRow) {
 	if (!dragging.value && !busy.value) dialog.value = { row: { ...row } };
+}
+
+async function updateLaneColor(lane: Lane, color: string | null) {
+	const column = groupColumn.value;
+	if (
+		!column ||
+		!lane.option ||
+		!color ||
+		props.optionsReadOnly ||
+		updatingColor.value !== null ||
+		lane.option.color === color
+	) {
+		return;
+	}
+	updatingColor.value = lane.value;
+	emit('toggleSave', true);
+	try {
+		const updatedColumn = await store.updateDataTableEnumOptionColor(
+			props.dataTable.id,
+			props.dataTable.projectId,
+			column.id,
+			lane.option.id,
+			color,
+		);
+		lane.option = updatedColumn.options?.find((option) => option.id === lane.value);
+		emit('enumColumnUpdated', updatedColumn);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataTable.kanban.updateColorError'));
+	} finally {
+		updatingColor.value = null;
+		emit('toggleSave', false);
+	}
 }
 
 type CardListChangeEvent = {
@@ -335,13 +381,27 @@ defineExpose({ fetchRows, addRow });
 				v-for="lane in lanes"
 				:key="lane.key"
 				:class="$style.column"
+				:style="lane.option ? { borderTopColor: lane.option.color } : undefined"
 				data-test-id="kanban-lane"
-				:aria-label="lane.value ?? i18n.baseText('dataTable.kanban.unassigned')"
+				:aria-label="lane.option?.text ?? i18n.baseText('dataTable.kanban.unassigned')"
 			>
 				<header :class="$style.columnHeader">
-					<N8nText bold>{{ lane.value ?? i18n.baseText('dataTable.kanban.unassigned') }}</N8nText>
-					<N8nSpinner v-if="lane.initialLoading" />
-					<N8nText v-else size="small" color="text-light">{{ lane.count }}</N8nText>
+					<N8nText bold>{{
+						lane.option?.text ?? i18n.baseText('dataTable.kanban.unassigned')
+					}}</N8nText>
+					<div :class="$style.columnMeta">
+						<N8nColorPicker
+							v-if="lane.option && !optionsReadOnly"
+							:model-value="lane.option.color"
+							size="small"
+							:show-input="false"
+							:disabled="updatingColor !== null"
+							@update:model-value="updateLaneColor(lane, $event)"
+							@click.stop
+						/>
+						<N8nSpinner v-if="lane.initialLoading" />
+						<N8nText v-else size="small" color="text-light">{{ lane.count }}</N8nText>
+					</div>
 				</header>
 				<div :class="$style.columnScroller">
 					<Draggable
@@ -369,9 +429,6 @@ defineExpose({ fetchRows, addRow });
 								"
 								@click="editRow(element)"
 							>
-								<N8nText v-if="titleColumn" bold :class="$style.cardTitle">{{
-									formatValue(element[titleColumn.name])
-								}}</N8nText>
 								<dl :class="$style.preview">
 									<div
 										v-for="column in previewColumns"
@@ -379,12 +436,12 @@ defineExpose({ fetchRows, addRow });
 										:class="$style.previewField"
 									>
 										<dt>{{ column.name }}</dt>
-										<dd :title="formatValue(element[column.name])">
-											{{ formatValue(element[column.name]) }}
+										<dd :title="formatValue(element[column.name], column)">
+											{{ formatValue(element[column.name], column) }}
 										</dd>
 									</div>
 								</dl>
-								<N8nText v-if="!titleColumn && !previewColumns.length">{{
+								<N8nText v-if="!previewColumns.length">{{
 									i18n.baseText('dataTable.kanban.openRow', { interpolate: { id: element.id } })
 								}}</N8nText>
 							</button>
@@ -453,6 +510,7 @@ defineExpose({ fetchRows, addRow });
 	max-height: 100%;
 	overflow: hidden;
 	border: var(--border);
+	border-top-width: var(--focus--border-width);
 	border-radius: var(--radius--md);
 	background: var(--background--surface);
 	box-shadow: var(--shadow--md);
@@ -464,6 +522,11 @@ defineExpose({ fetchRows, addRow });
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	overflow-wrap: anywhere;
+}
+.columnMeta {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 .columnScroller {
 	min-height: 0;
@@ -493,11 +556,6 @@ defineExpose({ fetchRows, addRow });
 .card:hover,
 .card:focus-visible {
 	border-color: var(--focus--border-color);
-}
-.cardTitle {
-	overflow-wrap: anywhere;
-	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--medium);
 }
 .preview {
 	display: flex;

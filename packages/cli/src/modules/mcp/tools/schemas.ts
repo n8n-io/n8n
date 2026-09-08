@@ -1,3 +1,4 @@
+import { dataTableEnumOptionSchema } from '@n8n/api-types';
 import type {
 	IConnections,
 	INode,
@@ -74,8 +75,12 @@ export const dataTableColumnSchema = z.object({
 	name: z.string().describe('The name of the column'),
 	type: dataTableColumnTypeSchema,
 	index: z.number().int().describe('The position of the column in the table'),
-	options: z.array(z.string()).nullable().optional().describe('Allowed enum values'),
-	defaultValue: z.string().nullable().optional().describe('Default enum value'),
+	options: z
+		.array(dataTableEnumOptionSchema)
+		.nullable()
+		.optional()
+		.describe('Allowed enum options with immutable IDs, text, and colors'),
+	defaultValue: z.string().nullable().optional().describe('Default enum option ID'),
 });
 
 export const dataTableSchema = z.object({

@@ -15,7 +15,12 @@ import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useDataTableStore } from '../dataTable.store';
-import type { DataTable, DataTableRow } from '../dataTable.types';
+import type {
+	DataTable,
+	DataTableColumn,
+	DataTableRow,
+	DataTableValue,
+} from '../dataTable.types';
 
 const props = defineProps<{
 	dataTable: DataTable;
@@ -31,19 +36,18 @@ const store = useDataTableStore();
 const saving = ref(false);
 const additionalDetailsOpen = ref(false);
 const isNullish = (value: unknown) => value === null || value === undefined;
+const formatInitialValue = (value: DataTableValue | undefined) => {
+	if (value === null || value === undefined) return '';
+	if (value instanceof Date) return value.toISOString();
+	if (typeof value === 'object') return value.id;
+	return String(value);
+};
 const initial = Object.fromEntries(
 	props.dataTable.columns.map((column) => {
 		const value = props.row
 			? props.row[column.name]
 			: (props.initialValues?.[column.name] ?? column.defaultValue ?? null);
-		return [
-			column.id,
-			value === null || value === undefined
-				? ''
-				: value instanceof Date
-					? value.toISOString()
-					: String(value),
-		];
+		return [column.id, formatInitialValue(value)];
 	}),
 );
 const values = ref<Record<string, string>>({ ...initial });
@@ -52,7 +56,7 @@ const nullFields = ref(
 		props.dataTable.columns
 			.filter((column) =>
 				props.row
-				? isNullish(props.row[column.name])
+					? isNullish(props.row[column.name])
 					: props.initialValues?.[column.name] === null ||
 						(props.initialValues?.[column.name] === undefined && isNullish(column.defaultValue)),
 			)
@@ -75,6 +79,11 @@ function setValue(columnId: string, value: string) {
 	nullFields.value.delete(columnId);
 }
 
+function getSelectedEnumOption(column: DataTableColumn) {
+	if (column.type !== 'enum') return undefined;
+	return column.options?.find((option) => option.id === values.value[column.id]);
+}
+
 async function save() {
 	if (props.readOnly || saving.value) return;
 	const data: DataTableRow = {};
@@ -91,7 +100,10 @@ async function save() {
 			if (isNull) data[column.name] = null;
 			else if (column.type === 'number') {
 				const numericValue = Number(value);
-				if (!Number.isFinite(numericValue) || (Number.isInteger(numericValue) && !Number.isSafeInteger(numericValue)))
+				if (
+					!Number.isFinite(numericValue) ||
+					(Number.isInteger(numericValue) && !Number.isSafeInteger(numericValue))
+				)
 					throw new Error(
 						i18n.baseText('dataTable.kanban.invalidNumber', { interpolate: { name: column.name } }),
 					);
@@ -177,6 +189,12 @@ async function deleteRow() {
 							:disabled="readOnly || saving"
 							@update:model-value="setValue(column.id, $event)"
 						>
+							<template v-if="getSelectedEnumOption(column)" #prefix>
+								<span
+									:class="$style.enumSwatch"
+									:style="{ backgroundColor: getSelectedEnumOption(column)?.color }"
+								/>
+							</template>
 							<N8nOption value="" :label="i18n.baseText('dataTable.kanban.emptyValue')" />
 							<template v-if="column.type === 'boolean'">
 								<N8nOption value="true" :label="i18n.baseText('dataTable.kanban.true')" />
@@ -185,10 +203,16 @@ async function deleteRow() {
 							<template v-else
 								><N8nOption
 									v-for="option in column.options ?? []"
-									:key="option"
-									:value="option"
-									:label="option"
-							/></template>
+									:key="option.id"
+									:value="option.id"
+									:label="option.text"
+								>
+									<div :class="$style.enumOption">
+										<span :class="$style.enumSwatch" :style="{ backgroundColor: option.color }" />
+										<span>{{ option.text }}</span>
+									</div>
+								</N8nOption></template
+							>
 						</N8nSelect>
 						<N8nInput
 							v-else
@@ -293,6 +317,17 @@ async function deleteRow() {
 		margin: 0;
 		overflow-wrap: anywhere;
 	}
+}
+.enumOption {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+.enumSwatch {
+	flex: 0 0 var(--spacing--2xs);
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: var(--radius--round);
 }
 .actions {
 	justify-content: flex-end;

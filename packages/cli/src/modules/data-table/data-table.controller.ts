@@ -13,6 +13,7 @@ import {
 	MoveDataTableKanbanRowDto,
 	RenameDataTableColumnDto,
 	UpdateDataTableDto,
+	UpdateDataTableEnumOptionColorDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 } from '@n8n/api-types';
@@ -303,6 +304,30 @@ export class DataTableController {
 			);
 		} catch (e: unknown) {
 			this.handleDataTableColumnOperationError(e);
+		}
+	}
+
+	@Patch('/:dataTableId/columns/:columnId/enum-options/:optionId/color')
+	@ProjectScope('dataTable:update')
+	async updateEnumOptionColor(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Param('columnId') columnId: string,
+		@Param('optionId') optionId: string,
+		@Body dto: UpdateDataTableEnumOptionColorDto,
+	) {
+		this.checkInstanceWriteAccess();
+		try {
+			return await this.dataTableService.updateEnumOptionColor(
+				dataTableId,
+				req.params.projectId,
+				columnId,
+				optionId,
+				dto,
+			);
+		} catch (error) {
+			this.handleDataTableColumnOperationError(error);
 		}
 	}
 

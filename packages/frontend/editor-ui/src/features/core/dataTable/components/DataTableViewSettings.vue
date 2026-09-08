@@ -29,7 +29,6 @@ const open = ref(false);
 const viewMenuOpen = ref(false);
 const saving = ref(false);
 const groupByColumnId = ref('');
-const titleColumnId = ref('');
 const enumColumns = computed(() =>
 	props.dataTable.columns.filter((column) => column.type === 'enum'),
 );
@@ -57,9 +56,6 @@ const validGrouping = computed(() =>
 function configure() {
 	viewMenuOpen.value = false;
 	groupByColumnId.value = props.dataTable.metadata?.kanban?.groupByColumnId ?? '';
-	titleColumnId.value = props.dataTable.metadata?.kanban?.titleColumnId ?? '';
-	if (!props.dataTable.columns.some((column) => column.id === titleColumnId.value))
-		titleColumnId.value = '';
 	open.value = true;
 }
 
@@ -83,17 +79,19 @@ async function switchView(view: 'table' | 'kanban') {
 	}
 	const settings = props.dataTable.metadata?.kanban;
 	if (!settings || !enumColumns.value.some((column) => column.id === settings.groupByColumnId)) {
+		if (enumColumns.value.length === 1) {
+			await persist({
+				view,
+				kanban: { groupByColumnId: enumColumns.value[0].id },
+			});
+			return;
+		}
 		configure();
 		return;
 	}
 	await persist({
 		view,
-		kanban: {
-			...settings,
-			titleColumnId: props.dataTable.columns.some((column) => column.id === settings.titleColumnId)
-				? settings.titleColumnId
-				: null,
-		},
+		kanban: { groupByColumnId: settings.groupByColumnId },
 	});
 }
 </script>
@@ -142,7 +140,7 @@ async function switchView(view: 'table' | 'kanban') {
 					validGrouping &&
 					persist({
 						view: 'kanban',
-						kanban: { groupByColumnId, titleColumnId: titleColumnId || null },
+						kanban: { groupByColumnId },
 					})
 				"
 			>
@@ -162,26 +160,6 @@ async function switchView(view: 'table' | 'kanban') {
 					>
 						<N8nOption
 							v-for="column in enumColumns"
-							:key="column.id"
-							:value="column.id"
-							:label="column.name"
-						/>
-					</N8nSelect>
-				</N8nInputLabel>
-				<N8nInputLabel
-					input-name="kanban-title-column"
-					:label="i18n.baseText('dataTable.kanban.titleProperty')"
-				>
-					<N8nSelect
-						id="kanban-title-column"
-						v-model="titleColumnId"
-						:teleported="false"
-						:disabled="saving"
-						data-test-id="kanban-title-column"
-					>
-						<N8nOption value="" :label="i18n.baseText('dataTable.kanban.noTitle')" />
-						<N8nOption
-							v-for="column in dataTable.columns"
 							:key="column.id"
 							:value="column.id"
 							:label="column.name"

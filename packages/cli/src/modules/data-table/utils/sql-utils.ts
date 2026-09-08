@@ -253,7 +253,7 @@ export function normalizeDate(value: unknown): Date | null {
 
 // Normalize rows fetched from the database according to the column types
 export function normalizeRows(
-	rows: DataTableRawRowsReturn,
+	rows: DataTableRawRowsReturn | DataTableRowsReturn,
 	columns: DataTableColumn[],
 ): DataTableRowsReturn {
 	const typeMap: Record<string, DataTableColumnType> = {

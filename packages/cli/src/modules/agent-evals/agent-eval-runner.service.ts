@@ -10,8 +10,8 @@ import {
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type {
-	DataTableColumnJsType,
-	DataTableRow,
+	DataTableColumnReturnJsType,
+	DataTableRowReturn,
 	IDataObject,
 	JsonObject,
 	JsonValue,
@@ -604,7 +604,7 @@ export class AgentEvalRunnerService {
 			);
 		}
 
-		const rows: DataTableRow[] = [];
+		const rows: DataTableRowReturn[] = [];
 		let skip = 0;
 		for (;;) {
 			const { data, count } = await this.dataTableService.getManyRowsAndCount(
@@ -666,16 +666,20 @@ function normalizeUsage(usage?: { inputTokens?: number; outputTokens?: number })
 }
 
 /** Coerce a Data Table cell into the agent's opening message. */
-function cellToString(value: DataTableColumnJsType | undefined): string {
+function cellToString(value: DataTableColumnReturnJsType | undefined): string {
 	if (value === null || value === undefined) return '';
 	if (value instanceof Date) return value.toISOString();
+	if (typeof value === 'object') return value.value;
 	return String(value);
 }
 
 /** Coerce a Data Table cell into a JSON-safe snapshot value. */
-function cellToJson(value: DataTableColumnJsType | undefined): JsonValue {
+function cellToJson(value: DataTableColumnReturnJsType | undefined): JsonValue {
 	if (value === null || value === undefined) return null;
 	if (value instanceof Date) return value.toISOString();
+	if (typeof value === 'object') {
+		return { id: value.id, value: value.value, color: value.color };
+	}
 	return value;
 }
 

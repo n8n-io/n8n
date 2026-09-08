@@ -10,14 +10,27 @@ properties:
     type: array
     minItems: 1
     maxItems: 100
-    description: Allowed values. Required when type is enum.
+    description: Allowed enum options. Required when type is enum.
     items:
-      type: string
-      maxLength: 128
+      oneOf:
+        - type: string
+          maxLength: 128
+        - type: object
+          properties:
+            id:
+              type: string
+              maxLength: 36
+            text:
+              type: string
+              maxLength: 128
+            color:
+              type: string
+              pattern: '^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$'
+          required: [text]
   defaultValue:
     type: string
     maxLength: 128
-    description: Default value. Only supported when type is enum and must match an option.
+    description: Default option ID or text. Stored as an option ID.
   index:
     type: integer
     minimum: 0

@@ -23,30 +23,93 @@ export const dataTableColumnNameSchema = z
 	.max(DATA_TABLE_COLUMN_MAX_LENGTH) // Postgres has a maximum of 63 characters
 	.regex(DATA_TABLE_COLUMN_REGEX, DATA_TABLE_COLUMN_ERROR_MESSAGE);
 export const dataTableColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date', 'enum']);
-export const dataTableEnumOptionsSchema = z
-	.array(z.string().trim().min(1).max(128))
+export const dataTableEnumOptionIdSchema = z
+	.string()
+	.trim()
+	.min(1)
+	.max(36)
+	.regex(/^[a-zA-Z0-9_-]+$/);
+export const dataTableEnumColorSchema = z.string().regex(/^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/);
+export const dataTableEnumOptionSchema = z.object({
+	id: dataTableEnumOptionIdSchema,
+	text: z.string().trim().min(1).max(128),
+	color: dataTableEnumColorSchema,
+});
+export type DataTableEnumOption = z.infer<typeof dataTableEnumOptionSchema>;
+
+export const DEFAULT_DATA_TABLE_ENUM_COLORS = [
+	'#6366F1',
+	'#14B8A6',
+	'#F59E0B',
+	'#EC4899',
+	'#8B5CF6',
+	'#10B981',
+] as const;
+
+export const getDefaultDataTableEnumColor = (index: number): string =>
+	DEFAULT_DATA_TABLE_ENUM_COLORS[index % DEFAULT_DATA_TABLE_ENUM_COLORS.length];
+
+export const dataTableEnumOptionInputSchema = z.union([
+	z.string().trim().min(1).max(128),
+	dataTableEnumOptionSchema.partial({ id: true, color: true }),
+]);
+export type DataTableEnumOptionInput = z.infer<typeof dataTableEnumOptionInputSchema>;
+export const dataTableEnumOptionsInputSchema = z
+	.array(dataTableEnumOptionInputSchema)
 	.min(1)
 	.max(100)
 	.superRefine((options, context) => {
-		const normalized = new Set<string>();
+		const normalizedTexts = new Set<string>();
+		const ids = new Set<string>();
 		for (const [index, option] of options.entries()) {
-			if (option.includes(',')) {
-				context.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: 'Enum options cannot contain commas',
-					path: [index],
-				});
+			const text = typeof option === 'string' ? option : option.text;
+			if (typeof option !== 'string' && option.id) {
+				if (ids.has(option.id)) {
+					context.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: 'Enum option IDs must be unique',
+						path: [index, 'id'],
+					});
+				}
+				ids.add(option.id);
 			}
 
-			const key = option.toLocaleLowerCase();
-			if (normalized.has(key)) {
+			const key = text.toLocaleLowerCase();
+			if (normalizedTexts.has(key)) {
 				context.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: 'Enum options must be unique, ignoring case',
-					path: [index],
+					message: 'Enum option text must be unique, ignoring case',
+					path: typeof option === 'string' ? [index] : [index, 'text'],
 				});
 			}
-			normalized.add(key);
+			normalizedTexts.add(key);
+		}
+	});
+export const dataTableEnumOptionsSchema = z
+	.array(dataTableEnumOptionSchema)
+	.min(1)
+	.max(100)
+	.superRefine((options, context) => {
+		const ids = new Set<string>();
+		const texts = new Set<string>();
+		for (const [index, option] of options.entries()) {
+			if (ids.has(option.id)) {
+				context.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Enum option IDs must be unique',
+					path: [index, 'id'],
+				});
+			}
+			const text = option.text.toLocaleLowerCase();
+			if (texts.has(text)) {
+				context.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Enum option text must be unique, ignoring case',
+					path: [index, 'text'],
+				});
+			}
+			ids.add(option.id);
+			texts.add(text);
 		}
 	});
 
@@ -56,7 +119,6 @@ export const dataTableMetadataSchema = z
 		kanban: z
 			.object({
 				groupByColumnId: z.string().min(1).max(36),
-				titleColumnId: z.string().min(1).max(36).nullable().optional(),
 			})
 			.optional(),
 	});
@@ -66,7 +128,7 @@ export const dataTableCreateColumnBaseSchema = z.object({
 	name: dataTableColumnNameSchema,
 	type: dataTableColumnTypeSchema,
 	index: z.number().optional(),
-	options: dataTableEnumOptionsSchema.optional(),
+	options: dataTableEnumOptionsInputSchema.optional(),
 	defaultValue: z.string().trim().min(1).max(128).optional(),
 });
 
@@ -82,7 +144,11 @@ export const dataTableCreateColumnSchema = dataTableCreateColumnBaseSchema.super
 		if (
 			column.type === 'enum' &&
 			column.defaultValue !== undefined &&
-			!column.options?.includes(column.defaultValue)
+			!column.options?.some((option) =>
+				typeof option === 'string'
+					? option === column.defaultValue
+					: option.id === column.defaultValue || option.text === column.defaultValue,
+			)
 		) {
 			context.addIssue({
 				code: z.ZodIssueCode.custom,

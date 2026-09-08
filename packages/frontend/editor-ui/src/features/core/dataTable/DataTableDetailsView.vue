@@ -4,6 +4,7 @@ import type { DataTableMetadata } from '@n8n/api-types';
 import type {
 	AddColumnResponse,
 	DataTable,
+	DataTableColumn,
 	DataTableColumnCreatePayload,
 } from '@/features/core/dataTable/dataTable.types';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
@@ -100,6 +101,12 @@ const saveViewSettings = async (metadata: DataTableMetadata) => {
 const addRow = () => {
 	if (view.value === 'kanban') dataTableKanbanRef.value?.addRow();
 	else dataTableTableRef.value?.addRow();
+};
+const onEnumColumnUpdated = (column: DataTableColumn) => {
+	if (!dataTable.value) return;
+	dataTable.value.columns = dataTable.value.columns.map((candidate) =>
+		candidate.id === column.id ? column : candidate,
+	);
 };
 const searchQuery = ref('');
 
@@ -313,7 +320,9 @@ onBeforeUnmount(() => {
 					:data-table="dataTable"
 					:search="searchQuery"
 					:read-only="rowReadOnly"
+					:options-read-only="settingsReadOnly"
 					@toggle-save="onToggleSave"
+					@enum-column-updated="onEnumColumnUpdated"
 				/>
 				<DataTableTable
 					v-else

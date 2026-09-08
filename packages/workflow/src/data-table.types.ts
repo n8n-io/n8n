@@ -1,4 +1,15 @@
 export type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date' | 'enum';
+export type DataTableEnumOption = {
+	id: string;
+	text: string;
+	color: string;
+};
+
+export type DataTableEnumValue = {
+	id: string;
+	value: string;
+	color: string;
+};
 
 /**
  * Data Table row operations
@@ -25,7 +36,7 @@ export type DataTableColumn = {
 	type: DataTableColumnType;
 	index: number;
 	dataTableId: string;
-	options?: string[] | null;
+	options?: DataTableEnumOption[] | null;
 	defaultValue?: string | null;
 };
 
@@ -43,7 +54,7 @@ export type DataTable = {
 
 export type CreateDataTableColumnOptions = Pick<DataTableColumn, 'name' | 'type'> & {
 	index?: number;
-	options?: string[];
+	options?: Array<string | { id?: string; text: string; color?: string }>;
 	defaultValue?: string;
 };
 
@@ -102,14 +113,15 @@ export type MoveDataTableColumnOptions = {
 export type AddDataTableColumnOptions = CreateDataTableColumnOptions;
 
 export type DataTableColumnJsType = string | number | boolean | Date | null;
+export type DataTableColumnReturnJsType = DataTableColumnJsType | DataTableEnumValue;
 
 export type DataTableTriggerEvent = 'rowInserted' | 'rowDeleted' | 'columnUpdated';
 
 export type DataTableTriggerChange = {
 	columnId: string;
 	columnName: string;
-	before: DataTableColumnJsType;
-	after: DataTableColumnJsType;
+	before: DataTableColumnReturnJsType;
+	after: DataTableColumnReturnJsType;
 };
 
 export type DataTableTriggerOutput = {
@@ -151,10 +163,11 @@ export type DataTableRows = DataTableRow[];
 export type DataTableRawRowReturn = DataTableRow & DataTableRawRowReturnBase;
 export type DataTableRawRowsReturn = DataTableRawRowReturn[];
 
-export type DataTableRowReturn = DataTableRow & DataTableRowReturnBase;
+export type DataTableRowReturn = Record<string, DataTableColumnReturnJsType> &
+	DataTableRowReturnBase;
 export type DataTableRowsReturn = DataTableRowReturn[];
 
-export type DataTableRowReturnWithState = DataTableRow & {
+export type DataTableRowReturnWithState = Record<string, DataTableColumnReturnJsType> & {
 	id: number | null;
 	createdAt: Date | null;
 	updatedAt: Date | null;

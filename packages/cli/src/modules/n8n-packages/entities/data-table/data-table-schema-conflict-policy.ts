@@ -1,9 +1,15 @@
+import type { DataTableEnumOption } from '@n8n/api-types';
+
 import { findSchemaIncompatibility } from './data-table-compat';
 import type { SchemaIncompatibility } from './data-table-compat';
 import type { DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
 import type { SerializedDataTableColumn } from '../../spec/serialized/data-table.schema';
 
-type TargetColumns = Array<{ name: string; type: string; options?: string[] | null }>;
+type TargetColumns = Array<{
+	name: string;
+	type: string;
+	options?: DataTableEnumOption[] | null;
+}>;
 
 /**
  * Decides whether a matched table's schema blocks the import. `keep-existing`

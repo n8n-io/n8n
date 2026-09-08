@@ -23,8 +23,9 @@ import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
+import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import { normalizeEnumOptions } from '@/modules/data-table/data-table-enum.utils';
 import { initialKanbanOrder } from '@/modules/data-table/data-table-kanban.utils';
 import { DATA_TABLE_KANBAN_ORDER_COLUMN } from '@/modules/data-table/data-table.types';
 import {
@@ -941,6 +942,28 @@ export class ImportService {
 			const cols = (columnsByDataTableId.get(dataTableId) ?? [])
 				.slice()
 				.sort((a, b) => a.index - b.index);
+			const enumValuesByColumn = new Map<string, Map<string, string>>();
+			for (const column of cols) {
+				if (column.type !== 'enum') continue;
+				const options = normalizeEnumOptions(column.options);
+				const valueMap = new Map(
+					options.flatMap((option) => [
+						[option.id, option.id] as const,
+						[option.text, option.id] as const,
+					]),
+				);
+				column.options = options;
+				column.defaultValue =
+					column.defaultValue === null
+						? null
+						: (valueMap.get(column.defaultValue) ?? column.defaultValue);
+				enumValuesByColumn.set(column.name, valueMap);
+				await transactionManager.update(
+					DataTableColumn,
+					{ id: column.id },
+					{ options: column.options, defaultValue: column.defaultValue },
+				);
+			}
 
 			await this.dataTableDDLService.dropTable(dataTableId, transactionManager);
 			await this.dataTableDDLService.createTableWithColumns(dataTableId, cols, transactionManager);
@@ -960,11 +983,10 @@ export class ImportService {
 				for (const row of rows) {
 					const normalizedRow: Record<string, unknown> = {};
 					for (const [key, value] of Object.entries(row)) {
-						normalizedRow[key] = normalizeUserRowValueForDatabase(
-							value,
-							columnTypeMap.get(key),
-							dbType,
-						);
+						const enumValue = typeof value === 'string' ? enumValuesByColumn.get(key)?.get(value) : null;
+						normalizedRow[key] =
+							enumValue ??
+							normalizeUserRowValueForDatabase(value, columnTypeMap.get(key), dbType);
 					}
 					if (
 						normalizedRow[DATA_TABLE_KANBAN_ORDER_COLUMN] === null ||

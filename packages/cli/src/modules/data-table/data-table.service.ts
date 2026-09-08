@@ -10,8 +10,10 @@ import type {
 	RenameDataTableColumnDto,
 	DataTableListOptions,
 	DataTableMetadata,
+	DataTableEnumOption,
 	UpsertDataTableRowDto,
 	UpdateDataTableDto,
+	UpdateDataTableEnumOptionColorDto,
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -39,7 +41,7 @@ import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableCsvImportService } from './data-table-csv-import.service';
 import { DataTableDDLService } from './data-table-ddl.service';
-import { normalizeColumn } from './data-table-enum.utils';
+import { normalizeColumn, resolveEnumRows } from './data-table-enum.utils';
 import { InvalidKanbanCursorError } from './data-table-kanban.utils';
 import { DataTableMutationEventRecorder } from './data-table-mutation-event.repository';
 import { DataTableRowsRepository } from './data-table-rows.repository';
@@ -118,13 +120,19 @@ export class DataTableService {
 		const lanes = await this.dataTableRowsRepository.getKanbanBoard(
 			dataTableId,
 			groupingColumn.name,
-			[...(groupingColumn.options ?? []), null],
+			[...(groupingColumn.options ?? []).map((option) => option.id), null],
 			dto.rowsPerLane,
 			dto.search,
 			table.updatedAt.toISOString(),
 			table.columns,
 		);
-		return { lanes, revision: table.updatedAt.toISOString() };
+		return {
+			lanes: lanes.map((lane) => ({
+				...lane,
+				rows: resolveEnumRows(lane.rows, table.columns),
+			})),
+			revision: table.updatedAt.toISOString(),
+		};
 	}
 
 	async getKanbanLanePage(
@@ -136,7 +144,7 @@ export class DataTableService {
 		const groupingColumn = this.getKanbanGroupingColumn(table.columns, dto.groupByColumnId);
 		this.validateKanbanLaneValue(groupingColumn, dto.laneValue ?? null);
 		try {
-			return await this.dataTableRowsRepository.getKanbanLanePage(
+			const page = await this.dataTableRowsRepository.getKanbanLanePage(
 				dataTableId,
 				groupingColumn.name,
 				dto.laneValue ?? null,
@@ -146,6 +154,7 @@ export class DataTableService {
 				table.updatedAt.toISOString(),
 				table.columns,
 			);
+			return { ...page, rows: resolveEnumRows(page.rows, table.columns) };
 		} catch (error) {
 			if (error instanceof InvalidKanbanCursorError) {
 				throw new DataTableValidationError(error.message);
@@ -192,7 +201,7 @@ export class DataTableService {
 				);
 			}
 			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
-			return moved.after;
+			return resolveEnumRows([moved.after], columns)[0];
 		});
 		this.dataTableSizeValidator.reset();
 		return result;
@@ -343,15 +352,6 @@ export class DataTableService {
 					throw new DataTableValidationError('Select an enum column from this table');
 				}
 				kanbanGroupingColumnName = groupingColumn.name;
-				if (metadata.kanban.titleColumnId) {
-					const titleColumn = await this.dataTableColumnRepository.findOneBy({
-						id: metadata.kanban.titleColumnId,
-						dataTableId,
-					});
-					if (!titleColumn) {
-						throw new DataTableValidationError('Select a title column from this table');
-					}
-				}
 			}
 		}
 		const properties = {
@@ -490,6 +490,24 @@ export class DataTableService {
 		return await this.dataTableColumnRepository.renameColumn(dataTableId, existingColumn, dto.name);
 	}
 
+	async updateEnumOptionColor(
+		dataTableId: string,
+		projectId: string,
+		columnId: string,
+		optionId: string,
+		dto: UpdateDataTableEnumOptionColorDto,
+	) {
+		await this.validateDataTableExists(dataTableId, projectId);
+		const column = await this.dataTableColumnRepository.updateEnumOptionColor(
+			dataTableId,
+			columnId,
+			optionId,
+			dto.color,
+		);
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+		return column;
+	}
+
 	async getManyAndCount(options: DataTableListOptions) {
 		return await this.dataTableRepository.getManyAndCount(options);
 	}
@@ -514,7 +532,7 @@ export class DataTableService {
 			);
 			return {
 				count: result.count,
-				data: normalizeRows(result.data, columns),
+				data: resolveEnumRows(normalizeRows(result.data, columns), columns),
 			};
 		});
 	}
@@ -575,7 +593,11 @@ export class DataTableService {
 			);
 			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
 
-			if (!capture.shouldCapture) return inserted;
+			if (!capture.shouldCapture) {
+				return returnType === 'all' && this.isReturnedRows(inserted)
+					? resolveEnumRows(inserted, columns)
+					: inserted;
+			}
 			if (!this.isReturnedRows(inserted)) {
 				throw new DataTableValidationError('Inserted rows were not returned for trigger delivery');
 			}
@@ -585,9 +607,10 @@ export class DataTableService {
 				insertedRows,
 				capture.subscriptions,
 				trx,
+				columns,
 			);
 
-			if (returnType === 'all') return insertedRows;
+			if (returnType === 'all') return resolveEnumRows(insertedRows, columns);
 			if (returnType === 'id') return insertedRows.map(({ id }) => ({ id }));
 			return { success: true, insertedRows: insertedRows.length };
 		});
@@ -640,13 +663,14 @@ export class DataTableService {
 			const { data, filter } = this.validateAndTransformUpdateParams(dto, columns);
 
 			if (dryRun) {
-				return await this.dataTableRowsRepository.dryRunUpsertRow(
+				const rows = await this.dataTableRowsRepository.dryRunUpsertRow(
 					dataTableId,
 					data,
 					filter,
 					columns,
 					trx,
 				);
+				return resolveEnumRows(rows, columns);
 			}
 
 			const updatedColumnIds = columns
@@ -705,7 +729,7 @@ export class DataTableService {
 					);
 				}
 				await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
-				return returnData ? updated : true;
+				return returnData ? resolveEnumRows(updated, columns) : true;
 			}
 
 			// No rows were updated, so insert a new one
@@ -732,10 +756,13 @@ export class DataTableService {
 					inserted,
 					insertCapture.subscriptions,
 					trx,
+					columns,
 				);
 			}
 			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
-			return returnData ? inserted : true;
+			return returnData && this.isReturnedRows(inserted)
+				? resolveEnumRows(inserted, columns)
+				: true;
 		});
 
 		if (!dryRun) {
@@ -811,13 +838,14 @@ export class DataTableService {
 			const { data, filter } = this.validateAndTransformUpdateParams(dto, columns);
 
 			if (dryRun) {
-				return await this.dataTableRowsRepository.dryRunUpdateRows(
+				const rows = await this.dataTableRowsRepository.dryRunUpdateRows(
 					dataTableId,
 					data,
 					filter,
 					columns,
 					trx,
 				);
+				return resolveEnumRows(rows, columns);
 			}
 
 			const updatedColumnIds = columns
@@ -871,7 +899,7 @@ export class DataTableService {
 				);
 			}
 			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
-			return returnData ? updated : true;
+			return returnData && Array.isArray(updated) ? resolveEnumRows(updated, columns) : true;
 		});
 
 		if (!dryRun) {
@@ -946,10 +974,15 @@ export class DataTableService {
 					deleted,
 					capture.subscriptions,
 					trx,
+					columns,
 				);
 			}
 			if (!dryRun) await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
-			return returnData || dryRun ? deleted : true;
+			if (!returnData && !dryRun) return true;
+			if (!this.isReturnedRows(deleted)) {
+				throw new DataTableValidationError('Deleted rows were not returned');
+			}
+			return resolveEnumRows(deleted, columns);
 		});
 
 		if (!dryRun) {
@@ -1007,6 +1040,7 @@ export class DataTableService {
 					rows,
 					capture.subscriptions,
 					trx,
+					columns,
 				);
 				deletedCount += rows.length;
 			}
@@ -1020,7 +1054,11 @@ export class DataTableService {
 
 	private validateAndTransformRows(
 		rows: DataTableRows,
-		columns: Array<{ name: string; type: DataTableColumnType; options?: string[] | null }>,
+		columns: Array<{
+			name: string;
+			type: DataTableColumnType;
+			options?: DataTableEnumOption[] | null;
+		}>,
 		includeSystemColumns = false,
 		skipDateTransform = false,
 	): DataTableRows {
@@ -1114,7 +1152,7 @@ export class DataTableService {
 	}
 
 	private validateKanbanLaneValue(column: DataTableColumn, value: string | null): void {
-		if (value !== null && !column.options?.includes(value)) {
+		if (value !== null && !column.options?.some((option) => option.id === value)) {
 			throw new DataTableValidationError(
 				`value '${value}' is not an option for enum column '${column.name}'`,
 			);
@@ -1125,7 +1163,7 @@ export class DataTableService {
 		cell: DataTableColumnJsType,
 		key: string,
 		columnTypeMap: Map<string, string>,
-		enumOptionsMap: Map<string, string[]>,
+		enumOptionsMap: Map<string, DataTableEnumOption[]>,
 		skipDateTransform = false,
 	): DataTableColumnJsType {
 		if (cell === null) return null;
@@ -1133,12 +1171,22 @@ export class DataTableService {
 		const columnType = columnTypeMap.get(key);
 		if (!columnType) return cell;
 		if (columnType === 'enum') {
-			if (typeof cell !== 'string' || !enumOptionsMap.get(key)?.includes(cell)) {
+			const option =
+				typeof cell === 'string'
+					? enumOptionsMap
+							.get(key)
+							?.find(
+								(candidate) =>
+									candidate.id === cell ||
+									candidate.text.toLocaleLowerCase() === cell.toLocaleLowerCase(),
+							)
+					: undefined;
+			if (!option) {
 				throw new DataTableValidationError(
 					`value '${String(cell)}' is not an option for enum column '${key}'`,
 				);
 			}
-			return cell;
+			return option.id;
 		}
 
 		const fieldType = columnTypeToFieldType[columnType];

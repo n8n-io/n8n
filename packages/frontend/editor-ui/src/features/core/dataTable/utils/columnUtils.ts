@@ -59,6 +59,12 @@ export const createValueGetter =
 				return new Date(value);
 			}
 		}
+		if (col.type === 'enum') {
+			const value = params.data?.[col.name];
+			if (typeof value === 'object' && value !== null && 'id' in value) {
+				return value.id;
+			}
+		}
 		return params.data?.[col.name];
 	};
 

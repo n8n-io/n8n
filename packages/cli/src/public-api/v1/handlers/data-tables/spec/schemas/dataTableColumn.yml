@@ -16,13 +16,21 @@ properties:
   options:
     type: array
     nullable: true
-    description: Allowed enum values
+    description: Allowed enum options
     items:
-      type: string
+      type: object
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        color:
+          type: string
+      required: [id, text, color]
   defaultValue:
     type: string
     nullable: true
-    description: Default enum value
+    description: Default enum option ID
   index:
     type: integer
     description: Column position

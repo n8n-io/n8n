@@ -1,3 +1,4 @@
+import type { DataTableEnumOption } from '@n8n/api-types';
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
@@ -19,7 +20,7 @@ export class DataTableColumn extends WithTimestampsAndStringId {
 	index: number;
 
 	@Column({ type: 'json', nullable: true })
-	options: string[] | null;
+	options: DataTableEnumOption[] | null;
 
 	@Column({ type: 'varchar', length: 128, nullable: true })
 	defaultValue: string | null;

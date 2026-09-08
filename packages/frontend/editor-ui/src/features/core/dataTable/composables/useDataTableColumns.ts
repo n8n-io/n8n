@@ -1,9 +1,10 @@
 import { computed, ref, type Ref } from 'vue';
-import type { ColDef, ICellRendererParams } from 'ag-grid-community';
+import type { ColDef, ICellRendererParams, ValueGetterParams } from 'ag-grid-community';
 import type {
 	AddColumnResponse,
 	DataTableColumn,
 	DataTableColumnCreatePayload,
+	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import {
 	ADD_ROW_ROW_ID,
@@ -91,6 +92,16 @@ export const useDataTableColumns = ({
 
 		if (col.type === 'enum') {
 			columnDef.editable = false;
+			columnDef.filterValueGetter = (params: ValueGetterParams<DataTableRow>) => {
+				const value = params.data?.[col.name];
+				if (typeof value === 'object' && value !== null && 'value' in value) {
+					return value.value;
+				}
+				if (typeof value === 'string') {
+					return col.options?.find((option) => option.id === value)?.text ?? value;
+				}
+				return value;
+			};
 			columnDef.cellRendererSelector = (params: ICellRendererParams) => {
 				if (params.data?.id === ADD_ROW_ROW_ID) return {};
 				return {

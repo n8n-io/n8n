@@ -8,7 +8,11 @@ describe('Data Table enum options', () => {
 			options: [' Low ', 'High'],
 		});
 
-		expect(column.options).toEqual(['Low', 'High']);
+		expect(column.options).toMatchObject([
+			{ text: 'Low', color: '#6366F1' },
+			{ text: 'High', color: '#14B8A6' },
+		]);
+		expect(column.options?.every((option) => option.id.length > 0)).toBe(true);
 	});
 
 	it('rejects case-insensitive duplicate options', () => {
@@ -18,7 +22,7 @@ describe('Data Table enum options', () => {
 				type: 'enum',
 				options: ['High', 'high'],
 			}),
-		).toThrow('Enum options must be unique');
+		).toThrow('Enum option text must be unique');
 	});
 
 	it('normalizes a valid default value', () => {
@@ -29,7 +33,7 @@ describe('Data Table enum options', () => {
 			defaultValue: ' Low ',
 		});
 
-		expect(column.defaultValue).toBe('Low');
+		expect(column.defaultValue).toBe(column.options?.[0]?.id);
 	});
 
 	it('rejects a default value outside the options', () => {

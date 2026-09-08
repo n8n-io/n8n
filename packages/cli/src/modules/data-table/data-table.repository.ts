@@ -18,6 +18,7 @@ import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableDDLService } from './data-table-ddl.service';
+import { normalizeColumn } from './data-table-enum.utils';
 import { DataTable } from './data-table.entity';
 import { DataTableUserTableName } from './data-table.types';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
@@ -73,11 +74,12 @@ export class DataTableRepository extends Repository<DataTable> {
 		explicitId?: string,
 	) {
 		return await withTransaction(this.manager, trx, async (em) => {
-			if (columns.some((c) => !isValidColumnName(c.name))) {
+			const normalizedColumns = columns.map(normalizeColumn);
+			if (normalizedColumns.some((c) => !isValidColumnName(c.name))) {
 				throw new DataTableValidationError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
 			}
 
-			for (const col of columns) {
+			for (const col of normalizedColumns) {
 				const lowerName = col.name.toLowerCase();
 				if (DATA_TABLE_SYSTEM_COLUMNS.some((sc) => sc.toLowerCase() === lowerName)) {
 					throw new DataTableSystemColumnNameConflictError(col.name);
@@ -98,7 +100,7 @@ export class DataTableRepository extends Repository<DataTable> {
 			const dataTableId = dataTable.id;
 
 			// insert columns
-			const columnEntities = columns.map((col, index) => {
+			const columnEntities = normalizedColumns.map((col, index) => {
 				return em.create(DataTableColumn, {
 					dataTableId,
 					name: col.name,

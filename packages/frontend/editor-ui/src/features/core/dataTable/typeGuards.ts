@@ -14,7 +14,14 @@ export const isDataTableValue = (value: unknown): value is DataTableValue => {
 		typeof value === 'string' ||
 		typeof value === 'number' ||
 		typeof value === 'boolean' ||
-		value instanceof Date
+		value instanceof Date ||
+		(typeof value === 'object' &&
+			'id' in value &&
+			typeof value.id === 'string' &&
+			'value' in value &&
+			typeof value.value === 'string' &&
+			'color' in value &&
+			typeof value.color === 'string')
 	);
 };
 
