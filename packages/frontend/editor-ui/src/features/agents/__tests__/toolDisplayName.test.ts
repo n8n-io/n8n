@@ -2,9 +2,11 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
+	FLAG_MEMORY_TOOL_NAME_KEY,
 	WEB_SEARCH_TOOL_NAME_KEY,
 	formatToolNameForDisplay,
 	getToolNameTranslationKey,
+	isCompactToolName,
 	resolveToolNameForDisplay,
 } from '../utils/toolDisplayName';
 
@@ -69,5 +71,17 @@ describe('formatToolNameForDisplay', () => {
 		};
 
 		expect(resolveToolNameForDisplay('web_search', translator)).toBe('Web search');
+	});
+
+	it('shows the compact memory acknowledgement only for a successful enqueue', () => {
+		const translator = {
+			baseText: (key: BaseTextKey) => (key === FLAG_MEMORY_TOOL_NAME_KEY ? 'Memory noted' : key),
+		};
+		const noted = { status: 'noted' };
+
+		expect(resolveToolNameForDisplay('flag_memory', translator, noted)).toBe('Memory noted');
+		expect(isCompactToolName('flag_memory', noted)).toBe(true);
+		expect(resolveToolNameForDisplay('flag_memory', translator)).toBe('Flag memory');
+		expect(isCompactToolName('flag_memory')).toBe(false);
 	});
 });

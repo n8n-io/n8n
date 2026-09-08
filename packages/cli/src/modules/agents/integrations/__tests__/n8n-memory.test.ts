@@ -12,6 +12,7 @@ import { AgentObservationCursorEntity } from '../../entities/agent-observation-c
 import { AgentObservationLockEntity } from '../../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../../entities/agent-thread.entity';
+import type { AgentMemoryEntryCandidateRepository } from '../../repositories/agent-memory-entry-candidate.repository';
 import type { AgentMemoryEntryCursorRepository } from '../../repositories/agent-memory-entry-cursor.repository';
 import type { AgentMemoryEntryLockRepository } from '../../repositories/agent-memory-entry-lock.repository';
 import type { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memory-entry-source.repository';
@@ -36,6 +37,7 @@ describe('N8nMemory', () => {
 	let observationCursorRepository: Mocked<AgentObservationCursorRepository>;
 	let observationLockRepository: Mocked<AgentObservationLockRepository>;
 	let memoryEntryRepository: Mocked<AgentMemoryEntryRepository>;
+	let memoryEntryCandidateRepository: Mocked<AgentMemoryEntryCandidateRepository>;
 	let memoryEntryLockRepository: Mocked<AgentMemoryEntryLockRepository>;
 	let memoryEntrySourceRepository: Mocked<AgentMemoryEntrySourceRepository>;
 	let memoryEntryCursorRepository: Mocked<AgentMemoryEntryCursorRepository>;
@@ -67,6 +69,7 @@ describe('N8nMemory', () => {
 		observationCursorRepository = mock<AgentObservationCursorRepository>();
 		observationLockRepository = mock<AgentObservationLockRepository>();
 		memoryEntryRepository = mock<AgentMemoryEntryRepository>();
+		memoryEntryCandidateRepository = mock<AgentMemoryEntryCandidateRepository>();
 		memoryEntryLockRepository = mock<AgentMemoryEntryLockRepository>();
 		memoryEntrySourceRepository = mock<AgentMemoryEntrySourceRepository>();
 		memoryEntryCursorRepository = mock<AgentMemoryEntryCursorRepository>();
@@ -178,6 +181,7 @@ describe('N8nMemory', () => {
 			observationCursorRepository,
 			observationLockRepository,
 			memoryEntryRepository,
+			memoryEntryCandidateRepository,
 			memoryEntryLockRepository,
 			memoryEntrySourceRepository,
 			memoryEntryCursorRepository,

@@ -1,9 +1,12 @@
 import {
 	getEpisodicMemoryScope,
-	hasEpisodicMemoryStore,
+	hasEpisodicMemoryCaptureStore,
 	isEpisodicMemoryEnabled,
-	runEpisodicMemoryIndexer,
 } from './episodic-memory';
+import {
+	FLAG_MEMORY_TOOL_NAME,
+	runEpisodicMemoryCandidateProcessor,
+} from './episodic-memory-capture';
 import { createFilteredLogger } from '../logger';
 import { compareKeyset, saveMessagesToThread } from './memory-store';
 import {
@@ -81,6 +84,21 @@ function serializeMessageForBudget(message: AgentDbMessage): string {
 	return parts.join('\n');
 }
 
+function hasSuccessfulMemoryFlag(list: AgentMessageList): boolean {
+	return list
+		.turnDelta()
+		.some(
+			(message) =>
+				'content' in message &&
+				message.content.some(
+					(part) =>
+						part.type === 'tool-call' &&
+						part.toolName === FLAG_MEMORY_TOOL_NAME &&
+						part.state === 'resolved',
+				),
+		);
+}
+
 function hasFunctionProperty<K extends PropertyKey>(
 	value: object,
 	property: K,
@@ -116,7 +134,7 @@ function hasObservationLogObserverMemory(
  * Owns all memory-store side effects for a single agent runtime: loading thread
  * history, seeding the live message list with the active observation log,
  * persisting the turn delta, and scheduling background observation-log and
- * episodic-memory indexing jobs.
+ * episodic-memory processing jobs.
  *
  */
 export class MemoryOrchestrator {
@@ -225,6 +243,11 @@ export class MemoryOrchestrator {
 		this.resetRunState();
 		if (this.config.memory && options?.persistence?.threadId) {
 			const telemetry = this.runtimeTelemetry.resolve(options);
+			await this.processPendingEpisodicMemory(
+				options.persistence,
+				options.executionCounter,
+				telemetry,
+			);
 			const memMessages = await this.loadHistoryMessages(options.persistence, telemetry);
 
 			if (memMessages.length > 0) {
@@ -412,18 +435,15 @@ export class MemoryOrchestrator {
 		// Memory jobs receive the execution counter so their LLM and embedding
 		// usage contributes to token_count.
 
-		const observationTasks = await this.scheduleObservationLogJobs(
+		await this.scheduleObservationLogJobs(
 			list,
 			options.persistence,
 			options.executionCounter,
 			telemetry,
 		);
-		this.scheduleEpisodicMemoryJob(
-			options.persistence,
-			observationTasks,
-			options.executionCounter,
-			telemetry,
-		);
+		if (hasSuccessfulMemoryFlag(list)) {
+			this.scheduleEpisodicMemoryJob(options.persistence, options.executionCounter, telemetry);
+		}
 	}
 
 	/**
@@ -635,8 +655,7 @@ export class MemoryOrchestrator {
 
 	/**
 	 * Queue an Observer run on the scoped task runner, or return `undefined`
-	 * when observation is not configured. Callers decide whether to await the
-	 * handle (mid-run) or just track its `done` promise (post-turn).
+	 * when observation is not configured. Mid-run callers can await the handle.
 	 */
 	private scheduleObserverTask(
 		persistence: AgentPersistenceOptions,
@@ -673,13 +692,12 @@ export class MemoryOrchestrator {
 		persistence: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
-	): Promise<Array<Promise<unknown>>> {
+	): Promise<void> {
 		const { memory, observationalMemory } = this.config;
-		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return [];
+		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return;
 
 		const scope = this.getObservationLogScope(persistence);
 		const runner = this.getMemoryTaskRunner(memory, observationalMemory.lockTtlMs);
-		const tasks: Array<Promise<unknown>> = [];
 
 		// A mid-run task still in flight for this scope already covers the
 		// messages persisted at its boundary: join it instead of queueing a
@@ -693,38 +711,32 @@ export class MemoryOrchestrator {
 			!midRunTask.result &&
 			midRunTask.handle.observationScopeId === scope.observationScopeId
 		) {
-			tasks.push(midRunTask.handle.done);
 			void midRunTask.handle.done.then(() => {
 				if (this.midRunObserverTask === midRunTask) this.midRunObserverTask = undefined;
 			});
 		} else if (await this.shouldScheduleObserver(list, persistence.threadId)) {
-			const observerHandle = this.scheduleObserverTask(persistence, executionCounter, telemetry);
-			if (observerHandle) tasks.push(observerHandle.done);
+			this.scheduleObserverTask(persistence, executionCounter, telemetry);
 		}
 
 		const reflect = observationalMemory.reflect;
 		const reflectorThresholdTokens = observationalMemory.reflectorThresholdTokens;
 		if (reflect && reflectorThresholdTokens !== undefined) {
-			tasks.push(
-				this.scheduleMemoryTask(
-					runner,
-					scope,
-					'reflector',
-					async () =>
-						await runObservationLogReflector({
-							memory,
-							...scope,
-							reflectorThresholdTokens,
-							reflect,
-							tokenCounter: this.tokenCounter,
-							executionCounter,
-							telemetry,
-						}),
-				),
+			void this.scheduleMemoryTask(
+				runner,
+				scope,
+				'reflector',
+				async () =>
+					await runObservationLogReflector({
+						memory,
+						...scope,
+						reflectorThresholdTokens,
+						reflect,
+						tokenCounter: this.tokenCounter,
+						executionCounter,
+						telemetry,
+					}),
 			);
 		}
-
-		return tasks;
 	}
 
 	private async shouldScheduleObserver(list: AgentMessageList, threadId: string): Promise<boolean> {
@@ -743,7 +755,6 @@ export class MemoryOrchestrator {
 
 	private scheduleEpisodicMemoryJob(
 		persistence: AgentPersistenceOptions,
-		observationTasks: Array<Promise<unknown>>,
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
 	): void {
@@ -752,8 +763,7 @@ export class MemoryOrchestrator {
 			!memory ||
 			!episodicMemory ||
 			!isEpisodicMemoryEnabled(episodicMemory) ||
-			!hasEpisodicMemoryStore(memory) ||
-			!hasObservationLogStore(memory) ||
+			!hasEpisodicMemoryCaptureStore(memory) ||
 			!episodicMemory.extract
 		) {
 			return;
@@ -761,15 +771,11 @@ export class MemoryOrchestrator {
 		const scope = getEpisodicMemoryScope(persistence);
 		if (!scope) return;
 
-		const observationScope = this.getObservationLogScope(persistence);
-		this.scheduleEpisodicMemoryTask(memory, scope.resourceId, async () => {
-			await Promise.allSettled(observationTasks);
-			await runEpisodicMemoryIndexer({
+		void this.scheduleEpisodicMemoryTask(memory, scope.resourceId, async () => {
+			await runEpisodicMemoryCandidateProcessor({
 				memory,
 				config: episodicMemory,
 				scope,
-				observationScope,
-				threadId: persistence.threadId,
 				executionCounter,
 				telemetry,
 				agentName: this.config.name,
@@ -777,11 +783,43 @@ export class MemoryOrchestrator {
 		});
 	}
 
-	private scheduleEpisodicMemoryTask(
+	private async processPendingEpisodicMemory(
+		persistence: AgentPersistenceOptions,
+		executionCounter?: AgentExecutionCounter,
+		telemetry?: BuiltTelemetry,
+	): Promise<void> {
+		const { memory, episodicMemory } = this.config;
+		if (
+			!memory ||
+			!episodicMemory ||
+			!isEpisodicMemoryEnabled(episodicMemory) ||
+			!hasEpisodicMemoryCaptureStore(memory) ||
+			!episodicMemory.extract
+		) {
+			return;
+		}
+		const scope = getEpisodicMemoryScope(persistence);
+		if (!scope) return;
+		await this.scheduleEpisodicMemoryTask(memory, scope.resourceId, async () => {
+			let result;
+			do {
+				result = await runEpisodicMemoryCandidateProcessor({
+					memory,
+					config: episodicMemory,
+					scope,
+					executionCounter,
+					telemetry,
+					agentName: this.config.name,
+				});
+			} while (result.status === 'ran');
+		});
+	}
+
+	private async scheduleEpisodicMemoryTask(
 		memory: BuiltMemory,
 		resourceId: string,
 		task: () => Promise<void>,
-	): void {
+	): Promise<void> {
 		const id = crypto.randomUUID();
 		const previous = this.episodicMemoryTasksByResource.get(resourceId) ?? Promise.resolve();
 		const done = previous
@@ -794,6 +832,7 @@ export class MemoryOrchestrator {
 		});
 		this.episodicMemoryTasksByResource.set(resourceId, queued);
 		this.backgroundTasks.track(queued);
+		return await queued;
 	}
 
 	private async runEpisodicMemoryTask(
@@ -814,7 +853,7 @@ export class MemoryOrchestrator {
 			}
 			await task();
 		} catch (error) {
-			const message = 'Episodic memory indexing task failed';
+			const message = 'Episodic memory processing task failed';
 			logger.warn(message, { error, resourceId });
 			this.eventBus.emit({ type: AgentEvent.Error, message, error, source: 'episodic-memory' });
 		} finally {
@@ -832,7 +871,7 @@ export class MemoryOrchestrator {
 		try {
 			await taskLock?.release(lock);
 		} catch (error) {
-			logger.warn('Episodic memory indexing lock release failed', { error, resourceId });
+			logger.warn('Episodic memory processing lock release failed', { error, resourceId });
 		}
 	}
 

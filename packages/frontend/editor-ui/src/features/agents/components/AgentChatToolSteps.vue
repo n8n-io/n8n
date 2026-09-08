@@ -13,7 +13,11 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
-import { resolveToolNameForDisplay } from '../utils/toolDisplayName';
+import {
+	formatToolNameForDisplay,
+	isCompactToolName,
+	resolveToolNameForDisplay,
+} from '../utils/toolDisplayName';
 import {
 	getDelegateDifficultySummary,
 	isDelegateSubAgentTool,
@@ -92,8 +96,8 @@ interface ToolStepDisplay {
 	expandable: boolean;
 }
 
-function getToolDisplayName(toolName: string): string {
-	return resolveToolNameForDisplay(toolName, i18n);
+function getToolDisplayName(toolName: string, output?: unknown): string {
+	return resolveToolNameForDisplay(toolName, i18n, output);
 }
 
 function toolStepLabel(tc: ToolCall): string {
@@ -101,7 +105,10 @@ function toolStepLabel(tc: ToolCall): string {
 		return i18n.baseText('agents.chat.delegate.labelFallback');
 	}
 	if (isWriteTodosTool(tc.tool)) return writeTodosLabel(i18n);
-	return getToolDisplayName(tc.tool);
+	if (isCompactToolName(tc.tool, tc.output) && tc.state !== TOOL_CALL_STATE.DONE) {
+		return formatToolNameForDisplay(tc.tool);
+	}
+	return getToolDisplayName(tc.tool, tc.output);
 }
 
 function toolStepMetadata(tc: ToolCall): string[] {
@@ -154,14 +161,15 @@ function isEmptyToolErrorPayload(value: unknown): boolean {
 }
 
 function toolStepView(tc: ToolCall): ToolStepDisplay {
-	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
+	const isCompact = tc.state === TOOL_CALL_STATE.DONE && isCompactToolName(tc.tool, tc.output);
+	const details = isCompact ? '' : (getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '');
 	const metadata = toolStepMetadata(tc);
 	const hasChildProgress = Boolean(tc.childProgress);
 	return {
 		label: [toolStepLabel(tc), ...metadata].join(' · '),
 		details,
-		hasRawData: details.length === 0 && hasToolData(tc) && !hasChildProgress,
-		expandable: details.length > 0 || hasToolData(tc) || hasChildProgress,
+		hasRawData: !isCompact && details.length === 0 && hasToolData(tc) && !hasChildProgress,
+		expandable: !isCompact && (details.length > 0 || hasToolData(tc) || hasChildProgress),
 	};
 }
 

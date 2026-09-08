@@ -5942,7 +5942,7 @@ describe('promptCaching', () => {
 		}
 	});
 
-	it('adds a tool cache breakpoint on recall_memory for an episodic Anthropic agent (no deferred tools)', async () => {
+	it('adds a tool cache breakpoint on flag_memory for an episodic Anthropic agent', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
@@ -5952,7 +5952,10 @@ describe('promptCaching', () => {
 			model: 'anthropic/claude-sonnet-4-5',
 			instructions: 'You are a test assistant.',
 			memory,
-			episodicMemory: { embedder: fakeEmbedder },
+			episodicMemory: {
+				embedder: fakeEmbedder,
+				extract: async () => await Promise.resolve({ entries: [] }),
+			},
 			promptCaching: { enabled: true },
 		});
 
@@ -5960,12 +5963,11 @@ describe('promptCaching', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 
-		// recall_memory is static within a run, so it is eligible to anchor the
-		// tool breakpoint (it is the last tool in getCurrentTools).
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
 		expect(tools).toHaveProperty('recall_memory');
-		expect(tools.recall_memory.providerOptions).toEqual({
+		expect(tools).toHaveProperty('flag_memory');
+		expect(tools.flag_memory.providerOptions).toEqual({
 			anthropic: { eagerInputStreaming: false, cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
@@ -6079,13 +6081,20 @@ describe('AgentRuntime — observation log jobs', () => {
 		]);
 	});
 
-	it('indexes episodic memory after observation jobs complete', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
+	it('processes agent-flagged episodic memory without observations', async () => {
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-memory', 'flag_memory', {
+					content: 'User chose Postgres for memory storage.',
+					evidence: 'Please remember the Postgres decision.',
+					kind: 'decision',
+				}),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Remembered response'));
 		embed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } });
 		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } });
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
-		const observationLockSpy = vi.spyOn(memory, 'acquireObservationLogTaskLock');
 		const episodicLockSpy = vi.spyOn(memory.episodic.taskLock!, 'acquire');
 
 		const runtime = new AgentRuntime({
@@ -6094,22 +6103,22 @@ describe('AgentRuntime — observation log jobs', () => {
 			instructions: 'You are a test assistant.',
 			memory,
 			observationalMemory: {
-				observerThresholdTokens: 1,
+				observerThresholdTokens: 8_000,
 				observationLogTailLimit: 20,
 				observe: async () =>
 					await Promise.resolve('* CRITICAL (14:30) User chose Postgres for memory storage.'),
 			},
 			episodicMemory: {
 				embedder: fakeEmbedder,
-				extract: async ({ observations }) =>
+				extract: async ({ candidates }) =>
 					await Promise.resolve({
 						entries: [
 							{
 								content: 'User chose Postgres for memory storage.',
 								sources: [
 									{
-										observationId: observations[0].id,
-										evidence: 'User chose Postgres',
+										candidateId: candidates[0].id,
+										evidence: 'Postgres decision',
 									},
 								],
 							},
@@ -6130,42 +6139,46 @@ describe('AgentRuntime — observation log jobs', () => {
 		);
 		expect(entries).toHaveLength(1);
 		expect(entries[0].content).toBe('User chose Postgres for memory storage.');
-		const cursor = await memory.episodic.getCursor({
-			observationScopeId: 'thread-1',
-		});
-		expect(typeof cursor?.lastIndexedObservationId).toBe('string');
+		await expect(
+			memory.getActiveObservationLog({ observationScopeId: 'thread-1' }),
+		).resolves.toEqual([]);
+		await expect(
+			memory.episodic.getEntrySources(entries.map((entry) => entry.id)),
+		).resolves.toEqual([
+			expect.objectContaining({
+				candidateId: expect.any(String),
+				threadId: 'thread-1',
+			}),
+		]);
+		await expect(memory.episodic.getCursor({ observationScopeId: 'thread-1' })).resolves.toBeNull();
 		const firstLockCall = episodicLockSpy.mock.calls.at(0);
 		if (!firstLockCall) throw new Error('Expected episodic memory lock acquisition');
 		const [lockedResourceId, lockOptions] = firstLockCall;
 		expect(lockedResourceId).toBe('resource-1');
 		expect(typeof lockOptions.holderId).toBe('string');
 		expect(typeof lockOptions.ttlMs).toBe('number');
-		const observationLockTaskKinds = observationLockSpy.mock.calls.map((call) => String(call[1]));
-		expect(observationLockTaskKinds).not.toContain('episodic-indexer');
 	});
 
-	it('skips episodic indexing when the episodic task lock is held', async () => {
+	it('leaves pending capture work untouched when the episodic task lock is held', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
 		const memory = new InMemoryMemory();
-		const observationScope = {
-			observationScopeId: 'thread-1',
-		};
-		const [observation] = await memory.appendObservationLogEntries([
-			{
-				...observationScope,
-				marker: 'critical',
-				text: 'User chose Postgres for memory storage.',
-				createdAt: new Date('2026-05-20T12:00:00Z'),
-			},
-		]);
-		const extract = vi.fn(async () => {
+		await memory.episodic.enqueueCaptureCandidate({
+			resourceId: 'resource-1',
+			threadId: 'thread-1',
+			sourceMessageId: null,
+			toolCallId: 'tc-pending',
+			content: 'User chose Postgres for memory storage.',
+			evidenceText: 'User chose Postgres',
+			kind: 'decision',
+		});
+		const extract = vi.fn(async ({ candidates }) => {
 			await Promise.resolve();
 
 			return {
 				entries: [
 					{
 						content: 'User chose Postgres for memory storage.',
-						sources: [{ observationId: observation.id, evidence: 'User chose Postgres' }],
+						sources: [{ candidateId: candidates[0].id, evidence: 'User chose Postgres' }],
 					},
 				],
 			};
@@ -6189,41 +6202,52 @@ describe('AgentRuntime — observation log jobs', () => {
 		await runtime.dispose();
 
 		expect(extract).not.toHaveBeenCalled();
-		await expect(memory.episodic.getCursor(observationScope)).resolves.toBeNull();
+		await expect(
+			memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
+		).resolves.toEqual([expect.objectContaining({ toolCallId: 'tc-pending' })]);
 	});
 
-	it('does not inject episodic memory and exposes recall_memory for explicit recall', async () => {
+	it('processes every pending capture batch before the model runs', async () => {
+		const memory = new InMemoryMemory();
+		for (const toolCallId of ['tc-pending-1', 'tc-pending-2']) {
+			await memory.episodic.enqueueCaptureCandidate({
+				resourceId: 'resource-1',
+				threadId: 'thread-1',
+				sourceMessageId: null,
+				toolCallId,
+				content: `Remember ${toolCallId}.`,
+				evidenceText: toolCallId,
+				kind: 'fact',
+			});
+		}
+		generateText.mockImplementationOnce(async () => {
+			await expect(
+				memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
+			).resolves.toEqual([]);
+			return makeGenerateSuccess('Plain response');
+		});
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: {
+				embedder: { specificationVersion: 'v2' } as never,
+				maxEntriesPerRun: 1,
+				extract: async () => await Promise.resolve({ entries: [] }),
+			},
+		});
+
+		await runtime.generate('Hello.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+	});
+
+	it('exposes recall_memory without embedding until the tool is called', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
-		await memory.episodic.saveEntryWithSources(
-			{
-				resourceId: 'resource-1',
-				content: 'Earlier session: user chose Postgres for memory storage.',
-				embedding: [1, 0],
-			},
-			[
-				{
-					observationId: 'obs-resource-1',
-					threadId: 'thread-resource-1',
-					evidenceText: 'user chose Postgres',
-				},
-			],
-		);
-		await memory.episodic.saveEntryWithSources(
-			{
-				resourceId: 'resource-2',
-				content: 'Earlier session: user chose SQLite for memory storage.',
-				embedding: [1, 0],
-			},
-			[
-				{
-					observationId: 'obs-resource-2',
-					threadId: 'thread-resource-2',
-					evidenceText: 'user chose SQLite',
-				},
-			],
-		);
 
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',
@@ -6238,13 +6262,8 @@ describe('AgentRuntime — observation log jobs', () => {
 		});
 
 		const callArgs = (generateText.mock.calls[0] as [unknown])[0] as {
-			instructions: { content: string };
 			tools: Record<string, unknown>;
 		};
-		const systemPrompt = callArgs.instructions?.content ?? '';
-		expect(systemPrompt).not.toContain('<episodic_memory>');
-		expect(systemPrompt).not.toContain('Postgres');
-		expect(systemPrompt).not.toContain('SQLite');
 		expect(callArgs.tools).toHaveProperty('recall_memory');
 		expect(embed).not.toHaveBeenCalled();
 	});
@@ -6519,8 +6538,16 @@ describe('AgentRuntime — observation log jobs', () => {
 		);
 	});
 
-	it('emits one error event when an episodic indexer background task fails', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+	it('emits one error event when episodic candidate processing fails', async () => {
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-memory', 'flag_memory', {
+					content: 'Remember this detail.',
+					evidence: 'Please remember this.',
+					kind: 'explicit_remember',
+				}),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Remembered response'));
 		const memory = new InMemoryMemory();
 		const bus = new AgentEventBus();
 		const error = new Error('episodic extraction failed');
@@ -6532,19 +6559,13 @@ describe('AgentRuntime — observation log jobs', () => {
 			instructions: 'You are a test assistant.',
 			eventBus: bus,
 			memory,
-			observationalMemory: {
-				observerThresholdTokens: 1,
-				observationLogTailLimit: 20,
-				observe: async () =>
-					await Promise.resolve('* CRITICAL (14:30) User chose Postgres for memory storage.'),
-			},
 			episodicMemory: {
 				embedder: { specificationVersion: 'v2' } as never,
 				extract: async () => await Promise.reject(error),
 			},
 		});
 
-		await runtime.generate('please remember this', {
+		await runtime.generate('Please remember this.', {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 		await runtime.dispose();
@@ -6553,7 +6574,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			expect.objectContaining({
 				error,
 				source: 'episodic-memory',
-				message: 'Episodic memory indexing task failed',
+				message: 'Episodic memory processing task failed',
 			}),
 		]);
 	});

@@ -3,6 +3,7 @@ export type {
 	BuiltProviderTool,
 	BuiltAgent,
 	BuiltMemory,
+	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
 	PiiDetectionType,
@@ -41,6 +42,10 @@ export type {
 	TitleGenerationConfig,
 	Thread,
 	EpisodicMemoryConfig,
+	EpisodicMemoryCaptureCandidate,
+	EpisodicMemoryCaptureKind,
+	EpisodicMemoryCaptureMethods,
+	EpisodicMemoryCaptureStatus,
 	EpisodicMemoryCursor,
 	EpisodicMemoryEmbeddingProviderOptions,
 	EpisodicMemoryEntry,
@@ -64,6 +69,7 @@ export type {
 	EpisodicMemoryTaskLockHandle,
 	EpisodicMemoryTaskLockMethods,
 	NewEpisodicMemoryCursor,
+	NewEpisodicMemoryCaptureCandidate,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
 	NewEpisodicMemoryEntrySourceForEntry,
@@ -341,13 +347,23 @@ export {
 	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,
+	hasEpisodicMemoryCaptureStore,
 	hasEpisodicMemoryStore,
 	isEpisodicMemoryEnabled,
 	rankEpisodicMemoryEntries,
-	runEpisodicMemoryIndexer,
 	withEpisodicMemoryDefaults,
 } from './runtime/memory/episodic-memory';
 export {
+	FLAG_MEMORY_TOOL_NAME,
+	createFlagMemoryTool,
+	runEpisodicMemoryCandidateProcessor,
+} from './runtime/memory/episodic-memory-capture';
+export type {
+	RunEpisodicMemoryCandidateProcessorOpts,
+	RunEpisodicMemoryCandidateProcessorResult,
+} from './runtime/memory/episodic-memory-capture';
+export {
+	DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
