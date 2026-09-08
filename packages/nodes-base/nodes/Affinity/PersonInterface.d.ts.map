@@ -1,0 +1,1 @@
+{"version":3,"file":"PersonInterface.d.ts","sourceRoot":"","sources":["PersonInterface.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,OAAO;IACvB,UAAU,CAAC,EAAE,MAAM,CAAC;IACpB,SAAS,CAAC,EAAE,MAAM,CAAC;IACnB,MAAM,CAAC,EAAE,MAAM,EAAE,CAAC;IAClB,gBAAgB,CAAC,EAAE,MAAM,EAAE,CAAC;CAC5B"}

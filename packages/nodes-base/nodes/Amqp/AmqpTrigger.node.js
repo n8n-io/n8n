@@ -1,0 +1,328 @@
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { create_container } from 'rhea';
+import { handleMessage } from './helpers/handleMessage';
+const INITIAL_REATTACH_DELAY_MS = 100;
+const MAX_REATTACH_DELAY_MS = 60_000;
+export class AmqpTrigger {
+    description = {
+        displayName: 'AMQP Trigger',
+        name: 'amqpTrigger',
+        icon: 'file:amqp.svg',
+        group: ['trigger'],
+        version: 1,
+        description: 'Listens to AMQP 1.0 messages',
+        defaults: {
+            name: 'AMQP Trigger',
+        },
+        inputs: [],
+        outputs: [NodeConnectionTypes.Main],
+        credentials: [
+            {
+                name: 'amqp',
+                required: true,
+            },
+        ],
+        properties: [
+            // Node properties which the user gets displayed and
+            // can change on the node.
+            {
+                displayName: 'Queue / Topic',
+                name: 'sink',
+                type: 'string',
+                default: '',
+                placeholder: 'topic://sourcename.something',
+                description: 'Name of the queue or topic to listen to',
+            },
+            {
+                displayName: 'Client Name',
+                name: 'clientname',
+                type: 'string',
+                default: '',
+                placeholder: 'e.g. n8n',
+                description: 'Leave empty for non-durable topic subscriptions or queues',
+                hint: 'For durable/persistent topic subscriptions',
+            },
+            {
+                displayName: 'Subscription',
+                name: 'subscription',
+                type: 'string',
+                default: '',
+                placeholder: 'e.g. order-worker',
+                description: 'Leave empty for non-durable topic subscriptions or queues',
+                hint: 'For durable/persistent topic subscriptions',
+            },
+            {
+                displayName: 'Options',
+                name: 'options',
+                type: 'collection',
+                placeholder: 'Add option',
+                default: {},
+                options: [
+                    {
+                        displayName: 'Container ID',
+                        name: 'containerId',
+                        type: 'string',
+                        default: '',
+                        description: 'Will be passed to the RHEA backend as container_id',
+                    },
+                    {
+                        displayName: 'Convert Body To String',
+                        name: 'jsonConvertByteArrayToString',
+                        type: 'boolean',
+                        default: false,
+                        description: 'Whether to convert JSON body content (["body"]["content"]) from byte array to string. Needed for Azure Service Bus.',
+                    },
+                    {
+                        displayName: 'JSON Parse Body',
+                        name: 'jsonParseBody',
+                        type: 'boolean',
+                        default: false,
+                        description: 'Whether to parse the body to an object',
+                    },
+                    {
+                        displayName: 'Messages per Cycle',
+                        name: 'pullMessagesNumber',
+                        type: 'number',
+                        default: 100,
+                        description: 'Number of messages to pull from the bus for every cycle',
+                    },
+                    {
+                        displayName: 'Only Body',
+                        name: 'onlyBody',
+                        type: 'boolean',
+                        default: false,
+                        description: 'Whether to return only the body property',
+                    },
+                    {
+                        displayName: 'Parallel Processing',
+                        name: 'parallelProcessing',
+                        type: 'boolean',
+                        default: true,
+                        description: 'Whether to process messages in parallel',
+                    },
+                    {
+                        displayName: 'Reconnect',
+                        name: 'reconnect',
+                        type: 'boolean',
+                        default: true,
+                        description: 'Whether to automatically reconnect if disconnected',
+                    },
+                    {
+                        displayName: 'Reconnect Limit',
+                        name: 'reconnectLimit',
+                        type: 'number',
+                        default: 50,
+                        description: 'Maximum number of reconnect attempts',
+                    },
+                    {
+                        displayName: 'Sleep Time',
+                        name: 'sleepTime',
+                        type: 'number',
+                        default: 10,
+                        description: 'Milliseconds to sleep after every cycle',
+                    },
+                ],
+            },
+        ],
+    };
+    async trigger() {
+        const credentials = await this.getCredentials('amqp');
+        const sink = this.getNodeParameter('sink', '');
+        const clientname = this.getNodeParameter('clientname', '');
+        const subscription = this.getNodeParameter('subscription', '');
+        const options = this.getNodeParameter('options', {});
+        const parallelProcessing = this.getNodeParameter('options.parallelProcessing', true);
+        const pullMessagesNumber = options.pullMessagesNumber || 100;
+        const containerId = options.containerId;
+        const containerReconnect = options.reconnect ?? true;
+        // Keep reconnecting (exponential backoff) forever unless user sets a limit
+        const containerReconnectLimit = options.reconnectLimit ?? undefined;
+        if (sink === '') {
+            throw new NodeOperationError(this.getNode(), 'Queue or Topic required!');
+        }
+        let durable = false;
+        if (subscription && clientname) {
+            durable = true;
+        }
+        const container = create_container();
+        let lastMsgId = undefined;
+        let inFlightMessages = 0;
+        // rhea resets link credit when a reconnect attempt starts, so credit added
+        // between disconnect and reattach would double-count with the grant below
+        let receiverReady = true;
+        // a peer-forced detach replaces the link, so credit has to be granted to
+        // whichever receiver is attached now and not to the one that delivered
+        let receiver = undefined;
+        let reattachAttempts = 0;
+        let reattachTimer = undefined;
+        container.on('disconnected', (context) => {
+            receiverReady = false;
+            // rhea sets reconnecting: false once it has exhausted reconnect_limit, and
+            // leaves it unset when reconnect is off - either way nothing will come back
+            if (!containerReconnect || context.reconnecting === false) {
+                this.logger.error('AMQP connection was lost and will not be reconnected', {
+                    error: context.error?.message,
+                });
+                this.emitError(new NodeOperationError(this.getNode(), context.error ?? new Error('AMQP connection lost'), { description: 'The connection will not be re-established, reactivate the workflow' }));
+            }
+        });
+        container.on('receiver_open', (context) => {
+            receiver = context.receiver;
+            receiverReady = true;
+            reattachAttempts = 0;
+            // a link is attached, so a still pending reattach would open a second one
+            clearTimeout(reattachTimer);
+            reattachTimer = undefined;
+            // on reconnect, executions from before the disconnect may still hold slots
+            context.receiver?.add_credit(Math.max(0, pullMessagesNumber - inFlightMessages));
+        });
+        // each delivered message holds 1 link credit until it is done (processed,
+        // skipped or failed), capping concurrent executions at pullMessagesNumber
+        const processMessage = async (context) => {
+            if (!context.message)
+                return null;
+            inFlightMessages++;
+            try {
+                return await handleMessage.call(this, context, {
+                    lastMessageId: lastMsgId,
+                    jsonConvertByteArrayToString: options.jsonConvertByteArrayToString,
+                    jsonParseBody: options.jsonParseBody,
+                    onlyBody: options.onlyBody,
+                    parallelProcessing,
+                });
+            }
+            finally {
+                setTimeout(() => {
+                    inFlightMessages--;
+                    // while the link is down its freed slot is granted by receiver_open instead
+                    if (receiverReady)
+                        (receiver ?? context.receiver)?.add_credit(1);
+                }, options.sleepTime || 10);
+            }
+        };
+        container.on('message', async (context) => {
+            try {
+                const result = await processMessage(context);
+                if (result) {
+                    lastMsgId = result.messageId;
+                }
+            }
+            catch (error) {
+                this.saveFailedExecution(new NodeOperationError(this.getNode(), error));
+            }
+        });
+        /*
+            Values are documented here: https://github.com/amqp/rhea#container
+         */
+        const connectOptions = {
+            host: credentials.hostname,
+            hostname: credentials.hostname,
+            port: credentials.port,
+            reconnect: containerReconnect,
+            reconnect_limit: containerReconnectLimit,
+            // Try reconnection even if caused by a fatal error
+            all_errors_non_fatal: true,
+            username: credentials.username ? credentials.username : undefined,
+            password: credentials.password ? credentials.password : undefined,
+            transport: credentials.transportType ? credentials.transportType : undefined,
+            container_id: containerId ? containerId : undefined,
+            id: containerId ? containerId : undefined,
+        };
+        const connection = container.connect(connectOptions);
+        const clientOptions = {
+            name: subscription ? subscription : undefined,
+            source: {
+                address: sink,
+                durable: durable ? 2 : undefined,
+                expiry_policy: durable ? 'never' : undefined,
+            },
+            credit_window: 0, // prefetch 1
+        };
+        connection.open_receiver(clientOptions);
+        const canReattach = () => containerReconnect &&
+            (containerReconnectLimit === undefined || reattachAttempts < containerReconnectLimit);
+        const scheduleReattach = () => {
+            if (reattachTimer)
+                return;
+            const delay = Math.min(INITIAL_REATTACH_DELAY_MS * 2 ** reattachAttempts, MAX_REATTACH_DELAY_MS);
+            reattachAttempts++;
+            reattachTimer = setTimeout(() => {
+                reattachTimer = undefined;
+                connection.open_receiver(clientOptions);
+            }, delay);
+        };
+        // Brokers such as Azure Service Bus detach an idle link and keep the
+        // connection open, so nothing at connection level notices the stall
+        container.on('receiver_close', (context) => {
+            receiverReady = false;
+            receiver = undefined;
+            const error = context.receiver?.error;
+            const detachError = error && 'condition' in error ? error : undefined;
+            const detail = {
+                condition: detachError?.condition,
+                description: detachError?.description,
+            };
+            if (!canReattach()) {
+                this.logger.error('AMQP receiver link was detached and will not be reattached', detail);
+                this.emitError(new NodeOperationError(this.getNode(), 'AMQP receiver link was detached and could not be reattached', { description: detachError?.description ?? detachError?.condition }));
+                return;
+            }
+            const message = 'AMQP receiver link was detached by the peer, reattaching';
+            // a second detach with no attach in between means the link is not just idling out
+            if (reattachAttempts === 0)
+                this.logger.info(message, detail);
+            else
+                this.logger.warn(message, detail);
+            scheduleReattach();
+        });
+        const teardown = () => {
+            clearTimeout(reattachTimer);
+            container.removeAllListeners('disconnected');
+            container.removeAllListeners('receiver_open');
+            container.removeAllListeners('receiver_close');
+            container.removeAllListeners('message');
+            connection.close();
+        };
+        // The "closeFunction" function gets called by n8n whenever
+        // the workflow gets deactivated and can so clean up.
+        const closeFunction = async () => teardown();
+        // The "manualTriggerFunction" function gets called by n8n
+        // when a user is in the workflow editor and starts the
+        // workflow manually.
+        // for AMQP it doesn't make much sense to wait here but
+        // for a new user who doesn't know how this works, it's better to wait and show a respective info message
+        const manualTriggerFunction = async () => {
+            await new Promise((resolve, reject) => {
+                // remove the default message listener, setup our own for test trigger
+                container.removeAllListeners('message');
+                const timeoutHandler = setTimeout(() => {
+                    teardown();
+                    reject(new NodeOperationError(this.getNode(), 'Aborted because no message was received within 15 seconds', {
+                        description: 'This 15-second timeout only applies to manually triggered executions. Active workflows will listen indefinitely.',
+                    }));
+                }, 15000);
+                container.on('message', async (context) => {
+                    try {
+                        const result = await processMessage(context);
+                        if (result) {
+                            lastMsgId = result.messageId;
+                        }
+                        clearTimeout(timeoutHandler);
+                        resolve(true);
+                    }
+                    catch (error) {
+                        reject(error);
+                    }
+                    finally {
+                        clearTimeout(timeoutHandler);
+                    }
+                });
+            });
+        };
+        return {
+            closeFunction,
+            manualTriggerFunction,
+        };
+    }
+}
+//# sourceMappingURL=AmqpTrigger.node.js.map

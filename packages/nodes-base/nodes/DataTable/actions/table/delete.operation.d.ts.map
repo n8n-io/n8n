@@ -1,0 +1,1 @@
+{"version":3,"file":"delete.operation.d.ts","sourceRoot":"","sources":["delete.operation.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAEX,iBAAiB,EACjB,kBAAkB,EAClB,eAAe,EACf,MAAM,cAAc,CAAC;AAKtB,eAAO,MAAM,KAAK,WAAW,CAAC;AAS9B,eAAO,MAAM,WAAW,EAAE,eAAe,EASxC,CAAC;AAEF,wBAAsB,OAAO,CAC5B,IAAI,EAAE,iBAAiB,EACvB,KAAK,EAAE,MAAM,GACX,OAAO,CAAC,kBAAkB,EAAE,CAAC,CAU/B"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"Oura.node.d.ts","sourceRoot":"","sources":["Oura.node.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAOtB,qBAAa,IAAK,YAAW,SAAS;IACrC,WAAW,EAAE,oBAAoB,CA0C/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CA8HtE;CACD"}

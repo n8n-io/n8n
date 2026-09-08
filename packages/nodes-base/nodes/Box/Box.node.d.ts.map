@@ -1,0 +1,1 @@
+{"version":3,"file":"Box.node.d.ts","sourceRoot":"","sources":["Box.node.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAEX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAOtB,qBAAa,GAAI,YAAW,SAAS;IACpC,WAAW,EAAE,oBAAoB,CA2C/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAmdtE;CACD"}

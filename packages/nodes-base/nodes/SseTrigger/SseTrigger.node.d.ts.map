@@ -1,0 +1,1 @@
+{"version":3,"file":"SseTrigger.node.d.ts","sourceRoot":"","sources":["SseTrigger.node.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAEX,iBAAiB,EACjB,SAAS,EACT,oBAAoB,EACpB,gBAAgB,EAChB,MAAM,cAAc,CAAC;AAGtB,qBAAa,UAAW,YAAW,SAAS;IAC3C,WAAW,EAAE,oBAAoB,CAqC/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,gBAAgB,CAAC,CAmBhE;CACD"}

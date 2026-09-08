@@ -1,0 +1,78 @@
+export function recordRLC(displayName, name, searchListMethod, description, dependsOn) {
+    const prop = {
+        displayName,
+        name,
+        type: 'resourceLocator',
+        default: { mode: 'list', value: '' },
+        required: true,
+        description,
+        modes: [
+            {
+                displayName: 'From List',
+                name: 'list',
+                type: 'list',
+                typeOptions: { searchListMethod, searchable: true },
+            },
+            {
+                displayName: 'By ID',
+                name: 'id',
+                type: 'string',
+                placeholder: 'e.g. 42',
+                validation: [
+                    {
+                        type: 'regex',
+                        properties: { regex: '[0-9]+', errorMessage: 'Not a valid numeric ID' },
+                    },
+                ],
+            },
+        ],
+    };
+    if (dependsOn?.length) {
+        prop.typeOptions = { loadOptionsDependsOn: dependsOn };
+    }
+    return prop;
+}
+export const mapFilterOperators = {
+    equal: '=',
+    notEqual: '!=',
+    greaterThen: '>',
+    lesserThen: '<',
+    greaterOrEqual: '>=',
+    lesserOrEqual: '<=',
+    like: 'like',
+    in: 'in',
+    notIn: 'not in',
+    childOf: 'child_of',
+};
+export function odooGetDBName(databaseName, url) {
+    if (databaseName)
+        return databaseName;
+    const odooURL = new URL(url);
+    const hostname = odooURL.hostname;
+    if (!hostname)
+        return '';
+    return hostname.split('.')[0];
+}
+const LIST_OPERATORS = new Set(['in', 'notIn']);
+/**
+ * Converts the filter fixedCollection value into an Odoo domain array.
+ * e.g. [['email', '=', 'foo@bar.com'], ['name', 'like', 'foo']]
+ *
+ * For `in` / `not in` operators Odoo requires a list value, not a scalar.
+ * Users enter comma-separated values which are split and coerced here.
+ */
+export function buildDomain(filters) {
+    if (!filters?.filter?.length)
+        return [];
+    return filters.filter.map(({ fieldName, operator, value }) => {
+        let resolvedValue = value;
+        if (LIST_OPERATORS.has(operator)) {
+            resolvedValue = String(value)
+                .split(',')
+                .map((v) => v.trim())
+                .map((v) => (v !== '' && !Number.isNaN(Number(v)) ? Number(v) : v));
+        }
+        return [fieldName, mapFilterOperators[operator] ?? operator, resolvedValue];
+    });
+}
+//# sourceMappingURL=utils.js.map

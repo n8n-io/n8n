@@ -1,0 +1,25 @@
+import { VersionedNodeType } from 'n8n-workflow';
+import { MicrosoftExcelV1 } from './v1/MicrosoftExcelV1.node';
+import { MicrosoftExcelV2 } from './v2/MicrosoftExcelV2.node';
+export class MicrosoftExcel extends VersionedNodeType {
+    constructor() {
+        const baseDescription = {
+            displayName: 'Microsoft Excel (OneDrive)',
+            name: 'microsoftExcel',
+            icon: 'file:excel.svg',
+            group: ['input'],
+            subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+            description: 'Consume the Microsoft Excel API for workbooks stored in OneDrive',
+            defaultVersion: 2.2,
+            schemaPath: 'Microsoft/Excel',
+        };
+        const nodeVersions = {
+            1: new MicrosoftExcelV1(baseDescription),
+            2: new MicrosoftExcelV2(baseDescription),
+            2.1: new MicrosoftExcelV2(baseDescription),
+            2.2: new MicrosoftExcelV2(baseDescription),
+        };
+        super(nodeVersions, baseDescription);
+    }
+}
+//# sourceMappingURL=MicrosoftExcel.node.js.map

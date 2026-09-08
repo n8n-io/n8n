@@ -1,0 +1,1 @@
+{"version":3,"file":"TogglTrigger.node.d.ts","sourceRoot":"","sources":["TogglTrigger.node.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EACX,cAAc,EAEd,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EAEpB,MAAM,cAAc,CAAC;AAKtB,qBAAa,YAAa,YAAW,SAAS;IAC7C,WAAW,EAAE,oBAAoB,CAmC/B;IAEI,IAAI,CAAC,IAAI,EAAE,cAAc,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,GAAG,IAAI,CAAC,CA2BvE;CACD"}

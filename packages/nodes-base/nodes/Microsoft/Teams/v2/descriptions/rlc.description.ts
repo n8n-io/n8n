@@ -311,13 +311,6 @@ export const meetingRLC: INodeProperties = {
 	],
 };
 
-/**
- * Org-wide user picker, backed by `getUsers`. Every mode hands the node a plain string that is
- * resolved through `GET /users/{idOrUpn}`, so no mode declares an `extractValue`: an extract
- * regex runs before node code and would reject an email address emitted by an AI agent that
- * cannot know which mode is selected. Spread-and-override for other user fields
- * (`{ ...userRLC, name: 'targetUserId' }`), but note `modes` is shared by reference.
- */
 export const userRLC: INodeProperties = {
 	displayName: 'User',
 	name: 'userId',
@@ -325,13 +318,13 @@ export const userRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	required: true,
 	description:
-		'Select the user from the list, by ID, or by email address (a sign-in or principal name also works)',
+		'Select the user from the list or by ID. Guest users must be given by their object ID, not by their user principal name.',
 	modes: [
 		{
 			displayName: 'From List',
 			name: 'list',
 			type: 'list',
-			placeholder: 'e.g. Jane Smith',
+			placeholder: 'Select a User...',
 			typeOptions: {
 				searchListMethod: 'getUsers',
 				searchable: true,
@@ -341,32 +334,18 @@ export const userRLC: INodeProperties = {
 			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
-			placeholder: 'e.g. 714c1202-cbac-40ff-9160-53ab5c4df9b8',
+			placeholder: 'e.g. jacob@contoso.com',
+			// `validation` only, never an `extractValue`: a GUID-only extractor makes core
+			// reject any expression that resolves to a user principal name before the node
+			// runs, and Graph binds a principal name directly.
 			validation: [
 				{
 					type: 'regex',
 					properties: {
-						// Any Entra object id, not just v4 GUIDs: this regex hard-blocks
-						// literal values at editor level.
 						regex:
-							'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})[ \t]*$',
-						errorMessage: 'Not a valid Microsoft Entra user ID',
-					},
-				},
-			],
-		},
-		{
-			displayName: 'By Email',
-			name: 'email',
-			type: 'string',
-			placeholder: 'e.g. jane.smith@example.com',
-			hint: 'Their email address or their principal name (the address they sign in with). Both work.',
-			validation: [
-				{
-					type: 'regex',
-					properties: {
-						regex: '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$',
-						errorMessage: 'Not a valid email address',
+							'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[^\\s@#]+@[^\\s@#]+)[ \t]*$',
+						errorMessage:
+							'Not a valid user ID or user principal name. Give a guest user by their object ID, because a guest principal name contains "#EXT#".',
 					},
 				},
 			],

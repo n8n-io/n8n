@@ -1,0 +1,1 @@
+{"version":3,"file":"NoteInterface.d.ts","sourceRoot":"","sources":["NoteInterface.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,KAAK;IACrB,KAAK,CAAC,EAAE,MAAM,CAAC;IACf,QAAQ,CAAC,EAAE,MAAM,CAAC;IAClB,IAAI,CAAC,EAAE,MAAM,CAAC;IACd,OAAO,CAAC,EAAE,MAAM,CAAC;IACjB,SAAS,CAAC,EAAE,OAAO,CAAC;CACpB"}

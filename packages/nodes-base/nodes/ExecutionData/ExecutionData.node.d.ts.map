@@ -1,0 +1,1 @@
+{"version":3,"file":"ExecutionData.node.d.ts","sourceRoot":"","sources":["ExecutionData.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAOtB,qBAAa,aAAc,YAAW,SAAS;IAC9C,WAAW,EAAE,oBAAoB,CA2F/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CA8CtE;CACD"}

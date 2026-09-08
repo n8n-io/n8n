@@ -1,0 +1,1 @@
+{"version":3,"file":"CollectionDescription.d.ts","sourceRoot":"","sources":["CollectionDescription.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,WAAW,EAAE,eAAe,EAAE,MAAM,cAAc,CAAC;AAEjE,eAAO,MAAM,oBAAoB,EAAE,eAAe,EAmCjD,CAAC;AAEF,eAAO,MAAM,gBAAgB,EAAE,eAAe,EA2F7C,CAAC;AAEF,MAAM,MAAM,sBAAsB,GAAG,WAAW,GAAG;IAClD,MAAM,EAAE,MAAM,EAAE,CAAC;IACjB,UAAU,EAAE,MAAM,CAAC;CACnB,CAAC"}

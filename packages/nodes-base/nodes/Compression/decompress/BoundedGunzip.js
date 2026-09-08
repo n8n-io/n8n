@@ -1,0 +1,47 @@
+import * as fflate from 'fflate';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { DecompressedSizeExceededError } from './DecompressedSizeExceededError';
+import { feedInChunks } from './FeedInChunks';
+import { BoundedOutputAccumulator } from './BoundedOutputAccumulator';
+/**
+ * Decompress gzip data with an upper bound on total output size.
+ * Uses fflate's asynchronous stream so decompression happens off the main thread.
+ */
+export async function boundedGunzip(data, maxOutputSize) {
+    return await new Promise((resolve, reject) => {
+        const outputAccumulator = new BoundedOutputAccumulator(maxOutputSize);
+        let settled = false;
+        const decompressor = new fflate.AsyncGunzip((error, chunk, final) => {
+            if (error) {
+                rejectOnce(error);
+                return;
+            }
+            if (outputAccumulator.write(chunk)) {
+                rejectOnce(new DecompressedSizeExceededError(maxOutputSize));
+                return;
+            }
+            if (final) {
+                settled = true;
+                resolve(outputAccumulator.combineChunksToBuffer());
+            }
+        });
+        function rejectOnce(error) {
+            if (settled)
+                return;
+            settled = true;
+            decompressor.terminate();
+            reject(error);
+        }
+        try {
+            feedInChunks({
+                data,
+                push: (slice, isFinal) => decompressor.push(new Uint8Array(slice), isFinal),
+                shouldStop: () => settled,
+            });
+        }
+        catch (error) {
+            rejectOnce(ensureError(error));
+        }
+    });
+}
+//# sourceMappingURL=BoundedGunzip.js.map

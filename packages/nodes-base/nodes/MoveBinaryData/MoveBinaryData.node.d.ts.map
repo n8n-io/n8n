@@ -1,0 +1,1 @@
+{"version":3,"file":"MoveBinaryData.node.d.ts","sourceRoot":"","sources":["MoveBinaryData.node.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAElB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAmCtB,qBAAa,cAAe,YAAW,SAAS;IAC/C,WAAW,EAAE,oBAAoB,CAqR/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAgKtE;CACD"}

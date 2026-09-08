@@ -1,0 +1,99 @@
+import { mock } from 'vitest-mock-extended';
+import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { description } from '../../../../v2/actions/node.description';
+import { MicrosoftOutlookV2 } from '../../../../v2/MicrosoftOutlookV2.node';
+import * as transport from '../../../../v2/transport';
+vi.mock('../../../../v2/transport', async () => {
+    const originalModule = await vi.importActual('../../../../v2/transport');
+    return {
+        ...originalModule,
+        microsoftApiRequest: vi.fn(async function (method) {
+            if (method === 'POST') {
+                return {};
+            }
+        }),
+    };
+});
+describe('Test MicrosoftOutlookV2, message => sendAndWait', () => {
+    let microsoftOutlook;
+    let mockExecuteFunctions;
+    beforeEach(() => {
+        microsoftOutlook = new MicrosoftOutlookV2(description);
+        mockExecuteFunctions = mock();
+    });
+    afterEach(() => {
+        vi.clearAllMocks();
+    });
+    it('should send message and put execution to wait', async () => {
+        const items = [{ json: { data: 'test' } }];
+        //router
+        mockExecuteFunctions.getInputData.mockReturnValue(items);
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+        mockExecuteFunctions.putExecutionToWait.mockImplementation(async () => { });
+        //operation
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my@outlook.com');
+        mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+        //getSendAndWaitConfig
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+        mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/waiting-webhook/nodeID?approved=true&signature=abc');
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+        // configureWaitTillDate
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); //options.limitWaitTime.values
+        const result = await microsoftOutlook.execute.call(mockExecuteFunctions);
+        expect(result).toEqual([items]);
+        expect(transport.microsoftApiRequest).toHaveBeenCalledTimes(1);
+        expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
+        expect(transport.microsoftApiRequest).toHaveBeenCalledWith('POST', '/sendMail', 0, {
+            message: {
+                body: {
+                    content: expect.stringContaining('href="http://localhost/waiting-webhook/nodeID?approved=true&signature=abc"'),
+                    contentType: 'html',
+                },
+                subject: 'my subject',
+                toRecipients: [{ emailAddress: { address: 'my@outlook.com' } }],
+            },
+        });
+    });
+    it('should route API errors to error output when continueOnFail is true', async () => {
+        const items = [{ json: { data: 'test' } }];
+        mockExecuteFunctions.getInputData.mockReturnValue(items);
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my@outlook.com');
+        mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+        mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/waiting-webhook/nodeID?approved=true&signature=abc');
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+        mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+        transport.microsoftApiRequest.mockRejectedValueOnce(new Error('recipient_not_found'));
+        const result = await microsoftOutlook.execute.call(mockExecuteFunctions);
+        expect(result).toEqual([[{ json: { error: 'recipient_not_found' } }]]);
+        expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+    });
+    it('should rethrow API errors when continueOnFail is false', async () => {
+        const items = [{ json: { data: 'test' } }];
+        mockExecuteFunctions.getInputData.mockReturnValue(items);
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my@outlook.com');
+        mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+        mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/waiting-webhook/nodeID?approved=true&signature=abc');
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+        mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+        mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+        transport.microsoftApiRequest.mockRejectedValueOnce(new Error('recipient_not_found'));
+        await expect(microsoftOutlook.execute.call(mockExecuteFunctions)).rejects.toThrow('recipient_not_found');
+        expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+    });
+});
+//# sourceMappingURL=sendAndWait.test.js.map

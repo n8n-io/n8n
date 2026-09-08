@@ -1,0 +1,1 @@
+{"version":3,"file":"Git.node.d.ts","sourceRoot":"","sources":["Git.node.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EACX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EAEpB,MAAM,cAAc,CAAC;AAsEtB,qBAAa,GAAI,YAAW,SAAS;IACpC,WAAW,EAAE,oBAAoB,CA2L/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAo0BtE;CACD"}

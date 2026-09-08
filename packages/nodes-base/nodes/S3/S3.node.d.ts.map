@@ -1,0 +1,1 @@
+{"version":3,"file":"S3.node.d.ts","sourceRoot":"","sources":["S3.node.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAEX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EAEpB,MAAM,cAAc,CAAC;AAStB,qBAAa,EAAG,YAAW,SAAS;IACnC,WAAW,EAAE,oBAAoB,CA4D/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAy0BtE;CACD"}

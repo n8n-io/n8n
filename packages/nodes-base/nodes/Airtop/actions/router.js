@@ -1,0 +1,68 @@
+import { NodeOperationError } from 'n8n-workflow';
+import * as agent from './agent/Agent.resource';
+import { cleanOutputForToolUse } from './common/output.utils';
+import * as extraction from './extraction/Extraction.resource';
+import * as file from './file/File.resource';
+import * as interaction from './interaction/Interaction.resource';
+import * as session from './session/Session.resource';
+import * as window from './window/Window.resource';
+export async function router() {
+    const operationResult = [];
+    let responseData = [];
+    const nodeType = this.getNode().type;
+    const isCalledAsTool = nodeType.includes('airtopTool');
+    const items = this.getInputData();
+    const resource = this.getNodeParameter('resource', 0);
+    const operation = this.getNodeParameter('operation', 0);
+    const airtopNodeData = {
+        resource,
+        operation,
+    };
+    for (let i = 0; i < items.length; i++) {
+        try {
+            switch (airtopNodeData.resource) {
+                case 'agent':
+                    responseData = await agent[airtopNodeData.operation].execute.call(this, i);
+                    break;
+                case 'session':
+                    responseData = await session[airtopNodeData.operation].execute.call(this, i);
+                    break;
+                case 'window':
+                    responseData = await window[airtopNodeData.operation].execute.call(this, i);
+                    break;
+                case 'interaction':
+                    responseData = await interaction[airtopNodeData.operation].execute.call(this, i);
+                    break;
+                case 'extraction':
+                    responseData = await extraction[airtopNodeData.operation].execute.call(this, i);
+                    break;
+                case 'file':
+                    responseData = await file[airtopNodeData.operation].execute.call(this, i);
+                    break;
+                default:
+                    throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported!`);
+            }
+            // Get cleaner output when called as tool
+            if (isCalledAsTool) {
+                responseData = cleanOutputForToolUse(responseData);
+            }
+            const executionData = this.helpers.constructExecutionMetaData(responseData, {
+                itemData: { item: i },
+            });
+            operationResult.push.apply(operationResult, executionData);
+        }
+        catch (error) {
+            if (this.continueOnFail()) {
+                operationResult.push({
+                    json: this.getInputData(i)[0].json,
+                    error: error,
+                });
+            }
+            else {
+                throw error;
+            }
+        }
+    }
+    return [operationResult];
+}
+//# sourceMappingURL=router.js.map

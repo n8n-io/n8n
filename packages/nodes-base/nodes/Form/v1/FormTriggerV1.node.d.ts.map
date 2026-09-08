@@ -1,0 +1,1 @@
+{"version":3,"file":"FormTriggerV1.node.d.ts","sourceRoot":"","sources":["FormTriggerV1.node.ts"],"names":[],"mappings":"AAAA,OAAO,EAGN,KAAK,SAAS,EACd,KAAK,wBAAwB,EAC7B,KAAK,oBAAoB,EACzB,KAAK,iBAAiB,EACtB,MAAM,cAAc,CAAC;AAgFtB,qBAAa,aAAc,YAAW,SAAS;IAC9C,WAAW,EAAE,oBAAoB,CAAC;IAElC,YAAY,eAAe,EAAE,wBAAwB,EAKpD;IAEK,OAAO,CAAC,IAAI,EAAE,iBAAiB;;;;;;;;;;OAEpC;CACD"}

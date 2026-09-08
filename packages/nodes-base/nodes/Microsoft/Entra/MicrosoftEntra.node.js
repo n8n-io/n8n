@@ -1,0 +1,97 @@
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { groupFields, groupOperations, userFields, userOperations } from './descriptions';
+import { getGroupProperties, getGroups, getUserProperties, getUsers } from './GenericFunctions';
+export class MicrosoftEntra {
+    description = {
+        displayName: 'Microsoft Entra ID',
+        name: 'microsoftEntra',
+        icon: {
+            light: 'file:microsoftEntra.svg',
+            dark: 'file:microsoftEntra.dark.svg',
+        },
+        group: ['transform'],
+        version: 1,
+        subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+        description: 'Interact with Microsoft Entra ID API',
+        schemaPath: 'Microsoft/Entra',
+        defaults: {
+            name: 'Microsoft Entra ID',
+        },
+        usableAsTool: true,
+        inputs: [NodeConnectionTypes.Main],
+        outputs: [NodeConnectionTypes.Main],
+        credentials: [
+            {
+                name: 'microsoftEntraOAuth2Api',
+                required: true,
+            },
+        ],
+        requestDefaults: {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            baseURL: '={{ ($credentials.graphApiBaseUrl || "https://graph.microsoft.com").replace(/\\/+$/, "") }}/v1.0',
+        },
+        properties: [
+            {
+                displayName: 'Resource',
+                name: 'resource',
+                type: 'options',
+                noDataExpression: true,
+                options: [
+                    {
+                        name: 'Group',
+                        value: 'group',
+                    },
+                    {
+                        name: 'User',
+                        value: 'user',
+                    },
+                ],
+                default: 'user',
+            },
+            ...groupOperations,
+            ...groupFields,
+            ...userOperations,
+            ...userFields,
+        ],
+    };
+    methods = {
+        loadOptions: {
+            getGroupProperties,
+            async getGroupPropertiesGetAll() {
+                // Filter items not supported for list endpoint
+                return (await getGroupProperties.call(this)).filter((x) => ![
+                    'allowExternalSenders',
+                    'autoSubscribeNewMembers',
+                    'hideFromAddressLists',
+                    'hideFromOutlookClients',
+                    'isSubscribedByMail',
+                    'unseenCount',
+                ].includes(x.value));
+            },
+            getUserProperties,
+            async getUserPropertiesGetAll() {
+                // Filter items not supported for list endpoint
+                return (await getUserProperties.call(this)).filter((x) => ![
+                    'aboutMe',
+                    'birthday',
+                    'hireDate',
+                    'interests',
+                    'mySite',
+                    'pastProjects',
+                    'preferredName',
+                    'responsibilities',
+                    'schools',
+                    'skills',
+                    'mailboxSettings',
+                ].includes(x.value));
+            },
+        },
+        listSearch: {
+            getGroups,
+            getUsers,
+        },
+    };
+}
+//# sourceMappingURL=MicrosoftEntra.node.js.map

@@ -1,0 +1,1 @@
+{"version":3,"file":"PostgresInterface.d.ts","sourceRoot":"","sources":["PostgresInterface.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,gBAAgB;IAChC,WAAW,EAAE,MAAM,CAAC;IACpB,YAAY,EAAE,MAAM,CAAC;IACrB,WAAW,EAAE,MAAM,CAAC;IACpB,MAAM,EAAE,MAAM,CAAC;CACf"}

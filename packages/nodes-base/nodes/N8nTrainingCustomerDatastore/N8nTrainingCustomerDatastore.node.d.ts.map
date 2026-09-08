@@ -1,0 +1,1 @@
+{"version":3,"file":"N8nTrainingCustomerDatastore.node.d.ts","sourceRoot":"","sources":["N8nTrainingCustomerDatastore.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AA8CtB,qBAAa,4BAA6B,YAAW,SAAS;IAC7D,WAAW,EAAE,oBAAoB,CAgE/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAkCtE;CACD"}

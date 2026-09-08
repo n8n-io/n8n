@@ -1,0 +1,55 @@
+export class KibanaApi {
+    name = 'kibanaApi';
+    displayName = 'Kibana API';
+    documentationUrl = 'kibana';
+    icon = 'file:icons/Kibana.svg';
+    httpRequestNode = {
+        name: 'Kibana',
+        docsUrl: 'https://www.elastic.co/guide/en/kibana/current/api.html',
+        apiBaseUrl: '',
+    };
+    properties = [
+        {
+            displayName: 'URL',
+            name: 'url',
+            type: 'string',
+            required: true,
+            default: '',
+            placeholder: 'http://localhost:5601',
+        },
+        {
+            displayName: 'Username',
+            name: 'username',
+            type: 'string',
+            required: true,
+            default: '',
+        },
+        {
+            displayName: 'Password',
+            name: 'password',
+            type: 'string',
+            typeOptions: { password: true },
+            required: true,
+            default: '',
+        },
+    ];
+    authenticate = {
+        type: 'generic',
+        properties: {
+            headers: {
+                'kbn-xsrf': true,
+            },
+            auth: {
+                username: '={{$credentials.username}}',
+                password: '={{$credentials.password}}',
+            },
+        },
+    };
+    test = {
+        request: {
+            baseURL: '={{$credentials.url}}',
+            url: '/api/features',
+        },
+    };
+}
+//# sourceMappingURL=KibanaApi.credentials.js.map

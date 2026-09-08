@@ -1,0 +1,77 @@
+import { NodeOperationError } from 'n8n-workflow';
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+import { prepareErrorItem, prepareQueryAndReplacements, replaceEmptyStringsByNulls, } from '../../helpers/utils';
+import { optionsCollection } from '../common.descriptions';
+const properties = [
+    {
+        displayName: 'Query',
+        name: 'query',
+        type: 'string',
+        default: '',
+        placeholder: 'e.g. SELECT id, name FROM product WHERE id < 40',
+        required: true,
+        description: "The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
+        noDataExpression: true,
+        typeOptions: {
+            editor: 'sqlEditor',
+            sqlDialect: 'MySQL',
+        },
+        hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
+    },
+    optionsCollection,
+];
+const displayOptions = {
+    show: {
+        resource: ['database'],
+        operation: ['executeQuery'],
+    },
+};
+export const description = updateDisplayOptions(displayOptions, properties);
+export async function execute(inputItems, runQueries, nodeOptions) {
+    let returnData = [];
+    const items = replaceEmptyStringsByNulls(inputItems, nodeOptions.replaceEmptyStrings);
+    const queries = [];
+    for (let i = 0; i < items.length; i++) {
+        try {
+            let rawQuery = this.getNodeParameter('query', i);
+            for (const resolvable of getResolvables(rawQuery)) {
+                rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, i));
+            }
+            const options = this.getNodeParameter('options', i, {});
+            const nodeVersion = Number(nodeOptions.nodeVersion);
+            let values;
+            let queryReplacement = options.queryReplacement || [];
+            if (typeof queryReplacement === 'string') {
+                queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+            }
+            if (Array.isArray(queryReplacement)) {
+                values = queryReplacement;
+            }
+            else {
+                throw new NodeOperationError(this.getNode(), 'Query Replacement must be a string of comma-separated values, or an array of values', { itemIndex: i });
+            }
+            const preparedQuery = prepareQueryAndReplacements(rawQuery, nodeVersion, values);
+            if (nodeOptions.nodeVersion >= 2.3) {
+                const parsedNumbers = preparedQuery.values.map((value) => {
+                    return Number(value) ? Number(value) : value;
+                });
+                preparedQuery.values = parsedNumbers;
+            }
+            preparedQuery.itemIndex = i;
+            queries.push(preparedQuery);
+        }
+        catch (error) {
+            if (!this.continueOnFail())
+                throw error;
+            const nodeError = error instanceof NodeOperationError
+                ? error
+                : new NodeOperationError(this.getNode(), error, { itemIndex: i });
+            returnData.push(prepareErrorItem(items[i].json, nodeError, i));
+        }
+    }
+    if (queries.length > 0) {
+        returnData = returnData.concat(await runQueries(queries));
+    }
+    return returnData;
+}
+//# sourceMappingURL=executeQuery.operation.js.map

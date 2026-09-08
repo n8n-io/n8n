@@ -1,0 +1,1 @@
+{"version":3,"file":"Adalo.node.d.ts","sourceRoot":"","sources":["Adalo.node.ts"],"names":[],"mappings":"AAAA,OAAO,EAGN,KAAK,uBAAuB,EAC5B,KAAK,mBAAmB,EACxB,KAAK,SAAS,EACd,KAAK,oBAAoB,EACzB,MAAM,cAAc,CAAC;AAKtB,qBAAa,KAAM,YAAW,SAAS;IACtC,WAAW,EAAE,oBAAoB,CAsK/B;IAEI,mBAAmB,CACxB,IAAI,EAAE,uBAAuB,EAC7B,cAAc,EAAE,mBAAmB,GACjC,OAAO,CAAC,mBAAmB,CAAC,CA0B9B;CACD"}

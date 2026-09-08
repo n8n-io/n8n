@@ -1,0 +1,1 @@
+{"version":3,"file":"MicrosoftOneDrive.node.d.ts","sourceRoot":"","sources":["MicrosoftOneDrive.node.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAEX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EAEpB,MAAM,cAAc,CAAC;AAetB,qBAAa,iBAAkB,YAAW,SAAS;IAClD,WAAW,EAAE,oBAAoB,CA6F/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAqjBtE;CACD"}

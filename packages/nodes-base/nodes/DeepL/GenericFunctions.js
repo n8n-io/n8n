@@ -1,0 +1,29 @@
+import { NodeApiError } from 'n8n-workflow';
+export async function deepLApiRequest(method, resource, body = {}, qs = {}, uri, headers = {}) {
+    const proApiEndpoint = 'https://api.deepl.com/v2';
+    const freeApiEndpoint = 'https://api-free.deepl.com/v2';
+    const credentials = await this.getCredentials('deepLApi');
+    const options = {
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        method,
+        form: body,
+        qs,
+        uri: uri || `${credentials.apiPlan === 'pro' ? proApiEndpoint : freeApiEndpoint}${resource}`,
+        json: true,
+    };
+    try {
+        if (Object.keys(headers).length !== 0) {
+            options.headers = Object.assign({}, options.headers, headers);
+        }
+        if (Object.keys(body).length === 0) {
+            delete options.body;
+        }
+        return await this.helpers.requestWithAuthentication.call(this, 'deepLApi', options);
+    }
+    catch (error) {
+        throw new NodeApiError(this.getNode(), error);
+    }
+}
+//# sourceMappingURL=GenericFunctions.js.map

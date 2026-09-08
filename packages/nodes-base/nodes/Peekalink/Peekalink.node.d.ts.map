@@ -1,0 +1,1 @@
+{"version":3,"file":"Peekalink.node.d.ts","sourceRoot":"","sources":["Peekalink.node.ts"],"names":[],"mappings":"AAAA,OAAO,EACN,IAAI,EAEJ,KAAK,iBAAiB,EACtB,KAAK,kBAAkB,EACvB,KAAK,oBAAoB,EAGzB,MAAM,cAAc,CAAC;AAEtB,eAAO,MAAM,MAAM,6BAA6B,CAAC;AAIjD,qBAAa,SAAU,SAAQ,IAAI;IAClC,WAAW,EAAE,oBAAoB,CAmD/B;IAEI,OAAO,CAAC,OAAO,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAwBzE;CACD"}

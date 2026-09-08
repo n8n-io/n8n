@@ -1,0 +1,1 @@
+{"version":3,"file":"Aggregate.node.d.ts","sourceRoot":"","sources":["Aggregate.node.ts"],"names":[],"mappings":"AAGA,OAAO,EAGN,KAAK,iBAAiB,EACtB,KAAK,kBAAkB,EACvB,KAAK,SAAS,EACd,KAAK,oBAAoB,EAIzB,MAAM,cAAc,CAAC;AAKtB,qBAAa,SAAU,YAAW,SAAS;IAC1C,WAAW,EAAE,oBAAoB,CA0O/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAoMtE;CACD"}

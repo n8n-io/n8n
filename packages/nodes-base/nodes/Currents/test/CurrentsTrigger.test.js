@@ -1,0 +1,111 @@
+import { CurrentsTrigger } from '../CurrentsTrigger.node';
+// Mock the helper module
+vi.mock('../CurrentsTriggerHelpers', () => ({
+    verifyWebhook: vi.fn(),
+}));
+import { verifyWebhook } from '../CurrentsTriggerHelpers';
+describe('CurrentsTrigger', () => {
+    let trigger;
+    let mockWebhookFunctions;
+    let mockResponse;
+    beforeEach(() => {
+        trigger = new CurrentsTrigger();
+        mockResponse = {
+            status: vi.fn().mockReturnThis(),
+            send: vi.fn().mockReturnThis(),
+            end: vi.fn().mockReturnThis(),
+        };
+        mockWebhookFunctions = {
+            getBodyData: vi.fn(),
+            getNodeParameter: vi.fn(),
+            getResponseObject: vi.fn().mockReturnValue(mockResponse),
+            helpers: {
+                returnJsonArray: vi.fn((data) => data),
+            },
+        };
+        verifyWebhook.mockReturnValue(true);
+    });
+    describe('webhook', () => {
+        it('should return 401 when verification fails', async () => {
+            verifyWebhook.mockReturnValue(false);
+            const result = await trigger.webhook.call(mockWebhookFunctions);
+            expect(mockResponse.status).toHaveBeenCalledWith(401);
+            expect(mockResponse.send).toHaveBeenCalledWith('Unauthorized');
+            expect(result).toEqual({ noWebhookResponse: true });
+        });
+        it('should trigger workflow when event matches selected events', async () => {
+            const bodyData = {
+                event: 'RUN_FINISH',
+                runUrl: 'https://app.currents.dev/run/123',
+                buildId: 'build-456',
+            };
+            mockWebhookFunctions.getBodyData.mockReturnValue(bodyData);
+            mockWebhookFunctions.getNodeParameter.mockReturnValue(['RUN_FINISH', 'RUN_START']);
+            const result = await trigger.webhook.call(mockWebhookFunctions);
+            expect(result.workflowData).toBeDefined();
+            expect(mockWebhookFunctions.helpers.returnJsonArray).toHaveBeenCalledWith([bodyData]);
+        });
+        it('should acknowledge but not trigger when event does not match', async () => {
+            const bodyData = {
+                event: 'RUN_TIMEOUT',
+                runUrl: 'https://app.currents.dev/run/123',
+            };
+            mockWebhookFunctions.getBodyData.mockReturnValue(bodyData);
+            mockWebhookFunctions.getNodeParameter.mockReturnValue(['RUN_FINISH', 'RUN_START']);
+            const result = await trigger.webhook.call(mockWebhookFunctions);
+            expect(result).toEqual({ webhookResponse: 'OK' });
+            expect(result.workflowData).toBeUndefined();
+        });
+        it('should trigger workflow for all events when no filter is set', async () => {
+            const bodyData = {
+                event: 'RUN_CANCELED',
+                runUrl: 'https://app.currents.dev/run/123',
+            };
+            mockWebhookFunctions.getBodyData.mockReturnValue(bodyData);
+            mockWebhookFunctions.getNodeParameter.mockReturnValue([]);
+            const result = await trigger.webhook.call(mockWebhookFunctions);
+            expect(result.workflowData).toBeDefined();
+        });
+        it('should pass full webhook payload to workflow', async () => {
+            const bodyData = {
+                event: 'RUN_FINISH',
+                runUrl: 'https://app.currents.dev/run/123',
+                buildId: 'build-456',
+                groupId: 'group-1',
+                tags: ['smoke', 'regression'],
+                commit: {
+                    sha: 'abc123',
+                    branch: 'main',
+                    authorName: 'Test Author',
+                },
+                failures: 0,
+                passes: 42,
+                flaky: 2,
+            };
+            mockWebhookFunctions.getBodyData.mockReturnValue(bodyData);
+            mockWebhookFunctions.getNodeParameter.mockReturnValue(['RUN_FINISH']);
+            const result = await trigger.webhook.call(mockWebhookFunctions);
+            expect(mockWebhookFunctions.helpers.returnJsonArray).toHaveBeenCalledWith([bodyData]);
+            expect(result.workflowData).toBeDefined();
+        });
+    });
+    describe('description', () => {
+        it('should have correct node metadata', () => {
+            expect(trigger.description.displayName).toBe('Currents Trigger');
+            expect(trigger.description.name).toBe('currentsTrigger');
+            expect(trigger.description.group).toContain('trigger');
+        });
+        it('should have all webhook event options', () => {
+            const eventsProperty = trigger.description.properties.find((p) => p.name === 'events');
+            expect(eventsProperty).toBeDefined();
+            expect(eventsProperty?.type).toBe('multiOptions');
+            const options = eventsProperty?.options ?? [];
+            const eventValues = options.map((o) => o.value);
+            expect(eventValues).toContain('RUN_START');
+            expect(eventValues).toContain('RUN_FINISH');
+            expect(eventValues).toContain('RUN_TIMEOUT');
+            expect(eventValues).toContain('RUN_CANCELED');
+        });
+    });
+});
+//# sourceMappingURL=CurrentsTrigger.test.js.map

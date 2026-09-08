@@ -1,0 +1,1 @@
+{"version":3,"file":"Yourls.node.d.ts","sourceRoot":"","sources":["Yourls.node.ts"],"names":[],"mappings":"AAAA,OAAO,EACN,KAAK,iBAAiB,EAEtB,KAAK,kBAAkB,EACvB,KAAK,SAAS,EACd,KAAK,oBAAoB,EAEzB,MAAM,cAAc,CAAC;AAKtB,qBAAa,MAAO,YAAW,SAAS;IACvC,WAAW,EAAE,oBAAoB,CAsC/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAiDtE;CACD"}

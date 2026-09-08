@@ -1,0 +1,1 @@
+{"version":3,"file":"Interval.node.d.ts","sourceRoot":"","sources":["Interval.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EACjB,SAAS,EACT,oBAAoB,EACpB,gBAAgB,EAChB,MAAM,cAAc,CAAC;AAGtB,qBAAa,QAAS,YAAW,SAAS;IACzC,WAAW,EAAE,oBAAoB,CA0D/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,gBAAgB,CAAC,CA4ChE;CACD"}

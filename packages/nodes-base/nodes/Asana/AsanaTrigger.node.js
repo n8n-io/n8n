@@ -1,0 +1,191 @@
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { verifySignature } from './AsanaTriggerHelpers';
+import { asanaApiRequest, getWorkspaces } from './GenericFunctions';
+export class AsanaTrigger {
+    description = {
+        displayName: 'Asana Trigger',
+        name: 'asanaTrigger',
+        icon: 'file:asana.svg',
+        group: ['trigger'],
+        version: 1,
+        description: 'Starts the workflow when Asana events occur.',
+        defaults: {
+            name: 'Asana Trigger',
+        },
+        inputs: [],
+        outputs: [NodeConnectionTypes.Main],
+        credentials: [
+            {
+                name: 'asanaApi',
+                required: true,
+                displayOptions: {
+                    show: {
+                        authentication: ['accessToken'],
+                    },
+                },
+            },
+            {
+                name: 'asanaOAuth2Api',
+                required: true,
+                displayOptions: {
+                    show: {
+                        authentication: ['oAuth2'],
+                    },
+                },
+            },
+        ],
+        webhooks: [
+            {
+                name: 'default',
+                httpMethod: 'POST',
+                responseMode: 'onReceived',
+                path: 'webhook',
+            },
+        ],
+        properties: [
+            {
+                displayName: 'Authentication',
+                name: 'authentication',
+                type: 'options',
+                options: [
+                    {
+                        name: 'Access Token',
+                        value: 'accessToken',
+                    },
+                    {
+                        name: 'OAuth2',
+                        value: 'oAuth2',
+                    },
+                ],
+                default: 'accessToken',
+            },
+            {
+                displayName: 'Resource',
+                name: 'resource',
+                type: 'string',
+                default: '',
+                required: true,
+                description: 'The resource ID to subscribe to. The resource can be a task or project.',
+            },
+            {
+                displayName: 'Workspace Name or ID',
+                name: 'workspace',
+                type: 'options',
+                typeOptions: {
+                    loadOptionsMethod: 'getWorkspaces',
+                },
+                options: [],
+                default: '',
+                description: 'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+            },
+        ],
+    };
+    methods = {
+        loadOptions: {
+            // Get all the available workspaces to display them to user so that they can
+            // select them easily
+            async getWorkspaces() {
+                const workspaces = await getWorkspaces.call(this);
+                workspaces.unshift({
+                    name: '',
+                    value: '',
+                });
+                return workspaces;
+            },
+        },
+    };
+    webhookMethods = {
+        default: {
+            async checkExists() {
+                const webhookData = this.getWorkflowStaticData('node');
+                const webhookUrl = this.getNodeWebhookUrl('default');
+                const resource = this.getNodeParameter('resource');
+                const workspace = this.getNodeParameter('workspace');
+                const { data } = await asanaApiRequest.call(this, 'GET', '/webhooks', {}, { workspace });
+                for (const webhook of data) {
+                    if (webhook.resource.gid === resource && webhook.target === webhookUrl) {
+                        webhookData.webhookId = webhook.gid;
+                        return true;
+                    }
+                }
+                // If it did not error then the webhook exists
+                return false;
+            },
+            async create() {
+                const webhookData = this.getWorkflowStaticData('node');
+                const webhookUrl = this.getNodeWebhookUrl('default');
+                if (webhookUrl.includes('%20')) {
+                    throw new NodeOperationError(this.getNode(), 'The name of the Asana Trigger Node is not allowed to contain any spaces!');
+                }
+                const resource = this.getNodeParameter('resource');
+                const body = {
+                    resource,
+                    target: webhookUrl,
+                };
+                const responseData = await asanaApiRequest.call(this, 'POST', '/webhooks', body);
+                if (responseData.data === undefined || responseData.data.gid === undefined) {
+                    // Required data is missing so was not successful
+                    return false;
+                }
+                webhookData.webhookId = responseData.data.gid;
+                // Asana also returns the webhook's verification secret in this response
+                const hookSecret = responseData['X-Hook-Secret'];
+                if (typeof hookSecret === 'string' && hookSecret.length > 0) {
+                    webhookData.hookSecret = hookSecret;
+                }
+                return true;
+            },
+            async delete() {
+                const webhookData = this.getWorkflowStaticData('node');
+                if (webhookData.webhookId !== undefined) {
+                    const body = {};
+                    try {
+                        await asanaApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.webhookId}`, body);
+                    }
+                    catch (error) {
+                        return false;
+                    }
+                    // Remove from the static workflow data so that it is clear
+                    // that no webhooks are registered anymore
+                    delete webhookData.webhookId;
+                    delete webhookData.webhookEvents;
+                    delete webhookData.hookSecret;
+                }
+                return true;
+            },
+        },
+    };
+    async webhook() {
+        const bodyData = this.getBodyData();
+        const headerData = this.getHeaderData();
+        const req = this.getRequestObject();
+        if (headerData['x-hook-secret'] !== undefined) {
+            // Is a create webhook confirmation request; the secret itself is
+            // captured from the create-webhook API response, not from this header
+            const res = this.getResponseObject();
+            res.set('X-Hook-Secret', headerData['x-hook-secret']);
+            res.status(200).end();
+            return {
+                noWebhookResponse: true,
+            };
+        }
+        if (!verifySignature.call(this)) {
+            const res = this.getResponseObject();
+            res.status(401).send('Unauthorized').end();
+            return { noWebhookResponse: true };
+        }
+        // Is regular webhook call
+        // Check if it contains any events
+        if (bodyData.events === undefined ||
+            !Array.isArray(bodyData.events) ||
+            bodyData.events.length === 0) {
+            // Does not contain any event data so nothing to process so no reason to
+            // start the workflow
+            return {};
+        }
+        return {
+            workflowData: [this.helpers.returnJsonArray(req.body.events)],
+        };
+    }
+}
+//# sourceMappingURL=AsanaTrigger.node.js.map

@@ -1,0 +1,1 @@
+{"version":3,"file":"WriteBinaryFile.node.d.ts","sourceRoot":"","sources":["WriteBinaryFile.node.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EACX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAItB,qBAAa,eAAgB,YAAW,SAAS;IAChD,WAAW,EAAE,oBAAoB,CAkD/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CA2EtE;CACD"}

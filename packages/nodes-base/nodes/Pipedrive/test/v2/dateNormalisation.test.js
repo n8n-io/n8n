@@ -1,0 +1,88 @@
+import { execute as activityCreateExecute } from '../../v2/actions/activity/create.operation';
+import { execute as activityUpdateExecute } from '../../v2/actions/activity/update.operation';
+import { execute as dealCreateExecute } from '../../v2/actions/deal/create.operation';
+import { execute as dealUpdateExecute } from '../../v2/actions/deal/update.operation';
+import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../v2/transport';
+vi.mock('../../v2/transport', () => ({
+    pipedriveApiRequest: { call: vi.fn() },
+    pipedriveApiRequestAllItemsCursor: { call: vi.fn() },
+    pipedriveApiRequestAllItemsOffset: { call: vi.fn() },
+    pipedriveGetCustomProperties: { call: vi.fn() },
+}));
+const mockApiRequest = pipedriveApiRequest;
+const mockGetCustomProperties = pipedriveGetCustomProperties;
+function buildContext(params) {
+    return {
+        getInputData: vi.fn(() => [{ json: {} }]),
+        getNodeParameter: vi.fn((name, _i, defaultValue) => {
+            if (Object.prototype.hasOwnProperty.call(params, name))
+                return params[name];
+            return defaultValue;
+        }),
+        continueOnFail: vi.fn(() => false),
+        helpers: {
+            returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
+            constructExecutionMetaData: vi.fn((items) => items),
+        },
+        getNode: vi.fn(() => ({})),
+    };
+}
+describe('Pipedrive v2 normalises ISO date inputs to YYYY-MM-DD on outgoing requests', () => {
+    beforeEach(() => {
+        mockApiRequest.call.mockReset().mockResolvedValue({ data: {}, additionalData: {} });
+        mockGetCustomProperties.call.mockReset().mockResolvedValue({});
+    });
+    it('deal/create strips the time component from expected_close_date', async () => {
+        const ctx = buildContext({
+            rawCustomFieldKeys: true,
+            title: 'Test Deal',
+            associateWith: 'organization',
+            org_id: 7,
+            additionalFields: { expected_close_date: '2026-04-13T00:00:00.000Z' },
+        });
+        await dealCreateExecute.call(ctx);
+        const [, method, endpoint, body] = mockApiRequest.call.mock.calls[0];
+        expect(method).toBe('POST');
+        expect(endpoint).toBe('/deals');
+        expect(body.expected_close_date).toBe('2026-04-13');
+    });
+    it('deal/update strips the time component from expected_close_date', async () => {
+        const ctx = buildContext({
+            rawCustomFieldKeys: true,
+            dealId: 10,
+            updateFields: { expected_close_date: '2026-04-13T00:00:00.000Z' },
+        });
+        await dealUpdateExecute.call(ctx);
+        const [, method, endpoint, body] = mockApiRequest.call.mock.calls[0];
+        expect(method).toBe('PATCH');
+        expect(endpoint).toBe('/deals/10');
+        expect(body.expected_close_date).toBe('2026-04-13');
+    });
+    it('activity/create strips the time component from due_date', async () => {
+        const ctx = buildContext({
+            rawCustomFieldKeys: true,
+            subject: 'Call client',
+            done: false,
+            type: 'call',
+            additionalFields: { due_date: '2026-04-01T00:00:00.000Z' },
+        });
+        await activityCreateExecute.call(ctx);
+        const [, method, endpoint, body] = mockApiRequest.call.mock.calls[0];
+        expect(method).toBe('POST');
+        expect(endpoint).toBe('/activities');
+        expect(body.due_date).toBe('2026-04-01');
+    });
+    it('activity/update strips the time component from due_date', async () => {
+        const ctx = buildContext({
+            rawCustomFieldKeys: true,
+            activityId: 10,
+            updateFields: { due_date: '2026-04-02T00:00:00.000Z' },
+        });
+        await activityUpdateExecute.call(ctx);
+        const [, method, endpoint, body] = mockApiRequest.call.mock.calls[0];
+        expect(method).toBe('PATCH');
+        expect(endpoint).toBe('/activities/10');
+        expect(body.due_date).toBe('2026-04-02');
+    });
+});
+//# sourceMappingURL=dateNormalisation.test.js.map

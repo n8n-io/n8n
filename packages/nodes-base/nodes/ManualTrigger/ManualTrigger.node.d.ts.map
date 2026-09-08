@@ -1,0 +1,1 @@
+{"version":3,"file":"ManualTrigger.node.d.ts","sourceRoot":"","sources":["ManualTrigger.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EACjB,SAAS,EACT,oBAAoB,EACpB,gBAAgB,EAChB,MAAM,cAAc,CAAC;AAGtB,qBAAa,aAAc,YAAW,SAAS;IAC9C,WAAW,EAAE,oBAAoB,CA4B/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,gBAAgB,CAAC,CAQhE;CACD"}

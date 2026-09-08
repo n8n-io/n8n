@@ -1,0 +1,1 @@
+{"version":3,"file":"MicrosoftGraphSecurity.node.d.ts","sourceRoot":"","sources":["MicrosoftGraphSecurity.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EACX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAetB,qBAAa,sBAAuB,YAAW,SAAS;IACvD,WAAW,EAAE,oBAAoB,CA4E/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAoKtE;CACD"}

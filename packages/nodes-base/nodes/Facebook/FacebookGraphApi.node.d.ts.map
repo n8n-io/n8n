@@ -1,0 +1,1 @@
+{"version":3,"file":"FacebookGraphApi.node.d.ts","sourceRoot":"","sources":["FacebookGraphApi.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAEX,iBAAiB,EAEjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EAGpB,MAAM,cAAc,CAAC;AAGtB,qBAAa,gBAAiB,YAAW,SAAS;IACjD,WAAW,EAAE,oBAAoB,CA8V/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,CAAC,CAkLtE;CACD"}

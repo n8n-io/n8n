@@ -1,0 +1,1 @@
+{"version":3,"file":"AwsIam.node.d.ts","sourceRoot":"","sources":["AwsIam.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,SAAS,EAAE,oBAAoB,EAAE,MAAM,cAAc,CAAC;AAOpE,OAAO,EAAE,YAAY,EAAE,WAAW,EAAE,mBAAmB,EAAE,MAAM,sBAAsB,CAAC;AAEtF,qBAAa,MAAO,YAAW,SAAS;IACvC,WAAW,EAAE,oBAAoB,CA+C/B;IAEF,OAAO;;;;;;MAML;CACF"}

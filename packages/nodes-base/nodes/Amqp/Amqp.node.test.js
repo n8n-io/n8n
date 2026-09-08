@@ -1,0 +1,197 @@
+import { mock } from 'vitest-mock-extended';
+import { NodeOperationError } from 'n8n-workflow';
+import { Amqp } from './Amqp.node';
+// Mock the entire rhea module
+const mockSender = {
+    close: vi.fn(),
+    send: vi.fn().mockReturnValue({ id: 'test-message-id' }),
+};
+const mockConnection = {
+    close: vi.fn(),
+    open_sender: vi.fn().mockReturnValue(mockSender),
+    options: { reconnect: true },
+};
+const mockContainer = {
+    connect: vi.fn().mockReturnValue(mockConnection),
+    on: vi.fn(),
+    once: vi.fn(),
+};
+vi.mock('rhea', () => ({
+    create_container: vi.fn(() => mockContainer),
+}));
+describe('AMQP Node', () => {
+    const credentials = mock({
+        hostname: 'localhost',
+        port: 5672,
+        username: 'testuser',
+        password: 'testpass',
+        transportType: 'tcp',
+    });
+    const executeFunctions = mock({
+        getNode: vi.fn().mockReturnValue({ name: 'AMQP Test Node' }),
+        continueOnFail: vi.fn().mockReturnValue(false),
+    });
+    beforeEach(() => {
+        vi.clearAllMocks();
+        executeFunctions.getCredentials.calledWith('amqp').mockResolvedValue(credentials);
+        executeFunctions.getInputData.mockReturnValue([{ json: { testing: true } }]);
+        executeFunctions.getNodeParameter.calledWith('sink', 0).mockReturnValue('test/queue');
+        executeFunctions.getNodeParameter.calledWith('headerParametersJson', 0).mockReturnValue({});
+        executeFunctions.getNodeParameter.calledWith('options', 0).mockReturnValue({});
+        // Setup container event mocking
+        mockContainer.once.mockImplementation((event, callback) => {
+            if (event === 'sendable') {
+                // Call the callback immediately to simulate successful connection
+                callback({ sender: mockSender });
+            }
+        });
+        // Mock successful credential validation by making the connection open immediately
+        mockContainer.on.mockImplementation((event, callback) => {
+            if (event === 'connection_open') {
+                setImmediate(() => callback({}));
+            }
+        });
+    });
+    it('should throw error when sink is empty', async () => {
+        executeFunctions.getNodeParameter.calledWith('sink', 0).mockReturnValue('');
+        const promise = new Amqp().execute.call(executeFunctions);
+        await expect(promise).rejects.toThrow(NodeOperationError);
+        await expect(promise).rejects.toThrow('Queue or Topic required!');
+    });
+    it('should send message successfully', async () => {
+        const result = await new Amqp().execute.call(executeFunctions);
+        expect(result).toEqual([[{ json: { id: 'test-message-id' }, pairedItems: { item: 0 } }]]);
+        expect(executeFunctions.getCredentials).toHaveBeenCalledWith('amqp');
+        expect(mockContainer.connect).toHaveBeenCalled();
+        expect(mockConnection.open_sender).toHaveBeenCalledWith('test/queue');
+        expect(mockSender.send).toHaveBeenCalledWith({
+            application_properties: {},
+            body: '{"testing":true}',
+        });
+        expect(mockSender.close).toHaveBeenCalled();
+        expect(mockConnection.close).toHaveBeenCalled();
+    });
+    it('should send message with custom headers', async () => {
+        executeFunctions.getNodeParameter
+            .calledWith('headerParametersJson', 0)
+            .mockReturnValue('{"custom":"header","priority":1}');
+        await new Amqp().execute.call(executeFunctions);
+        expect(mockSender.send).toHaveBeenCalledWith({
+            application_properties: { custom: 'header', priority: 1 },
+            body: '{"testing":true}',
+        });
+    });
+    it('should send only specific property when configured', async () => {
+        executeFunctions.getNodeParameter.calledWith('options', 0).mockReturnValue({
+            sendOnlyProperty: 'testing',
+        });
+        executeFunctions.getInputData.mockReturnValue([{ json: { testing: 'specific-value' } }]);
+        await new Amqp().execute.call(executeFunctions);
+        expect(mockSender.send).toHaveBeenCalledWith({
+            application_properties: {},
+            body: '"specific-value"',
+        });
+    });
+    it('should pass the reconnect option through to the connection', async () => {
+        executeFunctions.getNodeParameter.calledWith('options', 0).mockReturnValue({
+            reconnect: false,
+        });
+        await new Amqp().execute.call(executeFunctions);
+        expect(mockContainer.connect).toHaveBeenLastCalledWith(expect.objectContaining({ reconnect: false, reconnect_limit: 50 }));
+    });
+    it('should fail fast when the connection drops and reconnect is disabled', async () => {
+        executeFunctions.getNodeParameter.calledWith('options', 0).mockReturnValue({
+            reconnect: false,
+        });
+        // no 'sendable': the connection drops before anything can be sent
+        mockContainer.once.mockImplementation(() => { });
+        mockContainer.on.mockImplementation((event, callback) => {
+            if (event === 'connection_open')
+                setImmediate(() => callback({}));
+            if (event === 'disconnected') {
+                setImmediate(() => callback({ error: new Error('Connection lost') }));
+            }
+        });
+        await expect(new Amqp().execute.call(executeFunctions)).rejects.toThrow('Connection lost');
+    });
+    it('should send data as object when configured', async () => {
+        executeFunctions.getNodeParameter.calledWith('options', 0).mockReturnValue({
+            dataAsObject: true,
+        });
+        await new Amqp().execute.call(executeFunctions);
+        expect(mockSender.send).toHaveBeenCalledWith({
+            application_properties: {},
+            body: { testing: true },
+        });
+    });
+    it('should handle multiple input items', async () => {
+        executeFunctions.getInputData.mockReturnValue([{ json: { item: 1 } }, { json: { item: 2 } }]);
+        const result = await new Amqp().execute.call(executeFunctions);
+        expect(result).toEqual([
+            [
+                { json: { id: 'test-message-id' }, pairedItems: { item: 0 } },
+                { json: { id: 'test-message-id' }, pairedItems: { item: 1 } },
+            ],
+        ]);
+        expect(mockSender.send).toHaveBeenCalledTimes(2);
+        expect(mockSender.send).toHaveBeenNthCalledWith(1, {
+            application_properties: {},
+            body: '{"item":1}',
+        });
+        expect(mockSender.send).toHaveBeenNthCalledWith(2, {
+            application_properties: {},
+            body: '{"item":2}',
+        });
+    });
+    it('should continue on fail when configured', async () => {
+        executeFunctions.continueOnFail.mockReturnValue(true);
+        executeFunctions.getNodeParameter.calledWith('sink', 0).mockReturnValue('');
+        const result = await new Amqp().execute.call(executeFunctions);
+        expect(result).toEqual([
+            [{ json: { error: 'Queue or Topic required!' }, pairedItems: { item: 0 } }],
+        ]);
+    });
+    describe('credential test', () => {
+        it('should return success for valid credentials', async () => {
+            const amqp = new Amqp();
+            const testFunctions = mock();
+            // Mock successful connection
+            mockContainer.on.mockImplementation((event, callback) => {
+                if (event === 'connection_open') {
+                    setImmediate(() => callback({}));
+                }
+            });
+            const result = await amqp.methods.credentialTest.amqpConnectionTest.call(testFunctions, {
+                data: credentials,
+                id: 'test',
+                name: 'test',
+                type: 'amqp',
+            });
+            expect(result).toEqual({
+                status: 'OK',
+                message: 'Connection successful!',
+            });
+        });
+        it('should return error for invalid credentials', async () => {
+            const amqp = new Amqp();
+            const testFunctions = mock();
+            // Mock failed connection
+            mockContainer.on.mockImplementation((event, callback) => {
+                if (event === 'disconnected') {
+                    setImmediate(() => callback({ error: new Error('Authentication failed') }));
+                }
+            });
+            const result = await amqp.methods.credentialTest.amqpConnectionTest.call(testFunctions, {
+                data: credentials,
+                id: 'test',
+                name: 'test',
+                type: 'amqp',
+            });
+            expect(result).toEqual({
+                status: 'Error',
+                message: 'Authentication failed',
+            });
+        });
+    });
+});
+//# sourceMappingURL=Amqp.node.test.js.map

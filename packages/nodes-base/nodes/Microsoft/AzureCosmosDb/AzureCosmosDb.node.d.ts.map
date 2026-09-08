@@ -1,0 +1,1 @@
+{"version":3,"file":"AzureCosmosDb.node.d.ts","sourceRoot":"","sources":["AzureCosmosDb.node.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,SAAS,EAAE,oBAAoB,EAAE,MAAM,cAAc,CAAC;AAIpE,OAAO,EAAE,UAAU,EAAE,MAAM,WAAW,CAAC;AAEvC,qBAAa,aAAc,YAAW,SAAS;IAC9C,WAAW,EAAE,oBAAoB,CAmD/B;IAEF,OAAO;;MAEL;CACF"}

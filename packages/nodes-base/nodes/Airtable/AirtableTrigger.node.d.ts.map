@@ -1,0 +1,1 @@
+{"version":3,"file":"AirtableTrigger.node.d.ts","sourceRoot":"","sources":["AirtableTrigger.node.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EACX,cAAc,EAEd,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAMtB,qBAAa,eAAgB,YAAW,SAAS;IAChD,WAAW,EAAE,oBAAoB,CA0N/B;IAEI,IAAI,CAAC,IAAI,EAAE,cAAc,GAAG,OAAO,CAAC,kBAAkB,EAAE,EAAE,GAAG,IAAI,CAAC,CA8DvE;CACD"}

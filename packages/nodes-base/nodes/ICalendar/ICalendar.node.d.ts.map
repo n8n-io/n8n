@@ -1,0 +1,1 @@
+{"version":3,"file":"ICalendar.node.d.ts","sourceRoot":"","sources":["ICalendar.node.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EACX,iBAAiB,EACjB,kBAAkB,EAClB,SAAS,EACT,oBAAoB,EACpB,MAAM,cAAc,CAAC;AAKtB,qBAAa,SAAU,YAAW,SAAS;IAC1C,WAAW,EAAE,oBAAoB,CAgC/B;IAEI,OAAO,CAAC,IAAI,EAAE,iBAAiB,mCAWpC;CACD"}
