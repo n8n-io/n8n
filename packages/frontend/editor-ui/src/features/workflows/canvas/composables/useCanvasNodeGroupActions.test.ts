@@ -473,5 +473,31 @@ describe('useCanvasNodeGroupActions', () => {
 			expect(workflowDocumentStore.getNodeById('a')?.parentId).toBeUndefined();
 			expect(workflowDocumentStore.getNodeById('b')?.parentId).toBeUndefined();
 		});
+
+		it('updateGroupDescription writes the group node objective, not a nodeGroups entry', () => {
+			const actions = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' }), createCanvasGraphNode({ id: 'b' })]),
+			);
+			const group = actions.groupNodes(['a', 'b']);
+			const groupId = group?.id ?? '';
+
+			actions.updateGroupDescription(groupId, 'Pull CRM contacts');
+
+			expect(workflowDocumentStore.getNodeById(groupId)?.parameters.objective).toBe(
+				'Pull CRM contacts',
+			);
+		});
+
+		it('renameGroup renames the group node', async () => {
+			const actions = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphNode({ id: 'a' }), createCanvasGraphNode({ id: 'b' })]),
+			);
+			const group = actions.groupNodes(['a', 'b']);
+			const groupId = group?.id ?? '';
+
+			await actions.renameGroup(groupId, 'Ingestion');
+
+			expect(workflowDocumentStore.getNodeById(groupId)?.name).toBe('Ingestion');
+		});
 	});
 });

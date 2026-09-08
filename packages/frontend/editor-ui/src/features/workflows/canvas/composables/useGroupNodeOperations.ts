@@ -2,7 +2,11 @@ import { GROUP_NODE_TYPE, getInteriorNodes, isGroupNode } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 
 import type { INodeUi, XYPosition } from '@/Interface';
-import { AddNodeCommand, SetNodeParentCommand } from '@/app/models/history';
+import {
+	AddNodeCommand,
+	ReplaceNodeParametersCommand,
+	SetNodeParentCommand,
+} from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { assignNodeId } from '@/app/utils/nodes/nodeTransforms';
@@ -153,14 +157,26 @@ export function useGroupNodeOperations() {
 	}
 
 	/** Sets the description on the card. */
-	function setGroupObjective(groupId: string, objective: string): void {
+	function setGroupObjective(
+		groupId: string,
+		objective: string,
+		{ trackHistory = true } = {},
+	): void {
 		const groupNode = getGroupNode(groupId);
-		if (groupNode === undefined) return;
+		if (groupNode === undefined || groupNode.parameters.objective === objective) return;
 
-		workflowDocumentStore.value.setNodeParameters(
-			{ name: groupNode.name, value: { ...groupNode.parameters, objective } },
-			true,
-		);
+		const before = { ...groupNode.parameters };
+		const after = { ...groupNode.parameters, objective };
+		workflowDocumentStore.value.setNodeParameters({ name: groupNode.name, value: after }, true);
+
+		if (trackHistory) {
+			// ponytail: undo of an objective edit needs the canvas to handle
+			// ReplaceNodeParametersCommand's revert (revertReplaceNodeParameters on
+			// the history bus); the write itself persists regardless.
+			historyStore.pushCommandToUndo(
+				new ReplaceNodeParametersCommand(groupNode.id, before, after, Date.now()),
+			);
+		}
 	}
 
 	/** Reverts a reparent, for the undo history. */

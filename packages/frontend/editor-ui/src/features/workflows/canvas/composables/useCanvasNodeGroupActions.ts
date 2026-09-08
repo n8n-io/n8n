@@ -4,6 +4,7 @@ import type { IWorkflowGroup } from 'n8n-workflow';
 import type { MaybeRefOrGetter } from 'vue';
 import { computed, toValue } from 'vue';
 
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -29,6 +30,7 @@ export function useCanvasNodeGroupActions(
 	const { resolveGroupableNodeIds } = useSelectionValidation();
 	const { isFeatureEnabled: isGroupNodeEnabled } = useGroupNodeExperiment();
 	const groupNodeOperations = useGroupNodeOperations();
+	const { renameNode } = useCanvasOperations();
 
 	const isReadOnly = computed(() => toValue(options?.readOnly) ?? false);
 
@@ -99,8 +101,17 @@ export function useCanvasNodeGroupActions(
 		return groupNodes(selectedNodeIdsWithoutGroups.value);
 	}
 
-	function renameGroup(id: string, name: string) {
+	async function renameGroup(id: string, name: string) {
 		if (isReadOnly.value) return;
+		// On the group-node path the group is a real node: rename it like any node,
+		// so boundary connections that reference it by name are rewritten and the
+		// step is undoable. renameNode is name-based, so resolve the current name.
+		if (isGroupNodeEnabled.value) {
+			const groupNode = groupNodeOperations.getGroupNode(id);
+			if (!groupNode || groupNode.name === name) return;
+			await renameNode(groupNode.name, name, { trackHistory: true });
+			return;
+		}
 		const before = workflowDocumentStore.value.getGroupById(id);
 		if (!before) return;
 		const beforeSnapshot = snapshotGroup(before);
@@ -114,6 +125,12 @@ export function useCanvasNodeGroupActions(
 
 	function updateGroupDescription(id: string, description: string) {
 		if (isReadOnly.value) return;
+		// On the group-node path the description is the group node's `objective`
+		// parameter; setGroupObjective records its own undo step.
+		if (isGroupNodeEnabled.value) {
+			groupNodeOperations.setGroupObjective(id, description);
+			return;
+		}
 		const before = workflowDocumentStore.value.getGroupById(id);
 		if (!before) return;
 		const beforeSnapshot = snapshotGroup(before);
