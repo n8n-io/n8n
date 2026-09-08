@@ -1,9 +1,9 @@
+import { structuredOutputParserValidator } from './structured-output-parser-validator';
 import type { GraphNode, NodeInstance } from '../../../types/base';
 import { workflow } from '../../../workflow-builder';
 import { node, trigger } from '../../node-builders/node-builder';
 import { outputParser } from '../../node-builders/subnode-builders';
 import type { PluginContext, ValidationIssue } from '../types';
-import { structuredOutputParserValidator } from './structured-output-parser-validator';
 
 const OUTPUT_PARSER = '@n8n/n8n-nodes-langchain.outputParserStructured';
 const INFORMATION_EXTRACTOR = '@n8n/n8n-nodes-langchain.informationExtractor';
