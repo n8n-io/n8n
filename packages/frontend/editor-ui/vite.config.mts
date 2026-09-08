@@ -187,18 +187,6 @@ export default defineConfig({
 	resolve: { alias, dedupe: singleInstanceDedupe },
 	base: publicPath,
 	envPrefix: ['VUE', 'N8N_ENV_FEAT'],
-	css: {
-		preprocessorMaxWorkers: 2,
-		preprocessorOptions: {
-			scss: {
-				additionalData: [
-					'',
-					'@use "@/app/css/_variables.scss" as *;',
-					'@use "@n8n/design-system/css/mixins" as mixins;',
-				].join('\n'),
-			},
-		},
-	},
 	build: {
 		minify: !!release,
 		// Coverage builds emit INLINE maps so browser V8 coverage carries the
