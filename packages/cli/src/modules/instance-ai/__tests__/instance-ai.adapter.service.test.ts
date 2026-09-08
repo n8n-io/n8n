@@ -5020,6 +5020,41 @@ describe('createContext — app service wiring', () => {
 
 		await expect(appService?.get('app-1')).rejects.toThrow('required permissions');
 	});
+
+	it('returns the stored source tarball after checking app:read on the app project', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const data = Buffer.from('src');
+		const getSourceTarball = vi.fn().mockResolvedValue({ versionId: 'v-1', data });
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			getSourceTarball,
+		});
+		const appService = service.createContext(mockUser).appService;
+
+		await expect(appService?.getSourceTarball('app-1')).resolves.toEqual({
+			versionId: 'v-1',
+			data,
+		});
+		expect(getSourceTarball).toHaveBeenCalledWith('app-1');
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:read'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it('does not read the source tarball of an app in a project the user cannot access', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(false);
+		const getSourceTarball = vi.fn();
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			getSourceTarball,
+		});
+		const appService = service.createContext(mockUser).appService;
+
+		await expect(appService?.getSourceTarball('app-1')).rejects.toThrow('required permissions');
+		expect(getSourceTarball).not.toHaveBeenCalled();
+	});
 });
 
 // ---------------------------------------------------------------------------

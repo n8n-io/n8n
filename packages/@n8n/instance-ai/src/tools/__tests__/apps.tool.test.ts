@@ -21,6 +21,8 @@ const APP = {
 
 const BUILD_PREFIX = 'ulimit -c 0; export PATH="$PWD/node_modules/.bin:$PATH";';
 
+const SOURCE_TARBALL = Buffer.from([0x1f, 0x8b, 0x08, 0x00]);
+
 const ok = (stdout = '') => ({ exitCode: 0, stdout, stderr: '' });
 const fail = (stdout: string, exitCode = 1) => ({ exitCode, stdout, stderr: '' });
 
@@ -28,6 +30,7 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 	const appService: InstanceAiAppService = {
 		create: vi.fn().mockResolvedValue({ app: APP }),
 		get: vi.fn().mockResolvedValue(APP),
+		getSourceTarball: vi.fn().mockResolvedValue({ versionId: 'v-1', data: SOURCE_TARBALL }),
 		storeVersion: vi
 			.fn()
 			.mockResolvedValue({ versionId: 'v-1', url: 'http://localhost:5678/apps/greeter/' }),
@@ -42,7 +45,10 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 		appService,
 		workspace: {
 			sandbox: { executeCommand: vi.fn().mockResolvedValue(ok()) },
-			filesystem: { readFile: vi.fn().mockResolvedValue(Buffer.from([0x1f, 0x8b])) },
+			filesystem: {
+				readFile: vi.fn().mockResolvedValue(Buffer.from([0x1f, 0x8b])),
+				writeFile: vi.fn().mockResolvedValue(undefined),
+			},
 		},
 		workspaceRoot: '/home/daytona/workspace',
 		logger: { warn: vi.fn(), debug: vi.fn() },
@@ -59,6 +65,10 @@ function readFileMock(context: InstanceAiContext): Mock {
 	return (context.workspace as unknown as { filesystem: { readFile: Mock } }).filesystem.readFile;
 }
 
+function writeFileMock(context: InstanceAiContext): Mock {
+	return (context.workspace as unknown as { filesystem: { writeFile: Mock } }).filesystem.writeFile;
+}
+
 function commandsRun(context: InstanceAiContext): string[] {
 	return executeCommandMock(context).mock.calls.map((call: unknown[]) => String(call[0]));
 }
@@ -71,6 +81,18 @@ async function runBuild(context: InstanceAiContext, input: Record<string, unknow
 	const tool = createAppsTool(context);
 	const parsed: unknown = inputSchema(tool).parse({ action: 'build', appId: 'app-1', ...input });
 	return await executeTool<Record<string, unknown>>(tool, parsed);
+}
+
+async function runRestore(context: InstanceAiContext) {
+	const tool = createAppsTool(context);
+	const parsed: unknown = inputSchema(tool).parse({ action: 'restore', appId: 'app-1' });
+	return await executeTool<Record<string, unknown>>(tool, parsed);
+}
+
+function mockEmptyAppDir(context: InstanceAiContext) {
+	executeCommandMock(context).mockImplementation(
+		async (command: string) => await Promise.resolve(command.startsWith('[ -d ') ? fail('') : ok()),
+	);
 }
 
 async function runCreate(context: InstanceAiContext, input: Record<string, unknown> = {}) {
@@ -423,6 +445,142 @@ describe('apps tool', () => {
 			>;
 			expect(readCalls).toHaveLength(2);
 			for (const call of readCalls) expect(call[1].abortSignal).toBe(abortSignal);
+		});
+	});
+
+	describe('restore', () => {
+		it('writes the stored source tarball into the sandbox, unpacks it into apps/<namespace> and inits git', async () => {
+			const context = createMockContext();
+			mockEmptyAppDir(context);
+
+			const result = await runRestore(context);
+
+			expect(context.appService?.getSourceTarball).toHaveBeenCalledWith('app-1');
+			const writeCalls = writeFileMock(context).mock.calls as Array<[string, Buffer, unknown]>;
+			expect(writeCalls).toHaveLength(1);
+			expect(writeCalls[0][0]).toMatch(/^\.app-builds\/greeter-\d+-restore\.tgz$/);
+			expect(Buffer.isBuffer(writeCalls[0][1])).toBe(true);
+			expect(writeCalls[0][1]).toEqual(SOURCE_TARBALL);
+
+			const commands = commandsRun(context);
+			expect(commands[0]).toBe(
+				"[ -d '/home/daytona/workspace/apps/greeter' ] && [ -n \"$(ls -A '/home/daytona/workspace/apps/greeter')\" ]",
+			);
+			expect(commands[1]).toBe("mkdir -p '/home/daytona/workspace/.app-builds'");
+			expect(commands[2]).toMatch(
+				/^mkdir -p '\/home\/daytona\/workspace\/apps\/greeter' && tar -xzf '\/home\/daytona\/workspace\/\.app-builds\/greeter-\d+-restore\.tgz' -C '\/home\/daytona\/workspace\/apps\/greeter'$/,
+			);
+			expect(commands[3]).toContain('git init');
+			expect(commands[3]).toContain('commit -qm restore --allow-empty');
+			expect(commands[4]).toMatch(
+				/^rm -f '\/home\/daytona\/workspace\/\.app-builds\/greeter-\d+-restore\.tgz'$/,
+			);
+			expect(result).toEqual({
+				appId: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'proj-1',
+				versionId: 'v-1',
+				workspacePath: '/home/daytona/workspace/apps/greeter',
+				warnings: [],
+			});
+		});
+
+		it('returns denied when the app has no stored version', async () => {
+			const context = createMockContext();
+			mockEmptyAppDir(context);
+			(context.appService?.getSourceTarball as Mock).mockResolvedValue(null);
+
+			const result = await runRestore(context);
+
+			expect(result).toEqual({
+				denied: true,
+				reason: expect.stringContaining('no stored version'),
+			});
+			expect(writeFileMock(context)).not.toHaveBeenCalled();
+			expect(commandsRun(context)).toHaveLength(1);
+		});
+
+		it('returns denied when apps/<namespace> already has files', async () => {
+			const context = createMockContext();
+
+			const result = await runRestore(context);
+
+			expect(result).toEqual({
+				denied: true,
+				reason: expect.stringContaining('/home/daytona/workspace/apps/greeter already exists'),
+			});
+			expect(context.appService?.getSourceTarball).not.toHaveBeenCalled();
+			expect(writeFileMock(context)).not.toHaveBeenCalled();
+		});
+
+		it('reports the restore stage and removes the tarball when unpacking fails', async () => {
+			const context = createMockContext();
+			executeCommandMock(context).mockImplementation(async (command: string) => {
+				if (command.startsWith('[ -d ')) return await Promise.resolve(fail(''));
+				if (command.includes('tar -xzf'))
+					return await Promise.resolve(fail('gzip: unexpected end'));
+				return await Promise.resolve(ok());
+			});
+
+			const result = await runRestore(context);
+
+			expect(result).toEqual({
+				error: true,
+				stage: 'restore',
+				message: expect.stringContaining('gzip: unexpected end'),
+			});
+			expect(commandsRun(context).at(-1)).toMatch(/^rm -f /);
+		});
+
+		it('reports the restore stage when the sandbox write fails', async () => {
+			const context = createMockContext();
+			mockEmptyAppDir(context);
+			writeFileMock(context).mockRejectedValue(new Error('upload failed'));
+
+			const result = await runRestore(context);
+
+			expect(result).toEqual({ error: true, stage: 'restore', message: 'upload failed' });
+			expect(commandsRun(context).some((command) => command.includes('tar -xzf'))).toBe(false);
+		});
+
+		it('warns instead of failing when git is unavailable', async () => {
+			const context = createMockContext();
+			executeCommandMock(context).mockImplementation(async (command: string) => {
+				if (command.startsWith('[ -d ')) return await Promise.resolve(fail(''));
+				if (command.includes('git init'))
+					return await Promise.resolve(fail('sh: git: not found', 127));
+				return await Promise.resolve(ok());
+			});
+
+			const result = await runRestore(context);
+
+			expect(result).toMatchObject({
+				versionId: 'v-1',
+				warnings: [expect.stringContaining('git is unavailable')],
+			});
+		});
+
+		it('forwards the run abort signal to every sandbox command and the tarball write', async () => {
+			const context = createMockContext();
+			mockEmptyAppDir(context);
+			const abortSignal = new AbortController().signal;
+			const tool = createAppsTool(context);
+			const parsed: unknown = inputSchema(tool).parse({ action: 'restore', appId: 'app-1' });
+
+			await executeTool(tool, parsed, { abortSignal });
+
+			const commandCalls = executeCommandMock(context).mock.calls as Array<
+				[string, string[], { abortSignal?: AbortSignal }]
+			>;
+			expect(commandCalls).toHaveLength(5);
+			for (const call of commandCalls) expect(call[2].abortSignal).toBe(abortSignal);
+
+			const writeCalls = writeFileMock(context).mock.calls as Array<
+				[string, Buffer, { abortSignal?: AbortSignal }]
+			>;
+			expect(writeCalls).toHaveLength(1);
+			expect(writeCalls[0][2].abortSignal).toBe(abortSignal);
 		});
 	});
 

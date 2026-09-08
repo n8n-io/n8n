@@ -1,6 +1,7 @@
 /**
- * Apps tool — create an app and build the current workspace sources into a
- * served version. The agent edits files with the workspace tool in between.
+ * Apps tool — create an app, restore its stored source into a fresh sandbox,
+ * and build the current workspace sources into a served version. The agent
+ * edits files with the workspace tool in between.
  */
 import { Tool } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
@@ -61,9 +62,15 @@ const buildSchema = z.object({
 		.describe('Build output directory relative to the app (default "dist")'),
 });
 
+const restoreSchema = z.object({
+	action: z.literal('restore'),
+	appId: z.string(),
+});
+
 type CreateInput = z.infer<typeof createSchema>;
 type BuildInput = z.infer<typeof buildSchema>;
-type AppsInput = CreateInput | BuildInput;
+type RestoreInput = z.infer<typeof restoreSchema>;
+type AppsInput = CreateInput | BuildInput | RestoreInput;
 
 // Defaults live here, not in the schema: the flattened union schema the model
 // sees wraps every field in `.optional()`, which skips Zod defaults at parse time.
@@ -187,6 +194,23 @@ function combinedLog(result: { stdout: string; stderr: string }): string {
 	return result.stderr ? `${result.stdout}\n${result.stderr}` : result.stdout;
 }
 
+// Without a `.gitignore` (template "none"), the build's `git add -A` would stage node_modules.
+// Some sandboxes ship without git; the agent's own diff/log history is a nicety, not a requirement.
+const gitInitCommand = (commitMessage: string) =>
+	`[ -f .gitignore ] || printf 'node_modules\\n${DEFAULT_OUT_DIR}\\n' > .gitignore; ` +
+	`git init -q && git add -A && ${GIT_COMMIT} ${commitMessage} --allow-empty`;
+const GIT_UNAVAILABLE_WARNING =
+	'git is unavailable in the sandbox; the app directory is not version-controlled.';
+
+function requireFilesystem(
+	workspace: NonNullable<InstanceAiContext['workspace']>,
+	purpose: string,
+): NonNullable<NonNullable<InstanceAiContext['workspace']>['filesystem']> {
+	const filesystem = workspace.filesystem;
+	if (!filesystem) throw new Error(`The sandbox workspace has no filesystem to ${purpose}.`);
+	return filesystem;
+}
+
 async function handleCreate(
 	context: InstanceAiContext,
 	input: CreateInput,
@@ -232,17 +256,8 @@ async function handleCreate(
 			}
 		}
 
-		// Without a `.gitignore` (template "none"), the build's `git add -A` would stage node_modules.
-		// Some sandboxes ship without git; the agent's own diff/log history is a nicety, not a requirement.
-		const git = await run(
-			`[ -f .gitignore ] || printf 'node_modules\\n${DEFAULT_OUT_DIR}\\n' > .gitignore; ` +
-				`git init -q && git add -A && ${GIT_COMMIT} scaffold --allow-empty`,
-			{ cwd: appDir },
-		);
-		const warnings =
-			git.exitCode === 0
-				? []
-				: ['git is unavailable in the sandbox; the app directory is not version-controlled.'];
+		const git = await run(gitInitCommand('scaffold'), { cwd: appDir });
+		const warnings = git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING];
 
 		return {
 			app: created.app,
@@ -333,14 +348,82 @@ async function handleBuild(
 	}
 }
 
+/**
+ * Rehydrate `apps/<namespace>/` from the stored source tarball. Needed when a
+ * thread starts in a fresh sandbox that never held the app's files.
+ */
+async function handleRestore(
+	context: InstanceAiContext,
+	input: RestoreInput,
+	abortSignal?: AbortSignal,
+) {
+	const appService = requireAppService(context);
+	const { workspace, run } = requireSandbox(context, abortSignal);
+	const app = await appService.get(input.appId);
+
+	const root = await getWorkspaceRoot(workspace);
+	const appDir = `${root}/${APPS_DIR}/${app.namespace}`;
+	const workspacePath = `${context.workspaceRoot ?? root}/${APPS_DIR}/${app.namespace}`;
+
+	const occupied = await run(`[ -d ${q(appDir)} ] && [ -n "$(ls -A ${q(appDir)})" ]`, {
+		cwd: root,
+	});
+	if (occupied.exitCode === 0) {
+		return {
+			denied: true,
+			reason: `${workspacePath} already exists and is not empty. Edit the files there; restore only fills an empty app directory.`,
+		};
+	}
+
+	const tarball = await appService.getSourceTarball(app.id);
+	if (!tarball) {
+		return {
+			denied: true,
+			reason: `App "${app.name}" has no stored version to restore. Write the files under ${workspacePath} by hand, then call build.`,
+		};
+	}
+
+	const relativeTarball = `${BUILD_STAGING_DIR}/${app.namespace}-${Date.now()}-restore.tgz`;
+	const tarballPath = `${root}/${relativeTarball}`;
+	try {
+		const staging = await run(`mkdir -p ${q(`${root}/${BUILD_STAGING_DIR}`)}`, { cwd: root });
+		if (staging.exitCode !== 0) {
+			throw new Error(`Could not create the staging directory: ${tailLog(combinedLog(staging))}`);
+		}
+		await requireFilesystem(workspace, 'write the source into').writeFile(
+			relativeTarball,
+			tarball.data,
+			{ abortSignal },
+		);
+		const unpack = `mkdir -p ${q(appDir)} && tar -xzf ${q(tarballPath)} -C ${q(appDir)}`;
+		const extract = await run(unpack, { cwd: root });
+		if (extract.exitCode !== 0) {
+			throw new Error(`Could not unpack the stored source: ${tailLog(combinedLog(extract))}`);
+		}
+
+		const git = await run(gitInitCommand('restore'), { cwd: appDir });
+		return {
+			appId: app.id,
+			name: app.name,
+			namespace: app.namespace,
+			projectId: app.projectId,
+			versionId: tarball.versionId,
+			workspacePath,
+			warnings: git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING],
+		};
+	} catch (error) {
+		return { error: true, stage: 'restore', message: getErrorMessage(error) };
+	} finally {
+		await run(`rm -f ${q(tarballPath)}`, { cwd: root }).catch(() => undefined);
+	}
+}
+
 async function readTarball(
 	workspace: NonNullable<InstanceAiContext['workspace']>,
 	relativePath: string,
 	abortSignal?: AbortSignal,
 ): Promise<Buffer> {
-	const filesystem = workspace.filesystem;
-	if (!filesystem)
-		throw new Error('The sandbox workspace has no filesystem to read the build from.');
+	const filesystem = requireFilesystem(workspace, 'read the build from');
 	const content = await filesystem.readFile(relativePath, { abortSignal });
 	if (!Buffer.isBuffer(content)) {
 		throw new Error(`Expected binary content for ${relativePath}, got a string.`);
@@ -361,16 +444,17 @@ function requireAppService(
 
 export function createAppsTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(
-		z.discriminatedUnion('action', [createSchema, buildSchema]),
+		z.discriminatedUnion('action', [createSchema, buildSchema, restoreSchema]),
 	);
 
 	return new Tool(APPS_TOOL_ID)
 		.description(
-			'Create and build user-facing web apps served by n8n at /apps/<namespace>/. ' +
+			'Create, restore and build user-facing web apps served by n8n at /apps/<namespace>/. ' +
 				'Load the `app-builder` skill via `load_skill` before calling this tool. ' +
 				'`create` registers the app and copies a starter template into apps/<namespace>/ in the workspace; ' +
 				'edit the files there, then call `build` to compile them and publish a new version. ' +
-				'`build` returns the live `url` on success, or `{ error, stage, message, log }` to fix and retry.',
+				'`build` returns the live `url` on success, or `{ error, stage, message, log }` to fix and retry. ' +
+				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet.',
 		)
 		.input(inputSchema)
 		.handler(async (input: AppsInput, ctx) => {
@@ -379,6 +463,8 @@ export function createAppsTool(context: InstanceAiContext) {
 					return await handleCreate(context, input, ctx.abortSignal);
 				case 'build':
 					return await handleBuild(context, input, ctx.abortSignal);
+				case 'restore':
+					return await handleRestore(context, input, ctx.abortSignal);
 			}
 		})
 		.build();

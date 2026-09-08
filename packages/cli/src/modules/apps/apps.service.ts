@@ -53,6 +53,11 @@ export class AppsService {
 		return this.appVersionService.toResponse(version);
 	}
 
+	async getSourceTarball(appId: string) {
+		const app = await this.getApp(appId);
+		return await this.appVersionService.readSource(app);
+	}
+
 	async listVersions(appId: string) {
 		await this.getApp(appId);
 		const versions = await this.appVersionService.list(appId);

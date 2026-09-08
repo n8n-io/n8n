@@ -3204,6 +3204,11 @@ export class InstanceAiAdapterService {
 				return { id: app.id, name: app.name, namespace: app.namespace, projectId: app.projectId };
 			},
 
+			async getSourceTarball(appId) {
+				const app = await getAccessibleApp(['app:read'], appId);
+				return await appsService.getSourceTarball(app.id);
+			},
+
 			async storeVersion(appId, { source, dist }) {
 				assertNotReadOnly();
 				const app = await getAccessibleApp(['app:update'], appId);

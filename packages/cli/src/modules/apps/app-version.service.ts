@@ -11,6 +11,7 @@ import { extract as extractTar, list as listTar } from 'tar';
 import { AppVersionBlobStore, type StoredAppVersionBlob } from './app-version-blob-store';
 import type { AppVersion } from './app-version.entity';
 import { AppVersionRepository } from './app-version.repository';
+import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 import { AppNotFoundError } from './errors/app-not-found.error';
 import { InvalidAppVersionTarballError } from './errors/invalid-app-version-tarball.error';
@@ -85,6 +86,21 @@ export class AppVersionService {
 
 	async list(appId: string): Promise<AppVersion[]> {
 		return await this.appVersionRepository.listByAppId(appId);
+	}
+
+	/** Source tarball of the active version, or of the newest version when none is active. */
+	async readSource(app: App): Promise<{ versionId: string; data: Buffer } | null> {
+		const active = app.activeVersionId
+			? await this.appVersionRepository.findById(app.activeVersionId)
+			: null;
+		const version = active ?? (await this.appVersionRepository.listByAppId(app.id))[0];
+		if (!version) return null;
+
+		const data = await this.blobStore.readAsBuffer({
+			storedAt: version.storedAt,
+			storageKey: version.sourceStorageKey,
+		});
+		return data ? { versionId: version.id, data } : null;
 	}
 
 	toResponse(version: AppVersion): AppVersionResponse {

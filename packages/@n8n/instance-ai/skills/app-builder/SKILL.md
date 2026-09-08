@@ -20,8 +20,10 @@ recommended_tools:
 # App Builder
 
 You build small static web apps that n8n serves at `/apps/<namespace>/`. The
-source lives in the sandbox workspace under `apps/<namespace>/`; `apps` turns
-it into a published version.
+source lives in the sandbox workspace under `apps/<namespace>/`; `apps` has
+three actions: `create` registers an app, `build` turns the source into a
+published version, `restore` brings the stored source back into a workspace
+that does not have it.
 
 ## The loop
 
@@ -55,9 +57,14 @@ it into a published version.
    is a new version and becomes the live one.
 
 For an already bound app (the conversation names an app id) skip step 1.
-Before you build, confirm that `apps/<namespace>/` exists in this workspace
-(`workspace_execute_command` with `ls apps/<namespace>`); if it does not, tell
-the user the app source is not available in this conversation.
+Before you edit or build, confirm that `apps/<namespace>/` exists in this
+workspace (`workspace_execute_command` with `ls apps/<namespace>`). If it does
+not, call `apps(action="restore", appId)`: it unpacks the source of the
+latest published version into `apps/<namespace>/` and returns `workspacePath`
+and `versionId`. Then continue with step 2. The first build after a restore
+installs dependencies again (about 25 s). `{ denied, reason }` means there is
+nothing to restore (no version yet) or the directory already has files; read
+`reason`.
 
 ## Rules
 

@@ -15,6 +15,7 @@ import { Header, type types } from 'tar';
 import { AppVersionRepository } from '@/modules/apps/app-version.repository';
 import { MAX_TARBALL_BYTES } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
+import { AppsService } from '@/modules/apps/apps.service';
 import { PageRepository } from '@/modules/apps/page.repository';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -253,6 +254,39 @@ describe('POST /projects/:projectId/apps/:appId/versions', () => {
 
 		const app2 = await appRepository.findOneBy({ id: app.id });
 		expect(app2?.activeVersionId).toBe(versionIds[5]);
+	});
+});
+
+describe('AppsService.getSourceTarball', () => {
+	test('returns null for an app without versions', async () => {
+		const app = await createApp();
+
+		await expect(Container.get(AppsService).getSourceTarball(app.id)).resolves.toBeNull();
+	});
+
+	test('returns the source of the active version, or of the newest one when none is active', async () => {
+		const app = await createApp();
+		const first = sourceTgz();
+		const second = tgz([{ path: './src/main.ts', content: 'export const v = 2;' }]);
+		const firstId: string = (await upload(app.id, first).expect(200)).body.data.id;
+		const secondId: string = (await upload(app.id, second).expect(200)).body.data.id;
+
+		await expect(Container.get(AppsService).getSourceTarball(app.id)).resolves.toEqual({
+			versionId: secondId,
+			data: second,
+		});
+
+		await appRepository.setActiveVersionId(app.id, firstId);
+		await expect(Container.get(AppsService).getSourceTarball(app.id)).resolves.toEqual({
+			versionId: firstId,
+			data: first,
+		});
+
+		await appRepository.setActiveVersionId(app.id, null);
+		await expect(Container.get(AppsService).getSourceTarball(app.id)).resolves.toEqual({
+			versionId: secondId,
+			data: second,
+		});
 	});
 });
 
