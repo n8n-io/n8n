@@ -124,13 +124,24 @@ export function createDeclarativePoll(
 				],
 			},
 		};
-		const routingNode = new RoutingNode(context, pollNodeType, undefined, { $cursor: cursor ?? {} });
+		const routingNode = new RoutingNode(context, pollNodeType, undefined, {
+			$cursor: cursor ?? {},
+		});
 		const fetched = (await routingNode.runNode())?.[0] ?? [];
 
 		if (isManual) {
+			// Only a function cursor also shapes the items, so a manual run has to go
+			// through it. The built-in strategies only filter, and filtering against
+			// no cursor would drop items that lack the field.
+			const shaped =
+				typeof trigger.cursor === 'function'
+					? (await trigger.cursor.call(this, fetched, undefined)).items
+					: fetched;
 			// `slice(-0)` is `slice(0)`, i.e. everything, so zero and negatives need clamping.
-			const maxResults = Math.max(0, Math.trunc(trigger.manual?.maxResults ?? 1));
-			const items = maxResults === 0 ? [] : fetched.slice(-maxResults);
+			// `NaN` means a bad declaration; the default beats emitting nothing.
+			const declared = Math.trunc(trigger.manual?.maxResults ?? 1);
+			const maxResults = Number.isNaN(declared) ? 1 : Math.max(0, declared);
+			const items = maxResults === 0 ? [] : shaped.slice(-maxResults);
 			return items.length ? [items] : null;
 		}
 

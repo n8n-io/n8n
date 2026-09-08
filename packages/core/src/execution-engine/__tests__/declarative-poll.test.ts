@@ -3,6 +3,7 @@ import type {
 	IDeclarativePollingTrigger,
 	IHttpRequestOptions,
 	INode,
+	INodeExecutionData,
 	INodeType,
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
@@ -57,7 +58,13 @@ function setup(trigger: IDeclarativePollingTrigger, mode: WorkflowExecuteMode = 
 		parameters: {},
 	};
 	const nodeTypes = mock<INodeTypes>({ getByNameAndVersion: () => nodeType });
-	const workflow = new Workflow({ id: 'w1', nodes: [node], connections: {}, active: true, nodeTypes });
+	const workflow = new Workflow({
+		id: 'w1',
+		nodes: [node],
+		connections: {},
+		active: true,
+		nodeTypes,
+	});
 	const context = new PollContext(
 		workflow,
 		node,
@@ -128,10 +135,30 @@ describe('createDeclarativePoll', () => {
 		expect(staticData()[DECLARATIVE_CURSOR_KEY]).toBeUndefined();
 	});
 
+	test('manual run shapes items through a function cursor but stores nothing', async () => {
+		const cursor = vi.fn(async (items: INodeExecutionData[]) => ({
+			items: items.map((item) => ({ json: { ...item.json, shaped: true } })),
+			cursor: { value: 99 },
+		}));
+		const { run, staticData } = setup({ ...idTrigger, cursor }, 'manual');
+		respond([{ id: 1 }, { id: 2 }]);
+
+		expect(await run()).toEqual([[{ json: { id: 2, shaped: true } }]]);
+		expect(cursor).toHaveBeenCalledWith([{ json: { id: 1 } }, { json: { id: 2 } }], undefined);
+		expect(staticData()[DECLARATIVE_CURSOR_KEY]).toBeUndefined();
+	});
+
 	test.each([
 		{ maxResults: 0, expected: null },
 		{ maxResults: -5, expected: null },
+		{ maxResults: -Infinity, expected: null },
 		{ maxResults: 2, expected: [[{ json: { id: 2 } }, { json: { id: 3 } }]] },
+		// NaN falls back to the default; Infinity means "no limit".
+		{ maxResults: NaN, expected: [[{ json: { id: 3 } }]] },
+		{
+			maxResults: Infinity,
+			expected: [[{ json: { id: 1 } }, { json: { id: 2 } }, { json: { id: 3 } }]],
+		},
 	])('manual run clamps maxResults $maxResults', async ({ maxResults, expected }) => {
 		const { run } = setup({ ...idTrigger, manual: { maxResults } }, 'manual');
 		respond([{ id: 1 }, { id: 2 }, { id: 3 }]);

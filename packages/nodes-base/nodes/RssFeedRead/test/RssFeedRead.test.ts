@@ -1,4 +1,8 @@
-import type { IExecuteSingleFunctions, IN8nHttpFullResponse } from 'n8n-workflow';
+import type {
+	IDeclarativePollingTrigger,
+	IExecuteSingleFunctions,
+	IN8nHttpFullResponse,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { feedToItems, RssFeedReadTrigger } from '../RssFeedReadTrigger.node';
@@ -13,12 +17,12 @@ const run = async (body: string) =>
 
 describe('RssFeedReadTrigger', () => {
 	it('declares a timestamp polling trigger on isoDate', () => {
-		const { trigger } = new RssFeedReadTrigger().description;
+		const trigger = new RssFeedReadTrigger().description.trigger as IDeclarativePollingTrigger;
 		expect(trigger).toMatchObject({
 			type: 'polling',
 			cursor: { type: 'timestamp', field: 'isoDate' },
 		});
-		expect(trigger?.routing.request?.url).toBe('={{ $parameter.feedUrl }}');
+		expect(trigger.routing.request?.url).toBe('={{ $parameter.feedUrl }}');
 	});
 
 	it('parses the feed into items, oldest first', async () => {
