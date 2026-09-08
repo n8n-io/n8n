@@ -1,0 +1,39 @@
+name: 'Test: Validate Release SBOM'
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Trusted Git reference to validate'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate-sbom:
+    name: Validate release SBOM
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 15
+    steps:
+      - name: Checkout SBOM source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Build production deployment artifact
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm build:deploy'
+        env:
+          N8N_GENERATE_LICENSES: 'true'
+
+      # build:deploy already runs this gate. Run it again against the final file
+      # so validation cannot report success without checking that artifact.
+      - name: Gate SBOM on resolved SPDX licenses
+        run: |
+          node scripts/licenses/check-sbom-licenses.mjs \
+            sbom-source.cdx.json \
+            --allow-ref=LicenseRef-n8n-sustainable-use --allow-ref=LicenseRef-n8n-enterprise
