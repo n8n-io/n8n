@@ -206,7 +206,7 @@ describe('GET /insights/summary', () => {
 			const response = await insightsViewer.get('/insights/summary').expect(200);
 
 			expect(response.body.data.total.value).toBe(accessibleWorkflowInsights.value);
-			expect(response.body.data.billable.value).toBe(0);
+			expect(response.body.data).not.toHaveProperty('billable');
 		});
 
 		afterAll(async () => {
@@ -214,7 +214,7 @@ describe('GET /insights/summary', () => {
 		});
 	});
 
-	test('returns billable independently of total', async () => {
+	test('does not expose stored billable rows on the summary', async () => {
 		const project = await createTeamProject();
 		const workflow = await createWorkflow({}, project);
 
@@ -246,8 +246,7 @@ describe('GET /insights/summary', () => {
 			.expect(200);
 
 		expect(response.body.data.total.value).toBe(12);
-		expect(response.body.data.billable.value).toBe(9);
-		expect(response.body.data.billable.unit).toBe('count');
+		expect(response.body.data).not.toHaveProperty('billable');
 
 		await truncateDatabase();
 	});

@@ -222,11 +222,10 @@ describe('InsightsService (Integration)', () => {
 				failureRate: { deviation: 0, unit: 'ratio', value: 0.167 },
 				timeSaved: { deviation: 0, unit: 'minute', value: 0 },
 				total: { deviation: -6, unit: 'count', value: 12 },
-				billable: { deviation: 0, unit: 'count', value: 0 },
 			});
 		});
 
-		test('returns billable independently of total', async () => {
+		test('does not expose stored billable rows on the summary', async () => {
 			const endDate = DateTime.utc();
 			const startDate = endDate.minus({ days: 6 });
 
@@ -268,9 +267,7 @@ describe('InsightsService (Integration)', () => {
 			});
 
 			expect(summary.total.value).toBe(12);
-			expect(summary.billable.value).toBe(9);
-			expect(summary.billable.deviation).toBe(5);
-			expect(summary.billable.unit).toBe('count');
+			expect(summary).not.toHaveProperty('billable');
 		});
 
 		test('does not count billable rows toward total', async () => {
@@ -290,7 +287,7 @@ describe('InsightsService (Integration)', () => {
 			});
 
 			expect(summary.total.value).toBe(0);
-			expect(summary.billable.value).toBe(7);
+			expect(summary).not.toHaveProperty('billable');
 		});
 
 		test('no data for previous period should return null deviation', async () => {
@@ -315,7 +312,6 @@ describe('InsightsService (Integration)', () => {
 
 			// ASSERT
 			expect(Object.values(summary).map((v) => v.deviation)).toEqual([
-				null,
 				null,
 				null,
 				null,
@@ -390,7 +386,6 @@ describe('InsightsService (Integration)', () => {
 				failureRate: { value: 0, unit: 'ratio', deviation: 0 },
 				timeSaved: { value: 0, unit: 'minute', deviation: 0 },
 				total: { value: 10, unit: 'count', deviation: -5 },
-				billable: { value: 0, unit: 'count', deviation: 0 },
 			});
 		});
 

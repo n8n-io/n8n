@@ -126,7 +126,7 @@ describe('GET /insights/summary', () => {
 
 		expect(response.body.total.value).toBe(4);
 		expect(response.body.failed.value).toBe(1);
-		expect(response.body.billable.value).toBe(3);
+		expect(response.body).not.toHaveProperty('billable');
 	});
 
 	test('returns 401 with an invalid session cookie', async () => {
@@ -174,7 +174,7 @@ describe('GET /insights/summary', () => {
 		expect(parsed.success).toBe(true);
 		expect(response.body.total.value).toBe(4);
 		expect(response.body.failed.value).toBe(1);
-		expect(response.body.billable.value).toBe(3);
+		expect(response.body).not.toHaveProperty('billable');
 	});
 
 	test('respects startDate and endDate filters', async () => {
@@ -206,7 +206,7 @@ describe('GET /insights/summary', () => {
 		expect(response.body.total.value).toBe(2);
 	});
 
-	test('returns billable independently of total', async () => {
+	test('does not expose stored billable rows on the summary', async () => {
 		const project = await createTeamProject();
 		const workflow = await createWorkflow({}, project);
 
@@ -225,7 +225,7 @@ describe('GET /insights/summary', () => {
 			.expect(200);
 
 		expect(response.body.total.value).toBe(12);
-		expect(response.body.billable.value).toBe(9);
+		expect(response.body).not.toHaveProperty('billable');
 	});
 
 	test('does not count billable rows toward total', async () => {
@@ -243,36 +243,7 @@ describe('GET /insights/summary', () => {
 			.expect(200);
 
 		expect(response.body.total.value).toBe(0);
-		expect(response.body.billable.value).toBe(7);
-	});
-
-	test('respects startDate and endDate filters for billable', async () => {
-		const project = await createTeamProject();
-		const workflow = await createWorkflow({}, project);
-
-		await createCompactedInsightsEvent(workflow, {
-			type: 'billable',
-			value: 2,
-			periodUnit: 'day',
-			periodStart: DateTime.utc().minus({ days: 1 }),
-		});
-
-		await createCompactedInsightsEvent(workflow, {
-			type: 'billable',
-			value: 9,
-			periodUnit: 'day',
-			periodStart: DateTime.utc().minus({ days: 10 }),
-		});
-
-		const response = await authScopedAgent
-			.get('/insights/summary')
-			.query({
-				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
-				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
-			})
-			.expect(200);
-
-		expect(response.body.billable.value).toBe(2);
+		expect(response.body).not.toHaveProperty('billable');
 	});
 
 	test('respects projectId filter', async () => {
@@ -311,7 +282,7 @@ describe('GET /insights/summary', () => {
 
 		expect(response.body.total.value).toBe(4);
 		expect(response.body.failed.value).toBe(1);
-		expect(response.body.billable.value).toBe(3);
+		expect(response.body).not.toHaveProperty('billable');
 	});
 
 	describe('project access', () => {

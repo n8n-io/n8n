@@ -187,9 +187,6 @@ export class InsightsService {
 		const currentTimeSaved = getValueByType('current', 'time_saved_min');
 		const previousTimeSaved = getValueByType('previous', 'time_saved_min');
 
-		const currentBillable = getValueByType('current', 'billable');
-		const previousBillable = getValueByType('previous', 'billable');
-
 		// If the previous period has no executions, we discard deviation
 		const getDeviation = (current: number, previous: number) =>
 			previousTotal === 0 ? null : current - previous;
@@ -220,11 +217,6 @@ export class InsightsService {
 				value: currentTotal,
 				unit: 'count',
 				deviation: getDeviation(currentTotal, previousTotal),
-			},
-			billable: {
-				value: currentBillable,
-				unit: 'count',
-				deviation: getDeviation(currentBillable, previousBillable),
 			},
 		};
 

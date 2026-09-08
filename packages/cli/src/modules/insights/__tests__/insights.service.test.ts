@@ -100,11 +100,6 @@ describe('InsightsService', () => {
 					unit: 'count',
 					deviation: 0,
 				},
-				billable: {
-					value: 0,
-					unit: 'count',
-					deviation: 0,
-				},
 			});
 		});
 
@@ -113,12 +108,10 @@ describe('InsightsService', () => {
 			currentSuccess?: number;
 			currentFailure?: number;
 			currentTimeSaved?: number;
-			currentBillable?: number;
 			previousRuntime?: number;
 			previousSuccess?: number;
 			previousFailure?: number;
 			previousTimeSaved?: number;
-			previousBillable?: number;
 		}) => {
 			const aggregates: Array<{
 				period: 'previous' | 'current';
@@ -187,22 +180,6 @@ describe('InsightsService', () => {
 					period: 'current',
 					type: TypeToNumber.time_saved_min,
 					total_value: config.currentTimeSaved,
-				});
-			}
-
-			if (config.previousBillable !== undefined) {
-				aggregates.push({
-					period: 'previous',
-					type: TypeToNumber.billable,
-					total_value: config.previousBillable,
-				});
-			}
-
-			if (config.currentBillable !== undefined) {
-				aggregates.push({
-					period: 'current',
-					type: TypeToNumber.billable,
-					total_value: config.currentBillable,
 				});
 			}
 
@@ -863,79 +840,31 @@ describe('InsightsService', () => {
 			});
 		});
 
-		describe('billable', () => {
-			it('should return billable independently of total', async () => {
-				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
-					createMockAggregates({
-						currentSuccess: 8,
-						currentFailure: 4,
-						currentBillable: 10,
-						previousSuccess: 6,
-						previousFailure: 2,
-						previousBillable: 7,
-					}),
-				);
+		it('does not expose stored billable aggregates on the summary', async () => {
+			mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+				createMockAggregates({
+					currentSuccess: 8,
+					currentFailure: 4,
+					previousSuccess: 6,
+					previousFailure: 2,
+				}).concat([
+					{ period: 'current', type: TypeToNumber.billable, total_value: 10 },
+					{ period: 'previous', type: TypeToNumber.billable, total_value: 7 },
+				]),
+			);
 
-				const result = await insightsService.getInsightsSummary({
-					user,
-					startDate,
-					endDate,
-				});
-
-				expect(result.total).toEqual({
-					value: 12,
-					unit: 'count',
-					deviation: 4,
-				});
-				expect(result.billable).toEqual({
-					value: 10,
-					unit: 'count',
-					deviation: 3,
-				});
+			const result = await insightsService.getInsightsSummary({
+				user,
+				startDate,
+				endDate,
 			});
 
-			it('returns 0 when no billable data exists', async () => {
-				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
-					createMockAggregates({
-						currentSuccess: 10,
-						currentFailure: 2,
-						previousSuccess: 8,
-						previousFailure: 1,
-					}),
-				);
-
-				const result = await insightsService.getInsightsSummary({
-					user,
-					startDate,
-					endDate,
-				});
-
-				expect(result.billable).toEqual({
-					value: 0,
-					unit: 'count',
-					deviation: 0,
-				});
+			expect(result.total).toEqual({
+				value: 12,
+				unit: 'count',
+				deviation: 4,
 			});
-
-			it('returns null deviation when previous period has no executions', async () => {
-				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
-					createMockAggregates({
-						currentSuccess: 10,
-						currentBillable: 8,
-						previousSuccess: 0,
-						previousFailure: 0,
-					}),
-				);
-
-				const result = await insightsService.getInsightsSummary({
-					user,
-					startDate,
-					endDate,
-				});
-
-				expect(result.billable.value).toBe(8);
-				expect(result.billable.deviation).toBeNull();
-			});
+			expect(result).not.toHaveProperty('billable');
 		});
 
 		describe('project access', () => {

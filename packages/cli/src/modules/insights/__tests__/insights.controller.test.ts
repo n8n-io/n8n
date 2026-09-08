@@ -77,7 +77,6 @@ describe('InsightsController', () => {
 				failureRate: { deviation: null, unit: 'ratio', value: 0 },
 				averageRunTime: { deviation: null, unit: 'millisecond', value: 0 },
 				timeSaved: { deviation: null, unit: 'minute', value: 0 },
-				billable: { deviation: null, unit: 'count', value: 0 },
 			});
 		});
 
@@ -115,7 +114,6 @@ describe('InsightsController', () => {
 				failureRate: { deviation: null, unit: 'ratio', value: 0.333 },
 				averageRunTime: { deviation: null, unit: 'millisecond', value: 10 },
 				timeSaved: { deviation: null, unit: 'minute', value: 10 },
-				billable: { deviation: null, unit: 'count', value: 0 },
 			});
 		});
 
@@ -157,7 +155,6 @@ describe('InsightsController', () => {
 				failureRate: { deviation: 0.333 - 0.2, unit: 'ratio', value: 0.333 },
 				averageRunTime: { deviation: 300 / 30 - 40 / 20, unit: 'millisecond', value: 10 },
 				timeSaved: { deviation: 5, unit: 'minute', value: 10 },
-				billable: { deviation: 0, unit: 'count', value: 0 },
 			});
 		});
 
@@ -183,7 +180,6 @@ describe('InsightsController', () => {
 				failureRate: { deviation: 0.333 - 0.2, unit: 'ratio', value: 0.333 },
 				averageRunTime: { deviation: 300 / 30 - 40 / 20, unit: 'millisecond', value: 10 },
 				timeSaved: { deviation: 5, unit: 'minute', value: 10 },
-				billable: { deviation: 0, unit: 'count', value: 0 },
 			};
 
 			it('should use the query filters when provided', async () => {
