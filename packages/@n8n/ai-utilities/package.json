@@ -134,6 +134,7 @@
     "@types/mime-types": "catalog:",
     "@types/lodash": "catalog:",
     "@types/proxy-from-env": "catalog:",
+    "fast-check": "catalog:",
     "fast-glob": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
