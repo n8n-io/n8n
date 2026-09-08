@@ -27,6 +27,8 @@ const routeMock = vi.hoisted(() => ({
 	name: undefined as string | undefined,
 	params: {},
 	query: {} as Record<string, string>,
+	// The NDV (opened by the evaluation-trigger route action) reads `route.meta`.
+	meta: {} as Record<string, unknown>,
 }));
 
 vi.mock('vue-router', () => ({
@@ -53,6 +55,7 @@ describe('NodeView', () => {
 		routeMock.name = undefined;
 		routeMock.params = {};
 		routeMock.query = {};
+		routeMock.meta = {};
 		ensureNodesAreVisible = vi.fn();
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('w0');
