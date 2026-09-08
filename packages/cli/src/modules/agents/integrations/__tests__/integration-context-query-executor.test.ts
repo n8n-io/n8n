@@ -6,6 +6,7 @@ import type { AgentRepository } from '../../repositories/agent.repository';
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
+import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
@@ -67,6 +68,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -136,6 +138,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -191,6 +194,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -250,6 +254,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -316,6 +321,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -412,6 +418,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -559,6 +566,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -634,6 +642,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -692,6 +701,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -736,6 +746,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -771,6 +782,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -808,6 +820,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
+			new ChannelRateLimitGuard(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -824,5 +837,95 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			cursor: 'channel-cursor-page-2',
 		});
 		expect(result).toMatchObject({ ok: true, nextCursor: 'channel-cursor-page-3' });
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Rate-limit handling
+// ---------------------------------------------------------------------------
+
+describe('ChatIntegrationContextQueryExecutor — rate-limit handling', () => {
+	it('returns RATE_LIMIT_EXCEEDED when the adapter throws a 429', async () => {
+		const usersList = vi
+			.fn()
+			.mockRejectedValue(Object.assign(new Error('rate limited'), { response: { status: 429 } }));
+		const slackAdapter = {
+			client: { users: { list: usersList } },
+			withToken: vi.fn(async (options: Record<string, unknown>) => options),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(slackAdapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const guard = new ChannelRateLimitGuard();
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			guard,
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			query: 'search_users',
+			input: { query: 'Michael' },
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'RATE_LIMIT_EXCEEDED',
+				message: expect.stringContaining('Slack'),
+			},
+		});
+		expect(guard.isBlocked('slack:cred-a')).toBe(true);
+	});
+
+	it('does not call getChatInstanceForTools again on a blocked connection', async () => {
+		const usersList = vi
+			.fn()
+			.mockRejectedValue(Object.assign(new Error('rate limited'), { response: { status: 429 } }));
+		const slackAdapter = {
+			client: { users: { list: usersList } },
+			withToken: vi.fn(async (options: Record<string, unknown>) => options),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(slackAdapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const guard = new ChannelRateLimitGuard();
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			guard,
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		// First call: 429 → records the block
+		await executor.execute({
+			descriptor,
+			query: 'search_users',
+			input: { query: 'Michael' },
+		});
+
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledTimes(1);
+
+		// Second call: blocked → adapter never called
+		const result2 = await executor.execute({
+			descriptor,
+			query: 'search_users',
+			input: { query: 'John' },
+		});
+
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledTimes(1);
+		expect(result2).toEqual({
+			ok: false,
+			error: {
+				code: 'RATE_LIMIT_EXCEEDED',
+				message: expect.stringContaining('Slack'),
+			},
+		});
 	});
 });

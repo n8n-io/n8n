@@ -17,6 +17,10 @@ export function integrationError(
 	return { ok: false, error: { code, message } };
 }
 
+export function rateLimitExceeded(message: string): IntegrationErrorResponse {
+	return integrationError(INTEGRATION_ERROR_CODES.RATE_LIMIT_EXCEEDED, message);
+}
+
 export function connectionUnavailable(): IntegrationErrorResponse {
 	return integrationError(
 		INTEGRATION_ERROR_CODES.CONNECTION_NOT_AVAILABLE,

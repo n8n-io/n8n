@@ -55,6 +55,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
+import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
@@ -134,7 +135,11 @@ describe('ChatIntegrationActionExecutor', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -183,7 +188,11 @@ describe('ChatIntegrationActionExecutor', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -225,7 +234,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
 		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -271,7 +284,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.thread.mockReturnValue(sentThread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -303,7 +320,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.thread.mockReturnValue(sentThread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -339,7 +360,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
 		const registry = buildRegistry();
 		Container.set(ChatIntegrationRegistry, registry);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -409,7 +434,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
 		Container.set(ChatIntegrationRegistry, registry);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -472,7 +501,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
 		}))[0];
@@ -513,7 +546,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
 		}))[0];
@@ -549,7 +586,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
 		}))[0];
@@ -596,7 +637,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
 		Container.set(ChatIntegrationRegistry, registry);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
 		}))[0];
@@ -660,7 +705,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -711,7 +760,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -757,7 +810,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.getAdapter.mockReturnValue({ addReaction });
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([discord], 'agent-1')[0];
 		const inboundThreadId = 'discord:800000000000000001:700000000000000001:600000000000000001';
 		const inboundTarget = {
@@ -823,7 +880,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.getAdapter.mockReturnValue({ addReaction });
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([discord], 'agent-1')[0];
 		const explicitThreadId = 'discord:800000000000000001:700000000000000002:600000000000000001';
 
@@ -882,7 +943,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -905,7 +970,11 @@ describe('ChatIntegrationActionExecutor', () => {
 	it('returns a structured error when the selected connection is unavailable', async () => {
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -957,7 +1026,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -1057,7 +1130,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -1124,7 +1201,11 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -1205,7 +1286,11 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService.getChatInstance.mockReturnValue(chat);
 			const registry = buildRegistry();
 			Container.set(ChatIntegrationRegistry, registry);
-			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				registry,
+				new ChannelRateLimitGuard(),
+			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 			return { executor, descriptor, thread };
 		}
@@ -1300,7 +1385,11 @@ describe('ChatIntegrationActionExecutor', () => {
 
 		it('succeeds without touching the chat instance when the reply is optional', async () => {
 			const chatIntegrationService = mock<ChatIntegrationService>();
-			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 			const result = await executor.execute({
@@ -1321,7 +1410,11 @@ describe('ChatIntegrationActionExecutor', () => {
 
 		it('rejects when the reply expectation is required', async () => {
 			const chatIntegrationService = mock<ChatIntegrationService>();
-			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 			const result = await executor.execute({
@@ -1341,7 +1434,11 @@ describe('ChatIntegrationActionExecutor', () => {
 
 		it('rejects when the reply expectation is unset or the message context is missing', async () => {
 			const chatIntegrationService = mock<ChatIntegrationService>();
-			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 			for (const currentMessageContext of [slackMessageContext, undefined]) {
@@ -1360,5 +1457,162 @@ describe('ChatIntegrationActionExecutor', () => {
 			}
 			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Rate-limit handling
+// ---------------------------------------------------------------------------
+
+describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
+	it('returns RATE_LIMIT_EXCEEDED when the adapter throws a 429', async () => {
+		const slackAdapter = {
+			addReaction: vi
+				.fn()
+				.mockRejectedValue(Object.assign(new Error('rate limited'), { response: { status: 429 } })),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(slackAdapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const guard = new ChannelRateLimitGuard();
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			guard,
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: 'eyes' },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: {
+					type: 'thread',
+					threadId: 'slack:C123:123.456',
+					channelId: 'slack:C123',
+				},
+				messageId: '123.456',
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'RATE_LIMIT_EXCEEDED',
+				message: expect.stringContaining('Slack'),
+			},
+		});
+		expect(guard.isBlocked('slack:cred-a')).toBe(true);
+	});
+
+	it('does not call the adapter again on a blocked connection', async () => {
+		const slackAdapter = {
+			addReaction: vi
+				.fn()
+				.mockRejectedValue(Object.assign(new Error('rate limited'), { response: { status: 429 } })),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(slackAdapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const guard = new ChannelRateLimitGuard();
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			guard,
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const ctx = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: {
+				type: 'thread',
+				threadId: 'slack:C123:123.456',
+				channelId: 'slack:C123',
+			},
+			messageId: '123.456',
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		// First call: 429 → records the block
+		await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: 'eyes' },
+			awaitResponse: false,
+			currentMessageContext: ctx,
+		});
+
+		expect(slackAdapter.addReaction).toHaveBeenCalledTimes(1);
+
+		// Second call: blocked → adapter never called
+		const result2 = await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: 'thumbsup' },
+			awaitResponse: false,
+			currentMessageContext: ctx,
+		});
+
+		expect(slackAdapter.addReaction).toHaveBeenCalledTimes(1);
+		expect(chatIntegrationService.getChatInstance).toHaveBeenCalledTimes(1);
+		expect(result2).toEqual({
+			ok: false,
+			error: {
+				code: 'RATE_LIMIT_EXCEEDED',
+				message: expect.stringContaining('Slack'),
+			},
+		});
+	});
+
+	it('still returns ACTION_FAILED for a non-429 error', async () => {
+		const slackAdapter = {
+			addReaction: vi.fn().mockRejectedValue(new Error('network failure')),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(slackAdapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const guard = new ChannelRateLimitGuard();
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			guard,
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: 'eyes' },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: {
+					type: 'thread',
+					threadId: 'slack:C123:123.456',
+					channelId: 'slack:C123',
+				},
+				messageId: '123.456',
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'ACTION_FAILED',
+				message: 'network failure',
+			},
+		});
+		expect(guard.isBlocked('slack:cred-a')).toBe(false);
 	});
 });
