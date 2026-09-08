@@ -5148,6 +5148,7 @@
 	"apps.add.input.namespace.label": "Namespace",
 	"apps.add.input.namespace.placeholder": "my-app",
 	"apps.add.input.namespace.hint": "This is the base URL where the app will be available: {path}",
+	"apps.add.input.namespace.error.regex": "Only lowercase letters, numbers, and single hyphens between them are allowed.",
 	"apps.add.error": "Error creating app",
 	"apps.delete.confirm.title": "Delete app",
 	"apps.delete.confirm.message": "Are you sure you want to delete \"{name}\"? This will also delete all of its pages. This can't be undone.",

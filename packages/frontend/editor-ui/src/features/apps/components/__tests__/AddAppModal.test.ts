@@ -40,6 +40,13 @@ const renderModal = createComponentRenderer(AddAppModal, {
 	global: { stubs: { Modal: ModalStub } },
 });
 
+// `N8nFormInput` carries the test id on its wrapper, not on the `<input>`.
+function getInput(container: HTMLElement) {
+	const input = container.querySelector('input');
+	if (!input) throw new Error('Input element not found');
+	return input;
+}
+
 describe('AddAppModal', () => {
 	let appsStore: MockedStore<typeof useAppsStore>;
 	let uiStore: MockedStore<typeof useUIStore>;
@@ -55,22 +62,22 @@ describe('AddAppModal', () => {
 
 	async function fillAndSubmit() {
 		const { getByTestId } = renderModal();
-		await userEvent.type(getByTestId('apps-new-name'), 'Greeter');
+		await userEvent.type(getInput(getByTestId('apps-new-name')), 'Greeter');
 		await userEvent.click(getByTestId('apps-new-submit'));
 	}
 
 	it('suggests the namespace from the name', async () => {
 		const { getByTestId } = renderModal();
 
-		await userEvent.type(getByTestId('apps-new-name'), '  My Greeter -- App 2!');
+		await userEvent.type(getInput(getByTestId('apps-new-name')), '  My Greeter -- App 2!');
 
-		expect(getByTestId('apps-new-namespace')).toHaveValue('my-greeter-app-2');
+		expect(getInput(getByTestId('apps-new-namespace'))).toHaveValue('my-greeter-app-2');
 	});
 
 	it('stops syncing the namespace once the user edits it', async () => {
 		const { getByTestId } = renderModal();
-		const nameInput = getByTestId('apps-new-name');
-		const namespaceInput = getByTestId('apps-new-namespace');
+		const nameInput = getInput(getByTestId('apps-new-name'));
+		const namespaceInput = getInput(getByTestId('apps-new-namespace'));
 
 		await userEvent.type(nameInput, 'Greeter');
 		await userEvent.clear(namespaceInput);
@@ -79,6 +86,34 @@ describe('AddAppModal', () => {
 
 		expect(nameInput).toHaveValue('Greeter Two');
 		expect(namespaceInput).toHaveValue('hello');
+	});
+
+	it('blocks the handoff while the edited namespace is not a valid slug', async () => {
+		const { getByTestId, getByText } = renderModal();
+		const namespaceInput = getInput(getByTestId('apps-new-namespace'));
+
+		await userEvent.type(getInput(getByTestId('apps-new-name')), 'Greeter');
+		await userEvent.clear(namespaceInput);
+		await userEvent.type(namespaceInput, 'foo_bar{enter}');
+		await userEvent.tab();
+
+		expect(
+			getByText('Only lowercase letters, numbers, and single hyphens between them are allowed.'),
+		).toBeInTheDocument();
+		expect(getByTestId('apps-new-submit')).toBeDisabled();
+		expect(openAppArtifactThread).not.toHaveBeenCalled();
+	});
+
+	it('blocks the handoff while the name is longer than 128 characters', async () => {
+		const { getByTestId, getByText } = renderModal();
+		const nameInput = getInput(getByTestId('apps-new-name'));
+
+		await userEvent.click(nameInput);
+		await userEvent.paste('a'.repeat(129));
+		await userEvent.tab();
+
+		expect(getByText('Must be at most 128 characters')).toBeInTheDocument();
+		expect(getByTestId('apps-new-submit')).toBeDisabled();
 	});
 
 	it('hands the new app off to the assistant instead of creating it when the assistant is ready', async () => {
