@@ -1,11 +1,10 @@
 import { scrubSecretsInText } from '../scrub-secrets';
 
-// A quoted URL ends at its closing quote, so a quote or apostrophe inside its
-// query cannot cut the strip short and leak the rest of the query, while the
-// text after the URL survives. A bare URL runs to whitespace or an angle
-// bracket. The query group is optional so a URL without one is consumed in a
-// single pass instead of backtracking through its whole span.
-const QUOTED_URL_QUERY = /(["'])(https?:\/\/(?:(?!\1)[^\s?<>])+)(?:\?(?:(?!\1)[^\s<>])*)?/gi;
+// A delimiter quote ends a quoted URL. An escaped quote stays inside the query.
+// An apostrophe inside a word also stays inside the query. A bare URL ends at
+// whitespace or an angle bracket. The optional query group matches URLs with and
+// without queries in one pass.
+const QUOTED_URL_QUERY = /(["'])(https?:\/\/(?:(?!\1)[^\s?<>])+)(?:\?(?:\\.|(?!\1(?!\w))[^\s<>\\])*)?/gi;
 const BARE_URL_QUERY = /(https?:\/\/[^\s?<>]+)(?:\?[^\s<>]*)?/gi;
 
 export function sanitizeErrorDetail(message: string, maxLength: number): string {

@@ -22,6 +22,12 @@ describe('sanitizeErrorDetail', () => {
 		expect(
 			sanitizeErrorDetail('see https://api.example.com/v1?q=don\'t&sig="secret" now', 512),
 		).toBe('see https://api.example.com/v1 now');
+		expect(
+			sanitizeErrorDetail('{"url":"https://api.example.com/v1?a=1\\"b=secret","code":401}', 512),
+		).toBe('{"url":"https://api.example.com/v1","code":401}');
+		expect(
+			sanitizeErrorDetail("url 'https://api.example.com/v1?name=O'Brien&sig=secret' failed", 512),
+		).toBe("url 'https://api.example.com/v1' failed");
 	});
 
 	it('handles many adjacent URL prefixes in linear time', () => {
