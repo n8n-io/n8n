@@ -122,16 +122,16 @@ export class PublishedWorkflowTriggerDeactivator {
 					continue;
 				}
 				this.consecutiveLockSkipsByWorkflowId.delete(workflowId);
-				const result = await this.lifecycleLock.runExclusive(
+				const result = await this.lifecycleLock.runExclusive({
 					workflowId,
-					async () => {
+					fn: async () => {
 						if (this.instanceSettings.isLeader && !this.isShuttingDown) return false;
 						return await this.activeWorkflowTriggers.remove(workflowId);
 					},
 					// The lock was free a moment ago; a holder that took it since is a
 					// record in flight, which settles within its lease.
-					{ signal: AbortSignal.timeout(this.leaseMs) },
-				);
+					signal: AbortSignal.timeout(this.leaseMs),
+				});
 				if (result) {
 					deactivatedWorkflows.push(workflowId);
 				}

@@ -245,9 +245,9 @@ export class WorkflowPublicationReconciler {
 			}
 
 			try {
-				await this.lifecycleLock.runExclusive(
+				await this.lifecycleLock.runExclusive({
 					workflowId,
-					async () => {
+					fn: async () => {
 						const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
 
 						if (workflow?.activeVersionId) return;
@@ -258,8 +258,8 @@ export class WorkflowPublicationReconciler {
 					},
 					// The lock was free a moment ago; a holder that took it since is a
 					// record in flight, which settles within its lease.
-					{ signal: AbortSignal.timeout(this.leaseMs) },
-				);
+					signal: AbortSignal.timeout(this.leaseMs),
+				});
 			} catch (error) {
 				this.errorReporter.error(error, { shouldBeLogged: true });
 			}

@@ -74,7 +74,7 @@ beforeEach(() => {
 	activeWorkflowTriggers.remove.mockResolvedValue(true);
 	workflowRepository.getActiveIds.mockResolvedValue([]);
 	workflowRepository.findOneBy.mockResolvedValue(null);
-	lifecycleLock.runExclusive.mockImplementation(async (_workflowId, fn) => await fn());
+	lifecycleLock.runExclusive.mockImplementation(async ({ fn }) => await fn());
 	lifecycleLock.isLocked.mockReturnValue(false);
 	triggerDeactivator.sweepGhostTriggers.mockResolvedValue(0);
 	service = new WorkflowPublicationReconciler(
@@ -375,7 +375,9 @@ describe('WorkflowPublicationReconciler', () => {
 
 			await service.reconcile('reconcile');
 
-			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-ghost', expect.any(Function), {
+			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith({
+				workflowId: 'wf-ghost',
+				fn: expect.any(Function),
 				signal: expect.any(AbortSignal),
 			});
 			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-ghost');

@@ -5,7 +5,9 @@ interface WorkflowLockState {
 	waiters: Array<() => void>;
 }
 
-interface RunExclusiveOptions {
+interface RunExclusiveOptions<T> {
+	workflowId: string;
+	fn: () => Promise<T>;
 	/** Bounds the wait for the lock: an abort while waiting rejects with its reason. */
 	signal: AbortSignal;
 }
@@ -39,11 +41,7 @@ export class WorkflowPublicationLifecycleLock {
 	}
 
 	/** Runs `fn` under the workflow's lock, waiting until the lock is free or `signal` aborts. */
-	async runExclusive<T>(
-		workflowId: string,
-		fn: () => Promise<T>,
-		{ signal }: RunExclusiveOptions,
-	): Promise<T> {
+	async runExclusive<T>({ workflowId, fn, signal }: RunExclusiveOptions<T>): Promise<T> {
 		await this.acquire(workflowId, signal);
 		try {
 			return await fn();

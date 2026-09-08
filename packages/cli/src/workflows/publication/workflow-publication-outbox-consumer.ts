@@ -422,7 +422,11 @@ export class WorkflowPublicationOutboxConsumer {
 				};
 
 				try {
-					await this.lifecycleLock.runExclusive(record.workflowId, process, { signal });
+					await this.lifecycleLock.runExclusive({
+						workflowId: record.workflowId,
+						fn: process,
+						signal,
+					});
 				} catch (error) {
 					// Aborted while still queued on the lock. `process` then only settles the
 					// record (back to the queue, or failed) and applies nothing, so it needs
