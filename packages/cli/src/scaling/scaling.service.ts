@@ -202,7 +202,17 @@ export class ScalingService {
 			errorStack: error.stack ?? '',
 		};
 
-		await job.progress(msg);
+		try {
+			await job.progress(msg);
+		} catch (progressError) {
+			// e.g. the job key was already deleted by a stall sweep - do not let
+			// this secondary error mask the original one from being reported below
+			this.logger.warn(`Failed to notify main of failed execution ${executionId} (job ${job.id})`, {
+				error: progressError,
+				executionId,
+				jobId: job.id,
+			});
+		}
 
 		this.errorReporter.error(error, { executionId });
 

@@ -42,7 +42,7 @@ import {
 } from '@/workflow-helpers';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
+import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
 
 /**
  * One workflow the content-import policy blocked. It was skipped — the rest of the batch still
