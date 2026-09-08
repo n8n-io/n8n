@@ -211,6 +211,34 @@ describe('group node migration', () => {
 			expect(shared?.parentId).toBe('g1');
 		});
 
+		it('skips a group that a node already carries, so a second run adds nothing', () => {
+			const source = {
+				nodes: [node('Src'), node('A'), node('B'), node('Dst')],
+				connections: connect(['Src', 'A'], ['A', 'B'], ['B', 'Dst']),
+				nodeGroups: [group('g1', 'Group', ['a', 'b'], 'do the thing')],
+			};
+
+			const first = migrateNodeGroupsToGroupNodes(source);
+			// `nodeGroups` is kept for a downgrade, so a second run sees it again.
+			const second = migrateNodeGroupsToGroupNodes({
+				nodes: first.nodes,
+				connections: first.connections,
+				nodeGroups: source.nodeGroups,
+			});
+
+			// Exactly one group node, not two.
+			expect(second.nodes.filter((candidate) => candidate.type === GROUP_NODE_TYPE)).toHaveLength(
+				1,
+			);
+			// The group was not converted a second time.
+			expect(second.convertedGroupIds).toEqual([]);
+			// The graph is unchanged.
+			expect(edgesOf(second.connections)).toEqual(edgesOf(first.connections));
+			expect(second.nodes.map((candidate) => candidate.name).sort()).toEqual(
+				first.nodes.map((candidate) => candidate.name).sort(),
+			);
+		});
+
 		it('produces a workflow the boundary rules accept', () => {
 			const result = migrateNodeGroupsToGroupNodes({
 				nodes: [node('Src'), node('A'), node('B'), node('Dst')],

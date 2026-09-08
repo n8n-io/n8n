@@ -23,8 +23,14 @@ import type {
 	INodeTypeData,
 	INodeTypeDescription,
 	IRun,
+	IWorkflowGroup,
 } from 'n8n-workflow';
-import { GROUP_NODE_TYPE, NodeConnectionTypes, Workflow } from 'n8n-workflow';
+import {
+	GROUP_NODE_TYPE,
+	migrateNodeGroupsToGroupNodes,
+	NodeConnectionTypes,
+	Workflow,
+} from 'n8n-workflow';
 
 import * as Helpers from '@test/helpers';
 
@@ -69,6 +75,24 @@ const nodeTypeData: INodeTypeData = {
 				const name = this.getNode().name;
 				executed.push(name);
 				return [this.getInputData().map((item) => ({ json: { ...item.json, [name]: true } }))];
+			},
+		},
+	},
+	// Resolves an expression parameter named `read` and stamps its value onto the
+	// item, so a test can assert a `$('NodeName')` reference across the boundary.
+	testReader: {
+		sourcePath: '',
+		type: {
+			description: {
+				...passThrough,
+				name: 'reader',
+				properties: [{ displayName: 'Read', name: 'read', type: 'string', default: '' }],
+			},
+			async execute(this: IExecuteFunctions) {
+				const name = this.getNode().name;
+				executed.push(name);
+				const read = this.getNodeParameter('read', 0);
+				return [this.getInputData().map((item) => ({ json: { ...item.json, read } }))];
 			},
 		},
 	},
@@ -150,6 +174,11 @@ function allItemsOutOf(result: IRun, nodeName: string) {
 	return (result.data.resultData.runData[nodeName] ?? []).flatMap((taskData) =>
 		(taskData.data?.[NodeConnectionTypes.Main]?.[0] ?? []).map((item) => item.json),
 	);
+}
+
+/** Orders items by their JSON so a collect comparison ignores branch order. */
+function sortByKeys(a: unknown, b: unknown): number {
+	return JSON.stringify(a).localeCompare(JSON.stringify(b));
 }
 
 beforeEach(() => {
@@ -328,6 +357,152 @@ describe('group node execution', () => {
 
 		expect(result.data.resultData.error).toBeUndefined();
 		expect(executed).toEqual([TRIGGER, 'A', 'B']);
+	});
+});
+
+describe('a converted nodeGroups workflow executes like the original', () => {
+	// The old model ran the member chain directly; the engine never saw the group.
+	// So "identical to the original" means the group boundary is transparent: the
+	// converted D-shape workflow runs the same nodes, in the same order, and the
+	// node after the group receives the same items as the plain member chain does.
+	//
+	// Each case builds the plain baseline (members on the canvas, no group) and the
+	// `nodeGroups` shape, converts the latter with the pure migration, and asserts
+	// both runs match.
+
+	/** Runs a plain baseline and the converted `nodeGroups` shape, and returns both. */
+	async function runBoth(
+		plainNodes: INode[],
+		plainConnections: IConnections,
+		groupedNodes: INode[],
+		groupedConnections: IConnections,
+		nodeGroups: IWorkflowGroup[],
+	) {
+		executed = [];
+		const baseline = await run(plainNodes, plainConnections);
+		const baselineExecuted = executed;
+
+		const converted = migrateNodeGroupsToGroupNodes({
+			nodes: groupedNodes,
+			connections: groupedConnections,
+			nodeGroups,
+		});
+
+		executed = [];
+		const grouped = await run(converted.nodes, converted.connections);
+		const groupedExecuted = executed;
+
+		return { baseline, baselineExecuted, grouped, groupedExecuted };
+	}
+
+	it('pass-through empty group matches an ungrouped edge', async () => {
+		const { baseline, baselineExecuted, grouped, groupedExecuted } = await runBoth(
+			// Baseline: Trigger -> After, no group in between.
+			[node(TRIGGER, undefined, 'testTrigger'), node('After')],
+			connect([TRIGGER, 'After']),
+			// nodeGroups shape: an empty group between the trigger and After.
+			[node(TRIGGER, undefined, 'testTrigger'), node('After')],
+			connect([TRIGGER, 'After']),
+			[{ id: 'g', name: 'Empty', nodeIds: [] }],
+		);
+
+		expect(baseline.data.resultData.error).toBeUndefined();
+		expect(grouped.data.resultData.error).toBeUndefined();
+		expect(groupedExecuted).toEqual(baselineExecuted);
+		expect(itemsOutOf(grouped, 'After')).toEqual(itemsOutOf(baseline, 'After'));
+	});
+
+	it('multi-entry interior broadcasts like two ungrouped branches', async () => {
+		// Two interior entries, both fed by the boundary.
+		const { baseline, grouped } = await runBoth(
+			// Baseline: Trigger fans out to EntryA and EntryB directly.
+			[node(TRIGGER, undefined, 'testTrigger'), node('EntryA'), node('EntryB')],
+			{
+				[TRIGGER]: {
+					main: [
+						[
+							{ node: 'EntryA', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'EntryB', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			},
+			// nodeGroups shape: the two entries are grouped, fed through the group.
+			[node(TRIGGER, undefined, 'testTrigger'), node('EntryA'), node('EntryB')],
+			connect([TRIGGER, 'EntryA'], [TRIGGER, 'EntryB']),
+			[{ id: 'g', name: 'Fan', nodeIds: ['entrya', 'entryb'] }],
+		);
+
+		expect(grouped.data.resultData.error).toBeUndefined();
+		// Each entry gets its own copy of the same input branch, in both runs.
+		expect(itemsOutOf(grouped, 'EntryA')).toEqual(itemsOutOf(baseline, 'EntryA'));
+		expect(itemsOutOf(grouped, 'EntryB')).toEqual(itemsOutOf(baseline, 'EntryB'));
+	});
+
+	it('multi-exit interior collects onto the output like two ungrouped exits', async () => {
+		// In -> Left and Right; Left and Right are the exits, both feed After.
+		const plainConnections: IConnections = {
+			...connect([TRIGGER, 'In'], ['In', 'Left'], ['In', 'Right']),
+			Left: { main: [[{ node: 'After', type: NodeConnectionTypes.Main, index: 0 }]] },
+			Right: { main: [[{ node: 'After', type: NodeConnectionTypes.Main, index: 0 }]] },
+		};
+
+		const { baseline, grouped } = await runBoth(
+			[
+				node(TRIGGER, undefined, 'testTrigger'),
+				node('In'),
+				node('Left'),
+				node('Right'),
+				node('After'),
+			],
+			plainConnections,
+			[
+				node(TRIGGER, undefined, 'testTrigger'),
+				node('In'),
+				node('Left'),
+				node('Right'),
+				node('After'),
+			],
+			connect(
+				[TRIGGER, 'In'],
+				['In', 'Left'],
+				['In', 'Right'],
+				['Left', 'After'],
+				['Right', 'After'],
+			),
+			[{ id: 'g', name: 'Collect', nodeIds: ['in', 'left', 'right'] }],
+		);
+
+		expect(grouped.data.resultData.error).toBeUndefined();
+		expect(allItemsOutOf(grouped, 'After').sort(sortByKeys)).toEqual(
+			allItemsOutOf(baseline, 'After').sort(sortByKeys),
+		);
+	});
+
+	it('keeps a $() reference to an interior node valid across the boundary', async () => {
+		// `After` reads the interior node `Mid` by name. The reference must resolve
+		// the same whether `Mid` sits on the canvas or inside a group.
+		const reader = (): INode => ({
+			id: 'after',
+			name: 'After',
+			type: 'testReader',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { read: "={{ $('Mid').item.json.Mid }}" },
+		});
+
+		const { baseline, grouped } = await runBoth(
+			[node(TRIGGER, undefined, 'testTrigger'), node('Mid'), reader()],
+			connect([TRIGGER, 'Mid'], ['Mid', 'After']),
+			[node(TRIGGER, undefined, 'testTrigger'), node('Mid'), reader()],
+			connect([TRIGGER, 'Mid'], ['Mid', 'After']),
+			[{ id: 'g', name: 'Wrap', nodeIds: ['mid'] }],
+		);
+
+		expect(grouped.data.resultData.error).toBeUndefined();
+		expect(itemsOutOf(grouped, 'After')).toEqual(itemsOutOf(baseline, 'After'));
+		// The reference resolved to Mid's stamped value, not to nothing.
+		expect(itemsOutOf(grouped, 'After')[0]).toMatchObject({ read: true });
 	});
 });
 

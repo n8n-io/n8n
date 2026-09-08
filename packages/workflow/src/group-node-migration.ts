@@ -110,11 +110,18 @@ export function migrateNodeGroupsToGroupNodes(workflow: {
 	const convertedGroupIds: string[] = [];
 	const missingNodeIds: string[] = [];
 
+	// Idempotency guard: a group already converted on an earlier run has a node
+	// carrying its id, so converting it again would add a second, empty group.
+	// Skip it, and re-point nothing for it, so a second run is a no-op.
+	const alreadyConverted = new Set(nodes.filter(isGroupNode).map((node) => node.id));
+
 	/** Group node name for each member name, to re-point that member's edges. */
 	const groupNameOfMember = new Map<string, string>();
 	const groupNodes: INode[] = [];
 
 	for (const group of groups) {
+		if (alreadyConverted.has(group.id)) continue;
+
 		const members = group.nodeIds
 			.map((id) => {
 				const member = nodesById.get(id);
