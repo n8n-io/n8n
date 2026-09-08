@@ -13,8 +13,6 @@ const pathSegments = (path: unknown): string[] => {
 	return typeof path === 'string' && path !== '' ? [path] : [];
 };
 
-const hasTrailingSlash = (url: string) => url.split('?')[0].endsWith('/');
-
 @RootLevelController('/apps')
 export class AppServingController {
 	constructor(private readonly appServingService: AppServingService) {}
@@ -36,8 +34,9 @@ export class AppServingController {
 		if (resolved?.kind === 'static') {
 			// A built app links its assets relative to its base URL, so the
 			// root document has to carry the trailing slash.
-			if (segments.length === 0 && !hasTrailingSlash(req.originalUrl)) {
-				res.redirect(302, `/apps/${req.params.namespace}/`);
+			const { pathname, search } = new URL(req.originalUrl, 'http://n8n');
+			if (segments.length === 0 && !pathname.endsWith('/')) {
+				res.redirect(302, `/apps/${req.params.namespace}/${search}`);
 				return;
 			}
 			this.sendStaticFile(res, resolved.filePath);
@@ -60,14 +59,16 @@ export class AppServingController {
 	}
 
 	private sendStaticFile(res: Response, filePath: string) {
-		// HTML is the entry point and must revalidate so a new version shows up
-		// on reload; hashed assets can be cached for a while.
-		if (path.extname(filePath) === '.html') {
-			res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-			res.setHeader('Cache-Control', 'no-cache');
-		} else {
-			res.setHeader('Cache-Control', 'public, max-age=3600');
-		}
+		// Every file gets the sandbox policy: a browser renders `.htm`, `.svg` and
+		// friends as documents too, and the policy is harmless on the rest.
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+		// HTML is the entry point and must revalidate so a new version shows up on
+		// reload. Assets revalidate too (ETag makes that a 304), because a build
+		// may reference them by an unhashed name that changes content across versions.
+		res.setHeader(
+			'Cache-Control',
+			path.extname(filePath) === '.html' ? 'no-cache' : 'public, max-age=0, must-revalidate',
+		);
 
 		// `dotfiles: 'allow'` because the cache lives under `.n8n`, which `send`
 		// would otherwise treat as a hidden path and refuse.

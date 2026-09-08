@@ -216,6 +216,15 @@ describe('GET /apps/:namespace with an active version', () => {
 		expect(response.headers.location).toBe('/apps/hello/');
 	});
 
+	test('keeps the query string on the trailing-slash redirect', async () => {
+		const app = await createApp();
+		await upload(app.id).expect(200);
+
+		const response = await visitor.get('/apps/hello?token=abc&x=1').expect(302);
+
+		expect(response.headers.location).toBe('/apps/hello/?token=abc&x=1');
+	});
+
 	test('serves index.html with the sandbox policy and no caching', async () => {
 		const app = await createApp();
 		await upload(app.id).expect(200);
@@ -245,16 +254,33 @@ describe('GET /apps/:namespace with an active version', () => {
 		expect(response.text).toBe(about);
 	});
 
-	test('serves assets with their own content type and without the policy', async () => {
+	test('serves assets with their own content type, the sandbox policy and revalidation', async () => {
 		const app = await createApp();
 		await upload(app.id).expect(200);
 
 		const response = await visitor.get('/apps/hello/assets/app.js').expect(200);
 
 		expect(response.headers['content-type']).toMatch(/javascript/);
-		expect(response.headers['content-security-policy']).toBeUndefined();
-		expect(response.headers['cache-control']).toBe('public, max-age=3600');
+		expect(response.headers['content-security-policy']).toContain('sandbox');
+		expect(response.headers['cache-control']).toBe('public, max-age=0, must-revalidate');
+		expect(response.headers.etag).toBeDefined();
 		expect(response.text).toBe(APP_JS);
+	});
+
+	test('serves a non-html document with the sandbox policy', async () => {
+		const app = await createApp();
+		const svg = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>';
+		const dist = tgz([
+			{ path: './index.html', content: INDEX_HTML },
+			{ path: './logo.svg', content: svg },
+		]);
+		await upload(app.id, sourceTgz(), dist).expect(200);
+
+		const response = await visitor.get('/apps/hello/logo.svg').expect(200);
+
+		expect(response.headers['content-type']).toContain('image/svg+xml');
+		expect(response.headers['content-security-policy']).toContain('sandbox');
+		expect(response.body.toString()).toBe(svg);
 	});
 
 	test('falls back to index.html for a client-side route', async () => {
