@@ -8,6 +8,6 @@ export function stripNonXHeaders(error: IDataObject | Error): void {
 	if (!isRecord(headers)) return;
 
 	for (const key of Object.keys(headers)) {
-		if (!key.startsWith('x-')) delete headers[key];
+		if (!key.toLowerCase().startsWith('x-')) delete headers[key];
 	}
 }

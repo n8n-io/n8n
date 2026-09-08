@@ -6,12 +6,16 @@ describe('stripNonXHeaders', () => {
 			headers: {
 				authorization: 'secret',
 				'x-request-id': 'request-id',
+				'X-Request-Id': 'mixed-case',
 			},
 		};
 
 		stripNonXHeaders(error);
 
-		expect(error.headers).toEqual({ 'x-request-id': 'request-id' });
+		expect(error.headers).toEqual({
+			'x-request-id': 'request-id',
+			'X-Request-Id': 'mixed-case',
+		});
 	});
 
 	it('does nothing when headers are absent', () => {
