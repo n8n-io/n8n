@@ -69,8 +69,11 @@ describe('AgentTaskTaskHandler', () => {
 		registrar.reconcile.mockResolvedValue(undefined);
 	});
 
-	it('throws on a malformed payload without reporting a dispatch', async () => {
-		const task = buildTask({ payload: { agentId: AGENT_ID } });
+	it.each([
+		['a missing taskId', { agentId: AGENT_ID }],
+		['an empty agentId', { agentId: '', taskId: TASK_ID }],
+	])('throws on a payload with %s without reporting a dispatch', async (_, payload) => {
+		const task = buildTask({ payload });
 
 		await expect(handler.execute(task, report)).rejects.toThrow(
 			'Agent-task payload is missing agentId or taskId',

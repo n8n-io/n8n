@@ -135,15 +135,18 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
-	 * The member ids under which an owner holds jobs of one task type. A caller
-	 * uses them to tell which of its parts still provision a job.
+	 * The member ids under which an owner holds jobs of one task type, each once.
+	 * A caller uses them to tell which of its parts still provision a job.
 	 */
 	async findOwnerMemberIds(owner: ScheduledJobOwnerRef, taskType: string): Promise<string[]> {
 		const rows = await this.find({
 			where: { ...ownerRefCriteria(owner), taskType, ownerMemberId: Not(IsNull()) },
 			select: { ownerMemberId: true },
 		});
-		return rows.flatMap((row) => (row.ownerMemberId === null ? [] : [row.ownerMemberId]));
+		const memberIds = rows.flatMap((row) =>
+			row.ownerMemberId === null ? [] : [row.ownerMemberId],
+		);
+		return [...new Set(memberIds)];
 	}
 
 	async countByOwner(owner: ScheduledJobOwner): Promise<number> {

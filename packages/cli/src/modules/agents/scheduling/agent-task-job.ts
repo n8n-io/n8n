@@ -16,10 +16,13 @@ export interface AgentTaskJobPayload {
 	taskId: string;
 }
 
+const isNonEmptyString = (value: unknown): value is string =>
+	typeof value === 'string' && value !== '';
+
 export function isAgentTaskJobPayload(payload: unknown): payload is AgentTaskJobPayload {
 	if (typeof payload !== 'object' || payload === null) return false;
 	const candidate = payload as Record<string, unknown>;
-	return typeof candidate.agentId === 'string' && typeof candidate.taskId === 'string';
+	return isNonEmptyString(candidate.agentId) && isNonEmptyString(candidate.taskId);
 }
 
 /** Unique job name for one agent task. Task ids are unique within an agent. */

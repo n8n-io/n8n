@@ -163,7 +163,9 @@ export class AgentsModule implements ModuleInterface {
 		// its start() in the start command. A main with the flag off registers no
 		// handler, so the executor never claims a leftover agent-task row. The
 		// reconcile runs with the flag in either state: it backfills jobs when the
-		// flag is on and removes them when it is off.
+		// flag is on and removes them when it is off. It is awaited, so that the
+		// executor cannot claim an occurrence of a job it is about to redefine or
+		// remove.
 		if (instanceSettings.instanceType === 'main') {
 			const { AgentTaskJobRegistrar } = await import('./scheduling/agent-task-job-registrar.js');
 			const registrar = Container.get(AgentTaskJobRegistrar);
@@ -178,11 +180,13 @@ export class AgentsModule implements ModuleInterface {
 				);
 			}
 
-			void registrar.reconcileAll().catch((error) => {
+			try {
+				await registrar.reconcileAll();
+			} catch (error) {
 				logger.error('[Agents] Failed to reconcile durable agent-task jobs on startup', {
 					error: error instanceof Error ? error.message : String(error),
 				});
-			});
+			}
 		}
 	}
 

@@ -49,10 +49,32 @@ export class AgentTaskJobRegistrar {
 	/**
 	 * Makes the durable jobs of an agent match its published config. Enabled
 	 * snapshots of the active version become jobs. All other jobs are removed.
-	 * An unpublished or deleted agent keeps no jobs.
+	 * An unpublished or deleted agent keeps no jobs. With the flag off, an agent
+	 * keeps no agent-task jobs whatever it publishes.
 	 */
 	async reconcile(agentId: string): Promise<void> {
-		const versionId = await this.agentRepository.findActiveVersionId(agentId);
+		if (!this.isEnabled()) {
+			await this.provisioner.deprovisionOwnerTaskType(
+				this.owner.ref(agentId),
+				AGENT_TASK_TASK_TYPE,
+			);
+			return;
+		}
+
+		// Reconciles take no lock, so two can interleave: two publishes, or a
+		// publish and a delete. The one that acted on a stale read can undo the
+		// newer one. Each repeats until the version it applied is still the active
+		// one, so the last writer always applies the current version.
+		let versionId = await this.agentRepository.findActiveVersionId(agentId);
+		for (;;) {
+			await this.applyVersion(agentId, versionId);
+			const current = await this.agentRepository.findActiveVersionId(agentId);
+			if (current === versionId) return;
+			versionId = current;
+		}
+	}
+
+	private async applyVersion(agentId: string, versionId: string | null): Promise<void> {
 		if (!versionId) {
 			await this.deprovisionAgent(agentId);
 			return;

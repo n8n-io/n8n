@@ -188,6 +188,39 @@ describe('AgentTaskJobRegistrar', () => {
 			expect(provisioner.deprovisionOwner).toHaveBeenCalledWith(OWNER_REF);
 			expect(provisioner.provision).not.toHaveBeenCalled();
 		});
+
+		it('applies the version published while it ran, so the newest config wins', async () => {
+			// version-1 has task-1, version-2 has task-2. The publish of version-2 lands
+			// between the first read and the re-read.
+			agentRepository.findActiveVersionId
+				.mockResolvedValueOnce('version-1')
+				.mockResolvedValueOnce('version-2')
+				.mockResolvedValue('version-2');
+			taskSnapshotRepository.findEnabledByVersionId.mockImplementation(async (versionId) =>
+				versionId === 'version-1'
+					? [snapshot()]
+					: [snapshot({ versionId: 'version-2', taskId: 'task-2' })],
+			);
+			scheduledJobRepository.findOwnerMemberIds.mockResolvedValue(['task-1', 'task-2']);
+
+			await makeRegistrar().reconcile(AGENT_ID);
+
+			expect(provisioner.provision.mock.calls.at(-1)?.[0]).toMatchObject({
+				owner: owner('task-2'),
+			});
+			expect(provisioner.deprovisionOwnerMember.mock.calls.at(-1)?.[0]).toEqual(owner('task-1'));
+		});
+
+		it('removes the agent-task jobs instead of provisioning when the flag is off', async () => {
+			await makeRegistrar({ enabledForAgentTasks: false }).reconcile(AGENT_ID);
+
+			expect(provisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
+				OWNER_REF,
+				AGENT_TASK_TASK_TYPE,
+			);
+			expect(provisioner.provision).not.toHaveBeenCalled();
+			expect(agentRepository.findActiveVersionId).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('reconcileAll', () => {
