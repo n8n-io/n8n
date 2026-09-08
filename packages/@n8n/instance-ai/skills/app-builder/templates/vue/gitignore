@@ -2,3 +2,4 @@ node_modules
 dist
 *.local
 *.tsbuildinfo
+.n8n-dev.log

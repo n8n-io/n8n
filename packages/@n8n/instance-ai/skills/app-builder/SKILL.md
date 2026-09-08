@@ -38,7 +38,9 @@ two the starter page needs, and every other component goes through it too.
    `workspace(action="list-projects")` and ask when there is more than one.
 2. Edit files under `workspacePath` with `workspace_write_file` and
    `workspace_str_replace_file`. The template's `AI_RULES.md` describes the
-   layout. Do not run `npm run dev`; there is no dev server.
+   layout. Do not start a dev server; n8n runs one for the live preview, so
+   edits appear there without a build. Preview errors arrive as context on
+   the user's next message; fix them before anything else.
 3. `apps(action="build", appId)`. Success returns `url`, `versionId`,
    `namespace`, `projectId`. Give the user the `url`. You cannot see the
    page: after a styling change, grep the built CSS in `dist/assets/` for the
