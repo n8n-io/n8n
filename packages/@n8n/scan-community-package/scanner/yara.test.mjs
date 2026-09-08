@@ -21,9 +21,9 @@ describe('yara rules', () => {
 	afterEach(() => dirs.splice(0).forEach((d) => fs.rmSync(d, { recursive: true, force: true })));
 
 	it('compiles every vendored rule', async () => {
-		const { ruleUrls } = await loadRules();
+		const { ruleNames } = await loadRules();
 		const ruleFiles = fs.readdirSync(RULES_DIR).filter((f) => f.endsWith('.yar'));
-		expect(ruleUrls.size).toBe(ruleFiles.length);
+		expect(ruleNames.size).toBe(ruleFiles.length);
 	});
 
 	it('flags a preinstall script in package.json', async () => {
@@ -44,8 +44,7 @@ describe('yara rules', () => {
 				rule: 'threat-npm-preinstall-script',
 				file: 'package.json',
 				line: 1,
-				text: expect.stringContaining('preinstall'),
-				url: 'https://github.com/DataDog/guarddog/blob/v3.2.0/guarddog/analyzer/sourcecode/threat-npm-preinstall-script.yar',
+				column: expect.any(Number),
 			}),
 		]);
 	});
@@ -59,7 +58,7 @@ describe('yara rules', () => {
 
 		const result = await runYaraRules(dir);
 
-		expect(result).toEqual({ passed: true, summary: 'no findings', findings: [] });
+		expect(result).toEqual({ passed: true, summary: '0 errors, 0 warnings', findings: [] });
 	});
 
 	it('respects a rule path_include (package.json rules skip code files)', async () => {

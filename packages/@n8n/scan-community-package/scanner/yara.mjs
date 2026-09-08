@@ -22,20 +22,6 @@ import init, { Compiler } from '@virustotal/yara-x';
 
 const RULES_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'rules');
 
-/**
- * Where to read a rule's source: the patterns it matches and the reasoning
- * behind them. Each subdirectory of ./rules is a ruleset; vendored ones link
- * upstream at the pinned version, our own link into this repository.
- */
-const RULE_URLS = {
-	guarddog: (dir, file) => {
-		const version = fs.readFileSync(path.join(dir, 'VERSION'), 'utf8').trim();
-		return `https://github.com/DataDog/guarddog/blob/${version}/guarddog/analyzer/sourcecode/${file}`;
-	},
-};
-const ownRuleUrl = (ruleset, file) =>
-	`https://github.com/n8n-io/n8n/blob/master/packages/@n8n/scan-community-package/scanner/rules/${ruleset}/${file}`;
-
 const globToRegExp = (glob) =>
 	new RegExp(
 		`^${glob
@@ -59,7 +45,7 @@ export const loadRules = async () => {
 	await init({ module_or_path: fs.readFileSync(wasmPath) });
 
 	const compiler = new Compiler();
-	const ruleUrls = new Map(); // rule identifier → URL of its source
+	const ruleNames = new Set();
 
 	const rulesets = fs
 		.readdirSync(RULES_ROOT, { withFileTypes: true })
@@ -67,12 +53,11 @@ export const loadRules = async () => {
 		.map((e) => e.name);
 	for (const ruleset of rulesets) {
 		const dir = path.join(RULES_ROOT, ruleset);
-		const toUrl = RULE_URLS[ruleset] ?? ((_, file) => ownRuleUrl(ruleset, file));
 		for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.yar'))) {
 			let source = fs.readFileSync(path.join(dir, file), 'utf8');
 			// Read the rule's own name before inlining includes, or a helper rule from
 			// the included file would be the first `rule` in the text.
-			ruleUrls.set(/^rule\s+(\w+)/m.exec(source)[1], toUrl(dir, file));
+			ruleNames.add(/^rule\s+(\w+)/m.exec(source)[1]);
 			source = source.replace(/^include\s+"([^"]+)"\s*$/gm, (_, included) =>
 				fs.readFileSync(path.join(dir, included), 'utf8'),
 			);
@@ -80,7 +65,7 @@ export const loadRules = async () => {
 		}
 	}
 
-	compiled = { rules: compiler.build(), ruleUrls };
+	compiled = { rules: compiler.build(), ruleNames };
 	return compiled;
 };
 
@@ -95,17 +80,12 @@ const appliesTo = (metadata, relativePath) => {
 	return (!include || matches(include)) && !matches(exclude);
 };
 
-/** Line number and trimmed line text at a byte offset, for pointing at the match. */
-const lineAt = (content, offset) => {
+/** 1-based line and column of a byte offset. */
+const positionAt = (content, offset) => {
 	const before = content.subarray(0, offset).toString('utf8');
 	const line = before.split('\n').length;
-	const start = before.lastIndexOf('\n') + 1;
-	const end = content.indexOf('\n', offset);
-	const text = content
-		.subarray(start, end === -1 ? undefined : end)
-		.toString('utf8')
-		.trim();
-	return { line, text: text.length > 160 ? `${text.slice(0, 157)}...` : text };
+	const column = before.length - before.lastIndexOf('\n');
+	return { line, column };
 };
 
 function* walk(dir) {
@@ -116,26 +96,28 @@ function* walk(dir) {
 	}
 }
 
-export const formatYaraFindings = (findings) =>
-	findings
-		.map((f) =>
-			[
-				`${f.file}:${f.line}  ${f.rule}`,
-				f.text && `    ${f.text}`,
-				`    ${f.message}`,
-				`    Rule: ${f.url}`,
-			]
-				.filter(Boolean)
-				.join('\n'),
-		)
-		.join('\n\n');
+/** Same shape as ESLint's "stylish" formatter, so all checks read alike. */
+export const formatYaraFindings = (findings) => {
+	const byFile = Map.groupBy(findings, (f) => f.file);
+	const width = (values) => Math.max(...values.map((v) => v.length));
+	const blocks = [...byFile].map(([file, rows]) => {
+		const pos = rows.map((f) => `${f.line}:${f.column}`);
+		const msg = rows.map((f) => f.message);
+		const lines = rows.map(
+			(f, i) => `  ${pos[i].padStart(width(pos))}  error  ${msg[i].padEnd(width(msg))}  ${f.rule}`,
+		);
+		return `${file}\n${lines.join('\n')}`;
+	});
+	const n = findings.length;
+	return `${blocks.join('\n\n')}\n\n\u2716 ${n} problem${n === 1 ? '' : 's'} (${n} error${n === 1 ? '' : 's'}, 0 warnings)`;
+};
 
 /**
  * @param {string} packageDir extracted tarball contents (the `package/` root)
- * @returns {Promise<{ passed: boolean, summary: string, message?: string, details?: string, findings: Array<{ rule, file, line, text, message, url }> }>}
+ * @returns {Promise<{ passed: boolean, summary: string, message?: string, details?: string, findings: Array<{ rule, file, line, column, message }> }>}
  */
 export const runYaraRules = async (packageDir) => {
-	const { rules, ruleUrls } = await loadRules();
+	const { rules, ruleNames } = await loadRules();
 	const findings = [];
 
 	for (const file of walk(packageDir)) {
@@ -144,7 +126,7 @@ export const runYaraRules = async (packageDir) => {
 
 		for (const match of rules.scan(content).matches) {
 			// Helper rules pulled in via `include` are not findings.
-			if (!ruleUrls.has(match.identifier)) continue;
+			if (!ruleNames.has(match.identifier)) continue;
 			const rule = match.identifier.replace(/_/g, '-');
 			if (!rule.startsWith('threat-')) continue;
 
@@ -157,20 +139,19 @@ export const runYaraRules = async (packageDir) => {
 				.flatMap((p) => p.matches)
 				.map((m) => m.offset)
 				.sort((a, b) => a - b)[0];
-			const { line, text } =
-				firstOffset === undefined ? { line: 1, text: '' } : lineAt(content, firstOffset);
+			const { line, column } =
+				firstOffset === undefined ? { line: 1, column: 1 } : positionAt(content, firstOffset);
 			findings.push({
 				rule,
 				file: relativePath,
 				line,
-				text,
+				column,
 				message: metadata.description ?? rule,
-				url: ruleUrls.get(match.identifier),
 			});
 		}
 	}
 
-	const summary = `${findings.length} finding${findings.length === 1 ? '' : 's'}`;
+	const summary = `${findings.length} error${findings.length === 1 ? '' : 's'}, 0 warnings`;
 	return findings.length > 0
 		? {
 				passed: false,
@@ -179,5 +160,5 @@ export const runYaraRules = async (packageDir) => {
 				details: formatYaraFindings(findings),
 				findings,
 			}
-		: { passed: true, summary: 'no findings', findings };
+		: { passed: true, summary: '0 errors, 0 warnings', findings };
 };
