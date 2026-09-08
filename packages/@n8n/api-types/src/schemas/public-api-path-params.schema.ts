@@ -2,9 +2,8 @@ import '../openapi-extend';
 import { z } from 'zod';
 
 /**
- * The id stays a string, because the services these routes call take a string.
- * The docs still say `integer`: `.openapi({ type })` replaces the type Zod would
- * infer, instead of adding to it, so the string check never reaches the docs.
+ * Runtime: the id stays a string, because the services these routes call expect a string.
+ * Docs: `.openapi({ type })` overrides them, so they show `integer`.
  */
 const numericIdParamSchema = (description: string) =>
 	z
