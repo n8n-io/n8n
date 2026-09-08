@@ -7,10 +7,22 @@ import type {
 	ExecutionView,
 	ExecutionWithStepsView,
 	StepView,
+	ExecutionListQuery,
+	ExecutionListItemView,
 } from '../execution/execution-view-store';
 
 /** The execution row, with its steps aggregated into one column. */
 type ExecutionWithStepsRow = ExecutionView & { steps: StepView[] };
+
+/** `listExecutionViews`'s raw row: the driver reports timestamp columns as `Date`. */
+type ExecutionListItemRow = Omit<
+	ExecutionListItemView,
+	'createdAt' | 'updatedAt' | 'finishedAt'
+> & {
+	createdAt: Date;
+	updatedAt: Date;
+	finishedAt: Date | null;
+};
 
 /**
  * TypeORM-backed `ExecutionViewStore` adapter. It spans both tables, since a
@@ -25,6 +37,50 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		private readonly executions: Repository<WorkflowExecution>,
 		private readonly steps: Repository<WorkflowStepExecution>,
 	) {}
+
+	async listExecutionViews(query: ExecutionListQuery): Promise<ExecutionListItemView[]> {
+		const qb = this.buildListQuery(query)
+			.select('execution.id', 'id')
+			.addSelect('execution.workflow_id', 'workflowId')
+			.addSelect('execution.status', 'status')
+			.addSelect('execution.mode', 'mode')
+			.addSelect('execution.created_at', 'createdAt')
+			.addSelect('execution.updated_at', 'updatedAt')
+			.addSelect('execution.finished_at', 'finishedAt');
+		if (query.before) {
+			qb.andWhere('(execution.created_at, execution.id) < (:createdAt, :id)', query.before);
+		}
+		const rows = await qb
+			.orderBy('execution.created_at', 'DESC')
+			.addOrderBy('execution.id', 'DESC')
+			.limit(query.limit)
+			.getRawMany<ExecutionListItemRow>();
+		return rows.map((row) => ({
+			...row,
+			createdAt: row.createdAt.toISOString(),
+			updatedAt: row.updatedAt.toISOString(),
+			finishedAt: row.finishedAt?.toISOString() ?? null,
+		}));
+	}
+
+	async countExecutionViews(query: ExecutionListQuery): Promise<number> {
+		return await this.buildListQuery(query).getCount();
+	}
+
+	private buildListQuery(query: ExecutionListQuery): SelectQueryBuilder<WorkflowExecution> {
+		const qb = this.executions.createQueryBuilder('execution');
+		if (query.workflowIds !== 'all') {
+			qb.andWhere('execution.workflow_id = ANY(:workflowIds)', { workflowIds: query.workflowIds });
+		}
+		if (query.id) qb.andWhere('execution.id = :executionId', { executionId: query.id });
+		if (query.status) qb.andWhere('execution.status = ANY(:statuses)', { statuses: query.status });
+		if (query.mode) qb.andWhere('execution.mode = :mode', { mode: query.mode });
+		if (query.createdAfter)
+			qb.andWhere('execution.created_at >= :createdAfter', { createdAfter: query.createdAfter });
+		if (query.createdBefore)
+			qb.andWhere('execution.created_at <= :createdBefore', { createdBefore: query.createdBefore });
+		return qb;
+	}
 
 	async loadExecutionView(id: string): Promise<ExecutionView> {
 		const row: ExecutionView | undefined = await this.selectExecution(id).getRawOne();

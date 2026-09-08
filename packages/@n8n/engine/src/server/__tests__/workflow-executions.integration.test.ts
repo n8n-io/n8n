@@ -13,6 +13,7 @@ import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
+import type { SearchExecutionsResponse } from '../api.types';
 
 const sampleGraph: WorkflowGraph = {
 	nodes: [{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} }],
@@ -31,6 +32,119 @@ const secret = 'a'.repeat(32);
 
 const authHeader = () => ({
 	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
+});
+
+describe('POST /api/workflow-executions/search (integration)', () => {
+	const search = (body: object) =>
+		request(url).post('/api/workflow-executions/search').set(authHeader()).send(body);
+	async function start(workflowId: string) {
+		const body = startBody({ workflowId });
+		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
+		return body.executionId;
+	}
+
+	it('requires authentication', async () => {
+		await request(url)
+			.post('/api/workflow-executions/search')
+			.send({ workflowIds: 'all' })
+			.expect(401);
+	});
+
+	it.each([
+		{},
+		{ workflowIds: [] },
+		{ workflowIds: [''] },
+		{ workflowIds: 'all', tenantId: 'tenant' },
+		{ workflowIds: 'all', unknown: true },
+		{ workflowIds: 'all', limit: 101 },
+		{ workflowIds: 'all', limit: 0 },
+		{ workflowIds: 'all', status: [] },
+		{ workflowIds: 'all', before: { id: 'bad', createdAt: 'today' } },
+		{ workflowIds: Array.from({ length: 10_001 }, () => 'wf') },
+	])('rejects an invalid search body %#', async (body) => {
+		await search(body).expect(400);
+	});
+
+	it('filters workflows and selects exactly the summary columns', async () => {
+		const workflowId = generateId();
+		const id = await start(workflowId);
+		await start(generateId());
+		const response = await search({ workflowIds: [workflowId], includeTotal: true }).expect(200);
+		const result = response.body as SearchExecutionsResponse;
+		expect(result.total).toBe(1);
+		expect(result.hasMore).toBe(false);
+		expect(result.items.map((item) => item.id)).toEqual([id]);
+		expect(Object.keys(result.items[0]).sort()).toEqual(
+			['id', 'workflowId', 'status', 'mode', 'createdAt', 'updatedAt', 'finishedAt'].sort(),
+		);
+		const { executionViewStore } = createStores(dataSource);
+		const rows = await executionViewStore.listExecutionViews({
+			workflowIds: [workflowId],
+			limit: 20,
+		});
+		expect(Object.keys(rows[0]).sort()).toEqual(Object.keys(result.items[0]).sort());
+	});
+
+	it('allows all for the authenticated CP and applies the ID filter', async () => {
+		const id = await start(generateId());
+		const response = await search({ workflowIds: 'all', id, includeTotal: true }).expect(200);
+		expect(response.body).toMatchObject({ items: [{ id }], total: 1, hasMore: false });
+	});
+
+	it('compares modes exactly and applies status filters', async () => {
+		const workflowId = generateId();
+		await start(workflowId);
+		const production = await search({
+			workflowIds: [workflowId],
+			mode: 'production',
+			status: ['queued'],
+		}).expect(200);
+		expect((production.body as SearchExecutionsResponse).items).toHaveLength(1);
+		for (const filter of [{ mode: 'webhook' }, { mode: 'manual' }, { status: ['completed'] }]) {
+			const response = await search({
+				workflowIds: [workflowId],
+				...filter,
+				includeTotal: true,
+			}).expect(200);
+			expect(response.body).toEqual({ items: [], hasMore: false, total: 0 });
+		}
+	});
+
+	it('walks equal timestamps without losing rows and keeps the total independent of the cursor', async () => {
+		const workflowId = generateId();
+		const ids: string[] = [];
+		for (let i = 0; i < 5; i++) ids.push(await start(workflowId));
+		const timestamp = '2026-09-07T12:00:00.000Z';
+		await dataSource.query('UPDATE workflow_execution SET created_at = $1 WHERE workflow_id = $2', [
+			timestamp,
+			workflowId,
+		]);
+		const seen: string[] = [];
+		let before: { id: string; createdAt: string } | undefined;
+		for (let i = 0; i < 3; i++) {
+			const response = await search({
+				workflowIds: [workflowId],
+				limit: 2,
+				includeTotal: true,
+				before,
+				createdAfter: timestamp,
+				createdBefore: timestamp,
+			}).expect(200);
+			const page = response.body as SearchExecutionsResponse;
+			expect(page.total).toBe(5);
+			expect(page.hasMore).toBe(i < 2);
+			seen.push(...page.items.map((item) => item.id));
+			const last = page.items.at(-1)!;
+			before = { id: last.id, createdAt: last.createdAt };
+		}
+		expect(seen).toEqual(ids.sort().reverse());
+		expect(new Set(seen).size).toBe(5);
+		const excluded = await search({
+			workflowIds: [workflowId],
+			createdBefore: '2026-09-07T11:59:59.999Z',
+		}).expect(200);
+		expect((excluded.body as SearchExecutionsResponse).items).toEqual([]);
+	});
 });
 
 /** The caller always mints the id, so every valid body carries one. */

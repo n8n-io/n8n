@@ -11,6 +11,8 @@ import type {
 
 function makeViewStore(overrides: Partial<ExecutionViewStore> = {}): ExecutionViewStore {
 	return {
+		listExecutionViews: vi.fn().mockResolvedValue([]),
+		countExecutionViews: vi.fn().mockResolvedValue(0),
 		loadExecutionView: vi.fn(),
 		loadExecutionWithStepsView: vi.fn(),
 		...overrides,
@@ -18,6 +20,26 @@ function makeViewStore(overrides: Partial<ExecutionViewStore> = {}): ExecutionVi
 }
 
 describe('ExecutionQueryService', () => {
+	it('uses lookahead without including it in the page', async () => {
+		const rows = [{ id: '1' }, { id: '2' }, { id: '3' }] as ExecutionView[];
+		const store = makeViewStore({
+			listExecutionViews: vi.fn().mockResolvedValue(rows),
+			countExecutionViews: vi.fn().mockResolvedValue(8),
+		});
+		const service = new ExecutionQueryService(store);
+		await expect(
+			service.searchExecutions({ workflowIds: ['wf'], limit: 2, includeTotal: true }),
+		).resolves.toEqual({ items: rows.slice(0, 2), hasMore: true, total: 8 });
+		expect(store.listExecutionViews).toHaveBeenCalledWith(expect.objectContaining({ limit: 3 }));
+	});
+
+	it('does not count when the request does not ask for a total', async () => {
+		const store = makeViewStore();
+		await expect(
+			new ExecutionQueryService(store).searchExecutions({ workflowIds: 'all', limit: 20 }),
+		).resolves.toEqual({ items: [], hasMore: false });
+		expect(store.countExecutionViews).not.toHaveBeenCalled();
+	});
 	it('getExecution loads and returns the execution view', async () => {
 		const execution = { id: 'exec-1' } as ExecutionView;
 		const viewStore = makeViewStore({
