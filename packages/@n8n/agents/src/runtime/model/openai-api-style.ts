@@ -1,6 +1,7 @@
-import { getTopLevelMediaType, resolveFullMediaType } from '@ai-sdk/provider-utils';
 import { isRecord } from '@n8n/utils/is-record';
 import type * as AiSdk from 'ai';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHash } from 'node:crypto';
 
 import { loadAi } from './lazy-ai';
 
@@ -14,6 +15,10 @@ type UnwrappedLanguageModel = Parameters<typeof AiSdk.wrapLanguageModel>[0]['mod
 type MiddlewareWrapGenerate = NonNullable<AiSdk.LanguageModelMiddleware['wrapGenerate']>;
 type CallOptions = Parameters<MiddlewareWrapGenerate>[0]['params'];
 
+/** What a middleware's `wrapStream` hands back: the parts, and the SDK's own fields. */
+type StreamResult = Awaited<ReturnType<NonNullable<AiSdk.LanguageModelMiddleware['wrapStream']>>>;
+type StreamPart = StreamResult['stream'] extends ReadableStream<infer P> ? P : never;
+
 /** The OpenAI API an endpoint answered on. */
 type ApiStyle = 'responses' | 'chat';
 
@@ -26,7 +31,11 @@ type ApiStyle = 'responses' | 'chat';
 const CHAT_ONLY_AUDIO_TYPES = new Set(['audio/wav', 'audio/mp3', 'audio/mpeg']);
 
 /** Whether the prompt carries inline audio only the chat adapter accepts. */
-function requiresChatOnlyAudio(prompt: CallOptions['prompt']): boolean {
+async function requiresChatOnlyAudio(prompt: CallOptions['prompt']): Promise<boolean> {
+	// Loaded at point of use, not at the top of the file: `model-factory` imports
+	// this module for every provider, and only an OpenAI custom endpoint reaches
+	// this code.
+	const { getTopLevelMediaType, resolveFullMediaType } = await import('@ai-sdk/provider-utils');
 	for (const message of prompt) {
 		if (!Array.isArray(message.content)) continue;
 		for (const part of message.content) {
@@ -44,23 +53,24 @@ function requiresChatOnlyAudio(prompt: CallOptions['prompt']): boolean {
 }
 
 /**
- * Statuses that report a missing route on their own, with no body to read.
- * OpenAI-COMPATIBLE servers (LM Studio, vLLM, Ollama, llama.cpp and most
- * proxies) implement only /chat/completions, so they answer 404; a strict
- * router answers 405. Every other bodyless failure — 401/403 auth, 429 rate
- * limit, 5xx, a network error, an abort — says nothing about which API the
- * endpoint speaks, so it must surface unchanged.
+ * Statuses that report a missing route on their own. OpenAI-COMPATIBLE servers
+ * (LM Studio, vLLM, Ollama, llama.cpp and most proxies) implement only
+ * /chat/completions, so they answer 404; a strict router answers 405. Every
+ * other failure — 401/403 auth, 429 rate limit, 5xx, a network error, an abort —
+ * says nothing about which API the endpoint speaks, so it must surface
+ * unchanged. 501 stays out of this set on purpose: it reports that the server
+ * does not support the functionality the request needs (RFC 9110 15.6.2), which
+ * a /responses route that refuses one feature also answers, so only a body may
+ * read it as a missing route.
  */
 const MISSING_ROUTE_STATUSES = new Set([404, 405]);
 
 /**
- * Statuses at which a body naming the missing route is trusted. A gateway
- * reports an unknown route at 400 or 501 as readily as at 404/405, so those
- * join the bodyless set here. 401/403/429 never mean "no route" — even if a
- * body happens to carry the same shape, an auth or rate-limit response must
- * still surface unchanged.
+ * Statuses at which only a body naming the missing route decides. A gateway
+ * reports an unknown route at 400 or 501 as readily as at 404, but neither
+ * status is evidence on its own.
  */
-const MISSING_ROUTE_BODY_STATUSES = new Set([400, 404, 405, 501]);
+const ROUTE_BODY_STATUSES = new Set([400, 501]);
 
 /** Content type of the response the SDK turned into `error`, or `''` when absent. */
 function contentTypeOf(error: Record<string, unknown>): string {
@@ -102,94 +112,231 @@ const MISSING_RESPONSES_ROUTE_MESSAGE = /^Unknown request URL: \S+ \/(?:[^/\s]+\
 
 /**
  * Whether an OpenAI-format error body reports that the URL is not one of the
- * server's routes, rather than that the request was bad.
+ * server's routes, rather than that the request was bad. Used where the status
+ * itself is no evidence ({@link ROUTE_BODY_STATUSES}).
  *
- * Three forms exist. Gateways in front of real OpenAI (OpenAI itself, Groq) use
+ * Two forms exist. Gateways in front of real OpenAI (OpenAI itself, Groq) use
  * `unknown_url`, sometimes with `code: null` and only the message naming the
- * route ({@link MISSING_RESPONSES_ROUTE_MESSAGE}). llama.cpp-style servers use
- * code `404` with "File Not Found". A model or parameter error never uses any
- * of these. Matching on `type: 'invalid_request_error'` instead would swallow
- * them, because a bad parameter and a context-length error carry that same
- * type, and re-sending one of those to /chat/completions runs the generation a
- * second time. The caller restricts this to {@link MISSING_ROUTE_BODY_STATUSES},
- * so an auth or rate-limit response is never read as a missing route either.
+ * route ({@link MISSING_RESPONSES_ROUTE_MESSAGE}). Matching on
+ * `type: 'invalid_request_error'` instead would swallow real request errors,
+ * because a bad parameter and a context-length error carry that same type, and
+ * re-sending one of those to /chat/completions runs the generation a second
+ * time.
  */
 function reportsMissingRoute(data: unknown): boolean {
 	if (!isRecord(data) || !isRecord(data.error)) return false;
 	const { code, message } = data.error;
 	if (code === 'unknown_url') return true;
-	if (code === 404 || code === '404') return message === 'File Not Found';
 	return typeof message === 'string' && MISSING_RESPONSES_ROUTE_MESSAGE.test(message);
 }
 
 /**
- * Whether the endpoint answered an HTTP 200 HTML page where the Responses API
- * returns JSON — a reverse proxy whose catch-all route sits in front of a
- * server that has no /responses. The SDK reports that as `Invalid JSON
- * response` carrying the real status (`createJsonResponseHandler` in
- * `@ai-sdk/provider-utils`), so the content type is the evidence. An
- * unparsable JSON body on its own is not: a truncated real answer produces one
- * too, and that generation did run.
+ * Whether an OpenAI-format body reports a failure the route produced itself: a
+ * model or deployment that does not exist, or a named parameter the server read
+ * and rejected. Such a body proves the route works, so at 404 and 405 it
+ * overrides the status — sending the same request to /chat/completions would
+ * answer with an unrelated error and hide this one.
+ *
+ * Everything else at those statuses falls back. A server with no /responses
+ * route answers 404 in whatever format it has — an empty body,
+ * `{"detail":"Not Found"}`, `{"error":{"message":"Route not found"}}`,
+ * `Invalid URL (POST /v1/responses)` — and no list of phrasings covers them all.
  */
+function reportsWorkingRoute(data: unknown): boolean {
+	if (!isRecord(data) || !isRecord(data.error)) return false;
+	const { code, param, message } = data.error;
+	if (typeof param === 'string' && param !== '') return true;
+	if (typeof code === 'string' && /model|deployment/i.test(code)) return true;
+	return typeof message === 'string' && /\b(model|deployment)\b/i.test(message);
+}
+
+/**
+ * The marker {@link guardOpenAiRoutes} puts on the error it raises for a
+ * reverse-proxy catch-all page. Only that guard sets it, and only after it has
+ * read the body: an HTML content type on its own is not evidence, because a
+ * gateway can label a real JSON or SSE answer that way, and re-sending the
+ * prompt would run that generation a second time.
+ */
+const HTML_CATCH_ALL = 'n8n.htmlCatchAll';
+
+/** Whether this error is the one the guard raises for a catch-all page. */
 function servedHtmlCatchAll(error: Record<string, unknown>): boolean {
-	return error.statusCode === 200 && contentTypeOf(error).includes('text/html');
+	return isRecord(error.data) && error.data[HTML_CATCH_ALL] === true;
 }
 
 /**
  * Whether the endpoint reported that it has no Responses API route.
  *
- * The status alone does not report that. The SDK also uses 404 for a model
- * that does not exist, and it turns an error frame inside an HTTP 200 stream
- * into one (`@ai-sdk/openai/src/openai-stream-error.ts`). In both cases the
- * route worked, so retrying on /chat/completions would hide the real error —
- * `isSynthesizedFromStream` rules the second case out first.
- *
- * After that, an OpenAI-format body decides on its own, at
- * {@link MISSING_ROUTE_BODY_STATUSES}, because gateways answer an unknown route
- * with 400 or 501 as readily as with 404 — but never at an auth or rate-limit
- * status, even if the body happens to carry the same shape. Without such a
- * body the status decides: a server with no /responses route answers with its
- * own framework's 404 or 405 — an empty body, `{"detail":"Not Found"}`, an
- * HTML page — none of which parse as an OpenAI error, so `data` stays unset.
+ * The status alone does not report that. The SDK also uses 404 for a model that
+ * does not exist, and it turns an error frame inside an HTTP 200 stream into one
+ * (`@ai-sdk/openai/src/openai-stream-error.ts`). In both cases the route worked,
+ * so retrying on /chat/completions would hide the real error —
+ * `isSynthesizedFromStream` rules the second case out first, and
+ * {@link reportsWorkingRoute} the first.
  */
 function servesNoResponsesApi(error: unknown): boolean {
 	if (!isRecord(error) || typeof error.statusCode !== 'number') return false;
+	// First: the marker sits in `data`, which the branches below read as an
+	// OpenAI error body instead.
+	if (servedHtmlCatchAll(error)) return true;
 	if (isSynthesizedFromStream(error)) return false;
-	if (error.data !== undefined) {
-		return MISSING_ROUTE_BODY_STATUSES.has(error.statusCode) && reportsMissingRoute(error.data);
+	if (MISSING_ROUTE_STATUSES.has(error.statusCode)) return !reportsWorkingRoute(error.data);
+	// `data` is set only when the SDK read the body through its error handler. A
+	// gateway that reports the unknown route inside an HTTP 200 body never gets
+	// there: the SDK parses that body as an answer, finds `error` in it and
+	// synthesizes a 400 that carries the raw body and no `data`. The body is the
+	// same one either way, and no generation ran, so read it when `data` is absent.
+	return (
+		ROUTE_BODY_STATUSES.has(error.statusCode) && reportsMissingRoute(error.data ?? errorBody(error))
+	);
+}
+
+/**
+ * Whether a value is a Chat Completions payload, by the same test the installed
+ * SDK uses (`isOpenAIChatCompletionChunk`): a `choices` array and no `type`
+ * discriminator, which every Responses event carries.
+ */
+function isChatCompletionsPayload(value: unknown): boolean {
+	return isRecord(value) && Array.isArray(value.choices) && typeof value.type !== 'string';
+}
+
+/**
+ * The body the SDK attached to an error: the raw text when it could not parse
+ * it, and the parsed value once it could.
+ */
+function errorBody(error: Record<string, unknown>): unknown {
+	if (typeof error.responseBody !== 'string') return error.responseBody;
+	try {
+		return JSON.parse(error.responseBody);
+	} catch {
+		return undefined;
 	}
-	return MISSING_ROUTE_STATUSES.has(error.statusCode) || servedHtmlCatchAll(error);
+}
+
+/**
+ * Whether the /responses route answered with a Chat Completions payload.
+ *
+ * Some gateways serve chat completions on every path they route. The SDK reports
+ * that in three ways, and the status is not one of them, so it is not read here:
+ * `Invalid JSON response` at 200 when the chat `usage` fails the Responses
+ * schema, `Responses API returned no output` at 500 when the body carries no
+ * `usage` at all and so parses as an empty answer, and its own mismatch error
+ * inside the stream. Every one of them means the answer already ran, so this
+ * call keeps its error and never sends the prompt a second time. It is still a
+ * definite statement about the endpoint, so the next call goes straight to
+ * /chat/completions.
+ */
+function servedChatCompletionsPayload(error: unknown): boolean {
+	if (!isRecord(error)) return false;
+	// The stream mismatch error carries the offending chunk as `data`.
+	return isChatCompletionsPayload(error.data) || isChatCompletionsPayload(errorBody(error));
 }
 
 /** A `fetch`-compatible function, matching {@link import('./model-factory').FetchFn}. */
 type FetchFn = typeof globalThis.fetch;
 
+/** How much of a blank opening is read before the body counts as undecidable. */
+const HEAD_LIMIT = 1024;
+
 /**
- * Wraps `fetch` so an HTTP 200 HTML page — a reverse-proxy catch-all in front
- * of a server with no /responses route — throws the same shape
- * {@link servesNoResponsesApi} recognizes, instead of reaching the SDK's stream
- * parser. `createEventSourceResponseHandler` in the installed SDK accepts any
- * 2xx body as a stream with no content-type check, so an HTML page produces a
- * silent empty stream rather than the "Invalid JSON response" error the
- * non-streaming JSON handler already throws for the same page. Only a
- * successful, unread response is affected: the body is read here only once
- * that check has already decided to reject it, so a real event stream is
- * never touched.
+ * The body's first non-blank bytes, and whether the body ended within them.
+ *
+ * They are read from a clone, so the answer itself stays unread and the SDK
+ * still streams it incrementally. Cancelling one branch of a cloned body only
+ * settles once the other branch is cancelled or read to its end, so this cancel
+ * is never awaited — awaiting it deadlocks against the branch the SDK reads. It
+ * still takes effect at once, which is what stops the clone from buffering the
+ * whole answer behind us.
  */
-export function guardHtmlCatchAll(fetch: FetchFn): FetchFn {
+async function readHead(response: Response): Promise<{ head: string; ended: boolean }> {
+	const probe = response.clone().body;
+	if (!probe) return { head: '', ended: true };
+	const reader = probe.getReader();
+	const decoder = new TextDecoder();
+	let head = '';
+	let ended = false;
+	try {
+		while (head.trim() === '' && head.length < HEAD_LIMIT) {
+			const { done, value } = await reader.read();
+			if (done) {
+				ended = true;
+				break;
+			}
+			head += decoder.decode(value, { stream: true });
+		}
+	} finally {
+		void reader.cancel().catch(() => {});
+	}
+	return { head, ended };
+}
+
+/**
+ * Whether the body is definitely not an answer.
+ *
+ * Two facts say so. Markup: a page opens with `<`, which no JSON or SSE answer
+ * does. And a body that ended with nothing in it: there is no generation to
+ * lose, and the caller would otherwise get a silent empty answer.
+ *
+ * Nothing else counts. The first chunk can end anywhere — `d`, then `ata: …` —
+ * and bytes that are only incomplete, or in a shape this code does not know,
+ * are not evidence: the answer may already have run, and replaying it would
+ * bill the user a second time.
+ */
+function isNotAnAnswer(head: string, ended: boolean): boolean {
+	const start = head.trimStart();
+	return start.startsWith('<') || (ended && start === '');
+}
+
+/**
+ * Raises {@link servesNoResponsesApi}'s catch-all error when a body mislabelled
+ * `text/html` is {@link isNotAnAnswer}, and lets everything else through
+ * untouched.
+ *
+ * `createEventSourceResponseHandler` in the installed SDK accepts any 2xx body
+ * as a stream with no content-type check, so a reverse proxy's catch-all page
+ * reaches the caller as a silent empty stream on either route. The content type
+ * alone cannot decide, because a gateway can label a real JSON or SSE answer
+ * `text/html` and running that generation again would bill it twice — so only
+ * the body does, and only its first non-blank bytes, which keeps a mislabelled
+ * stream incremental.
+ */
+async function rejectCatchAllPage(response: Response, url: string): Promise<void> {
+	const { head, ended } = await readHead(response);
+	if (!isNotAnAnswer(head, ended)) return;
+	// Nobody reads this body now. The clone is already cancelled, so this releases
+	// the connection; it settles only once both branches are, so it is not awaited.
+	void response.body?.cancel().catch(() => {});
+	const ai = loadAi();
+	throw new ai.APICallError({
+		message: 'Invalid JSON response',
+		url,
+		requestBodyValues: undefined,
+		statusCode: response.status,
+		responseHeaders: { 'content-type': response.headers.get('content-type') ?? '' },
+		responseBody: head,
+		data: { [HTML_CATCH_ALL]: true },
+	});
+}
+
+/**
+ * Wraps `fetch` for every adapter built on a custom OpenAI endpoint.
+ *
+ * It rejects a reverse-proxy catch-all page ({@link rejectCatchAllPage}), and it
+ * releases calls waiting on this endpoint as soon as the /responses route
+ * answers ({@link publishResponsesRoute}).
+ */
+export function guardOpenAiRoutes(fetch: FetchFn): FetchFn {
 	return async (input, init) => {
+		const url = input instanceof Request ? input.url : String(input);
 		const response = await fetch(input, init);
-		const contentType = response.headers.get('content-type') ?? '';
-		if (response.status !== 200 || !contentType.includes('text/html')) return response;
-		const ai = loadAi();
-		throw new ai.APICallError({
-			message: 'Invalid JSON response',
-			url: input instanceof Request ? input.url : String(input),
-			requestBodyValues: undefined,
-			statusCode: response.status,
-			responseHeaders: { 'content-type': contentType },
-			responseBody: await response.text(),
-		});
+		const mislabelled =
+			response.status === 200 && (response.headers.get('content-type') ?? '').includes('text/html');
+		if (mislabelled) await rejectCatchAllPage(response, url);
+		// The chat adapter shares this transport, and only /responses reports the
+		// route. The provider appends the path to the base URL literally, so a
+		// query-routed gateway spells it `…&path=/responses`.
+		if (response.status === 200 && url.endsWith('/responses')) publishResponsesRoute();
+		return response;
 	};
 }
 
@@ -201,6 +348,8 @@ export function guardHtmlCatchAll(fetch: FetchFn): FetchFn {
  * (the Responses API accepts PDF URLs, chat does not) makes the SDK skip the
  * download, and the chat conversion then rejects the URL. Advertising the
  * intersection keeps the download, and both APIs accept the downloaded bytes.
+ * The cost is that an endpoint which does serve /responses no longer has PDF
+ * URLs passed through to it: n8n downloads them and inlines the bytes.
  */
 function sharedSupportedUrls(
 	responses: Record<string, RegExp[]>,
@@ -221,70 +370,209 @@ function sharedSupportedUrls(
  */
 const DECISION_TTL_MS = 5 * 60 * 1000;
 
-/** Endpoints remembered at one time. Over that, the oldest entry is dropped. */
+/** Endpoints remembered at one time. Over that, the least recently used goes. */
 const MAX_REMEMBERED_ENDPOINTS = 50;
 
 /**
- * Which API each base URL answered on, shared by every model instance in the
+ * How long a call waits before it can replace another call's probe. The probe
+ * answers as soon as the route does. This bound lets a waiting call send its
+ * own request when the first request hangs.
+ */
+const PROBE_WAIT_MS = 10_000;
+
+/**
+ * Which API each endpoint answered on, shared by every model instance in the
  * process: `RuntimeContextBuilder` builds a new model for every turn, so a memo
  * on the instance would probe the endpoint again on each one.
  *
- * Only that decision is stored. A prompt, a generated result and a credential
- * never enter this map, so one caller can never read another caller's work.
+ * The decision and its owner are stored under the hashed key
+ * {@link endpointRouteKey} builds. Prompts, results and credentials never enter
+ * this map. Owner identities remain bounded with the decisions and live calls.
  */
-const endpointApiStyles = new Map<string, { style: ApiStyle; expiresAt: number }>();
+const endpointApiStyles = new Map<string, { style: ApiStyle; expiresAt: number; owner: Probe }>();
+
+/** A route decision another call is already finding out. */
+type Probe = {
+	answer: Promise<ApiStyle | undefined>;
+	/** Publishes the route. Later calls do nothing, so the first evidence wins. */
+	settle: (style: ApiStyle | undefined) => void;
+	/** When another call can replace this probe. */
+	staleAt: number;
+	/** A successor or cache eviction revoked this generation's writes. */
+	superseded?: boolean;
+};
 
 /** The first call to an unknown endpoint, so parallel first calls probe one time. */
-const runningProbes = new Map<string, Promise<ApiStyle | undefined>>();
+const runningProbes = new Map<string, Probe>();
+
+/** Carries the owning probe through the SDK without changing its request. */
+const requestProbe = new AsyncLocalStorage<{ endpoint: string; probe: Probe | undefined }>();
 
 /** Test hook: decisions otherwise live for the whole process. */
 export function forgetEndpointApiStyles(): void {
+	for (const entry of endpointApiStyles.values()) entry.owner.superseded = true;
 	endpointApiStyles.clear();
+	for (const probe of runningProbes.values()) {
+		probe.superseded = true;
+		probe.settle(undefined);
+	}
 	runningProbes.clear();
 }
 
-function rememberApiStyle(endpoint: string, style: ApiStyle): void {
-	// A Map iterates in insertion order, so its first key is its oldest entry.
-	if (endpointApiStyles.size >= MAX_REMEMBERED_ENDPOINTS && !endpointApiStyles.has(endpoint)) {
-		const oldest = endpointApiStyles.keys().next().value;
-		if (oldest !== undefined) endpointApiStyles.delete(oldest);
+function startProbe(endpoint: string): Probe {
+	for (const previous of [runningProbes.get(endpoint), endpointApiStyles.get(endpoint)?.owner]) {
+		if (previous) previous.superseded = true;
 	}
-	endpointApiStyles.set(endpoint, { style, expiresAt: Date.now() + DECISION_TTL_MS });
+	let settle!: (style: ApiStyle | undefined) => void;
+	const answer = new Promise<ApiStyle | undefined>((resolve) => {
+		settle = resolve;
+	});
+	const probe = { answer, settle, staleAt: Date.now() + PROBE_WAIT_MS };
+	runningProbes.set(endpoint, probe);
+	return probe;
 }
 
 /**
- * One key for one server: `…/v1`, `…/v1/` and a differently-cased host are the
- * same endpoint. The query string is kept as-is: a gateway can route by query
- * parameter (`?deployment=…`), where two different values are two different
- * servers and must never share a cached decision.
+ * The probe another call is running, or `undefined` when there is none.
+ *
+ * A probe stops accepting waiters after {@link PROBE_WAIT_MS}, the same bound a
+ * waiting call has. A request that never answers must not keep an expired
+ * decision alive, and must not stop the next call from probing again.
  */
-function normalizeEndpoint(baseURL: string): string {
-	try {
-		const url = new URL(baseURL);
-		return `${url.origin}${url.pathname.replace(/\/+$/, '')}${url.search}`;
-	} catch {
-		return baseURL.replace(/\/+$/, '');
+function liveProbe(endpoint: string): Probe | undefined {
+	const probe = runningProbes.get(endpoint);
+	if (!probe) return undefined;
+	if (probe.staleAt > Date.now()) return probe;
+	probe.settle(undefined);
+	// Keep its identity until completion or replacement. Time alone does not
+	// revoke a long generation's cache writes.
+	return undefined;
+}
+
+/** Releases every waiter and drops the probe, unless a newer one took its place. */
+function endProbe(endpoint: string, probe: Probe): void {
+	probe.settle(undefined);
+	if (runningProbes.get(endpoint) === probe) runningProbes.delete(endpoint);
+}
+
+/** Drops expired entries first, and only then the least recently used live one. */
+function makeRoom(): void {
+	const now = Date.now();
+	for (const [key, entry] of endpointApiStyles) {
+		if (entry.expiresAt <= now) {
+			entry.owner.superseded = true;
+			endpointApiStyles.delete(key);
+		}
+	}
+	if (endpointApiStyles.size < MAX_REMEMBERED_ENDPOINTS) return;
+	const oldest = endpointApiStyles.entries().next().value;
+	if (oldest !== undefined) {
+		oldest[1].owner.superseded = true;
+		endpointApiStyles.delete(oldest[0]);
 	}
 }
 
-/** Waits for the probe, but stops as soon as this request's own signal aborts. */
-async function raceAbort(
-	probe: Promise<ApiStyle | undefined>,
+function rememberApiStyle(endpoint: string, style: ApiStyle, owner: Probe): void {
+	// A Map iterates in insertion order and `set` on an existing key does not
+	// move it, so delete first: a refreshed entry is the most recently used one.
+	endpointApiStyles.delete(endpoint);
+	if (endpointApiStyles.size >= MAX_REMEMBERED_ENDPOINTS) makeRoom();
+	endpointApiStyles.set(endpoint, { style, expiresAt: Date.now() + DECISION_TTL_MS, owner });
+}
+
+/**
+ * Releases calls waiting on this endpoint the moment /responses answers.
+ *
+ * The route is known once the response headers arrive, which for a stream is
+ * long before the answer ends. It is not remembered here: a 200 on the route is
+ * not yet proof that the endpoint speaks the Responses API, because the body can
+ * still be a Chat Completions payload, so only a successful SDK result is.
+ */
+function publishResponsesRoute(): void {
+	const context = requestProbe.getStore();
+	if (context?.probe && runningProbes.get(context.endpoint) === context.probe) {
+		context.probe.settle('responses');
+	}
+}
+
+/**
+ * One key for one routing target.
+ *
+ * Two credentials that reach different servers must never share a decision, so
+ * the whole effective routing context goes in. The URL is normalized — `…/v1`,
+ * `…/v1/` and a differently-cased host are one endpoint — but its query is kept,
+ * because a gateway can route by query parameter and `@ai-sdk/openai` appends
+ * the path to the base URL literally, so a base of `…/openai?deployment=x&path=`
+ * produces `…?deployment=x&path=/responses`. Header-routed gateways are just as
+ * common, and an API key can select a tenant, so both go in as well. The
+ * injected transport is not part of the key: it is a proxy in front of the same
+ * base URL, so it reaches the same routes.
+ *
+ * The result is a hash: no URL, key or header value is retained or logged.
+ */
+export function endpointRouteKey(
+	baseURL: string,
+	creds: { apiKey?: string; headers?: Record<string, string> },
+	headers?: CallOptions['headers'],
+): string {
+	// Keep both raw layers. The SDK spreads call headers over provider headers
+	// before normalization. Casing, order and undefined overrides can affect routing.
+	// The SDK reads the environment key on each call when no explicit key is set.
+	return createHash('sha256')
+		.update(
+			JSON.stringify([
+				normalizeResponsesUrl(baseURL),
+				creds.apiKey ?? process.env.OPENAI_API_KEY ?? '',
+				Object.entries(creds.headers ?? {}),
+				Object.entries(headers ?? {}),
+			]),
+		)
+		.digest('base64url');
+}
+
+/**
+ * Append the route as the SDK does before URL normalization. This preserves
+ * distinct request paths for base URLs such as `https://host/` and `https://host//`.
+ */
+function normalizeResponsesUrl(baseURL: string): string {
+	const responsesUrl = baseURL.replace(/\/$/, '') + '/responses';
+	try {
+		return new URL(responsesUrl).href;
+	} catch {
+		return responsesUrl;
+	}
+}
+
+/**
+ * Waits for another call's probe, but never past this call's own abort signal or
+ * {@link PROBE_WAIT_MS}: a first call whose request hangs must not hold every
+ * other call with it.
+ */
+async function waitForProbe(
+	probe: Probe,
 	abortSignal: AbortSignal | undefined,
 ): Promise<ApiStyle | undefined> {
-	if (!abortSignal) return await probe;
-	if (abortSignal.aborted) return undefined;
-	let onAbort!: () => void;
-	const aborted = new Promise<undefined>((resolve) => {
-		onAbort = () => resolve(undefined);
-		abortSignal.addEventListener('abort', onAbort, { once: true });
-	});
+	let onAbort: (() => void) | undefined;
+	let timer: ReturnType<typeof setTimeout> | undefined;
 	try {
-		return await Promise.race([probe, aborted]);
+		return await Promise.race([
+			probe.answer,
+			new Promise<undefined>((resolve) => {
+				timer = setTimeout(() => resolve(undefined), PROBE_WAIT_MS);
+				if (!abortSignal) return;
+				if (abortSignal.aborted) {
+					resolve(undefined);
+					return;
+				}
+				onAbort = () => resolve(undefined);
+				abortSignal.addEventListener('abort', onAbort, { once: true });
+			}),
+		]);
 	} finally {
+		clearTimeout(timer);
 		// `{ once: true }` only detaches itself when the event actually fires; the
 		// probe can just as well win the race, so detach unconditionally here.
-		abortSignal.removeEventListener('abort', onAbort);
+		if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
 	}
 }
 
@@ -296,7 +584,36 @@ async function raceAbort(
 function rememberedApiStyle(endpoint: string): ApiStyle | undefined {
 	const known = endpointApiStyles.get(endpoint);
 	if (!known) return undefined;
-	return known.expiresAt > Date.now() || runningProbes.has(endpoint) ? known.style : undefined;
+	if (known.expiresAt <= Date.now() && !liveProbe(endpoint)) return undefined;
+	// Re-insert the same entry to mark it as recently used, so the busiest
+	// endpoint is not the one eviction drops.
+	endpointApiStyles.delete(endpoint);
+	endpointApiStyles.set(endpoint, known);
+	return known.style;
+}
+
+/**
+ * Reports the SDK's Responses/Chat Completions mismatch, which it puts in an
+ * error part instead of throwing. The parts pass through untouched, so the
+ * answer keeps streaming; only the endpoint's decision moves.
+ */
+function watchForChatPayload(
+	result: StreamResult,
+	remember: (style: ApiStyle) => void,
+): StreamResult {
+	return {
+		...result,
+		stream: result.stream.pipeThrough(
+			new TransformStream<StreamPart, StreamPart>({
+				transform(part, controller) {
+					if (part.type === 'error' && servedChatCompletionsPayload(part.error)) {
+						remember('chat');
+					}
+					controller.enqueue(part);
+				},
+			}),
+		),
+	};
 }
 
 /**
@@ -308,16 +625,16 @@ function rememberedApiStyle(endpoint: string): ApiStyle | undefined {
  * name cannot say either, because a proxy aliases model names freely. So this
  * asks for /responses first — reasoning models reject function tools on
  * /chat/completions — and it moves to /chat/completions only when the endpoint
- * reports that it has no /responses route. That answer is then shared per base
- * URL for {@link DECISION_TTL_MS}, so later turns send one request, not two.
+ * reports that it has no /responses route. That answer is then shared per
+ * `endpoint` ({@link endpointRouteKey}) for {@link DECISION_TTL_MS}, so later
+ * turns send one request, not two.
  */
 export function withChatCompletionsFallback(
-	baseURL: string,
+	endpointKey: string | ((headers: CallOptions['headers']) => string),
 	responsesModel: UnwrappedLanguageModel,
 	chatModel: UnwrappedLanguageModel,
 ): WrappedLanguageModel {
 	const ai = loadAi();
-	const endpoint = normalizeEndpoint(baseURL);
 	// `wrapLanguageModel` normalizes its model to the spec version its middleware
 	// speaks. Both models need that, or a provider still on an older spec would
 	// return an unconverted result through the fallback path. An empty middleware
@@ -329,16 +646,37 @@ export function withChatCompletionsFallback(
 	async function attempt<T>(
 		viaResponses: () => PromiseLike<T>,
 		viaChat: () => PromiseLike<T>,
+		probe: Probe | undefined,
+		remember: (style: ApiStyle) => void,
 	): Promise<{ value: T; style: ApiStyle }> {
 		try {
-			return { value: await viaResponses(), style: 'responses' };
+			const value = await viaResponses();
+			// The transport publishes this route when the answer's headers arrive;
+			// this covers a model that does not go through the transport.
+			probe?.settle('responses');
+			return { value, style: 'responses' };
 		} catch (error) {
+			if (servedChatCompletionsPayload(error)) {
+				// The route answered, and that generation ran: this call keeps its
+				// error rather than paying for a second one. The endpoint has still
+				// said what it speaks, so the next call goes straight to chat.
+				remember('chat');
+				probe?.settle('chat');
+				throw error;
+			}
 			if (!servesNoResponsesApi(error)) throw error;
+			// The route evidence is complete here, so publish it before the chat
+			// request runs: a waiting call must not sit through a whole generation.
+			probe?.settle('chat');
 			try {
 				return { value: await viaChat(), style: 'chat' };
 			} catch (chatError) {
 				// The /responses refusal is the only reason this second request exists.
-				if (isRecord(chatError) && chatError.cause === undefined) chatError.cause = error;
+				try {
+					if (isRecord(chatError) && chatError.cause === undefined) chatError.cause = error;
+				} catch {
+					// A frozen or proxied error keeps its own shape.
+				}
 				throw chatError;
 			}
 		}
@@ -346,17 +684,19 @@ export function withChatCompletionsFallback(
 
 	async function callEndpoint<T>(
 		params: CallOptions,
-		viaResponses: () => PromiseLike<T>,
+		viaResponses: (remember: (style: ApiStyle) => void) => PromiseLike<T>,
 		viaChat: () => PromiseLike<T>,
 	): Promise<T> {
 		// Both maps are read before this function's first `await`, so parallel first
 		// calls find the probe one of them registers instead of each starting one.
+		const endpoint = typeof endpointKey === 'string' ? endpointKey : endpointKey(params.headers);
 		let decided = rememberedApiStyle(endpoint);
-		const probe = decided === undefined ? runningProbes.get(endpoint) : undefined;
-		// A probe that fails or is aborted answers `undefined`, so the waiting call
-		// asks the endpoint itself instead of inheriting another call's failure.
-		if (probe) {
-			decided = await raceAbort(probe, params.abortSignal);
+		let seen = endpointApiStyles.get(endpoint);
+		const running = decided === undefined ? liveProbe(endpoint) : undefined;
+		if (running) {
+			// A probe that fails, is cancelled or hangs answers `undefined`, so this
+			// call asks the endpoint itself instead of inheriting another call's fate.
+			decided = await waitForProbe(running, params.abortSignal);
 			// The wait can also end because this call's own signal fired, not
 			// because the probe answered. Report that now instead of starting a
 			// second request — to /responses or /chat — on an already-cancelled call.
@@ -365,25 +705,28 @@ export function withChatCompletionsFallback(
 
 		if (decided === 'chat') return await viaChat();
 
-		const running = attempt(viaResponses, viaChat);
-		if (!runningProbes.has(endpoint)) {
-			// A parallel call waits for this answer instead of sending its own prompt
-			// to a route that may not exist. It never sees this call's result.
-			runningProbes.set(
-				endpoint,
-				running
-					.then(
-						({ style }) => style,
-						() => undefined,
-					)
-					.finally(() => runningProbes.delete(endpoint)),
+		// A parallel call waits for this answer instead of sending its own prompt to
+		// a route that may not exist. It never sees this call's result.
+		const probe = decided === undefined && !liveProbe(endpoint) ? startProbe(endpoint) : undefined;
+		const owner = probe ?? running ?? seen?.owner;
+		const remember = (style: ApiStyle) => {
+			if (!owner || owner.superseded || endpointApiStyles.get(endpoint) !== seen) return;
+			rememberApiStyle(endpoint, style, owner);
+			// A stream can report a mismatch after doStream releases its probe.
+			// Keep this call's own write, but reject evidence from a successor.
+			seen = endpointApiStyles.get(endpoint);
+		};
+		try {
+			const { value, style } = await requestProbe.run(
+				{ endpoint, probe },
+				async () => await attempt(() => viaResponses(remember), viaChat, probe, remember),
 			);
+			// A transient refusal must not replace a known Responses decision.
+			if (style === 'responses' || decided === undefined) remember(style);
+			return value;
+		} finally {
+			if (probe) endProbe(endpoint, probe);
 		}
-		const { value, style } = await running;
-		// Remember only once the endpoint has answered, so a failed downgrade leaves
-		// the next call free to ask for /responses again.
-		rememberApiStyle(endpoint, style);
-		return value;
 	}
 
 	return ai.wrapLanguageModel({
@@ -393,14 +736,18 @@ export function withChatCompletionsFallback(
 				sharedSupportedUrls(await responses.supportedUrls, await chat.supportedUrls),
 			// Audio routing is a property of this prompt, not of the endpoint, so it
 			// stays outside `callEndpoint` and is never remembered.
-			wrapGenerate: async ({ doGenerate, params }) =>
-				requiresChatOnlyAudio(params.prompt)
-					? await chat.doGenerate(params)
-					: await callEndpoint(params, doGenerate, async () => await chat.doGenerate(params)),
-			wrapStream: async ({ doStream, params }) =>
-				requiresChatOnlyAudio(params.prompt)
-					? await chat.doStream(params)
-					: await callEndpoint(params, doStream, async () => await chat.doStream(params)),
+			wrapGenerate: async ({ doGenerate, params }) => {
+				if (await requiresChatOnlyAudio(params.prompt)) return await chat.doGenerate(params);
+				return await callEndpoint(params, doGenerate, async () => await chat.doGenerate(params));
+			},
+			wrapStream: async ({ doStream, params }) => {
+				if (await requiresChatOnlyAudio(params.prompt)) return await chat.doStream(params);
+				return await callEndpoint(
+					params,
+					async (remember) => watchForChatPayload(await doStream(), remember),
+					async () => await chat.doStream(params),
+				);
+			},
 		},
 	});
 }

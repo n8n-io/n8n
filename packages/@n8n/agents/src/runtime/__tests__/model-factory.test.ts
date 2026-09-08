@@ -327,6 +327,19 @@ describe('createModel', () => {
 		expect(model.api).toBeUndefined();
 	});
 
+	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', () => {
+		const model = createModel({
+			id: 'openai/mock-model',
+			apiKey: 'sk-test',
+			url: 'http://127.0.0.1:1234/v1',
+			// Pinned, so the alias is asserted on the adapter itself instead of on the
+			// wrapper the automatic choice returns.
+			apiStyle: 'chat',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBe('http://127.0.0.1:1234/v1');
+		expect(model.api).toBe('chat-completions');
+	});
+
 	it('treats an empty url as no custom endpoint (api-key-only host config)', () => {
 		// Instance AI emits { id, url: '', apiKey } when only the API key is set;
 		// the provider default endpoint and default model must be preserved.
