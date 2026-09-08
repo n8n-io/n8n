@@ -55,6 +55,7 @@ const renderComponent = createComponentRenderer(AppDetailsView, {
 		stubs: {
 			PageViewLayout: { template: '<div data-test-id="page-view-layout"><slot /></div>' },
 			AppBreadcrumbs: { template: '<nav data-test-id="app-breadcrumbs" />' },
+			AppThemeEditor: { template: '<div data-test-id="app-theme-editor-stub" />' },
 		},
 	},
 });
@@ -228,6 +229,19 @@ describe('AppDetailsView', () => {
 		await userEvent.click(getByTestId('radio-button-preview'));
 		expect(getByTestId('app-preview-empty')).toBeInTheDocument();
 		expect(queryByTestId('app-preview-empty-open-in-assistant')).not.toBeInTheDocument();
+	});
+
+	it('shows the Theme tab, enabled, alongside Pages and Code', async () => {
+		const { getByTestId, getByRole, queryByTestId } = await renderApp(makeApp());
+
+		const themeTab = getByRole('tab', { name: 'Theme' });
+		expect(getByTestId('tab-theme')).toBeInTheDocument();
+		expect(themeTab).not.toHaveAttribute('aria-disabled', 'true');
+		expect(queryByTestId('app-theme-editor-stub')).not.toBeInTheDocument();
+
+		await userEvent.click(themeTab);
+
+		expect(getByTestId('app-theme-editor-stub')).toBeInTheDocument();
 	});
 
 	it('prefers the thread build over the stored version and switches to Preview on the first build', async () => {
