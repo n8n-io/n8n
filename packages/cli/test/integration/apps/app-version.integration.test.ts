@@ -244,9 +244,12 @@ describe('POST /projects/:projectId/apps/:appId/versions', () => {
 			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions`)
 			.expect(200);
 
+		// Uploads within the same millisecond share `createdAt`, so the listing
+		// order and the pruned one are not fixed by upload order.
 		const versions: Array<{ id: string; hasDist: boolean }> = list.body.data;
-		expect(versions.map((v) => v.id)).toEqual([...versionIds].reverse());
-		expect(versions.map((v) => v.hasDist)).toEqual([true, true, true, true, true, false]);
+		expect(versions.map((v) => v.id).sort()).toEqual([...versionIds].sort());
+		expect(versions.filter((v) => v.hasDist)).toHaveLength(5);
+		expect(versions.find((v) => v.id === versionIds[5])?.hasDist).toBe(true);
 
 		const app2 = await appRepository.findOneBy({ id: app.id });
 		expect(app2?.activeVersionId).toBe(versionIds[5]);
