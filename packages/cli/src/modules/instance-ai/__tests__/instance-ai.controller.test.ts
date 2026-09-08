@@ -1554,6 +1554,35 @@ describe('InstanceAiController', () => {
 			});
 			expect(memoryService.getRichMessages).not.toHaveBeenCalled();
 		});
+
+		it('carries the more-history flag on the rich read and leaves the raw read without one', async () => {
+			memoryService.getRichMessages.mockResolvedValue({
+				threadId: THREAD_ID,
+				messages: [],
+				hasMore: true,
+			});
+			eventLog.getNextEventId.mockResolvedValue(7);
+
+			const rich = await controller.getThreadMessages(
+				req,
+				res,
+				THREAD_ID,
+				mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 1, raw: undefined }),
+			);
+
+			expect(rich).toMatchObject({ hasMore: true, nextEventId: 7 });
+
+			memoryService.getThreadMessages.mockResolvedValue({ threadId: THREAD_ID, messages: [] });
+
+			const raw = await controller.getThreadMessages(
+				req,
+				res,
+				THREAD_ID,
+				mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 1, raw: 'true' }),
+			);
+
+			expect(raw).not.toHaveProperty('hasMore');
+		});
 	});
 
 	describe('getThreadStatus', () => {

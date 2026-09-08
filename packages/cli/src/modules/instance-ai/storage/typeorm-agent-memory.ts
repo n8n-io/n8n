@@ -433,7 +433,7 @@ export class TypeORMAgentMemory
 		 *  newer than the page, i.e. where the next page starts. Read in the same
 		 *  scan as the page itself (one extra row), not a second query. */
 		withNewerBoundary?: boolean;
-	}): Promise<{ messages: AgentDbMessage[]; newerBoundaryAt?: Date }> {
+	}): Promise<{ messages: AgentDbMessage[]; newerBoundaryAt?: Date; hasMore: boolean }> {
 		const limit = args.limit ?? 50;
 		const page = args.page ?? 0;
 		const offset = page * limit;
@@ -442,12 +442,19 @@ export class TypeORMAgentMemory
 		const entities = await this.messageRepo.find({
 			where: { threadId: args.threadId },
 			order: { createdAt: 'DESC', id: 'DESC' },
-			take: withBoundary ? limit + 1 : limit,
+			// One row past the older end of the page resolves `hasMore` in the same
+			// scan, so no second count query is needed. The boundary row, when
+			// asked for, is one more on the newer side.
+			take: (withBoundary ? limit + 1 : limit) + 1,
 			skip: withBoundary ? offset - 1 : offset,
 		});
 		// Rows are newest-first, so the extra row is the neighbour, not part of
 		// the page.
 		const boundary = withBoundary ? entities.shift() : undefined;
+		// Counted on rows, before the parse below drops any that are unreadable:
+		// a page shorter than `limit` does not mean the history ended there.
+		const hasMore = entities.length > limit;
+		if (hasMore) entities.pop();
 
 		return {
 			messages: entities.reverse().flatMap((entity) => {
@@ -455,6 +462,7 @@ export class TypeORMAgentMemory
 				return message ? [message] : [];
 			}),
 			newerBoundaryAt: boundary?.createdAt,
+			hasMore,
 		};
 	}
 
