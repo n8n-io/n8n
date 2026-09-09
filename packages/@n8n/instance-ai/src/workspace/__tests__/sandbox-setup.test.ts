@@ -261,6 +261,7 @@ describe('PACKAGE_JSON', () => {
 
 		expect(packageJson.dependencies['@n8n/workflow-sdk']).toBeDefined();
 		expect(packageJson.dependencies.tsx).toBeDefined();
+		expect(packageJson.dependencies.typescript).toBe('7.0.2');
 	});
 
 	it('should omit the registry SDK dependency when workspace SDK linking is enabled', async () => {
@@ -268,6 +269,7 @@ describe('PACKAGE_JSON', () => {
 
 		expect(packageJson.dependencies).not.toHaveProperty('@n8n/workflow-sdk');
 		expect(packageJson.dependencies.tsx).toBeDefined();
+		expect(packageJson.dependencies.typescript).toBe('7.0.2');
 	});
 });
 /** npm install commands issued, ignoring how cwd/options were passed. */
@@ -305,6 +307,11 @@ describe('setupSandboxWorkspace', () => {
 		>(async () => await Promise.resolve());
 
 		await setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext());
+		expect(writeFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/workflow-diagnostics.cjs',
+			expect.any(String),
+			{ recursive: true },
+		);
 
 		const markerCallIndex = writeFile.mock.calls.findIndex(
 			([path]) => path === '/home/daytona/workspace/.sandbox-initialized',
@@ -386,10 +393,54 @@ describe('setupSandboxWorkspace', () => {
 		);
 
 		expect(initialized).toBe(false);
-		expect(installCommandsFrom(runInSandbox)).toEqual([]);
+		expect(installCommandsFrom(runInSandbox)).toEqual([
+			expect.stringContaining('npm install typescript@7.0.2 --save-exact'),
+		]);
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
 		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
 	});
+
+	it.each([true, false])(
+		'keeps an existing sandbox usable with a pinned compiler present: %s',
+		async (installed) => {
+			const runInSandbox: RunInSandboxMock = vi.fn(
+				async () =>
+					await Promise.resolve({
+						exitCode: 1,
+						stdout: '',
+						stderr: 'Registry unavailable',
+					}),
+			);
+			const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn(async (_workspace, path) => {
+				await Promise.resolve();
+				if (path.endsWith('.sandbox-initialized')) return 'initialized';
+				if (installed && path.endsWith('node_modules/typescript/package.json')) {
+					return JSON.stringify({ version: '7.0.2' });
+				}
+				return null;
+			});
+			const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
+			const writeFile = vi.fn(async () => {});
+			const workspace = createLocalWorkspace(writeFile);
+			const context = createSetupContext();
+			await expect(setup(workspace, context)).resolves.toBe(false);
+			expect(writeFile).toHaveBeenCalledWith(
+				'/sandbox/workflow-diagnostics.cjs',
+				expect.any(String),
+				{ recursive: true },
+			);
+			const installs = runInSandbox.mock.calls.filter(([, command]) =>
+				command.startsWith('npm install'),
+			);
+			expect(installs).toHaveLength(installed ? 0 : 1);
+			if (!installed) {
+				expect(context.logger.warn).toHaveBeenCalledWith(
+					'Could not prepare sandbox TypeScript diagnostics',
+					expect.anything(),
+				);
+			}
+		},
+	);
 
 	it('materializes knowledge-base templates on the local provider when a bundle is available', async () => {
 		const runInSandbox: RunInSandboxMock =

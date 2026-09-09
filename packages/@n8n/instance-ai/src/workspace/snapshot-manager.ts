@@ -27,6 +27,7 @@ import {
 	builderTemplatesOptionsFromEnv,
 } from './builder-templates-service';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS, NPM_INSTALL_FLAGS } from './sandbox-setup';
+import { loadWorkflowDiagnosticsWorker, WORKFLOW_DIAGNOSTICS_FILENAME } from './sandbox-typescript';
 import { stageWorkspaceFilesForImage } from './snapshot-image-context';
 import { buildRuntimeSkillWorkspaceBundle } from '../skills/materialize-runtime-skills';
 import { loadInstanceAiRuntimeSkillSource } from '../skills/runtime-skills';
@@ -213,6 +214,10 @@ export class SnapshotManager {
 		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/package.json`, PACKAGE_JSON);
 		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/tsconfig.json`, TSCONFIG_JSON);
 		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/build.mjs`, BUILD_MJS);
+		workspaceFiles.set(
+			`${DAYTONA_WORKSPACE_ROOT}/${WORKFLOW_DIAGNOSTICS_FILENAME}`,
+			await loadWorkflowDiagnosticsWorker(),
+		);
 
 		const { stagingDir } = await stageWorkspaceFilesForImage(
 			workspaceFiles,

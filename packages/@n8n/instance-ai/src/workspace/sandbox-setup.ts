@@ -30,6 +30,7 @@
 
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { isRecord } from '@n8n/utils/is-record';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
@@ -46,8 +47,16 @@ import {
 	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
+import {
+	loadWorkflowDiagnosticsWorker,
+	SANDBOX_TYPESCRIPT_VERSION,
+	TSCONFIG_JSON,
+	WORKFLOW_DIAGNOSTICS_FILENAME,
+} from './sandbox-typescript';
 import { joinWorkspacePath } from './workspace-paths';
 import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
+
+export { TSCONFIG_JSON } from './sandbox-typescript';
 
 const hostRequire = createRequire(__filename);
 
@@ -166,6 +175,7 @@ const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
 function buildPackageJson(sdkSpecifier: string | null): string {
 	const dependencies: Record<string, string> = {
 		tsx: SANDBOX_TSX_VERSION,
+		typescript: SANDBOX_TYPESCRIPT_VERSION,
 	};
 	if (sdkSpecifier) {
 		dependencies['@n8n/workflow-sdk'] = sdkSpecifier;
@@ -286,27 +296,6 @@ try {
 }
 `;
 
-export const TSCONFIG_JSON = JSON.stringify(
-	{
-		compilerOptions: {
-			strict: true,
-			// Disable strictNullChecks because the SDK's ifElse() returns NodeInstance
-			// where onTrue?/onFalse? are optional in the type (they're always present at runtime).
-			// Without this, tsc rejects `.onTrue()` / `.onFalse()` calls.
-			strictNullChecks: false,
-			noEmit: true,
-			target: 'ES2022',
-			module: 'ES2022',
-			moduleResolution: 'bundler',
-			esModuleInterop: true,
-			skipLibCheck: true,
-		},
-		include: ['src/**/*.ts', 'chunks/**/*.ts'],
-	},
-	null,
-	2,
-);
-
 /**
  * Build a searchable catalog line for a node type.
  * Format: nodeType | displayName | description | version | aliases: ...
@@ -423,6 +412,39 @@ async function readWorkspaceFile(
 	return await readFileViaSandbox(workspace, path);
 }
 
+async function ensureSandboxTypeScript(
+	workspace: SandboxWorkspace,
+	root: string,
+	logger: Logger,
+): Promise<void> {
+	try {
+		await writeWorkspaceFiles(
+			workspace,
+			root,
+			new Map([[WORKFLOW_DIAGNOSTICS_FILENAME, await loadWorkflowDiagnosticsWorker()]]),
+		);
+		const installed = await readWorkspaceFile(
+			workspace,
+			joinWorkspacePath(root, 'node_modules/typescript/package.json'),
+		);
+		const parsed: unknown = installed === null ? null : JSON.parse(installed);
+		if (isRecord(parsed) && parsed.version === SANDBOX_TYPESCRIPT_VERSION) return;
+
+		// Update old sandboxes without replacing their source or other dependencies.
+		const result = await runInSandbox(
+			workspace,
+			`npm install typescript@${SANDBOX_TYPESCRIPT_VERSION} --save-exact ${NPM_INSTALL_FLAGS_REFRESH_METADATA}`,
+			root,
+		);
+		if (result.exitCode !== 0) throw new Error(result.stderr);
+	} catch (error) {
+		// Supplemental diagnostics must not prevent normal workspace use.
+		logger.warn('Could not prepare sandbox TypeScript diagnostics', {
+			error: getErrorMessage(error),
+		});
+	}
+}
+
 async function materializeKnowledgeBaseStep(
 	workspace: SandboxWorkspace,
 	root: string,
@@ -463,6 +485,7 @@ export async function setupSandboxWorkspace(
 		async () => await readWorkspaceFile(workspace, markerFile),
 	);
 	if (marker !== null) {
+		await ensureSandboxTypeScript(workspace, root, context.logger);
 		await materializeKnowledgeBaseStep(workspace, root, context);
 		return false;
 	}
@@ -474,6 +497,7 @@ export async function setupSandboxWorkspace(
 	files.set('package.json', PACKAGE_JSON);
 	files.set('tsconfig.json', TSCONFIG_JSON);
 	files.set('build.mjs', BUILD_MJS);
+	files.set(WORKFLOW_DIAGNOSTICS_FILENAME, await loadWorkflowDiagnosticsWorker());
 
 	// Node types catalog
 	const nodeTypes = await setupStep(
