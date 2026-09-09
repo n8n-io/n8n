@@ -116,7 +116,7 @@ describe('useResizablePanel', function () {
 				localStorageKey,
 				defaultSize: 444,
 				minSize: 200,
-				maxSize: function (containerSize) {
+				maxSize(containerSize) {
 					return containerSize * 0.9;
 				},
 			},
@@ -137,7 +137,7 @@ describe('useResizablePanel', function () {
 				localStorageKey,
 				defaultSize: 444,
 				minSize: 200,
-				maxSize: function (containerSize) {
+				maxSize(containerSize) {
 					return containerSize * 0.9;
 				},
 			},

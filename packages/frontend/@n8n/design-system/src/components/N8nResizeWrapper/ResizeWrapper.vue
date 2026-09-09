@@ -4,9 +4,8 @@ import { computed, toRef, useTemplateRef } from 'vue';
 import { useI18n } from '../../composables/useI18n';
 import { useResizablePanel, type ResizablePanel } from '../../composables/useResizablePanel';
 import { directionsCursorMaps, type Direction, type ResizeData } from '../../types';
-
-import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 import type { Placement } from '../N8nTooltip/Tooltip.types';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 const TOOLTIP_DELAY = 750;
 const { t } = useI18n();
