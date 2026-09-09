@@ -11,10 +11,7 @@ const agentsListRef = ref<AgentResource[] | null>(null);
 const routerPush = vi.fn();
 const routerResolve = vi.fn(
 	(to: { name?: string; params?: { projectId?: string; agentId?: string } }) => ({
-		href:
-			to.name === 'AgentPreviewView'
-				? `/projects/${to.params?.projectId ?? ''}/agents/${to.params?.agentId ?? ''}/preview`
-				: `/projects/${to.params?.projectId ?? ''}/agents`,
+		href: `/projects/${to.params?.projectId ?? ''}/agents`,
 	}),
 );
 

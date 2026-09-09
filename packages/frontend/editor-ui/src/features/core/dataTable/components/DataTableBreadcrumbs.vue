@@ -147,6 +147,8 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .data-table-breadcrumbs {
 	display: flex;
 	align-items: center;
