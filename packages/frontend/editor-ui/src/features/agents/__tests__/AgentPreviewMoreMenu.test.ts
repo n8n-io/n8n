@@ -266,9 +266,9 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 			getDropdown(wrapper).vm.$emit('select', 'open-in-new-tab');
 
 			expect(routerResolve).toHaveBeenCalledExactlyOnceWith({
-				name: 'AgentBuilderView',
+				name: 'AgentPreviewView',
 				params: { projectId: 'project-1', agentId: 'agent-1' },
-				query: { continueSessionId: 'thread-1', openPreview: 'true' },
+				query: { continueSessionId: 'thread-1' },
 			});
 			expect(open).toHaveBeenCalledExactlyOnceWith('/resolved-preview', '_blank', 'noopener');
 		} finally {

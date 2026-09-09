@@ -18,7 +18,12 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 import { useAgentSessionsStore } from '../agentSessions.store';
 import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
-import { AGENT_BUILDER_VIEW, CONTINUE_SESSION_ID_PARAM, OPEN_PREVIEW_PARAM } from '../constants';
+import {
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	CONTINUE_SESSION_ID_PARAM,
+	OPEN_PREVIEW_PARAM,
+} from '../constants';
 
 const COPY_LINK = 'copy-link';
 const COPY_CONVERSATION = 'copy-conversation';
@@ -189,10 +194,16 @@ function selectMenuItem(itemId: string) {
 		case COPY_CONVERSATION:
 			void copyConversation();
 			break;
-		case OPEN_IN_NEW_TAB:
+		case OPEN_IN_NEW_TAB: {
 			if (!canLinkSession.value) return;
-			window.open(getSessionRoute().href, '_blank', 'noopener');
+			const route = router.resolve({
+				name: AGENT_PREVIEW_VIEW,
+				params: { projectId: props.projectId, agentId: props.agentId },
+				query: { [CONTINUE_SESSION_ID_PARAM]: props.effectiveSessionId },
+			});
+			window.open(route.href, '_blank', 'noopener');
 			break;
+		}
 		case TOGGLE_FULL_WIDTH:
 			emit('toggle-full-width');
 			break;
