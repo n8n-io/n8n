@@ -4,7 +4,7 @@ import { getHtmlSandboxCSP } from 'n8n-core';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { AppPageAuthService } from './app-page-auth.service';
+import { AppPageTokenService } from './app-page-token';
 import { AppServingService } from './app-serving.service';
 import { injectInspectorScript } from './inject-inspector-script';
 import { renderAppPage, renderAppPageNotFound } from './render-page';
@@ -30,17 +30,16 @@ const pathSegments = (path: unknown): string[] => {
 export class AppServingController {
 	constructor(
 		private readonly appServingService: AppServingService,
-		private readonly appPageAuthService: AppPageAuthService,
+		private readonly appPageTokenService: AppPageTokenService,
 	) {}
 
 	/**
-	 * Serves an App: a file of its active version's dist, or one of its pages
-	 * when it has no version. Who may open either is the App's `authMode`,
-	 * resolved by `AppPageAuthService`.
+	 * Serves an App to anyone with the URL: a file of its active version's
+	 * dist, or one of its pages when it has no version.
 	 *
-	 * `skipAuth` because the auth middleware would clear the visitor's editor
-	 * session cookie: a top-level navigation cannot send the `browser-id` header
-	 * the middleware expects.
+	 * `skipAuth` because no App is protected, and because the auth middleware
+	 * would clear the visitor's editor session cookie: a top-level navigation
+	 * cannot send the `browser-id` header the middleware expects.
 	 */
 	@Get('/:namespace{/*path}', { skipAuth: true, usesTemplates: true })
 	async serve(req: Request, res: Response) {
@@ -52,8 +51,8 @@ export class AppServingController {
 		}
 		const resolved = await this.appServingService.resolve(req.params.namespace, segments);
 
-		// A built app links its assets relative to its base URL, and the page cookie
-		// is scoped to `/apps/<ns>/`, so the root document has to carry the trailing slash.
+		// A built app links its assets relative to its base URL, so the root document
+		// has to carry the trailing slash.
 		const { pathname, search } = new URL(req.originalUrl, 'http://n8n');
 		if (resolved && segments.length === 0 && !pathname.endsWith('/')) {
 			res.redirect(302, `/apps/${req.params.namespace}/${search}`);
@@ -61,25 +60,12 @@ export class AppServingController {
 		}
 
 		if (resolved?.kind === 'static') {
-			const isDocument = path.extname(resolved.filePath) === '.html';
-			const visitor = await this.appPageAuthService.admit(req, res, resolved.app, {
-				recheckAccess: isDocument,
-			});
-			if (!visitor) return;
-			if (isDocument) {
-				const token = this.appPageAuthService.issuePageToken(req, res, resolved.app, visitor);
-				await this.sendHtml(res, resolved.filePath, token);
+			if (path.extname(resolved.filePath) === '.html') {
+				await this.sendHtml(res, resolved.filePath, this.appPageTokenService.mint(resolved.app.id));
 				return;
 			}
 			this.sendStaticFile(res, resolved.filePath);
 			return;
-		}
-
-		if (resolved) {
-			const visitor = await this.appPageAuthService.admit(req, res, resolved.app, {
-				recheckAccess: true,
-			});
-			if (!visitor) return;
 		}
 
 		// The same policy every other public HTML surface in n8n serves, which puts

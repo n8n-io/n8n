@@ -189,8 +189,6 @@ export {
 	type AppTheme,
 	appRouteSchema,
 	type AppRoute,
-	appAuthModeSchema,
-	type AppAuthMode,
 } from './schemas/app.schema';
 export {
 	appBindingSchema,

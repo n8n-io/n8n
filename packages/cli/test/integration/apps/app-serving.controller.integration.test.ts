@@ -1,35 +1,25 @@
 import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import jwt from 'jsonwebtoken';
-import { InstanceSettings } from 'n8n-core';
 import { gzipSync } from 'node:zlib';
-import request from 'supertest';
 import { Header } from 'tar';
 
 import { AppVersionService } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
 import { AppPageTokenService } from '@/modules/apps/serving/app-page-token';
-import { OAuthAuthorizationCodeService } from '@/modules/oauth-server/oauth-authorization-code.service';
-import { OAuthServerService } from '@/modules/oauth-server/oauth-server.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { createMember, createOwner } from '@test-integration/db/users';
+import { createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
 let owner: User;
 let ownerProject: Project;
-/**
- * No auth and no `/rest` prefix: an App page is served at the instance root, to anyone.
- * Not an agent: its cookie jar would carry a page cookie from one test into the next.
- */
+/** No auth and no `/rest` prefix: an App page is served at the instance root, to anyone. */
 let visitor: SuperAgentTest;
 
-// oauth-server: an `n8n` app sends its visitors through the instance's OAuth flow.
 const testServer = utils.setupTestServer({
 	endpointGroups: ['apps'],
-	modules: ['apps', 'oauth-server'],
+	modules: ['apps'],
 });
 
 let appRepository: AppRepository;
@@ -41,23 +31,11 @@ beforeAll(async () => {
 
 	owner = await createOwner();
 	ownerProject = await getPersonalProject(owner);
-	await Container.get(CacheService).init(); // OAuth flow state lives in the cache
+	visitor = testServer.restlessAgent;
 });
 
 beforeEach(async () => {
-	visitor = request(testServer.app);
-	await testDb.truncate([
-		'App',
-		'Page',
-		'AccessToken',
-		'RefreshToken',
-		'AuthorizationCode',
-		'OAuthClient',
-	]);
-});
-
-afterEach(async () => {
-	await Container.get(CacheService).reset();
+	await testDb.truncate(['App', 'Page']);
 });
 
 const createApp = async (namespace = 'acme') =>
@@ -78,10 +56,9 @@ const tgz = (files: Record<string, string>) => {
 const INDEX_HTML = '<!doctype html><html><head><title>Acme</title></head><body>app</body></html>';
 const APP_JS = 'console.log("app")';
 
-/** An app with a served version, in the given auth mode. */
-const createBuiltApp = async (authMode: 'public' | 'n8n', namespace = 'acme') => {
-	const created = await createApp(namespace);
-	const app = await appRepository.updateApp(created, { authMode });
+/** An app with a served version. */
+const createBuiltApp = async (namespace = 'acme') => {
+	const app = await createApp(namespace);
 	await Container.get(AppVersionService).create(
 		app.id,
 		app.projectId,
@@ -94,33 +71,9 @@ const createBuiltApp = async (authMode: 'public' | 'n8n', namespace = 'acme') =>
 const pageTokenOf = (html: string) =>
 	html.match(/<meta name="n8n-app-token" content="([^"]+)">/)?.[1];
 
-const pageCookie = (token: string) => `n8n-app-acme=${token}`;
-
-/**
- * The browser legs the backend never performs in a test: take the PKCE challenge and
- * state from the authorize redirect, materialize the virtual client, and mint the code
- * the authorization server would issue after consent.
- */
-const completeAuthorizeLeg = async (authorizeUrl: string, userId: string) => {
-	const url = new URL(authorizeUrl);
-	const resourceUrl = url.searchParams.get('client_id')!;
-	const state = url.searchParams.get('state')!;
-	await Container.get(OAuthServerService).clientsStore.getClient(resourceUrl);
-	const code = await Container.get(OAuthAuthorizationCodeService).createAuthorizationCode(
-		resourceUrl,
-		userId,
-		resourceUrl,
-		url.searchParams.get('code_challenge')!,
-		state,
-		resourceUrl,
-		[],
-	);
-	return { code, state };
-};
-
 describe('GET /apps/:namespace/ with an active version', () => {
-	test('serves index.html of a public app with a page token for an anonymous visitor', async () => {
-		const app = await createBuiltApp('public');
+	test('serves index.html with a page token for the anonymous visitor', async () => {
+		const app = await createBuiltApp();
 
 		const response = await visitor.get('/apps/acme/').expect(200);
 
@@ -132,193 +85,26 @@ describe('GET /apps/:namespace/ with an active version', () => {
 		expect(response.text).toBe(
 			INDEX_HTML.replace('</head>', `<meta name="n8n-app-token" content="${token}"></head>`),
 		);
-		expect(Container.get(AppPageTokenService).verify(token!, app.id)).toEqual({});
+		expect(Container.get(AppPageTokenService).verify(token!, app.id)).toBe(true);
+	});
+
+	test('mints a token for the app that serves the page, not another one', async () => {
+		await createBuiltApp();
+		const other = await createBuiltApp('other');
+
+		const response = await visitor.get('/apps/acme/').expect(200);
+
+		expect(Container.get(AppPageTokenService).verify(pageTokenOf(response.text)!, other.id)).toBe(
+			false,
+		);
 	});
 
 	test('serves assets unchanged', async () => {
-		await createBuiltApp('public');
+		await createBuiltApp();
 
 		const response = await visitor.get('/apps/acme/assets/app.js').expect(200);
 
 		expect(response.text).toBe(APP_JS);
-	});
-
-	test('redirects a visitor of an n8n app without the page cookie into the OAuth flow', async () => {
-		await createBuiltApp('n8n');
-
-		const response = await visitor.get('/apps/acme/orders?x=1').expect(302);
-
-		const location = new URL(response.headers.location);
-		expect(location.pathname).toBe('/oauth/authorize');
-		expect(location.searchParams.get('client_id')).toMatch(/\/apps\/acme\/$/);
-		expect(location.searchParams.get('redirect_uri')).toBe(location.searchParams.get('client_id'));
-		expect(location.searchParams.get('code_challenge_method')).toBe('S256');
-	});
-
-	test('serves index.html of an n8n app to a visitor with a valid page cookie and renews it', async () => {
-		const app = await createBuiltApp('n8n');
-		const cookie = Container.get(AppPageTokenService).mint(app.id, owner.id);
-
-		const response = await visitor.get('/apps/acme/').set('Cookie', pageCookie(cookie)).expect(200);
-
-		const token = pageTokenOf(response.text);
-		expect(Container.get(AppPageTokenService).verify(token!, app.id)).toEqual({
-			userId: owner.id,
-		});
-		expect(response.headers['set-cookie'][0]).toMatch(
-			new RegExp(`^n8n-app-acme=${token}; Max-Age=900; Path=/apps/acme/; .*HttpOnly; SameSite=Lax`),
-		);
-	});
-
-	test('clears the page cookie of a user who lost app:read and restarts the OAuth flow', async () => {
-		const app = await createBuiltApp('n8n');
-		const member = await createMember();
-		const cookie = Container.get(AppPageTokenService).mint(app.id, member.id);
-
-		const response = await visitor.get('/apps/acme/').set('Cookie', pageCookie(cookie)).expect(302);
-
-		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
-		expect(response.headers['set-cookie'][0]).toMatch(
-			/^n8n-app-acme=; Path=\/apps\/acme\/; Expires=Thu, 01 Jan 1970/,
-		);
-	});
-
-	test('serves an asset to a valid page cookie without re-checking app:read', async () => {
-		const app = await createBuiltApp('n8n');
-		const member = await createMember();
-		const cookie = Container.get(AppPageTokenService).mint(app.id, member.id);
-
-		await visitor.get('/apps/acme/assets/app.js').set('Cookie', pageCookie(cookie)).expect(200);
-	});
-
-	test('redirects a visitor with an expired page cookie into the OAuth flow', async () => {
-		const app = await createBuiltApp('n8n');
-		const expired = jwt.sign(
-			{ sub: owner.id },
-			Container.get(InstanceSettings).hmacSignatureSecret,
-			{
-				algorithm: 'HS256',
-				audience: `app:${app.id}`,
-				expiresIn: -1,
-			},
-		);
-
-		const response = await visitor
-			.get('/apps/acme/')
-			.set('Cookie', pageCookie(expired))
-			.expect(302);
-
-		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
-	});
-
-	test('redirects a visitor whose page cookie names another app into the OAuth flow', async () => {
-		await createBuiltApp('n8n');
-		const other = await appRepository.createApp(ownerProject.id, 'Other', 'other');
-		const foreign = Container.get(AppPageTokenService).mint(other.id, owner.id);
-
-		const response = await visitor
-			.get('/apps/acme/')
-			.set('Cookie', pageCookie(foreign))
-			.expect(302);
-
-		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
-	});
-
-	test('completes the OAuth flow: sets the page cookie and lands on the requested URL', async () => {
-		const app = await createBuiltApp('n8n');
-		const started = await visitor.get('/apps/acme/orders?x=1').expect(302);
-		const { code, state } = await completeAuthorizeLeg(started.headers.location, owner.id);
-
-		const response = await visitor.get(`/apps/acme/?code=${code}&state=${state}`).expect(302);
-
-		expect(response.headers.location).toBe('/apps/acme/orders?x=1');
-		const cookie = response.headers['set-cookie'][0];
-		expect(cookie).toMatch(/^n8n-app-acme=/);
-		const token = cookie.slice('n8n-app-acme='.length, cookie.indexOf(';'));
-		expect(Container.get(AppPageTokenService).verify(token, app.id)).toEqual({
-			userId: owner.id,
-		});
-
-		const page = await visitor.get('/apps/acme/').set('Cookie', pageCookie(token)).expect(200);
-		expect(page.text).toContain('n8n-app-token');
-	});
-
-	test('does not admit a user without app:read on the project, even with a minted code', async () => {
-		await createBuiltApp('n8n');
-		const member = await createMember();
-		const started = await visitor.get('/apps/acme/').expect(302);
-		const { code, state } = await completeAuthorizeLeg(started.headers.location, member.id);
-
-		// The resource gate refuses the token, so the flow restarts instead of admitting.
-		const response = await visitor.get(`/apps/acme/?code=${code}&state=${state}`).expect(302);
-
-		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
-		expect(response.headers['set-cookie']).toBeUndefined();
-	});
-
-	test('does not admit a callback of a flow that was begun for another app', async () => {
-		await createBuiltApp('n8n');
-		await createBuiltApp('n8n', 'other');
-		const started = await visitor.get('/apps/other/').expect(302);
-		const { code, state } = await completeAuthorizeLeg(started.headers.location, owner.id);
-
-		const response = await visitor.get(`/apps/acme/?code=${code}&state=${state}`).expect(302);
-
-		const location = new URL(response.headers.location);
-		expect(location.pathname).toBe('/oauth/authorize');
-		expect(location.searchParams.get('client_id')).toMatch(/\/apps\/acme\/$/);
-		expect(response.headers['set-cookie']).toBeUndefined();
-	});
-
-	test('answers 403 when the OAuth flow reports an error', async () => {
-		await createBuiltApp('n8n');
-
-		await visitor.get('/apps/acme/?error=access_denied').expect(403);
-	});
-
-	test('restarts the OAuth flow for a callback with an unknown state', async () => {
-		await createBuiltApp('n8n');
-
-		const response = await visitor.get('/apps/acme/?code=abc&state=unknown').expect(302);
-
-		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
-	});
-});
-
-describe('GET /apps/:namespace of an n8n app without a version', () => {
-	test('redirects a visitor without the page cookie into the OAuth flow', async () => {
-		const created = await createApp();
-		const app = await appRepository.updateApp(created, { authMode: 'n8n' });
-		await pageRepository.createPage(app.id, null, '');
-
-		const response = await visitor.get('/apps/acme/').expect(302);
-
-		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
-	});
-
-	test('redirects the bare namespace to the trailing-slash URL, where the page cookie applies', async () => {
-		const created = await createApp();
-		const app = await appRepository.updateApp(created, { authMode: 'n8n' });
-		await pageRepository.createPage(app.id, null, '');
-		const cookie = Container.get(AppPageTokenService).mint(app.id, owner.id);
-
-		const response = await visitor
-			.get('/apps/acme?x=1')
-			.set('Cookie', pageCookie(cookie))
-			.expect(302);
-
-		expect(response.headers.location).toBe('/apps/acme/?x=1');
-	});
-
-	test('serves the page to a visitor with a valid page cookie', async () => {
-		const created = await createApp();
-		const app = await appRepository.updateApp(created, { authMode: 'n8n' });
-		await pageRepository.createPage(app.id, null, '');
-		const cookie = Container.get(AppPageTokenService).mint(app.id, owner.id);
-
-		const response = await visitor.get('/apps/acme/').set('Cookie', pageCookie(cookie)).expect(200);
-
-		expect(response.text).toContain('Acme Portal');
 	});
 });
 

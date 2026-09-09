@@ -15,7 +15,7 @@ import { AppVersionService } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { AppRuntimeService } from '@/modules/apps/runtime/app-runtime.service';
 import { AppPageTokenService } from '@/modules/apps/serving/app-page-token';
-import { createMember, createOwner } from '@test-integration/db/users';
+import { createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 import { loadNodesFromDist } from '@test-integration/utils/node-types-data';
@@ -26,8 +26,7 @@ let ownerProject: Project;
 let visitor: SuperAgentTest;
 
 /** The token n8n put into the served page; the SDK sends it back as bearer token. */
-const pageToken = (appId: string, userId?: string) =>
-	`Bearer ${Container.get(AppPageTokenService).mint(appId, userId)}`;
+const pageToken = (appId: string) => `Bearer ${Container.get(AppPageTokenService).mint(appId)}`;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['apps'],
@@ -149,12 +148,8 @@ const createEchoWorkflow = async ({ published }: { published: boolean }) => {
 	);
 };
 
-const createBoundApp = async (
-	workflowId: string,
-	{ key = 'submit', authMode = 'public' as 'public' | 'n8n' } = {},
-) => {
-	const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
-	const app = await appRepository.updateApp(created, { authMode });
+const createBoundApp = async (workflowId: string, { key = 'submit' } = {}) => {
+	const app = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
 	return await appRepository.updateBindings(app, [{ key, kind: 'workflow', workflowId }]);
 };
 
@@ -337,55 +332,6 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 			.expect(401);
 
 		expect(response.body).toMatchObject({ code: 'unauthorized' });
-	});
-
-	test('runs for the signed-in visitor of an n8n app and records the user', async () => {
-		const workflow = await createEchoWorkflow({ published: true });
-		const app = await createBoundApp(workflow.id, { authMode: 'n8n' });
-
-		const response = await visitor
-			.post('/apps/runner/api/workflows/submit')
-			.set('Authorization', pageToken(app.id, owner.id))
-			.send({ message: 'hi', count: 3 })
-			.expect(200);
-
-		expect(response.body).toMatchObject({
-			status: 'success',
-			output: [{ reply: 'got hi x3' }],
-			principal: { userId: owner.id },
-		});
-		const execution = await Container.get(ExecutionPersistence).findSingleExecution(
-			response.body.executionId,
-			{ includeData: true, unflattenData: true },
-		);
-		expect(execution?.customData).toMatchObject({ appUserId: owner.id });
-	});
-
-	test('answers 403 forbidden on an n8n app for a page token without a user', async () => {
-		const workflow = await createEchoWorkflow({ published: true });
-		const app = await createBoundApp(workflow.id, { authMode: 'n8n' });
-
-		const response = await visitor
-			.post('/apps/runner/api/workflows/submit')
-			.set('Authorization', pageToken(app.id))
-			.send({ message: 'hi', count: 3 })
-			.expect(403);
-
-		expect(response.body).toMatchObject({ code: 'forbidden' });
-	});
-
-	test('answers 403 forbidden on an n8n app for a user without app:read on the project', async () => {
-		const workflow = await createEchoWorkflow({ published: true });
-		const app = await createBoundApp(workflow.id, { authMode: 'n8n' });
-		const member = await createMember();
-
-		const response = await visitor
-			.post('/apps/runner/api/workflows/submit')
-			.set('Authorization', pageToken(app.id, member.id))
-			.send({ message: 'hi', count: 3 })
-			.expect(403);
-
-		expect(response.body).toMatchObject({ code: 'forbidden' });
 	});
 
 	test('answers 500 execution_failed with CORS headers when the run cannot start', async () => {

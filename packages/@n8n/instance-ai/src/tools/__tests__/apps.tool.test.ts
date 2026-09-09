@@ -22,7 +22,6 @@ const APP = {
 	name: 'Greeter',
 	namespace: 'greeter',
 	projectId: 'proj-1',
-	authMode: 'public' as const,
 	createdAt: '2024-01-01T00:00:00.000Z',
 };
 
@@ -68,14 +67,12 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 	const appService: InstanceAiAppService = {
 		create: vi.fn().mockResolvedValue({ app: APP }),
 		get: vi.fn().mockResolvedValue(APP),
-		updateSettings: vi.fn().mockResolvedValue({ ...APP, authMode: 'n8n' }),
 		getSourceTarball: vi.fn().mockResolvedValue({ versionId: 'v-1', data: SOURCE_TARBALL }),
 		storeVersion: vi
 			.fn()
 			.mockResolvedValue({ versionId: 'v-1', url: 'http://localhost:5678/apps/greeter/' }),
 		setBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [] }),
 		getBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [], stored: [] }),
-		countBindings: vi.fn().mockResolvedValue(0),
 		getSdkTarball: vi.fn().mockResolvedValue({ filename: 'n8n-app-sdk.tgz', data: SDK_TARBALL }),
 	};
 	return {
@@ -216,19 +213,6 @@ describe('apps tool', () => {
 	});
 
 	describe('create', () => {
-		it('passes authMode through to the app service', async () => {
-			const context = createMockContext();
-
-			await runCreate(context, { authMode: 'n8n' });
-
-			expect(context.appService?.create).toHaveBeenCalledWith({
-				projectId: 'proj-1',
-				name: 'Greeter',
-				namespace: 'greeter',
-				authMode: 'n8n',
-			});
-		});
-
 		it('slugifies the name, registers the app, copies the template and returns the workspace path', async () => {
 			const context = createMockContext();
 			const result = await runCreate(context);
@@ -1031,23 +1015,10 @@ describe('apps tool', () => {
 				message:
 					'Connect workflow "Echo" (wf-1) to app "Greeter" as "submit"; ' +
 					'Connect workflow "Echo" (wf-2) to app "Greeter" as "notify" ' +
-					'(public app: callable by anyone with the URL)',
+					'(callable by anyone with the app URL)',
 				severity: 'warning',
 			});
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
-		});
-
-		it('leaves out the public exposure note for an n8n app', async () => {
-			const context = createMockContext();
-			appServiceMock(context, 'get').mockResolvedValue({ ...APP, authMode: 'n8n' });
-			const suspend = vi.fn().mockResolvedValue('suspended');
-
-			await runAction(context, bindInput, { resumeData: undefined, suspend });
-
-			expect(suspend.mock.calls[0][0].message).toBe(
-				'Connect workflow "Echo" (wf-1) to app "Greeter" as "submit"; ' +
-					'Connect workflow "Echo" (wf-2) to app "Greeter" as "notify"',
-			);
 		});
 
 		it('falls back to the workflow id when the workflow cannot be read', async () => {
@@ -1079,133 +1050,6 @@ describe('apps tool', () => {
 
 			expect(suspend).not.toHaveBeenCalled();
 			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalled();
-		});
-	});
-
-	describe('settings', () => {
-		it('updates the auth mode through the app service and returns it', async () => {
-			const context = createMockContext();
-
-			const result = await runAction(context, { action: 'settings', authMode: 'n8n' });
-
-			expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalledWith('app-1', {
-				authMode: 'n8n',
-			});
-			expect(result).toEqual({ appId: 'app-1', authMode: 'n8n' });
-		});
-
-		it('rejects an unknown auth mode', () => {
-			const tool = createAppsTool(createMockContext());
-
-			const parsed = inputSchema(tool).safeParse({
-				action: 'settings',
-				appId: 'app-1',
-				authMode: 'anyone',
-			});
-
-			expect(parsed.success).toBe(false);
-		});
-
-		describe('making an n8n app with connected workflows public', () => {
-			const makePublic = { action: 'settings', authMode: 'public' };
-
-			function contextWithBindings(overrides: Partial<InstanceAiContext> = {}) {
-				const context = createMockContext(overrides);
-				appServiceMock(context, 'get').mockResolvedValue({ ...APP, authMode: 'n8n' });
-				appServiceMock(context, 'countBindings').mockResolvedValue(2);
-				return context;
-			}
-
-			it('suspends for approval on the first call', async () => {
-				const context = contextWithBindings();
-				const suspend = vi.fn().mockResolvedValue('suspended');
-
-				const result = await runAction(context, makePublic, { resumeData: undefined, suspend });
-
-				expect(result).toBe('suspended');
-				expect(suspend).toHaveBeenCalledWith({
-					requestId: expect.any(String),
-					message:
-						'Make app "Greeter" public: 2 connected workflows become callable by anyone with the URL',
-					severity: 'warning',
-				});
-				expect(appServiceMock(context, 'updateSettings')).not.toHaveBeenCalled();
-			});
-
-			it('is denied when the admin blocked bindAppWorkflow', async () => {
-				const context = contextWithBindings({
-					permissions: { bindAppWorkflow: 'blocked' },
-				} as never);
-				const suspend = vi.fn();
-
-				const result = await runAction(context, makePublic, { resumeData: undefined, suspend });
-
-				expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
-				expect(suspend).not.toHaveBeenCalled();
-				expect(appServiceMock(context, 'updateSettings')).not.toHaveBeenCalled();
-			});
-
-			it('is denied when the user rejects the card', async () => {
-				const context = contextWithBindings();
-
-				const result = await runAction(context, makePublic, { resumeData: { approved: false } });
-
-				expect(result).toEqual({ denied: true, reason: 'User denied the action' });
-				expect(appServiceMock(context, 'updateSettings')).not.toHaveBeenCalled();
-			});
-
-			it('updates the auth mode once the user approved', async () => {
-				const context = contextWithBindings();
-				appServiceMock(context, 'updateSettings').mockResolvedValue({ ...APP, authMode: 'public' });
-
-				const result = await runAction(context, makePublic, approved);
-
-				expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalledWith('app-1', {
-					authMode: 'public',
-				});
-				expect(result).toEqual({ appId: 'app-1', authMode: 'public' });
-			});
-
-			it('skips the card when the app has no connected workflows', async () => {
-				const context = createMockContext();
-				appServiceMock(context, 'get').mockResolvedValue({ ...APP, authMode: 'n8n' });
-				const suspend = vi.fn();
-
-				await runAction(context, makePublic, { resumeData: undefined, suspend });
-
-				expect(suspend).not.toHaveBeenCalled();
-				expect(appServiceMock(context, 'getBindings')).not.toHaveBeenCalled();
-				expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalledWith('app-1', {
-					authMode: 'public',
-				});
-			});
-
-			it('skips the card when the app is already public', async () => {
-				const context = createMockContext();
-				appServiceMock(context, 'countBindings').mockResolvedValue(2);
-				const suspend = vi.fn();
-
-				await runAction(context, makePublic, { resumeData: undefined, suspend });
-
-				expect(suspend).not.toHaveBeenCalled();
-				expect(appServiceMock(context, 'countBindings')).not.toHaveBeenCalled();
-				expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalled();
-			});
-
-			it('skips the card when switching to n8n, whatever the bindings', async () => {
-				const context = contextWithBindings();
-				const suspend = vi.fn();
-
-				await runAction(
-					context,
-					{ action: 'settings', authMode: 'n8n' },
-					{ resumeData: undefined, suspend },
-				);
-
-				expect(suspend).not.toHaveBeenCalled();
-				expect(appServiceMock(context, 'countBindings')).not.toHaveBeenCalled();
-				expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalled();
-			});
 		});
 	});
 

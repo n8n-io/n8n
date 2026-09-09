@@ -10,8 +10,7 @@ export type AppRuntimeErrorCode =
 	| 'invalid_input'
 	| 'payload_too_large'
 	| 'too_many_requests'
-	| 'unauthorized'
-	| 'forbidden';
+	| 'unauthorized';
 
 /** One rejected input field: where and which check failed, nothing about the expected shape. */
 export interface AppRuntimeInputIssue {

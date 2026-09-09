@@ -11,8 +11,8 @@ type AnyWorkflows = Record<string, { input: unknown; output: unknown }>;
 type Workflows = Bindings extends { workflows: infer W extends AnyWorkflows } ? W : AnyWorkflows;
 type WorkflowKey = Extract<keyof Workflows, string>;
 
-/** The signed-in visitor of an app with `authMode: 'n8n'`; `null` for a public app. */
-export type Principal = { userId: string } | null;
+/** Every app is public, so the visitor is anonymous. Reserved for a signed-in visitor later. */
+export type Principal = null;
 
 export interface RunResult<T> {
 	executionId: string;
@@ -97,8 +97,8 @@ function pageToken(): string | undefined {
 }
 
 // A 401 for a call that sent a token means it expired (15 min): a fresh navigation re-mints
-// it, and for an `n8n` app the cookie or the OAuth flow signs the visitor in again. Without a
-// token the page was not served by n8n (a dev preview), and a reload would change nothing.
+// it. Without a token the page was not served by n8n (a dev preview), and a reload would
+// change nothing.
 // Once per page load, so a server that keeps answering 401 cannot loop the page. The call
 // still rejects, because the reload is asynchronous and the caller's error handling must not
 // hang on it.

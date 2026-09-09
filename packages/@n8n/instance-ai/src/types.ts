@@ -15,7 +15,6 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
-	AppAuthMode,
 	AppBinding,
 	ChatIntegrationDescriptor,
 	DescribedBinding,
@@ -1037,14 +1036,7 @@ export interface AppSummary {
 	name: string;
 	namespace: string;
 	projectId: string;
-	/** `public`: anyone with the URL; `n8n`: signed-in instance users with `app:read` on the project. */
-	authMode: AppAuthMode;
 	createdAt: string;
-}
-
-/** The app settings the tool may change after creation. */
-export interface AppSettings {
-	authMode?: AppAuthMode;
 }
 
 export interface InstanceAiAppService {
@@ -1053,10 +1045,8 @@ export interface InstanceAiAppService {
 		projectId: string;
 		name: string;
 		namespace: string;
-		authMode?: AppAuthMode;
 	}): Promise<{ app: AppSummary } | { conflict: true }>;
 	get(appId: string): Promise<Omit<AppSummary, 'createdAt'>>;
-	updateSettings(appId: string, settings: AppSettings): Promise<Omit<AppSummary, 'createdAt'>>;
 	/** Gzipped source tarball of the active version (or the newest one); `null` when the app has no version. */
 	getSourceTarball(appId: string): Promise<{ versionId: string; data: Uint8Array } | null>;
 	/** Stores both gzipped tarballs as a new version and makes it the served one. */
@@ -1073,8 +1063,6 @@ export interface InstanceAiAppService {
 	getBindings(
 		appId: string,
 	): Promise<{ bindings: DescribedBinding[]; warnings: string[]; stored: AppBinding[] }>;
-	/** Size of the stored list, without describing it. */
-	countBindings(appId: string): Promise<number>;
 	/** `@n8n/app-sdk` as an npm tarball for the app's `vendor/` dir; same bytes on every call. */
 	getSdkTarball(): Promise<{ filename: string; data: Uint8Array }>;
 }

@@ -58,19 +58,10 @@ const BUILD_COMMAND_PREFIX = `${NO_CORE_DUMPS} export PATH="$PWD/node_modules/.b
 /** Core dump names: `core`, `core.<pid>`, `<name>.core`. Anchored to the app root so `src/core/` stays in. */
 const CORE_DUMP_EXCLUDES = ['./core', './core.*', './*.core'];
 
-// One description for every action that carries the field: the flattened schema the model sees merges them.
-const authModeSchema = z
-	.enum(['public', 'n8n'])
-	.describe(
-		'Who may open the app (default "public"). "public": anyone with the URL can open it and run its bound workflows. ' +
-			'"n8n": visitors sign in to this n8n instance first and need access to the app\'s project.',
-	);
-
 const createSchema = z.object({
 	action: z.literal('create'),
 	projectId: z.string().describe('Project the app belongs to'),
 	name: z.string().min(1).max(128).describe('Display name, e.g. "Greeter"'),
-	authMode: authModeSchema.optional(),
 	namespace: z
 		.string()
 		.regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'lowercase letters, digits and single hyphens only')
@@ -142,12 +133,6 @@ const bindingsSchema = z.object({
 	appId: z.string(),
 });
 
-const settingsSchema = z.object({
-	action: z.literal('settings'),
-	appId: z.string(),
-	authMode: authModeSchema,
-});
-
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
@@ -167,7 +152,6 @@ type AddComponentInput = z.infer<typeof addComponentSchema>;
 type BindInput = z.infer<typeof bindSchema>;
 type UnbindInput = z.infer<typeof unbindSchema>;
 type BindingsInput = z.infer<typeof bindingsSchema>;
-type SettingsInput = z.infer<typeof settingsSchema>;
 type AppsInput =
 	| CreateInput
 	| BuildInput
@@ -175,8 +159,7 @@ type AppsInput =
 	| AddComponentInput
 	| BindInput
 	| UnbindInput
-	| BindingsInput
-	| SettingsInput;
+	| BindingsInput;
 
 // Defaults live here, not in the schema: the flattened union schema the model
 // sees wraps every field in `.optional()`, which skips Zod defaults at parse time.
@@ -485,7 +468,6 @@ async function handleCreate(
 		projectId: input.projectId,
 		name: input.name,
 		namespace,
-		...(input.authMode ? { authMode: input.authMode } : {}),
 	});
 	if ('conflict' in created) {
 		return { denied: true, reason: `Namespace "${namespace}" is taken. Choose another.` };
@@ -855,7 +837,7 @@ async function requireBindAppWorkflowApproval(
 
 /**
  * Upsert by key: a binding with an existing key replaces it, the others stay. A bind
- * exposes a workflow to everyone who can open the app, so it asks the user first.
+ * exposes a workflow to anyone with the app's URL, so it asks the user first.
  */
 async function handleBind(
 	context: InstanceAiContext,
@@ -878,10 +860,8 @@ async function handleBind(
 					`Connect workflow "${await resolveWorkflowName(context, workflowId)}" (${workflowId}) to app "${app.name}" as "${key}"`,
 			),
 		);
-		const exposure =
-			app.authMode === 'public' ? ' (public app: callable by anyone with the URL)' : '';
 		// One line: the card renders the message as plain HTML text, which folds newlines.
-		return lines.join('; ') + exposure;
+		return `${lines.join('; ')} (callable by anyone with the app URL)`;
 	});
 	if (denied) return denied;
 
@@ -915,33 +895,6 @@ async function handleBindings(context: InstanceAiContext, input: BindingsInput) 
 	const app = await appService.get(input.appId);
 	const { bindings, warnings } = await appService.getBindings(app.id);
 	return { appId: app.id, bindings, warnings };
-}
-
-/**
- * Making an app public exposes every bound workflow to anyone with the URL, the
- * same exposure a bind creates, so it asks the user under the same permission.
- */
-async function handleSettings(
-	context: InstanceAiContext,
-	input: SettingsInput,
-	ctx: ConfirmationToolContext,
-) {
-	const appService = requireAppService(context);
-	const current = await appService.get(input.appId);
-	if (input.authMode === 'public' && current.authMode !== 'public') {
-		const count = await appService.countBindings(current.id);
-		if (count > 0) {
-			const denied = await requireBindAppWorkflowApproval(
-				context,
-				ctx,
-				() =>
-					`Make app "${current.name}" public: ${count} connected ${count === 1 ? 'workflow becomes' : 'workflows become'} callable by anyone with the URL`,
-			);
-			if (denied) return denied;
-		}
-	}
-	const app = await appService.updateSettings(input.appId, { authMode: input.authMode });
-	return { appId: app.id, authMode: app.authMode };
 }
 
 async function readTarball(
@@ -978,7 +931,6 @@ export function createAppsTool(context: InstanceAiContext) {
 			bindSchema,
 			unbindSchema,
 			bindingsSchema,
-			settingsSchema,
 		]),
 	);
 
@@ -993,10 +945,8 @@ export function createAppsTool(context: InstanceAiContext) {
 				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too. " +
 				'`bind` lets the app call n8n workflows by key through `@n8n/app-sdk` (`n8n.workflows.run(key, input)`): ' +
 				'pass `{ key, kind: "workflow", workflowId }` entries, and it rewrites src/n8n-bindings.d.ts with the input types. ' +
-				'It asks the user for approval first. ' +
-				'`unbind` removes a key; `bindings` lists the current ones. Bind before writing code that calls a workflow. ' +
-				'`settings` changes `authMode`: "public" (anyone with the URL, the default) or "n8n" (visitors sign in to this n8n instance and need access to the project). ' +
-				'Making an app with bindings public asks the user for approval first. `create` accepts `authMode` too.',
+				'It asks the user for approval first: every app is public, so a bound workflow is callable by anyone with the app URL. ' +
+				'`unbind` removes a key; `bindings` lists the current ones. Bind before writing code that calls a workflow.',
 		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
@@ -1017,8 +967,6 @@ export function createAppsTool(context: InstanceAiContext) {
 					return await handleUnbind(context, input, ctx.abortSignal);
 				case 'bindings':
 					return await handleBindings(context, input);
-				case 'settings':
-					return await handleSettings(context, input, ctx);
 			}
 		})
 		.build();

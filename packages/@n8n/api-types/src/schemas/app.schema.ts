@@ -49,14 +49,6 @@ export const appThemeSchema = z.object({
 
 export type AppTheme = z.infer<typeof appThemeSchema>;
 
-/**
- * Who may open the served app. `public`: anyone with the URL. `n8n`: the visitor
- * signs in to this n8n instance first and needs `app:read` on the app's project.
- */
-export const appAuthModeSchema = z.enum(['public', 'n8n']);
-
-export type AppAuthMode = z.infer<typeof appAuthModeSchema>;
-
 export const appVersionSchema = z.object({
 	id: z.string(),
 	appId: z.string(),

@@ -45,16 +45,6 @@ describe('createClient', () => {
 		expect(fetchMock.mock.calls[0][1]?.headers).toEqual([['Content-Type', 'application/json']]);
 	});
 
-	it('types the principal of an n8n app', async () => {
-		fetchMock.mockResolvedValue(
-			jsonResponse(200, { executionId: '1', status: 'success', principal: { userId: 'u1' } }),
-		);
-
-		const result = await createClient({ baseUrl: '/x' }).workflows.run('submit');
-
-		expect(result.principal).toEqual({ userId: 'u1' });
-	});
-
 	describe('on 401', () => {
 		const reload = vi.fn();
 

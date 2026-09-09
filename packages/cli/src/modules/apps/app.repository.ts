@@ -33,10 +33,7 @@ export class AppRepository extends Repository<App> {
 		return await this.countBy({ projectId });
 	}
 
-	async updateApp(
-		app: App,
-		updates: Partial<Pick<App, 'name' | 'namespace' | 'theme' | 'authMode'>>,
-	) {
+	async updateApp(app: App, updates: Partial<Pick<App, 'name' | 'namespace' | 'theme'>>) {
 		if (
 			updates.namespace !== undefined &&
 			updates.namespace !== app.namespace &&

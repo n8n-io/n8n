@@ -1,6 +1,5 @@
 import { Container } from '@n8n/di';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { AppResourceResolver } from './app-resource.resolver';
 import { ChatTriggerResourceResolver } from './chat-trigger-resource.resolver';
 import { ChatTriggerTestResourceResolver } from './chat-trigger-test-resource.resolver';
 import { FormTriggerTestResourceResolver } from './form-trigger-test-resource.resolver';
@@ -35,5 +34,4 @@ export function registerProtectedResourceResolvers() {
 	Container.get(ProtectedResourceRegistry).registerResolver(
 		Container.get(WorkflowWebhookTestTriggerResourceResolver),
 	);
-	Container.get(ProtectedResourceRegistry).registerResolver(Container.get(AppResourceResolver));
 }

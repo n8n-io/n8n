@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { AppsConfig, GlobalConfig } from '@n8n/config';
-import type { User, UserRepository, WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
@@ -17,7 +17,6 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
 import type { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
-import type { AppResourceResolver } from '@/modules/oauth-server/protected-resource-resolvers/app-resource.resolver';
 import type { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -57,7 +56,6 @@ const app = {
 	id: 'app-1',
 	namespace: 'runner',
 	projectId: 'proj-1',
-	authMode: 'public',
 	bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' }],
 } as unknown as App;
 
@@ -112,8 +110,6 @@ describe('AppRuntimeService', () => {
 	let logger: ReturnType<typeof mock<Logger>>;
 	let appsConfig: AppsConfig;
 	let appPageTokenService: ReturnType<typeof mock<AppPageTokenService>>;
-	let appResourceResolver: ReturnType<typeof mock<AppResourceResolver>>;
-	let userRepository: ReturnType<typeof mock<UserRepository>>;
 	let service: AppRuntimeService;
 
 	const run = async (body: unknown = {}, ...token: [string | undefined] | []) =>
@@ -130,8 +126,6 @@ describe('AppRuntimeService', () => {
 		logger = mock<Logger>();
 		appsConfig = mock<AppsConfig>({ runtimeMaxConcurrent: 10 });
 		appPageTokenService = mock<AppPageTokenService>();
-		appResourceResolver = mock<AppResourceResolver>();
-		userRepository = mock<UserRepository>();
 		service = new AppRuntimeService(
 			appRepository,
 			workflowLoader,
@@ -143,12 +137,10 @@ describe('AppRuntimeService', () => {
 			logger,
 			mock<GlobalConfig>({ apps: appsConfig }),
 			appPageTokenService,
-			appResourceResolver,
-			userRepository,
 		);
 
-		appPageTokenService.verify.mockImplementation((token, appId) =>
-			token === PAGE_TOKEN && appId === 'app-1' ? {} : null,
+		appPageTokenService.verify.mockImplementation(
+			(token, appId) => token === PAGE_TOKEN && appId === 'app-1',
 		);
 		appRepository.findByNamespace.mockResolvedValue(app);
 		workflowLoader.loadWorkflow.mockResolvedValue(workflow());
@@ -174,55 +166,10 @@ describe('AppRuntimeService', () => {
 			expect(appPageTokenService.verify).toHaveBeenCalledWith('other-token', 'app-1');
 		});
 
-		it('answers a public app with principal null and no appUserId', async () => {
+		it('answers with principal null for the anonymous visitor', async () => {
 			const result = await run({ message: 'hi' });
 
 			expect(result.principal).toBeNull();
-			const runData = workflowRunner.run.mock.calls[0][0];
-			expect(runData.executionData?.resultData.metadata).not.toHaveProperty('appUserId');
-			expect(userRepository.findByIdWithRole).not.toHaveBeenCalled();
-		});
-
-		describe('n8n app', () => {
-			const user = mock<User>({ id: 'user-1' });
-
-			beforeEach(() => {
-				appRepository.findByNamespace.mockResolvedValue({ ...app, authMode: 'n8n' } as App);
-				appPageTokenService.verify.mockReturnValue({ userId: 'user-1' });
-				userRepository.findByIdWithRole.mockResolvedValue(user);
-				appResourceResolver.canOpen.mockResolvedValue(true);
-			});
-
-			it('answers with the visitor as principal and records it in the custom data', async () => {
-				const result = await run({ message: 'hi' });
-
-				expect(result.principal).toEqual({ userId: 'user-1' });
-				expect(appResourceResolver.canOpen).toHaveBeenCalledWith(
-					user,
-					expect.objectContaining({ id: 'app-1' }),
-				);
-				const runData = workflowRunner.run.mock.calls[0][0];
-				expect(runData.executionData?.resultData.metadata).toMatchObject({ appUserId: 'user-1' });
-			});
-
-			it('returns forbidden for a token without a user', async () => {
-				appPageTokenService.verify.mockReturnValue({});
-
-				await expectRuntimeError(run({}), 403, 'forbidden');
-				expect(workflowLoader.loadWorkflow).not.toHaveBeenCalled();
-			});
-
-			it('returns forbidden when the user is gone', async () => {
-				userRepository.findByIdWithRole.mockResolvedValue(null);
-
-				await expectRuntimeError(run({}), 403, 'forbidden');
-			});
-
-			it('returns forbidden when the user lost app:read on the project', async () => {
-				appResourceResolver.canOpen.mockResolvedValue(false);
-
-				await expectRuntimeError(run({}), 403, 'forbidden');
-			});
 		});
 	});
 
