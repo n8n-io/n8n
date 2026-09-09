@@ -122,6 +122,9 @@ catalog:
   '@pinecone-database/pinecone': ^5.0.2
   '@qdrant/js-client-rest': ^1.19.0
   '@rudderstack/rudder-sdk-node': 3.0.5
+  # Must satisfy openai's ">=5.4.0 <6" optional peer: an unmet range gives openai a second peer
+  # context, which splits @langchain/core into two physical copies.
+  '@smithy/signature-v4': 5.7.2
   '@stryker-mutator/core': 10.0.0
   '@stryker-mutator/vitest-runner': 10.0.0
   '@supabase/supabase-js': 2.112.3
