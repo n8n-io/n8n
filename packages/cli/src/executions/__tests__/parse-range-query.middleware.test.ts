@@ -96,11 +96,11 @@ describe('`parseRangeQuery` middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should parse ID-related fields', () => {
+		test('should parse `workflowId` field', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
 					cursor: undefined,
-					filter: '{ "id": "123", "workflowId": "456" }',
+					filter: '{ "workflowId": "456" }',
 					limit: undefined,
 					firstId: undefined,
 					lastId: undefined,
@@ -109,7 +109,6 @@ describe('`parseRangeQuery` middleware', () => {
 
 			parseRangeQuery(req, res, nextFn);
 
-			expect(req.rangeQuery.id).toBe('123');
 			expect(req.rangeQuery.workflowId).toBe('456');
 			expect(nextFn).toBeCalledTimes(1);
 		});
@@ -135,7 +134,8 @@ describe('`parseRangeQuery` middleware', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
 					cursor: undefined,
-					filter: '{ "id": "123", "test": "789" }',
+					// `id` is no longer a filter, so it is dropped like any unknown field.
+					filter: '{ "workflowId": "456", "id": "123", "test": "789" }',
 					limit: undefined,
 					firstId: undefined,
 					lastId: undefined,
@@ -144,7 +144,8 @@ describe('`parseRangeQuery` middleware', () => {
 
 			parseRangeQuery(req, res, nextFn);
 
-			expect(req.rangeQuery.id).toBe('123');
+			expect(req.rangeQuery.workflowId).toBe('456');
+			expect('id' in req.rangeQuery).toBe(false);
 			expect('test' in req.rangeQuery).toBe(false);
 			expect(nextFn).toBeCalledTimes(1);
 		});

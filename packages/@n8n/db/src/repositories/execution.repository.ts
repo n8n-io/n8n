@@ -1116,7 +1116,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			user,
 			sharingOptions,
 			status,
-			finished,
 			workflowId,
 			startedBefore,
 			startedAfter,
@@ -1174,9 +1173,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}
 
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
-		if (query.id) qb.andWhere('execution.id = :filterId', { filterId: query.id });
 		if (query.mode) qb.andWhere('execution.mode = :filterMode', { filterMode: query.mode });
-		if (finished) qb.andWhere({ finished });
 		if (workflowId) qb.andWhere({ workflowId });
 		const startedAt = startedAtCondition({ startedAfter, startedBefore });
 		if (startedAt) qb.andWhere({ startedAt });
