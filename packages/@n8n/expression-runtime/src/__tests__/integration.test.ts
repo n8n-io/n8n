@@ -194,50 +194,7 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(result).toBe('09:00 +09:00');
 	});
 
-	describe('Luxon type serialization at boundary', () => {
-		it('should return DateTime as ISO string', () => {
-			const data = { $json: {} };
-			const result = evaluator.evaluate('{{ DateTime.now() }}', data, caller);
-			expect(typeof result).toBe('string');
-			const dt = DateTime.fromISO(result as string);
-			expect(dt.isValid).toBe(true);
-		});
-
-		it('should return Duration as ISO string', () => {
-			const data = { $json: {} };
-			const result = evaluator.evaluate('{{ Duration.fromMillis(3600000) }}', data, caller);
-			expect(typeof result).toBe('string');
-			const duration = Duration.fromISO(result as string);
-			expect(duration.isValid).toBe(true);
-			expect(duration.toMillis()).toBe(3600000);
-		});
-
-		it('should return Interval as ISO string', () => {
-			const data = { $json: {} };
-			const result = evaluator.evaluate(
-				'{{ Interval.after(DateTime.fromISO("2024-01-01"), 86400000) }}',
-				data,
-				caller,
-			);
-			expect(typeof result).toBe('string');
-			const interval = Interval.fromISO(result as string);
-			expect(interval.isValid).toBe(true);
-			expect(interval.length('milliseconds')).toBe(86400000);
-		});
-
-		it('should serialize nested DateTime in objects', () => {
-			const data = { $json: {} };
-			const result = evaluator.evaluate(
-				'{{ ({ date: DateTime.fromISO("2024-01-15") }) }}',
-				data,
-				caller,
-			) as Record<string, unknown>;
-			expect(typeof result.date).toBe('string');
-			const dt = DateTime.fromISO(result.date as string);
-			expect(dt.isValid).toBe(true);
-			expect(dt.toISODate()).toBe('2024-01-15');
-		});
-
+	describe('Value types at the transfer boundary', () => {
 		it('should not affect primitive return values', () => {
 			const data = { $json: { count: 42 } };
 			expect(evaluator.evaluate('{{ $json.count }}', data, caller)).toBe(42);
@@ -245,10 +202,62 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(evaluator.evaluate('{{ "hello" }}', data, caller)).toBe('hello');
 		});
 
-		it('should return null for invalid DateTime', () => {
+		it('should return a user object with transfer marker keys as plain data', () => {
 			const data = { $json: {} };
-			const result = evaluator.evaluate('{{ DateTime.invalid("test") }}', data, caller);
-			expect(result).toBeNull();
+
+			const result = evaluator.evaluate(
+				'{{ ({ __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z", __zone: "UTC" }) }}',
+				data,
+				caller,
+			);
+
+			expect(result).not.toBeInstanceOf(DateTime);
+			expect(result).toEqual({
+				__n8nType: 'DateTime',
+				__isoString: '2024-01-15T00:00:00.000Z',
+				__zone: 'UTC',
+			});
+		});
+
+		it('should return a class instance with transfer marker keys as plain data', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ function Marker(){ this.__n8nType = "DateTime"; this.__isoString = "2024-01-15T00:00:00.000Z"; this.__zone = "UTC"; } return new Marker(); })() }}',
+				data,
+				caller,
+			);
+
+			expect(result).not.toBeInstanceOf(DateTime);
+			expect(result).toEqual({
+				__n8nType: 'DateTime',
+				__isoString: '2024-01-15T00:00:00.000Z',
+				__zone: 'UTC',
+			});
+		});
+
+		it('should return an object with transfer marker keys inside a Map or a Set as plain data', () => {
+			const data = { $json: {} };
+			const marker =
+				'{ __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z", __zone: "UTC" }';
+			const expected = {
+				__n8nType: 'DateTime',
+				__isoString: '2024-01-15T00:00:00.000Z',
+				__zone: 'UTC',
+			};
+
+			const fromMap = evaluator.evaluate(`{{ new Map([["k", ${marker}]]) }}`, data, caller);
+			const fromSet = evaluator.evaluate(`{{ new Set([${marker}]) }}`, data, caller);
+
+			expect(fromMap).toBeInstanceOf(Map);
+			const mapEntry = (fromMap as Map<string, unknown>).get('k');
+			expect(mapEntry).not.toBeInstanceOf(DateTime);
+			expect(mapEntry).toEqual(expected);
+
+			expect(fromSet).toBeInstanceOf(Set);
+			const [setEntry] = [...(fromSet as Set<unknown>)];
+			expect(setEntry).not.toBeInstanceOf(DateTime);
+			expect(setEntry).toEqual(expected);
 		});
 
 		it('should preserve Date objects (structured-cloneable)', () => {
@@ -258,6 +267,221 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect((result as Date).getFullYear()).toBe(2024);
 			expect((result as Date).getMonth()).toBe(0);
 			expect((result as Date).getDate()).toBe(15);
+		});
+	});
+
+	describe('Luxon values returned to the host', () => {
+		it('should return $now as a valid luxon DateTime in the system zone', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate('{{ $now }}', data, caller);
+
+			expect(result).toBeInstanceOf(DateTime);
+			expect((result as DateTime).isValid).toBe(true);
+			expect((result as DateTime).zone.type).toBe('system');
+			expect(Math.abs((result as DateTime).toMillis() - Date.now())).toBeLessThan(60_000);
+		});
+
+		it('should keep the name of a named zone', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ DateTime.fromISO("2024-01-15T12:00:00", { zone: "Europe/Paris" }) }}',
+				data,
+				caller,
+			);
+
+			expect(result).toBeInstanceOf(DateTime);
+			expect((result as DateTime).isValid).toBe(true);
+			expect((result as DateTime).zoneName).toBe('Europe/Paris');
+			expect((result as DateTime).toISO()).toBe('2024-01-15T12:00:00.000+01:00');
+		});
+
+		it('should return a Duration and an Interval as luxon instances', () => {
+			const data = { $json: {} };
+
+			const duration = evaluator.evaluate('{{ Duration.fromMillis(3600000) }}', data, caller);
+			const interval = evaluator.evaluate(
+				'{{ Interval.after(DateTime.fromISO("2024-01-01"), 86400000) }}',
+				data,
+				caller,
+			);
+
+			expect(duration).toBeInstanceOf(Duration);
+			expect((duration as Duration).toMillis()).toBe(3600000);
+			expect(interval).toBeInstanceOf(Interval);
+			expect((interval as Interval).length('milliseconds')).toBe(86400000);
+		});
+
+		it('should return a DateTime inside an object or an array as a luxon DateTime', () => {
+			const data = { $json: {} };
+
+			const inObject = evaluator.evaluate(
+				'{{ ({ date: DateTime.fromISO("2024-01-15") }) }}',
+				data,
+				caller,
+			) as Record<string, unknown>;
+			const inArray = evaluator.evaluate(
+				'{{ [DateTime.fromISO("2024-01-15")] }}',
+				data,
+				caller,
+			) as unknown[];
+
+			for (const value of [inObject.date, inArray[0]]) {
+				expect(value).toBeInstanceOf(DateTime);
+				expect((value as DateTime).isValid).toBe(true);
+				expect((value as DateTime).toISODate()).toBe('2024-01-15');
+			}
+		});
+
+		it('should return an invalid DateTime, Duration or Interval as an invalid instance', () => {
+			const data = { $json: {} };
+
+			const dateTime = evaluator.evaluate('{{ DateTime.invalid("test") }}', data, caller);
+			const duration = evaluator.evaluate('{{ Duration.invalid("test") }}', data, caller);
+			const interval = evaluator.evaluate(
+				'{{ Interval.fromDateTimes(DateTime.fromISO("2024-01-15"), DateTime.fromISO("2024-01-01")) }}',
+				data,
+				caller,
+			);
+
+			expect(dateTime).toBeInstanceOf(DateTime);
+			expect((dateTime as DateTime).isValid).toBe(false);
+			expect((dateTime as DateTime).invalidReason).toBe('test');
+			expect(duration).toBeInstanceOf(Duration);
+			expect((duration as Duration).isValid).toBe(false);
+			expect((duration as Duration).invalidReason).toBe('test');
+			expect(interval).toBeInstanceOf(Interval);
+			expect((interval as Interval).isValid).toBe(false);
+			expect((interval as Interval).invalidReason).toBe('end before start');
+		});
+
+		it('should keep a luxon value next to a user key that copies a marker name', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ ({ __n8nType: "x", real: DateTime.fromISO("2024-01-15") }) }}',
+				data,
+				caller,
+			) as Record<string, unknown>;
+
+			expect(result.__n8nType).toBe('x');
+			expect(result.real).toBeInstanceOf(DateTime);
+			expect((result.real as DateTime).isValid).toBe(true);
+			expect((result.real as DateTime).toISODate()).toBe('2024-01-15');
+		});
+
+		it('should keep every key of a user object that copies an escape marker name', () => {
+			const data = { $json: {} };
+
+			expect(evaluator.evaluate('{{ ({ __n8nEscaped: true, keep: 1 }) }}', data, caller)).toEqual({
+				__n8nEscaped: true,
+				keep: 1,
+			});
+			expect(evaluator.evaluate('{{ ({ __n8nOpaque: true, keep: 1 }) }}', data, caller)).toEqual({
+				__n8nOpaque: true,
+				keep: 1,
+			});
+		});
+
+		it('should keep a marker object that a class instance holds as plain data', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ function Row(){ this.inner = { __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }; this.a = { b: [{ __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }] }; } return new Row(); })() }}',
+				data,
+				caller,
+			);
+
+			expect(result).toEqual({
+				inner: { __n8nType: 'DateTime', __isoString: '2024-01-15T00:00:00.000Z' },
+				a: { b: [{ __n8nType: 'DateTime', __isoString: '2024-01-15T00:00:00.000Z' }] },
+			});
+		});
+
+		it('should rebuild a luxon value that appears in more than one place', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ var d = DateTime.fromISO("2024-01-15T12:00:00.000Z"); return { a: d, b: [d] }; })() }}',
+				data,
+				caller,
+			) as Record<string, unknown>;
+
+			const first = result.a as DateTime;
+			const second = (result.b as unknown[])[0] as DateTime;
+			expect(DateTime.isDateTime(first)).toBe(true);
+			expect(DateTime.isDateTime(second)).toBe(true);
+			expect(second.toMillis()).toBe(first.toMillis());
+		});
+
+		// The QuickJS engine reads a result out of the sandbox with vm.dump(), which
+		// fills the holes of a sparse array. A plain sparse array with no luxon value
+		// in it loses its holes on that engine too, so the limit belongs to the
+		// engine and not to the transfer.
+		it.runIf(!isQuickJS)('should keep the holes of a sparse array that holds a luxon value', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ var a = new Array(3); a[0] = DateTime.fromISO("2024-01-15T12:00:00.000Z"); a[2] = 3; return a; })() }}',
+				data,
+				caller,
+			) as unknown[];
+
+			expect(result).toHaveLength(3);
+			expect(1 in result).toBe(false);
+			expect(DateTime.isDateTime(result[0])).toBe(true);
+			expect(result[2]).toBe(3);
+		});
+
+		it('should rebuild a luxon value under many levels of nesting', () => {
+			const data = { $json: {} };
+			const depth = 50;
+
+			const result = evaluator.evaluate(
+				`{{ (function(){ var v = DateTime.fromISO("2024-01-15T12:00:00.000Z"); for (var i = 0; i < ${depth}; i++) v = { down: v }; return v; })() }}`,
+				data,
+				caller,
+			);
+
+			let node: unknown = result;
+			for (let i = 0; i < depth; i++) node = (node as Record<string, unknown>).down;
+			expect(DateTime.isDateTime(node)).toBe(true);
+		});
+
+		it('should keep a marker that an error flag guards inside a class instance as data', () => {
+			const data = { $json: {} };
+
+			// An object carrying `__isError` leaves the guest walk before the walk can
+			// escape it, so it reaches the host with its keys as they were written.
+			// It sits inside a class instance, which the host reads as data, so the
+			// key that names a type is the user's own and must stay a string.
+			const result = evaluator.evaluate(
+				'{{ (function(){ function Row(){ this.m = { __isError: true, __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }; } return new Row(); })() }}',
+				data,
+				caller,
+			) as Record<string, unknown>;
+
+			const marker = result.m as Record<string, unknown>;
+			expect(DateTime.isDateTime(marker)).toBe(false);
+			expect(marker.__n8nType).toBe('DateTime');
+		});
+
+		// The isolate engine sends a class instance across by structured clone, which
+		// resolves a value that refers to itself. The QuickJS engine walks the value
+		// instead, and that walk does not end on this shape. The restriction is a
+		// known limit of that engine, not a property of the luxon transfer.
+		it.runIf(!isQuickJS)('should return a class instance that contains itself', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ function Row(){ this.n = 1; this.self = this; } return new Row(); })() }}',
+				data,
+				caller,
+			) as Record<string, unknown>;
+
+			expect(result.n).toBe(1);
+			expect(result.self).toBe(result);
 		});
 	});
 
