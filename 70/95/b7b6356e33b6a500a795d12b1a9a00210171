@@ -1,0 +1,47 @@
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,48,94-105
+docs/generated/postgres-schema/public.activity_event.md
+  ai_agent 1-94
+docs/generated/postgres-schema/public.workflow_published_version.md
+  ai_agent 10
+docs/generated/sqlite-schema/scheduled_task.md
+  ai_agent 97-100
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 6-8
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12,42,88-99
+docs/generated/postgres-schema/public.user.md
+  ai_agent 11,50,100-111
+docs/generated/sqlite-schema/workflow_published_version.md
+  ai_agent 21
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/deleteExecution.generated.yml
+  ai_agent 80
+pnpm-lock.yaml
+  ai_agent 7449-7451
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecution.generated.yml
+  ai_agent 108
+docs/generated/postgres-schema/README.md
+  ai_agent 11,108,168-169,360-372,1336-1339
+docs/generated/postgres-schema/public.scheduled_job.md
+  ai_agent 20-23,53-54,65,89-92
+docs/generated/postgres-schema/public.scheduled_task.md
+  ai_agent 98-101
+docs/generated/sqlite-schema/README.md
+  ai_agent 11,108,151-152,347-359,1323-1326
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,56,106-117
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecutions.generated.yml
+  ai_agent 1-25,27-49,51-55,57-69,71-77,79-233
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  ai_agent 3,7-8,45,61-95,106-171,438-469
+docs/generated/sqlite-schema/scheduled_job.md
+  ai_agent 9,31-34,46-54,63,86-89
+docs/generated/sqlite-schema/activity_event.md
+  ai_agent 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7095b7b6356e33b6a500a795d12b1a9a00210171",
+  "prompts": {}
+}

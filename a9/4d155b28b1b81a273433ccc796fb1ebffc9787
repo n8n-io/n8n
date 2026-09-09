@@ -1,0 +1,19 @@
+packages/@n8n/scheduler/src/core/materializer/coalesce-group.ts
+  s_e486ed81b47cd7::t_36f8865c8aed13 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a94d155b28b1b81a273433ccc796fb1ebffc9787",
+  "prompts": {},
+  "sessions": {
+    "s_e486ed81b47cd7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e849ff86-470b-4be1-9747-5c299d792d8d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

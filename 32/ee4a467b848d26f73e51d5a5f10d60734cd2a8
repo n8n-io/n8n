@@ -1,0 +1,43 @@
+packages/cli/src/modules/agents/__tests__/agents-config.controller.test.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 7,26,41
+packages/cli/src/modules/agents/__tests__/agent-tool-mock.service.test.ts
+  s_82508c87469e04::t_f0ebb53ed5b85c 1-13,15,17-62,68-171
+  ai_agent 63-67
+  s_82508c87469e04::t_deb640c5d8e0d9 14,16
+packages/cli/src/modules/agents/agent-tool-mock.service.ts
+  s_82508c87469e04::t_fb874af6a8b589 146
+  s_82508c87469e04::t_18a2b401a7b537 20
+  s_82508c87469e04::t_10b04d48a8bdbd 43
+  s_82508c87469e04::t_514ff148978c02 1-19,21-26,33-42,44-95,103-105,108-145,147-239,244-247,279-285,290-323,327-351
+  s_82508c87469e04::t_8696cf8e922e44 96-102
+  s_82508c87469e04::t_c7c4d28735aa96 240-243
+  s_82508c87469e04::t_b97ec8a83b3608 248-255,262-278
+  ai_agent 256-261,324-326
+  s_82508c87469e04::t_180de2cdfc724d 27-32
+  s_82508c87469e04::t_c9fcf954093e2b 106-107
+  s_82508c87469e04::t_79495b236364c6 286-289
+packages/cli/src/modules/agents/agents-config.controller.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 1-6,8,11-13,17,27,98-120
+  s_82508c87469e04::t_1dc78eedd64b05 121
+packages/@n8n/instance-ai/src/index.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 412-413
+packages/@n8n/api-types/src/agents/dto.ts
+  s_82508c87469e04::t_3285a6c9b18ef5 327
+  s_82508c87469e04::t_3cfb15a4d253e0 11,300-326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "32ee4a467b848d26f73e51d5a5f10d60734cd2a8",
+  "prompts": {},
+  "sessions": {
+    "s_82508c87469e04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a71432a2-03b0-4483-9061-b9d762e81bfb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_d0acb9a890c95a::t_16c02bad833525 63-69
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_d0acb9a890c95a::t_6f042024adafe0 93
+  s_d0acb9a890c95a::t_0955bec4dc2e00 106
+  s_d0acb9a890c95a::t_bb89d03d2fb3da 127
+  s_d0acb9a890c95a::t_b609a591301a3f 54-57
+  s_d0acb9a890c95a::t_9ce9490af8e874 158
+  s_d0acb9a890c95a::t_32ad5797770dde 236
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-handler.test.ts
+  s_d0acb9a890c95a::t_c7b7f866c9df06 70-75
+  s_d0acb9a890c95a::t_52c3bc2b316710 17-19
+  s_d0acb9a890c95a::t_ca809139af8be0 30-41
+packages/cli/src/scheduling/system-tasks/__tests__/dummy.task.ts
+  s_d0acb9a890c95a::t_a9e8925ac9b774 17,19,21
+packages/cli/src/scheduling/system-tasks/system-task-handler.ts
+  s_d0acb9a890c95a::t_554763280d727b 6-7,15
+  s_d0acb9a890c95a::t_7534527852abb3 25
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_d0acb9a890c95a::t_2754c3a3ebe96c 251-291
+  s_d0acb9a890c95a::t_a3bd4498275b64 387-411
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c620f32359b6922e628c0221d700cac697b05e2c",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d0acb9a890c95a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "becbda50-7e9b-4312-a9b1-20c68808bcfc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

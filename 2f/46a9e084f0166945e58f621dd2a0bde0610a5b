@@ -1,0 +1,33 @@
+packages/nodes-base/utils/atlassian.ts
+  s_b8f823bc996164::t_20fdc5faefb5d2 227-233
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  s_b8f823bc996164::t_599c4cd48b58d7 109
+  s_b8f823bc996164::t_b00f6bdac9ccd2 105-106,114-115
+  s_b8f823bc996164::t_8e7d364eb9e7d6 110
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_b8f823bc996164::t_599c4cd48b58d7 159,190
+  s_b8f823bc996164::t_945d953722d138 192,195
+  s_b8f823bc996164::t_0939dc25e1adbb 161,163
+  s_b8f823bc996164::t_8e7d364eb9e7d6 160,191
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_b8f823bc996164::t_74d8b9623245d2 583
+  s_b8f823bc996164::t_bff1969bacaad1 233
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  s_b8f823bc996164::t_e0f0d2dfbe90fa 350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2f46a9e084f0166945e58f621dd2a0bde0610a5b",
+  "prompts": {},
+  "sessions": {
+    "s_b8f823bc996164": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3947b1dd-3fa6-4086-8d76-1fdb5a78f989",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

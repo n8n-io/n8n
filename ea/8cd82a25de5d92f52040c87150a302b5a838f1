@@ -1,0 +1,77 @@
+packages/cli/src/modules/instance-ai/message-parser.ts
+  s_1c45d18cf14868::t_9c5cde5621fde7 9-10
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-completion-mock.test.ts
+  s_1c45d18cf14868::t_3459259394615f 8,55-57,66,68
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_1c45d18cf14868::t_536da71e54cfe1 2-4,19
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_1c45d18cf14868::t_c9bae2eb279815 1
+packages/cli/src/modules/instance-ai/repositories/instance-ai-checkpoint.repository.ts
+  s_1c45d18cf14868::t_488659f5c21b33 4
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-checkpoint-store.test.ts
+  s_1c45d18cf14868::t_a5d16f38843e0d 1
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_1c45d18cf14868::t_2ffeb0a3250528 1
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-checkpoint.repository.integration.test.ts
+  s_1c45d18cf14868::t_fde8752f9c4134 6
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_1c45d18cf14868::t_08143fffcae308 7
+packages/cli/src/modules/instance-ai/drop-rejected-attachments.ts
+  s_1c45d18cf14868::t_9137e6e622c7b1 2
+packages/cli/src/modules/instance-ai/eval/llm-completion-mock.ts
+  s_1c45d18cf14868::t_687086e2e3679d 8,11
+packages/cli/src/modules/instance-ai/eval/mock-handler.ts
+  s_1c45d18cf14868::t_63a4f6589ddf58 11,14
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_1c45d18cf14868::t_4e552d7a8f610c 1,8
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_1c45d18cf14868::t_9a4bd565f6732e 9
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  s_1c45d18cf14868::t_b4ce7109ca2abe 8
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_1c45d18cf14868::t_c5d22117093e27 11
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_1c45d18cf14868::t_03ed0304ab85b0 1-2
+packages/@n8n/instance-ai/src/tools/mcp-servers.tool.test.ts
+  s_1c45d18cf14868::t_98b466504b6b88 1-2
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_1c45d18cf14868::t_c6b36257c3f4fb 13
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-memory.test.ts
+  s_1c45d18cf14868::t_2fba299da8f595 2
+packages/cli/src/modules/instance-ai/storage/typeorm-observation-log-store.ts
+  s_1c45d18cf14868::t_4def2c730159dd 7
+packages/cli/src/modules/instance-ai/entities/instance-ai-checkpoint.entity.ts
+  s_1c45d18cf14868::t_18cc47ade2aa9d 2
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts
+  s_1c45d18cf14868::t_8257846f6fb028 2
+packages/cli/src/modules/instance-ai/__tests__/drop-rejected-attachments.test.ts
+  s_1c45d18cf14868::t_63106062973f45 2
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_1c45d18cf14868::t_460e267ee673e6 7-8
+  s_1c45d18cf14868::t_946c0eccc1cedf 9-12
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_1c45d18cf14868::t_dd93adfa1d7b3e 1-2
+packages/cli/src/modules/instance-ai/eval/__tests__/mock-handler.test.ts
+  s_1c45d18cf14868::t_ede2cc0846542b 71-73,110,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ea8cd82a25de5d92f52040c87150a302b5a838f1",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1c45d18cf14868": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1f8b129e-d118-4a7d-af9b-a0c6cc1cd1f3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

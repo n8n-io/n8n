@@ -1,0 +1,23 @@
+packages/cli/src/modules/token-exchange/__tests__/token-exchange.module.test.ts
+  ai_agent 1-25
+packages/cli/test/integration/token-exchange/trusted-key.service.integration.test.ts
+  ai_agent 217,221,223-225,227-229
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key-refresh.task.test.ts
+  ai_agent 1-22
+packages/cli/src/modules/token-exchange/token-exchange.module.ts
+  ai_agent 48,50
+packages/cli/src/modules/token-exchange/services/trusted-key.service.ts
+  ai_agent 4,52-57,104,296,310-313,315-323
+packages/cli/eslint.config.mjs
+  ai_agent 398
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key.service.test.ts
+  ai_agent 60,87,140-141,145,147-148,153-155,157-165,188,208,227,231-237
+packages/cli/src/modules/token-exchange/services/trusted-key-refresh.task.ts
+  ai_agent 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "00bef4c24b9ed8fc2e9d6c1b88d63f12875c3574",
+  "prompts": {}
+}

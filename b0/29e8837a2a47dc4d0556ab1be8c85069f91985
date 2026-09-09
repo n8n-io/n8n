@@ -1,0 +1,55 @@
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_77655ca8fe3a59::t_72559d0e816c09 79-84
+  s_77655ca8fe3a59::t_69463c902d44ff 385
+  s_77655ca8fe3a59::t_9caf91e2de4abe 87-90,99-108,170-172,374-384,386-389
+packages/@n8n/engine/src/index.ts
+  s_77655ca8fe3a59::t_69463c902d44ff 90
+packages/@n8n/engine/src/execution/index.ts
+  s_77655ca8fe3a59::t_69463c902d44ff 13
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_77655ca8fe3a59::t_72559d0e816c09 132-138
+  s_77655ca8fe3a59::t_545b544c2663ab 9,44-51,164,177-178,197-200,238
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_77655ca8fe3a59::t_d5ab68f61197a5 47
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_77655ca8fe3a59::t_114b5ea08627d8 29-30,95-96,765-785,788,790-824,826-863,865-868,1047-1048
+  s_77655ca8fe3a59::t_d5ab68f61197a5 115
+  s_77655ca8fe3a59::t_b19cb5779550a1 864
+  s_77655ca8fe3a59::t_bc05224e022b25 825
+  s_77655ca8fe3a59::t_171c2fa81956dc 786-787,789
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_c1bde97d1c962d 6-11,75-76,447-512
+  s_77655ca8fe3a59::t_12807a03cc223d 513
+packages/@n8n/engine/src/execution/step-store.ts
+  s_77655ca8fe3a59::t_48d35ef0ae8e9e 124
+  s_77655ca8fe3a59::t_f30b8d089332b1 5,39-42,121-123,125-132
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_77655ca8fe3a59::t_c1bde97d1c962d 82-83
+  s_77655ca8fe3a59::t_d5ab68f61197a5 96
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_77655ca8fe3a59::t_650a0a8de08d01 13,57-59
+packages/@n8n/engine/src/database/migrations/1788354900001-AddStepResume.ts
+  s_77655ca8fe3a59::t_8763e5f8c1a512 1-22
+packages/@n8n/engine/src/database/migrations/index.ts
+  s_77655ca8fe3a59::t_0cdaf3211082ba 4,10
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  s_77655ca8fe3a59::t_48475961c37042 1,44-50
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_77655ca8fe3a59::t_d6c6a3fe1c1182 92-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b029e8837a2a47dc4d0556ab1be8c85069f91985",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

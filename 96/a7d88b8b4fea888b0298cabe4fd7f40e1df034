@@ -1,0 +1,32 @@
+packages/testing/containers/services/tracing.ts
+  s_e6e46c0663c897::t_7c4d37dc1ca129 67,70-71
+  s_e6e46c0663c897::t_166d7e2b0c4a6d 22,24-29
+  s_e6e46c0663c897::t_77b3f586878409 80-81
+  s_e6e46c0663c897::t_6c896b107b0786 116
+  s_e6e46c0663c897::t_4fe9cce528f3ee 7-8
+  s_e6e46c0663c897::t_f818bd5d8c9d02 163-166
+packages/testing/containers/README.md
+  s_e6e46c0663c897::t_9b5a8ed32cb614 360
+packages/testing/playwright/tests/infrastructure/tracing/otlp-grpc-export.spec.ts
+  s_e6e46c0663c897::t_be087d3b09a814 117,119-120,123
+  s_e6e46c0663c897::t_fa9e4076212820 1-28,38-59,62,64-72,75,77-109,113-116,118,121-122,124-130
+  s_e6e46c0663c897::t_2c957f0260f2ce 29-37
+  s_e6e46c0663c897::t_87a88125c60171 60-61,63,73-74,76
+  s_e6e46c0663c897::t_0095a8259c3d54 110-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "96a7d88b8b4fea888b0298cabe4fd7f40e1df034",
+  "prompts": {},
+  "sessions": {
+    "s_e6e46c0663c897": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a309780b-11f9-45a7-9027-d04b51797bac",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Olivier de Jong <ocdejong@Oliviers-MacBook-Pro.local>"
+    }
+  }
+}

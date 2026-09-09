@@ -1,0 +1,45 @@
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 20-22
+packages/@n8n/ai-utilities/src/model-discovery/chat-model-errors.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 1-26,29-45
+packages/cli/src/modules/agents/agent-default-model-resolver.service.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 13,91
+packages/cli/src/modules/agents/llm-provider-defaults.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 13-17,35-38
+packages/cli/src/modules/agents/utils/__tests__/provider-model-id.test.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 1-64
+packages/cli/src/modules/agents/utils/provider-model-id.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 1-42
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 73,829-832
+packages/@n8n/instance-ai/src/tools/workflows/chat-model-validation.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 3-6,17-18
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 19,132,138,147,171,174
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 60-63
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 22-30,52,67-68,76,313,357,382-490,492,496,511
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 12-13,87-125,137-138,140-146,148,165-171,177,181-182,184-199,202-208,280-283
+packages/cli/src/modules/agents/builder/call-agent-failure.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 1-51
+packages/cli/src/modules/agents/builder/__tests__/call-agent-failure.test.ts
+  s_1a327c511cdf2b::t_badf34aaf27d93 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4020b2a0f322f8382cc70716d6c0f381e87b879a",
+  "prompts": {},
+  "sessions": {
+    "s_1a327c511cdf2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f7b6638-a1cb-40f3-bd31-f4efb257a8a0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

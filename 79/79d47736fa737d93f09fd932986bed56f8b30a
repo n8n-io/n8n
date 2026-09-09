@@ -1,0 +1,23 @@
+.agents/review-rules/frontend/design-system.md
+  s_7e863ca4a1ca8d::t_bc4d5838021a7e 38-40
+.agents/review-rules/frontend/vue-correctness.md
+  s_7e863ca4a1ca8d::t_e998e2bf49dcf5 21-22
+.agents/review-rules/frontend/i18n.md
+  s_7e863ca4a1ca8d::t_bc4d5838021a7e 17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7979d47736fa737d93f09fd932986bed56f8b30a",
+  "prompts": {},
+  "sessions": {
+    "s_7e863ca4a1ca8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93a49309-83d5-499d-bb59-d980de662a71",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

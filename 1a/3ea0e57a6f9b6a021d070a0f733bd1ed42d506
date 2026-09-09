@@ -1,0 +1,40 @@
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_940781c2f2b22c::t_b0bff91e7fecef 269-360,422-424,517-527
+  s_940781c2f2b22c::t_3c60ab084b3425 400-409
+  s_940781c2f2b22c::t_7819833784470e 443-445
+packages/@n8n/db/src/migrations/common/1787306400000-GeneralizeScheduledJobOwner.ts
+  s_940781c2f2b22c::t_d10ff2b449e4c0 13-197
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_37b3037d1e56c4::t_b728a72d0126eb 367-392,397,399-417
+  s_940781c2f2b22c::t_bf13889e987eda 393-396,398
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_940781c2f2b22c::t_2b44d7337a5cba 396
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_940781c2f2b22c::t_1f1d51ef61f451 31-33,40-41,47-51,53-63,66-67,70,175-185,187-195
+packages/@n8n/db/src/migrations/sqlite/1787306400000-GeneralizeScheduledJobOwner.ts
+  s_940781c2f2b22c::t_36324788654ce3 4-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1a3ea0e57a6f9b6a021d070a0f733bd1ed42d506",
+  "prompts": {},
+  "sessions": {
+    "s_37b3037d1e56c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2fd19c94-4cd5-47b2-9b97-9e2f6644c16a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_940781c2f2b22c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db7b124a-280c-4b5f-9daa-bb3c549c49b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

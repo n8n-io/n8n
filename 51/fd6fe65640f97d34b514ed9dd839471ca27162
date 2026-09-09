@@ -1,0 +1,17 @@
+docs/generated/postgres-schema/public.oauth_clients.md
+  ai_agent 84
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12,55,205-213
+docs/generated/postgres-schema/README.md
+  ai_agent 97,121-123,320-322,1242,1459-1484
+docs/generated/postgres-schema/public.user.md
+  ai_agent 269
+docs/generated/postgres-schema/public.oauth_refresh_tokens.md
+  ai_agent 10,26,50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "51fd6fe65640f97d34b514ed9dd839471ca27162",
+  "prompts": {}
+}
