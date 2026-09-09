@@ -17,6 +17,8 @@ import { VIEWS } from '../constants';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
 import { computed, defineComponent, shallowRef } from 'vue';
 import { nodeViewEventBus } from '@/app/event-bus';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
 
@@ -247,43 +249,44 @@ describe('NodeView', () => {
 	describe('Import / Export', () => {
 		const imported = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'Imported' });
 
+		const workflowData = { nodes: [imported], connections: {} };
+		let deferred: (() => void | Promise<void>) | undefined;
+
 		beforeEach(() => {
 			useNodeTypesStore().setNodeTypes([
 				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
 			]);
-			// Default: nudge not eligible, the gate runs the import straight away.
+			// The nudge is "shown": the gate captures the action instead of running it.
+			deferred = undefined;
 			mockMcpJsonNudgeGate.mockReset().mockImplementation(async (_surface, action) => {
-				await action();
+				deferred = action;
 			});
+			// fetchWorkflowDataFromUrl needs a project and the URL fetch stubbed.
+			useProjectsStore().personalProject = { id: 'personal', name: 'Personal' } as Project;
+			vi.spyOn(workflowsStore, 'getWorkflowFromUrl').mockResolvedValue(workflowData as never);
 		});
 
-		it('gates the file import behind the import_file nudge', async () => {
+		// The AI builder's version restore emits the same event, so the nudge must not sit
+		// here. The file-import gate lives at the emitter in ActionsDropdownMenu instead.
+		it('lands imported nodes without gating the importWorkflowData event behind the MCP nudge', async () => {
 			renderNodeView();
 
-			nodeViewEventBus.emit('importWorkflowData', {
-				data: { nodes: [imported], connections: {} },
-			});
+			nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
 
-			await waitFor(() =>
-				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('import_file', expect.any(Function)),
-			);
 			await waitFor(() =>
 				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Imported']),
 			);
+			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
 		});
 
-		it('does not land imported nodes until the nudge continues', async () => {
-			let deferred: (() => void | Promise<void>) | undefined;
-			mockMcpJsonNudgeGate.mockImplementation(async (_surface, action) => {
-				deferred = action;
-			});
+		it('holds a URL import behind the import_url nudge and lands the nodes when it continues', async () => {
 			renderNodeView();
 
-			nodeViewEventBus.emit('importWorkflowData', {
-				data: { nodes: [imported], connections: {} },
-			});
+			nodeViewEventBus.emit('importWorkflowUrl', { url: 'https://example.com/workflow.json' });
 
-			await waitFor(() => expect(deferred).toBeDefined());
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('import_url', expect.any(Function)),
+			);
 			expect(workflowDocumentStore.allNodes).toHaveLength(0);
 
 			await deferred?.();
@@ -291,6 +294,23 @@ describe('NodeView', () => {
 			await waitFor(() =>
 				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Imported']),
 			);
+		});
+
+		// The modal lives at the app root and outlives this view. If the user navigates away
+		// while it is open, continuing must not import into whatever workflow is now shown.
+		it('drops a deferred URL import once NodeView has unmounted', async () => {
+			const { unmount } = renderNodeView();
+
+			nodeViewEventBus.emit('importWorkflowUrl', { url: 'https://example.com/workflow.json' });
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('import_url', expect.any(Function)),
+			);
+			unmount();
+
+			await deferred?.();
+
+			expect(workflowDocumentStore.allNodes).toHaveLength(0);
 		});
 	});
 });

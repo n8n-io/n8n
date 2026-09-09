@@ -894,35 +894,33 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 	const trackEvents = typeof data.trackEvents === 'boolean' ? data.trackEvents : undefined;
 	const setStateDirty = typeof data.setStateDirty === 'boolean' ? data.setStateDirty : undefined;
 
-	const importFile = async () => {
-		await importWorkflowData(workflowData, 'file', {
-			viewport: viewportBoundaries.value,
-			regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
-			trackEvents,
-			setStateDirty,
-		});
+	await importWorkflowData(workflowData, 'file', {
+		viewport: viewportBoundaries.value,
+		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
+		trackEvents,
+		setStateDirty,
+	});
 
-		await nextTick();
-		fitView();
+	await nextTick();
+	fitView();
 
-		selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
-		if (data.tidyUp) {
-			const nodesIdsToTidyUp = data.nodesIdsToTidyUp as string[];
-			setTimeout(async () => {
-				canvasEventBus.emit('tidyUp', {
-					source: 'import-workflow-data',
-					nodeIdsFilter: nodesIdsToTidyUp,
-					trackEvents,
-				});
+	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
+	if (data.tidyUp) {
+		const nodesIdsToTidyUp = data.nodesIdsToTidyUp as string[];
+		setTimeout(async () => {
+			canvasEventBus.emit('tidyUp', {
+				source: 'import-workflow-data',
+				nodeIdsFilter: nodesIdsToTidyUp,
+				trackEvents,
+			});
 
-				await nextTick();
-				fitView();
-			}, 0);
-		}
-	};
-
-	await mcpJsonNudgeTrigger.gate('import_file', importFile);
+			await nextTick();
+			fitView();
+		}, 0);
+	}
 }
+
+let isUnmounted = false;
 
 async function onImportWorkflowUrlEvent(data: IDataObject) {
 	const workflowData = await fetchWorkflowDataFromUrl(data.url as string);
@@ -930,7 +928,15 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 		return;
 	}
 
+	// The nudge modal lives at the app root and outlives this view. If the user navigates
+	// away while it is open, the deferred import must not land in whatever workflow is
+	// shown by then.
+	const originWorkflowId = workflowId.value;
 	const importUrl = async () => {
+		if (isUnmounted || workflowId.value !== originWorkflowId) {
+			return;
+		}
+
 		await importWorkflowData(workflowData, 'url', {
 			viewport: viewportBoundaries.value,
 		});
@@ -1982,6 +1988,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+	isUnmounted = true;
 	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	toast.clearAllStickyNotifications();
 	workflowDocumentStore?.value?.setViewport(viewportTransform.value);
