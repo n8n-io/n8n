@@ -20,7 +20,12 @@ export function useMcpJsonNudgeTrigger() {
 	 * (Skip / dismiss); Connect abandons it. Otherwise the action runs right away.
 	 */
 	async function gate(surface: McpJsonNudgeSurface, action: McpJsonNudgeAction): Promise<void> {
-		if (!eligibility.canShow()) {
+		// A second export/import can start while the nudge is open (e.g. from the command
+		// palette). Opening again would replace the pending onContinue and lose the first
+		// action, so let the new one through untouched.
+		const nudgeAlreadyOpen = uiStore.isModalActiveById[MCP_JSON_NUDGE_MODAL_KEY];
+
+		if (nudgeAlreadyOpen || !eligibility.canShow()) {
 			await action();
 			return;
 		}

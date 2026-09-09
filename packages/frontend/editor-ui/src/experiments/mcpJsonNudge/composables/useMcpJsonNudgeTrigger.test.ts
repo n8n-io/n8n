@@ -1,4 +1,5 @@
 const mockOpenModalWithData = vi.fn();
+const mockIsModalActiveById = vi.hoisted(() => ({}) as Record<string, boolean>);
 const mockCanShow = vi.hoisted(() => vi.fn());
 const mockRecordImpression = vi.hoisted(() => vi.fn());
 const mockTrack = vi.hoisted(() => vi.fn());
@@ -6,6 +7,7 @@ const mockTrack = vi.hoisted(() => vi.fn());
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({
 		openModalWithData: mockOpenModalWithData,
+		isModalActiveById: mockIsModalActiveById,
 	}),
 }));
 
@@ -27,9 +29,25 @@ import { useMcpJsonNudgeTrigger } from './useMcpJsonNudgeTrigger';
 describe('useMcpJsonNudgeTrigger', () => {
 	beforeEach(() => {
 		mockOpenModalWithData.mockClear();
+		for (const key of Object.keys(mockIsModalActiveById)) delete mockIsModalActiveById[key];
 		mockCanShow.mockReset().mockReturnValue(true);
 		mockRecordImpression.mockClear();
 		mockTrack.mockClear();
+	});
+
+	// A second export/import can start while the nudge is open (e.g. via the command
+	// palette). It must not replace the pending onContinue and lose the first action.
+	it('runs the action immediately when the nudge modal is already open', async () => {
+		mockIsModalActiveById[MCP_JSON_NUDGE_MODAL_KEY] = true;
+		const action = vi.fn();
+		const { gate } = useMcpJsonNudgeTrigger();
+
+		await gate('import_file', action);
+
+		expect(action).toHaveBeenCalledTimes(1);
+		expect(mockOpenModalWithData).not.toHaveBeenCalled();
+		expect(mockRecordImpression).not.toHaveBeenCalled();
+		expect(mockTrack).not.toHaveBeenCalled();
 	});
 
 	describe('when eligible', () => {
