@@ -96,7 +96,7 @@ describe('CredentialExporter', () => {
 			]);
 
 			expect(result.entries).toEqual([
-				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential' },
+				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential-cred-1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
@@ -107,9 +107,9 @@ describe('CredentialExporter', () => {
 				},
 			]);
 
-			expect(writer.directories).toEqual(['credentials/my-credential']);
+			expect(writer.directories).toEqual(['credentials/my-credential-cred-1']);
 			expect(writer.files).toHaveLength(1);
-			expect(writer.files[0].path).toBe('credentials/my-credential/credential.json');
+			expect(writer.files[0].path).toBe('credentials/my-credential-cred-1/credential.json');
 
 			const parsed = jsonParse<Record<string, unknown>>(writer.files[0].content);
 			expect(parsed).toEqual({
@@ -136,7 +136,7 @@ describe('CredentialExporter', () => {
 
 			expect(finder.findCredentialForUser).toHaveBeenCalledTimes(1);
 			expect(result.entries).toEqual([
-				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential' },
+				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential-cred-1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
@@ -167,11 +167,11 @@ describe('CredentialExporter', () => {
 			});
 
 			const targets = result.entries.map((e) => e.target);
-			expect(targets).toEqual(['credentials/same-name', 'credentials/same-name-2']);
+			expect(targets).toEqual(['credentials/same-name-cred-a', 'credentials/same-name-cred-b']);
 
 			const writtenPaths = writer.files.map((f) => f.path);
-			expect(writtenPaths).toContain('credentials/same-name/credential.json');
-			expect(writtenPaths).toContain('credentials/same-name-2/credential.json');
+			expect(writtenPaths).toContain('credentials/same-name-cred-a/credential.json');
+			expect(writtenPaths).toContain('credentials/same-name-cred-b/credential.json');
 		});
 
 		it('emits a requirements-only entry when the credential is unfindable for the caller', async () => {
@@ -239,7 +239,7 @@ describe('CredentialExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential' },
+				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential-cred-1' },
 			]);
 			expect(result.requirements).toEqual([
 				{

@@ -365,6 +365,7 @@ describe('CredentialsController', () => {
 				user: ownerReq.user,
 				credentialType: existingCredential.type,
 				credentialId: existingCredential.id,
+				credentialName: 'Updated Credential',
 				isDynamic: false,
 				usesExternalSecrets: false,
 				jweEnabled: false,

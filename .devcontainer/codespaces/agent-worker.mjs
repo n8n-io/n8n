@@ -19,9 +19,24 @@ const INITIAL_POLL_INTERVAL_MS = 3000;
 const MAX_POLL_INTERVAL_MS = 30_000;
 const SLACK_UPDATE_INTERVAL_MS = 1500;
 const SLACK_TEXT_LIMIT = 3900;
-const OPENCODE_CONFIG_CONTENT = JSON.stringify({
-	provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
-});
+
+export function openCodeConfig(environment) {
+	const config = {
+		provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
+	};
+	if (environment.FLAKY_MCP_URL && environment.FLAKY_MCP_TOKEN) {
+		config.mcp = {
+			flaky: {
+				type: 'remote',
+				url: environment.FLAKY_MCP_URL,
+				enabled: true,
+				oauth: false,
+				headers: { Authorization: 'Bearer {env:FLAKY_MCP_TOKEN}' },
+			},
+		};
+	}
+	return config;
+}
 
 function posNum(name, fallback) {
 	const raw = process.env[name];
@@ -74,7 +89,7 @@ export function openCodeEnvironment(environment) {
 	delete childEnvironment.AGENT_WORKER_TOKEN;
 	delete childEnvironment.N8N_DEQUEUE_URL;
 	delete childEnvironment.SLACK_BOT_TOKEN;
-	childEnvironment.OPENCODE_CONFIG_CONTENT = OPENCODE_CONFIG_CONTENT;
+	childEnvironment.OPENCODE_CONFIG_CONTENT = JSON.stringify(openCodeConfig(childEnvironment));
 	return childEnvironment;
 }
 

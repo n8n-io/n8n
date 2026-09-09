@@ -356,7 +356,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			.mockResolvedValueOnce(new Response('unauthorized', { status: 401 }))
 			.mockResolvedValueOnce(new Response('ok', { status: 200 }));
 		oauthService.refreshOAuth2CredentialById.mockResolvedValue({
-			Authorization: 'Bearer fresh-token',
+			headers: { Authorization: 'Bearer fresh-token' },
 		});
 
 		const [server] = await service.getRegistryMcpServers(user);
@@ -371,6 +371,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith(
 			credential.id,
 			'project-1',
+			{ accessToken: 'stale-token' },
 		);
 	});
 
@@ -401,6 +402,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith(
 			credential.id,
 			'project-1',
+			{ accessToken: 'stale-token' },
 		);
 	});
 

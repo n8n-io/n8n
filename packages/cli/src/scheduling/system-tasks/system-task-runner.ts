@@ -7,6 +7,7 @@ import {
 	OnLeaderTakeover,
 	OnShutdown,
 	SystemTaskMetadata,
+	resolveSystemTaskSchedule,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { scheduleFromDefinition } from '@n8n/scheduler';
@@ -201,7 +202,10 @@ export class SystemTaskRunner {
 			);
 		} else {
 			routed.timer = this.createTimer(routed);
-			this.logger.debug('System task will run on an in-memory timer', { name: task.name });
+			this.logger.debug('System task will run on an in-memory timer', {
+				name: task.name,
+				schedule: task.schedule,
+			});
 
 			if (this.timersStarted) {
 				routed.timer.start(new Date());
@@ -222,7 +226,10 @@ export class SystemTaskRunner {
 
 	private createTimer(routed: RoutedTask): SystemTaskTimer {
 		const { task } = routed;
-		const schedule = scheduleFromDefinition(task.schedule, this.globalConfig.generic.timezone);
+		const schedule = scheduleFromDefinition(
+			resolveSystemTaskSchedule(task),
+			this.globalConfig.generic.timezone,
+		);
 
 		return new SystemTaskTimer(
 			schedule,

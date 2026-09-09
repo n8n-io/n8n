@@ -32,8 +32,10 @@ import { Expression, UnexpectedError } from 'n8n-workflow';
 import type { AbstractServer } from '@/abstract-server';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
@@ -200,6 +202,11 @@ export abstract class BaseCommand<F = never> {
 			});
 		}
 
+		// Wire the encryption key provider (and seed keys on a seeding main) before
+		// anything encrypts or decrypts. This must run for every entrypoint —
+		// servers and one-off commands — since the cipher has no fallback path.
+		await Container.get(EncryptionBootstrapService).run();
+
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
 		if (
@@ -236,6 +243,7 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
+		Container.get(ActivityEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
 		if (this.needsExpressionEngine) {
