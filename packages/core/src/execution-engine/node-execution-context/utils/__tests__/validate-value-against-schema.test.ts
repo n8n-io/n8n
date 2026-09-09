@@ -466,18 +466,31 @@ describe('validateValueAgainstSchema', () => {
 		});
 
 		describe('convertFieldsToString across the 1.4 boundary', () => {
+			// Mirrors Execute Sub-workflow: two variants of the same property, resolved by
+			// node version, where only the 1.4+ variant sets `alwaysConvertFieldsToString`.
+			const workflowInputsVariant = (
+				versionCondition: unknown,
+				alwaysConvertFieldsToString: boolean,
+			) => ({
+				displayName: 'Workflow Inputs',
+				name: 'workflowInputs',
+				type: 'resourceMapper',
+				noDataExpression: true,
+				typeOptions: {
+					resourceMapper: {
+						showTypeConversionOptions: true,
+						alwaysConvertFieldsToString,
+						mode: 'map',
+					},
+				},
+				displayOptions: { show: { '@version': [versionCondition] } },
+			});
+
 			const nodeType = {
 				description: {
 					properties: [
-						{
-							displayName: 'Workflow Inputs',
-							name: 'workflowInputs',
-							type: 'resourceMapper',
-							noDataExpression: true,
-							typeOptions: {
-								resourceMapper: { showTypeConversionOptions: true, mode: 'map' },
-							},
-						},
+						workflowInputsVariant({ _cnd: { between: { from: 1.2, to: 1.3 } } }, false),
+						workflowInputsVariant({ _cnd: { gte: 1.4 } }, true),
 					],
 				},
 			} as unknown as INodeType;
