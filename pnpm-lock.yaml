@@ -267,7 +267,7 @@ overrides:
   tar: 7.5.21
   '@tootallnate/once@<=2.0.1': 2.0.1
   protobufjs@<=7.6.5: 7.6.5
-  multer: 2.2.0
+  multer: 2.3.0
   js-yaml: 4.3.2
   undici@<=7.29.0: 7.29.0
   form-data: 4.0.6
@@ -14332,8 +14332,8 @@ packages:
   muggle-string@0.4.1:
     resolution: {integrity: sha512-VNTrAak/KhO2i8dqqnqnAHOa3cYBwXEZe9h+D5h/1ZqFSTEFHdM65lR7RoIqq3tBBYavsOXV84NoHXZ0AkPyqQ==}
 
-  multer@2.2.0:
-    resolution: {integrity: sha512-6rdyFg2kLrMh9Jee7/BMPuV9lEAd7lLW2YUpF9/YxR7njyoUwwQ0ZPh3TaIY50Sw6vlyD2HW3wGOkTS4P79xrQ==}
+  multer@2.3.0:
+    resolution: {integrity: sha512-cjNbm3sttszgZeGfJR124D+jFEfkXCVAsoPBmFn9X7UxmDSFHWqE2CoEj0vrmSpuAFnqWR1Szcm9QTsiHr60Xw==}
     engines: {node: '>= 10.16.0'}
 
   mustache@4.2.0:
@@ -28821,7 +28821,7 @@ snapshots:
       lodash.clonedeep: 4.5.0
       lodash.get: 4.4.2
       media-typer: 1.1.0
-      multer: 2.2.0
+      multer: 2.3.0
       ono: 7.1.3
       path-to-regexp: 8.4.0
       qs: 6.15.2
@@ -32424,7 +32424,7 @@ snapshots:
 
   muggle-string@0.4.1: {}
 
-  multer@2.2.0:
+  multer@2.3.0:
     dependencies:
       append-field: 1.0.0
       busboy: 1.6.0
