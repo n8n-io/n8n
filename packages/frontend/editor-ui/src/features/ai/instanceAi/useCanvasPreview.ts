@@ -14,6 +14,7 @@ import {
 	type ExecutionResult,
 } from './canvasPreview.utils';
 import { useBuildingArtifactIds } from './composables/useBuildingArtifactIds';
+import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import type { ThreadRuntime } from './instanceAi.store';
 
 export interface ArtifactTab {
@@ -67,6 +68,15 @@ export function useCanvasPreview({
 	);
 
 	const buildingArtifactIds = useBuildingArtifactIds(thread);
+	const isAgentWorking = useIsAgentWorking(thread);
+
+	// True when the user picked a tab while the agent was working. The auto-open
+	// watchers below keep that selection until the run settles, so a streamed
+	// tool call cannot undo the click.
+	const keepUserTab = ref(false);
+	watch(isAgentWorking, (working) => {
+		if (!working) keepUserTab.value = false;
+	});
 
 	// All previewable artifacts in the current thread, derived from resource registry.
 	const allArtifactTabs = computed((): ArtifactTab[] => {
@@ -198,11 +208,20 @@ export function useCanvasPreview({
 
 	function selectTab(tabId: string) {
 		activeTabId.value = tabId;
+		keepUserTab.value = isAgentWorking.value;
 		setPreviewOpen(true);
 	}
 
 	function closePreview() {
+		keepUserTab.value = false;
 		setPreviewOpen(false);
+	}
+
+	// Show an artifact the agent just touched. Do not override a tab the user
+	// picked during this run.
+	function showAgentArtifact(tabId: string) {
+		if (!keepUserTab.value) activeTabId.value = tabId;
+		setPreviewOpen(true);
 	}
 
 	/**
@@ -212,8 +231,7 @@ export function useCanvasPreview({
 	 */
 	function openWorkflowPreview(workflowId: string): boolean {
 		if (activeTabId.value === workflowId && isPreviewOpen.value) return false;
-		activeTabId.value = workflowId;
-		setPreviewOpen(true);
+		selectTab(workflowId);
 		return true;
 	}
 
@@ -224,8 +242,7 @@ export function useCanvasPreview({
 	 */
 	function openDataTablePreview(dataTableId: string, _projectId: string): boolean {
 		if (activeTabId.value === dataTableId && isPreviewOpen.value) return false;
-		activeTabId.value = dataTableId;
-		setPreviewOpen(true);
+		selectTab(dataTableId);
 		return true;
 	}
 
@@ -236,8 +253,7 @@ export function useCanvasPreview({
 	 */
 	function openAgentPreview(agentId: string, _projectId: string): boolean {
 		if (activeTabId.value === agentId && isPreviewOpen.value) return false;
-		activeTabId.value = agentId;
-		setPreviewOpen(true);
+		selectTab(agentId);
 		return true;
 	}
 
@@ -283,9 +299,12 @@ export function useCanvasPreview({
 			if (!toolCallId || !latestBuildResult.value) return;
 			if (thread.isHydratingThread) return;
 
-			activeTabId.value = latestBuildResult.value.workflowId;
-			setPreviewOpen(true);
-			workflowRefreshKey.value++;
+			const targetId = latestBuildResult.value.workflowId;
+			showAgentArtifact(targetId);
+			// Refresh only the tab on screen; a tab opened later mounts fresh anyway.
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
+			}
 		},
 		{ flush: 'sync' },
 	);
@@ -314,8 +333,7 @@ export function useCanvasPreview({
 			if (!agentId || !latestBuilderTarget.value) return;
 			if (thread.isHydratingThread) return;
 
-			activeTabId.value = latestBuilderTarget.value.workflowId;
-			setPreviewOpen(true);
+			showAgentArtifact(latestBuilderTarget.value.workflowId);
 		},
 		{ flush: 'sync' },
 	);
@@ -343,8 +361,7 @@ export function useCanvasPreview({
 			if (!agentId || !latestAgentBuilderTarget.value) return;
 			if (thread.isHydratingThread) return;
 
-			activeTabId.value = latestAgentBuilderTarget.value.targetAgentId;
-			setPreviewOpen(true);
+			showAgentArtifact(latestAgentBuilderTarget.value.targetAgentId);
 		},
 		{ flush: 'sync' },
 	);
@@ -403,9 +420,10 @@ export function useCanvasPreview({
 
 			const targetId = latestUpdateResult.value.workflowId;
 
-			activeTabId.value = targetId;
-			setPreviewOpen(true);
-			workflowRefreshKey.value++;
+			showAgentArtifact(targetId);
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
+			}
 		},
 		{ flush: 'sync' },
 	);
@@ -429,9 +447,11 @@ export function useCanvasPreview({
 			if (!toolCallId || !latestDataTableResult.value) return;
 			if (thread.isHydratingThread) return;
 
-			activeTabId.value = latestDataTableResult.value.dataTableId;
-			setPreviewOpen(true);
-			dataTableRefreshKey.value++;
+			const targetId = latestDataTableResult.value.dataTableId;
+			showAgentArtifact(targetId);
+			if (activeTabId.value === targetId) {
+				dataTableRefreshKey.value++;
+			}
 		},
 		{ flush: 'sync' },
 	);

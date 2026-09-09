@@ -1446,9 +1446,10 @@ async function dismissComposerContextChip() {
 					@resizeend="isResizingPreview = false"
 				>
 					<TabsRoot
-						v-model="preview.activeTabId.value"
+						:model-value="preview.activeTabId.value"
 						orientation="horizontal"
 						:class="$style.previewPanel"
+						@update:model-value="preview.selectTab"
 					>
 						<InstanceAiPreviewTabBar
 							:tabs="preview.allArtifactTabs.value"

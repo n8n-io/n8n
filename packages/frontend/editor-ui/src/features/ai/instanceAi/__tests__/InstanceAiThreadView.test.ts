@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, inject, reactive, ref, type PropType, type Ref } from 'vue';
+import { defineComponent, h, inject, reactive, ref, type PropType, type Ref, nextTick } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
@@ -1792,6 +1792,58 @@ describe('InstanceAiThreadView', () => {
 
 		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
 		expect(getByTestId('instance-ai-thread-area')).not.toHaveClass('agentPreviewDockOpen');
+	});
+
+	it('keeps the tab the user clicked while the agent is working', async () => {
+		thread.producedArtifacts = new Map([
+			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'First' }],
+			['workflow-2', { type: 'workflow', id: 'workflow-2', name: 'Second' }],
+		]) as typeof thread.producedArtifacts;
+		thread.isStreaming = true;
+		const pushBuildResult = (toolCallId: string, workflowId: string) => {
+			thread.messages.push({
+				id: `msg-${toolCallId}`,
+				role: 'assistant',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-1',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					timeline: [],
+					children: [],
+					toolCalls: [
+						{
+							toolCallId,
+							toolName: 'build-workflow',
+							args: {},
+							isLoading: false,
+							result: { success: true, workflowId },
+						},
+					],
+				},
+			} as never);
+		};
+		const user = userEvent.setup();
+		const { container } = renderView({ props: { threadId: 'thread-1' } });
+
+		pushBuildResult('tc-1', 'workflow-1');
+		const secondTab = await vi.waitFor(() => {
+			const tab = container.querySelector<HTMLElement>('[data-tab-id="workflow-2"]');
+			expect(tab).not.toBeNull();
+			return tab!;
+		});
+		await user.click(secondTab);
+		expect(secondTab).toHaveAttribute('data-state', 'active');
+
+		pushBuildResult('tc-2', 'workflow-1');
+		await nextTick();
+
+		expect(secondTab).toHaveAttribute('data-state', 'active');
 	});
 
 	it('clears the agent dock layout when switching artifacts', async () => {
