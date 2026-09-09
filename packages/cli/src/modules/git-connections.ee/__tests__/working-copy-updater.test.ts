@@ -128,12 +128,10 @@ describe('WorkingCopyUpdater', () => {
 			'manifest.json': manifestFile(staging.manifest),
 			...staging.files,
 		});
-		const state = await updater.readBranchState(exportFolder);
 		return await updater.applySelection(
 			exportFolder,
 			stagingFolder,
 			staging.manifest,
-			state,
 			selection(overrides),
 		);
 	};
@@ -325,7 +323,6 @@ describe('WorkingCopyUpdater', () => {
 					exportFolder,
 					stagingFolder,
 					staging,
-					{ projects: [alpha, beta], workflows: [wf('w1'), other] },
 					selection({ deletedWorkflowIds: ['w-other'] }),
 				),
 			).rejects.toThrow('Deleted workflows do not belong to the selected project: w-other');
@@ -337,7 +334,6 @@ describe('WorkingCopyUpdater', () => {
 
 		it('rejects a delete when two workflows share an id', async () => {
 			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
-			const inBeta = { id: 'w1', name: 'W1', target: 'projects/beta/workflows/w1' };
 			await writeTree(exportFolder, {
 				'projects/alpha/project.json': projectFile,
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
@@ -352,7 +348,6 @@ describe('WorkingCopyUpdater', () => {
 					exportFolder,
 					stagingFolder,
 					staging,
-					{ projects: [alpha, beta], workflows: [wf('w1'), inBeta] },
 					selection({ deletedWorkflowIds: ['w1'] }),
 				),
 			).rejects.toThrow(/two workflows with id "w1"/);
@@ -390,7 +385,6 @@ describe('WorkingCopyUpdater', () => {
 					exportFolder,
 					stagingFolder,
 					staging,
-					{ projects: [alpha, beta], workflows: [inBeta] },
 					selection({ workflowIds: ['w-moved'] }),
 				),
 			).rejects.toThrow('These workflows moved to another project: w-moved');
@@ -647,7 +641,6 @@ describe('WorkingCopyUpdater', () => {
 					exportFolder,
 					stagingFolder,
 					staging,
-					{ projects: [alpha], workflows: [wf('w1')] },
 					selection({ workflowIds: ['w-new'] }),
 				),
 			).rejects.toThrow(/symbolic link/);
@@ -660,17 +653,9 @@ describe('WorkingCopyUpdater', () => {
 		it('refuses a stale target occupied by an unselected leaf', async () => {
 			const shared = 'projects/alpha/workflows/shared';
 			await writeTree(exportFolder, {
-				'manifest.json': manifestFile(
-					makeManifest({
-						projects: [alpha],
-						workflows: [
-							{ id: 'w1', name: 'W1', target: shared },
-							{ id: 'w2', name: 'W2', target: shared },
-						],
-					}),
-				),
 				'projects/alpha/project.json': projectFile,
-				[`${shared}/workflow.json`]: workflowFile('w2'),
+				[`${shared}/workflow.json`]: workflowFile('w1'),
+				[`${shared}/w2/workflow.json`]: workflowFile('w2'),
 			});
 			const staging = makeManifest({ projects: [alpha] });
 			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
@@ -680,18 +665,12 @@ describe('WorkingCopyUpdater', () => {
 					exportFolder,
 					stagingFolder,
 					staging,
-					{
-						projects: [alpha],
-						workflows: [
-							{ id: 'w1', name: 'W1', target: shared },
-							{ id: 'w2', name: 'W2', target: shared },
-						],
-					},
 					selection({ deletedWorkflowIds: ['w1'] }),
 				),
 			).rejects.toThrow('would delete content the selection keeps');
 
-			expect(await readExported(`${shared}/workflow.json`)).toBe(workflowFile('w2'));
+			expect(await readExported(`${shared}/workflow.json`)).toBe(workflowFile('w1'));
+			expect(await readExported(`${shared}/w2/workflow.json`)).toBe(workflowFile('w2'));
 		});
 
 		it('leaves the export in place when moving it aside fails', async () => {
@@ -715,7 +694,6 @@ describe('WorkingCopyUpdater', () => {
 					exportFolder,
 					stagingFolder,
 					staging,
-					{ projects: [alpha], workflows: [wf('w1')] },
 					selection({ workflowIds: ['w1'] }),
 				),
 			).rejects.toThrow('EACCES');
@@ -750,7 +728,6 @@ describe('WorkingCopyUpdater', () => {
 					exportFolder,
 					stagingFolder,
 					staging,
-					{ projects: [alpha], workflows: [wf('w1')] },
 					selection({ workflowIds: ['w1'] }),
 				),
 			).rejects.toThrow('EACCES');
@@ -786,7 +763,6 @@ describe('WorkingCopyUpdater', () => {
 					exportFolder,
 					stagingFolder,
 					staging,
-					{ projects: [alpha] },
 					selection({ workflowIds: ['w1'] }),
 				),
 			).rejects.toThrow(/"projects\/alpha\/workflows" on the branch is a symbolic link/);
@@ -812,14 +788,12 @@ describe('WorkingCopyUpdater', () => {
 			await symlink(outside, path.join(exportFolder, 'projects/alpha/workflows'));
 			const staging = makeManifest({ projects: [alpha] });
 			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
-			const branch: BranchState = { projects: [alpha], workflows: [wf('w1')] };
 
 			await expect(
 				updater.applySelection(
 					exportFolder,
 					stagingFolder,
 					staging,
-					branch,
 					selection({ deletedWorkflowIds: ['w1'] }),
 				),
 			).rejects.toThrow(/"projects\/alpha\/workflows" on the branch is a symbolic link/);

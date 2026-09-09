@@ -29,9 +29,9 @@ const ENTITY_FILES = {
 } as const satisfies Record<string, keyof BranchState>;
 
 /**
- * Applies a selective export to the exported working copy of a branch. It only
- * knows directories — the caller resolves the connection, runs the exporter and
- * commits — so the reconciliation is independent of how connections are modelled.
+ * Applies a selective export to the exported working copy of a branch. It reads
+ * the branch, runs the guards, then overlays. The caller resolves the
+ * connection, runs the exporter and commits.
  */
 @Service()
 export class WorkingCopyUpdater {
@@ -200,20 +200,20 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * Overlay the staging export onto `exportFolder`. Guards run first. File
-	 * work runs on a copy, then the copy replaces the export, so a failed write
-	 * leaves the working copy untouched. After overlay, write an import inventory
-	 * of the remaining files. Delete that write with import-manifest-bridge when
-	 * import walks entity files.
+	 * Overlay the staging export onto `exportFolder`. Reads the branch, then
+	 * runs the guards. File work runs on a copy, then the copy replaces the
+	 * export, so a failed write leaves the working copy untouched. After overlay,
+	 * write an import inventory of the remaining files. Delete that write with
+	 * import-manifest-bridge when import walks entity files.
 	 */
 	async applySelection(
 		exportFolder: string,
 		stagingFolder: string,
 		staging: PackageManifest,
-		existing: BranchState,
 		selection: SelectivePushOptions,
 	): Promise<void> {
 		this.validateSelection(selection);
+		const existing = await this.readBranchState(exportFolder);
 		this.assertUniqueEntityIds(existing);
 		this.assertDeletionsOnBranch(existing, selection);
 		this.assertNoCrossProjectMoves(existing, selection);
