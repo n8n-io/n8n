@@ -312,7 +312,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
 		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
-		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
+		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);

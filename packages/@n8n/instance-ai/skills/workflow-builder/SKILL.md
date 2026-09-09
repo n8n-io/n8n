@@ -112,7 +112,7 @@ numbers, custom URLs, notification targets, chat IDs) and resource IDs where
 named none. Never hardcode fake values (`user@example.com`, `YOUR_API_KEY`,
 bearer tokens, sample channel/chat IDs or recipient lists) and never ask for
 setup values before the first successful build — placeholders cover them, and
-`workflows(action="setup")` opens an inline setup card in the AI
+`workflows(action="setup")` opens an inline setup card in the n8n
 Assistant panel afterwards for the user to fill in.
 Do not replace concrete user-provided or discoverable values with
 placeholders: if the prompt gives a real URL, channel name, table name, label,
