@@ -10,7 +10,10 @@ import { AppVersionService } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
 import { AppPageTokenService } from '@/modules/apps/serving/app-page-token';
-import { createOwner } from '@test-integration/db/users';
+import { OAuthAuthorizationCodeService } from '@/modules/oauth-server/oauth-authorization-code.service';
+import { OAuthServerService } from '@/modules/oauth-server/oauth-server.service';
+import { CacheService } from '@/services/cache/cache.service';
+import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
@@ -35,10 +38,22 @@ beforeAll(async () => {
 	owner = await createOwner();
 	ownerProject = await getPersonalProject(owner);
 	visitor = testServer.restlessAgent;
+	await Container.get(CacheService).init(); // OAuth flow state lives in the cache
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['App', 'Page']);
+	await testDb.truncate([
+		'App',
+		'Page',
+		'AccessToken',
+		'RefreshToken',
+		'AuthorizationCode',
+		'OAuthClient',
+	]);
+});
+
+afterEach(async () => {
+	await Container.get(CacheService).reset();
 });
 
 const createApp = async () => await appRepository.createApp(ownerProject.id, 'Acme Portal', 'acme');
@@ -75,6 +90,28 @@ const pageTokenOf = (html: string) =>
 	html.match(/<meta name="n8n-app-token" content="([^"]+)">/)?.[1];
 
 const pageCookie = (token: string) => `n8n-app-acme=${token}`;
+
+/**
+ * The browser legs the backend never performs in a test: take the PKCE challenge and
+ * state from the authorize redirect, materialize the virtual client, and mint the code
+ * the authorization server would issue after consent.
+ */
+const completeAuthorizeLeg = async (authorizeUrl: string, userId: string) => {
+	const url = new URL(authorizeUrl);
+	const resourceUrl = url.searchParams.get('client_id')!;
+	const state = url.searchParams.get('state')!;
+	await Container.get(OAuthServerService).clientsStore.getClient(resourceUrl);
+	const code = await Container.get(OAuthAuthorizationCodeService).createAuthorizationCode(
+		resourceUrl,
+		userId,
+		resourceUrl,
+		url.searchParams.get('code_challenge')!,
+		state,
+		resourceUrl,
+		[],
+	);
+	return { code, state };
+};
 
 describe('GET /apps/:namespace/ with an active version', () => {
 	test('serves index.html of a public app with a page token for an anonymous visitor', async () => {
@@ -158,6 +195,38 @@ describe('GET /apps/:namespace/ with an active version', () => {
 			.expect(302);
 
 		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
+	});
+
+	test('completes the OAuth flow: sets the page cookie and lands on the requested URL', async () => {
+		const app = await createBuiltApp('n8n');
+		const started = await visitor.get('/apps/acme/orders?x=1').expect(302);
+		const { code, state } = await completeAuthorizeLeg(started.headers.location, owner.id);
+
+		const response = await visitor.get(`/apps/acme/?code=${code}&state=${state}`).expect(302);
+
+		expect(response.headers.location).toBe('/apps/acme/orders?x=1');
+		const cookie = response.headers['set-cookie'][0];
+		expect(cookie).toMatch(/^n8n-app-acme=/);
+		const token = cookie.slice('n8n-app-acme='.length, cookie.indexOf(';'));
+		expect(Container.get(AppPageTokenService).verify(token, app.id)).toEqual({
+			userId: owner.id,
+		});
+
+		const page = await visitor.get('/apps/acme/').set('Cookie', pageCookie(token)).expect(200);
+		expect(page.text).toContain('n8n-app-token');
+	});
+
+	test('does not admit a user without app:read on the project, even with a minted code', async () => {
+		await createBuiltApp('n8n');
+		const member = await createMember();
+		const started = await visitor.get('/apps/acme/').expect(302);
+		const { code, state } = await completeAuthorizeLeg(started.headers.location, member.id);
+
+		// The resource gate refuses the token, so the flow restarts instead of admitting.
+		const response = await visitor.get(`/apps/acme/?code=${code}&state=${state}`).expect(302);
+
+		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
+		expect(response.headers['set-cookie']).toBeUndefined();
 	});
 
 	test('answers 403 when the OAuth flow reports an error', async () => {

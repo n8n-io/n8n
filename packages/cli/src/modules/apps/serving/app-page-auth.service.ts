@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Request, Response } from 'express';
 
@@ -37,7 +36,6 @@ export class AppPageAuthService {
 		private readonly appPageTokenService: AppPageTokenService,
 		private readonly appResourceResolver: AppResourceResolver,
 		private readonly oauth2FlowProxy: OAuth2FlowProxy,
-		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
 	) {}
 
@@ -63,14 +61,11 @@ export class AppPageAuthService {
 
 		const isCallback = typeof code === 'string' && typeof state === 'string';
 		if (isCallback) {
+			// `complete` verifies the token against the app resource, whose gate is the
+			// visitor's `app:read` on the project; a refused user gets no token here.
 			const result = await this.oauth2FlowProxy.complete(code, state);
 			if (result.valid) {
-				const user = await this.userRepository.findByIdWithRole(result.user.id);
-				if (!user || !(await this.appResourceResolver.canOpen(user, app))) {
-					res.status(403).type('text').send('Access denied');
-					return null;
-				}
-				this.issuePageToken(req, res, app, { userId: user.id });
+				this.issuePageToken(req, res, app, { userId: result.user.id });
 				// `code` and `state` must not reach the page: land on the URL the visitor asked for.
 				const returnTo = result.metadata?.returnTo;
 				res.redirect(302, returnTo?.startsWith(appRootPath(app)) ? returnTo : appRootPath(app));
