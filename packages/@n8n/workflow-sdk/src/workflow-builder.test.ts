@@ -1037,9 +1037,9 @@ describe('Workflow Builder', () => {
 			expect(json.connections['Fetch Positions']?.main[0]?.[0]?.node).toBe('Compute');
 		});
 
-		it('routes the error output of an imported node, which declares no connections itself', () => {
-			// A node handle from fromJSON() throws on every connection method by design, so
-			// the builder has to wire this route into the graph itself.
+		it('routes the error output of an imported node', () => {
+			// Every other connection method on a handle from fromJSON() throws by design;
+			// an error route is the one the handle records, so the builder can declare it.
 			const notify = node({
 				type: 'n8n-nodes-base.slack',
 				version: 2.3,

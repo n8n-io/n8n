@@ -463,7 +463,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		const sourceKey = this._currentNode;
 		const sourceGraphNode = sourceKey ? this._nodes.get(sourceKey) : undefined;
-		if (!sourceGraphNode || typeof sourceGraphNode.instance.onError !== 'function') {
+		if (!sourceGraphNode) {
 			throw new Error(
 				'.onError() must follow adding a node. Use it as ' +
 					'workflow.add(trigger).to(httpNode).onError(errorHandler).',
@@ -674,13 +674,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Merge connections declared on node instances via .to() into the graph connections.
-	 * This prepares the graph for serialization by ensuring all connections are stored
-	 * in graphNode.connections.
+	 * Merge connections declared on node instances — via `.to()`, or `.onError()` on an
+	 * imported handle — into the graph connections. This prepares the graph for
+	 * serialization by ensuring all connections are stored in graphNode.connections.
 	 */
 	private mergeInstanceConnections(): void {
 		for (const graphNode of this._nodes.values()) {
-			// Only process if the node instance has getConnections() (nodes from builder, not fromJSON)
+			// Some composites (e.g. SplitInBatchesBuilder) declare no connections of their own.
 			if (typeof graphNode.instance.getConnections === 'function') {
 				const nodeConns = graphNode.instance.getConnections();
 				for (const { target, outputIndex, targetInputIndex, connectionType } of nodeConns) {
