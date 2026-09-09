@@ -116,8 +116,8 @@ export function useAppLivePreview(
 		{ immediate: true },
 	);
 
-	// `apps build` installs the dependencies the dev server needs, so a build that
-	// lands after `no-source` or a failed start is the cue to try again.
+	// A publish that lands after `no-source` or a failed start means the app now
+	// has a stored source to restore, so it is the cue to try again.
 	watch(
 		() => toValue(builtVersionId),
 		() => {

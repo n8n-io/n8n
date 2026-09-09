@@ -11,9 +11,10 @@ import type { App } from './apps.types';
 
 const openAppArtifactThread = vi.hoisted(() => vi.fn());
 const instanceAiAvailable = vi.hoisted(() => ({ value: true }));
+const toast = vi.hoisted(() => ({ showError: vi.fn(), showMessage: vi.fn() }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
+	useToast: () => toast,
 }));
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
@@ -68,6 +69,7 @@ function makeApp(overrides: Partial<App> = {}): App {
 		theme: null,
 		projectId: 'proj-1',
 		activeVersionId: null,
+		hasUnpublishedChanges: false,
 		createdAt: '2026-04-01T00:00:00.000Z',
 		updatedAt: '2026-04-01T00:00:00.000Z',
 		...overrides,
@@ -80,6 +82,8 @@ describe('AppDetailsView', () => {
 	beforeEach(async () => {
 		createTestingPinia();
 		openAppArtifactThread.mockReset();
+		toast.showError.mockReset();
+		toast.showMessage.mockReset();
 		instanceAiAvailable.value = true;
 		await router.push('/projects/proj-1/apps/app-1');
 		await router.isReady();
@@ -194,8 +198,8 @@ describe('AppDetailsView', () => {
 		);
 	});
 
-	it('links and copies the served app URL', async () => {
-		const { getByTestId } = await renderApp(makeApp());
+	it('links and copies the served app URL once a version is published', async () => {
+		const { getByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
 
 		expect(getByTestId('app-open')).toHaveAttribute(
 			'href',
@@ -203,6 +207,105 @@ describe('AppDetailsView', () => {
 		);
 		expect(getByTestId('app-open')).toHaveAttribute('target', '_blank');
 		expect(getByTestId('app-url')).toHaveTextContent(`${window.location.origin}/apps/greeter/`);
+	});
+
+	it('hides "Open app" until something is published', async () => {
+		const { queryByTestId, getByTestId } = await renderApp(makeApp());
+
+		expect(queryByTestId('app-open')).not.toBeInTheDocument();
+		expect(getByTestId('app-url')).toBeInTheDocument();
+	});
+
+	describe('publish', () => {
+		const published = { versionId: 'v-8', url: 'http://localhost/apps/greeter/' };
+
+		it('is disabled with an explanation when the published version is the newest', async () => {
+			const { getByTestId, queryByTestId } = await renderApp(
+				makeApp({ activeVersionId: 'v-7', hasUnpublishedChanges: false }),
+			);
+
+			expect(getByTestId('app-publish')).toBeDisabled();
+			expect(queryByTestId('app-unpublished-changes')).not.toBeInTheDocument();
+		});
+
+		it.each([
+			{ name: 'a draft newer than the published version', activeVersionId: 'v-7' },
+			{ name: 'a draft and nothing published yet', activeVersionId: null },
+		])('is enabled and flags the unpublished changes with $name', async ({ activeVersionId }) => {
+			const { getByTestId } = await renderApp(
+				makeApp({ activeVersionId, hasUnpublishedChanges: true }),
+			);
+
+			expect(getByTestId('app-publish')).toBeEnabled();
+			expect(getByTestId('app-unpublished-changes')).toHaveTextContent('Unpublished changes');
+		});
+
+		it('publishes the thread draft in artifact mode, then refreshes the app and confirms', async () => {
+			appsStore.publishApp.mockResolvedValue(published);
+			const { getByTestId, queryByTestId } = await renderApp(
+				makeApp({ hasUnpublishedChanges: true }),
+				{ artifactMode: true, threadId: 'thread-1' },
+			);
+			appsStore.getApp.mockResolvedValue(
+				makeApp({ activeVersionId: 'v-8', hasUnpublishedChanges: false }),
+			);
+
+			await userEvent.click(getByTestId('app-publish'));
+			await waitAllPromises();
+
+			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1', 'thread-1');
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: 'App published',
+				message: published.url,
+				type: 'success',
+			});
+			expect(queryByTestId('app-unpublished-changes')).not.toBeInTheDocument();
+			expect(getByTestId('app-publish')).toBeDisabled();
+			expect(getByTestId('app-open')).toBeInTheDocument();
+		});
+
+		it('publishes without a thread outside artifact mode', async () => {
+			appsStore.publishApp.mockResolvedValue(published);
+			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }));
+
+			await userEvent.click(getByTestId('app-publish'));
+			await waitAllPromises();
+
+			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1', undefined);
+		});
+
+		it('shows the build failure with its log tail and keeps the draft flagged', async () => {
+			appsStore.publishApp.mockResolvedValue({
+				error: true,
+				stage: 'build',
+				message: 'vite build exited with code 1.',
+				log: 'src/pages/Home.vue: unexpected token',
+			});
+			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }));
+			appsStore.getApp.mockClear();
+
+			await userEvent.click(getByTestId('app-publish'));
+			await waitAllPromises();
+
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: "Couldn't publish the app",
+				message: 'vite build exited with code 1.\nsrc/pages/Home.vue: unexpected token',
+				type: 'error',
+			});
+			expect(appsStore.getApp).not.toHaveBeenCalled();
+			expect(getByTestId('app-unpublished-changes')).toBeInTheDocument();
+			expect(getByTestId('app-publish')).toBeEnabled();
+		});
+
+		it('reports a request failure through the error toast', async () => {
+			appsStore.publishApp.mockRejectedValue(new Error('network'));
+			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }));
+
+			await userEvent.click(getByTestId('app-publish'));
+			await waitAllPromises();
+
+			expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't publish the app");
+		});
 	});
 
 	it('hands the app off to the assistant from the toolbar', async () => {
@@ -224,7 +327,7 @@ describe('AppDetailsView', () => {
 		expect(queryByTestId('app-delete')).not.toBeInTheDocument();
 		expect(queryByTestId('app-open-in-assistant')).not.toBeInTheDocument();
 		expect(getByTestId('app-builder-mode')).toBeInTheDocument();
-		expect(getByTestId('app-open')).toBeInTheDocument();
+		expect(getByTestId('app-publish')).toBeInTheDocument();
 
 		await userEvent.click(getByTestId('radio-button-preview'));
 		expect(getByTestId('app-preview-empty')).toBeInTheDocument();

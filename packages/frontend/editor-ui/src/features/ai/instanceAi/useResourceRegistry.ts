@@ -14,7 +14,7 @@ export type ResourceEntry = {
 	projectId?: string;
 	/** App artifacts: URL slug the app is served under (`/apps/<namespace>/`). */
 	namespace?: string;
-	/** App artifacts: id of the latest built version; absent until the first `apps build`. */
+	/** App artifacts: id of the latest published version; absent until the first `apps publish`. */
 	versionId?: string;
 	/** App artifacts: absolute URL of the latest build. */
 	url?: string;
@@ -247,7 +247,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 
 	// --- Apps ----------------------------------------------------------------
 	// apps action=create: { app: { id, name, namespace, projectId, createdAt } }.
-	// apps action=build: { appId, name, namespace, projectId, versionId, url }.
+	// apps action=publish: { appId, name, namespace, projectId, versionId, url }.
 	// `{ error }` / `{ denied }` results carry neither shape and register nothing.
 	if (tc.toolName === 'apps') {
 		if (result.app && typeof result.app === 'object') {

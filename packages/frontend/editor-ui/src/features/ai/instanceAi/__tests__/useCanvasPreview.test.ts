@@ -1047,14 +1047,14 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('auto-open app preview', () => {
-		function appBuildMessage(overrides: Partial<InstanceAiToolCallState> = {}) {
+		function appPublishMessage(overrides: Partial<InstanceAiToolCallState> = {}) {
 			return makeMessage({
 				agentTree: makeAgentNode({
 					toolCalls: [
 						makeToolCall({
-							toolCallId: 'tc-build-app',
+							toolCallId: 'tc-publish-app',
 							toolName: 'apps',
-							args: { action: 'build', appId: 'app-1' },
+							args: { action: 'publish', appId: 'app-1' },
 							result: { appId: 'app-1', versionId: 'v-1', namespace: 'app-1' },
 							...overrides,
 						}),
@@ -1063,14 +1063,14 @@ describe('useCanvasPreview', () => {
 			});
 		}
 
-		test('switches to the app preview when a build completes', async () => {
+		test('switches to the app preview when a publish completes', async () => {
 			const ctx = setup();
 			ctx.thread.isStreaming = true;
 			registerWorkflow(ctx.thread, 'wf-1');
 			registerApp(ctx.thread, 'app-1', 'Greeter', 'proj-1');
 			ctx.openWorkflowPreview('wf-1');
 
-			ctx.thread.messages = [appBuildMessage()];
+			ctx.thread.messages = [appPublishMessage()];
 			await nextTick();
 
 			expect(ctx.activeAppId.value).toBe('app-1');
@@ -1083,20 +1083,20 @@ describe('useCanvasPreview', () => {
 			ctx.thread.isHydratingThread = true;
 			registerApp(ctx.thread, 'app-1');
 
-			ctx.thread.messages = [appBuildMessage()];
+			ctx.thread.messages = [appPublishMessage()];
 			await nextTick();
 
 			expect(ctx.activeAppId.value).toBeNull();
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
-		test('does not auto-open the app preview on a failed build', async () => {
+		test('does not auto-open the app preview on a failed publish', async () => {
 			const ctx = setup();
 			ctx.thread.isStreaming = true;
 			registerApp(ctx.thread, 'app-1');
 
 			ctx.thread.messages = [
-				appBuildMessage({ result: { error: true, stage: 'compile', message: 'boom' } }),
+				appPublishMessage({ result: { error: true, stage: 'compile', message: 'boom' } }),
 			];
 			await nextTick();
 

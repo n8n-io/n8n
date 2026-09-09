@@ -9,6 +9,7 @@ import {
 	fetchAppsApi,
 	fetchRoutesApi,
 	getAppApi,
+	publishAppApi,
 	updateAppApi,
 } from '@/features/apps/apps.api';
 import { APPS_STORE } from '@/features/apps/apps.constants';
@@ -46,6 +47,10 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		return updated;
 	};
 
+	const publishApp = async (projectId: string, appId: string, threadId?: string) => {
+		return await publishAppApi(rootStore.restApiContext, projectId, appId, threadId);
+	};
+
 	const deleteApp = async (projectId: string, appId: string) => {
 		await deleteAppApi(rootStore.restApiContext, projectId, appId);
 		apps.value = apps.value.filter((app) => app.id !== appId);
@@ -63,6 +68,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		createApp,
 		updateApp,
 		applyAppTheme,
+		publishApp,
 		deleteApp,
 		fetchPages,
 	};

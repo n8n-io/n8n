@@ -23,6 +23,7 @@ function makeApp(overrides: Partial<App> = {}): App {
 		theme: null,
 		projectId: 'proj-1',
 		activeVersionId: 'v-1',
+		hasUnpublishedChanges: false,
 		createdAt: '2026-04-01T00:00:00.000Z',
 		updatedAt: '2026-04-01T00:00:00.000Z',
 		...overrides,

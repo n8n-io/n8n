@@ -1365,7 +1365,7 @@ describe('createThreadRuntime - effect scope ownership', () => {
 				payload: {
 					toolCallId: 'tc-build',
 					toolName: 'apps',
-					args: { action: 'build', appId: 'RWY2POcB67qVlJPk' },
+					args: { action: 'publish', appId: 'RWY2POcB67qVlJPk' },
 				},
 			}),
 		);

@@ -1394,19 +1394,26 @@ describe('isAgentBuildingApp', () => {
 	const buildCall = (overrides: Partial<InstanceAiToolCallState> = {}) =>
 		makeToolCall({
 			toolName: 'apps',
-			args: { action: 'build', appId: 'app-1' },
+			args: { action: 'publish', appId: 'app-1' },
 			isLoading: true,
 			...overrides,
 		});
 
-	test('is true while an apps build call for the app is in flight', () => {
+	test('is true while an apps publish call for the app is in flight', () => {
 		const node = makeAgentNode({ toolCalls: [buildCall()] });
 		expect(isAgentBuildingApp(node, 'app-1')).toBe(true);
 	});
 
-	test('is false once the build call has completed', () => {
+	test('is false once the publish call has completed', () => {
 		const node = makeAgentNode({
 			toolCalls: [buildCall({ isLoading: false, result: { appId: 'app-1', versionId: 'v-1' } })],
+		});
+		expect(isAgentBuildingApp(node, 'app-1')).toBe(false);
+	});
+
+	test('is false for a legacy in-flight apps build call', () => {
+		const node = makeAgentNode({
+			toolCalls: [buildCall({ args: { action: 'build', appId: 'app-1' } })],
 		});
 		expect(isAgentBuildingApp(node, 'app-1')).toBe(false);
 	});
@@ -1418,7 +1425,7 @@ describe('isAgentBuildingApp', () => {
 		expect(isAgentBuildingApp(node, 'app-1')).toBe(false);
 	});
 
-	test('is true when the in-flight build call is on a child node', () => {
+	test('is true when the in-flight publish call is on a child node', () => {
 		const child = makeAgentNode({ agentId: 'agent-2', toolCalls: [buildCall()] });
 		const parent = makeAgentNode({ children: [child] });
 		expect(isAgentBuildingApp(parent, 'app-1')).toBe(true);

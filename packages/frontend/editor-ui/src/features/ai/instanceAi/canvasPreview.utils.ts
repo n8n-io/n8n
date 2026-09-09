@@ -319,7 +319,7 @@ export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string):
 }
 
 /**
- * Whether an `apps build` call for `appId` is in flight somewhere in this agent
+ * Whether an `apps publish` call for `appId` is in flight somewhere in this agent
  * tree. Apps have no builder sub-agent, so the in-flight tool call is the only
  * signal; `create` is excluded because the app id does not exist until it returns.
  */
@@ -327,7 +327,7 @@ export function isAgentBuildingApp(node: InstanceAiAgentNode, appId: string): bo
 	for (const tc of node.toolCalls) {
 		if (!tc.isLoading || tc.toolName !== 'apps') continue;
 		const args = tc.args as { action?: string; appId?: string } | undefined;
-		if (args?.action === 'build' && args.appId === appId) return true;
+		if (args?.action === 'publish' && args.appId === appId) return true;
 	}
 	for (const child of node.children) {
 		if (isAgentBuildingApp(child, appId)) return true;
@@ -437,8 +437,8 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the appId and
- * toolCallId from the latest successful `apps create` or `apps build` tool
- * result. A create carries `app.id`; a build carries `appId` + `versionId`.
+ * toolCallId from the latest successful `apps create` or `apps publish` tool
+ * result. A create carries `app.id`; a publish carries `appId` + `versionId`.
  * Failures return `{ error: true }` or `{ denied: true }` and are skipped.
  */
 export function getLatestAppResult(node: InstanceAiAgentNode): AppResult | undefined {
@@ -455,7 +455,7 @@ export function getLatestAppResult(node: InstanceAiAgentNode): AppResult | undef
 				return { appId: tc.result.app.id, toolCallId: tc.toolCallId };
 			}
 		}
-		if (args?.action === 'build') {
+		if (args?.action === 'publish') {
 			if (typeof tc.result.appId === 'string' && typeof tc.result.versionId === 'string') {
 				return { appId: tc.result.appId, toolCallId: tc.toolCallId };
 			}

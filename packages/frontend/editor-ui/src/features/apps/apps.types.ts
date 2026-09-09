@@ -15,11 +15,18 @@ export interface App {
 	namespace: string;
 	theme: AppTheme | null;
 	projectId: string;
-	/** Version served at `/apps/<namespace>/`; null until the first build. */
+	/** Version served at `/apps/<namespace>/`; null until the first publish. */
 	activeVersionId: string | null;
+	/** A source newer than the published version exists (per-turn snapshot, or nothing published yet). */
+	hasUnpublishedChanges: boolean;
 	createdAt: string;
 	updatedAt: string;
 }
+
+/** Answer of `POST /apps/:appId/publish`; a failed build is a 200 with `error`, like the agent's tool result. */
+export type AppPublishResult =
+	| { versionId: string; url: string }
+	| { error: true; stage: string; message: string; log?: string };
 
 /**
  * A page of an App, derived from its source's `src/router.ts` — not a DB

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AppPreviewStatus, InstanceAiAppPreviewDiagnostic } from '@n8n/api-types';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nIconButton,
@@ -50,6 +51,8 @@ const props = withDefaults(
 		artifactVersionId?: string;
 		/** Page to open the preview to while embedded, e.g. when the thread was opened from that page's inspector. */
 		artifactPagePath?: string;
+		/** Thread whose sandbox holds the draft; a publish snapshots its current edits first. */
+		threadId?: string;
 		/** Dev-server URL of the thread's sandbox; shown instead of the build while present. */
 		liveUrl?: string;
 		/** Last answer of the live-preview ensure call; drives the banner and the Live badge. */
@@ -59,6 +62,7 @@ const props = withDefaults(
 		artifactMode: false,
 		artifactVersionId: undefined,
 		artifactPagePath: undefined,
+		threadId: undefined,
 		liveUrl: undefined,
 		liveStatus: undefined,
 	},
@@ -83,6 +87,7 @@ const appsStore = useAppsStore();
 
 const app = ref<App | null>(null);
 const loading = ref(false);
+const publishing = ref(false);
 const mode = ref<BuilderMode>('build');
 const device = ref<PreviewDevice>('desktop');
 const buildTab = ref<BuildTab>('pages');
@@ -105,6 +110,11 @@ const versionId = computed(
 );
 
 const hasPreviewSource = computed(() => Boolean(props.liveUrl ?? versionId.value));
+
+// Nothing to publish once the newest source is the served one.
+const publishUpToDate = computed(
+	() => Boolean(app.value?.activeVersionId) && !app.value?.hasUnpublishedChanges,
+);
 
 // Without a build the preview pane shows the banner alone while n8n restores the
 // app and starts its dev server; only `no-source` (nothing stored for the app at
@@ -267,6 +277,32 @@ const onThemeApplied = (updated: App) => {
 	mode.value = 'preview';
 };
 
+const onPublish = async () => {
+	if (!app.value) return;
+	publishing.value = true;
+	try {
+		const result = await appsStore.publishApp(props.projectId, app.value.id, props.threadId);
+		if ('error' in result) {
+			toast.showMessage({
+				title: i18n.baseText('apps.builder.publish.error'),
+				message: result.log ? `${result.message}\n${result.log.slice(-1024)}` : result.message,
+				type: 'error',
+			});
+			return;
+		}
+		app.value = await appsStore.getApp(props.projectId, app.value.id);
+		toast.showMessage({
+			title: i18n.baseText('apps.builder.publish.success'),
+			message: result.url,
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.builder.publish.error'));
+	} finally {
+		publishing.value = false;
+	}
+};
+
 const onOpenInAssistant = async () => {
 	if (!app.value) return;
 	await openAppArtifactThread(
@@ -312,14 +348,34 @@ watch(showPreviewPane, (next, previous) => {
 				/>
 				<div :class="$style.toolbarEnd">
 					<template v-if="app">
+						<N8nBadge
+							v-if="app.hasUnpublishedChanges"
+							theme="tertiary"
+							data-test-id="app-unpublished-changes"
+						>
+							{{ i18n.baseText('apps.builder.unpublishedChanges') }}
+						</N8nBadge>
+						<N8nTooltip :disabled="!publishUpToDate">
+							<template #content>{{ i18n.baseText('apps.builder.publish.upToDate') }}</template>
+							<N8nButton
+								size="small"
+								icon="upload"
+								:loading="publishing"
+								:disabled="publishUpToDate"
+								data-test-id="app-publish"
+								@click="onPublish"
+							>
+								{{ i18n.baseText('apps.builder.publish') }}
+							</N8nButton>
+						</N8nTooltip>
 						<CopyInput :class="$style.urlCopy" :value="appUrl" collapse data-test-id="app-url" />
 						<N8nButton
+							v-if="app.activeVersionId"
 							:href="appUrl"
 							target="_blank"
 							variant="subtle"
 							size="small"
 							icon="external-link"
-							:disabled="!versionId"
 							data-test-id="app-open"
 						>
 							{{ i18n.baseText('apps.builder.openApp') }}

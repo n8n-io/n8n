@@ -2,7 +2,13 @@ import type { AppPreviewStatus } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import type { App, AppTheme, Page, UpdateAppInput } from '@/features/apps/apps.types';
+import type {
+	App,
+	AppPublishResult,
+	AppTheme,
+	Page,
+	UpdateAppInput,
+} from '@/features/apps/apps.types';
 
 export const fetchAppsApi = async (context: IRestApiContext, projectId: string) => {
 	return await makeRestApiRequest<App[]>(context, 'GET', `/projects/${projectId}/apps`);
@@ -66,6 +72,21 @@ export const ensureAppPreviewApi = async (
 		'POST',
 		`/projects/${projectId}/apps/${appId}/preview`,
 		{ threadId },
+	);
+};
+
+/** Builds the newest source and makes it the served version; with `threadId` the thread's draft is stored first. */
+export const publishAppApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	threadId?: string,
+) => {
+	return await makeRestApiRequest<AppPublishResult>(
+		context,
+		'POST',
+		`/projects/${projectId}/apps/${appId}/publish`,
+		threadId ? { threadId } : {},
 	);
 };
 
