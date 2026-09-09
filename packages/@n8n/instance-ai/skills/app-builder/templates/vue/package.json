@@ -8,9 +8,9 @@
     "typecheck": "vue-tsc -b"
   },
   "dependencies": {
+    "@ark-ui/vue": "^5.39.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "reka-ui": "^2.10.4",
     "tailwind-merge": "^3.6.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"

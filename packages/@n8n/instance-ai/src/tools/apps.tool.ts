@@ -85,7 +85,9 @@ const addComponentSchema = z.object({
 	component: z
 		.string()
 		.regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'lowercase letters, digits and single hyphens only')
-		.describe('shadcn-vue component name, e.g. "accordion" or "alert-dialog"'),
+		.describe(
+			'Component name from this skill\'s catalog (references/design-system.md), e.g. "button" or "dropdown-menu"',
+		),
 });
 
 type CreateInput = z.infer<typeof createSchema>;
@@ -172,8 +174,33 @@ const q = (value: string) => `'${escapeSingleQuotes(value)}'`;
 /** Components the Vue template's own Home.vue demonstrates; added at create time so it never ships broken. */
 const STARTER_COMPONENTS = ['button', 'switch'];
 
-const shadcnAddCommand = (components: string[]) =>
-	`npx --yes shadcn-vue@latest add ${components.map(q).join(' ')} --yes --overwrite`;
+/** Copies the contents of one directory into another; both sides must already exist except `dest`. */
+const copyDirCommand = (source: string, dest: string) =>
+	`cp -r ${q(`${source}/.`)} ${q(`${dest}/`)}`;
+
+/** Where this skill's hand-authored component catalog lives in the materialized skill bundle. */
+const componentRegistryDir = (root: string) =>
+	`${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${APP_BUILDER_SKILL_DIR}/component-registry`;
+
+/**
+ * Copies one or more components from this skill's own component catalog
+ * (`component-registry/<name>/`, hand-authored on `@ark-ui/vue`) into the
+ * app. A plain local file copy, not a network call — there is no CLI or
+ * hosted registry for these components the way shadcn-vue has for reka-ui.
+ */
+function copyComponentsScript(registryDir: string, appDir: string, components: string[]): string {
+	const lines = ['set -e'];
+	for (const component of components) {
+		const source = `${registryDir}/${component}`;
+		const dest = `${appDir}/src/components/ui/${component}`;
+		lines.push(
+			`[ -d ${q(source)} ] || { echo "not in the component catalog: ${component}" >&2; exit 1; }`,
+			`mkdir -p ${q(dest)}`,
+			copyDirCommand(source, dest),
+		);
+	}
+	return lines.join('\n');
+}
 
 /**
  * Post-build check and packaging as one shell script. A failed check prints a
@@ -217,7 +244,7 @@ export function buildScaffoldScript(input: {
 		"fs.writeFileSync(p,JSON.stringify(j,null,2)+'\\n')}";
 	return [
 		'set -e',
-		`cp -r ${q(`${input.templateDir}/.`)} ${q(`${input.appDir}/`)}`,
+		copyDirCommand(input.templateDir, input.appDir),
 		`cd ${q(input.appDir)}`,
 		'if [ -f gitignore ]; then mv gitignore .gitignore; fi',
 		`node -e ${q(patchPackageName)} ${q(input.packageName)}`,
@@ -330,16 +357,15 @@ async function handleCreate(
 			}
 		}
 
-		// The Vue template's own Home.vue demonstrates real shadcn-vue components rather
-		// than hand-rolled markup, so it needs them to exist from the start. shadcn-vue add
-		// bootstraps its own npm install, so this also leaves node_modules ready for the
-		// first build.
+		// The Vue template's own Home.vue demonstrates real catalog components rather
+		// than hand-rolled markup, so it needs them to exist from the start. This is a
+		// local copy, not an install: node_modules is left to the first `build` call,
+		// same as the "none" template.
 		if (template === 'vue') {
-			const addStarters = await run(shadcnAddCommand(STARTER_COMPONENTS), {
-				cwd: appDir,
-				env: { CI: 'true' },
-				timeout: COMMAND_TIMEOUT_MS,
-			});
+			const addStarters = await run(
+				copyComponentsScript(componentRegistryDir(root), appDir, STARTER_COMPONENTS),
+				{ cwd: appDir },
+			);
 			if (addStarters.exitCode !== 0) {
 				throw new Error(`Could not add starter components: ${tailLog(combinedLog(addStarters))}`);
 			}
@@ -514,12 +540,15 @@ export async function handleRestore(
 }
 
 /**
- * Adds a shadcn-vue component to an app via the real CLI (so it never drifts
- * from upstream) rather than shipping every component pre-generated in the
- * template. Runs npm install right away rather than leaving it to the next
- * build: `handleBuild` skips `npm install` whenever `node_modules` already
- * exists, which would otherwise leave a component's own new dependency
- * unresolved.
+ * Copies a component from this skill's own catalog into an app, on demand,
+ * rather than shipping every component pre-generated in the template. No
+ * install step: every catalog component shares the one `@ark-ui/vue` base
+ * dependency already in the template's `package.json` from `create`, so a
+ * copy never changes dependencies. A future component that needs its own
+ * extra dependency must add it to the template's base `package.json` too
+ * (the way `class-variance-authority` already is) — `handleBuild` only
+ * installs when `node_modules` is missing, so it won't pick up a dependency
+ * added after the app's first build.
  */
 async function handleAddComponent(
 	context: AppSandboxContext,
@@ -533,29 +562,15 @@ async function handleAddComponent(
 	const root = await getWorkspaceRoot(workspace);
 	const appDir = `${root}/${APPS_DIR}/${app.namespace}`;
 
-	const add = await run(shadcnAddCommand([input.component]), {
-		cwd: appDir,
-		env: { CI: 'true' },
-		timeout: COMMAND_TIMEOUT_MS,
-	});
+	const add = await run(
+		copyComponentsScript(componentRegistryDir(root), appDir, [input.component]),
+		{ cwd: appDir },
+	);
 	if (add.exitCode !== 0) {
 		return {
 			error: true,
-			message: `Adding the "${input.component}" component failed. It may not exist in the registry, or its name is misspelled.`,
+			message: `"${input.component}" is not in this app-builder skill's component catalog. Check references/design-system.md for the exact name.`,
 			log: tailLog(combinedLog(add)),
-		};
-	}
-
-	const install = await run(`${NO_CORE_DUMPS} npm install ${NPM_INSTALL_FLAGS}`, {
-		cwd: appDir,
-		env: { CI: 'true' },
-		timeout: COMMAND_TIMEOUT_MS,
-	});
-	if (install.exitCode !== 0) {
-		return {
-			error: true,
-			message: 'npm install failed after adding the component.',
-			log: tailLog(combinedLog(install)),
 		};
 	}
 
@@ -599,7 +614,7 @@ export function createAppsTool(context: InstanceAiContext) {
 				'edit the files there, then call `build` to compile them and publish a new version. ' +
 				'`build` returns the live `url` on success, or `{ error, stage, message, log }` to fix and retry. ' +
 				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet. ' +
-				'`add-component` generates a shadcn-vue component into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too.',
+				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too.",
 		)
 		.input(inputSchema)
 		.handler(async (input: AppsInput, ctx) => {

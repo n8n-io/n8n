@@ -23,9 +23,9 @@ You build small static web apps that n8n serves at `/apps/<namespace>/`. The
 source lives in the sandbox workspace under `apps/<namespace>/`; `apps` has
 four actions: `create` registers an app, `build` turns the source into a
 published version, `restore` brings the stored source back into a workspace
-that does not have it, `add-component` generates a shadcn-vue component into
-an app — `create` uses it for the two the starter page needs, and every
-other component goes through it too.
+that does not have it, `add-component` copies a component from this skill's
+own catalog (built on `@ark-ui/vue`) into an app — `create` uses it for the
+two the starter page needs, and every other component goes through it too.
 
 ## The loop
 
@@ -83,8 +83,8 @@ nothing to restore (no version yet) or the directory already has files; read
 - The build runs in 512 MiB of memory. Keep type checking out of the build
   script (`npm run typecheck` is separate; run it before `build` when you
   changed TypeScript).
-- Look: build UI from shadcn-vue components (`Button`, `Input`, `Card`,
-  `Dialog`, `Select`, `Tabs`, `Badge`, `Switch`, `Checkbox`, `Tooltip`,
+- Look: build UI from this skill's own catalog components (`Button`, `Input`,
+  `Card`, `Dialog`, `Select`, `Tabs`, `Badge`, `Switch`, `Checkbox`, `Tooltip`,
   `DropdownMenu` — see `references/design-system.md` for the full catalog and
   import paths) and Tailwind utilities that read the theme's CSS variables
   (`bg-primary`, `text-muted-foreground`, `rounded-lg`). Only `button` and
@@ -92,10 +92,11 @@ nothing to restore (no version yet) or the directory already has files; read
   component: "<name>")` for any other one before importing it, rather than
   hand-writing it.
   No hex colors, no inline styles, no `dark:` variants. Interactive behavior a
-  component doesn't cover comes from `reka-ui` directly, styled with the same
-  utilities. Only build a different look when the user asks for one — and
-  point them at the app's Theme tab for color/font/radius changes instead of
-  hardcoding a look.
+  catalog component doesn't cover comes from `@ark-ui/vue` directly (already a
+  project dependency — see `references/design-system.md` for components
+  outside the curated catalog), styled with the same utilities. Only build a
+  different look when the user asks for one — and point them at the app's
+  Theme tab for color/font/radius changes instead of hardcoding a look.
 - Keep dependencies few. Adding one means a cold `npm install` on the next
   build, and every dependency costs build memory.
 - Never paste file contents into the chat; point at the file path.
@@ -104,32 +105,31 @@ nothing to restore (no version yet) or the directory already has files; read
 
 `apps(action="create")` with the default `template: "vue"` copies
 `${N8N_SKILL_DIR}/templates/vue` into the app directory (Vite + Vue 3 + TS +
-vue-router + Tailwind v4 on shadcn-vue's CSS-variable theming, with reka-ui
-and shadcn-vue's config already in place), then runs `add-component` for
-`button` and `switch` — the two Home.vue's own demo uses — so a fresh app is
-never one hand-edit away from broken imports. Every other component gets
-added the same way, on demand, as you need it (see
-`references/design-system.md`), keeping the committed `package-lock.json`
-closer to what an app actually uses. `template: "none"` gives an empty
-directory for other stacks; write `package.json` yourself.
+vue-router + Tailwind v4 on CSS-variable theming, with `@ark-ui/vue` already a
+dependency), then adds `button` and `switch` from this skill's own component
+catalog — the two Home.vue's own demo uses — so a fresh app is never one
+hand-edit away from broken imports. Every other component gets added the same
+way, on demand, as you need it (see `references/design-system.md`), keeping
+the committed `package-lock.json` closer to what an app actually uses.
+`template: "none"` gives an empty directory for other stacks; write
+`package.json` yourself.
 
 Layout after create:
 
 ```
 apps/<namespace>/
   AI_RULES.md              stack and conventions for this app
-  components.json          shadcn-vue config; add-component reads this
   index.html
   package.json             scripts: build = vite build, typecheck = vue-tsc -b
   vite.config.ts           base: process.env.APP_BASE ?? '/'
   src/main.ts              style.css + theme-overrides.css + theme mode + router
-  src/style.css            Tailwind + the shadcn-vue :root/.dark CSS variables
+  src/style.css            Tailwind + the theme's :root/.dark CSS variables
   src/theme-overrides.css  any CSS variable override; edit freely, see design-system.md
   src/theme-mode.ts        light/dark/system; a Theme-tab save always overwrites this one
   src/router.ts            createWebHistory(import.meta.env.BASE_URL)
   src/App.vue              RouterView shell
   src/pages/Home.vue       one component per route
-  src/components/ui/       shadcn-vue components (button, switch from create; more via add-component)
+  src/components/ui/       catalog components (button, switch from create; more via add-component)
   src/lib/utils.ts         cn() helper every component imports
 ```
 

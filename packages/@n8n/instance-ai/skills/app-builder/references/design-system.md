@@ -1,10 +1,11 @@
-# Styling: shadcn-vue components on CSS-variable theming
+# Styling: catalog components on CSS-variable theming
 
-The template styles everything with shadcn-vue components (built on `reka-ui`)
-and Tailwind v4 utility classes. Every color, radius and font a component uses
-resolves to a CSS variable declared once in `src/style.css`'s `:root`/`.dark`
-blocks — an app's Theme tab overrides these variables and every component
-picks up the change, because none of them hardcode a color.
+The template styles everything with this skill's own component catalog (built
+on `@ark-ui/vue`) and Tailwind v4 utility classes. Every color, radius and
+font a component uses resolves to a CSS variable declared once in
+`src/style.css`'s `:root`/`.dark` blocks — an app's Theme tab overrides these
+variables and every component picks up the change, because none of them
+hardcode a color.
 
 ```css
 @import 'tailwindcss';
@@ -17,15 +18,16 @@ picks up the change, because none of them hardcode a color.
 
 Rules:
 
-- Build UI from shadcn-vue components first (catalog below), not hand-rolled
-  markup. Only `button` and `switch` exist from `create` (Home.vue's own
-  demo) — for any other one, call `apps(action: "add-component", appId,
-  component: "<name>")` before importing it. It runs the real `shadcn-vue`
-  CLI (`components.json` and `src/lib/utils.ts` are already in place) and
-  installs the component's own dependencies; it is safe to call again for a
-  component you already added. Do not hand-write a component shadcn-vue
-  already provides. Reach for a `reka-ui` primitive directly only for
-  behavior no shadcn-vue component covers.
+- Build UI from the catalog components first (below), not hand-rolled markup.
+  Only `button` and `switch` exist from `create` (Home.vue's own demo) — for
+  any other one, call `apps(action: "add-component", appId, component:
+  "<name>")` before importing it. It copies the component's files from this
+  skill's own catalog (`component-registry/<name>/`) into
+  `src/components/ui/<name>/` and installs any dependency it needs; it is
+  safe to call again for a component you already added. Do not hand-write a
+  component the catalog already provides. Reach for `@ark-ui/vue` directly
+  (already a project dependency) only for behavior no catalog component
+  covers.
 - Style with the utility names below — they all resolve to the theme's CSS
   variables (`bg-primary`, `text-muted-foreground`, `rounded-lg`). No hex
   colors, no inline styles, no `dark:` variants: dark mode comes from the
@@ -33,7 +35,7 @@ Rules:
 - You can edit any theme variable directly: write it into `src/theme-overrides.css`'s
   `:root { }` block (create the file's content if it is empty) — a rebuild picks
   it up like any other source change. Do not edit `src/style.css`'s `:root`/`.dark`
-  blocks (the shadcn-vue defaults); put overrides in `theme-overrides.css`
+  blocks (the template defaults); put overrides in `theme-overrides.css`
   instead. A later Theme-tab save merges its own keys (`--primary`,
   `--primary-foreground`, `--ring`, `--secondary`, `--secondary-foreground`,
   `--accent`, `--accent-foreground`, `--radius`, `--font-sans`) onto whatever is
@@ -50,16 +52,20 @@ then import it as `import { X } from '@/components/ui/<name>'`:
 | Component | Import | Notes |
 |---|---|---|
 | Button | `Button` | `variant`: `default`, `secondary`, `outline`, `ghost`, `link`, `destructive`. `size`: `default`, `sm`, `lg`, `icon`. |
-| Input | `Input` | `v-model` a string ref. |
+| Input | `Input` | `v-model` a string or number ref. |
 | Card | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter` | |
-| Dialog | `Dialog`, `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose` | Wrap the trigger element with `as-child` so the Dialog controls it directly. |
-| Select | `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectGroup`, `SelectLabel`, `SelectItem`, `SelectSeparator` | |
-| Tabs | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` | `default-value` on `Tabs`, matching `value` on each trigger/content pair. |
+| Dialog | `Dialog`, `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose` | `v-model:open` on `Dialog` if you need to control it programmatically. Wrap the trigger element with `DialogTrigger`/`DialogClose` — they use `as-child` so the Dialog controls the element you put inside directly. |
+| Select | `Select` | One component: pass `:items="[{ label, value }]"` and `v-model` a single string. No sub-parts — for a custom trigger or grouped items, compose `@ark-ui/vue/select`'s own parts directly instead. |
+| Tabs | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` | `v-model` or `default-value` on `Tabs`, matching `value` on each trigger/content pair. |
 | Badge | `Badge` | `variant`: `default`, `secondary`, `outline`, `destructive`. |
 | Switch | `Switch` | `v-model` a boolean ref. |
 | Checkbox | `Checkbox` | `v-model` a boolean ref. |
-| Tooltip | `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` | Wrap the tree in one `TooltipProvider`. |
-| DropdownMenu | `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuLabel`, `DropdownMenuSeparator`, `DropdownMenuGroup`, `DropdownMenuCheckboxItem`, `DropdownMenuRadioGroup`, `DropdownMenuRadioItem`, `DropdownMenuSub`, `DropdownMenuSubTrigger`, `DropdownMenuSubContent`, `DropdownMenuShortcut` | |
+| Tooltip | `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` | `TooltipProvider` is a plain passthrough (Ark UI needs no shared context) — wrap the tree in one only to match other libraries' convention if you want to. |
+| DropdownMenu | `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuLabel`, `DropdownMenuSeparator`, `DropdownMenuGroup`, `DropdownMenuCheckboxItem`, `DropdownMenuRadioGroup`, `DropdownMenuRadioItem`, `DropdownMenuSub`, `DropdownMenuSubTrigger` | For a submenu, nest a `DropdownMenuSub` inside the parent's `DropdownMenuContent`, with a `DropdownMenuSubTrigger` and its own `DropdownMenuContent` inside it. |
+
+Every `Item`/`Trigger`/`CheckboxItem`/`RadioItem` that identifies one entry in
+a list (`DropdownMenuItem`, `DropdownMenuRadioItem`, `TabsTrigger`,
+`TabsContent`) takes a `value` prop — pick a stable string per entry.
 
 ## Recipe (from the template's own `Home.vue`)
 
@@ -87,8 +93,11 @@ import { Switch } from '@/components/ui/switch';
 
 Everything else — `add-component` for `card`, `dialog`, whatever the app
 needs — follows the same shape: import from `@/components/ui/<name>` after
-adding it. Fall back to a `reka-ui` primitive directly, styled with the
-utilities above, only for behavior no shadcn-vue component covers.
+adding it. Reach for `@ark-ui/vue` directly, styled with the utilities above,
+only for behavior no catalog component covers (e.g. `Combobox`, `Popover`,
+`Accordion`, `RadioGroup` — part of Ark UI's own broader catalog, not
+pre-generated here). Compose its parts the same way the catalog components
+do, following https://ark-ui.com/vue/docs/components/<name>.
 
 ## CSS-variable → utility reference
 
@@ -116,12 +125,14 @@ picker); `rounded`, `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-xl`
 read `--radius` (the Theme tab's corner-radius slider) via the `@theme
 inline` mapping's `calc()` offsets.
 
-## Headless primitives: reka-ui
+## Headless primitives: @ark-ui/vue
 
-`reka-ui` is in the template for behavior no shadcn-vue component covers:
-focus management, keyboard navigation, ARIA state. It ships no styles; style
-every part with the utilities above. State comes as `data-state` attributes,
-so use `data-[state=checked]:bg-primary`, `data-[state=open]:…`,
-`data-[disabled]:opacity-50`.
+`@ark-ui/vue` is in the template for every catalog component and for behavior
+no catalog component covers: focus management, keyboard navigation, ARIA
+state. It ships no styles; style every part with the utilities above. State
+comes as `data-state`/`data-part`/`data-highlighted`/`data-disabled`
+attributes, so use `data-[state=checked]:bg-primary`, `data-[state=open]:…`,
+`data-[highlighted]:bg-accent`, `data-[disabled]:opacity-50`.
 
-Docs: https://reka-ui.com/docs/components/<name> (kebab-case).
+Docs: https://ark-ui.com/vue/docs/components/<name> (kebab-case), styling
+guide at https://ark-ui.com/docs/guides/styling.

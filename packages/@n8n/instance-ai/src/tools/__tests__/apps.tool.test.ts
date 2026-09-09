@@ -172,8 +172,14 @@ describe('apps tool', () => {
 			);
 			expect(commands[1]).toContain('mv gitignore .gitignore');
 			expect(commands[1]).toContain("'greeter'");
-			expect(commands[2]).toBe(
-				"npx --yes shadcn-vue@latest add 'button' 'switch' --yes --overwrite",
+			expect(commands[2]).toContain(
+				"[ -d '/home/daytona/workspace/skills/app-builder/component-registry/button' ]",
+			);
+			expect(commands[2]).toContain(
+				"cp -r '/home/daytona/workspace/skills/app-builder/component-registry/button/.' '/home/daytona/workspace/apps/greeter/src/components/ui/button/'",
+			);
+			expect(commands[2]).toContain(
+				"cp -r '/home/daytona/workspace/skills/app-builder/component-registry/switch/.' '/home/daytona/workspace/apps/greeter/src/components/ui/switch/'",
 			);
 			expect(commands[3]).toContain(
 				"[ -f .gitignore ] || printf 'node_modules\\ndist\\n' > .gitignore",
@@ -631,45 +637,36 @@ describe('apps tool', () => {
 			expect(parsed.success).toBe(false);
 		});
 
-		it('runs the shadcn-vue CLI then npm install, in that order', async () => {
+		it('copies the component from the local catalog, no install step needed', async () => {
 			const context = createMockContext();
 
 			const result = await runAddComponent(context, 'alert-dialog');
 
 			const commands = commandsRun(context);
-			expect(commands[0]).toBe("npx --yes shadcn-vue@latest add 'alert-dialog' --yes --overwrite");
-			expect(commands[1]).toContain('npm install');
+			expect(commands[0]).toContain(
+				"[ -d '/home/daytona/workspace/skills/app-builder/component-registry/alert-dialog' ]",
+			);
+			expect(commands[0]).toContain(
+				"cp -r '/home/daytona/workspace/skills/app-builder/component-registry/alert-dialog/.' '/home/daytona/workspace/apps/greeter/src/components/ui/alert-dialog/'",
+			);
+			expect(commands).toHaveLength(1);
 			expect(result).toEqual({ appId: 'app-1', component: 'alert-dialog' });
 		});
 
-		it('reports a failure without running npm install when the CLI fails', async () => {
+		it('reports a failure when the component is not in the catalog', async () => {
 			const context = createMockContext();
-			executeCommandMock(context).mockResolvedValue(fail('not found in registry'));
-
-			const result = await runAddComponent(context);
-
-			expect(result).toEqual({
-				error: true,
-				message: expect.stringContaining('accordion'),
-				log: expect.stringContaining('not found in registry'),
-			});
-			expect(commandsRun(context)).toHaveLength(1);
-		});
-
-		it('reports a failure when npm install fails after the CLI succeeds', async () => {
-			const context = createMockContext();
-			executeCommandMock(context).mockImplementation(
-				async (command: string) =>
-					await Promise.resolve(command.includes('npm install') ? fail('ERESOLVE') : ok()),
+			executeCommandMock(context).mockResolvedValue(
+				fail('not in the component catalog: accordion'),
 			);
 
 			const result = await runAddComponent(context);
 
 			expect(result).toEqual({
 				error: true,
-				message: 'npm install failed after adding the component.',
-				log: expect.stringContaining('ERESOLVE'),
+				message: expect.stringContaining("not in this app-builder skill's component catalog"),
+				log: expect.stringContaining('not in the component catalog: accordion'),
 			});
+			expect(commandsRun(context)).toHaveLength(1);
 		});
 	});
 
