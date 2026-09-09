@@ -126,8 +126,11 @@ export class OtelLifecycleHandler {
 				return undefined;
 			});
 
-		this.tracer.startWorkflow({
+		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
+			// Parent keeps the execution in one trace; the link is kept for consumers of
+			// `n8n.continuation.reason`.
+			tracingContext: previousWorkflowExecution,
 			linkTo: previousWorkflowExecution,
 			project: project
 				? {
@@ -143,6 +146,9 @@ export class OtelLifecycleHandler {
 				customAttributes: this.buildWorkflowCustomAttributes(ctx),
 			},
 		});
+
+		// A second wait must parent on this segment, not on the origin.
+		await this.traceContextService.persist(ctx.executionId, spanContext);
 	}
 
 	@OnLifecycleEvent('workflowExecuteAfter')

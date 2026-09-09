@@ -95,9 +95,12 @@ post:
                 - fail
                 - skip
               description: >
-                `new-version` updates matching workflows and creates a new version,
-                `fail` rejects the import when any matching workflow exists, and
-                `skip` leaves matching workflows unchanged.
+                `new-version` updates matching workflows and creates a new version;
+                the archived state follows the package, so a matching workflow is
+                archived or unarchived to match it. `fail` rejects the import when any
+                matching workflow exists, and `skip` leaves matching workflows unchanged.
+                Archived workflows in the target project match like any other. An archive
+                state change also needs the `workflow:delete` scope.
             workflowIdPolicy:
               type: string
               enum:
@@ -140,8 +143,11 @@ post:
                 Controls whether imported workflows are published after content is
                 written. `preserve-published-state` keeps new workflows inactive and
                 republishes an updated workflow only when it was already published and
-                the package workflow is published too, so drafts are never published.
-                `match-source` follows the package workflow's published flag.
+                the package carries the version the source publishes, so drafts are
+                never published. `match-source` publishes the version the package
+                carries when the source publishes it, and unpublishes when the source
+                publishes nothing; when the source publishes a version the package does
+                not carry, the target keeps its published version.
                 `publish-all` publishes every imported workflow.
                 `unpublish-all` leaves new workflows inactive and unpublishes
                 updated workflows that were published.
@@ -405,6 +411,7 @@ post:
                     - projectId
                     - parentFolderId
                     - activeVersionId
+                    - isArchived
                     - publishing
                     - status
                   properties:
@@ -431,6 +438,12 @@ post:
                       description: >
                         Published version on the target instance, if any. `null` when the
                         workflow is not published after import.
+                    isArchived:
+                      type: boolean
+                      description: >
+                        Whether the workflow is archived on the target after import. Under
+                        `new-version` this follows the package's `isArchived` flag. A skipped
+                        workflow keeps its own state.
                     publishing:
                       type: object
                       required:

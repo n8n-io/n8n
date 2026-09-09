@@ -5,6 +5,7 @@ import {
 	rejectIfUnsupportedNativeWebSearch,
 	type AgentConfigValidationMessages,
 } from '@n8n/ai-utilities/agent-config';
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import {
 	AGENT_MODEL_PROVIDERS,
 	AgentJsonConfigBaseSchema,
@@ -12,6 +13,7 @@ import {
 	isDraftAgentConfig,
 	AgentTelegramSettingsSchema,
 	McpAuthenticationSchemaTypes,
+	McpOAuth2CredentialTypeSchema,
 	agentSkillSchema,
 	agentTaskSchema,
 	sanitizeAgentJsonConfig,
@@ -24,7 +26,6 @@ import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -131,7 +132,7 @@ function integrationsChanged(current: AgentJsonConfig, next: unknown): boolean {
 	);
 }
 
-const TELEGRAM_SETTINGS_JSON_SCHEMA = zodToJsonSchema(AgentTelegramSettingsSchema);
+const TELEGRAM_SETTINGS_JSON_SCHEMA = zodSchemaToJsonSchema(AgentTelegramSettingsSchema);
 
 const httpUrlSchema = z
 	.string()
@@ -314,7 +315,7 @@ const verifyMcpServerInput = {
 	),
 	transport: z.enum(['sse', 'streamableHttp']).optional().default('streamableHttp'),
 	authentication: z
-		.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+		.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
 		.optional()
 		.default('none')
 		.describe('Authentication method; every value other than none requires credential'),
@@ -1165,7 +1166,7 @@ export class McpAgentToolsService {
 		abortSignal?: AbortSignal,
 	): Promise<Record<string, unknown>> {
 		const { id: agentId, projectId } = agent;
-		const previewUrl = `${this.getAgentUrl(projectId, agentId)}/preview`;
+		const previewUrl = `${this.getAgentUrl(projectId, agentId)}?openPreview=true`;
 
 		try {
 			let result: AgentTestRunResult;
@@ -1549,7 +1550,15 @@ export class McpAgentToolsService {
 			),
 		]);
 		const errors = schema.valid ? [] : [schema.error];
-		const missing = [...new Set(configuration.issues.map((issue) => issue.path))];
+		const missing = [
+			...new Set(
+				configuration.issues.map((issue) =>
+					issue.reason === 'not_published'
+						? `${issue.path} (workflow "${issue.capability.id}" is not published; publish it first with publish_workflow)`
+						: issue.path,
+				),
+			),
+		];
 		return {
 			valid: errors.length === 0 && missing.length === 0,
 			errors,

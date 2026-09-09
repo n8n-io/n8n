@@ -1,4 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { FolderResolutionError } from '../../../errors/folder-resolution.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
@@ -251,6 +252,112 @@ describe('createBuildWorkflowTool', () => {
 			'Workspace-relative path to the TypeScript SDK workflow source file',
 		);
 		expect(buildWorkflowInputSchema.shape.filePath.description).not.toContain('WorkflowJSON');
+	});
+
+	describe('folder placement', () => {
+		type SafeParseResult = { success: true; data: unknown } | { success: false; error: unknown };
+		const getInputSchema = (tool: unknown) =>
+			(tool as { inputSchema: { safeParse: (input: unknown) => SafeParseResult } }).inputSchema;
+
+		it('does not advertise folderPath while folder exploration is off', () => {
+			const { context, filePath } = makeContext({});
+			const schema = getInputSchema(createBuildWorkflowTool(context));
+
+			const parsed = schema.safeParse({ filePath, folderPath: 'Clients/Acme' });
+
+			// Either rejected or stripped — with the flag off the agent must not be able to pass it.
+			expect(parsed.success && 'folderPath' in (parsed.data as object)).toBe(false);
+		});
+
+		it('advertises the folder output only while folder exploration is on', () => {
+			const outputShape = (tool: unknown) =>
+				(tool as { outputSchema: { shape: Record<string, unknown> } }).outputSchema.shape;
+
+			expect(outputShape(createBuildWorkflowTool(makeContext({}).context))).not.toHaveProperty(
+				'folder',
+			);
+			expect(
+				outputShape(
+					createBuildWorkflowTool(
+						makeContext({ overrides: { folderExplorationEnabled: true } }).context,
+					),
+				),
+			).toHaveProperty('folder');
+		});
+
+		it('advertises folderPath while folder exploration is on', () => {
+			const { context, filePath } = makeContext({
+				overrides: { folderExplorationEnabled: true },
+			});
+			const schema = getInputSchema(createBuildWorkflowTool(context));
+
+			const parsed = schema.safeParse({ filePath, folderPath: 'Clients/Acme' });
+
+			expect(parsed.success).toBe(true);
+			expect(parsed.success && (parsed.data as { folderPath?: string }).folderPath).toBe(
+				'Clients/Acme',
+			);
+		});
+
+		it('creates a new workflow inside the named folder and reports where it landed', async () => {
+			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
+			const folder = { id: 'acme', name: 'Acme', path: 'Clients/Acme' };
+			vi.mocked(context.workflowService.createFromWorkflowJSON).mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'v-1',
+				checksum: 'checksum-create',
+				folder,
+			} as never);
+
+			const result = await executeTool<BuildToolOutput & { folder?: unknown }>(
+				createBuildWorkflowTool(context),
+				{ filePath, name: 'Placed workflow', folderPath: 'Clients/Acme' },
+			);
+
+			expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Placed workflow' }),
+				{ markAsAiTemporary: true, folderPath: 'Clients/Acme' },
+			);
+			expect(result).toMatchObject({ success: true, workflowId: 'wf-1', folder });
+		});
+
+		it('fails the build before saving when the folder does not resolve', async () => {
+			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
+			vi.mocked(context.workflowService.createFromWorkflowJSON).mockRejectedValue(
+				new FolderResolutionError({
+					requested: 'Globex',
+					reason: 'not-found',
+					candidates: ['Clients', 'Clients/Acme'],
+				}),
+			);
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Placed workflow',
+				folderPath: 'Globex',
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.workflowId).toBeUndefined();
+			const errors = result.errors?.join(' ') ?? '';
+			expect(errors).toContain('Globex');
+			expect(errors).toContain('Clients/Acme');
+			expect(errors).toMatch(/not (been )?(created|saved)/i);
+		});
+
+		it('rejects folderPath when updating an existing workflow', async () => {
+			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-existing',
+				folderPath: 'Clients/Acme',
+			});
+
+			expect(result.success).toBe(false);
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(result.errors?.join(' ')).toContain('move-workflow-to-folder');
+		});
 	});
 
 	it('builds a new workflow from a workspace source file', async () => {
@@ -660,6 +767,160 @@ describe('createBuildWorkflowTool', () => {
 				status: 'required',
 				reason: 'workflow-needs-setup',
 			},
+		});
+	});
+
+	describe('setup panel announcements', () => {
+		const openSlackRequest = {
+			node: {
+				id: 'slack-1',
+				name: 'Post alert',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2.3,
+				parameters: {},
+				position: [0, 0],
+			},
+			credentialType: 'slackApi',
+			isTrigger: false,
+			needsAction: true,
+			credentialNeedsAction: true,
+		} as SetupRequest;
+		const boundGmailRequest = {
+			node: {
+				id: 'gmail-1',
+				name: 'Send digest',
+				type: 'n8n-nodes-base.gmail',
+				typeVersion: 2.1,
+				parameters: {},
+				position: [0, 0],
+				credentials: { gmailOAuth2: { id: 'cred-1', name: 'Work Gmail' } },
+			},
+			credentialType: 'gmailOAuth2',
+			isTrigger: false,
+			needsAction: false,
+			credentialNeedsAction: false,
+		} as SetupRequest;
+
+		it('announces the checklist on save, including bound slots, while routing only on open ones', async () => {
+			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest, boundGmailRequest]);
+			const emitter = {
+				emit: vi.fn(() => true),
+				announce: vi.fn().mockResolvedValue(undefined),
+				merge: vi.fn(() => true),
+				lastWorkflowId: vi.fn(),
+				workflowIds: vi.fn(() => []),
+			};
+			const { context, filePath } = makeContext({
+				source: 'workflow source from workspace',
+				overrides: { setupItemsEmitter: emitter },
+			});
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Daily Weather to Slack',
+			});
+
+			expect(vi.mocked(analyzeWorkflow)).toHaveBeenCalledWith(
+				context,
+				'wf-1',
+				undefined,
+				expect.objectContaining({ includeSettled: true }),
+			);
+			expect(emitter.emit).toHaveBeenCalledWith('wf-1', [
+				{
+					id: 'wf-1:credential:slackApi',
+					kind: 'credential',
+					credentialType: 'slackApi',
+					nodeBindings: [{ nodeName: 'Post alert' }],
+				},
+				{
+					id: 'wf-1:credential:gmailOAuth2',
+					kind: 'credential',
+					credentialType: 'gmailOAuth2',
+					nodeBindings: [{ nodeName: 'Send digest' }],
+				},
+			]);
+			expect(result).toMatchObject({
+				success: true,
+				setupRequirement: { status: 'required', reason: 'workflow-needs-setup' },
+			});
+		});
+
+		it('reports no setup requirement from a snapshot made only of bound slots', async () => {
+			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([boundGmailRequest]);
+			const emitter = {
+				emit: vi.fn(() => true),
+				announce: vi.fn().mockResolvedValue(undefined),
+				merge: vi.fn(() => true),
+				lastWorkflowId: vi.fn(),
+				workflowIds: vi.fn(() => []),
+			};
+			const { context, filePath } = makeContext({
+				source: 'workflow source from workspace',
+				overrides: { setupItemsEmitter: emitter },
+			});
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Daily Weather to Slack',
+			});
+
+			expect(emitter.emit).toHaveBeenCalledWith('wf-1', [
+				expect.objectContaining({ id: 'wf-1:credential:gmailOAuth2' }),
+			]);
+			expect(result).toMatchObject({
+				success: true,
+				setupRequirement: { status: 'not_required' },
+			});
+		});
+
+		it('neither requests settled slots nor emits when the setup panel is off', async () => {
+			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest]);
+			const { context, filePath } = makeContext({ source: 'workflow source from workspace' });
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Daily Weather to Slack',
+			});
+
+			expect(vi.mocked(analyzeWorkflow)).toHaveBeenCalledWith(
+				context,
+				'wf-1',
+				undefined,
+				expect.not.objectContaining({ includeSettled: true }),
+			);
+			expect(result).toMatchObject({
+				success: true,
+				setupRequirement: { status: 'required' },
+			});
+		});
+
+		it('keeps the build successful when the announcement throws', async () => {
+			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest]);
+			const emitter = {
+				emit: vi.fn(() => {
+					throw new Error('bus down');
+				}),
+				announce: vi.fn().mockResolvedValue(undefined),
+				merge: vi.fn(() => true),
+				lastWorkflowId: vi.fn(),
+				workflowIds: vi.fn(() => []),
+			};
+			const { context, filePath } = makeContext({
+				source: 'workflow source from workspace',
+				overrides: { setupItemsEmitter: emitter },
+			});
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Daily Weather to Slack',
+			});
+
+			expect(result.success).toBe(true);
+			expect(context.logger.warn).toHaveBeenCalledWith(
+				'Failed to emit setup-items snapshot for built workflow',
+				expect.objectContaining({ workflowId: 'wf-1', error: 'bus down' }),
+			);
 		});
 	});
 

@@ -1,4 +1,4 @@
-import { zodToJsonSchema } from '@n8n/agents';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
@@ -980,6 +980,29 @@ describe('McpAgentToolsService', () => {
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
 
+		it('names unpublished workflow tools in the validation error', async () => {
+			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+				status: 'invalid',
+				issues: [
+					{
+						code: 'incompatible_reference',
+						reason: 'not_published',
+						path: 'tools.0.workflowId',
+						capability: { kind: 'tool', toolType: 'workflow', id: 'Lookup', index: 0 },
+					},
+				],
+			} as never);
+
+			const result = await callTool('publish_agent', { agentId: 'agent-1' });
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error:
+					'Agent is not runnable: tools.0.workflowId (workflow "Lookup" is not published; publish it first with publish_workflow)',
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
 		it('publishes a valid agent', async () => {
 			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 				status: 'valid',
@@ -1340,7 +1363,7 @@ describe('McpAgentToolsService', () => {
 						{ runId: 'run-1', toolCallId: 'tool-call-1', toolName: 'delete_record' },
 						{ runId: 'run-2', toolCallId: 'tool-call-2', toolName: 'choose_date' },
 					],
-					previewUrl: 'https://n8n.test/projects/project-1/agents/agent-1/preview',
+					previewUrl: 'https://n8n.test/projects/project-1/agents/agent-1?openPreview=true',
 					...(canOpenPreview ? {} : { previewAccessNote: expect.any(String) }),
 				});
 			},
@@ -1375,7 +1398,7 @@ describe('McpAgentToolsService', () => {
 				ok: false,
 				code: 'cancellation_failed',
 				sessionId: 'session-1',
-				previewUrl: 'https://n8n.test/projects/project-1/agents/agent-1/preview',
+				previewUrl: 'https://n8n.test/projects/project-1/agents/agent-1?openPreview=true',
 				previewAccessNote: expect.any(String),
 			});
 		});

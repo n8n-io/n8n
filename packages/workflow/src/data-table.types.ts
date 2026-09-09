@@ -58,7 +58,17 @@ export type DataTableFilter = {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
+		condition:
+			| 'eq'
+			| 'neq'
+			| 'like'
+			| 'ilike'
+			| 'gt'
+			| 'gte'
+			| 'lt'
+			| 'lte'
+			| 'isEmpty'
+			| 'isNotEmpty';
 		value: DataTableColumnJsType;
 	}>;
 };
