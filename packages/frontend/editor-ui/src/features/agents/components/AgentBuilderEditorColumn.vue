@@ -52,6 +52,7 @@ const props = defineProps<{
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	preventScroll?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
@@ -99,7 +100,7 @@ const i18n = useI18n();
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
-		<div :class="$style.panelArea">
+		<div :class="[$style.panelArea, { [$style.preventScroll]: props.preventScroll }]">
 			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
 				<AgentIdentityHeader
 					:config="localConfig"
@@ -388,6 +389,10 @@ const i18n = useI18n();
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
 	scrollbar-gutter: stable;
+}
+
+.preventScroll {
+	overflow: hidden;
 }
 
 .panelAreaContainer {
