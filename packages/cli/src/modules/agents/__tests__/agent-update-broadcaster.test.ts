@@ -37,55 +37,31 @@ describe('AgentUpdateBroadcaster', () => {
 		);
 	});
 
-	it('sends updates to enabled users with global agent read access', async () => {
+	it('sends updates to every agent reader except the writer and relays across mains', async () => {
 		roleService.rolesWithScope.mockImplementation(async (namespace, scopes) =>
-			namespace === 'global' && scopes.includes('agent:read') ? ['global:admin'] : [],
+			scopes.includes('agent:read')
+				? [namespace === 'global' ? 'global:admin' : 'project:editor']
+				: [],
 		);
-		userRepository.findIdsWithGlobalOrProjectRoles.mockResolvedValue(['global-reader']);
-
-		broadcaster.notify(update);
-
-		await vi.waitFor(() =>
-			expect(push.sendToUsers).toHaveBeenCalledWith(
-				{ type: 'agentUpdated', data: update },
-				['global-reader'],
-				{ excludePushRef: undefined },
-			),
-		);
-		expect(userRepository.findIdsWithGlobalOrProjectRoles).toHaveBeenCalledWith({
-			projectIds: ['project-1'],
-			projectRoleSlugs: [],
-			globalRoleSlugs: ['global:admin'],
-		});
-	});
-
-	it('sends updates to project members with agent read access and relays across mains', async () => {
-		roleService.rolesWithScope.mockImplementation(async (namespace, scopes) =>
-			namespace === 'project' && scopes.includes('agent:read') ? ['project:editor'] : [],
-		);
-		userRepository.findIdsWithGlobalOrProjectRoles.mockResolvedValue(['project-reader']);
+		userRepository.findIdsWithGlobalOrProjectRoles.mockResolvedValue(['reader-1']);
 
 		broadcaster.notify(update, 'writer-push-ref');
 
 		await vi.waitFor(() =>
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'relay-agent-update',
-				payload: {
-					data: update,
-					userIds: ['project-reader'],
-					excludePushRef: 'writer-push-ref',
-				},
+				payload: { data: update, userIds: ['reader-1'], excludePushRef: 'writer-push-ref' },
 			}),
 		);
 		expect(push.sendToUsers).toHaveBeenCalledWith(
 			{ type: 'agentUpdated', data: update },
-			['project-reader'],
+			['reader-1'],
 			{ excludePushRef: 'writer-push-ref' },
 		);
 		expect(userRepository.findIdsWithGlobalOrProjectRoles).toHaveBeenCalledWith({
 			projectIds: ['project-1'],
 			projectRoleSlugs: ['project:editor'],
-			globalRoleSlugs: [],
+			globalRoleSlugs: ['global:admin'],
 		});
 	});
 

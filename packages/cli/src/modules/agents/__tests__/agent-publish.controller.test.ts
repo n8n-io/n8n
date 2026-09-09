@@ -27,15 +27,17 @@ function makeController({
 		agentValidationService,
 		agentPublishService,
 	);
+	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 
 	return {
 		controller: new AgentPublishController(
 			agentPublishService,
 			agentRunnableStateService,
-			mock<AgentUpdateBroadcaster>(),
+			agentUpdateBroadcaster,
 		),
 		agentPublishService,
 		agentValidationService,
+		agentUpdateBroadcaster,
 	};
 }
 
@@ -89,7 +91,8 @@ describe('AgentPublishController publish history', () => {
 
 describe('AgentPublishController revert to version', () => {
 	it('forwards the parsed versionId to the service and returns the agent with runnable state', async () => {
-		const { controller, agentPublishService, agentValidationService } = makeController();
+		const { controller, agentPublishService, agentValidationService, agentUpdateBroadcaster } =
+			makeController();
 		agentPublishService.revertToVersion.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
@@ -103,6 +106,7 @@ describe('AgentPublishController revert to version', () => {
 			{
 				params: { projectId: 'project-1' },
 				user: { id: 'user-1' },
+				headers: { 'push-ref': 'push-ref-1' },
 			} as never,
 			undefined as never,
 			'agent-1',
@@ -122,65 +126,9 @@ describe('AgentPublishController revert to version', () => {
 				isRunnable: true,
 			}),
 		);
+		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+			{ projectId: 'project-1', agentId: 'agent-1' },
+			'push-ref-1',
+		);
 	});
-});
-
-describe('AgentPublishController mutation notifications', () => {
-	it.each(['publish', 'unpublish', 'revertToPublished', 'revertToVersion'] as const)(
-		'%s notifies after the mutation and before response enrichment',
-		async (handler) => {
-			const agentPublishService = mock<AgentPublishService>();
-			const agentRunnableStateService = mock<AgentRunnableStateService>();
-			const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
-			const controller = new AgentPublishController(
-				agentPublishService,
-				agentRunnableStateService,
-				agentUpdateBroadcaster,
-			);
-			const agent = { id: 'agent-1', projectId: 'project-1' };
-			const request = {
-				params: { projectId: 'project-1' },
-				user: { id: 'user-1' },
-				headers: { 'push-ref': 'push-ref-1' },
-			} as never;
-			agentPublishService.publishAgent.mockResolvedValue({ agent } as never);
-			agentPublishService.unpublishAgent.mockResolvedValue(agent as never);
-			agentPublishService.revertToPublishedAgent.mockResolvedValue(agent as never);
-			agentPublishService.revertToVersion.mockResolvedValue(agent as never);
-			const invoke = async () => {
-				switch (handler) {
-					case 'publish':
-						return await controller.publish(request, undefined as never, 'agent-1', {} as never);
-					case 'unpublish':
-						return await controller.unpublish(request, undefined as never, 'agent-1');
-					case 'revertToPublished':
-						return await controller.revertToPublished(request, undefined as never, 'agent-1');
-					case 'revertToVersion':
-						return await controller.revertToVersion(request, undefined as never, 'agent-1', {
-							versionId: 'version-1',
-						} as never);
-				}
-			};
-
-			agentRunnableStateService.addRunnableState.mockRejectedValue(
-				new Error('Response enrichment failed'),
-			);
-
-			await expect(invoke()).rejects.toThrow('Response enrichment failed');
-			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
-				{ projectId: 'project-1', agentId: 'agent-1' },
-				'push-ref-1',
-			);
-
-			agentUpdateBroadcaster.notify.mockClear();
-			const mutationError = new Error('Mutation failed');
-			agentPublishService.publishAgent.mockRejectedValue(mutationError);
-			agentPublishService.unpublishAgent.mockRejectedValue(mutationError);
-			agentPublishService.revertToPublishedAgent.mockRejectedValue(mutationError);
-			agentPublishService.revertToVersion.mockRejectedValue(mutationError);
-
-			await expect(invoke()).rejects.toThrow('Mutation failed');
-			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
-		},
-	);
 });

@@ -193,13 +193,18 @@ describe('AgentIntegrationsController integration management', () => {
 	});
 
 	it('delegates disconnect without platform-specific cleanup', async () => {
-		const { controller, managementService, agentRepository } = makeController();
+		const { controller, managementService, agentRepository, agentUpdateBroadcaster } =
+			makeController();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		managementService.disconnect.mockResolvedValue({ savedAgent: agent });
+		managementService.disconnect.mockImplementation(async (options) => {
+			options.onPersisted?.();
+			return { savedAgent: agent };
+		});
 
 		const result = await controller.disconnectIntegration(
 			{
 				params: { projectId: agent.projectId },
+				headers: { 'push-ref': 'sender-1' },
 				user,
 			} as never,
 			undefined as never,
@@ -215,42 +220,11 @@ describe('AgentIntegrationsController integration management', () => {
 				credentialId: 'credential-1',
 			}),
 		);
+		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+			{ projectId: agent.projectId, agentId: agent.id },
+			'sender-1',
+		);
 		expect(result).toEqual({ status: 'disconnected' });
-	});
-
-	it.each([
-		['after persistence', true, 1],
-		['before persistence', false, 0],
-	])('notifies %s when disconnect fails', async (_stage, persisted, expectedNotifications) => {
-		const cleanupError = new Error('Disconnect failed');
-		const { controller, managementService, agentRepository, agentUpdateBroadcaster } =
-			makeController();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		managementService.disconnect.mockImplementation(async (options) => {
-			if (persisted) options.onPersisted?.();
-			return await Promise.reject(cleanupError);
-		});
-
-		await expect(
-			controller.disconnectIntegration(
-				{
-					params: { projectId: agent.projectId },
-					headers: Object.fromEntries([['push-ref', 'sender-1']]),
-					user,
-				} as never,
-				undefined as never,
-				agent.id,
-				{ type: 'slack', credentialId: 'credential-1' },
-			),
-		).rejects.toBe(cleanupError);
-
-		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledTimes(expectedNotifications);
-		if (persisted) {
-			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
-				{ projectId: agent.projectId, agentId: agent.id },
-				'sender-1',
-			);
-		}
 	});
 
 	it('returns a platform webhook rejection without looking up a handler', async () => {

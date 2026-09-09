@@ -247,23 +247,8 @@ describe('AgentConfigService', () => {
 			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 
-		it('notifies other agent readers of a persisted write, excluding the writing tab', async () => {
+		it('accepts the current config hash, returns the new hash and notifies other readers', async () => {
 			const { service, agentRepository, agentUpdateBroadcaster } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-
-			await service.updateConfig(agentId, projectId, baseConfig, user, {
-				...byUser,
-				pushRef: 'writer-push-ref',
-			});
-
-			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
-				{ projectId, agentId },
-				'writer-push-ref',
-			);
-		});
-
-		it('accepts the current config hash and returns the hash of the saved config', async () => {
-			const { service, agentRepository } = makeService();
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			const currentConfig = composeJsonConfig(agent);
@@ -275,12 +260,16 @@ describe('AgentConfigService', () => {
 				projectId,
 				{ ...baseConfig, instructions: 'Keep the latest work' },
 				user,
-				{ ...byUser, baseConfigHash },
+				{ ...byUser, baseConfigHash, pushRef: 'writer-push-ref' },
 			);
 
 			expect(result.config.instructions).toBe('Keep the latest work');
 			expect(result.configHash).toMatch(/^[a-f0-9]{64}$/);
 			expect(result.configHash).not.toBe(baseConfigHash);
+			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+				{ projectId, agentId },
+				'writer-push-ref',
+			);
 		});
 
 		it('rejects saving an HTTP Request URL controlled by $fromAI', async () => {
