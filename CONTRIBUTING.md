@@ -14,7 +14,6 @@ Great that you are here and you want to contribute to n8n
 			- [Node.js](#nodejs)
 			- [pnpm](#pnpm)
 				- [pnpm workspaces](#pnpm-workspaces)
-			- [corepack](#corepack)
 			- [Build tools](#build-tools)
 		- [Actual n8n setup](#actual-n8n-setup)
 		- [Start](#start)
@@ -82,26 +81,21 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 12.3.4 or newer is required for development. We recommend that you install it with [Corepack](#corepack).
+[pnpm](https://pnpm.io/) is required for development. Install it globally with npm:
+
+```bash
+npm i -g pnpm@12.3.4
+```
+
+The root [package.json](package.json) pins the exact version in its `packageManager` field. Always install that version, and update your global install when the pin changes.
+
+If `npm` is not available on your machine, use one of the other methods in the [pnpm installation guide](https://pnpm.io/installation).
 
 ##### pnpm workspaces
 
 n8n is split up into different modules which are all in a single mono repository.
 To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
 This automatically sets up file-links between modules which depend on each other.
-
-#### corepack
-
-We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html)  and pnpm with:
-
-```bash
-corepack enable
-corepack prepare pnpm@12.3.4 --activate
-```
-
-**IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
-
-**IMPORTANT**: If you are on windows, you'd need to run `corepack enable` and `corepack prepare --activate` in a terminal as an administrator.
 
 #### Build tools
 
