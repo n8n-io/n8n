@@ -12,17 +12,15 @@ function registrationEqual(base: INode | undefined, target: INode | undefined): 
 	return isEqual(pick(base, registrationProps), pick(target, registrationProps));
 }
 
-// Before the workflow publication service, we re-registered every trigger on
-// publication. With the new flow, we only re-register triggers that have been
-// modified. However, some triggers relied on the old behaviour, so we force it
-// for those triggers.
+// TODO: remove this list and each special case (CAT-4492). Before the workflow
+// publication service, we re-registered every trigger on publication. With the
+// new flow, we only re-register triggers that have been modified. However, these
+// triggers relied on the old behaviour, so we force it for them.
 const ALWAYS_REREGISTER_TRIGGER_TYPES: ReadonlySet<string> = new Set([
 	'n8n-nodes-base.n8nTrigger',
 	'n8n-nodes-base.workflowTrigger',
-	// Workaround, not a contract: an IMAP connection can go silently half-open
-	// without a close or error event, so the node never asks to be reactivated.
-	// Republishing used to reconnect it. Remove once the node detects this itself.
 	'n8n-nodes-base.emailReadImap',
+	'n8n-nodes-base.postgresTrigger',
 ]);
 
 export interface TriggerDiffOptions {
