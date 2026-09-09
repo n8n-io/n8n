@@ -6,7 +6,7 @@ import McpClientLogoCards from '@/features/ai/mcpAccess/components/McpClientLogo
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
@@ -33,11 +33,15 @@ const modalBus = createEventBus();
 const closedByAction = ref(false);
 const dontShowAgain = ref(false);
 
-const title = computed(() =>
-	props.data.surface === 'export'
-		? i18n.baseText('experiments.mcpJsonNudge.modal.export.title')
-		: i18n.baseText('experiments.mcpJsonNudge.modal.import.title'),
-);
+const TITLE_KEY_BY_SURFACE = {
+	export: 'experiments.mcpJsonNudge.modal.export.title',
+	import_file: 'experiments.mcpJsonNudge.modal.import.title',
+	import_url: 'experiments.mcpJsonNudge.modal.import.title',
+	copy: 'experiments.mcpJsonNudge.modal.copy.title',
+	paste: 'experiments.mcpJsonNudge.modal.paste.title',
+} as const satisfies Record<McpJsonNudgeSurface, BaseTextKey>;
+
+const title = computed(() => i18n.baseText(TITLE_KEY_BY_SURFACE[props.data.surface]));
 
 function onDontShowAgainChange(value: boolean) {
 	dontShowAgain.value = value;

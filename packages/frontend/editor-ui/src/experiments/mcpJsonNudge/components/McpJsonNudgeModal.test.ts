@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import type { McpJsonNudgeAction } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
+import type { McpJsonNudgeSurface } from '@/experiments/mcpJsonNudge/constants';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import userEvent from '@testing-library/user-event';
@@ -69,13 +70,15 @@ describe('McpJsonNudgeModal', () => {
 		onContinue = vi.fn<McpJsonNudgeAction>();
 	});
 
-	const renderWith = (surface: 'export' | 'import_file' | 'import_url' = 'export') =>
+	const renderWith = (surface: McpJsonNudgeSurface = 'export') =>
 		renderComponent({ props: { data: { surface, onContinue } } });
 
 	it.each([
 		['export', 'Exporting this for an AI tool?'],
 		['import_file', 'Importing this from an AI tool?'],
 		['import_url', 'Importing this from an AI tool?'],
+		['copy', 'Copying this for an AI tool?'],
+		['paste', 'Pasting this from an AI tool?'],
 	] as const)('shows the right header for the %s surface', (surface, expectedTitle) => {
 		const { getByText } = renderWith(surface);
 

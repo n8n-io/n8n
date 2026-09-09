@@ -1,5 +1,6 @@
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { EVALUATION_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import {
 	createWorkflowDocumentId,
@@ -36,6 +37,7 @@ const routeMock = vi.hoisted(() => ({
 	name: undefined as string | undefined,
 	params: {},
 	query: {} as Record<string, string>,
+	meta: {} as Record<string, unknown>,
 }));
 
 vi.mock('vue-router', () => ({
@@ -52,8 +54,11 @@ describe('NodeView', () => {
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let ensureNodesAreVisible: ReturnType<typeof vi.fn>;
 	let workflowExecutionState: ReturnType<typeof useWorkflowExecutionStateStore>;
+	// Node ids the WorkflowCanvas stub emits with `copy:nodes` when its copy button is clicked.
+	let copyNodeIds: string[] = [];
 
 	beforeEach(() => {
+		copyNodeIds = [];
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		vi.stubGlobal('localStorage', {
@@ -62,6 +67,7 @@ describe('NodeView', () => {
 		routeMock.name = undefined;
 		routeMock.params = {};
 		routeMock.query = {};
+		routeMock.meta = {};
 		ensureNodesAreVisible = vi.fn();
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('w0');
@@ -82,10 +88,13 @@ describe('NodeView', () => {
 				},
 				stubs: {
 					WorkflowCanvas: defineComponent({
+						emits: ['copy:nodes'],
 						setup(_, { expose }) {
 							expose({ ensureNodesAreVisible });
+							return { copyNodeIds };
 						},
-						template: '<div><slot /></div>',
+						template:
+							'<div><button data-test-id="canvas-stub-copy" @click="$emit(\'copy:nodes\', copyNodeIds)" /><slot /></div>',
 					}),
 				},
 			},
@@ -311,6 +320,131 @@ describe('NodeView', () => {
 			await deferred?.();
 
 			expect(workflowDocumentStore.allNodes).toHaveLength(0);
+		});
+	});
+
+	describe('Copy / Paste', () => {
+		const existing = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'Existing' });
+		const pasted = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'Pasted' });
+		const pastedJson = JSON.stringify({ nodes: [pasted], connections: {} });
+
+		let deferred: (() => void | Promise<void>) | undefined;
+		// jsdom has no clipboard API. With `navigator.clipboard` present but no write
+		// permission, vueuse falls back to a textarea + execCommand('copy'), which we capture.
+		let copiedText: string[] = [];
+
+		function pasteText(text: string) {
+			const event = new Event('paste');
+			Object.assign(event, { clipboardData: { getData: () => text } });
+			document.dispatchEvent(event);
+		}
+
+		beforeEach(() => {
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
+			]);
+			// Paste only runs on the workflow tab of a writable canvas.
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			workflowDocumentStore.setNodes([existing]);
+			copyNodeIds = [existing.id];
+
+			deferred = undefined;
+			mockMcpJsonNudgeGate.mockReset().mockImplementation(async (_surface, action) => {
+				deferred = action;
+			});
+
+			copiedText = [];
+			Object.defineProperty(window.navigator, 'clipboard', { value: {}, configurable: true });
+			document.execCommand = vi.fn(() => {
+				const textarea = document.body.lastElementChild;
+				if (textarea instanceof HTMLTextAreaElement) copiedText.push(textarea.value);
+				return true;
+			});
+		});
+
+		afterEach(() => {
+			Reflect.deleteProperty(window.navigator, 'clipboard');
+		});
+
+		it('holds a copy behind the copy nudge and writes to the clipboard when it continues', async () => {
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-copy'));
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('copy', expect.any(Function)),
+			);
+			expect(copiedText).toEqual([]);
+
+			await deferred?.();
+
+			expect(copiedText).toHaveLength(1);
+			expect(copiedText[0]).toContain('"name": "Existing"');
+		});
+
+		it('drops a deferred copy once NodeView has unmounted', async () => {
+			const { findByTestId, unmount } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-copy'));
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('copy', expect.any(Function)),
+			);
+			unmount();
+
+			await deferred?.();
+
+			expect(copiedText).toEqual([]);
+		});
+
+		it('holds a paste behind the paste nudge and lands the nodes when it continues', async () => {
+			renderNodeView();
+
+			pasteText(pastedJson);
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
+			);
+			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Existing']);
+
+			await deferred?.();
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual([
+					'Existing',
+					'Pasted',
+				]),
+			);
+		});
+
+		it('does not open the paste nudge for clipboard text that is not workflow JSON', async () => {
+			renderNodeView();
+
+			pasteText('just some text');
+
+			// Give the async paste handler a tick to settle before asserting nothing happened.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
+			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Existing']);
+		});
+
+		it('drops a deferred paste once NodeView has unmounted', async () => {
+			const { unmount } = renderNodeView();
+
+			pasteText(pastedJson);
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
+			);
+			unmount();
+
+			await deferred?.();
+
+			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Existing']);
 		});
 	});
 });

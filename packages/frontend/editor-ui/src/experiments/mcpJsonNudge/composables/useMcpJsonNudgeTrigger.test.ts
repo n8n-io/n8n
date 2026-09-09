@@ -51,7 +51,7 @@ describe('useMcpJsonNudgeTrigger', () => {
 	});
 
 	describe('when eligible', () => {
-		it.each(['export', 'import_file', 'import_url'] as const)(
+		it.each(['export', 'import_file', 'import_url', 'copy', 'paste'] as const)(
 			'opens the modal for the %s surface, defers the action to onContinue, records an impression, and tracks the view',
 			async (surface) => {
 				const action = vi.fn();

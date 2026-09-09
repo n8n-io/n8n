@@ -14,21 +14,18 @@ const clientBrand = z
 
 const clientType = z.enum(['cli', 'ide', 'editor', 'assistant']).nullable();
 
-/**
- * Which JSON action opened the MCP nudge modal. Copy and paste are separate
- * surfaces owned by a later ticket and are not emitted yet.
- */
+/** Which JSON action opened the MCP nudge modal. */
 const nudgeSurface = z
-	.enum(['export', 'import_file', 'import_url'])
+	.enum(['export', 'import_file', 'import_url', 'copy', 'paste'])
 	.describe(
-		'The action that opened the nudge: the Export JSON menu item, Import from file, or Import from URL',
+		'The action that opened the nudge: the Export JSON menu item, Import from file, Import from URL, copying nodes, or pasting workflow JSON onto the canvas',
 	);
 
 export const MCP_TELEMETRY = defineTelemetryEvents({
 	MCP_NUDGE_VIEWED: {
 		name: 'User viewed MCP nudge',
 		description:
-			'The MCP nudge modal opened after the user exported a workflow as JSON or imported one from a file or URL. Fires only when the modal opens, so a trigger that the flag, the two-impression cap, an opt-out, or instance-level MCP access suppresses emits nothing. Each fire consumes one impression.',
+			'The MCP nudge modal opened after the user exported a workflow as JSON, imported one from a file or URL, copied nodes, or pasted workflow JSON onto the canvas. Fires only when the modal opens, so a trigger that the flag, the two-impression cap, an opt-out, or instance-level MCP access suppresses emits nothing. Each fire consumes one impression.',
 		properties: z.object({
 			surface: nudgeSurface,
 		}),
