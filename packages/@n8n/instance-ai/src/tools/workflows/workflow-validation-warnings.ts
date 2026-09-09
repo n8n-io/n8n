@@ -1,17 +1,22 @@
 import {
 	partitionValidationIssues,
+	toEngineConnections,
 	type IssueSeverity,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
 import {
-	isTriggerNodeType,
-	STICKY_NODE_TYPE,
-	TOP_LEVEL_ITEM_CEILING,
+	formatTopLevelItemsMessage,
+	summarizeTopLevelItems,
+	TOP_LEVEL_ITEMS_OVER_CEILING_CODE,
+	type TopLevelItemsSummary,
 	type WorkflowGroupViolation,
 } from 'n8n-workflow';
 
 export const NODE_GROUP_DROPPED_CODE = 'NODE_GROUP_DROPPED';
-export const TOP_LEVEL_ITEMS_CODE = 'TOP_LEVEL_ITEMS_OVER_CEILING';
+export const GROUPING_DECISION_MISSING_CODE = 'GROUPING_DECISION_MISSING';
+export const ALL_GROUPS_DROPPED_CODE = 'ALL_GROUPS_DROPPED';
+
+export type GroupingDecision = 'grouped' | 'not_warranted';
 
 export interface ValidationWarning {
 	code: string;
@@ -50,44 +55,75 @@ export function partitionWarnings(warnings: ValidationWarning[]): {
 	return partitionValidationIssues(warnings);
 }
 
+/** Boxes on the canvas with every group collapsed, for the saved shape of a build. */
+export function summarizeWorkflowTopLevelItems(json: WorkflowJSON): TopLevelItemsSummary {
+	return summarizeTopLevelItems({
+		nodes: json.nodes ?? [],
+		nodeGroups: json.nodeGroups,
+		connectionsBySourceNode: toEngineConnections(json.connections),
+	});
+}
+
 /**
- * Counts the boxes on the canvas with every group collapsed, and warns when there are
- * more than the TOP_LEVEL_ITEM_CEILING ceiling. Sub-nodes and sticky notes don't count:
- * a sub-node rides with its parent, and a sticky belongs to the user.
+ * Warns when the collapsed canvas has more boxes than TOP_LEVEL_ITEM_CEILING. The
+ * count lives in n8n-workflow so the MCP tools report the same number.
  */
-export function topLevelItemsWarning(json: WorkflowJSON): ValidationWarning | undefined {
-	const groups = json.nodeGroups ?? [];
-	const groupedNodeIds = new Set(groups.flatMap((group) => group.nodeIds));
-	const subNodeNames = new Set(
-		Object.entries(json.connections ?? {}).flatMap(([nodeName, connectionsByType]) => {
-			const types = Object.keys(connectionsByType);
-			return types.length > 0 && types.every((type) => type !== 'main') ? [nodeName] : [];
-		}),
-	);
-
-	const ungrouped = (json.nodes ?? []).filter(
-		(node) =>
-			!groupedNodeIds.has(node.id) &&
-			node.type !== STICKY_NODE_TYPE &&
-			!(node.name !== undefined && subNodeNames.has(node.name)),
-	);
-
-	const total = groups.length + ungrouped.length;
-	if (total <= TOP_LEVEL_ITEM_CEILING) {
+export function topLevelItemsWarning(
+	json: WorkflowJSON,
+	summary: TopLevelItemsSummary = summarizeWorkflowTopLevelItems(json),
+): ValidationWarning | undefined {
+	if (!summary.overCeiling) {
 		return;
 	}
 
-	const groupable = ungrouped
-		.filter((node) => !isTriggerNodeType(node.type))
-		.map((node) => node.name ?? node.id);
+	return {
+		code: TOP_LEVEL_ITEMS_OVER_CEILING_CODE,
+		severity: 'informational',
+		message: formatTopLevelItemsMessage(summary),
+	};
+}
+
+/**
+ * The check that blocks a save: over the ceiling with no surviving group, the build
+ * is refused until the agent groups or states why it cannot. A group the save
+ * dropped does not count, and an opt-out never excuses a dropped group — the agent
+ * had already decided to group, so the boundary is what needs fixing.
+ */
+export function groupingDecisionBlocker(input: {
+	summary: TopLevelItemsSummary;
+	declaredGroupCount: number;
+	droppedGroupWarnings: ValidationWarning[];
+	groupingDecision?: GroupingDecision;
+}): ValidationWarning | undefined {
+	const { summary, declaredGroupCount, droppedGroupWarnings, groupingDecision } = input;
+	if (!summary.overCeiling || summary.groupCount > 0) {
+		return;
+	}
+
+	if (declaredGroupCount > 0) {
+		const reasons = droppedGroupWarnings.map((warning) => warning.message).join(' ');
+		return {
+			code: ALL_GROUPS_DROPPED_CODE,
+			severity: 'warning',
+			message:
+				`Every declared node group was removed, so the canvas would have ${summary.total} boxes and no group. ` +
+				`${reasons} Fix the boundary each message names and build again; do not remove the groups.`,
+		};
+	}
+
+	if (groupingDecision === 'not_warranted') {
+		return;
+	}
 
 	return {
-		code: TOP_LEVEL_ITEMS_CODE,
-		severity: 'informational',
+		code: GROUPING_DECISION_MISSING_CODE,
+		severity: 'warning',
 		message:
-			`The canvas top level has ${total} boxes with every group collapsed, over the ${TOP_LEVEL_ITEM_CEILING} you should aim for` +
-			(groupable.length > 0 ? `. Still ungrouped: ${groupable.join(', ')}` : '') +
-			'. Group any stage that can form a valid group and build again, or say why each of them cannot join one.',
+			`The canvas would have ${summary.total} boxes with every group collapsed and no node group. ` +
+			`Ungrouped: ${summary.groupableNodeNames.join(', ')}. ` +
+			'Wrap each stage in `.group(name, members, { description })` and build again. ' +
+			"If no valid group can hold these nodes, call build-workflow again with `groupingDecision: 'not_warranted'` " +
+			'and a `groupingReason` that says why.',
 	};
 }
 

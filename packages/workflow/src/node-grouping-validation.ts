@@ -17,7 +17,7 @@ import {
 	type IWorkflowGroup,
 	type NodeConnectionType,
 } from './interfaces';
-import { isTriggerNode } from './node-helpers';
+import { isTriggerNode, isTriggerNodeType } from './node-helpers';
 
 type NodeIo = NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration;
 type IODirection = 'inputs' | 'outputs';
@@ -39,6 +39,92 @@ export function normalizeGroupDescription(description: unknown): string | undefi
 	if (typeof description !== 'string') return undefined;
 	const capped = description.slice(0, GROUP_DESCRIPTION_MAX_LENGTH);
 	return capped.length > 0 ? capped : undefined;
+}
+
+/** Issue code shared by every surface that reports the collapsed box count. */
+export const TOP_LEVEL_ITEMS_OVER_CEILING_CODE = 'TOP_LEVEL_ITEMS_OVER_CEILING';
+
+export type TopLevelItemsSummary = {
+	/** Boxes on the canvas with every group collapsed: groups plus ungrouped nodes. */
+	total: number;
+	groupCount: number;
+	ceiling: number;
+	overCeiling: boolean;
+	/** Ungrouped nodes that draw a box, the trigger included. */
+	ungroupedNodeNames: string[];
+	/** Ungrouped nodes a group could still hold; a trigger cannot join one. */
+	groupableNodeNames: string[];
+};
+
+type TopLevelItemsNode = Pick<INode, 'type'> & { id?: string; name?: string };
+
+/**
+ * Names of the nodes that reach their parent over non-main connections only. A
+ * sub-node rides with its parent on the canvas, so it is not a box of its own.
+ */
+export function collectSubNodeNames(
+	connectionsBySourceNode: IConnections | undefined,
+): Set<string> {
+	const subNodeNames = new Set<string>();
+
+	for (const [nodeName, connectionsByType] of Object.entries(connectionsBySourceNode ?? {})) {
+		const types = Object.keys(connectionsByType);
+		if (types.length > 0 && types.every((type) => type !== NodeConnectionTypes.Main)) {
+			subNodeNames.add(nodeName);
+		}
+	}
+
+	return subNodeNames;
+}
+
+/**
+ * Counts the boxes a reader sees with every group collapsed. Sticky notes and
+ * sub-nodes do not count: a sticky belongs to the user, a sub-node rides with its
+ * parent. Shared by the Instance AI build and the MCP save tools so both report
+ * the same number the grouping guidance states.
+ */
+export function summarizeTopLevelItems(input: {
+	nodes: TopLevelItemsNode[];
+	nodeGroups?: Array<Pick<IWorkflowGroup, 'nodeIds'>>;
+	connectionsBySourceNode?: IConnections;
+}): TopLevelItemsSummary {
+	const groups = input.nodeGroups ?? [];
+	const groupedNodeIds = new Set(groups.flatMap((group) => group.nodeIds));
+	const subNodeNames = collectSubNodeNames(input.connectionsBySourceNode);
+
+	const ungrouped = input.nodes.filter((node) => {
+		const isSticky = node.type === STICKY_NODE_TYPE;
+		const isGrouped = node.id !== undefined && groupedNodeIds.has(node.id);
+		const isSubNode = node.name !== undefined && subNodeNames.has(node.name);
+
+		return !isSticky && !isGrouped && !isSubNode;
+	});
+
+	const labelOf = (node: TopLevelItemsNode) => node.name ?? node.id ?? node.type;
+	const total = groups.length + ungrouped.length;
+
+	return {
+		total,
+		groupCount: groups.length,
+		ceiling: TOP_LEVEL_ITEM_CEILING,
+		overCeiling: total > TOP_LEVEL_ITEM_CEILING,
+		ungroupedNodeNames: ungrouped.map(labelOf),
+		groupableNodeNames: ungrouped.filter((node) => !isTriggerNodeType(node.type)).map(labelOf),
+	};
+}
+
+/** The over-ceiling message, worded once so every surface tells the agent the same thing. */
+export function formatTopLevelItemsMessage(summary: TopLevelItemsSummary): string {
+	const stillUngrouped =
+		summary.groupableNodeNames.length > 0
+			? `. Still ungrouped: ${summary.groupableNodeNames.join(', ')}`
+			: '';
+
+	return (
+		`The canvas top level has ${summary.total} boxes with every group collapsed, over the ${summary.ceiling} you should aim for` +
+		stillUngrouped +
+		'. Group any stage that can form a valid group and build again, or say why each of them cannot join one.'
+	);
 }
 
 export type NodeGroupingValidationInput<TNode extends INode = INode> = {

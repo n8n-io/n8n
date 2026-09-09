@@ -2,7 +2,9 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { IConnections } from 'n8n-workflow';
 
 import {
+	groupingDecisionBlocker,
 	partitionWarnings,
+	summarizeWorkflowTopLevelItems,
 	topLevelItemsWarning,
 	type ValidationWarning,
 } from '../workflow-validation-warnings';
@@ -118,5 +120,91 @@ describe('topLevelItemsWarning', () => {
 		};
 
 		expect(topLevelItemsWarning(withSticky)).toBeUndefined();
+	});
+});
+
+describe('groupingDecisionBlocker', () => {
+	const node = (name: string) => ({
+		id: name,
+		name,
+		type: 'n8n-nodes-base.noOp',
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+	});
+	const names = (count: number) => Array.from({ length: count }, (_, i) => `n${i}`);
+	const workflow = (count: number, extra: Partial<WorkflowJSON> = {}): WorkflowJSON => ({
+		name: 'wf',
+		nodes: names(count).map(node),
+		connections: {},
+		...extra,
+	});
+	const dropped = [
+		{
+			code: 'NODE_GROUP_DROPPED',
+			severity: 'informational' as const,
+			message: 'Node group "Body" was removed: reason.',
+		},
+	];
+
+	it('says nothing under the ceiling', () => {
+		const summary = summarizeWorkflowTopLevelItems(workflow(7));
+
+		expect(
+			groupingDecisionBlocker({ summary, declaredGroupCount: 0, droppedGroupWarnings: [] }),
+		).toBeUndefined();
+	});
+
+	it('says nothing when a group survived, even over the ceiling', () => {
+		const summary = summarizeWorkflowTopLevelItems(
+			workflow(9, { nodeGroups: [{ id: 'g', name: 'Stage', nodeIds: ['n0', 'n1'] }] }),
+		);
+
+		expect(
+			groupingDecisionBlocker({ summary, declaredGroupCount: 1, droppedGroupWarnings: [] }),
+		).toBeUndefined();
+	});
+
+	it('blocks an over-ceiling canvas with no group declared, naming the groupable nodes', () => {
+		const summary = summarizeWorkflowTopLevelItems(workflow(8));
+
+		const blocker = groupingDecisionBlocker({
+			summary,
+			declaredGroupCount: 0,
+			droppedGroupWarnings: [],
+		});
+
+		expect(blocker?.code).toBe('GROUPING_DECISION_MISSING');
+		expect(blocker?.severity).toBe('warning');
+		expect(blocker?.message).toContain('8 boxes');
+		expect(blocker?.message).toContain('n0, n1');
+		expect(blocker?.message).toContain("groupingDecision: 'not_warranted'");
+	});
+
+	it('lets the explicit opt-out through', () => {
+		const summary = summarizeWorkflowTopLevelItems(workflow(8));
+
+		expect(
+			groupingDecisionBlocker({
+				summary,
+				declaredGroupCount: 0,
+				droppedGroupWarnings: [],
+				groupingDecision: 'not_warranted',
+			}),
+		).toBeUndefined();
+	});
+
+	it('blocks when every declared group was dropped, and the opt-out does not excuse it', () => {
+		const summary = summarizeWorkflowTopLevelItems(workflow(8));
+
+		const blocker = groupingDecisionBlocker({
+			summary,
+			declaredGroupCount: 1,
+			droppedGroupWarnings: dropped,
+			groupingDecision: 'not_warranted',
+		});
+
+		expect(blocker?.code).toBe('ALL_GROUPS_DROPPED');
+		expect(blocker?.severity).toBe('warning');
+		expect(blocker?.message).toContain('Node group "Body" was removed: reason.');
 	});
 });

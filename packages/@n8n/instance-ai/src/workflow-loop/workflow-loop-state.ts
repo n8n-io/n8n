@@ -334,6 +334,21 @@ export const waitGateScriptSchema = z.object({
 
 export type WaitGateScript = z.infer<typeof waitGateScriptSchema>;
 
+/**
+ * What the build did about node groups, on the saved (post-drop) shape. A NEW
+ * OPTIONAL FIELD for the same rollback reason as `executionIntent`.
+ */
+export const groupingOutcomeSchema = z.object({
+	topLevelItemCount: z.number().int().min(0),
+	ceiling: z.number().int().min(1),
+	groupCount: z.number().int().min(0),
+	droppedGroupCount: z.number().int().min(0),
+	decision: z.enum(['grouped', 'not_warranted', 'under_ceiling']),
+	reason: z.string().optional(),
+});
+
+export type GroupingOutcome = z.infer<typeof groupingOutcomeSchema>;
+
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
@@ -422,6 +437,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Deterministic setup handoff verdict for post-verification workflow setup. */
 	setupRequirement: workflowSetupRequirementSchema.optional(),
 	remediation: remediationMetadataSchema.optional(),
+	/** Node-group result of this build; absent on outcomes stored before the field existed. */
+	grouping: groupingOutcomeSchema.optional(),
 	/** Count of verify-built-workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
 	verifyAttempts: z.number().int().min(0).optional(),
 	/** Successful verification runs by trigger. A failed rerun removes that trigger's entry. */
