@@ -1,11 +1,16 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import jwt from 'jsonwebtoken';
+import { InstanceSettings } from 'n8n-core';
+import { gzipSync } from 'node:zlib';
+import { Header } from 'tar';
 
+import { AppVersionService } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
+import { AppPageTokenService } from '@/modules/apps/serving/app-page-token';
 import { createOwner } from '@test-integration/db/users';
-import { getPersonalProject } from '@n8n/backend-test-utils';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
@@ -14,9 +19,10 @@ let ownerProject: Project;
 /** No auth and no `/rest` prefix: an App page is served at the instance root, to anyone. */
 let visitor: SuperAgentTest;
 
+// oauth-server: an `n8n` app sends its visitors through the instance's OAuth flow.
 const testServer = utils.setupTestServer({
 	endpointGroups: ['apps'],
-	modules: ['apps'],
+	modules: ['apps', 'oauth-server'],
 });
 
 let appRepository: AppRepository;
@@ -36,6 +42,146 @@ beforeEach(async () => {
 });
 
 const createApp = async () => await appRepository.createApp(ownerProject.id, 'Acme Portal', 'acme');
+
+const tgz = (files: Record<string, string>) => {
+	const blocks = Object.entries(files).map(([path, text]) => {
+		const content = Buffer.from(text);
+		const header = new Header({ path, type: 'File', size: content.length, mtime: new Date(0) });
+		header.encode();
+		const data = Buffer.alloc(Math.ceil(content.length / 512) * 512);
+		content.copy(data);
+		return Buffer.concat([header.block!, data]);
+	});
+	return gzipSync(Buffer.concat([...blocks, Buffer.alloc(1024)]));
+};
+
+const INDEX_HTML = '<!doctype html><html><head><title>Acme</title></head><body>app</body></html>';
+const APP_JS = 'console.log("app")';
+
+/** An app with a served version, in the given auth mode. */
+const createBuiltApp = async (authMode: 'public' | 'n8n') => {
+	const created = await createApp();
+	const app = await appRepository.updateApp(created, { authMode });
+	await Container.get(AppVersionService).create(
+		app.id,
+		app.projectId,
+		tgz({ './src/main.ts': 'export {};' }),
+		tgz({ './index.html': INDEX_HTML, './assets/app.js': APP_JS }),
+	);
+	return app;
+};
+
+const pageTokenOf = (html: string) =>
+	html.match(/<meta name="n8n-app-token" content="([^"]+)">/)?.[1];
+
+const pageCookie = (token: string) => `n8n-app-acme=${token}`;
+
+describe('GET /apps/:namespace/ with an active version', () => {
+	test('serves index.html of a public app with a page token for an anonymous visitor', async () => {
+		const app = await createBuiltApp('public');
+
+		const response = await visitor.get('/apps/acme/').expect(200);
+
+		expect(response.headers['content-type']).toContain('text/html');
+		expect(response.headers['content-security-policy']).toContain('sandbox');
+		expect(response.headers['set-cookie']).toBeUndefined();
+		const token = pageTokenOf(response.text);
+		expect(response.text).toBe(
+			INDEX_HTML.replace('</head>', `<meta name="n8n-app-token" content="${token}"></head>`),
+		);
+		expect(Container.get(AppPageTokenService).verify(token!, app.id)).toEqual({});
+	});
+
+	test('serves assets unchanged', async () => {
+		await createBuiltApp('public');
+
+		const response = await visitor.get('/apps/acme/assets/app.js').expect(200);
+
+		expect(response.text).toBe(APP_JS);
+	});
+
+	test('redirects a visitor of an n8n app without the page cookie into the OAuth flow', async () => {
+		await createBuiltApp('n8n');
+
+		const response = await visitor.get('/apps/acme/orders?x=1').expect(302);
+
+		const location = new URL(response.headers.location);
+		expect(location.pathname).toBe('/oauth/authorize');
+		expect(location.searchParams.get('client_id')).toMatch(/\/apps\/acme\/$/);
+		expect(location.searchParams.get('redirect_uri')).toBe(location.searchParams.get('client_id'));
+		expect(location.searchParams.get('code_challenge_method')).toBe('S256');
+	});
+
+	test('serves index.html of an n8n app to a visitor with a valid page cookie and renews it', async () => {
+		const app = await createBuiltApp('n8n');
+		const cookie = Container.get(AppPageTokenService).mint(app.id, owner.id);
+
+		const response = await visitor.get('/apps/acme/').set('Cookie', pageCookie(cookie)).expect(200);
+
+		const token = pageTokenOf(response.text);
+		expect(Container.get(AppPageTokenService).verify(token!, app.id)).toEqual({
+			userId: owner.id,
+		});
+		expect(response.headers['set-cookie'][0]).toMatch(
+			new RegExp(`^n8n-app-acme=${token}; Max-Age=900; Path=/apps/acme/; .*HttpOnly; SameSite=Lax`),
+		);
+	});
+
+	test('redirects a visitor with an expired page cookie into the OAuth flow', async () => {
+		const app = await createBuiltApp('n8n');
+		const expired = jwt.sign(
+			{ sub: owner.id },
+			Container.get(InstanceSettings).hmacSignatureSecret,
+			{
+				algorithm: 'HS256',
+				audience: `app:${app.id}`,
+				expiresIn: -1,
+			},
+		);
+
+		const response = await visitor
+			.get('/apps/acme/')
+			.set('Cookie', pageCookie(expired))
+			.expect(302);
+
+		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
+	});
+
+	test('redirects a visitor whose page cookie names another app into the OAuth flow', async () => {
+		await createBuiltApp('n8n');
+		const other = await appRepository.createApp(ownerProject.id, 'Other', 'other');
+		const foreign = Container.get(AppPageTokenService).mint(other.id, owner.id);
+
+		const response = await visitor
+			.get('/apps/acme/')
+			.set('Cookie', pageCookie(foreign))
+			.expect(302);
+
+		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
+	});
+
+	test('answers 403 when the OAuth flow reports an error', async () => {
+		await createBuiltApp('n8n');
+
+		await visitor.get('/apps/acme/?error=access_denied').expect(403);
+	});
+
+	test('restarts the OAuth flow for a callback with an unknown state', async () => {
+		await createBuiltApp('n8n');
+
+		const response = await visitor.get('/apps/acme/?code=abc&state=unknown').expect(302);
+
+		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
+	});
+
+	test('keeps serving an n8n app without a version to anyone', async () => {
+		const created = await createApp();
+		const app = await appRepository.updateApp(created, { authMode: 'n8n' });
+		await pageRepository.createPage(app.id, null, '');
+
+		await visitor.get('/apps/acme').expect(200);
+	});
+});
 
 describe('GET /apps/:namespace', () => {
 	test('serves the index page of an App without a session', async () => {

@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { AppVersionRepository } from '../app-version.repository';
 import { AppVersionService } from '../app-version.service';
+import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { PageRepository } from '../page.repository';
 import { buildMenu, pageTitle, type MenuItem } from './page-menu';
@@ -17,7 +18,7 @@ export type PageRenderContext = {
 };
 
 export type ResolvedAppRequest =
-	| { kind: 'static'; filePath: string }
+	| { kind: 'static'; filePath: string; app: App }
 	| { kind: 'page'; context: PageRenderContext };
 
 const isFile = async (filePath: string) =>
@@ -52,7 +53,7 @@ export class AppServingService {
 			const distDir = await this.appVersionService.distDir(version);
 			const target = resolveDistPath(distDir, segments);
 			const filePath = target && (await isFile(target)) ? target : path.join(distDir, 'index.html');
-			return { kind: 'static', filePath };
+			return { kind: 'static', filePath, app };
 		}
 
 		const context = await this.resolvePage(app, segments);

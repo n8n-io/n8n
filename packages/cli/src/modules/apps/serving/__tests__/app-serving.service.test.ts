@@ -63,13 +63,18 @@ describe('AppServingService', () => {
 	});
 
 	test('serves the active version instead of pages when the App has one', async () => {
-		appRepository.findByNamespace.mockResolvedValue(mock<App>({ ...app, activeVersionId: 'v1' }));
+		const served = mock<App>({ ...app, activeVersionId: 'v1' });
+		appRepository.findByNamespace.mockResolvedValue(served);
 		appVersionRepository.findById.mockResolvedValue(mock<AppVersion>({ id: 'v1' }));
 		appVersionService.distDir.mockResolvedValue('/cache/apps/v1');
 
 		const resolved = await service.resolve('acme', ['deep', 'route']);
 
-		expect(resolved).toEqual({ kind: 'static', filePath: '/cache/apps/v1/index.html' });
+		expect(resolved).toEqual({
+			kind: 'static',
+			filePath: '/cache/apps/v1/index.html',
+			app: served,
+		});
 		expect(pageRepository.findManyByAppId).not.toHaveBeenCalled();
 	});
 
