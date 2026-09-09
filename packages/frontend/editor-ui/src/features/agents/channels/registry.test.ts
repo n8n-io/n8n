@@ -22,7 +22,21 @@ describe('agent channel platform registry', () => {
 
 	it('narrows registered platform keys', () => {
 		expect(isRegisteredAgentChannelPlatform('slack')).toBe(true);
+		expect(isRegisteredAgentChannelPlatform('email')).toBe(true);
 		expect(isRegisteredAgentChannelPlatform('future-channel')).toBe(false);
+	});
+
+	it('exposes the one-click Email setup action', () => {
+		const platform = getAgentChannelPlatform('email');
+		const action = platform.getConnectAction(
+			{ text },
+			{ loading: ref(false), load: async () => {} },
+		);
+
+		expect(action).toEqual({
+			label: 'agents.channels.email.setup.create',
+			icon: 'mail',
+		});
 	});
 
 	it('derives Slack list metadata from its local runtime state', () => {

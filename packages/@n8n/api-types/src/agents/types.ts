@@ -171,6 +171,11 @@ export interface AgentIntegrationConnectResponse {
 	status: Extract<AgentChannelRuntimeStatus, 'configured' | 'connected'>;
 }
 
+export interface AgentEmailProvisionResponse extends AgentIntegrationConnectResponse {
+	credentialId: string;
+	address: string;
+}
+
 export interface AgentSkillReference {
 	path: string;
 	content: string;

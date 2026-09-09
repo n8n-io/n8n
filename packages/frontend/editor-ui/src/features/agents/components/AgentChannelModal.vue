@@ -294,6 +294,12 @@ function connectAction(channelType: string) {
 	);
 }
 
+function channelDescription(channelType: string): string | undefined {
+	if (channelType !== 'email') return undefined;
+	const credentialId = connectedCredentials.value[channelType];
+	return getCredentials(channelType).find((credential) => credential.id === credentialId)?.name;
+}
+
 function goToSetup(channelType: string) {
 	clearIntegrationError(channelType);
 	currentView.value = `${channelType}_setup`;
@@ -605,6 +611,7 @@ watch(
 							:integration="integration"
 							:configured="isConfigured(integration.type)"
 							:connected="isConnected(integration.type)"
+							:description="channelDescription(integration.type)"
 							:not-running="hasRuntimeError(integration.type)"
 							:runtime-error="runtimeErrors[integration.type]"
 							:loading="listLoading"

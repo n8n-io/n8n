@@ -3,6 +3,9 @@ import { h, readonly, ref } from 'vue';
 
 import AgentChannelDiscordSetup from '../components/AgentChannelDiscordSetup.vue';
 import AgentChannelDiscordEditView from './discord/AgentChannelDiscordEditView.vue';
+import AgentChannelEmailEditView from './email/AgentChannelEmailEditView.vue';
+import AgentChannelEmailSetup from './email/AgentChannelEmailSetup.vue';
+import { useEmailChannelRuntime } from './email/useEmailChannelRuntime';
 import AgentChannelFallbackView from './fallback/AgentChannelFallbackView.vue';
 import AgentChannelLinearEditView from './linear/AgentChannelLinearEditView.vue';
 import AgentChannelLinearSetup from './linear/AgentChannelLinearSetup.vue';
@@ -105,6 +108,17 @@ const platforms = {
 		setupComponent: AgentChannelDiscordSetup,
 		editComponent: AgentChannelDiscordEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+	},
+	email: {
+		type: 'email',
+		setupComponent: AgentChannelEmailSetup,
+		editComponent: AgentChannelEmailEditView,
+		createRuntime: useEmailChannelRuntime,
+		getConnectAction: ({ text }) => ({
+			label: text('agents.channels.email.setup.create'),
+			icon: 'mail',
+		}),
+		getConnectedDescription: ({ text }) => text('agents.channels.email.connectedDescription'),
 	},
 } satisfies Record<string, AgentChannelPlatform>;
 

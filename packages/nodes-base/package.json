@@ -40,6 +40,7 @@
       "dist/credentials/AcuitySchedulingOAuth2Api.credentials.js",
       "dist/credentials/AdaloApi.credentials.js",
       "dist/credentials/AffinityApi.credentials.js",
+      "dist/credentials/AgentEmailApi.credentials.js",
       "dist/credentials/AgileCrmApi.credentials.js",
       "dist/credentials/AirtableApi.credentials.js",
       "dist/credentials/AirtableOAuth2Api.credentials.js",

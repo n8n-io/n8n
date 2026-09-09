@@ -22,6 +22,7 @@ interface Props {
 	configured: boolean;
 	connected: boolean;
 	connectAction: AgentChannelConnectAction;
+	description?: string;
 	loading?: boolean;
 	/**
 	 * Set up and meant to be running, but the last startup attempt failed. Never
@@ -112,6 +113,9 @@ function handleConfiguredAction(action: ChannelAction) {
 			<div :class="$style.content">
 				<N8nText :class="$style.name" size="medium" bold color="text-dark">
 					{{ integration.label }}
+				</N8nText>
+				<N8nText v-if="description" :class="$style.description" size="small" color="text-light">
+					{{ description }}
 				</N8nText>
 			</div>
 
@@ -212,6 +216,12 @@ function handleConfiguredAction(action: ChannelAction) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	line-height: var(--line-height--md);
+}
+
+.description {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .channelActions {

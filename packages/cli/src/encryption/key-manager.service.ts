@@ -134,6 +134,11 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	 */
 	private recoverLegacyDek(keyInfo: DeploymentKey): string | null {
 		const { value } = keyInfo;
+		// Old local databases may store the instance key directly in the seeded
+		// legacy CBC row. It is the exact key required for no-prefix ciphertext.
+		if (value === this.instanceSettings.encryptionKey) {
+			return value;
+		}
 		// 2.18.x: raw key material, used directly. Re-wrap as-is, no decrypt needed.
 		if (RAW_DEK_PATTERN.test(value)) {
 			return value;

@@ -110,4 +110,11 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_CHANNEL_RECONCILE_INTERVAL')
 	channelReconcileIntervalSeconds: number = 60;
+
+	/**
+	 * Hack Week POC token shared with the Agent Email relay.
+	 * Replace with license-bound service authentication before production.
+	 */
+	@Env('N8N_AGENTS_EMAIL_SERVICE_TOKEN')
+	emailServiceToken: string = '';
 }

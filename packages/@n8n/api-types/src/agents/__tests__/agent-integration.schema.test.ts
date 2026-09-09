@@ -62,6 +62,14 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts an Email integration without settings', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'email',
+			credentialId: 'cred-email',
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('rejects a non-positive session idle timeout', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'telegram',

@@ -706,6 +706,19 @@ describe('KeyManagerService', () => {
 		// A real, freshly generated DEK — never a hand-built constant.
 		const rawKey = randomBytes(32).toString('hex');
 
+		it('recovers a raw instance key from older legacy CBC rows', async () => {
+			const encryptionKey = randomBytes(24).toString('base64');
+			const { service, repo, cipher } = makeRepairService(encryptionKey);
+			repo.findDataEncryptionKeys.mockResolvedValue([
+				makeKey({ id: 'k', value: encryptionKey, algorithm: 'aes-256-cbc' }),
+			]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			const [, , wrapped] = repo.rewrapLegacyDataEncryptionValue.mock.calls[0];
+			expect(cipher.decryptDEKWithInstanceKey(wrapped)).toBe(encryptionKey);
+		});
+
 		it.each<[string, (cipher: Cipher) => string]>([
 			['raw 2.18.x', () => rawKey],
 			['CBC 2.19.x', (cipher) => cipher.encryptWithInstanceKey(rawKey)],

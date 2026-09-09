@@ -26,6 +26,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
+		await import('./agent-email-integrations.controller.js');
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-vector-stores.controller.js');
 		await import('./agent-tasks.controller.js');
@@ -87,12 +88,16 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { EmailIntegration } = await import(
+			'./integrations/platforms/email/email-integration.js'
+		);
 		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 		registry.register(Container.get(DiscordIntegration));
+		registry.register(Container.get(EmailIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 
 		// Resume Chat and Task services on startup so this main runs what its
