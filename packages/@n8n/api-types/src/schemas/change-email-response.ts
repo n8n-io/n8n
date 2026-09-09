@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { userBaseSchema } from './user.schema';
 
 const ConfirmationSent = z.object({

@@ -176,6 +176,8 @@ describe('GlobalConfig', () => {
 					'project-shared': '',
 					'api-key-revoked': '',
 					'mcp-client-revoked': '',
+					'email-change-requested': '',
+					'email-change-completed': '',
 				},
 			},
 		},

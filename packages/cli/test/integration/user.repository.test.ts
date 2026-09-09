@@ -211,9 +211,9 @@ describe('UserRepository', () => {
 			const user = await createMember();
 			const newEmail = randomEmail();
 
-			const changed = await userRepository.changeEmail(user.id, user.email, newEmail);
+			const result = await userRepository.changeEmail(user.id, user.email, newEmail);
 
-			expect(changed).toBe(true);
+			expect(result).toBe('changed');
 			const updated = await userRepository.findOneByOrFail({ id: user.id });
 			expect(updated.email).toBe(newEmail);
 
@@ -227,9 +227,20 @@ describe('UserRepository', () => {
 			const user = await createMember();
 			const newEmail = randomEmail();
 
-			const changed = await userRepository.changeEmail(user.id, 'stale@example.com', newEmail);
+			const result = await userRepository.changeEmail(user.id, 'stale@example.com', newEmail);
 
-			expect(changed).toBe(false);
+			expect(result).toBe('stale');
+			const updated = await userRepository.findOneByOrFail({ id: user.id });
+			expect(updated.email).toBe(user.email);
+		});
+
+		test('should report when another user already owns the target email', async () => {
+			const user = await createMember();
+			const other = await createMember();
+
+			const result = await userRepository.changeEmail(user.id, user.email, other.email);
+
+			expect(result).toBe('email-taken');
 			const updated = await userRepository.findOneByOrFail({ id: user.id });
 			expect(updated.email).toBe(user.email);
 		});

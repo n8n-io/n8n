@@ -173,6 +173,12 @@ export class ChangeEmailController {
 
 	/** Persist the new email, emit the event, and run the profile hooks. */
 	private async applyEmailChange(userId: string, oldEmail: string, newEmail: string) {
+		// Reject a stale change before the side-effecting hook, so a hook does not
+		// run for a change that will not apply. `changeEmail` below stays the
+		// authoritative guard for the concurrent race after this check.
+		const current = await this.userRepository.findOneBy({ id: userId });
+		if (!current || current.email !== oldEmail) throw new NotFoundError('');
+
 		await this.externalHooks.run('user.profile.beforeUpdate', [
 			userId,
 			oldEmail,
@@ -181,8 +187,11 @@ export class ChangeEmailController {
 
 		// Reject the token when the email changed since the token was resolved, so
 		// a concurrent change is not overwritten.
-		const changed = await this.userRepository.changeEmail(userId, oldEmail, newEmail);
-		if (!changed) throw new NotFoundError('');
+		const result = await this.userRepository.changeEmail(userId, oldEmail, newEmail);
+		if (result === 'stale') throw new NotFoundError('');
+		if (result === 'email-taken') {
+			throw new BadRequestError('This email address is already in use');
+		}
 
 		const user = await this.userService.findUserWithAuthIdentities(userId);
 
