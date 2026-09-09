@@ -22,6 +22,13 @@ import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
 
+type WorkflowVersionContent = {
+	versionId: string;
+	nodes: IWorkflowBase['nodes'];
+	connections: IWorkflowBase['connections'];
+	nodeGroups?: IWorkflowBase['nodeGroups'];
+};
+
 @Service()
 export class WorkflowHistoryService {
 	constructor(
@@ -168,12 +175,7 @@ export class WorkflowHistoryService {
 
 	async saveVersion(
 		user: User | string,
-		workflow: {
-			versionId: string;
-			nodes: IWorkflowBase['nodes'];
-			connections: IWorkflowBase['connections'];
-			nodeGroups?: IWorkflowBase['nodeGroups'];
-		},
+		workflow: WorkflowVersionContent,
 		workflowId: string,
 		autosaved = false,
 		source?: WorkflowActionSource,
@@ -186,24 +188,15 @@ export class WorkflowHistoryService {
 			);
 		}
 
-		const name = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
-		const authors = source === 'n8n-mcp' ? `${name} (via MCP)` : name;
-
-		const repository = transactionManager
-			? transactionManager.getRepository(WorkflowHistory)
-			: this.workflowHistoryRepository;
-
 		try {
-			await repository.insert({
-				authors,
-				connections: workflow.connections,
-				nodes: workflow.nodes,
-				nodeGroups: workflow.nodeGroups,
-				versionId: workflow.versionId,
+			await this.insertVersion({
+				user,
+				workflow,
 				workflowId,
 				autosaved,
-				...(versionMetadata?.name ? { name: versionMetadata.name } : {}),
-				...(versionMetadata?.description ? { description: versionMetadata.description } : {}),
+				source,
+				transactionManager,
+				versionMetadata,
 			});
 		} catch (e) {
 			const error = ensureError(e);
@@ -211,6 +204,49 @@ export class WorkflowHistoryService {
 				error,
 			});
 		}
+	}
+
+	/**
+	 * `saveVersion` without the safety net: a failed insert throws. For a row the
+	 * caller depends on right after, such as a seed restored inside a transaction,
+	 * where a missing row must fail the transaction instead of committing a
+	 * workflow that can never be published.
+	 */
+	async insertVersion({
+		user,
+		workflow,
+		workflowId,
+		autosaved = false,
+		source,
+		transactionManager,
+		versionMetadata,
+	}: {
+		user: User | string;
+		workflow: WorkflowVersionContent;
+		workflowId: string;
+		autosaved?: boolean;
+		source?: WorkflowActionSource;
+		transactionManager?: EntityManager;
+		versionMetadata?: { name?: string; description?: string };
+	}) {
+		const name = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
+		const authors = source === 'n8n-mcp' ? `${name} (via MCP)` : name;
+
+		const repository = transactionManager
+			? transactionManager.getRepository(WorkflowHistory)
+			: this.workflowHistoryRepository;
+
+		await repository.insert({
+			authors,
+			connections: workflow.connections,
+			nodes: workflow.nodes,
+			nodeGroups: workflow.nodeGroups,
+			versionId: workflow.versionId,
+			workflowId,
+			autosaved,
+			...(versionMetadata?.name ? { name: versionMetadata.name } : {}),
+			...(versionMetadata?.description ? { description: versionMetadata.description } : {}),
+		});
 	}
 
 	async updateVersionForUser(

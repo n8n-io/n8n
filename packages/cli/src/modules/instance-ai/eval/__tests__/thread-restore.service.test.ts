@@ -6,6 +6,7 @@ import type {
 	Project,
 	SharedWorkflowRepository,
 	User,
+	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
 import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
@@ -183,14 +184,12 @@ describe('EvalThreadRestoreService', () => {
 		);
 
 		const saved = workflowRepo.create.mock.calls[0][0];
-		expect(workflowHistoryService.saveVersion).toHaveBeenCalledExactlyOnceWith(
-			'Eval seed',
-			{ versionId: saved.versionId, nodes: saved.nodes, connections: saved.connections },
-			'wf-1',
-			false,
-			undefined,
+		expect(workflowHistoryService.insertVersion).toHaveBeenCalledExactlyOnceWith({
+			user: 'Eval seed',
+			workflow: { versionId: saved.versionId, nodes: saved.nodes, connections: saved.connections },
+			workflowId: 'wf-1',
 			transactionManager,
-		);
+		});
 	});
 
 	it('publishes only the seeds flagged published, as the requesting user', async () => {
@@ -205,6 +204,25 @@ describe('EvalThreadRestoreService', () => {
 		);
 
 		expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(user, 'wf-live');
+	});
+
+	it('unpublishes the seeds it already published when a later activation is refused', async () => {
+		const user = mock<User>();
+		workflowService.activateWorkflow
+			.mockResolvedValueOnce(mock<WorkflowEntity>())
+			.mockRejectedValueOnce(new Error('Workflow has no trigger'));
+
+		await expect(
+			service.publishSeedWorkflows(
+				[
+					{ id: 'wf-first', name: 'First', nodes: [], connections: {}, published: true },
+					{ id: 'wf-second', name: 'Second', nodes: [], connections: {}, published: true },
+				],
+				user,
+			),
+		).rejects.toThrow('Workflow has no trigger');
+
+		expect(workflowService.deactivateWorkflowAsSystem).toHaveBeenCalledExactlyOnceWith('wf-first');
 	});
 
 	it('does not re-grant ownership when the workflow already exists in this project', async () => {

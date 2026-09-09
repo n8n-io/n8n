@@ -262,10 +262,26 @@ export class EvalThreadRestoreService {
 
 	/** Publish the seeds flagged `published` on the product's own activation path,
 	 *  so the workflow is live the way the user's publish left it. Run last: a
-	 *  refusal (unresolved credential, no trigger) fails the whole restore. */
+	 *  refusal (unresolved credential, no trigger) fails the whole restore. Seeds
+	 *  published before the refusal are unpublished again, because the rollback
+	 *  only deletes rows and would leave their triggers registered. */
 	async publishSeedWorkflows(workflows: InstanceAiEvalSeedWorkflow[], user: User): Promise<void> {
-		for (const workflow of workflows) {
-			if (workflow.published) await this.workflowService.activateWorkflow(user, workflow.id);
+		const activated: string[] = [];
+		try {
+			for (const workflow of workflows) {
+				if (!workflow.published) continue;
+				await this.workflowService.activateWorkflow(user, workflow.id);
+				activated.push(workflow.id);
+			}
+		} catch (error) {
+			for (const id of activated) {
+				try {
+					await this.workflowService.deactivateWorkflowAsSystem(id);
+				} catch {
+					// best-effort, like deleteWorkflows
+				}
+			}
+			throw error;
 		}
 	}
 
@@ -357,15 +373,14 @@ export class EvalThreadRestoreService {
 				await this.sharedWorkflowRepo.makeOwner([workflow.id], projectId, em);
 			}
 			// Publishing looks the live versionId up in the history; without this row
-			// a seeded workflow can never be published ("Version not found").
-			await this.workflowHistoryService.saveVersion(
-				'Eval seed',
-				{ versionId: entity.versionId, nodes, connections },
-				workflow.id,
-				false,
-				undefined,
-				em,
-			);
+			// a seeded workflow can never be published ("Version not found"). The
+			// strict insert fails the transaction instead of logging a missing row.
+			await this.workflowHistoryService.insertVersion({
+				user: 'Eval seed',
+				workflow: { versionId: entity.versionId, nodes, connections },
+				workflowId: workflow.id,
+				transactionManager: em,
+			});
 		});
 		return stored === null;
 	}
