@@ -70,9 +70,15 @@ function getChunkIterator<T>(
  * read). The abandoned read's eventual rejection is swallowed — the stall
  * error is the one the caller reports.
  *
- * `getLastActivityAt` reports liveness the iterator cannot see (keepalive raw
- * chunks consumed upstream of it): the deadline re-arms while that activity
- * stays fresh instead of stalling.
+ * The two callbacks differ in kind and in when they are read, so neither
+ * derives from the other. `getIdleMs` is the budget, read before each wait; it
+ * varies by phase — the longer first-output limit until content streams, the
+ * tighter idle limit after. `getLastActivityAt` is a timestamp, read when the
+ * deadline fires; it reports liveness this iterator cannot see, because the
+ * raw-chunk tap swallows keepalive `raw` chunks upstream and they never arrive
+ * here to reset the window. Fusing the two into one "time remaining" value
+ * would hide activity that lands mid-wait and would make the stall error
+ * report that remainder instead of the configured budget.
  */
 export async function* withChunkIdleTimeout<T>(
 	source: AsyncIterable<T> | Iterable<T>,
