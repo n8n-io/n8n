@@ -172,7 +172,20 @@ describe('Variables in Public API', () => {
 			for (const variable of response.body.data) {
 				expect(Object.keys(variable).sort()).toEqual(['id', 'key', 'project', 'type', 'value']);
 				if (variable.project !== null) {
-					expect(Object.keys(variable.project).sort()).toEqual(['id', 'name', 'type']);
+					// Same nine fields `GET /workflows` publishes for a nested project.
+					expect(Object.keys(variable.project).sort()).toEqual([
+						'createdAt',
+						'creatorId',
+						'customTelemetryTags',
+						'description',
+						'icon',
+						'id',
+						'name',
+						'type',
+						'updatedAt',
+					]);
+					expect(typeof variable.project.createdAt).toBe('string');
+					expect(typeof variable.project.updatedAt).toBe('string');
 				}
 			}
 			expect(response.body.data.filter((v: Variables) => v.project === null)).toHaveLength(1);

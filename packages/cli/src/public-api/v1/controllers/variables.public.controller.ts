@@ -19,6 +19,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { toPublicProject } from '@/public-api/v1/shared/project.mapper';
 import {
 	paginateArray,
 	resolveOffsetPagination,
@@ -33,9 +34,7 @@ function toVariablePublic(variable: Variables): VariablePublic {
 		key: variable.key,
 		value: variable.value,
 		type: variable.type,
-		project: variable.project
-			? { id: variable.project.id, name: variable.project.name, type: variable.project.type }
-			: null,
+		project: variable.project ? toPublicProject(variable.project) : null,
 	};
 }
 

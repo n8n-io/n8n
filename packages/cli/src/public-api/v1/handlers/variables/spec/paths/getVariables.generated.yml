@@ -53,8 +53,6 @@ responses:
                     properties:
                       id:
                         type: string
-                        readOnly: true
-                        example: VmwOO9HeTEj20kxM
                       name:
                         type: string
                       type:
@@ -62,11 +60,54 @@ responses:
                         enum:
                           - personal
                           - team
-                        readOnly: true
+                      icon:
+                        type: object
+                        nullable: true
+                        properties:
+                          type:
+                            type: string
+                            enum:
+                              - emoji
+                              - icon
+                          value:
+                            type: string
+                        required:
+                          - type
+                          - value
+                      description:
+                        type: string
+                        nullable: true
+                      customTelemetryTags:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                            value:
+                              type: string
+                          required:
+                            - key
+                            - value
+                      creatorId:
+                        type: string
+                        nullable: true
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
                     required:
                       - id
                       - name
                       - type
+                      - icon
+                      - description
+                      - customTelemetryTags
+                      - creatorId
+                      - createdAt
+                      - updatedAt
                 required:
                   - id
                   - key
