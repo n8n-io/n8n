@@ -91,6 +91,10 @@ describe('CreatePromotionConnectionDto', () => {
 });
 
 describe('UpdatePromotionConnectionDto', () => {
+	it('rejects an empty update', () => {
+		expect(UpdatePromotionConnectionDto.safeParse({}).success).toBe(false);
+	});
+
 	it('accepts the name, the target, and the provider', () => {
 		expect(
 			UpdatePromotionConnectionDto.safeParse({ name: 'Renamed', target, providerId: 'prov-2' })
