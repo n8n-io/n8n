@@ -416,6 +416,9 @@ export function writeEvalResults(
 			// it (its Dockerfile used to sed-inject this exact field; keep the
 			// expression verbatim so that patch detects upstream support and no-ops).
 			workflowJson: tc.runs[0]?.workflowJson,
+			// Per-iteration produced workflow — the LangTracer dispatcher ingests it
+			// and renders a Build-N switcher (null when an iteration produced none).
+			workflowJsonPerRun: tc.runs.map((run) => run.workflowJson ?? null),
 			totalRuns,
 			workflowChecksPerRun: tc.runs.map((run) =>
 				run.workflowChecks ? statusMap(run.workflowChecks) : null,
