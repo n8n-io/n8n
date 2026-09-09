@@ -42,8 +42,12 @@ export class AzureStorageSharedKeyApi implements ICredentialType {
 		{
 			displayName: 'Base URL',
 			name: 'baseUrl',
-			type: 'hidden',
+			type: 'string',
 			default: '=https://{{ $self["account"] }}.blob.core.windows.net',
+			placeholder: 'https://myaccount.blob.core.windows.net',
+			hint: 'Replace the whole value with your endpoint URL, for example https://myaccount.blob.core.chinacloudapi.cn',
+			description:
+				'Blob service endpoint. Keep the default for the public Azure cloud. For a sovereign cloud or a private endpoint, enter the full URL with the account name in the hostname, for example https://myaccount.blob.core.chinacloudapi.cn. Endpoints with the account name in the path, such as Azurite, do not work.',
 		},
 	];
 
