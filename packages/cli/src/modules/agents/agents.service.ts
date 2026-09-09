@@ -43,6 +43,9 @@ type CreateAgentOptions = {
 	 *  can recreate an already-built agent in one insert. */
 	schema?: AgentJsonConfig;
 	skills?: Record<string, AgentSkill>;
+	/** Opaque custom tool bodies keyed by id (passthrough from the duplicate path;
+	 *  validated when the source agent was authored). */
+	tools?: Record<string, unknown>;
 };
 
 @Service()
@@ -96,6 +99,7 @@ export class AgentsService {
 			defaultModel,
 			schema,
 			skills,
+			tools,
 		}: CreateAgentOptions = {},
 	): Promise<{ agent: Agent; adopted: boolean }> {
 		const defaultConfig: AgentJsonConfig = {
@@ -125,6 +129,7 @@ export class AgentsService {
 			schema: schemaConfig,
 			...(integrations.length > 0 ? { integrations } : {}),
 			...(skills ? { skills } : {}),
+			...(tools ? { tools: tools as Agent['tools'] } : {}),
 			versionId: uuid(),
 			availableInMCP,
 		});

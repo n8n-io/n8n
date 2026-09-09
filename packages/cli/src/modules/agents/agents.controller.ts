@@ -34,11 +34,18 @@ export class AgentsController {
 		@Body payload: CreateAgentDto,
 	) {
 		const { projectId } = req.params;
-		const defaultModel = await this.agentDefaultModelResolverService.resolve(req.user, projectId);
+		const isDuplicate = Boolean(payload.schema);
+
+		const defaultModel = isDuplicate
+			? undefined
+			: await this.agentDefaultModelResolverService.resolve(req.user, projectId);
 
 		const agent = await this.agentsService.create(projectId, payload.name, {
 			id: payload.id,
 			...(defaultModel ? { defaultModel } : {}),
+			...(isDuplicate ? { schema: payload.schema } : {}),
+			...(isDuplicate ? { skills: payload.skills } : {}),
+			...(isDuplicate ? { tools: payload.tools } : {}),
 		});
 		return await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user);
 	}

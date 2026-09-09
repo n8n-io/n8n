@@ -38,6 +38,7 @@ const emit = defineEmits<{
 	unpublished: [agent: AgentResource];
 	deleted: [agentId: string];
 	'new-chat': [agentId: string, projectId: string];
+	duplicate: [agentId: string];
 }>();
 
 const locale = useI18n();
@@ -117,6 +118,11 @@ const actions = computed(() => {
 		});
 	}
 
+	items.push({
+		value: 'duplicate',
+		label: locale.baseText('agents.list.actions.duplicate'),
+	});
+
 	return items;
 });
 
@@ -158,6 +164,8 @@ async function onAction(action: string) {
 		removeProjectAgentFromListCache(props.projectId, props.agent.id);
 		favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
 		emit('deleted', props.agent.id);
+	} else if (action === 'duplicate') {
+		emit('duplicate', props.agent.id);
 	}
 }
 

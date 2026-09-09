@@ -20,7 +20,7 @@ import type {
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { AgentResource, AgentJsonConfig } from '../types';
+import type { AgentResource, AgentJsonConfig, CustomToolEntry } from '../types';
 
 export type ListAgentsSortBy =
 	| 'name:asc'
@@ -100,15 +100,44 @@ export const createAgent = async (
 	projectId: string,
 	name: string,
 	/** Creates the agent under an already-minted id, so a surface that referenced
-	 *  it while unsaved keeps pointing at the same agent. */
-	options: { id?: string } = {},
+	 *  it while unsaved keeps pointing at the same agent. Pass `schema`/`tools`/
+	 *  `skills` to seed a full agent in a duplicate operation). */
+	options: {
+		id?: string;
+		schema?: AgentJsonConfig;
+		tools?: Record<string, CustomToolEntry>;
+		skills?: Record<string, AgentSkill>;
+	} = {},
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2`,
-		{ name, ...(options.id ? { id: options.id } : {}) },
+		{
+			name,
+			...(options.id ? { id: options.id } : {}),
+			...(options.schema ? { schema: options.schema } : {}),
+			...(options.tools ? { tools: options.tools } : {}),
+			...(options.skills ? { skills: options.skills } : {}),
+		},
 	);
+};
+
+export const duplicateAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	name: string,
+): Promise<AgentResource> => {
+	const [agent, config] = await Promise.all([
+		getAgent(context, projectId, agentId),
+		getAgentConfig(context, projectId, agentId),
+	]);
+	return await createAgent(context, projectId, name, {
+		schema: { ...config, name },
+		tools: agent.tools,
+		skills: agent.skills,
+	});
 };
 
 export const deleteAgent = async (

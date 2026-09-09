@@ -195,6 +195,58 @@ describe('AgentsService', () => {
 		expect(entity).not.toHaveProperty('integrations');
 	});
 
+	it('seeds custom tool bodies onto the entity when duplicating a configured agent', async () => {
+		// Tool bodies live in their own JSON column keyed by id; the duplicate path
+		// copies both the refs (inside `schema.tools`) and the bodies so the clone
+		// is runnable without a follow-up write.
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+		const tools = {
+			refund_tool: { code: 'return 1', descriptor: { name: 'refund_tool' } },
+		};
+
+		await service.create(projectId, 'Support Agent', {
+			schema: {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage refunds.',
+				tools: [{ type: 'custom', id: 'refund_tool' }],
+			},
+			tools,
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.tools).toEqual(tools);
+		expect(entity.schema).toMatchObject({
+			tools: [{ type: 'custom', id: 'refund_tool' }],
+		});
+	});
+
+	it('seeds skill bodies onto the entity alongside their schema refs', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+		const skills = {
+			skill_abc: { name: 'Triage', description: '', instructions: 'Sort tickets.' },
+		};
+
+		await service.create(projectId, 'Support Agent', {
+			schema: {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage tickets.',
+				skills: [{ type: 'skill', id: 'skill_abc' }],
+			},
+			skills,
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.skills).toEqual(skills);
+	});
+
 	describe('create with a client-minted id', () => {
 		const mintedId = 'aBcDeFgHiJkLmNoP';
 		const uniqueViolation = () =>
