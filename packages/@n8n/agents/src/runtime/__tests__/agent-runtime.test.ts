@@ -8,7 +8,7 @@ import { Agent } from '../../sdk/agent';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
-import type { CheckpointStore, SerializableAgentState } from '../../types';
+import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
@@ -38,6 +38,7 @@ import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: () =>
 		Object.assign(() => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }), {
+			chat: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }),
 			embeddingModel: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v2' }),
 		}),
 }));
@@ -6598,11 +6599,15 @@ describe('AgentRuntime — mid-run observation', () => {
 
 	function buildMidRunRuntime(
 		memory: InMemoryMemory,
-		extra?: { tools?: BuiltTool[]; checkpointStorage?: CheckpointStore },
+		extra?: {
+			tools?: BuiltTool[];
+			checkpointStorage?: CheckpointStore;
+			model?: ModelConfig;
+		},
 	): AgentRuntime {
 		return new AgentRuntime({
 			name: 'mid-run-agent',
-			model: 'openai/gpt-4o-mini',
+			model: extra?.model ?? 'openai/gpt-4o-mini',
 			instructions: 'You are a test assistant.',
 			memory,
 			tools: extra?.tools ?? [makeStepTool()],
@@ -6634,6 +6639,7 @@ describe('AgentRuntime — mid-run observation', () => {
 		const second = capturedCall(1);
 		expect(second.messages).toEqual([{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER }]);
 		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
+		expect(second.instructions).toHaveLength(2);
 
 		// The caller still receives the full response set of the turn.
 		expect(result.messages).toHaveLength(3);
@@ -6644,6 +6650,42 @@ describe('AgentRuntime — mid-run observation', () => {
 		});
 		expect(observations.length).toBeGreaterThanOrEqual(1);
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
+	});
+
+	it('merges system messages after compaction for custom OpenAI-compatible endpoints', async () => {
+		const memory = new InMemoryMemory();
+		const runtime = buildMidRunRuntime(memory, {
+			model: { id: 'custom/test-model', baseURL: 'https://example.test/v1' },
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
+
+		await runtime.generate('start work', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const second = capturedCall(1);
+		expect(second.instructions).not.toBeInstanceOf(Array);
+		expect(flattenInstructions(second.instructions)).toContain('You are a test assistant.');
+		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
+	});
+
+	it('merges system messages after compaction for OpenAI models with a custom URL', async () => {
+		const memory = new InMemoryMemory();
+		const runtime = buildMidRunRuntime(memory, {
+			model: { id: 'openai/x', url: 'http://localhost:8000/v1' },
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
+
+		await runtime.generate('start work', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const second = capturedCall(1);
+		expect(second.instructions).not.toBeInstanceOf(Array);
+		expect(flattenInstructions(second.instructions)).toContain('You are a test assistant.');
+		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
 	});
 
 	it('re-derives the mask from the cursor when resuming a suspended run', async () => {
