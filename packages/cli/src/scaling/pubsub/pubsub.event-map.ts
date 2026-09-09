@@ -130,6 +130,12 @@ export type PubSubCommandMap = {
 		userIds: string[];
 	};
 
+	'relay-agent-update': {
+		data: PushPayload<'agentUpdated'>;
+		userIds: string[];
+		excludePushRef?: string;
+	};
+
 	/** Ask mains to wake the agent run a finished sub-execution was parked on. */
 	'resume-agent-workflow-tool': {
 		agentRun: RelatedAgentRun;

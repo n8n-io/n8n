@@ -4,6 +4,7 @@ import {
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
 	sanitizeAgentJsonConfig,
+	type AgentConfigMutationResponse,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
@@ -14,6 +15,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 
@@ -26,6 +28,7 @@ import {
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
@@ -35,6 +38,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
+import { getAgentConfigHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import {
 	findHttpRequestToolUrlFromAiViolations,
@@ -57,6 +61,7 @@ export class AgentConfigService {
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	/**
@@ -143,10 +148,22 @@ export class AgentConfigService {
 		projectId: string,
 		config: unknown,
 		user: User,
-		options: { clearOmittedOptionalFields?: boolean; modifiedBy: AgentActor },
-	): Promise<{ config: AgentJsonConfig; updatedAt: string; versionId: string | null }> {
+		options: {
+			/** Hash of the config the caller read before editing; `null` when the agent had none. */
+			baseConfigHash: string | null;
+			clearOmittedOptionalFields?: boolean;
+			modifiedBy: AgentActor;
+			/** Push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
+			pushRef?: string;
+		},
+	): Promise<AgentConfigMutationResponse> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
+		if (options.baseConfigHash !== getAgentConfigHash(composeJsonConfig(entity))) {
+			throw new ConflictError(
+				'Agent config was changed elsewhere; reload to get the latest version',
+			);
+		}
 
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
@@ -302,6 +319,9 @@ export class AgentConfigService {
 
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
 		this.eventService.emit('agent-saved', { agentId });
+		// Every config writer (editor, builder, MCP) lands here, so this is where
+		// other open Agent Builder tabs learn that their loaded config is stale.
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, options.pushRef);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
 		this.modificationTelemetry.record({
@@ -326,8 +346,10 @@ export class AgentConfigService {
 			await syncAgentIntegrations(saved, previousIntegrations, nextIntegrations, this.logger);
 		}
 
+		const savedConfig = composeJsonConfig(saved) ?? validatedConfig;
 		return {
-			config: composeJsonConfig(saved) ?? validatedConfig,
+			config: savedConfig,
+			configHash: getAgentConfigHash(savedConfig),
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};

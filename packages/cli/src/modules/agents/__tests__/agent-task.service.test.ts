@@ -12,6 +12,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentTaskService } from '../agent-task.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { AgentTask } from '../entities/agent-task.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -153,6 +154,7 @@ describe('AgentTaskService', () => {
 			publisher,
 			modificationTelemetry,
 			durableJobRegistrar,
+			mock<AgentUpdateBroadcaster>(),
 		);
 	}
 

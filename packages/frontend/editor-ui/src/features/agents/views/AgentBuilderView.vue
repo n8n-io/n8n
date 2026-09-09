@@ -12,15 +12,18 @@ import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
+	type PushMessage,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -52,7 +55,7 @@ import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
-import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
+import { useAgentConfigAutosave, type AutosaveResult } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import {
@@ -133,6 +136,7 @@ const route = useRoute();
 const router = useRouter();
 const locale = useI18n();
 const rootStore = useRootStore();
+const pushConnectionStore = usePushConnectionStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const { openAgentArtifactThread } = useInstanceAiHandoff();
@@ -308,7 +312,7 @@ const {
 } = useAgentBuilderSession({ routeBacked: computed(() => !isArtifactMode.value) });
 
 // Config
-const { config, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
+const { config, configHash, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
 const {
 	validation: configValidation,
 	repoint: repointConfigValidation,
@@ -713,11 +717,16 @@ function warmAgentKnowledgeSandboxForPage() {
 	);
 }
 
+// Base hashes are captured when the edit is scheduled, not when the debounced
+// save fires: a refresh landing in between would otherwise lend a stale
+// snapshot the fresh hash and let it overwrite the newer server state.
 interface ConfigAutosaveSnapshot {
 	type: 'config';
 	projectId: string;
 	agentId: string;
 	config: AgentJsonConfig;
+	/** `undefined` while the agent's config has not been fetched yet (e.g. before it is persisted). */
+	baseConfigHash: string | null | undefined;
 }
 
 interface SkillAutosaveSnapshot {
@@ -726,6 +735,7 @@ interface SkillAutosaveSnapshot {
 	agentId: string;
 	skillId: string;
 	skill: AgentSkill;
+	baseSkillHash: string | undefined;
 }
 
 interface McpAvailabilitySnapshot {
@@ -859,12 +869,50 @@ async function ensureAgentPersisted(): Promise<void> {
 	}
 }
 
-async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' | undefined> {
+async function handleAutosaveConflict(snapshot: {
+	projectId: string;
+	agentId: string;
+}): Promise<'stale'> {
+	if (!isStaleAgentTarget(snapshot.projectId, snapshot.agentId)) {
+		await onConfigUpdated();
+		if (!isStaleAgentTarget(snapshot.projectId, snapshot.agentId)) {
+			showMessage({
+				title: locale.baseText('agents.builder.remoteChange.title'),
+				message: locale.baseText('agents.builder.remoteChange.message'),
+				type: 'warning',
+			});
+		}
+	}
+	return 'stale';
+}
+
+async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveResult> {
 	// The AI may be mutating this agent right now — a save queued just before
 	// the lock engaged must not persist its now-stale full config over it.
 	if (props.artifactEditingLocked) return 'skipped';
 	await ensureAgentPersisted();
-	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
+	let result;
+	try {
+		result = await updateConfig(
+			snapshot.projectId,
+			snapshot.agentId,
+			snapshot.config,
+			// Edits made before the agent was persisted have no fetched hash yet; the
+			// create response for that target carries the hash of the seeded config.
+			snapshot.baseConfigHash === undefined
+				? (persistedAgentsByTarget.get(`${snapshot.projectId}:${snapshot.agentId}`)?.configHash ??
+						null)
+				: snapshot.baseConfigHash,
+		);
+	} catch (error) {
+		if (error instanceof ResponseError && error.httpStatusCode === 409) {
+			// Detach before the reload: everything scheduled so far is stale,
+			// but edits typed while the reload runs must still get saved.
+			configAutosave.reset();
+			return await handleAutosaveConflict(snapshot);
+		}
+		throw error;
+	}
 	// The write landed regardless of staleness below — tell other surfaces
 	// (e.g. canvas agent cards invalidate their capability-summary cache).
 	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
@@ -884,21 +932,35 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 	return undefined;
 }
 
-async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<'skipped' | undefined> {
+async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<AutosaveResult> {
 	if (props.artifactEditingLocked) return 'skipped';
 	await ensureAgentPersisted();
-	const result = await updateAgentSkill(
-		rootStore.restApiContext,
-		snapshot.projectId,
-		snapshot.agentId,
-		snapshot.skillId,
-		snapshot.skill,
-	);
+	let result;
+	try {
+		result = await updateAgentSkill(
+			rootStore.restApiContext,
+			snapshot.projectId,
+			snapshot.agentId,
+			snapshot.skillId,
+			snapshot.skill,
+			snapshot.baseSkillHash,
+		);
+	} catch (error) {
+		if (error instanceof ResponseError && error.httpStatusCode === 409) {
+			skillAutosave.reset();
+			return await handleAutosaveConflict(snapshot);
+		}
+		throw error;
+	}
 	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
 	if (agent.value?.id !== snapshot.agentId) return undefined;
 	agent.value = {
 		...agent.value,
 		versionId: result.versionId,
+		skillHashes: {
+			...(agent.value.skillHashes ?? {}),
+			[snapshot.skillId]: result.skillHash,
+		},
 		skills: {
 			...(agent.value.skills ?? {}),
 			[snapshot.skillId]: result.skill,
@@ -1131,6 +1193,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 		// corrected the next time the user makes a real edit, without mutating
 		// config during component mount.
 		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		baseConfigHash: configHash.value,
 	});
 }
 
@@ -1155,6 +1218,7 @@ const caps = useAgentCapabilitiesActions({
 			agentId: agentId.value,
 			skillId,
 			skill,
+			baseSkillHash: agent.value?.skillHashes?.[skillId],
 		});
 	},
 	telemetry: {
@@ -1177,6 +1241,7 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 		agentId: agentId.value,
 		type: 'config',
 		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		baseConfigHash: configHash.value,
 	});
 }
 
@@ -1218,12 +1283,33 @@ function handleArtifactRefreshError(error: unknown) {
 }
 
 let externalRefreshTimer: ReturnType<typeof setTimeout> | undefined;
-function scheduleExternalRefresh() {
+const canApplyPushedAgentUpdate = computed(
+	() =>
+		!props.artifactEditingLocked &&
+		!configAutosave.hasPendingSave.value &&
+		!skillAutosave.hasPendingSave.value &&
+		!mcpAutosave.hasPendingSave.value,
+);
+
+function scheduleExternalRefresh(onlyWhenIdle = false) {
 	clearTimeout(externalRefreshTimer);
 	externalRefreshTimer = setTimeout(() => {
+		// A push that lands mid-autosave is deferred, not dropped: if the local
+		// write was accepted first there is no 409 to catch the newer remote
+		// state, so this tab would keep the older config. Replayed once idle.
+		if (onlyWhenIdle && !canApplyPushedAgentUpdate.value) {
+			pendingExternalRefresh.value = true;
+			return;
+		}
 		void refreshArtifactShell().catch(handleArtifactRefreshError);
 	}, getDebounceTime(400));
 }
+
+watch(canApplyPushedAgentUpdate, (idle) => {
+	if (idle && initialized.value) {
+		void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
+	}
+});
 
 function onExternalAgentUpdated(event?: AgentUpdatedEvent) {
 	if (event?.source === 'agent-builder') return;
@@ -1234,7 +1320,18 @@ function onExternalAgentUpdated(event?: AgentUpdatedEvent) {
 		pendingExternalRefresh.value = true;
 		return;
 	}
-	scheduleExternalRefresh();
+	scheduleExternalRefresh(event?.source === 'push');
+}
+
+function onAgentPushMessage(event: PushMessage) {
+	if (
+		event.type !== 'agentUpdated' ||
+		event.data.projectId !== projectId.value ||
+		event.data.agentId !== agentId.value
+	) {
+		return;
+	}
+	onExternalAgentUpdated({ agentId: event.data.agentId, source: 'push' });
 }
 
 async function replayPendingExternalRefresh() {
@@ -1244,6 +1341,8 @@ async function replayPendingExternalRefresh() {
 }
 
 agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
+pushConnectionStore.pushConnect();
+const removeAgentUpdateListener = pushConnectionStore.addEventListener(onAgentPushMessage);
 
 // Serves a request from outside the builder to focus the eval surface (the
 // assistant's post-setup suggestion). `immediate` so a request raised before
@@ -1694,6 +1793,8 @@ onBeforeUnmount(() => {
 	disposed = true;
 	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
+	removeAgentUpdateListener();
+	pushConnectionStore.pushDisconnect();
 	clearTimeout(externalRefreshTimer);
 	sessionsStore.stopAutoRefresh();
 	void flushAutosave().catch(() => {});

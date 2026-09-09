@@ -1,6 +1,8 @@
 import type {
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
+	AgentConfigMutationResponse,
+	AgentConfigResponse,
 	AgentConfigValidationResponse,
 	AgentDisconnectIntegrationResponse,
 	AgentFileDto,
@@ -402,8 +404,8 @@ export const getAgentConfig = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentJsonConfig> => {
-	return await makeRestApiRequest<AgentJsonConfig>(
+): Promise<AgentConfigResponse> => {
+	return await makeRestApiRequest<AgentConfigResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/config`,
@@ -445,12 +447,13 @@ export const updateAgentConfig = async (
 	projectId: string,
 	agentId: string,
 	config: AgentJsonConfig,
-): Promise<{ config: AgentJsonConfig; versionId: string | null }> => {
-	return await makeRestApiRequest(
+	baseConfigHash: string | null,
+): Promise<AgentConfigMutationResponse> => {
+	return await makeRestApiRequest<AgentConfigMutationResponse>(
 		context,
 		'PUT',
 		`/projects/${projectId}/agents/v2/${agentId}/config`,
-		{ config },
+		{ config, baseConfigHash },
 	);
 };
 
@@ -474,12 +477,13 @@ export const updateAgentSkill = async (
 	agentId: string,
 	skillId: string,
 	updates: Partial<AgentSkill>,
+	baseSkillHash?: string,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'PATCH',
 		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,
-		updates,
+		{ ...updates, baseSkillHash },
 	);
 };
 
