@@ -4,6 +4,7 @@ import { createWorkflow, getPersonalProject, testDb } from '@n8n/backend-test-ut
 import { AppsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
@@ -124,6 +125,57 @@ describe('GET /projects/:projectId/apps/data-workflows', () => {
 			.expect(200);
 
 		expect(response.body.data).toEqual([]);
+	});
+});
+
+describe('GET /projects/:projectId/apps/:appId/bindings', () => {
+	test('describes a bound workflow with its trigger fields and a not-published warning', async () => {
+		const workflow = await createWorkflow(
+			{
+				name: 'Echo',
+				nodes: [
+					{
+						id: 'trigger',
+						name: 'When Executed by Another Workflow',
+						type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+						typeVersion: 1.1,
+						position: [0, 0],
+						parameters: {
+							inputSource: 'workflowInputs',
+							workflowInputs: { values: [{ name: 'message', type: 'string' }] },
+						},
+					},
+				],
+			},
+			ownerProject,
+		);
+		const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+		const app = await appRepository.updateBindings(created, [
+			{ key: 'submit', kind: 'workflow', workflowId: workflow.id },
+		]);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.expect(200);
+
+		expect(response.body.data.bindings).toEqual([
+			{
+				key: 'submit',
+				kind: 'workflow',
+				workflowId: workflow.id,
+				name: 'Echo',
+				published: false,
+				input: [{ name: 'message', type: 'string' }],
+			},
+		]);
+		expect(response.body.data.warnings).toHaveLength(1);
+		expect(response.body.data.warnings[0]).toContain('not published');
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+
+		await authMemberAgent.get(`/projects/${ownerProject.id}/apps/${app.id}/bindings`).expect(403);
 	});
 });
 

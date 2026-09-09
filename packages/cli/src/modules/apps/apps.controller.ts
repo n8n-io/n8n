@@ -222,6 +222,17 @@ export class AppsController {
 		return await this.appsService.listVersions(appId);
 	}
 
+	@Get('/:appId/bindings')
+	@ProjectScope('app:read')
+	async listBindings(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+	) {
+		const app = await this.appsService.getApp(appId);
+		return await this.appsService.describeBindings(app);
+	}
+
 	@Post('/:appId/pages')
 	@ProjectScope('app:update')
 	async createPage(
