@@ -301,9 +301,13 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	overflow: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
+	/** Hides scrollbars so they don't clash with resize handle */
+	scrollbar-color: transparent transparent;
 	scrollbar-gutter: stable;
+	scrollbar-width: thin;
+	&:hover {
+		scrollbar-color: var(--border-color) transparent;
+	}
 }
 
 .preventScroll {

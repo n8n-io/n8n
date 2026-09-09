@@ -692,7 +692,7 @@ function onFilesDropped(files: File[]) {
 		</div>
 		<N8nResizeWrapper
 			:class="$style.mainContentResizer"
-			:width="artifacts.viewerSize.value"
+			:resizer="artifacts.panelResizer"
 			:style="{
 				width: artifacts.isViewerVisible.value
 					? `${artifacts.viewerSize.value}px`
@@ -702,7 +702,6 @@ function onFilesDropped(files: File[]) {
 			}"
 			:supported-directions="['right']"
 			:is-resizing-enabled="true"
-			@resize="artifacts.handleViewerResize"
 			@resizeend="artifacts.handleViewerResizeEnd"
 		>
 			<div :class="$style.mainContent">
