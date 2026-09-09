@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
+import ts from 'typescript';
 import type { Alias } from 'vite';
 import { describe, expect, it } from 'vitest';
 
@@ -23,7 +24,11 @@ const readTsconfig = (file: string) =>
 			.join('\n'),
 	) as { compilerOptions?: { paths?: Record<string, string[]> } };
 
-/** This function makes the short `"@n8n/x*"` form equal to the `"@n8n/x"` plus `"@n8n/x/*"` pair. */
+/**
+ * This function treats the short `"@n8n/x*"` form as the `"@n8n/x"` plus `"@n8n/x/*"` pair. That
+ * holds for the directory each maps to, but not for how TypeScript resolves a bare specifier — see
+ * `resolves the bare specifier of every entry package to src` below.
+ */
 const pathsByPackage = (file: string) => {
 	const paths = readTsconfig(file).compilerOptions?.paths ?? {};
 	const byPackage = new Map<string, string>();
@@ -97,6 +102,48 @@ describe('editor-ui vite aliases', () => {
 		for (const [name, srcDir] of modulePaths) {
 			expect({ name, srcDir }).toEqual({ name, srcDir: editorUiPaths.get(name) });
 		}
+	});
+
+	/**
+	 * The short `"@n8n/x*"` form maps a bare specifier to a directory, which TS declines. Node
+	 * resolution then reads the `exports` of the package and returns its `dist`, while the bundle
+	 * reads `src`. The fix is an explicit pair: `"@n8n/x": [".../src/index.ts"]` beside `"@n8n/x/*"`.
+	 */
+	it('resolves the bare specifier of every entry package to src', () => {
+		// Each still resolves to `dist` for the typecheck while the bundle reads `src`. Give a package
+		// the explicit pair and delete it here; expect new type errors, since `dist` declarations are
+		// looser than the source they come from.
+		const KNOWN_DIST_FALLBACK = new Set([
+			'@n8n/api-types',
+			'@n8n/chat',
+			'@n8n/chat-hub',
+			'@n8n/constants',
+			'@n8n/i18n',
+			'@n8n/rest-api-client',
+			'@n8n/stores',
+		]);
+
+		const probe = join(editorUiDir, 'src', 'app', 'App.vue');
+		const configPath = ts.findConfigFile(probe, ts.sys.fileExists);
+		if (!configPath) throw new Error('no tsconfig.json above src/app/App.vue');
+		const { options } = ts.parseJsonConfigFileContent(
+			ts.readConfigFile(configPath, ts.sys.readFile).config,
+			ts.sys,
+			dirname(configPath),
+			undefined,
+			configPath,
+		);
+
+		const offenders = [...sourcePackages, ...modulePackages]
+			.filter(({ entry = true }) => entry)
+			.filter(({ name }) => !KNOWN_DIST_FALLBACK.has(name))
+			.filter(({ name }) => {
+				const resolved = ts.resolveModuleName(name, probe, options, ts.sys).resolvedModule;
+				return !resolved || !resolved.resolvedFileName.includes('/src/');
+			})
+			.map(({ name }) => name);
+
+		expect(offenders).toEqual([]);
 	});
 
 	it('resolves @n8n/tournament from source', () => {
