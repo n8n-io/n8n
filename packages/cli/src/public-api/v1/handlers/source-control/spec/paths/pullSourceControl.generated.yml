@@ -15,6 +15,7 @@ requestBody:
         properties:
           force:
             type: boolean
+            description: Discard local changes and force the pull to complete.
           autoPublish:
             type: string
             enum:
@@ -22,6 +23,11 @@ requestBody:
               - all
               - published
             default: none
+            description: |-
+              Controls automatic workflow publishing after import:
+              - `none`: Keep workflows in their local published state (default)
+              - `all`: Publish all imported workflows
+              - `published`: Publish only workflows that were published locally before import
 responses:
   '200':
     description: Operation successful.
