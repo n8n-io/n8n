@@ -37,11 +37,19 @@ function isSelectable(preference: Preference) {
 
 const readOnlyHint = computed(() => i18n.baseText('settings.context.preferences.readOnly.tooltip'));
 
-// Sorting is off until the endpoints support an ORDER BY.
+/*
+ * Sorting is off until the endpoints support an ORDER BY.
+ *
+ * The table stretches its columns proportionally to fill the container, so these
+ * widths act as ratios rather than pixels. They are written as the widths the design
+ * asks for at the settings container's own width, which keeps the proportions right
+ * at any viewport.
+ */
 const headers = computed<Array<TableHeader<Preference>>>(() => [
 	{
 		title: i18n.baseText('settings.context.preferences.columns.preference'),
 		key: 'content',
+		width: 560,
 		disableSort: true,
 		resize: false,
 	},
@@ -50,7 +58,7 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 		// Not a column on the row: derived from the userId/projectId tri-state.
 		key: 'scope',
 		value: (row) => preferenceScope(row),
-		width: 220,
+		width: 400,
 		disableSort: true,
 		resize: false,
 	},
@@ -58,7 +66,7 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 		title: '',
 		key: 'actions',
 		align: 'end',
-		width: 160,
+		width: 184,
 		disableSort: true,
 		resize: false,
 		value: () => undefined,

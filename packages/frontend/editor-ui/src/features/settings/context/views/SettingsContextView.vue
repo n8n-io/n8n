@@ -38,7 +38,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<N8nSettingsLayout data-test-id="settings-context-view">
+	<N8nSettingsLayout :class="$style.layout" data-test-id="settings-context-view">
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.context.title')"
 			:description="i18n.baseText('settings.context.description')"
@@ -72,3 +72,10 @@ onMounted(async () => {
 		</N8nSettingsRowGroup>
 	</N8nSettingsLayout>
 </template>
+
+<style lang="scss" module>
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+.layout {
+	padding-top: 0;
+}
+</style>

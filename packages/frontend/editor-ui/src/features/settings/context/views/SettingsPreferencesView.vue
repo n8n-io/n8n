@@ -148,6 +148,7 @@ onMounted(async () => {
 
 <template>
 	<N8nSettingsLayout
+		:class="$style.layout"
 		full-width
 		show-back
 		:back-label="i18n.baseText('settings.context.preferences.back')"
@@ -213,6 +214,20 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+/*
+ * The settings shell already insets the page, so the layout's own padding is dropped
+ * and `full-width` lets the table span the shell's container. The page header caps its
+ * own width and the layout centres every child, so it is pulled back to the table's
+ * left edge.
+ */
+.layout {
+	padding: 0;
+
+	header {
+		margin-inline: 0 auto;
+	}
+}
+
 .empty {
 	display: flex;
 	flex-direction: column;

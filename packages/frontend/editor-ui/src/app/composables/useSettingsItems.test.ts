@@ -7,6 +7,8 @@ const isAiGatewayCloudUbbEnabled = ref(false);
 const isAiGatewayEnabled = ref(true);
 const balance = ref<number>();
 const moduleSettings = ref<Record<string, unknown>>({});
+// `ui.store` stamps `available: true` onto every module item before exposing it.
+const settingsSidebarItems = ref<Array<{ id: string; available: boolean }>>([]);
 const openTopUpMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({ useRouter: vi.fn(() => ({})) }));
@@ -20,7 +22,13 @@ vi.mock('./useAiGatewayTopUp', () => ({
 	useAiGatewayTopUp: vi.fn(() => ({ openTopUp: openTopUpMock })),
 }));
 vi.mock('@n8n/i18n', () => ({ useI18n: vi.fn(() => ({ baseText: (key: string) => key })) }));
-vi.mock('../stores/ui.store', () => ({ useUIStore: vi.fn(() => ({ settingsSidebarItems: [] })) }));
+vi.mock('../stores/ui.store', () => ({
+	useUIStore: vi.fn(() => ({
+		get settingsSidebarItems() {
+			return settingsSidebarItems.value;
+		},
+	})),
+}));
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		isAiAssistantEnabled: false,
@@ -47,6 +55,32 @@ describe('useSettingsItems', () => {
 		isAiGatewayCloudUbbEnabled.value = false;
 		balance.value = undefined;
 		moduleSettings.value = {};
+		settingsSidebarItems.value = [];
+	});
+
+	describe('the Context item', () => {
+		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
+
+		it('sits directly after the module-registered MCP item', () => {
+			settingsSidebarItems.value = [
+				{ id: 'settings-mcp', available: true },
+				{ id: 'settings-chat', available: true },
+			];
+
+			const ids = idsOf();
+
+			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-mcp') + 1);
+			expect(ids.indexOf('settings-context')).toBeLessThan(ids.indexOf('settings-chat'));
+		});
+
+		it('falls back to the end when the MCP module is inactive', () => {
+			settingsSidebarItems.value = [];
+
+			const ids = idsOf();
+
+			expect(ids).not.toContain('settings-mcp');
+			expect(ids.at(-1)).toBe('settings-context');
+		});
 	});
 
 	it('hides the encryption keys item while rotation is disabled', () => {

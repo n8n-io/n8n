@@ -3215,7 +3215,7 @@
 	"settings.authCookie.insecureConnection.option.disableSecureCookie": "If you prefer to disable this security feature (<strong>not recommended</strong>), set the environment variable <code>{envVar}</code> to <code>false</code>",
 	"settings.communityNodes": "Community nodes",
 	"settings.context.title": "Context",
-	"settings.context.description": "A centralized place to manage reusable information and resources. Applied across n8n assistant, workflows, agents, and connected AI tools.",
+	"settings.context.description": "A centralized place to manage reusable information and resources. Applied across n8n assistant, workflows, agents, and connected AI tools",
 	"settings.context.comingSoon": "Coming soon",
 	"settings.context.skills.title": "Skills",
 	"settings.context.sources.title": "Sources",
