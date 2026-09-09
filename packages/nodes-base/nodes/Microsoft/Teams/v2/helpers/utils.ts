@@ -142,7 +142,13 @@ export async function resolveMentions(
 		} catch (error) {
 			if (error instanceof NodeApiError && error.httpCode === '404') {
 				// Only an address can be a `mail` value, so a GUID goes straight to the error.
-				const byMail = value.includes('@') ? await findUserByMail.call(this, value) : undefined;
+				// The fallback runs inside this catch, so its own 403/429/5xx would otherwise
+				// escape without the row index the primary lookup stamps on.
+				const byMail = value.includes('@')
+					? await findUserByMail.call(this, value).catch((mailError) => {
+							throw stampItemIndexOnError(mailError, itemIndex);
+						})
+					: undefined;
 				if (!byMail) {
 					throw new NodeOperationError(node, `Could not find the user for mention ${index + 1}`, {
 						itemIndex,

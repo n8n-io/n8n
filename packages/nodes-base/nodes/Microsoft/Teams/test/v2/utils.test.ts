@@ -388,6 +388,22 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 	});
 
+	it('stamps the item index when the mail fallback itself fails', async () => {
+		setRows('jane@example.com', 'alex@contoso.com');
+		apiRequest.mockResolvedValueOnce({ id: 'guid-1', displayName: 'Jane Smith' });
+		apiRequest.mockRejectedValueOnce(notFound());
+		// The fallback runs inside the 404 handler, so its own failure has no other stamping path.
+		const throttled = new NodeApiError(node, {
+			code: 'TooManyRequests',
+			message: 'Rate limit is exceeded.',
+			statusCode: 429,
+		});
+		apiRequest.mockRejectedValueOnce(throttled);
+
+		await expect(resolveMentions.call(ctx, 3)).rejects.toBe(throttled);
+		expect(throttled.context.itemIndex).toBe(3);
+	});
+
 	it('passes a permission failure through with the item index', async () => {
 		setRows('jane@example.com');
 		const forbidden = new NodeApiError(node, {
