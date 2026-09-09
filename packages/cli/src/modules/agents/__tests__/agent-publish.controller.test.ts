@@ -6,7 +6,6 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentPublishService } from '../agent-publish.service';
 import { AgentPublishController } from '../agent-publish.controller';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
-import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
 import {
 	expectProjectScopedAgentRoutes,
@@ -27,17 +26,11 @@ function makeController({
 		agentValidationService,
 		agentPublishService,
 	);
-	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 
 	return {
-		controller: new AgentPublishController(
-			agentPublishService,
-			agentRunnableStateService,
-			agentUpdateBroadcaster,
-		),
+		controller: new AgentPublishController(agentPublishService, agentRunnableStateService),
 		agentPublishService,
 		agentValidationService,
-		agentUpdateBroadcaster,
 	};
 }
 
@@ -91,8 +84,7 @@ describe('AgentPublishController publish history', () => {
 
 describe('AgentPublishController revert to version', () => {
 	it('forwards the parsed versionId to the service and returns the agent with runnable state', async () => {
-		const { controller, agentPublishService, agentValidationService, agentUpdateBroadcaster } =
-			makeController();
+		const { controller, agentPublishService, agentValidationService } = makeController();
 		agentPublishService.revertToVersion.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
@@ -119,16 +111,13 @@ describe('AgentPublishController revert to version', () => {
 			'v1',
 			{ id: 'user-1' },
 			'user',
+			'push-ref-1',
 		);
 		expect(result).toEqual(
 			expect.objectContaining({
 				id: 'agent-1',
 				isRunnable: true,
 			}),
-		);
-		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
-			{ projectId: 'project-1', agentId: 'agent-1' },
-			'push-ref-1',
 		);
 	});
 });

@@ -10,14 +10,12 @@ import type { Response } from 'express';
 
 import { AgentPublishService } from './agent-publish.service';
 import { AgentRunnableStateService } from './agent-runnable-state.service';
-import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentPublishController {
 	constructor(
 		private readonly agentPublishService: AgentPublishService,
 		private readonly agentRunnableStateService: AgentRunnableStateService,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	@Post('/:agentId/publish')
@@ -34,18 +32,14 @@ export class AgentPublishController {
 			req.user,
 			{ by: 'user', trigger: 'explicit' },
 			payload?.versionId,
-		);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId: req.params.projectId, agentId },
 			req.headers?.['push-ref'],
 		);
-		const result = await this.agentRunnableStateService.addRunnableState(
+		return await this.agentRunnableStateService.addRunnableState(
 			agent,
 			req.params.projectId,
 			req.user,
 			draftValidation,
 		);
-		return result;
 	}
 
 	@Post('/:agentId/unpublish')
@@ -60,17 +54,13 @@ export class AgentPublishController {
 			req.params.projectId,
 			req.user,
 			'user',
-		);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId: req.params.projectId, agentId },
 			req.headers?.['push-ref'],
 		);
-		const result = await this.agentRunnableStateService.addRunnableState(
+		return await this.agentRunnableStateService.addRunnableState(
 			agent,
 			req.params.projectId,
 			req.user,
 		);
-		return result;
 	}
 
 	@Post('/:agentId/revert-to-published')
@@ -85,17 +75,13 @@ export class AgentPublishController {
 			req.params.projectId,
 			req.user,
 			'user',
-		);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId: req.params.projectId, agentId },
 			req.headers?.['push-ref'],
 		);
-		const result = await this.agentRunnableStateService.addRunnableState(
+		return await this.agentRunnableStateService.addRunnableState(
 			agent,
 			req.params.projectId,
 			req.user,
 		);
-		return result;
 	}
 
 	@Post('/:agentId/revert-to-version')
@@ -112,17 +98,13 @@ export class AgentPublishController {
 			payload.versionId,
 			req.user,
 			'user',
-		);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId: req.params.projectId, agentId },
 			req.headers?.['push-ref'],
 		);
-		const result = await this.agentRunnableStateService.addRunnableState(
+		return await this.agentRunnableStateService.addRunnableState(
 			agent,
 			req.params.projectId,
 			req.user,
 		);
-		return result;
 	}
 
 	@Get('/:agentId/versions')
