@@ -41,7 +41,13 @@ class TestableAppThemeBuildService extends AppThemeBuildService {
 	}
 }
 
-const APP = { id: 'app-1', name: 'Greeter', namespace: 'greeter', activeVersionId: 'v-0' } as App;
+const APP = {
+	id: 'app-1',
+	name: 'Greeter',
+	namespace: 'greeter',
+	activeVersionId: 'v-0',
+	bindings: [{ key: 'greet', workflowId: 'wf-1' }],
+} as App;
 const USER = { id: 'user-1' } as User;
 const THEME: AppTheme = {
 	mode: 'dark',
@@ -154,8 +160,9 @@ describe('AppThemeBuildService', () => {
 	});
 
 	it('restores the source first when the app directory is empty', async () => {
-		const { service, executeCommand } = createService();
+		const { service, appsService, executeCommand } = createService();
 		executeCommand.mockResolvedValue(fail());
+		appsService.describeBindings.mockResolvedValue({ bindings: [], warnings: ['draft only'] });
 		vi.mocked(restoreApp).mockResolvedValue({
 			appId: 'app-1',
 			name: 'Greeter',
@@ -182,6 +189,15 @@ describe('AppThemeBuildService', () => {
 			appId: 'app-1',
 		});
 		expect(result).toEqual({ versionId: 'v-1', url: 'http://localhost:5678/apps/greeter/' });
+
+		// Real restore rewrites the bindings types through the adapter it is handed.
+		const adapter = vi.mocked(restoreApp).mock.calls[0][0].appService;
+		await expect(adapter?.getBindings('app-1')).resolves.toEqual({
+			bindings: [],
+			warnings: ['draft only'],
+			stored: APP.bindings,
+		});
+		expect(appsService.describeBindings).toHaveBeenCalledWith(APP);
 	});
 
 	it('surfaces a restore failure without attempting a build', async () => {
