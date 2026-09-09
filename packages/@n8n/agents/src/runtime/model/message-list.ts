@@ -37,7 +37,8 @@ export type LlmContext = {
  * are both kept out of it and folded into a second, uncached system message
  * instead — either would otherwise change the bytes under the instruction
  * cache breakpoint (and OpenAI's automatic prefix cache) on nearly every
- * call, for no future read.
+ * call, for no future read. Providers that do not support multiple system
+ * messages receive one merged message instead.
  */
 export function buildSystemMessages(
 	baseInstructions: string,
@@ -45,6 +46,7 @@ export function buildSystemMessages(
 	instructionProviderOptions?: ProviderOptions,
 	volatileInstructions?: string,
 	mcpConnectionNote?: string,
+	splitSystemMessages = true,
 ): SystemModelMessage | SystemModelMessage[] {
 	const cacheOptions = instructionProviderOptions
 		? { providerOptions: instructionProviderOptions }
@@ -55,10 +57,10 @@ export function buildSystemMessages(
 		observationLogMemory?.trim(),
 	].filter((s): s is string => Boolean(s));
 
-	if (volatileSections.length === 0) {
+	if (volatileSections.length === 0 || !splitSystemMessages) {
 		return {
 			role: 'system',
-			content: baseInstructions,
+			content: [baseInstructions, ...volatileSections].join('\n\n'),
 			...cacheOptions,
 		};
 	}
@@ -317,13 +319,14 @@ export class AgentMessageList {
 	 * Full LLM context for a generateText / streamText call.
 	 * Returns the system prompt separately (observation-log memory and any
 	 * volatile tool-instruction fragments in their own uncached system
-	 * message when present) and conversation messages stripped via
-	 * filterLlmMessages.
+	 * message when the provider supports split system messages) and
+	 * conversation messages stripped via filterLlmMessages.
 	 */
 	forLlm(
 		baseInstructions: string,
 		instructionProviderOptions?: ProviderOptions,
 		volatileInstructions?: string,
+		splitSystemMessages = true,
 	): LlmContext {
 		const messages = toAiMessages(
 			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
@@ -340,6 +343,7 @@ export class AgentMessageList {
 				instructionProviderOptions,
 				volatileInstructions,
 				this.mcpConnectionNote,
+				splitSystemMessages,
 			),
 			messages,
 		};

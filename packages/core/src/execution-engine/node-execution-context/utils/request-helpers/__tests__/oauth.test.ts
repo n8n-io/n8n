@@ -708,6 +708,182 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
 	});
 
+	test.each([403, 404])(
+		'should retry on %i when tokenExpiredStatusCode is the array [403, 404] (isN8nRequest path)',
+		async (status) => {
+			mockThis.getCredentials.mockResolvedValue(
+				makeCredentialData({ tokenExpiredStatusCode: [403, 404] }),
+			);
+
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				token_type: 'bearer',
+			});
+
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(
+				Object.assign(new Error(String(status)), { response: { status } }),
+			);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+
+			const result = await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual({ success: true });
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		},
+	);
+
+	test('should NOT retry on a status outside the [403, 404] array (isN8nRequest path)', async () => {
+		mockThis.getCredentials.mockResolvedValue(
+			makeCredentialData({ tokenExpiredStatusCode: [403, 404] }),
+		);
+		const error401 = Object.assign(new Error('401'), { response: { status: 401 } });
+		mockThis.helpers.httpRequest.mockRejectedValueOnce(error401);
+
+		await expect(
+			requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			),
+		).rejects.toThrow('401');
+
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+	});
+
+	// ENT-408: 403/404 are ambiguous on Atlassian's gateway. They mean "expired token" or
+	// "this page does not exist", so `skipRefreshWhileTokenIsFresh` makes the stored expiry the
+	// tie-breaker, so a batch of genuinely missing pages costs no refreshes at all.
+	describe('skipRefreshWhileTokenIsFresh', () => {
+		const gatewayRetryOptions = {
+			tokenExpiredStatusCode: [401, 403, 404],
+			skipRefreshWhileTokenIsFresh: true,
+		};
+		const in10Minutes = () => String(Date.now() + 10 * 60 * 1000);
+		const tenMinutesAgo = () => String(Date.now() - 10 * 60 * 1000);
+
+		const failWith = (status: number) => {
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(
+				Object.assign(new Error(String(status)), { response: { status } }),
+			);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+		};
+
+		const callWithGatewayOptions = async () =>
+			await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				gatewayRetryOptions,
+				true,
+			);
+
+		test.each([403, 404])(
+			'should NOT refresh on %i while the stored token still has time left',
+			async (status) => {
+				mockThis.getCredentials.mockResolvedValue(
+					makeCredentialData({
+						oauthTokenData: { access_token: 'live-token', n8n_expires_at: in10Minutes() },
+					}),
+				);
+				// No nock interceptor: a token request here would fail the test
+				failWith(status);
+
+				await expect(callWithGatewayOptions()).rejects.toThrow(String(status));
+
+				expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+				expect(
+					mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+				).not.toHaveBeenCalled();
+			},
+		);
+
+		test.each([403, 404])(
+			'should refresh and retry on %i once the stored token is past its expiry',
+			async (status) => {
+				mockThis.getCredentials.mockResolvedValue(
+					makeCredentialData({
+						oauthTokenData: { access_token: 'expired-token', n8n_expires_at: tenMinutesAgo() },
+					}),
+				);
+				nock(tokenUrl).post('/token').reply(200, {
+					access_token: 'new-token',
+					token_type: 'bearer',
+				});
+				failWith(status);
+
+				await expect(callWithGatewayOptions()).resolves.toEqual({ success: true });
+
+				expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+			},
+		);
+
+		test('should still refresh on a 401, whatever the stored expiry says', async () => {
+			mockThis.getCredentials.mockResolvedValue(
+				makeCredentialData({
+					oauthTokenData: { access_token: 'live-token', n8n_expires_at: in10Minutes() },
+				}),
+			);
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				token_type: 'bearer',
+			});
+			failWith(401);
+
+			await expect(callWithGatewayOptions()).resolves.toEqual({ success: true });
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		});
+
+		test('should still refresh on a 404 when the stored expiry is unknown', async () => {
+			// Tokens stored before n8n recorded an expiry, and grants whose server sends no
+			// expires_in, must keep the old behaviour or the fix would not reach them
+			mockThis.getCredentials.mockResolvedValue(
+				makeCredentialData({ oauthTokenData: { access_token: 'unknown-expiry-token' } }),
+			);
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				token_type: 'bearer',
+			});
+			failWith(404);
+
+			await expect(callWithGatewayOptions()).resolves.toEqual({ success: true });
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		});
+
+		test('should NOT refresh on a 404 right after the first clientCredentials token exchange', async () => {
+			mockThis.getCredentials.mockResolvedValue(
+				makeCredentialData({ oauthTokenData: { access_token: '' } }),
+			);
+			// Interceptor for the initial exchange only: a second one would fail the test
+			nock(tokenUrl)
+				.post('/token')
+				.reply(200, { access_token: 'first-token', token_type: 'bearer', expires_in: 3600 });
+			failWith(404);
+
+			await expect(callWithGatewayOptions()).rejects.toThrow('404');
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	test('should NOT retry on token-expired status when oAuth2Options.skipTokenRefresh is true (isN8nRequest path)', async () => {
 		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
 		const error401 = Object.assign(new Error('401'), { response: { status: 401 } });

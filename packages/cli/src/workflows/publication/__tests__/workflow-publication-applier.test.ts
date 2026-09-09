@@ -757,6 +757,51 @@ describe('WorkflowPublicationApplier', () => {
 		expect(callOrder).toEqual(['remove', 'invalidate', 'advance', 'refresh', 'add']);
 	});
 
+	describe('n8n Trigger', () => {
+		// Emits "Published Workflow Updated" from `trigger()` itself, so it only fires
+		// when re-registered: the diff must re-apply it on every version change.
+		const n8nTrigger = triggerNode('n8n', {
+			type: 'n8n-nodes-base.n8nTrigger',
+			parameters: { events: ['update'] },
+		});
+
+		test('re-applies an unchanged n8n Trigger when the published version changes', async () => {
+			setTriggerSets([n8nTrigger], [{ ...n8nTrigger }]);
+			workflowTriggerActivator.activate.mockResolvedValue({ activated: ['n8n'], failures: [] });
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result.type).toBe('completed');
+			expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				oldVersion,
+				new Set(['n8n']),
+				abort,
+			);
+			expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				newVersion,
+				new Set(['n8n']),
+				'update',
+				abort,
+			);
+		});
+
+		test('leaves an unchanged n8n Trigger running when the record targets the already-published version', async () => {
+			setTriggerSets([n8nTrigger], [{ ...n8nTrigger }]);
+			workflowRepository.findOneBy.mockResolvedValue(makeWorkflow({ activeVersionId: 'v-2' }));
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(newVersion),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result.type).toBe('completed');
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+		});
+	});
+
 	test('completes carrying external teardown failures from removed triggers, still advancing', async () => {
 		setTriggerSets([triggerNode('a'), triggerNode('b')], [triggerNode('a')]);
 		const failure = { nodeName: 'b', error: new Error('remote unreachable') };

@@ -270,6 +270,8 @@ onClickOutside(
 </template>
 
 <style lang="scss">
+@use '@/app/css/variables' as *;
+
 .tags-container {
 	$--max-input-height: 60px;
 

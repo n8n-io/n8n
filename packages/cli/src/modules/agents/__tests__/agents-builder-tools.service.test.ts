@@ -2448,7 +2448,7 @@ describe('AgentsBuilderToolsService', () => {
 				sessionId: 'session-1',
 				executionId: 'execution-1',
 				suspensions: [{ runId: 'run-1', toolCallId: 'tool-call-1', toolName: 'schedule_record' }],
-				previewPath: '/projects/project-1/agents/agent-1/preview',
+				previewPath: '/projects/project-1/agents/agent-1?openPreview=true',
 			});
 		});
 	});
