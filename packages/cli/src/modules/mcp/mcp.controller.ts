@@ -18,7 +18,7 @@ import {
 	HANDSHAKE_FAILED_ERROR_MESSAGE,
 	MISSING_PROTOCOL_VERSION_ERROR_MESSAGE,
 } from './mcp.constants';
-import { McpService, type McpFeatureFlags } from './mcp.service';
+import { McpService, type McpFeatureFlags, type McpServerBuildOptions } from './mcp.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type {
 	McpAuthContext,
@@ -153,7 +153,9 @@ export class McpController {
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body);
+			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body, {
+				isConnectionHandshake,
+			});
 			if (isConnectionHandshake) {
 				// The SDK answers a failed handshake with an error response instead of
 				// throwing, so a resolved call says nothing about the outcome: the
@@ -217,6 +219,7 @@ export class McpController {
 		res: FlushableResponse,
 		featureFlags: McpFeatureFlags,
 		body: unknown,
+		options: McpServerBuildOptions,
 	): Promise<string | undefined> {
 		const { createMcpHandler } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
@@ -237,7 +240,8 @@ export class McpController {
 		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
 		// clients on this same endpoint.
 		const handler = createMcpHandler(
-			async () => await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth),
+			async () =>
+				await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth, options),
 			{
 				legacy: 'stateless',
 				onerror: (error) => {
