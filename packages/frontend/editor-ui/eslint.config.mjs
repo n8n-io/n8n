@@ -25,6 +25,11 @@ const extractedFeatures = [
 		message:
 			'otel is the @n8n/frontend-module-otel package. The shell registers a module through src/app/modules.manifest.ts.',
 	},
+	{
+		group: ['@/features/execution/insights', '@/features/execution/insights/*'],
+		message:
+			'insights is the @n8n/frontend-module-insights package. The shell registers a module through src/app/modules.manifest.ts.',
+	},
 ];
 
 export default defineConfig(

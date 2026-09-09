@@ -36,9 +36,22 @@ export async function getChats(
 	}
 
 	const returnData: INodeListSearchItems[] = [];
+	// ponytail: one page of 50 (the endpoint maximum), not full pagination - a user with >50 chats
+	// that are mostly 1:1 may still not see every group chat. Upgrade path if that is ever reported:
+	// server-side `$filter` on `chatType` if Graph supports it on this endpoint (unverified), else
+	// `microsoftApiRequestAllItems`. By-ID mode is the escape hatch meanwhile.
 	const qs: IDataObject = {
 		$expand: 'members',
+		$top: 50,
 	};
+
+	// `0` is the FALLBACK value in load-options contexts, not an itemIndex: the Teams
+	// trigger shares this picker and has neither parameter, so dropping the fallback
+	// makes `getNodeParameter` throw there instead of listing chats.
+	const operation = this.getNodeParameter('operation', 0) as string;
+	const resource = this.getNodeParameter('resource', 0) as string;
+	// Adding a member is impossible on a 1:1 chat; listing its members is legal.
+	const excludeOneOnOne = resource === 'chatMember' && ['add'].includes(operation);
 
 	// `/v1.0/chats` occasionally 5xxs transiently; retry up to `maxAttempts` times,
 	// sleeping 1s between attempts (not after the last one), and surface the final
@@ -66,6 +79,7 @@ export async function getChats(
 	}
 
 	for (const chat of value) {
+		if (excludeOneOnOne && chat.chatType === 'oneOnOne') continue;
 		if (!chat.topic) {
 			chat.topic = (chat.members as IDataObject[])
 				.filter((member: IDataObject) => member.displayName)
@@ -79,6 +93,15 @@ export async function getChats(
 			name: chatName,
 			value: chatId as string,
 			url,
+		});
+	}
+
+	// Every chat on the page was 1:1, so the dropdown would otherwise show an unexplained
+	// empty list for a state no search term can fix.
+	if (excludeOneOnOne && value.length > 0 && returnData.length === 0) {
+		throw new NodeOperationError(this.getNode(), 'No group chats available to select', {
+			description:
+				'Only group chats can have members added, because a 1:1 chat has a fixed roster. This list covers up to 50 chats, so if your group chat is not among them, switch the Chat field to "By ID".',
 		});
 	}
 
@@ -100,6 +123,74 @@ export async function getChats(
 		});
 
 	return { results };
+}
+
+export async function getUsers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	// ConsistencyLevel is sent on every call: directory paging drops custom headers on
+	// nextLink requests, so the token branch needs it too or Graph rejects the $search.
+	const headers: IDataObject = { ConsistencyLevel: 'eventual' };
+	let response: IDataObject;
+	if (paginationToken) {
+		response = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			'',
+			{},
+			{},
+			paginationToken,
+			headers,
+		)) as IDataObject;
+	} else {
+		const qs: IDataObject = { $select: 'id,displayName,userPrincipalName' };
+		// Two different problems. `"` and `\` only need escaping inside the quoted term, so
+		// escape them (backslash first, then quote) and keep the term intact. `&` and `#`
+		// cannot be escaped or encoded away: Graph re-splits the query string AFTER
+		// percent-decoding, so they truncate the expression and 400 the whole call (verified on
+		// a live tenant). Those two are dropped, which just widens the match. `mail` is searched
+		// as well, because a guest's mail differs from their principal name and the mail is the
+		// address people actually know.
+		// The emptiness check is on the stripped term, not the raw filter: a filter of only
+		// unusable characters would otherwise send an empty term, which Graph rejects.
+		const escaped = (filter ?? '')
+			.replace(/[&#]/g, '')
+			.replaceAll('\\', '\\\\')
+			.replaceAll('"', '\\"')
+			.trim();
+		if (escaped) {
+			qs.$search = `"displayName:${escaped}" OR "mail:${escaped}" OR "userPrincipalName:${escaped}"`;
+		}
+		response = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			'/v1.0/users',
+			{},
+			qs,
+			undefined,
+			headers,
+		)) as IDataObject;
+	}
+
+	// An unexpected shape is not an empty directory: returning the token as well would offer
+	// "load more" into nothing.
+	if (!Array.isArray(response.value)) {
+		return { results: [], paginationToken: undefined };
+	}
+
+	const returnData: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => ({
+		name: `${user.displayName} (${user.userPrincipalName})`,
+		value: user.id as string,
+	}));
+
+	// No filter argument: `$search` already filtered server-side across the whole
+	// collection, so this only applies the sort every sibling picker uses.
+	return {
+		results: filterSortSearchListItems(returnData),
+		paginationToken: response['@odata.nextLink'] as string | undefined,
+	};
 }
 
 export async function getTeams(
@@ -368,67 +459,4 @@ export async function getMembers(
 
 	const results = filterSortSearchListItems(returnData, filter);
 	return { results };
-}
-
-/**
- * Org-wide user picker on Graph `/v1.0/users`, shared by every Teams field that targets a
- * person. Deliberately generic: no resource/operation reads, no team scoping. Filtering is
- * `$search` (word-prefix, so `dun` will not find `Verdun`) and ordering is `$orderby`, both
- * server-side, hence no `filterSortSearchListItems` call unlike its siblings above: filtering
- * again client-side would delete legitimate results and break pagination.
- */
-export async function getUsers(
-	this: ILoadOptionsFunctions,
-	filter?: string,
-	paginationToken?: string,
-): Promise<INodeListSearchResult> {
-	const qs: IDataObject = {
-		$select: 'id,displayName,userPrincipalName',
-		$top: 100,
-		$orderby: 'displayName',
-	};
-
-	// Graph rejects the whole $search expression for four characters, so drop them rather than
-	// let the picker error: `"` unterminates the quoted term, `\` starts a KQL escape sequence,
-	// and `&`/`#` split the query string because Graph re-splits it AFTER percent-decoding, so
-	// encoding them is not enough. Dropping them degrades to a broader match.
-	const term = (filter ?? '').replace(/["\\&#]/g, '').trim();
-	if (term) {
-		qs.$search = `"displayName:${term}" OR "mail:${term}" OR "userPrincipalName:${term}"`;
-	}
-
-	const response = (await microsoftApiRequest.call(
-		this,
-		'GET',
-		'/v1.0/users',
-		{},
-		// `@odata.nextLink` already carries the query, so a paginated call sends none.
-		paginationToken ? {} : qs,
-		paginationToken,
-		// `$search` on /users is an advanced query and 400s without this header; harmless on
-		// the unfiltered first page, so send it always.
-		{ ConsistencyLevel: 'eventual' },
-	)) as IDataObject;
-
-	// An unexpected shape is not an empty directory: keeping the token would offer "load more"
-	// into nothing.
-	if (!Array.isArray(response.value)) {
-		return { results: [], paginationToken: undefined };
-	}
-
-	// Display names are not unique, so the UPN has to disambiguate. It goes in `name`, not
-	// `description`, because the resource-locator dropdown renders only `name`. Falls back so a
-	// nameless directory object still shows a label rather than a blank row.
-	const results: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => {
-		const displayName = user.displayName as string;
-		const upn = user.userPrincipalName as string;
-		const label = displayName && upn ? `${displayName} (${upn})` : displayName || upn;
-		return {
-			name: label || (user.id as string),
-			value: user.id as string,
-			description: upn,
-		};
-	});
-
-	return { results, paginationToken: response['@odata.nextLink'] as string | undefined };
 }

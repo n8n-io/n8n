@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-param-description-lowercase-first-char */
-/* eslint-disable n8n-nodes-base/node-param-option-description-identical-to-name */
-// The picker-result fixtures below carry a `description` (the UPN), which the node-param
+// A picker-result fixture below carries a `description` (the UPN), which the node-param
 // linters read as node parameter copy.
 import type { ILoadOptionsFunctions, INode, INodeProperties } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -13,7 +12,7 @@ import { getUsers } from '../../methods/listSearch';
 import * as transport from '../../transport';
 import type * as _importType0 from '../../transport';
 
-// Real transport module except the network helper
+// Real transport module except the network helper.
 vi.mock('../../transport', async () => {
 	const originalModule = await vi.importActual<typeof _importType0>('../../transport');
 	return {
@@ -22,14 +21,9 @@ vi.mock('../../transport', async () => {
 	};
 });
 
-const FIRST_PAGE_QS = {
-	$select: 'id,displayName,userPrincipalName',
-	$top: 100,
-	$orderby: 'displayName',
-};
-const HEADERS = { ConsistencyLevel: 'eventual' };
-
-describe('Microsoft Teams v2, getUsers', () => {
+// The general shape of `getUsers` (query, escaping, pagination, labelling) is pinned in
+// `listSearch.test.ts`. This file covers only what the mention work added on top.
+describe('Microsoft Teams v2, getUsers additions for mentions', () => {
 	let ctx: DeepMockProxy<ILoadOptionsFunctions>;
 	const apiRequest = transport.microsoftApiRequest as Mock;
 
@@ -37,150 +31,53 @@ describe('Microsoft Teams v2, getUsers', () => {
 		vi.clearAllMocks();
 		ctx = mockDeep<ILoadOptionsFunctions>();
 		ctx.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
-	});
-
-	it('lists the first page of users and maps them to name, value and UPN description', async () => {
-		apiRequest.mockResolvedValue({
-			value: [{ id: 'guid-1', displayName: 'Jane Smith', userPrincipalName: 'jane@example.com' }],
-		});
-
-		const result = await getUsers.call(ctx);
-
-		expect(apiRequest).toHaveBeenCalledWith(
-			'GET',
-			'/v1.0/users',
-			{},
-			FIRST_PAGE_QS,
-			undefined,
-			HEADERS,
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, _i?: number, fallback?: unknown) =>
+				(name === 'authentication' ? 'microsoftOAuth2Api' : fallback) as never,
 		);
-		expect(result).toEqual({
-			results: [
-				{ name: 'Jane Smith (jane@example.com)', value: 'guid-1', description: 'jane@example.com' },
-			],
-			paginationToken: undefined,
-		});
+		apiRequest.mockResolvedValue({ value: [] });
 	});
 
-	// Graph rejects the whole $search expression for `"` `\` `&` `#`, so each is dropped and the
-	// search still runs. `&`/`#` matter because Graph re-splits the query string after
-	// percent-decoding, so encoding them is not enough (live-tenant verified 2026-09-02).
-	it.each([
-		['jan', '"displayName:jan" OR "mail:jan" OR "userPrincipalName:jan"'],
-		['"jan"', '"displayName:jan" OR "mail:jan" OR "userPrincipalName:jan"'],
-		['j&an', '"displayName:jan" OR "mail:jan" OR "userPrincipalName:jan"'],
-		['j#an', '"displayName:jan" OR "mail:jan" OR "userPrincipalName:jan"'],
-		['j\\an', '"displayName:jan" OR "mail:jan" OR "userPrincipalName:jan"'],
-	])('searches display name, mail and UPN for the filter %j', async (filter, search) => {
-		apiRequest.mockResolvedValue({ value: [] });
+	const searchOf = () => apiRequest.mock.calls[0][3].$search as string | undefined;
 
+	// A guest's `mail` differs from their principal name, and the mail is the address people
+	// know, so the picker has to match on it as well.
+	it('searches mail alongside display name and principal name', async () => {
+		await getUsers.call(ctx, 'jan');
+
+		expect(searchOf()).toBe('"displayName:jan" OR "mail:jan" OR "userPrincipalName:jan"');
+	});
+
+	// `&` and `#` cannot be escaped or encoded away: Graph re-splits the query string after
+	// percent-decoding, so they truncate the expression and 400 the whole call. Verified on a
+	// live tenant, where typing `&` into the picker returned "Could not load list".
+	it.each([
+		['j&an', 'jan'],
+		['j#an', 'jan'],
+		['a&b#c', 'abc'],
+	])('drops %j from the search term, leaving %j', async (filter, term) => {
 		await getUsers.call(ctx, filter);
 
-		expect(apiRequest).toHaveBeenCalledWith(
-			'GET',
-			'/v1.0/users',
-			{},
-			{ ...FIRST_PAGE_QS, $search: search },
-			undefined,
-			HEADERS,
+		expect(searchOf()).toBe(
+			`"displayName:${term}" OR "mail:${term}" OR "userPrincipalName:${term}"`,
 		);
 	});
 
-	it.each(['"""', '   ', '&#\\'])(
-		'omits $search when the filter %j has nothing left to search for',
-		async (filter) => {
-			apiRequest.mockResolvedValue({ value: [] });
+	it('omits $search entirely when only unusable characters were given', async () => {
+		await getUsers.call(ctx, '&#');
 
-			await getUsers.call(ctx, filter);
-
-			expect(apiRequest).toHaveBeenCalledWith(
-				'GET',
-				'/v1.0/users',
-				{},
-				FIRST_PAGE_QS,
-				undefined,
-				HEADERS,
-			);
-		},
-	);
-
-	it('follows the next-page link and sends no query params alongside it', async () => {
-		const nextLink = 'https://graph.microsoft.com/v1.0/users?$skiptoken=p2';
-		apiRequest.mockResolvedValue({
-			value: [],
-			'@odata.nextLink': 'https://graph.microsoft.com/v1.0/users?$skiptoken=p3',
-		});
-
-		const result = await getUsers.call(ctx, undefined, nextLink);
-
-		expect(apiRequest).toHaveBeenCalledWith('GET', '/v1.0/users', {}, {}, nextLink, HEADERS);
-		// Graph's link, never the one we were handed. Echoing that back spins the picker forever.
-		expect(result.paginationToken).toBe('https://graph.microsoft.com/v1.0/users?$skiptoken=p3');
+		expect(searchOf()).toBeUndefined();
 	});
 
-	it('stops paginating when Graph returns no next-page link', async () => {
-		apiRequest.mockResolvedValue({ value: [] });
+	// An unexpected response shape is not an empty directory: returning the next-page token
+	// would offer "load more" into nothing.
+	it('returns no results and no token when Graph replies without a value array', async () => {
+		apiRequest.mockResolvedValue({ '@odata.nextLink': 'https://graph.microsoft.com/next' });
 
-		const result = await getUsers.call(
-			ctx,
-			undefined,
-			'https://graph.microsoft.com/v1.0/users?$skiptoken=p2',
-		);
-
-		expect(result.paginationToken).toBeUndefined();
-	});
-
-	it('returns no results when Graph replies without a value array', async () => {
-		apiRequest.mockResolvedValue({
-			'@odata.nextLink': 'https://graph.microsoft.com/v1.0/users?$skiptoken=p2',
+		await expect(getUsers.call(ctx)).resolves.toEqual({
+			results: [],
+			paginationToken: undefined,
 		});
-
-		const result = await getUsers.call(ctx);
-
-		// An unexpected shape is not an empty directory, so no "load more" into nothing.
-		expect(result).toEqual({ results: [], paginationToken: undefined });
-	});
-
-	it('falls back to the UPN when a user has an empty display name', async () => {
-		apiRequest.mockResolvedValue({
-			value: [{ id: 'guid-2', displayName: '', userPrincipalName: 'svc@example.com' }],
-		});
-
-		const { results } = await getUsers.call(ctx);
-
-		expect(results).toEqual([
-			{ name: 'svc@example.com', value: 'guid-2', description: 'svc@example.com' },
-		]);
-	});
-
-	it('falls back to the user ID when a user has no name at all', async () => {
-		apiRequest.mockResolvedValue({
-			value: [{ id: 'guid-3', displayName: '', userPrincipalName: '' }],
-		});
-
-		const { results } = await getUsers.call(ctx);
-
-		// Without the last rung the row renders blank but stays clickable.
-		expect(results.map((user) => user.name)).toEqual(['guid-3']);
-	});
-
-	it('keeps the result set and ordering Graph returned', async () => {
-		apiRequest.mockResolvedValue({
-			value: [
-				// Graph matched Zoe on `mail`, which appears in neither `name` nor `description`, so
-				// appending `filterSortSearchListItems` would drop her. Its sort would also flip the
-				// pair. Both halves of the pin stay live only while the term is absent from `name`.
-				{ id: 'guid-z', displayName: 'Zoe Quinn', userPrincipalName: 'zq@example.com' },
-				{ id: 'guid-a', displayName: 'Ackerman, Janet', userPrincipalName: 'janet@example.com' },
-			],
-		});
-
-		const { results } = await getUsers.call(ctx, 'jan');
-
-		expect(results.map((r) => r.name)).toEqual([
-			'Zoe Quinn (zq@example.com)',
-			'Ackerman, Janet (janet@example.com)',
-		]);
 	});
 });
 

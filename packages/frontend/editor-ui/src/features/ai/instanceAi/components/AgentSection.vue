@@ -9,7 +9,7 @@ import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
-import { getBuilderRoleLabel } from '../builderAgents';
+import { getAgentSectionTitle } from '../builderAgents';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const props = defineProps<{
@@ -23,15 +23,7 @@ const isExpanded = ref(settingsStore.isCloudDeployment);
 
 const isError = computed(() => props.agentNode.status === 'error');
 
-const sectionTitle = computed(
-	() =>
-		props.agentNode.title ??
-		getBuilderRoleLabel(props.agentNode) ??
-		props.agentNode.targetResource?.name ??
-		props.agentNode.subtitle ??
-		props.agentNode.role ??
-		'Working...',
-);
+const sectionTitle = computed(() => getAgentSectionTitle(props.agentNode) ?? 'Working...');
 
 /**
  * Most recent timeline entry that SubagentStepTimeline can render (text,
