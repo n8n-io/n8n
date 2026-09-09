@@ -378,12 +378,18 @@ describe('setupSandboxWorkspace', () => {
 			archive: makeBuilderTemplatesTarGz([{ name: 'example-workflow.ts', content: 'export {}' }]),
 			version: 'test-sha',
 		};
+		const context = createSetupContext(bundle);
 		const initialized = await setupSandboxWorkspace(
 			createLocalWorkspace(writeFile, undefined, readFile),
-			createSetupContext(bundle),
+			context,
 		);
 
 		expect(initialized).toBe(false);
+		// The reattach path must still report a duration, or it looks like a hang in logs.
+		expect(context.logger.debug).toHaveBeenCalledWith(
+			'Sandbox workspace setup finished',
+			expect.objectContaining({ initializationRan: false }),
+		);
 		expect(runInSandbox).not.toHaveBeenCalledWith(
 			expect.anything(),
 			'npm install --ignore-scripts --no-audit --no-fund --prefer-online',

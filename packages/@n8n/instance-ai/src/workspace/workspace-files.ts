@@ -138,8 +138,11 @@ export async function writeWorkspaceFile(
 			if (isAbortError(error)) throw error;
 			try {
 				await writeFileViaSandbox(workspace, filePath, content, options);
+				// `bytes` is the diagnostic that matters: the multipart upload is sent
+				// chunked, so a truncated body shows up as a size-dependent failure.
 				options?.logger.warn(`${label} filesystem write failed; used command fallback`, {
 					path: filePath,
+					bytes: Buffer.byteLength(content, 'utf-8'),
 					error: formatErrorForLog(error),
 				});
 				return;
