@@ -90,6 +90,11 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
    )"
    ```
 
+7. **Offer a test instance** when the PR is a feature or otherwise user-facing
+   change someone would click through in a running instance: follow the
+   `n8n:nathan` skill (`.agents/skills/nathan/SKILL.md`) — it covers when the
+   offer is worth making and which license/AI flags to suggest from the diff.
+
 ## PR Body Guidelines
 
 Based on `.github/pull_request_template.md`:
