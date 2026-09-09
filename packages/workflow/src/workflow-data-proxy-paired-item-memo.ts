@@ -11,6 +11,10 @@ type PairedItemMemoResult =
 export class PairedItemMemo {
 	private readonly entries = new Map<string, PairedItemMemoResult>();
 
+	/**
+	 * Resolves the memoized result for the given source data and paired item,
+	 * or computes and memoizes a new result if none exists.
+	 */
 	resolve(
 		sourceData: ISourceData,
 		pairedItem: IPairedItemData,
