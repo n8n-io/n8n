@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import type { InstanceSettings, Span, Tracing } from 'n8n-core';
+import type { Span, Tracing } from 'n8n-core';
 
 import type { EventService } from '@/events/event.service';
 
@@ -10,119 +10,45 @@ import { WorkflowPublicationOutboxCleanupService } from '../workflow-publication
 
 const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 const config = mock<WorkflowsConfig>({
-	useWorkflowPublicationService: true,
-	publicationOutboxCleanupIntervalSeconds: 30,
 	publicationOutboxCompletedRetentionHours: 1,
 	publicationOutboxFailedRetentionHours: 168,
 	publicationOutboxCleanupBatchSize: 1000,
 });
 const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
-const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 const tracing = mock<Tracing>();
 const eventService = mock<EventService>();
 
 let service: WorkflowPublicationOutboxCleanupService;
 
 beforeEach(() => {
-	vi.useFakeTimers();
 	vi.clearAllMocks();
 	tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 	service = new WorkflowPublicationOutboxCleanupService(
 		logger,
 		config,
 		outboxRepository,
-		instanceSettings,
 		tracing,
 		eventService,
 	);
 });
 
-afterEach(() => {
-	service.shutdown();
-	vi.useRealTimers();
-});
-
 describe('WorkflowPublicationOutboxCleanupService', () => {
-	describe('init', () => {
-		it('should start cleanup when instance is leader', () => {
-			outboxRepository.deleteTerminalOlderThan.mockResolvedValue(0);
-			Object.assign(instanceSettings, { isLeader: true });
-
-			service.init();
-			vi.advanceTimersByTime(30_000);
-
-			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalled();
-		});
-
-		it('should run an initial cleanup immediately on startup', async () => {
-			outboxRepository.deleteTerminalOlderThan.mockResolvedValue(0);
-			Object.assign(instanceSettings, { isLeader: true });
-
-			service.init();
-			await vi.advanceTimersByTimeAsync(0);
-
-			// Ran once at startup, before any interval elapsed.
-			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledTimes(1);
-			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledWith(3600, 604_800, 1000);
-		});
-
-		it('should not start cleanup when instance is not leader', () => {
-			Object.assign(instanceSettings, { isLeader: false });
-
-			service.init();
-			vi.advanceTimersByTime(60_000);
-
-			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
-
-			Object.assign(instanceSettings, { isLeader: true });
-		});
-	});
-
-	describe('startCleanup', () => {
-		it('should schedule cleanup at the configured interval with the configured retention windows', () => {
-			outboxRepository.deleteTerminalOlderThan.mockResolvedValue(0);
-
-			service.startCleanup();
-
-			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
-
-			vi.advanceTimersByTime(30_000);
-
-			// 1h completed, 168h failed → seconds; batch size passed through.
-			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledWith(3600, 604_800, 1000);
-		});
-
-		it('should not start when the publication service is disabled', () => {
-			Object.assign(config, { useWorkflowPublicationService: false });
-
-			service.startCleanup();
-			vi.advanceTimersByTime(60_000);
-
-			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
-
-			Object.assign(config, { useWorkflowPublicationService: true });
-		});
-
-		it('should not start if shutting down', () => {
-			service.shutdown();
-			service.startCleanup();
-
-			vi.advanceTimersByTime(60_000);
-
-			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('cleanup', () => {
+		it('should pass the retention windows in seconds and the batch size', async () => {
+			outboxRepository.deleteTerminalOlderThan.mockResolvedValue(0);
+
+			await service.cleanup(new AbortController().signal);
+
+			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledWith(3600, 604_800, 1000);
+		});
+
 		it('should loop until fewer than batchSize rows are deleted', async () => {
 			outboxRepository.deleteTerminalOlderThan
 				.mockResolvedValueOnce(1000) // full batch
 				.mockResolvedValueOnce(1000) // full batch
 				.mockResolvedValueOnce(42); // partial → stop
 
-			service.startCleanup();
-			vi.advanceTimersByTime(30_000);
-			await vi.advanceTimersByTimeAsync(0);
+			await service.cleanup(new AbortController().signal);
 
 			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledTimes(3);
 		});
@@ -130,22 +56,19 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 		it('should stop after one call when deleted count is below batchSize', async () => {
 			outboxRepository.deleteTerminalOlderThan.mockResolvedValue(10);
 
-			service.startCleanup();
-			vi.advanceTimersByTime(30_000);
-			await vi.advanceTimersByTimeAsync(0);
+			await service.cleanup(new AbortController().signal);
 
 			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledTimes(1);
 		});
 
-		it('should stop looping when a shutdown begins mid-cleanup', async () => {
+		it('should stop looping after the current batch once the signal aborts', async () => {
+			const abort = new AbortController();
 			outboxRepository.deleteTerminalOlderThan.mockImplementation(async () => {
-				service.shutdown();
+				abort.abort();
 				return 1000; // full batch would otherwise continue looping
 			});
 
-			service.startCleanup();
-			vi.advanceTimersByTime(30_000);
-			await vi.advanceTimersByTimeAsync(0);
+			await service.cleanup(abort.signal);
 
 			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledTimes(1);
 		});
@@ -153,9 +76,7 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 		it('should catch and log errors without throwing', async () => {
 			outboxRepository.deleteTerminalOlderThan.mockRejectedValue(new Error('DB error'));
 
-			service.startCleanup();
-			vi.advanceTimersByTime(30_000);
-			await vi.advanceTimersByTimeAsync(0);
+			await service.cleanup(new AbortController().signal);
 
 			expect(logger.error).toHaveBeenCalled();
 		});
@@ -163,9 +84,7 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 		it('should emit a success metrics event with the total deleted count', async () => {
 			outboxRepository.deleteTerminalOlderThan.mockResolvedValue(7);
 
-			service.startCleanup();
-			vi.advanceTimersByTime(30_000);
-			await vi.advanceTimersByTimeAsync(0);
+			await service.cleanup(new AbortController().signal);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-outbox-cleanup',
@@ -176,40 +95,12 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 		it('should emit a failure metrics event when cleanup throws', async () => {
 			outboxRepository.deleteTerminalOlderThan.mockRejectedValue(new Error('DB error'));
 
-			service.startCleanup();
-			vi.advanceTimersByTime(30_000);
-			await vi.advanceTimersByTimeAsync(0);
+			await service.cleanup(new AbortController().signal);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-outbox-cleanup',
 				expect.objectContaining({ result: 'failure', deletedCount: 0 }),
 			);
-		});
-	});
-
-	describe('stopCleanup', () => {
-		it('should stop the cleanup interval on leader stepdown', () => {
-			outboxRepository.deleteTerminalOlderThan.mockResolvedValue(0);
-
-			service.startCleanup();
-			service.stopCleanup();
-
-			vi.advanceTimersByTime(60_000);
-
-			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('shutdown', () => {
-		it('should stop the cleanup interval', () => {
-			outboxRepository.deleteTerminalOlderThan.mockResolvedValue(0);
-
-			service.startCleanup();
-			service.shutdown();
-
-			vi.advanceTimersByTime(60_000);
-
-			expect(outboxRepository.deleteTerminalOlderThan).not.toHaveBeenCalled();
 		});
 	});
 });

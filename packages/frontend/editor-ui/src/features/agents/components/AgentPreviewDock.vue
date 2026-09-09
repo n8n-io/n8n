@@ -9,16 +9,13 @@ import {
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, nextTick, useTemplateRef, watch, ref } from 'vue';
-import { useStorage } from '@vueuse/core';
-import { useRouter } from 'vue-router';
+import { useI18n } from '@n8n/i18n';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
-import { AGENT_PREVIEW_VIEW, CONTINUE_SESSION_ID_PARAM } from '../constants';
 import type {
 	AgentContinueLoadedEvent,
 	AgentFixWithAssistantEvent,
@@ -27,10 +24,6 @@ import type {
 } from '../types';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
-import AgentSessionTimelinePanel from './AgentSessionTimelinePanel.vue';
-
-type DockBody = 'chat' | 'timeline';
-const dockView = ref<DockBody>('chat');
 
 interface SessionOption {
 	id: string;
@@ -43,13 +36,6 @@ interface SessionOption {
 interface SessionOptionData {
 	when?: string;
 }
-
-enum PreviewLayout {
-	Docked = 'docked',
-	Fullpage = 'fullpage',
-}
-
-const OPEN_IN_NEW_TAB = 'open-in-new-tab';
 
 const props = defineProps<{
 	sessionTitle: string;
@@ -79,7 +65,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const router = useRouter();
 const dock = useTemplateRef<HTMLElement>('dock');
 const {
 	isEnabled: isLangSmithExportEnabled,
@@ -88,10 +73,6 @@ const {
 } = useAgentSessionLangSmithExport();
 const previewChatPage =
 	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
-const storedLayout = useStorage<string>('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
-const layout = computed<PreviewLayout>(() =>
-	storedLayout.value === PreviewLayout.Fullpage ? PreviewLayout.Fullpage : PreviewLayout.Docked,
-);
 
 const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, SessionOptionData>>>(
 	() =>
@@ -103,49 +84,9 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 		})),
 );
 
-const layoutOptions = computed<Array<DropdownMenuItemProps<string>>>(() => [
-	{
-		id: PreviewLayout.Docked,
-		label: i18n.baseText('agents.builder.preview.layout.docked'),
-		checked: layout.value === PreviewLayout.Docked,
-		icon: { type: 'icon', value: 'panel-right' },
-	},
-	{
-		id: PreviewLayout.Fullpage,
-		label: i18n.baseText('agents.builder.preview.layout.fullpage' as BaseTextKey),
-		checked: layout.value === PreviewLayout.Fullpage,
-		icon: { type: 'icon', value: 'maximize-2' },
-	},
-	{
-		id: OPEN_IN_NEW_TAB,
-		label: i18n.baseText('agents.builder.preview.layout.openInNewTab' as BaseTextKey),
-		icon: { type: 'icon', value: 'external-link' },
-		divided: true,
-	},
-]);
-
-function getLayoutIcon() {
-	return layout.value === PreviewLayout.Fullpage ? 'maximize-2' : 'panel-right';
-}
-
-function getLayoutAriaLabel() {
-	if (layout.value === PreviewLayout.Fullpage) {
-		return i18n.baseText('agents.builder.preview.layout.fullpage.ariaLabel' as BaseTextKey);
-	}
-	return i18n.baseText('agents.builder.preview.layout.docked.ariaLabel');
-}
-
 function viewTrace() {
 	if (!props.hasSession || !props.effectiveSessionId) return;
-	if (layout.value === PreviewLayout.Fullpage) {
-		dockView.value = 'timeline';
-		return;
-	}
 	emit('view-trace');
-}
-
-function showChat() {
-	dockView.value = 'chat';
 }
 
 function exportSession() {
@@ -158,7 +99,6 @@ function exportSession() {
 }
 
 function createNewSession() {
-	showChat();
 	emit('new-session');
 }
 
@@ -166,31 +106,9 @@ function close() {
 	emit('close');
 }
 
-function setLayout(nextLayout: string) {
-	if (nextLayout === OPEN_IN_NEW_TAB) {
-		const route = router.resolve({
-			name: AGENT_PREVIEW_VIEW,
-			params: { projectId: props.projectId, agentId: props.agentId },
-			query: { [CONTINUE_SESSION_ID_PARAM]: props.effectiveSessionId },
-		});
-		window.open(route.href, '_blank', 'noopener');
-	} else if (nextLayout === PreviewLayout.Docked || nextLayout === PreviewLayout.Fullpage) {
-		storedLayout.value = nextLayout;
-	}
-}
-
 function isFocusWithinDock() {
 	return dock.value?.contains(document.activeElement) === true;
 }
-
-watch(
-	[layout, () => props.isOpen, () => props.hasSession],
-	function resetDockView([nextLayout, isOpen, hasSession]) {
-		if (nextLayout !== PreviewLayout.Fullpage || !isOpen || !hasSession) {
-			showChat();
-		}
-	},
-);
 
 watch(
 	[() => props.isOpen, () => props.initialized, () => props.effectiveSessionId],
@@ -220,10 +138,9 @@ useKeybindings({
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
-		:data-preview-layout="layout"
 		data-testid="agent-preview-dock"
 	>
-		<div :class="[$style.dockInner, { [$style.fullpage]: layout === PreviewLayout.Fullpage }]">
+		<div :class="$style.dockInner">
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
 				<N8nDropdownMenu
 					:items="sessionDropdownOptions"
@@ -263,19 +180,12 @@ useKeybindings({
 				<div :class="$style.actions">
 					<N8nTooltip
 						v-if="props.hasSession && props.effectiveSessionId"
-						:content="
-							i18n.baseText(
-								dockView === 'chat'
-									? 'agents.builder.preview.viewSession'
-									: ('agents.builder.preview.showChat' as BaseTextKey),
-							)
-						"
+						:content="i18n.baseText('agents.builder.preview.viewSession')"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
 						data-testid="agent-preview-view-session-tooltip"
 					>
 						<N8nIconButton
-							v-if="dockView === 'chat'"
 							icon="list-tree"
 							variant="ghost"
 							size="small"
@@ -283,16 +193,6 @@ useKeybindings({
 							:aria-label="i18n.baseText('agents.builder.preview.viewSession')"
 							data-testid="agent-preview-view-session-btn"
 							@click="viewTrace"
-						/>
-						<N8nIconButton
-							v-else
-							icon="message-circle"
-							variant="ghost"
-							size="small"
-							icon-size="large"
-							:aria-label="i18n.baseText('agents.builder.preview.showChat' as BaseTextKey)"
-							data-testid="agent-preview-show-chat-btn"
-							@click="showChat"
 						/>
 					</N8nTooltip>
 
@@ -330,29 +230,10 @@ useKeybindings({
 							@click="createNewSession"
 						/>
 					</KeyboardShortcutTooltip>
-
-					<N8nTooltip
-						placement="bottom"
-						:content="i18n.baseText('agents.builder.preview.layout.change')"
-					>
-						<N8nDropdownMenu :items="layoutOptions" placement="bottom-end" @select="setLayout">
-							<template #trigger>
-								<N8nIconButton
-									:icon="getLayoutIcon()"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									:aria-label="getLayoutAriaLabel()"
-									data-testid="agent-preview-layout-btn"
-								/>
-							</template>
-						</N8nDropdownMenu>
-					</N8nTooltip>
 				</div>
 			</header>
 
 			<AgentPreviewChatPage
-				v-show="dockView === 'chat'"
 				ref="previewChatPage"
 				:initialized="props.initialized"
 				:project-id="props.projectId"
@@ -364,17 +245,9 @@ useKeybindings({
 				:initial-prompt="props.initialPrompt"
 				:can-send-to-assistant="props.canSendToAssistant"
 				:before-send="props.beforeSend"
-				layout="dock"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
-			/>
-			<AgentSessionTimelinePanel
-				v-if="dockView === 'timeline' && props.effectiveSessionId"
-				:project-id="props.projectId"
-				:agent-id="props.agentId"
-				:thread-id="props.effectiveSessionId"
-				data-testid="agent-preview-session-timeline"
 			/>
 		</div>
 	</aside>
@@ -392,10 +265,6 @@ useKeybindings({
 	min-height: 0;
 	z-index: 1;
 	pointer-events: none;
-
-	&:has(.fullpage) {
-		width: 100%;
-	}
 }
 
 .dockInner {
@@ -420,10 +289,6 @@ useKeybindings({
 		transition: none;
 		will-change: auto;
 	}
-}
-.fullpage {
-	width: 100%;
-	border-left: 0;
 }
 
 .header {

@@ -4,6 +4,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	ExecutionOptions,
 	MemoryTaskUsageReport,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
@@ -752,7 +753,11 @@ export interface UnavailableLocatorValue {
 
 export interface InstanceAiNodeService {
 	listAvailable(options?: { query?: string; gatewayCreditsOnly?: boolean }): Promise<NodeSummary[]>;
-	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
+	getDescription(
+		nodeType: string,
+		version?: number,
+		options?: { includeGatewayMetadata?: boolean },
+	): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
 	/** Return the TypeScript type definition for a node, resolved by the host n8n instance. */
@@ -1432,6 +1437,13 @@ export interface InstanceAiContext {
 	 */
 	setupItemsEmitter?: SetupItemsEmitter;
 	/**
+	 * Setup panel v2: the setup tool announced a workflow's final checklist
+	 * instead of suspending, so the host must treat that build's setup as
+	 * handled and not route a `<workflow-setup-required>` follow-up for it.
+	 * Wired by the host only while the setup panel flag is on.
+	 */
+	markWorkflowSetupHandled?: (workflowId: string) => Promise<void>;
+	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
 	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
 	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
@@ -1503,6 +1515,8 @@ export interface InstanceAiContext {
 export interface SetupItemsEmitter {
 	/** Replace the workflow's snapshot. Returns false when nothing changed (no event published). */
 	emit(workflowId: string, items: InstanceAiSetupItem[]): boolean;
+	/** Publish the final checklist and confirm persistence before setup routing ends. */
+	announce(workflowId: string, items: InstanceAiSetupItem[]): Promise<void>;
 	/**
 	 * Upsert items (by id) into the workflow's last snapshot and publish the
 	 * merged list. For emitters that know only part of the checklist, e.g. a
@@ -1514,6 +1528,8 @@ export interface SetupItemsEmitter {
 	 * artifact — the workflow the panel follows. Undefined before the first save.
 	 */
 	lastWorkflowId(): string | undefined;
+	/** Workflows with a known snapshot, most recently announced last. */
+	workflowIds(): string[];
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -1897,8 +1913,18 @@ export interface OrchestrationContext {
 	messageGroupId?: string;
 	userId: string;
 	projectId?: string;
+	/** Setup panel v2 flag, mirrored from the domain context's `setupItemsEmitter` presence. */
+	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
+	/**
+	 * Operator overrides for the model-stream stall deadlines, forwarded to
+	 * sub-agent runs so they honor the same limits as the orchestrator.
+	 */
+	modelStreamStallOptions?: Pick<
+		ExecutionOptions,
+		'modelStreamIdleTimeoutMs' | 'modelStreamFirstOutputTimeoutMs'
+	>;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;

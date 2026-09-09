@@ -29,7 +29,12 @@ import {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
+import {
+	GlobalConfig,
+	SsrfProtectionConfig,
+	type AiConfig,
+	type InstanceAiConfig,
+} from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -74,6 +79,9 @@ import {
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
 	createSetupItemsEmitter,
+	formatWorkflowSetupStateNote,
+	isSetupPanelEnabled,
+	observeWorkflowSetupStates,
 	orchestratorAgentId,
 	resolveAgentPreviewSession,
 	saveAgentBuilderTarget,
@@ -122,6 +130,7 @@ import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -174,6 +183,8 @@ import {
 	withPastConversations,
 	withProjectContext,
 	getProjectContextSection,
+	WORKFLOW_SETUP_STATE_OPEN_TAG,
+	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -695,6 +706,8 @@ export class InstanceAiService {
 
 	private readonly instanceAiConfig: InstanceAiConfig;
 
+	private readonly aiConfig: AiConfig;
+
 	private readonly oauth2CallbackUrl: string;
 
 	private readonly webhookBaseUrl: string;
@@ -841,6 +854,7 @@ export class InstanceAiService {
 			this.workflowObligations,
 		);
 		this.instanceAiConfig = globalConfig.instanceAi;
+		this.aiConfig = globalConfig.ai;
 		this.backgroundTasks = new BackgroundTaskManager(
 			MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
 			this.instanceAiConfig.maxConcurrentSubAgents,
@@ -1262,6 +1276,7 @@ export class InstanceAiService {
 			// Recover token usage from raw provider events so a stopped/errored run
 			// is still billed for the tokens consumed before the stop.
 			recoverUsageOnAbort: true,
+			...modelStreamStallOptions(this.aiConfig),
 			persistence: {
 				resourceId: user.id,
 				threadId,
@@ -1295,6 +1310,7 @@ export class InstanceAiService {
 			abortSignal: signal,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
+			...modelStreamStallOptions(this.aiConfig),
 			persistence: { resourceId: user.id, threadId, hostRunId: runId },
 			// Must mirror buildOrchestratorAgentStreamOptions: without this request-level
 			// cache directive, resumed (HITL) turns send no cache_control, so Anthropic
@@ -2438,14 +2454,31 @@ export class InstanceAiService {
 		context.runId = runId;
 
 		// Setup panel v2: wire the durable `setup-items` sink only while the flag
-		// is on — its presence is the package-side gate.
+		// is on — its presence is the package-side gate. Seeded with the thread's
+		// persisted snapshots so a recomputed, unchanged list publishes nothing.
 		if (this.settingsService.isInstanceAiSetupPanelEnabled()) {
 			context.setupItemsEmitter = createSetupItemsEmitter({
 				eventBus: this.eventBus,
 				threadId,
 				runId,
 				agentId: orchestratorAgentId(runId),
+				initialSnapshots: await this.eventLog.getSetupItemsSnapshots(threadId).catch((error) => {
+					this.logger.warn('Failed to read setup panel snapshots', {
+						threadId,
+						error: getErrorMessage(error),
+					});
+					return [];
+				}),
+				readPersistedSnapshot: async (workflowId) => {
+					const snapshots = await this.eventLog.getSetupItemsSnapshots(threadId);
+					return snapshots.find((snapshot) => snapshot.workflowId === workflowId)?.items;
+				},
 			});
+			context.markWorkflowSetupHandled = async (workflowId) => {
+				await this.markWorkflowSetupHandled(threadId, workflowId, runId, {
+					requirePersisted: true,
+				});
+			};
 		}
 
 		context.browserCredentialSetup = this.createBrowserCredentialSetupTracker(runId, user.id);
@@ -2625,8 +2658,10 @@ export class InstanceAiService {
 			messageGroupId,
 			userId: user.id,
 			projectId: boundProjectId,
+			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
+			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: this.eventBus,
 			logger: this.logger,
 			trackTelemetry: (eventName, properties) => {
@@ -2924,6 +2959,34 @@ export class InstanceAiService {
 		await this.schedulePlannedTasks(user, task.threadId);
 	}
 
+	/**
+	 * Setup panel v2 ground truth at run start: re-analyze the workflows this
+	 * thread announced and tell the agent what is open and what the user
+	 * completed since its previous look. Empty while the flag is off or the
+	 * thread announced nothing. Best-effort: a failure never blocks the turn.
+	 */
+	private async buildWorkflowSetupStateBlock(context: InstanceAiContext): Promise<string> {
+		const emitter = context.setupItemsEmitter;
+		if (!emitter) return '';
+		// Most recently announced first — that is the workflow the turn is about.
+		const workflowIds = emitter.workflowIds().reverse();
+		if (workflowIds.length === 0) return '';
+		try {
+			const note = formatWorkflowSetupStateNote(
+				await observeWorkflowSetupStates(context, workflowIds),
+			);
+			return note
+				? `${WORKFLOW_SETUP_STATE_OPEN_TAG}\n${note}\n${WORKFLOW_SETUP_STATE_CLOSE_TAG}`
+				: '';
+		} catch (error) {
+			this.logger.warn('Failed to build the workflow setup state block', {
+				threadId: context.threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return '';
+		}
+	}
+
 	private buildWorkflowSetupFollowUpMessage(obligation: WorkflowVerificationObligation): string {
 		const payload = {
 			workflowId: obligation.workflowId,
@@ -2947,6 +3010,7 @@ export class InstanceAiService {
 		threadId: string,
 		workflowId: string,
 		runId?: string,
+		options: { requirePersisted?: boolean } = {},
 	): Promise<boolean> {
 		const records = await this.listWorkflowLoopRecords(threadId);
 		if (records.length === 0) return false;
@@ -2982,17 +3046,30 @@ export class InstanceAiService {
 			const claim = await this.claimWorkItemSetupRouting(threadId, record);
 			if (!claim) continue;
 
-			const marked = await this.markWorkItemSetupRouted(
-				threadId,
-				record.state.workItemId,
-				claim.claimId,
-			);
+			let marked: boolean;
+			try {
+				marked = await this.markWorkItemSetupRouted(
+					threadId,
+					record.state.workItemId,
+					claim.claimId,
+				);
+			} catch (error) {
+				await this.releaseWorkItemSetupRoutingClaim(
+					threadId,
+					record.state.workItemId,
+					claim.claimId,
+				);
+				throw error;
+			}
 			if (!marked) {
 				await this.releaseWorkItemSetupRoutingClaim(
 					threadId,
 					record.state.workItemId,
 					claim.claimId,
 				);
+				if (options.requirePersisted) {
+					throw new OperationalError('Workflow setup routing marker was not saved');
+				}
 				this.logger.warn('Workflow setup completed but routing marker was not saved', {
 					threadId,
 					workItemId: record.state.workItemId,
@@ -3828,6 +3905,11 @@ export class InstanceAiService {
 				handoffContextBlock = buildHandoffContextBlock(handoffContext);
 			}
 
+			// Internal follow-ups carry their own instructions; only a user turn
+			// needs the recomputed setup state.
+			const setupStateBlock =
+				resumeReason === undefined ? await this.buildWorkflowSetupStateBlock(context) : '';
+
 			// Set heuristic title before agent starts — thread always has a title.
 			// For an editor hand-off the user text is empty (the workflow is the
 			// message), so title it with the workflow name and mark it refined so
@@ -3911,6 +3993,7 @@ export class InstanceAiService {
 			const messageWithContext = [
 				contextResourcesBlock,
 				handoffContextBlock,
+				setupStateBlock,
 				instanceContext?.block ?? '',
 				messageBody,
 			]
