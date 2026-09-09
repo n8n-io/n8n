@@ -31,7 +31,8 @@ declare module '@n8n/app-sdk' {
 }
 ```
 
-Field types follow the trigger's `workflowInputs`: `string | null` (default),
+Field types follow the `workflowInputs` of the trigger in the published version
+(the draft only while the workflow is unpublished; bind then warns): `string | null` (default),
 `number | null`, `boolean | null`, `unknown[] | null` (array),
 `Record<string, unknown> | null` (object), `unknown` (any). Every field is
 optional; a missing field is absent from the workflow's input item. A trigger without

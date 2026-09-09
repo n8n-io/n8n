@@ -123,7 +123,9 @@ bound first. Bind before you write the code that calls it.
    plus `warnings` (for example an unpublished workflow: binding works, calls
    fail with `workflow_not_published` until it is published). It also
    rewrites `src/n8n-bindings.d.ts`, so `n8n.workflows.run` is typed for that
-   key. `{ denied, reason }` means the workflow is in another project, lacks
+   key. The types come from the published version, the one the runtime runs;
+   only an unpublished workflow is typed from its draft (a warning says so).
+   After the user publishes a changed trigger, re-bind to refresh the types. `{ denied, reason }` means the workflow is in another project, lacks
    the trigger, or the key is invalid: read `reason`. Every write re-checks
    all bindings, so a `reason` that names another key means that binding's
    workflow was deleted or broken: `unbind` that key first.

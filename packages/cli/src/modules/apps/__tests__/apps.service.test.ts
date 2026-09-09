@@ -1,9 +1,11 @@
 import type { AppBinding } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
-import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, type INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
+import type { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AppVersionService } from '../app-version.service';
@@ -34,7 +36,7 @@ describe('AppsService', () => {
 			mock<WorkflowFinderService>(),
 			appVersionService,
 			globalConfig,
-			mock<WorkflowRepository>(),
+			mock<WorkflowToolWorkflowLoader>(),
 		);
 	});
 
@@ -110,24 +112,26 @@ const binding = (key = 'submit', workflowId = 'wf-1'): AppBinding => ({
 	workflowId,
 });
 
+const notPublished = () => new WorkflowToolUnavailableError('not_published', 'not published');
+
 describe('AppsService bindings', () => {
 	let appRepository: ReturnType<typeof mock<AppRepository>>;
 	let workflowFinderService: ReturnType<typeof mock<WorkflowFinderService>>;
-	let workflowRepository: ReturnType<typeof mock<WorkflowRepository>>;
+	let workflowLoader: ReturnType<typeof mock<WorkflowToolWorkflowLoader>>;
 	let service: AppsService;
 	let app: App;
 
 	beforeEach(() => {
 		appRepository = mock<AppRepository>();
 		workflowFinderService = mock<WorkflowFinderService>();
-		workflowRepository = mock<WorkflowRepository>();
+		workflowLoader = mock<WorkflowToolWorkflowLoader>();
 		service = new AppsService(
 			appRepository,
 			mock<PageRepository>(),
 			workflowFinderService,
 			mock<AppVersionService>(),
 			mock<GlobalConfig>(),
-			workflowRepository,
+			workflowLoader,
 		);
 		app = { id: 'app-1', projectId: 'proj-1', bindings: [] } as unknown as App;
 		appRepository.findOneBy.mockResolvedValue(app);
@@ -186,7 +190,10 @@ describe('AppsService bindings', () => {
 		it('binds an unpublished workflow and reports it as a warning', async () => {
 			const unpublished = workflow({ activeVersionId: null });
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(unpublished);
-			workflowRepository.findByIds.mockResolvedValue([unpublished]);
+			workflowLoader.loadWorkflow.mockImplementation(async (_projectId, _reference, options) => {
+				if (options?.usePublishedVersion) throw notPublished();
+				return unpublished;
+			});
 
 			const result = await service.setBindings('app-1', [binding()], user);
 
@@ -208,7 +215,7 @@ describe('AppsService bindings', () => {
 			app.bindings = [binding('old', 'wf-0')];
 			const wf = workflow();
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(wf);
-			workflowRepository.findByIds.mockResolvedValue([wf]);
+			workflowLoader.loadWorkflow.mockResolvedValue(wf);
 
 			const result = await service.setBindings('app-1', [binding()], user);
 
@@ -219,29 +226,30 @@ describe('AppsService bindings', () => {
 	});
 
 	describe('describeBindings', () => {
-		it('lists declared workflowInputs fields', async () => {
+		const declaredTrigger = (values: Array<{ name: string; type: string }>) =>
+			triggerNode({ inputSource: 'workflowInputs', workflowInputs: { values } });
+
+		it('lists the declared workflowInputs fields of the published version', async () => {
 			app.bindings = [binding()];
-			workflowRepository.findByIds.mockResolvedValue([
+			workflowLoader.loadWorkflow.mockResolvedValue(
 				workflow({
 					nodes: [
-						triggerNode({
-							inputSource: 'workflowInputs',
-							workflowInputs: {
-								values: [
-									{ name: 'message', type: 'string' },
-									{ name: 'count', type: 'number' },
-								],
-							},
-						}),
+						declaredTrigger([
+							{ name: 'message', type: 'string' },
+							{ name: 'count', type: 'number' },
+						]),
 					],
 				}),
-			]);
+			);
 
 			const result = await service.describeBindings(app);
 
-			expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf-1'], {
-				fields: ['name', 'nodes', 'connections', 'activeVersionId'],
-			});
+			expect(workflowLoader.loadWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowLoader.loadWorkflow).toHaveBeenCalledWith(
+				'proj-1',
+				{ workflowId: 'wf-1', workflowName: '' },
+				{ usePublishedVersion: true },
+			);
 			expect(result.bindings[0]).toMatchObject({
 				published: true,
 				input: [
@@ -252,11 +260,37 @@ describe('AppsService bindings', () => {
 			expect(result.warnings).toEqual([]);
 		});
 
+		it('falls back to the draft with a warning while the workflow is not published', async () => {
+			app.bindings = [binding()];
+			const draft = workflow({
+				activeVersionId: null,
+				nodes: [declaredTrigger([{ name: 'email', type: 'string' }])],
+			});
+			workflowLoader.loadWorkflow.mockImplementation(async (_projectId, _reference, options) => {
+				if (options?.usePublishedVersion) throw notPublished();
+				return draft;
+			});
+
+			const result = await service.describeBindings(app);
+
+			expect(workflowLoader.loadWorkflow).toHaveBeenLastCalledWith('proj-1', {
+				workflowId: 'wf-1',
+				workflowName: '',
+			});
+			expect(result.bindings[0]).toMatchObject({
+				published: false,
+				input: [{ name: 'email', type: 'string' }],
+			});
+			expect(result.warnings).toEqual([
+				expect.stringContaining('Types for "submit" come from the unpublished draft'),
+			]);
+		});
+
 		it('reports passthrough triggers', async () => {
 			app.bindings = [binding()];
-			workflowRepository.findByIds.mockResolvedValue([
+			workflowLoader.loadWorkflow.mockResolvedValue(
 				workflow({ nodes: [triggerNode({ inputSource: 'passthrough' })] }),
-			]);
+			);
 
 			const result = await service.describeBindings(app);
 
@@ -265,7 +299,9 @@ describe('AppsService bindings', () => {
 
 		it('leaves out a binding whose workflow no longer exists and warns', async () => {
 			app.bindings = [binding('gone', 'wf-gone'), binding()];
-			workflowRepository.findByIds.mockResolvedValue([workflow()]);
+			workflowLoader.loadWorkflow.mockImplementation(async (_projectId, reference) =>
+				reference.workflowId === 'wf-1' ? workflow() : null,
+			);
 
 			const result = await service.describeBindings(app);
 
