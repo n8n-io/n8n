@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
-import { unwrapLuxonSentinels } from '../runtime/luxon-transfer';
+import { unwrapLuxonValues } from '../runtime/luxon-transfer';
 import { bridgeMessageSchema, type BridgeMessage } from './bridge-messages';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
@@ -808,7 +808,7 @@ try {
 
 			// The structured clone above drops the prototype of a class instance, so
 			// rebuild the luxon instances from the markers the isolate sent.
-			return unwrapLuxonSentinels(result);
+			return unwrapLuxonValues(result);
 		} catch (error) {
 			// Re-throw reconstructed errors as-is.
 			// Note: TypeError is intentionally NOT included here — the isolate's

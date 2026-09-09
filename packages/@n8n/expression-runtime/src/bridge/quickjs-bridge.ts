@@ -4,12 +4,14 @@ import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
+import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
 import {
-	isLuxonEscapedObject,
-	isLuxonSentinel,
-	isOpaqueLuxonEscapedObject,
-	rebuildLuxonValue,
-} from '../runtime/luxon-transfer';
+	isEscapedTransferValue,
+	isOpaqueTransferValue,
+	TRANSFER_ESCAPED_KEY,
+	TRANSFER_OPAQUE_KEY,
+	TRANSFER_TYPE_KEY,
+} from '../runtime/transfer';
 import { bridgeMessageSchema } from './bridge-messages';
 
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
@@ -131,12 +133,12 @@ function unwrapSentinels(value: unknown, luxonAsData = false): unknown {
 	}
 	if (!luxonAsData) {
 		if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
-		if (isLuxonEscapedObject(value)) {
+		if (isEscapedTransferValue(value)) {
 			// A walked payload only had its own keys collide, so the walk below still
 			// rebuilds luxon markers deeper in it. An opaque payload is a value the
 			// guest could not walk, so `opaque` keeps every marker in it as data.
 			const inner: unknown = value.__value;
-			const opaque = isOpaqueLuxonEscapedObject(value);
+			const opaque = isOpaqueTransferValue(value);
 			if (typeof inner !== 'object' || inner === null) return inner;
 			if (isEscapedObject(inner)) return unwrapSentinels(inner, opaque);
 			if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry, opaque));
@@ -896,7 +898,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	};
 	// __prepareForTransfer does not walk into a Map, a Set or the extra keys of an
 	// Error, and it does not walk an opaque payload. The inCollection flag marks
-	// those places, where a luxon marker can only come from user data.
+	// those places, where a transfer marker can only come from user data.
 	function wrapSpecialValues(v, inCollection) {
 		if (v === null || v === undefined) return v;
 		// Functions and Promises must not leave the sandbox as results.
@@ -945,18 +947,25 @@ export class QuickJsBridge implements RuntimeBridge {
 		// Outside a collection, these markers come from __prepareForTransfer above,
 		// so pass them to the host as they are.
 		if (!inCollection) {
-			if (v.__isDateTime === true || v.__isDuration === true || v.__isInterval === true) return v;
-			if (v.__isLuxonEscaped === true) {
+			if (typeof v['${TRANSFER_TYPE_KEY}'] === 'string') return v;
+			if (v['${TRANSFER_ESCAPED_KEY}'] === true) {
 				var payload = v.__value;
-				if (v.__isLuxonOpaque === true) {
+				if (v['${TRANSFER_OPAQUE_KEY}'] === true) {
 					// The host gives an opaque payload back as data, so wrap its contents
 					// as a collection and keep any marker in them as data too.
-					return { __isLuxonEscaped: true, __isLuxonOpaque: true, __value: wrapOwnKeys(payload, true) };
+					var opaqueWrapper = { __value: wrapOwnKeys(payload, true) };
+					opaqueWrapper['${TRANSFER_ESCAPED_KEY}'] = true;
+					opaqueWrapper['${TRANSFER_OPAQUE_KEY}'] = true;
+					return opaqueWrapper;
 				}
 				if (payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
-					return { __isLuxonEscaped: true, __value: wrapOwnKeys(payload, inCollection) };
+					var walkedWrapper = { __value: wrapOwnKeys(payload, inCollection) };
+					walkedWrapper['${TRANSFER_ESCAPED_KEY}'] = true;
+					return walkedWrapper;
 				}
-				return { __isLuxonEscaped: true, __value: wrapSpecialValues(payload, inCollection) };
+				var plainWrapper = { __value: wrapSpecialValues(payload, inCollection) };
+				plainWrapper['${TRANSFER_ESCAPED_KEY}'] = true;
+				return plainWrapper;
 			}
 		}
 		return wrapOwnKeys(v, inCollection);
@@ -974,13 +983,13 @@ export class QuickJsBridge implements RuntimeBridge {
 			) {
 				collides = true;
 			}
-			// Inside a collection a luxon marker is user data, so escape the object
+			// Inside a collection a transfer marker is user data, so escape the object
 			// and the host reads the keys as the plain data they are.
 			if (
 				inCollection && (
-					key === '__isDateTime' || key === '__isDuration' ||
-					key === '__isInterval' || key === '__isLuxonEscaped' ||
-					key === '__isLuxonOpaque'
+					key === '${TRANSFER_TYPE_KEY}' ||
+					key === '${TRANSFER_ESCAPED_KEY}' ||
+					key === '${TRANSFER_OPAQUE_KEY}'
 				)
 			) {
 				collides = true;

@@ -202,46 +202,46 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(evaluator.evaluate('{{ "hello" }}', data, caller)).toBe('hello');
 		});
 
-		it('should return a user object with luxon marker keys as plain data', () => {
+		it('should return a user object with transfer marker keys as plain data', () => {
 			const data = { $json: {} };
 
 			const result = evaluator.evaluate(
-				'{{ ({ __isDateTime: true, __isoString: "2024-01-15T00:00:00.000Z", __zone: "UTC" }) }}',
+				'{{ ({ __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z", __zone: "UTC" }) }}',
 				data,
 				caller,
 			);
 
 			expect(result).not.toBeInstanceOf(DateTime);
 			expect(result).toEqual({
-				__isDateTime: true,
+				__n8nType: 'DateTime',
 				__isoString: '2024-01-15T00:00:00.000Z',
 				__zone: 'UTC',
 			});
 		});
 
-		it('should return a class instance with luxon marker keys as plain data', () => {
+		it('should return a class instance with transfer marker keys as plain data', () => {
 			const data = { $json: {} };
 
 			const result = evaluator.evaluate(
-				'{{ (function(){ function Marker(){ this.__isDateTime = true; this.__isoString = "2024-01-15T00:00:00.000Z"; this.__zone = "UTC"; } return new Marker(); })() }}',
+				'{{ (function(){ function Marker(){ this.__n8nType = "DateTime"; this.__isoString = "2024-01-15T00:00:00.000Z"; this.__zone = "UTC"; } return new Marker(); })() }}',
 				data,
 				caller,
 			);
 
 			expect(result).not.toBeInstanceOf(DateTime);
 			expect(result).toEqual({
-				__isDateTime: true,
+				__n8nType: 'DateTime',
 				__isoString: '2024-01-15T00:00:00.000Z',
 				__zone: 'UTC',
 			});
 		});
 
-		it('should return an object with luxon marker keys inside a Map or a Set as plain data', () => {
+		it('should return an object with transfer marker keys inside a Map or a Set as plain data', () => {
 			const data = { $json: {} };
 			const marker =
-				'{ __isDateTime: true, __isoString: "2024-01-15T00:00:00.000Z", __zone: "UTC" }';
+				'{ __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z", __zone: "UTC" }';
 			const expected = {
-				__isDateTime: true,
+				__n8nType: 'DateTime',
 				__isoString: '2024-01-15T00:00:00.000Z',
 				__zone: 'UTC',
 			};
@@ -360,12 +360,12 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			const data = { $json: {} };
 
 			const result = evaluator.evaluate(
-				'{{ ({ __isDateTime: "x", real: DateTime.fromISO("2024-01-15") }) }}',
+				'{{ ({ __n8nType: "x", real: DateTime.fromISO("2024-01-15") }) }}',
 				data,
 				caller,
 			) as Record<string, unknown>;
 
-			expect(result.__isDateTime).toBe('x');
+			expect(result.__n8nType).toBe('x');
 			expect(result.real).toBeInstanceOf(DateTime);
 			expect((result.real as DateTime).isValid).toBe(true);
 			expect((result.real as DateTime).toISODate()).toBe('2024-01-15');
@@ -374,26 +374,28 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		it('should keep every key of a user object that copies an escape marker name', () => {
 			const data = { $json: {} };
 
-			expect(
-				evaluator.evaluate('{{ ({ __isLuxonEscaped: true, keep: 1 }) }}', data, caller),
-			).toEqual({ __isLuxonEscaped: true, keep: 1 });
-			expect(
-				evaluator.evaluate('{{ ({ __isLuxonOpaque: true, keep: 1 }) }}', data, caller),
-			).toEqual({ __isLuxonOpaque: true, keep: 1 });
+			expect(evaluator.evaluate('{{ ({ __n8nEscaped: true, keep: 1 }) }}', data, caller)).toEqual({
+				__n8nEscaped: true,
+				keep: 1,
+			});
+			expect(evaluator.evaluate('{{ ({ __n8nOpaque: true, keep: 1 }) }}', data, caller)).toEqual({
+				__n8nOpaque: true,
+				keep: 1,
+			});
 		});
 
 		it('should keep a marker object that a class instance holds as plain data', () => {
 			const data = { $json: {} };
 
 			const result = evaluator.evaluate(
-				'{{ (function(){ function Row(){ this.inner = { __isDateTime: true, __isoString: "2024-01-15T00:00:00.000Z" }; this.a = { b: [{ __isDateTime: true, __isoString: "2024-01-15T00:00:00.000Z" }] }; } return new Row(); })() }}',
+				'{{ (function(){ function Row(){ this.inner = { __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }; this.a = { b: [{ __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }] }; } return new Row(); })() }}',
 				data,
 				caller,
 			);
 
 			expect(result).toEqual({
-				inner: { __isDateTime: true, __isoString: '2024-01-15T00:00:00.000Z' },
-				a: { b: [{ __isDateTime: true, __isoString: '2024-01-15T00:00:00.000Z' }] },
+				inner: { __n8nType: 'DateTime', __isoString: '2024-01-15T00:00:00.000Z' },
+				a: { b: [{ __n8nType: 'DateTime', __isoString: '2024-01-15T00:00:00.000Z' }] },
 			});
 		});
 

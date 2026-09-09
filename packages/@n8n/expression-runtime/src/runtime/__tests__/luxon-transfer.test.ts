@@ -5,7 +5,7 @@ import {
 	dateTimeToSentinel,
 	durationToSentinel,
 	intervalToSentinel,
-	unwrapLuxonSentinels,
+	unwrapLuxonValues,
 } from '../luxon-transfer';
 
 describe('luxon transfer', () => {
@@ -13,7 +13,7 @@ describe('luxon transfer', () => {
 		it('should keep the name of a named zone', () => {
 			const value = DateTime.fromISO('2024-01-15T12:00:00', { zone: 'Europe/Paris' });
 
-			const result = unwrapLuxonSentinels(dateTimeToSentinel(value)) as DateTime;
+			const result = unwrapLuxonValues(dateTimeToSentinel(value)) as DateTime;
 
 			expect(result.isValid).toBe(true);
 			expect(result.zoneName).toBe('Europe/Paris');
@@ -21,7 +21,7 @@ describe('luxon transfer', () => {
 		});
 
 		it('should keep the system zone as the system zone', () => {
-			const result = unwrapLuxonSentinels(dateTimeToSentinel(DateTime.now())) as DateTime;
+			const result = unwrapLuxonValues(dateTimeToSentinel(DateTime.now())) as DateTime;
 
 			expect(result.isValid).toBe(true);
 			expect(result.zone.type).toBe('system');
@@ -31,7 +31,7 @@ describe('luxon transfer', () => {
 			const previous = Settings.defaultZone;
 			Settings.defaultZone = 'Asia/Tokyo';
 			try {
-				const result = unwrapLuxonSentinels(
+				const result = unwrapLuxonValues(
 					dateTimeToSentinel(DateTime.now().setZone('system')),
 				) as DateTime;
 
@@ -45,7 +45,7 @@ describe('luxon transfer', () => {
 		it('should keep the units of a duration', () => {
 			const value = Duration.fromObject({ days: 2, hours: 3 });
 
-			const result = unwrapLuxonSentinels(durationToSentinel(value)) as Duration;
+			const result = unwrapLuxonValues(durationToSentinel(value)) as Duration;
 
 			expect(result.isValid).toBe(true);
 			expect(result.toObject()).toEqual({ days: 2, hours: 3 });
@@ -57,16 +57,16 @@ describe('luxon transfer', () => {
 				DateTime.fromISO('2024-01-02T00:00:00.000Z', { zone: 'utc' }),
 			);
 
-			const result = unwrapLuxonSentinels(intervalToSentinel(value)) as Interval;
+			const result = unwrapLuxonValues(intervalToSentinel(value)) as Interval;
 
 			expect(result.isValid).toBe(true);
 			expect(result.length('hours')).toBe(24);
 		});
 
 		it('should keep the reason of an invalid value', () => {
-			const dateTime = unwrapLuxonSentinels(dateTimeToSentinel(DateTime.invalid('test')));
-			const duration = unwrapLuxonSentinels(durationToSentinel(Duration.invalid('test')));
-			const interval = unwrapLuxonSentinels(intervalToSentinel(Interval.invalid('test')));
+			const dateTime = unwrapLuxonValues(dateTimeToSentinel(DateTime.invalid('test')));
+			const duration = unwrapLuxonValues(durationToSentinel(Duration.invalid('test')));
+			const interval = unwrapLuxonValues(intervalToSentinel(Interval.invalid('test')));
 
 			expect((dateTime as DateTime).invalidReason).toBe('test');
 			expect((duration as Duration).invalidReason).toBe('test');
@@ -76,8 +76,8 @@ describe('luxon transfer', () => {
 
 	describe('markers the host does not accept', () => {
 		it('should ignore a zone name that no zone database holds', () => {
-			const result = unwrapLuxonSentinels({
-				__isDateTime: true,
+			const result = unwrapLuxonValues({
+				__n8nType: 'DateTime',
 				__isoString: '2024-01-01T00:00:00.000Z',
 				__zone: 'Fantasia/Castle',
 			}) as DateTime;
@@ -88,8 +88,8 @@ describe('luxon transfer', () => {
 		});
 
 		it('should ignore a zone name that is not a string', () => {
-			const result = unwrapLuxonSentinels({
-				__isDateTime: true,
+			const result = unwrapLuxonValues({
+				__n8nType: 'DateTime',
 				__isoString: '2024-01-01T00:00:00.000Z',
 				__zone: { name: 'Europe/Paris' },
 			}) as DateTime;
@@ -99,8 +99,8 @@ describe('luxon transfer', () => {
 		});
 
 		it('should accept a fixed offset zone name', () => {
-			const result = unwrapLuxonSentinels({
-				__isDateTime: true,
+			const result = unwrapLuxonValues({
+				__n8nType: 'DateTime',
 				__isoString: '2024-01-15T12:00:00.000+01:00',
 				__zone: 'UTC+1',
 			}) as DateTime;
@@ -110,8 +110,8 @@ describe('luxon transfer', () => {
 		});
 
 		it('should ignore an offset zone name that luxon cannot resolve', () => {
-			const result = unwrapLuxonSentinels({
-				__isDateTime: true,
+			const result = unwrapLuxonValues({
+				__n8nType: 'DateTime',
 				__isoString: '2024-01-15T12:00:00.000+01:00',
 				__zone: 'GMT+2',
 			}) as DateTime;
@@ -121,23 +121,23 @@ describe('luxon transfer', () => {
 		});
 
 		it('should build an invalid DateTime when the ISO string is not a string', () => {
-			const result = unwrapLuxonSentinels({ __isDateTime: true, __isoString: 123 }) as DateTime;
+			const result = unwrapLuxonValues({ __n8nType: 'DateTime', __isoString: 123 }) as DateTime;
 
 			expect(result.isValid).toBe(false);
 			expect(result.invalidReason).toBe('unknown');
 		});
 
 		it('should build an invalid DateTime when the reason is empty or not a string', () => {
-			const empty = unwrapLuxonSentinels({ __isDateTime: true, __invalidReason: '' });
-			const notAString = unwrapLuxonSentinels({ __isDateTime: true, __invalidReason: 42 });
+			const empty = unwrapLuxonValues({ __n8nType: 'DateTime', __invalidReason: '' });
+			const notAString = unwrapLuxonValues({ __n8nType: 'DateTime', __invalidReason: 42 });
 
 			expect((empty as DateTime).invalidReason).toBe('unknown');
 			expect((notAString as DateTime).invalidReason).toBe('unknown');
 		});
 
 		it('should build an invalid Duration when a unit name is unknown', () => {
-			const result = unwrapLuxonSentinels({
-				__isDuration: true,
+			const result = unwrapLuxonValues({
+				__n8nType: 'Duration',
 				__values: { fortnights: 1 },
 			}) as Duration;
 
@@ -146,9 +146,9 @@ describe('luxon transfer', () => {
 		});
 
 		it('should build an invalid Duration when an amount is not a finite number', () => {
-			const text = unwrapLuxonSentinels({ __isDuration: true, __values: { days: 'x' } });
-			const infinite = unwrapLuxonSentinels({
-				__isDuration: true,
+			const text = unwrapLuxonValues({ __n8nType: 'Duration', __values: { days: 'x' } });
+			const infinite = unwrapLuxonValues({
+				__n8nType: 'Duration',
 				__values: { days: Number.POSITIVE_INFINITY },
 			});
 
@@ -157,8 +157,8 @@ describe('luxon transfer', () => {
 		});
 
 		it('should build an invalid Interval when an end is not a DateTime marker', () => {
-			const result = unwrapLuxonSentinels({
-				__isInterval: true,
+			const result = unwrapLuxonValues({
+				__n8nType: 'Interval',
 				__start: 'x',
 				__end: 'y',
 			}) as Interval;
@@ -170,16 +170,16 @@ describe('luxon transfer', () => {
 
 	describe('escaped and opaque payloads', () => {
 		it('should return the escaped payload untouched when it is not a plain object', () => {
-			expect(unwrapLuxonSentinels({ __isLuxonEscaped: true, __value: null })).toBeNull();
-			expect(unwrapLuxonSentinels({ __isLuxonEscaped: true, __value: 'text' })).toBe('text');
+			expect(unwrapLuxonValues({ __n8nEscaped: true, __value: null })).toBeNull();
+			expect(unwrapLuxonValues({ __n8nEscaped: true, __value: 'text' })).toBe('text');
 		});
 
 		it('should return an opaque payload as data and leave a marker inside it alone', () => {
-			const payload = { inner: { __isDateTime: true, __isoString: '2024-01-15T00:00:00.000Z' } };
+			const payload = { inner: { __n8nType: 'DateTime', __isoString: '2024-01-15T00:00:00.000Z' } };
 
-			const result = unwrapLuxonSentinels({
-				__isLuxonEscaped: true,
-				__isLuxonOpaque: true,
+			const result = unwrapLuxonValues({
+				__n8nEscaped: true,
+				__n8nOpaque: true,
 				__value: payload,
 			});
 
@@ -188,15 +188,15 @@ describe('luxon transfer', () => {
 		});
 
 		it('should keep rebuilding a luxon value inside a payload that is not opaque', () => {
-			const result = unwrapLuxonSentinels({
-				__isLuxonEscaped: true,
+			const result = unwrapLuxonValues({
+				__n8nEscaped: true,
 				__value: {
-					__isDateTime: 'x',
-					real: { __isDateTime: true, __isoString: '2024-01-15T00:00:00.000Z' },
+					__n8nType: 'x',
+					real: { __n8nType: 'DateTime', __isoString: '2024-01-15T00:00:00.000Z' },
 				},
 			}) as Record<string, unknown>;
 
-			expect(result.__isDateTime).toBe('x');
+			expect(result.__n8nType).toBe('x');
 			expect(DateTime.isDateTime(result.real)).toBe(true);
 		});
 	});
@@ -206,7 +206,7 @@ describe('luxon transfer', () => {
 			const value: Record<string, unknown> = { n: 1 };
 			value.self = value;
 
-			const result = unwrapLuxonSentinels(value) as Record<string, unknown>;
+			const result = unwrapLuxonValues(value) as Record<string, unknown>;
 
 			expect(result.n).toBe(1);
 			expect(result.self).toBe(result);
@@ -217,7 +217,7 @@ describe('luxon transfer', () => {
 			value[0] = 1;
 			value[2] = 3;
 
-			const result = unwrapLuxonSentinels(value) as unknown[];
+			const result = unwrapLuxonValues(value) as unknown[];
 
 			expect(result).toHaveLength(3);
 			expect(1 in result).toBe(false);

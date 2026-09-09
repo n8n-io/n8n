@@ -1,106 +1,77 @@
 /**
- * Transfer luxon values across the runtime boundary.
+ * Carry luxon values across the runtime boundary.
  *
- * Results cross the boundary by structured clone, which does not carry the
- * prototype of a class instance. A luxon DateTime, Duration or Interval is a
- * class instance. Each one goes across as a structured-cloneable marker object,
- * and the host rebuilds a real instance from it.
- *
- * User data can hold the same keys. The escape wrappers below let the host tell
- * our own markers from user data that looks like them.
+ * A luxon DateTime, Duration or Interval is a class instance, and structured
+ * clone does not carry the prototype of one. Each goes across as a marker
+ * object in the framing `transfer.ts` defines, and the host rebuilds a real
+ * instance from it.
  */
 
 import { DateTime, Duration, IANAZone, Interval } from 'luxon';
 import type { DurationLikeObject } from 'luxon';
+
+import type { SentinelDecoder, SentinelEncoder, TransferSentinel } from './transfer';
+import {
+	isPlainObject,
+	transferTypeOf,
+	TRANSFER_TYPE_KEY,
+	unwrapTransferSentinels,
+} from './transfer';
+
+export const DATE_TIME_TYPE = 'DateTime';
+export const DURATION_TYPE = 'Duration';
+export const INTERVAL_TYPE = 'Interval';
 
 export interface InvalidLuxonSentinel {
 	__invalidReason?: string;
 	__invalidExplanation?: string | null;
 }
 
-export interface DateTimeSentinel extends InvalidLuxonSentinel {
-	__isDateTime: true;
+export interface DateTimeSentinel extends TransferSentinel, InvalidLuxonSentinel {
+	[TRANSFER_TYPE_KEY]: typeof DATE_TIME_TYPE;
 	__isoString?: string;
 	__zone?: string;
 }
 
-export interface DurationSentinel extends InvalidLuxonSentinel {
-	__isDuration: true;
+export interface DurationSentinel extends TransferSentinel, InvalidLuxonSentinel {
+	[TRANSFER_TYPE_KEY]: typeof DURATION_TYPE;
 	__values?: DurationLikeObject;
 }
 
-export interface IntervalSentinel extends InvalidLuxonSentinel {
-	__isInterval: true;
+export interface IntervalSentinel extends TransferSentinel, InvalidLuxonSentinel {
+	[TRANSFER_TYPE_KEY]: typeof INTERVAL_TYPE;
 	__start?: DateTimeSentinel;
 	__end?: DateTimeSentinel;
 }
 
-export interface LuxonEscapedObject {
-	__isLuxonEscaped: true;
-	__isLuxonOpaque?: true;
-	__value: unknown;
-}
-
-/**
- * Keys that make an object look like one of our markers.
- *
- * An object with one of these own keys is escaped, so the host reads it as
- * data. The opaque flag is in the set for the same reason. If it were not, user
- * data that holds it would make the host return an object without a walk.
- */
-export const LUXON_SENTINEL_KEYS = [
-	'__isDateTime',
-	'__isDuration',
-	'__isInterval',
-	'__isLuxonEscaped',
-	'__isLuxonOpaque',
-];
-
-function marker(value: unknown, key: string): unknown {
-	if (typeof value !== 'object' || value === null) return undefined;
-	return Reflect.get(value, key);
-}
+export type LuxonSentinel = DateTimeSentinel | DurationSentinel | IntervalSentinel;
 
 export function isDateTimeSentinel(value: unknown): value is DateTimeSentinel {
-	return marker(value, '__isDateTime') === true;
+	return transferTypeOf(value) === DATE_TIME_TYPE;
 }
 
 export function isDurationSentinel(value: unknown): value is DurationSentinel {
-	return marker(value, '__isDuration') === true;
+	return transferTypeOf(value) === DURATION_TYPE;
 }
 
 export function isIntervalSentinel(value: unknown): value is IntervalSentinel {
-	return marker(value, '__isInterval') === true;
+	return transferTypeOf(value) === INTERVAL_TYPE;
 }
 
-export function isLuxonEscapedObject(value: unknown): value is LuxonEscapedObject {
-	return marker(value, '__isLuxonEscaped') === true;
-}
-
-/**
- * An escaped wrapper whose payload must be returned as data without any
- * further inspection for luxon markers.
- */
-export function isOpaqueLuxonEscapedObject(value: unknown): boolean {
-	return marker(value, '__isLuxonOpaque') === true;
-}
-
-export function isLuxonSentinel(
-	value: unknown,
-): value is DateTimeSentinel | DurationSentinel | IntervalSentinel {
+export function isLuxonSentinel(value: unknown): value is LuxonSentinel {
 	return isDateTimeSentinel(value) || isDurationSentinel(value) || isIntervalSentinel(value);
 }
 
 export function dateTimeToSentinel(value: DateTime): DateTimeSentinel {
 	if (!value.isValid) {
 		return {
-			__isDateTime: true,
+			[TRANSFER_TYPE_KEY]: DATE_TIME_TYPE,
 			__invalidReason: value.invalidReason ?? 'unknown',
 			__invalidExplanation: value.invalidExplanation,
 		};
 	}
 	const sentinel: DateTimeSentinel = {
-		__isDateTime: true,
+		[TRANSFER_TYPE_KEY]: DATE_TIME_TYPE,
 		__isoString: value.toISO() ?? '',
 	};
 	// Carry a zone name only when the value does not use the system zone. The
@@ -112,24 +83,24 @@ export function dateTimeToSentinel(value: DateTime): DateTimeSentinel {
 export function durationToSentinel(value: Duration): DurationSentinel {
 	if (!value.isValid) {
 		return {
-			__isDuration: true,
+			[TRANSFER_TYPE_KEY]: DURATION_TYPE,
 			__invalidReason: value.invalidReason ?? 'unknown',
 			__invalidExplanation: value.invalidExplanation,
 		};
 	}
-	return { __isDuration: true, __values: value.toObject() };
+	return { [TRANSFER_TYPE_KEY]: DURATION_TYPE, __values: value.toObject() };
 }
 
 export function intervalToSentinel(value: Interval): IntervalSentinel {
 	if (!value.isValid || value.start === null || value.end === null) {
 		return {
-			__isInterval: true,
+			[TRANSFER_TYPE_KEY]: INTERVAL_TYPE,
 			__invalidReason: value.invalidReason ?? 'unknown',
 			__invalidExplanation: value.invalidExplanation,
 		};
 	}
 	return {
-		__isInterval: true,
+		[TRANSFER_TYPE_KEY]: INTERVAL_TYPE,
 		__start: dateTimeToSentinel(value.start),
 		__end: dateTimeToSentinel(value.end),
 	};
@@ -222,70 +193,37 @@ export function rebuildInterval(sentinel: IntervalSentinel): Interval {
 	return Interval.fromDateTimes(rebuildDateTime(start), rebuildDateTime(end));
 }
 
-export function rebuildLuxonValue(
-	sentinel: DateTimeSentinel | DurationSentinel | IntervalSentinel,
-): DateTime | Duration | Interval {
+export function rebuildLuxonValue(sentinel: LuxonSentinel): DateTime | Duration | Interval {
 	if (isDateTimeSentinel(sentinel)) return rebuildDateTime(sentinel);
 	if (isDurationSentinel(sentinel)) return rebuildDuration(sentinel);
 	return rebuildInterval(sentinel);
 }
 
-/** Type guard: plain object with Object.prototype or null prototype. */
-export function isPlainObject(value: object): value is Record<string, unknown> {
-	const proto = Object.getPrototypeOf(value);
-	return proto === Object.prototype || proto === null;
-}
-
-function unwrapPlainObject(
-	value: Record<string, unknown>,
-	seen: Map<object, unknown>,
-): Record<string, unknown> {
-	const result: Record<string, unknown> = {};
-	// Record the result before the walk. A value that refers to itself then
-	// resolves to the same object.
-	seen.set(value, result);
-	for (const key of Object.keys(value)) {
-		result[key] = unwrapValue(value[key], seen);
-	}
-	return result;
-}
-
-function unwrapValue(value: unknown, seen: Map<object, unknown>): unknown {
-	if (value === null || value === undefined) return value;
-	if (typeof value !== 'object') return value;
-	if (seen.has(value)) return seen.get(value);
-	if (Array.isArray(value)) {
-		const result: unknown[] = new Array<unknown>(value.length);
-		seen.set(value, result);
-		// `forEach` steps over the holes of a sparse array, which keeps it sparse.
-		value.forEach((item, index) => {
-			result[index] = unwrapValue(item, seen);
-		});
-		return result;
-	}
-	if (!isPlainObject(value)) return value;
-	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
-	if (isLuxonEscapedObject(value)) {
-		const inner: unknown = value.__value;
-		// An opaque payload is a value the guest could not walk, so nothing in it
-		// is our framing. Give it back as it is. A walked payload only had its own
-		// keys collide, so the walk goes on below and rebuilds markers deeper in.
-		if (isOpaqueLuxonEscapedObject(value)) return inner;
-		if (typeof inner !== 'object' || inner === null || !isPlainObject(inner)) return inner;
-		return unwrapPlainObject(inner, seen);
-	}
-	return unwrapPlainObject(value, seen);
-}
+/**
+ * Turn a luxon instance into a marker, or give back nothing for any other value.
+ *
+ * The luxon `is*` helpers only read a flag on the object, which user data can
+ * also hold. The prototype check makes sure the value is a real instance.
+ */
+export const encodeLuxonValue: SentinelEncoder = (value) => {
+	if (value instanceof DateTime && DateTime.isDateTime(value)) return dateTimeToSentinel(value);
+	if (value instanceof Duration && Duration.isDuration(value)) return durationToSentinel(value);
+	if (value instanceof Interval && Interval.isInterval(value)) return intervalToSentinel(value);
+	return undefined;
+};
 
 /**
- * Rebuild luxon instances from the sentinels `__prepareForTransfer` emits.
+ * Rebuild a luxon instance from a marker.
  *
- * Walks the same shapes that function walks: a top-level value, arrays, and
- * plain objects. Other structured-cloneable types are returned untouched.
- * A payload marked opaque is returned as data, without any inspection.
- * Objects already visited are reused, so a graph that repeats or contains
- * itself is walked once.
+ * A marker that names a type no encoder here wrote is given back as the plain
+ * object it is, which is what the host did before the type had a marker.
  */
-export function unwrapLuxonSentinels(value: unknown): unknown {
-	return unwrapValue(value, new Map<object, unknown>());
+export const decodeLuxonSentinel: SentinelDecoder = (sentinel) => {
+	if (!isLuxonSentinel(sentinel)) return sentinel;
+	return rebuildLuxonValue(sentinel);
+};
+
+/** Walk a transferred value and rebuild every luxon instance in it. */
+export function unwrapLuxonValues(value: unknown): unknown {
+	return unwrapTransferSentinels(value, decodeLuxonSentinel);
 }
