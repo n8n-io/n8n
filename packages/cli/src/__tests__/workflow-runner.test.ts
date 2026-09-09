@@ -178,6 +178,42 @@ describe('processError', () => {
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
 
+	test('processError settles the post-execute promise when the stored run cannot be read in queue mode', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true, mode: 'webhook' }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockRejectedValue(
+			new Error('read failed'),
+		);
+
+		globalConfig.executions.mode = 'queue';
+
+		await expect(
+			runner.processError(
+				new Error('test') as ExecutionError,
+				new Date(),
+				'webhook',
+				execution.id,
+				hooks,
+			),
+		).resolves.toBeUndefined();
+
+		await expect(postExecutePromise).resolves.toEqual(
+			expect.objectContaining({ status: 'success', finished: true }),
+		);
+		expect(activeExecutions.has(execution.id)).toBe(false);
+	});
+
 	test('processError should return early if the error is `ExecutionNotFoundError`', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createExecution({ status: 'success', finished: true }, workflow);

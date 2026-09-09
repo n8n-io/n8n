@@ -2,6 +2,7 @@
 
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
+import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -141,10 +142,17 @@ export class WorkflowRunner {
 			});
 			if (executionWithoutData?.finished === true && executionWithoutData?.status === 'success') {
 				// false positive, execution was successful
-				const fullExecutionData = await this.executionPersistence.findSingleExecution(executionId, {
-					includeData: true,
-					unflattenData: true,
-				});
+				let fullExecutionData: IExecutionResponse | undefined;
+				try {
+					fullExecutionData = await this.executionPersistence.findSingleExecution(executionId, {
+						includeData: true,
+						unflattenData: true,
+					});
+				} catch (readError) {
+					this.logger.warn(
+						`Could not read the stored result of execution ${executionId}: ${readError instanceof Error ? readError.message : String(readError)}`,
+					);
+				}
 
 				const successRunData: IRun = fullExecutionData
 					? {
