@@ -408,16 +408,46 @@ describe('AppDetailsView', () => {
 			);
 		});
 
-		it('keeps the empty state instead of a banner when there is no build to fall back to', async () => {
-			const { getByTestId, queryByTestId } = await renderApp(makeApp(), {
-				artifactMode: true,
-				liveStatus: { status: 'starting' },
-			});
+		it.each([
+			[{ status: 'starting' }, 'Starting live preview…'],
+			[{ status: 'no-source' }, "Live preview isn't available yet."],
+		])(
+			'opens Preview with only the %o banner while a just-created app has no build',
+			async (liveStatus, text) => {
+				const { getByTestId, queryByTestId } = await renderApp(makeApp(), {
+					artifactMode: true,
+					liveStatus,
+				});
 
-			await userEvent.click(getByTestId('radio-button-preview'));
+				expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+				expect(getByTestId('app-preview-live-banner')).toHaveTextContent(text);
+				expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
+				expect(queryByTestId('instance-ai-app-preview-iframe')).not.toBeInTheDocument();
+			},
+		);
 
-			expect(getByTestId('app-preview-empty')).toBeInTheDocument();
-			expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
+		it.each([
+			{ status: 'unsupported', reason: 'provider' },
+			{ status: 'unavailable', reason: 'start-failed' },
+		])(
+			'keeps the empty state instead of a %o banner when there is no build',
+			async (liveStatus) => {
+				const { getByTestId, queryByTestId } = await renderApp(makeApp(), {
+					artifactMode: true,
+					liveStatus,
+				});
+
+				await userEvent.click(getByTestId('radio-button-preview'));
+
+				expect(getByTestId('app-preview-empty')).toBeInTheDocument();
+				expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
+			},
+		);
+
+		it('stays on Build for a starting preview outside artifact mode', async () => {
+			const { getByTestId } = await renderApp(makeApp(), { liveStatus: { status: 'starting' } });
+
+			expect(getByTestId('app-builder-build')).toBeInTheDocument();
 		});
 
 		it('emits a diagnostic only for a valid message from its own frame', async () => {

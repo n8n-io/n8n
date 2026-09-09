@@ -8,7 +8,7 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
-	getLatestAppBuildResult,
+	getLatestAppResult,
 	getLatestAgentConfigMutation,
 	getLatestAgentBuilderTarget,
 	getExecutionResultsByWorkflow,
@@ -451,15 +451,16 @@ export function useCanvasPreview({
 		{ flush: 'sync' },
 	);
 
-	// --- Auto-open app preview when AI builds an app ---
-	// The registry already bumps `versionId` on the tab, which re-keys the iframe,
+	// --- Auto-open app preview when AI creates or builds an app ---
+	// A create opens the tab so the live preview starts right away; the registry
+	// already bumps `versionId` on the tab after a build, which re-keys the iframe,
 	// so no refresh key is needed here.
 
-	const latestAppBuildResult = computed(() => {
+	const latestAppResult = computed(() => {
 		for (let i = thread.messages.length - 1; i >= 0; i--) {
 			const msg = thread.messages[i];
 			if (msg.agentTree) {
-				const result = getLatestAppBuildResult(msg.agentTree);
+				const result = getLatestAppResult(msg.agentTree);
 				if (result) return result;
 			}
 		}
@@ -467,12 +468,12 @@ export function useCanvasPreview({
 	});
 
 	watch(
-		() => latestAppBuildResult.value?.toolCallId,
+		() => latestAppResult.value?.toolCallId,
 		(toolCallId) => {
-			if (!toolCallId || !latestAppBuildResult.value) return;
+			if (!toolCallId || !latestAppResult.value) return;
 			if (thread.isHydratingThread) return;
 
-			activeTabId.value = latestAppBuildResult.value.appId;
+			activeTabId.value = latestAppResult.value.appId;
 			isPreviewOpen.value = true;
 		},
 		{ flush: 'sync' },

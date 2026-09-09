@@ -48,9 +48,9 @@ export interface DataTableResult {
 	toolCallId: string;
 }
 
-export interface AppBuildResult {
+export interface AppResult {
 	appId: string;
-	/** Unique per build — changes even when the same app is rebuilt. */
+	/** Unique per call — changes even when the same app is created or built again. */
 	toolCallId: string;
 }
 
@@ -437,21 +437,28 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the appId and
- * toolCallId from the latest successful `apps build` tool result. Failed builds
- * return `{ error: true }` and carry no `versionId`, so they are skipped.
+ * toolCallId from the latest successful `apps create` or `apps build` tool
+ * result. A create carries `app.id`; a build carries `appId` + `versionId`.
+ * Failures return `{ error: true }` or `{ denied: true }` and are skipped.
  */
-export function getLatestAppBuildResult(node: InstanceAiAgentNode): AppBuildResult | undefined {
+export function getLatestAppResult(node: InstanceAiAgentNode): AppResult | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestAppBuildResult(node.children[i]);
+		const childResult = getLatestAppResult(node.children[i]);
 		if (childResult) return childResult;
 	}
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		const args = tc.args as Record<string, unknown> | undefined;
-		if (tc.toolName !== 'apps' || args?.action !== 'build' || tc.isLoading) continue;
-		if (!isRecord(tc.result)) continue;
-		if (typeof tc.result.appId === 'string' && typeof tc.result.versionId === 'string') {
-			return { appId: tc.result.appId, toolCallId: tc.toolCallId };
+		if (tc.toolName !== 'apps' || tc.isLoading || !isRecord(tc.result)) continue;
+		if (args?.action === 'create' && isRecord(tc.result.app)) {
+			if (typeof tc.result.app.id === 'string') {
+				return { appId: tc.result.app.id, toolCallId: tc.toolCallId };
+			}
+		}
+		if (args?.action === 'build') {
+			if (typeof tc.result.appId === 'string' && typeof tc.result.versionId === 'string') {
+				return { appId: tc.result.appId, toolCallId: tc.toolCallId };
+			}
 		}
 	}
 	return undefined;

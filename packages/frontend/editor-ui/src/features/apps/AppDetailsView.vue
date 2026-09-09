@@ -107,6 +107,17 @@ const versionId = computed(
 
 const hasPreviewSource = computed(() => Boolean(props.liveUrl ?? versionId.value));
 
+// A freshly created app has no build yet; while its dev server comes up the
+// preview pane shows the banner alone instead of the "ask the assistant" empty state.
+const livePending = computed(
+	() =>
+		props.artifactMode &&
+		!hasPreviewSource.value &&
+		(props.liveStatus?.status === 'starting' || props.liveStatus?.status === 'no-source'),
+);
+
+const showPreviewPane = computed(() => hasPreviewSource.value || livePending.value);
+
 const LIVE_BANNER_KEYS = {
 	starting: 'apps.builder.live.starting',
 	'no-source': 'apps.builder.live.noSource',
@@ -117,12 +128,14 @@ const LIVE_BANNER_KEYS = {
 // Without a build there is nothing to fall back to, so the empty state speaks instead.
 const liveBanner = computed(() => {
 	const live = props.liveStatus;
-	if (!live || live.status === 'ready' || !versionId.value) return undefined;
+	if (!live || live.status === 'ready' || !(versionId.value || livePending.value)) return undefined;
 	const theme = live.status === 'starting' || live.status === 'no-source' ? 'info' : 'warning';
 	const key =
 		live.status === 'unavailable' && live.reason === 'start-failed'
 			? 'apps.builder.live.startFailed'
-			: LIVE_BANNER_KEYS[live.status];
+			: live.status === 'no-source' && !versionId.value
+				? 'apps.builder.live.noSourceNoBuild'
+				: LIVE_BANNER_KEYS[live.status];
 	return { key, theme } as const;
 });
 
@@ -156,7 +169,7 @@ const initialize = async () => {
 			appsStore.fetchPages(props.projectId, props.appId),
 		]);
 		app.value = result;
-		mode.value = hasPreviewSource.value ? 'preview' : 'build';
+		mode.value = showPreviewPane.value ? 'preview' : 'build';
 		if (!props.artifactMode) {
 			documentTitle.set(`${i18n.baseText('apps.apps')} > ${result.name}`);
 		}
@@ -267,7 +280,7 @@ onMounted(initialize);
 watch(() => props.appId, initialize);
 
 // The first build (or the live preview coming up) is what the user was waiting for while on Build.
-watch(hasPreviewSource, (next, previous) => {
+watch(showPreviewPane, (next, previous) => {
 	if (next && !previous) mode.value = 'preview';
 });
 </script>
@@ -414,7 +427,11 @@ watch(hasPreviewSource, (next, previous) => {
 					@diagnostic="emit('diagnostic', $event)"
 					@element-selected="onElementSelected"
 				/>
-				<div v-else-if="!loading" :class="$style.emptyState" data-test-id="app-preview-empty">
+				<div
+					v-else-if="!loading && !livePending"
+					:class="$style.emptyState"
+					data-test-id="app-preview-empty"
+				>
 					<N8nText tag="h2" size="medium" bold>{{
 						i18n.baseText('apps.builder.empty.title')
 					}}</N8nText>

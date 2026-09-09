@@ -1102,6 +1102,59 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.activeAppId.value).toBeNull();
 		});
+
+		function appCreateMessage(result: unknown) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-create-app',
+							toolName: 'apps',
+							args: { action: 'create', projectId: 'proj-1', name: 'Greeter' },
+							result,
+						}),
+					],
+				}),
+			});
+		}
+
+		test('switches to the app preview when an app is created, before any build', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerApp(ctx.thread, 'app-1', 'Greeter', 'proj-1');
+			ctx.openWorkflowPreview('wf-1');
+
+			ctx.thread.messages = [
+				appCreateMessage({
+					app: { id: 'app-1', name: 'Greeter', namespace: 'greeter', projectId: 'proj-1' },
+					workspacePath: '/w/apps/greeter',
+					installed: true,
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeAppId.value).toBe('app-1');
+			expect(ctx.activeAppVersionId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('does not auto-open the app preview on a denied create or while hydrating', async () => {
+			const denied = setup();
+			denied.thread.isStreaming = true;
+			registerApp(denied.thread, 'app-1');
+			denied.thread.messages = [appCreateMessage({ denied: true, reason: 'taken' })];
+			await nextTick();
+			expect(denied.activeAppId.value).toBeNull();
+
+			const hydrating = setup();
+			hydrating.thread.isHydratingThread = true;
+			registerApp(hydrating.thread, 'app-1');
+			hydrating.thread.messages = [appCreateMessage({ app: { id: 'app-1' } })];
+			await nextTick();
+			expect(hydrating.activeAppId.value).toBeNull();
+			expect(hydrating.isPreviewVisible.value).toBe(false);
+		});
 	});
 
 	describe('close data table on delete', () => {
