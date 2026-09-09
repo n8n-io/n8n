@@ -778,6 +778,8 @@ describe('InstanceAiController', () => {
 
 		beforeEach(() => {
 			evalThreadRestore.restoreAgents.mockResolvedValue([]);
+			// The allowlist service is real and shared: drop what the allowlist tests pinned.
+			evalCredentialAllowlists.clearThread(THREAD_ID);
 		});
 
 		it('should require instanceAi:eval scope', () => {
@@ -796,6 +798,7 @@ describe('InstanceAiController', () => {
 				[seedWorkflow],
 				'project-1',
 				expect.any(Map),
+				undefined,
 			);
 			expect(memoryService.restoreThreadMessages).toHaveBeenCalledWith(
 				USER_ID,
@@ -836,8 +839,26 @@ describe('InstanceAiController', () => {
 				[seedWorkflow],
 				'project-1',
 				idMap,
+				undefined,
 			);
 			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
+		});
+
+		it('should hand the pinned credential allowlist to the workflow restore', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+			evalCredentialAllowlists.set(THREAD_ID, ['cred-1', 'cred-2']);
+
+			await controller.restoreEvalThread(req, res, payload);
+
+			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
+				[seedWorkflow],
+				'project-1',
+				expect.any(Map),
+				new Set(['cred-1', 'cred-2']),
+			);
 		});
 
 		it('seeds data tables only (no messages) under exact names when uniquifyNames is false (TRUST-311)', async () => {
