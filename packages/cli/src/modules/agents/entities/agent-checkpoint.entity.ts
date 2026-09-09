@@ -5,6 +5,7 @@ import { Agent } from './agent.entity';
 
 @Entity({ name: 'agent_checkpoints' })
 export class AgentCheckpoint extends WithTimestamps {
+	/** LangGraph run id, not an n8n entity id — hence the wider column. */
 	@PrimaryColumn({ type: 'varchar', length: 255 })
 	runId: string;
 
@@ -12,7 +13,7 @@ export class AgentCheckpoint extends WithTimestamps {
 	@JoinColumn({ name: 'agentId' })
 	agent: Agent | null;
 
-	@Column({ type: 'varchar', length: 255, nullable: true })
+	@Column({ type: 'varchar', length: 36, nullable: true })
 	agentId: string | null;
 
 	@Column({ type: 'text', nullable: true })

@@ -14,7 +14,7 @@ export class Agent extends WithTimestampsAndStringId {
 	@JoinColumn({ name: 'projectId' })
 	project: Project;
 
-	@Column()
+	@Column({ type: 'varchar', length: 36 })
 	projectId: string;
 
 	@JsonColumn({ nullable: true, default: null })

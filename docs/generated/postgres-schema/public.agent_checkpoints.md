@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| agentId | varchar(255) |  | true |  | [public.agents](public.agents.md) |  |
+| agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | expired | boolean | false | false |  |  |  |
 | runId | varchar(255) |  | false |  |  |  |
@@ -37,7 +37,7 @@ erDiagram
 "public.agent_checkpoints" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 
 "public.agent_checkpoints" {
-  varchar_255_ agentId FK
+  varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   boolean expired
   varchar_255_ runId
@@ -51,7 +51,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt

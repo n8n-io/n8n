@@ -5,7 +5,8 @@ import { AgentThreadEntity } from './agent-thread.entity';
 
 @Entity({ name: 'agents_messages' })
 export class AgentMessageEntity extends WithTimestampsAndStringId {
-	@Column({ type: 'varchar', length: 255 })
+	/** Holds an `agents_threads.id`, so it matches that column's width. */
+	@Column({ type: 'varchar', length: 128 })
 	threadId: string;
 
 	@Column({ type: 'varchar', length: 255 })

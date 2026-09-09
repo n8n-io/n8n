@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) | Agent that owns this subscription |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| credentialId | varchar(255) |  | false |  |  | Credential connection that owns this subscription |
+| credentialId | varchar(36) |  | false |  |  | Credential connection that owns this subscription |
 | integrationType | varchar(64) |  | false |  |  | Chat integration platform for this subscription |
 | threadId | varchar(255) |  | false |  |  | Platform thread ID the agent is subscribed to |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -41,7 +41,7 @@ erDiagram
 "public.agent_chat_subscriptions" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
-  varchar_255_ credentialId
+  varchar_36_ credentialId
   varchar_64_ integrationType
   varchar_255_ threadId
   timestamp_3__with_time_zone updatedAt
@@ -53,7 +53,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt

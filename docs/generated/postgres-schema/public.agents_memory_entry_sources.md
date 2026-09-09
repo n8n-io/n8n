@@ -11,7 +11,7 @@
 | id | varchar(36) |  | false |  |  |  |
 | memoryEntryId | varchar(36) |  | false |  | [public.agents_memory_entries](public.agents_memory_entries.md) | Episodic memory entry linked to this source evidence |
 | observationId | varchar(36) |  | false |  | [public.agents_observations](public.agents_observations.md) | Observation-log row used as source evidence |
-| threadId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | Source conversation thread that produced the linked observation |
+| threadId | varchar(128) |  | false |  | [public.agents_threads](public.agents_threads.md) | Source conversation thread that produced the linked observation |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -61,7 +61,7 @@ erDiagram
   varchar_36_ id
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {
@@ -71,7 +71,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt
@@ -100,7 +100,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_16_ marker
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_36_ parentId FK
   varchar_16_ status
   varchar_36_ supersededBy FK

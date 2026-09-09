@@ -8,7 +8,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | heldUntil | timestamp(3) with time zone |  | false |  |  |  |
 | holderId | varchar(64) |  | false |  |  | Ephemeral background-task lock owner token, not a user ID |
-| observationScopeId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream locked for observation tasks |
+| observationScopeId | varchar(128) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream locked for observation tasks |
 | taskKind | varchar(20) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -48,7 +48,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone heldUntil
   varchar_64_ holderId
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_20_ taskKind
   timestamp_3__with_time_zone updatedAt
 }
@@ -59,7 +59,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt

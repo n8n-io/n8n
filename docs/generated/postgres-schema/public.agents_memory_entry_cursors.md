@@ -8,7 +8,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | lastIndexedObservationCreatedAt | timestamp(3) with time zone |  | false |  |  | Creation timestamp for the last indexed observation-log row |
 | lastIndexedObservationId | varchar(36) |  | false |  |  | Last observation-log row indexed into episodic memory |
-| observationScopeId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream indexed into episodic memory |
+| observationScopeId | varchar(128) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream indexed into episodic memory |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -45,7 +45,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone lastIndexedObservationCreatedAt
   varchar_36_ lastIndexedObservationId
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {
@@ -55,7 +55,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_observation_locks" ("agentId" varchar(36) NOT NULL, "observationScopeId" varchar(255) NOT NULL, "taskKind" varchar(20) NOT NULL, "holderId" varchar(64) NOT NULL, "heldUntil" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_observation_locks_taskKind" CHECK ("taskKind" IN ('observer', 'reflector')), CONSTRAINT "FK_093e44ae20f2518e97d83a95433" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_6b55089892e447c2f82e5ec60ed" FOREIGN KEY ("observationScopeId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "observationScopeId", "taskKind"))
+CREATE TABLE "agents_observation_locks" ("agentId" varchar(36) NOT NULL, "observationScopeId" varchar(128) NOT NULL, "taskKind" varchar(20) NOT NULL, "holderId" varchar(64) NOT NULL, "heldUntil" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_observation_locks_taskKind" CHECK ("taskKind" IN ('observer', 'reflector')), CONSTRAINT "FK_093e44ae20f2518e97d83a95433" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_6b55089892e447c2f82e5ec60ed" FOREIGN KEY ("observationScopeId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "observationScopeId", "taskKind"))
 ```
 
 </details>
@@ -19,7 +19,7 @@ CREATE TABLE "agents_observation_locks" ("agentId" varchar(36) NOT NULL, "observ
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | heldUntil | datetime(3) |  | false |  |  |  |
 | holderId | varchar(64) |  | false |  |  |  |
-| observationScopeId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
+| observationScopeId | varchar(128) |  | false |  | [agents_threads](agents_threads.md) |  |
 | taskKind | varchar(20) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -55,7 +55,7 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ heldUntil
   varchar_64_ holderId
-  varchar_255_ observationScopeId PK
+  varchar_128_ observationScopeId PK
   varchar_20_ taskKind PK
   datetime_3_ updatedAt
 }
@@ -66,7 +66,7 @@ erDiagram
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt

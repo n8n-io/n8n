@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_memory_entry_cursors" ("agentId" varchar(36) NOT NULL, "observationScopeId" varchar(255) NOT NULL, "lastIndexedObservationId" varchar(36) NOT NULL, "lastIndexedObservationCreatedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_746780fd115e5e4352457a3c617" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_069e791e428391a5569e7a96b20" FOREIGN KEY ("observationScopeId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "observationScopeId"))
+CREATE TABLE "agents_memory_entry_cursors" ("agentId" varchar(36) NOT NULL, "observationScopeId" varchar(128) NOT NULL, "lastIndexedObservationId" varchar(36) NOT NULL, "lastIndexedObservationCreatedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_746780fd115e5e4352457a3c617" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_069e791e428391a5569e7a96b20" FOREIGN KEY ("observationScopeId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "observationScopeId"))
 ```
 
 </details>
@@ -19,7 +19,7 @@ CREATE TABLE "agents_memory_entry_cursors" ("agentId" varchar(36) NOT NULL, "obs
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | lastIndexedObservationCreatedAt | datetime(3) |  | false |  |  |  |
 | lastIndexedObservationId | varchar(36) |  | false |  |  |  |
-| observationScopeId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
+| observationScopeId | varchar(128) |  | false |  | [agents_threads](agents_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -52,7 +52,7 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ lastIndexedObservationCreatedAt
   varchar_36_ lastIndexedObservationId
-  varchar_255_ observationScopeId PK
+  varchar_128_ observationScopeId PK
   datetime_3_ updatedAt
 }
 "agents" {
@@ -62,7 +62,7 @@ erDiagram
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt
