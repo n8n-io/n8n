@@ -60,6 +60,21 @@ describe('CredentialsOverwrites', () => {
 		});
 	});
 
+	describe('usesManagedAuth', () => {
+		it('returns true when the overwrite injects a value into empty stored fields', () => {
+			expect(credentialsOverwrites.usesManagedAuth('test', {})).toBe(true);
+		});
+
+		it('returns false when the stored fields are already customized', () => {
+			expect(
+				credentialsOverwrites.usesManagedAuth('test', {
+					username: 'user-set',
+					password: 'user-set',
+				}),
+			).toBe(false);
+		});
+	});
+
 	describe('getOverwriteEndpointMiddleware', () => {
 		it('should return null if endpointAuthToken is not provided', () => {
 			globalConfig.credentials.overwrite.endpointAuthToken = '';

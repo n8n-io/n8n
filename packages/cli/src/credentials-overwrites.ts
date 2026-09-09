@@ -212,4 +212,14 @@ export class CredentialsOverwrites {
 	getAll(): ICredentialsOverwrite {
 		return this.overwriteData;
 	}
+
+	usesManagedAuth(type: string, data: Record<string, unknown>): boolean {
+		const overwrites = this.get(type);
+		if (overwrites === undefined) return false;
+
+		// Managed iff applying the overwrite actually injects a value. Delegating to
+		// applyOverwrite keeps this in lockstep with the customization rules.
+		const applied = this.applyOverwrite(type, data as ICredentialDataDecryptedObject);
+		return Object.keys(overwrites).some((key) => applied[key] !== data[key]);
+	}
 }
