@@ -15,6 +15,7 @@ export const EVALUATIONS_DOCS_URL = `https://${DOCS_DOMAIN}/advanced-ai/evaluati
 export const ERROR_WORKFLOW_DOCS_URL = `https://${DOCS_DOMAIN}/flow-logic/error-handling/#create-and-set-an-error-workflow`;
 export const EXECUTION_DATA_REDACTION_DOCS_URL = `https://${DOCS_DOMAIN}/workflows/executions/execution-data-redaction/`;
 export const EXECUTION_DATA_REDACTION_ENFORCEMENT_DOCS_URL = `${EXECUTION_DATA_REDACTION_DOCS_URL}#instance-level-enforcement`;
+export const SECURITY_POLICIES_DOCS_URL = `https://${DOCS_DOMAIN}/deploy/host-n8n/configure-n8n/security/manage-security-policies`;
 export const TIME_SAVED_DOCS_URL = `https://${DOCS_DOMAIN}/insights/#setting-the-time-saved-by-a-workflow`;
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const RELEASE_NOTES_URL = 'https://docs.n8n.io/release-notes/';

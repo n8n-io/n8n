@@ -1,13 +1,15 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
+import { computed, ref } from 'vue';
 import { ElSwitch } from 'element-plus';
 import { I18nT } from 'vue-i18n';
 import {
 	N8nAlertDialog,
 	N8nBadge,
-	N8nHeading,
 	N8nLink,
 	N8nSelect2,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
+	N8nSettingsSection,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -41,7 +43,6 @@ const props = defineProps<{
 	managedByEnv: boolean;
 }>();
 
-const $style = useCssModule();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const i18n = useI18n();
@@ -152,24 +153,18 @@ function goToUpgrade() {
 </script>
 
 <template>
-	<div>
-		<div class="mb-s" :class="$style.headerTitle">
-			<N8nHeading tag="h2" size="large">
-				{{ i18n.baseText('settings.security.dataRedaction.title') }}
-			</N8nHeading>
-			<N8nText color="text-base" size="small">{{
-				i18n.baseText('settings.security.dataRedaction.description')
-			}}</N8nText>
-		</div>
-
-		<div :class="$style.settingsSection">
-			<div :class="$style.settingsContainer">
-				<div :class="$style.settingsContainerInfo">
-					<N8nText :bold="true"
-						>{{ i18n.baseText('settings.security.dataRedaction.enforce.title') }}
-						<N8nBadge v-if="!isLicensed" class="ml-4xs">{{
-							i18n.baseText('generic.upgrade')
-						}}</N8nBadge>
+	<N8nSettingsSection
+		:title="i18n.baseText('settings.security.dataRedaction.title')"
+		data-test-id="security-data-redaction-section"
+	>
+		<N8nSettingsRowGroup>
+			<N8nSettingsRow>
+				<template #info>
+					<N8nText :bold="true">
+						{{ i18n.baseText('settings.security.dataRedaction.enforce.title') }}
+						<N8nBadge v-if="!isLicensed" class="ml-4xs">
+							{{ i18n.baseText('generic.upgrade') }}
+						</N8nBadge>
 					</N8nText>
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.security.dataRedaction.enforce.message') }}
@@ -182,8 +177,8 @@ function goToUpgrade() {
 							{{ i18n.baseText('generic.learnMore') }}
 						</N8nLink>
 					</N8nText>
-				</div>
-				<div :class="$style.settingsContainerAction">
+				</template>
+				<template #action>
 					<EnterpriseEdition :features="[EnterpriseEditionFeature.DataRedaction]">
 						<ElSwitch
 							v-model="enforced"
@@ -213,25 +208,19 @@ function goToUpgrade() {
 							</N8nTooltip>
 						</template>
 					</EnterpriseEdition>
-				</div>
-			</div>
-			<div
-				v-if="!isLicensed || enforced"
-				:class="$style.settingsContainer"
-				data-test-id="redaction-enforcement-scope-row"
-			>
-				<div :class="$style.settingsContainerInfo">
-					<N8nText :bold="true"
-						>{{ i18n.baseText('settings.security.dataRedaction.scope.title') }}
-						<N8nBadge v-if="!isLicensed" class="ml-4xs">{{
-							i18n.baseText('generic.upgrade')
-						}}</N8nBadge>
+				</template>
+			</N8nSettingsRow>
+
+			<N8nSettingsRow v-if="!isLicensed || enforced" data-test-id="redaction-enforcement-scope-row">
+				<template #info>
+					<N8nText :bold="true">
+						{{ i18n.baseText('settings.security.dataRedaction.scope.title') }}
+						<N8nBadge v-if="!isLicensed" class="ml-4xs">
+							{{ i18n.baseText('generic.upgrade') }}
+						</N8nBadge>
 					</N8nText>
-					<N8nText size="small" color="text-light">{{
-						i18n.baseText('settings.security.dataRedaction.scope.description')
-					}}</N8nText>
-				</div>
-				<div :class="$style.settingsContainerAction">
+				</template>
+				<template #action>
 					<EnterpriseEdition :features="[EnterpriseEditionFeature.DataRedaction]">
 						<N8nSelect2
 							:model-value="dropdownFloor"
@@ -264,17 +253,20 @@ function goToUpgrade() {
 							</N8nTooltip>
 						</template>
 					</EnterpriseEdition>
-				</div>
-			</div>
-			<div :class="$style.settingsCountRow" data-test-id="redaction-enforcement-summary">
-				<N8nText size="small">
-					{{ i18n.baseText('settings.security.dataRedaction.affectedScope.label') }}
-				</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ affectedScopeText }}
-				</N8nText>
-			</div>
-		</div>
+				</template>
+			</N8nSettingsRow>
+
+			<N8nSettingsRow
+				:title="i18n.baseText('settings.security.dataRedaction.affectedScope.label')"
+				data-test-id="redaction-enforcement-summary"
+			>
+				<template #action>
+					<N8nText size="small" color="text-light">
+						{{ affectedScopeText }}
+					</N8nText>
+				</template>
+			</N8nSettingsRow>
+		</N8nSettingsRowGroup>
 
 		<N8nAlertDialog
 			:open="showEnableDialog"
@@ -301,55 +293,5 @@ function goToUpgrade() {
 			@cancel="showDisableDialog = false"
 			@update:open="showDisableDialog = $event"
 		/>
-	</div>
+	</N8nSettingsSection>
 </template>
-
-<style module>
-.headerTitle {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.settingsSection {
-	border-radius: var(--radius--lg);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	margin-bottom: var(--spacing--xl);
-	background-color: light-dark(var(--color--neutral-white), transparent);
-}
-
-.settingsContainer {
-	display: flex;
-	align-items: center;
-	padding-left: var(--spacing--sm);
-	justify-content: space-between;
-	flex-shrink: 0;
-}
-
-.settingsContainerInfo {
-	display: flex;
-	padding: var(--spacing--2xs) 0;
-	flex-direction: column;
-	justify-content: center;
-	align-items: flex-start;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
-}
-
-.settingsContainerAction {
-	display: flex;
-	padding: var(--spacing--md) var(--spacing--sm);
-	justify-content: flex-end;
-	align-items: center;
-	flex-shrink: 0;
-}
-
-.settingsCountRow {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border-top: var(--border-width) var(--border-style) var(--color--foreground);
-}
-</style>
