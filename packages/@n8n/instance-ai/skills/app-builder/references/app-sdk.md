@@ -10,7 +10,8 @@ template's `package.json` depends on `"@n8n/app-sdk": "file:vendor/n8n-app-sdk.t
 
 ## Bind before code
 
-A key is callable only after `apps(action="bind")`. Bind also writes
+A key is callable only after `apps(action="bind")`, which asks the user for
+approval: it exposes the workflow to everyone who can open the app. Bind also writes
 `src/n8n-bindings.d.ts`, a module augmentation of the SDK's `Bindings`
 interface. With it, `n8n.workflows.run` accepts only bound keys and checks the
 input fields at build time (`vue-tsc` runs in `npm run build`).
@@ -36,8 +37,10 @@ Field types follow the `workflowInputs` of the trigger in the published version
 `number | null`, `boolean | null`, `unknown[] | null` (array),
 `Record<string, unknown> | null` (object), `unknown` (any). Every field is
 optional; a missing field is absent from the workflow's input item. A trigger without
-declared fields (passthrough) accepts any object. `output` is `unknown`: narrow
-it in the app.
+declared fields (passthrough) accepts any object: the app cannot type-check the
+input and the server does not validate it, so `bind` warns about each such
+binding. Declare fields on the trigger to get typed input. `output` is
+`unknown`: narrow it in the app.
 
 Before the first bind the file declares `workflows: {}`, so any `run` call
 fails the build. That is the intended signal to bind first.
@@ -46,7 +49,7 @@ fails the build. That is the intended signal to bind first.
 
 ```ts
 import { n8n, createClient, N8nAppError } from '@n8n/app-sdk';
-import type { RunResult, Bindings } from '@n8n/app-sdk';
+import type { RunResult, Bindings, Principal } from '@n8n/app-sdk';
 
 // Default client. Base URL = import.meta.env.VITE_N8N_API_BASE if set, else
 // import.meta.env.BASE_URL + 'api' (Vite), so it works under /apps/<namespace>/
@@ -72,7 +75,7 @@ interface RunResult<T> {
   output?: T;      // the items of the last node that ran (json[])
   outputTruncated?: true; // binary response, not returned in v1; output is null
   error?: string;  // set when status is 'error'; generic unless a "Stop and Error" node failed
-  principal: null; // reserved for visitor identity
+  principal: Principal; // { userId } for an app with authMode 'n8n', null for a public app
 }
 ```
 
@@ -111,6 +114,8 @@ class N8nAppError extends Error {
 | `workflow_incompatible`  | 409  | The workflow lost its "When Executed by Another Workflow" trigger or gained a Form node.     |
 | `workflow_not_callable`  | 403  | The workflow's "This workflow can be called by" setting excludes the app's project.         |
 | `invalid_input`          | 400  | The body does not match the trigger fields; `issues` lists each rejected field's `path` and zod `code` (for example `invalid_type`). Fix the call. |
+| `unauthorized`           | 401  | No valid page token: it expired (15 min) or the page was not served by n8n. The SDK reloads the page once to get a new one; the call still rejects. |
+| `forbidden`              | 403  | `authMode: "n8n"` only: the visitor lost access to the app's project, or the token names no user. Reloading sends them through sign-in again. |
 | `payload_too_large`      | 413  | The body is over 1 MiB.                                                                     |
 | `too_many_requests`      | 429  | The instance already holds its maximum of concurrent app runs (default 10). Retry after a moment. |
 | `execution_failed`       | 500  | n8n could not start the run. Retry later; the message is safe to show.                      |
@@ -119,13 +124,35 @@ class N8nAppError extends Error {
 
 Show `error.message` to the user; it is written for people.
 
+## Who calls: `authMode` and the page token
+
+n8n injects `<meta name="n8n-app-token" content="…">` into the served
+`index.html`. The SDK reads it and sends `Authorization: Bearer <token>` with
+every call; the token is bound to the app and expires after 15 minutes. On a
+`401` the SDK calls `location.reload()` once (a fresh navigation re-mints the
+token) and rejects with `N8nAppError`.
+
+- `authMode: "public"` (default): anyone with the URL opens the app; the
+  token names no user and `principal` is `null`. Honest limit: the token
+  stops cross-site and casual `curl` use, nothing more. Anyone who can load
+  the page can script "GET the page, read the token, POST to the API". The
+  bindings allow-list, the rate limit, the concurrency cap and the generic
+  error messages are the real protections.
+- `authMode: "n8n"`: a visitor without the app's page cookie is redirected
+  through the instance's sign-in (OAuth, first-party) and back to the app;
+  they need `app:read` on the app's project. The token then names the user,
+  the runtime re-checks their access on every call, `principal` is
+  `{ userId }`, and the execution's custom data gains `appUserId`.
+
+Set the mode with `apps(action="create", ..., authMode)` or
+`apps(action="settings", appId, authMode)`.
+
 ## Runtime facts
 
-- Anonymous: anyone with the app URL can call a bound workflow. Bindings are
-  the allow-list; nothing else protects the workflow.
 - The workflow runs as the app's project, so it uses the project's
-  credentials. It appears in the executions list with mode `integrated` and
-  the custom data `appId`, `appNamespace` and `appBindingKey`.
+  credentials, whoever the visitor is. It appears in the executions list with
+  mode `integrated` and the custom data `appId`, `appNamespace`,
+  `appBindingKey` and, for an `n8n` app, `appUserId`.
 - Only the published version runs. Draft changes take effect on publish.
 - Rate limit: 60 calls per minute per IP by default (instance setting).
 - Concurrency: at most 10 calls per main process hold a run at the same time by
