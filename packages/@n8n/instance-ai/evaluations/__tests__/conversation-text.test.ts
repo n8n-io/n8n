@@ -307,7 +307,7 @@ describe('lastAgentText', () => {
 	// are what cost tokens.
 	it('keeps a long assistant answer whole while still capping tool payloads', () => {
 		const answer = `${'a'.repeat(2400)} SO WHICH ONE SHOULD I BUILD?`;
-		const text = transcriptAsText([
+		const transcript: TranscriptTurn[] = [
 			{
 				userMessage: 'analyse this',
 				steps: [
@@ -320,7 +320,8 @@ describe('lastAgentText', () => {
 					},
 				],
 			},
-		] as never);
+		];
+		const text = transcriptAsText(transcript);
 
 		expect(text).toContain('SO WHICH ONE SHOULD I BUILD?');
 		expect(text).toContain('more chars');
