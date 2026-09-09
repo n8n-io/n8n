@@ -55,8 +55,6 @@ describe('Source Control (Public API)', () => {
 			const response = await testServer.publicApiAgentWithoutApiKey().post(pullUrl).send(validBody);
 
 			expect(response.status).toBe(401);
-			// Decorator-routed endpoints authenticate outside express-openapi-validator's
-			// legacy security check, so the message is generic rather than naming the header.
 			expect(response.body).toEqual({ message: 'Unauthorized' });
 		});
 
