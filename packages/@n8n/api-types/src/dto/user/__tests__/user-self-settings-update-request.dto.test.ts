@@ -114,6 +114,20 @@ describe('UserSelfSettingsUpdateRequestDto', () => {
 			expect(result.success).toBe(false);
 			expect(result.error?.issues[0].path).toEqual(['mcpJsonNudge', 'impressions']);
 		});
+
+		it.each([
+			['a negative count', -1],
+			['a fractional count', 1.5],
+		])('should fail validation with %s for mcpJsonNudge.impressions', (_label, impressions) => {
+			const data = {
+				mcpJsonNudge: { impressions },
+			};
+
+			const result = UserSelfSettingsUpdateRequestDto.safeParse(data);
+
+			expect(result.success).toBe(false);
+			expect(result.error?.issues[0].path).toEqual(['mcpJsonNudge', 'impressions']);
+		});
 	});
 
 	describe('security: restricted fields should be stripped', () => {
