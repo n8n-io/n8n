@@ -902,8 +902,6 @@ async function handleBind(
 				workflowId: described.workflowId,
 				workflowName: described.name,
 				key: described.key,
-				inputSchema: described.input,
-				outputSchema: described.output,
 			},
 		};
 	});

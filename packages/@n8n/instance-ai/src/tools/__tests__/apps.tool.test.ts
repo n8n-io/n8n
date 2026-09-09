@@ -1093,8 +1093,6 @@ describe('apps tool', () => {
 					workflowId: 'wf-1',
 					workflowName: 'Echo',
 					key: 'submit',
-					inputSchema: SUBMIT_BINDING.input,
-					outputSchema: SUBMIT_BINDING.output,
 				},
 			});
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();

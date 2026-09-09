@@ -1,4 +1,3 @@
-import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import { appNameSchema, appNamespaceSchema } from './app.schema';
@@ -275,11 +274,6 @@ export const webSearchMetaSchema = z.object({
 });
 export type WebSearchMeta = z.infer<typeof webSearchMetaSchema>;
 
-/** Passed through as the backend emitted it; the card only formats it. */
-const jsonSchemaSchema = z.custom<JSONSchema7>(
-	(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
-);
-
 /** What the `apps` tool is about to connect, for the bind approval card. */
 export const appBindingMetaSchema = z.object({
 	appId: z.string(),
@@ -288,8 +282,6 @@ export const appBindingMetaSchema = z.object({
 	workflowId: z.string(),
 	workflowName: z.string(),
 	key: z.string(),
-	inputSchema: jsonSchemaSchema,
-	outputSchema: jsonSchemaSchema,
 });
 export type AppBindingMeta = z.infer<typeof appBindingMetaSchema>;
 

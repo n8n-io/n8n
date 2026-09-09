@@ -12,8 +12,6 @@ const APP_BINDING: AppBindingMeta = {
 	workflowId: 'wf-1',
 	workflowName: 'Echo',
 	key: 'submit',
-	inputSchema: { type: 'object', properties: { message: { type: 'string' } } },
-	outputSchema: { type: 'array', items: { type: 'object', additionalProperties: true } },
 };
 
 const OPTIONS: ApprovalOption[] = [
@@ -27,26 +25,18 @@ const renderComponent = createComponentRenderer(AppBindingApproval, {
 });
 
 describe('AppBindingApproval', () => {
-	it('names the workflow, the app and the key, and links the workflow in a new tab', () => {
-		const { getByTestId, getByText } = renderComponent();
+	it('shows the app, then the workflow linked in a new tab, and nothing else', () => {
+		const { getByTestId, getByText, queryByText } = renderComponent();
 
 		expect(getByText('Allow AI Assistant to connect a workflow to the app?')).toBeInTheDocument();
+		const app = getByTestId('instance-ai-app-binding-app');
 		const link = getByTestId('instance-ai-app-binding-workflow');
+		expect(app).toHaveTextContent('Runner');
 		expect(link).toHaveTextContent('Echo');
 		expect(link).toHaveAttribute('href', '/workflow/wf-1');
 		expect(link).toHaveAttribute('target', '_blank');
-		expect(getByTestId('instance-ai-app-binding-app')).toHaveTextContent('Runner');
-		expect(getByTestId('instance-ai-app-binding-key')).toHaveTextContent('as submit');
-		expect(getByText('Anyone who can open the app can run this workflow.')).toBeInTheDocument();
-	});
-
-	it('shows the input and output JSON Schema in collapsible sections', () => {
-		const { getByTestId } = renderComponent();
-
-		expect(getByTestId('instance-ai-app-binding-input')).toHaveTextContent('"message"');
-		expect(getByTestId('instance-ai-app-binding-output')).toHaveTextContent(
-			'"additionalProperties": true',
-		);
+		expect(app.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(queryByText(/submit/)).toBeNull();
 	});
 
 	it('emits the selected option key', async () => {

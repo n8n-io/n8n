@@ -578,8 +578,6 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 						workflowId: 'wf-1',
 						workflowName: 'Echo',
 						key: 'submit',
-						inputSchema: { type: 'object', additionalProperties: true },
-						outputSchema: { type: 'array' },
 					},
 				},
 				{ action: 'bind', appId: 'app-1' },
