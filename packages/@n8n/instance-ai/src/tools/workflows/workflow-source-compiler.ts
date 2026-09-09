@@ -1,7 +1,11 @@
 import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
-import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	validateWorkflow,
+	workflow as workflowBuilder,
+	type WorkflowJSON,
+} from '@n8n/workflow-sdk';
 import { normalizeNodeShape } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
@@ -125,7 +129,47 @@ function parseWorkflowJsonSource(source: string): WorkflowSourceCompileResult {
 		};
 	}
 
+	fillMissingNodePositions(parsed);
+
 	return { success: true, workflow: parsed, warnings: [], compiler: 'workflow-json' };
+}
+
+/**
+ * The SDK source path lays nodes out when the builder serializes, but hand-written JSON
+ * never passes through the builder. A node without a position fails the save, so borrow
+ * the builder's layout for the nodes that lack one and leave the rest of the JSON alone.
+ */
+function fillMissingNodePositions(json: WorkflowJSON): void {
+	const needsPosition = (node: WorkflowJSON['nodes'][number]) =>
+		!Array.isArray(node.position) ||
+		node.position.length !== 2 ||
+		!node.position.every((coordinate) => typeof coordinate === 'number');
+
+	if (!json.nodes?.some(needsPosition)) return;
+
+	let laidOut: WorkflowJSON;
+	try {
+		laidOut = workflowBuilder.fromJSON(json).toJSON();
+	} catch {
+		// Leave the JSON as it is. The save reports what is wrong with it.
+		return;
+	}
+
+	const positionsById = new Map<string, [number, number]>();
+	const positionsByName = new Map<string, [number, number]>();
+	for (const node of laidOut.nodes ?? []) {
+		if (!Array.isArray(node.position)) continue;
+		if (node.id) positionsById.set(node.id, node.position);
+		if (node.name) positionsByName.set(node.name, node.position);
+	}
+
+	for (const node of json.nodes) {
+		if (!needsPosition(node)) continue;
+		const position =
+			(node.id ? positionsById.get(node.id) : undefined) ??
+			(node.name ? positionsByName.get(node.name) : undefined);
+		if (position) node.position = [position[0], position[1]];
+	}
 }
 
 function parseSandboxWarnings(value: unknown): ValidationWarning[] {

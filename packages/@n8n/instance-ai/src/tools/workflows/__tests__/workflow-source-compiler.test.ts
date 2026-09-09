@@ -9,7 +9,9 @@ vi.mock('@n8n/agents/sandbox', () => ({
 	getWorkspaceRoot: vi.fn(async () => await Promise.resolve('/home/daytona/workspace')),
 }));
 
-vi.mock('@n8n/workflow-sdk', () => ({
+// Keep the real builder: the JSON path borrows its layout to fill missing node positions.
+vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/workflow-sdk')>()),
 	validateWorkflow: vi.fn(() => ({ errors: [], warnings: [] })),
 }));
 
@@ -295,6 +297,99 @@ describe('compileWorkflowSource', () => {
 			cwd: '/home/daytona/workspace',
 			abortSignal: controller.signal,
 		});
+	});
+});
+
+describe('compileWorkflowSource > node positions in JSON sources', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	// INS-1314 defect 3: the agent fell back to a hand-written .json file, whose nodes had no
+	// position. The SDK source path lays nodes out on serialize; the JSON path did not, so the
+	// save rejected every node with `nodes[N].position (invalid_type): Required`.
+	it('gives every node a position when the JSON declares none', async () => {
+		const workflow = {
+			name: 'CRM Motor',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					parameters: { url: 'https://example.com' },
+				},
+				{
+					id: 'code-1',
+					name: 'Compute',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					parameters: {},
+				},
+			],
+			connections: {
+				'Every Hour': { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+				Fetch: { main: [[{ node: 'Compute', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/crm-motor.workflow.json',
+			JSON.stringify(workflow),
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		for (const node of result.workflow.nodes) {
+			expect(node.position).toEqual([expect.any(Number), expect.any(Number)]);
+		}
+	});
+
+	it('leaves positions the JSON already declares untouched', async () => {
+		const workflow = {
+			name: 'Positioned',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [-420, 96] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					parameters: { url: 'https://example.com' },
+				},
+			],
+			connections: {
+				'Every Hour': { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/positioned.workflow.json',
+			JSON.stringify(workflow),
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		const [trigger, fetch] = result.workflow.nodes;
+		expect(trigger.position).toEqual([-420, 96]);
+		expect(fetch.position).toEqual([expect.any(Number), expect.any(Number)]);
 	});
 });
 
