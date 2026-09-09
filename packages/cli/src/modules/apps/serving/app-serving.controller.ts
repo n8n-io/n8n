@@ -60,9 +60,12 @@ export class AppServingController {
 				res.redirect(302, `/apps/${req.params.namespace}/${search}`);
 				return;
 			}
-			const visitor = await this.appPageAuthService.admit(req, res, resolved.app);
+			const isDocument = path.extname(resolved.filePath) === '.html';
+			const visitor = await this.appPageAuthService.admit(req, res, resolved.app, {
+				recheckAccess: isDocument,
+			});
 			if (!visitor) return;
-			if (path.extname(resolved.filePath) === '.html') {
+			if (isDocument) {
 				const token = this.appPageAuthService.issuePageToken(req, res, resolved.app, visitor);
 				await this.sendHtml(res, resolved.filePath, token);
 				return;

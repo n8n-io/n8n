@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Request, Response } from 'express';
 
@@ -36,20 +37,33 @@ export class AppPageAuthService {
 		private readonly appPageTokenService: AppPageTokenService,
 		private readonly appResourceResolver: AppResourceResolver,
 		private readonly oauth2FlowProxy: OAuth2FlowProxy,
+		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
 	) {}
 
 	/**
 	 * The visitor's claims, or `null` once the response was sent: a redirect into
 	 * the OAuth flow, the redirect that completes it, or a refusal.
+	 *
+	 * A document renews the cookie for another 15 minutes, so `recheckAccess` makes
+	 * a cookie count only while its user still has `app:read`; assets skip the
+	 * lookup because they renew nothing.
 	 */
-	async admit(req: Request, res: Response, app: ServedApp): Promise<AppPageTokenClaims | null> {
+	async admit(
+		req: Request,
+		res: Response,
+		app: ServedApp,
+		{ recheckAccess }: { recheckAccess: boolean },
+	): Promise<AppPageTokenClaims | null> {
 		if (app.authMode !== 'n8n') return {};
 
 		const cookie: unknown = req.cookies?.[cookieNameFor(app)];
 		const claims =
 			typeof cookie === 'string' ? this.appPageTokenService.verify(cookie, app.id) : null;
-		if (claims?.userId) return claims;
+		if (claims?.userId) {
+			if (!recheckAccess || (await this.canOpen(claims.userId, app))) return claims;
+			res.clearCookie(cookieNameFor(app), { path: appRootPath(app) });
+		}
 
 		const { code, state, error } = req.query;
 		if (typeof error === 'string') {
@@ -84,6 +98,12 @@ export class AppPageAuthService {
 		);
 		res.redirect(302, authorizationUrl);
 		return null;
+	}
+
+	/** The same check the runtime API applies to every call. */
+	private async canOpen(userId: string, app: ServedApp) {
+		const user = await this.userRepository.findByIdWithRole(userId);
+		return user !== null && (await this.appResourceResolver.canOpen(user, app));
 	}
 
 	/**

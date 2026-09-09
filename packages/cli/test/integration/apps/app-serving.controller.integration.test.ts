@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
 import { gzipSync } from 'node:zlib';
+import request from 'supertest';
 import { Header } from 'tar';
 
 import { AppVersionService } from '@/modules/apps/app-version.service';
@@ -19,7 +20,10 @@ import * as utils from '@test-integration/utils';
 
 let owner: User;
 let ownerProject: Project;
-/** No auth and no `/rest` prefix: an App page is served at the instance root, to anyone. */
+/**
+ * No auth and no `/rest` prefix: an App page is served at the instance root, to anyone.
+ * Not an agent: its cookie jar would carry a page cookie from one test into the next.
+ */
 let visitor: SuperAgentTest;
 
 // oauth-server: an `n8n` app sends its visitors through the instance's OAuth flow.
@@ -37,11 +41,11 @@ beforeAll(async () => {
 
 	owner = await createOwner();
 	ownerProject = await getPersonalProject(owner);
-	visitor = testServer.restlessAgent;
 	await Container.get(CacheService).init(); // OAuth flow state lives in the cache
 });
 
 beforeEach(async () => {
+	visitor = request(testServer.app);
 	await testDb.truncate([
 		'App',
 		'Page',
@@ -163,6 +167,27 @@ describe('GET /apps/:namespace/ with an active version', () => {
 		expect(response.headers['set-cookie'][0]).toMatch(
 			new RegExp(`^n8n-app-acme=${token}; Max-Age=900; Path=/apps/acme/; .*HttpOnly; SameSite=Lax`),
 		);
+	});
+
+	test('clears the page cookie of a user who lost app:read and restarts the OAuth flow', async () => {
+		const app = await createBuiltApp('n8n');
+		const member = await createMember();
+		const cookie = Container.get(AppPageTokenService).mint(app.id, member.id);
+
+		const response = await visitor.get('/apps/acme/').set('Cookie', pageCookie(cookie)).expect(302);
+
+		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
+		expect(response.headers['set-cookie'][0]).toMatch(
+			/^n8n-app-acme=; Path=\/apps\/acme\/; Expires=Thu, 01 Jan 1970/,
+		);
+	});
+
+	test('serves an asset to a valid page cookie without re-checking app:read', async () => {
+		const app = await createBuiltApp('n8n');
+		const member = await createMember();
+		const cookie = Container.get(AppPageTokenService).mint(app.id, member.id);
+
+		await visitor.get('/apps/acme/assets/app.js').set('Cookie', pageCookie(cookie)).expect(200);
 	});
 
 	test('redirects a visitor with an expired page cookie into the OAuth flow', async () => {
