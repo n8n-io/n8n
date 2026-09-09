@@ -19,7 +19,7 @@ export type PageRenderContext = {
 
 export type ResolvedAppRequest =
 	| { kind: 'static'; filePath: string; app: App }
-	| { kind: 'page'; context: PageRenderContext };
+	| { kind: 'page'; context: PageRenderContext; app: App };
 
 const isFile = async (filePath: string) =>
 	await stat(filePath).then(
@@ -57,7 +57,7 @@ export class AppServingService {
 		}
 
 		const context = await this.resolvePage(app, segments);
-		return context ? { kind: 'page', context } : undefined;
+		return context ? { kind: 'page', context, app } : undefined;
 	}
 
 	private async resolvePage(

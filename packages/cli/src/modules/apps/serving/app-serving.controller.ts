@@ -35,8 +35,8 @@ export class AppServingController {
 
 	/**
 	 * Serves an App: a file of its active version's dist, or one of its pages
-	 * when it has no version. Who may open a built App is the App's `authMode`,
-	 * resolved by `AppPageAuthService`; the page path stays open to anyone.
+	 * when it has no version. Who may open either is the App's `authMode`,
+	 * resolved by `AppPageAuthService`.
 	 *
 	 * `skipAuth` because the auth middleware would clear the visitor's editor
 	 * session cookie: a top-level navigation cannot send the `browser-id` header
@@ -72,6 +72,13 @@ export class AppServingController {
 			}
 			this.sendStaticFile(res, resolved.filePath);
 			return;
+		}
+
+		if (resolved) {
+			const visitor = await this.appPageAuthService.admit(req, res, resolved.app, {
+				recheckAccess: true,
+			});
+			if (!visitor) return;
 		}
 
 		// The same policy every other public HTML surface in n8n serves, which puts

@@ -283,13 +283,28 @@ describe('GET /apps/:namespace/ with an active version', () => {
 
 		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
 	});
+});
 
-	test('keeps serving an n8n app without a version to anyone', async () => {
+describe('GET /apps/:namespace of an n8n app without a version', () => {
+	test('redirects a visitor without the page cookie into the OAuth flow', async () => {
 		const created = await createApp();
 		const app = await appRepository.updateApp(created, { authMode: 'n8n' });
 		await pageRepository.createPage(app.id, null, '');
 
-		await visitor.get('/apps/acme').expect(200);
+		const response = await visitor.get('/apps/acme').expect(302);
+
+		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
+	});
+
+	test('serves the page to a visitor with a valid page cookie', async () => {
+		const created = await createApp();
+		const app = await appRepository.updateApp(created, { authMode: 'n8n' });
+		await pageRepository.createPage(app.id, null, '');
+		const cookie = Container.get(AppPageTokenService).mint(app.id, owner.id);
+
+		const response = await visitor.get('/apps/acme/').set('Cookie', pageCookie(cookie)).expect(200);
+
+		expect(response.text).toContain('Acme Portal');
 	});
 });
 
