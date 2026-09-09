@@ -248,6 +248,17 @@ export class AppsController {
 		return await this.appsService.listPages(appId);
 	}
 
+	/** The app's real pages, derived from its source; what the builder UI shows. */
+	@Get('/:appId/routes')
+	@ProjectScope('app:read')
+	async listRoutes(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+	) {
+		return await this.appsService.listRoutes(appId);
+	}
+
 	@Patch('/:appId/pages/:pageId')
 	@ProjectScope('app:update')
 	async updatePage(

@@ -5,31 +5,26 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { escapeHtml } from '@/app/utils/htmlUtils';
 import { useAppsStore } from '@/features/apps/apps.store';
-import { formatRoutePath } from '@/features/apps/pageTree.utils';
 import type { App } from '@/features/apps/apps.types';
 
-/** Confirm-then-delete for Apps and Pages, shared by every view that offers a delete action. */
+/** Confirm-then-delete an App. Pages are derived, not stored — deleting one is an Instance AI hand-off, not this. */
 export function useAppDeletion() {
 	const i18n = useI18n();
 	const toast = useToast();
 	const message = useMessage();
 	const appsStore = useAppsStore();
 
-	const confirm = async (title: string, text: string) => {
-		const response = await message.confirm(text, title, {
-			confirmButtonText: i18n.baseText('generic.delete'),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-		});
-		return response === MODAL_CONFIRM;
-	};
-
 	/** @returns whether the app was deleted (false if cancelled or the request failed) */
 	const confirmAndDeleteApp = async (projectId: string, app: App): Promise<boolean> => {
-		const confirmed = await confirm(
-			i18n.baseText('apps.delete.confirm.title'),
+		const response = await message.confirm(
 			i18n.baseText('apps.delete.confirm.message', { interpolate: { name: escapeHtml(app.name) } }),
+			i18n.baseText('apps.delete.confirm.title'),
+			{
+				confirmButtonText: i18n.baseText('generic.delete'),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+			},
 		);
-		if (!confirmed) return false;
+		if (response !== MODAL_CONFIRM) return false;
 
 		try {
 			await appsStore.deleteApp(projectId, app.id);
@@ -40,33 +35,5 @@ export function useAppDeletion() {
 		}
 	};
 
-	/** @returns whether the page was deleted (false if cancelled, not found, or the request failed) */
-	const confirmAndDeletePage = async (
-		projectId: string,
-		appId: string,
-		pageId: string,
-	): Promise<boolean> => {
-		const page = appsStore.pages.find((p) => p.id === pageId);
-		if (!page) return false;
-
-		const confirmed = await confirm(
-			i18n.baseText('apps.page.delete.confirm.title'),
-			i18n.baseText('apps.page.delete.confirm.message', {
-				interpolate: {
-					name: escapeHtml(formatRoutePath(page.route, i18n.baseText('apps.page.index'))),
-				},
-			}),
-		);
-		if (!confirmed) return false;
-
-		try {
-			await appsStore.deletePage(projectId, appId, pageId);
-			return true;
-		} catch (error) {
-			toast.showError(error, i18n.baseText('apps.page.delete.error'));
-			return false;
-		}
-	};
-
-	return { confirmAndDeleteApp, confirmAndDeletePage };
+	return { confirmAndDeleteApp };
 }

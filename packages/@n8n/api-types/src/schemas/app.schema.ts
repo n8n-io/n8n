@@ -58,3 +58,13 @@ export const appVersionSchema = z.object({
 });
 
 export type AppVersion = z.infer<typeof appVersionSchema>;
+
+// A page derived from the app's own `src/router.ts`, not a `Page` DB row —
+// `id` is synthesized from the route's own full path, since there is no row.
+export const appRouteSchema = z.object({
+	id: z.string(),
+	parentPageId: z.string().nullable(),
+	route: z.string(),
+});
+
+export type AppRoute = z.infer<typeof appRouteSchema>;

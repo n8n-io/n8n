@@ -21,26 +21,15 @@ export interface App {
 	updatedAt: string;
 }
 
+/**
+ * A page of an App, derived from its source's `src/router.ts` — not a DB
+ * row. `id` is synthesized from the route's own full path, since there is
+ * no row to key by.
+ */
 export interface Page {
 	id: string;
-	appId: string;
 	parentPageId: string | null;
 	route: string;
-	content: unknown[] | null;
-	dataWorkflowId: string | null;
-	createdAt: string;
-	updatedAt: string;
-}
-
-/** A workflow a page can wire up as its `dataWorkflowId`, i.e. it starts with a compatible trigger. */
-export interface DataWorkflowOption {
-	id: string;
-	name: string;
-}
-
-export interface UpdatePageInput {
-	route?: string;
-	dataWorkflowId?: string | null;
 }
 
 export interface UpdateAppInput {

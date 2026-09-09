@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import {
-	N8nButton,
-	N8nInput,
-	N8nOption,
-	N8nSelect,
-	N8nSettingsRow,
-	N8nSettingsRowGroup,
-	N8nSettingsSection,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -16,18 +7,20 @@ import { useRouter } from 'vue-router';
 
 import CopyInput from '@/app/components/CopyInput.vue';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
-import { useUIStore } from '@/app/stores/ui.store';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
-import { useAppDeletion } from '@/features/apps/useAppDeletion';
-import { ADD_PAGE_MODAL_KEY, APP_DETAILS, APP_PAGE_DETAILS } from '@/features/apps/apps.constants';
+import { useAppPageAssistant } from '@/features/apps/useAppPageAssistant';
+import { APP_DETAILS, APP_PAGE_DETAILS } from '@/features/apps/apps.constants';
 import type { App } from '@/features/apps/apps.types';
 import {
+	buildPageRows,
 	formatRoutePath,
 	getAncestorPages,
 	getChildCounts,
+	getFullRoutePath,
 	getPageUrl,
+	joinRouteSegments,
 } from '@/features/apps/pageTree.utils';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
@@ -40,27 +33,31 @@ const props = defineProps<{
 const i18n = useI18n();
 const toast = useToast();
 const router = useRouter();
-const uiStore = useUIStore();
 const documentTitle = useDocumentTitle();
-const { confirmAndDeletePage } = useAppDeletion();
+const { requestPageChange } = useAppPageAssistant();
 
 const appsStore = useAppsStore();
 
 const app = ref<App | null>(null);
 const route = ref('');
-const dataWorkflowId = ref<string | null>(null);
 const loading = ref(false);
-const saving = ref(false);
+
+const ancestorPages = computed(() => getAncestorPages(appsStore.pages, props.pageId));
 
 const pageUrl = computed(() => {
 	if (!app.value) return '';
-	const ancestors = getAncestorPages(appsStore.pages, props.pageId);
-	return getPageUrl(app.value.namespace, ancestors, route.value);
+	return getPageUrl(app.value.namespace, ancestorPages.value, route.value);
 });
 
-const childPages = computed(() =>
-	appsStore.pages.filter((page) => page.parentPageId === props.pageId),
-);
+// Every ancestor's route plus this page's own — what a +/edit/delete prompt
+// names the page as, so the assistant can't mistake it for a different page
+// that happens to share a route segment (e.g. two different "loading" pages).
+const fullPath = computed(() => joinRouteSegments(ancestorPages.value, route.value));
+
+// The descendants of this page, indented, down to MAX_INLINE_PAGE_LEVELS
+// deep — deeper pages still exist, just require opening their nearest
+// shown ancestor to reach.
+const pageRows = computed(() => buildPageRows(appsStore.pages, props.pageId));
 
 const childCounts = computed(() => getChildCounts(appsStore.pages));
 
@@ -80,9 +77,6 @@ const initialize = async () => {
 			appsStore.pages.length === 0
 				? appsStore.fetchPages(props.projectId, props.appId)
 				: Promise.resolve(),
-			appsStore.dataWorkflowOptions.length === 0
-				? appsStore.fetchDataWorkflows(props.projectId)
-				: Promise.resolve(),
 		]);
 		app.value = result;
 		const page = appsStore.pages.find((p) => p.id === props.pageId);
@@ -91,7 +85,6 @@ const initialize = async () => {
 			return;
 		}
 		route.value = page.route;
-		dataWorkflowId.value = page.dataWorkflowId;
 		documentTitle.set(formatRoutePath(route.value, i18n.baseText('apps.page.index')));
 	} catch (error) {
 		await showErrorAndGoBack(error);
@@ -100,35 +93,14 @@ const initialize = async () => {
 	}
 };
 
-const onSave = async () => {
-	saving.value = true;
-	try {
-		await appsStore.updatePage(props.projectId, props.appId, props.pageId, {
-			route: route.value,
-			dataWorkflowId: dataWorkflowId.value,
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('apps.page.save.error'));
-	} finally {
-		saving.value = false;
-	}
+const onEdit = async () => {
+	if (!app.value) return;
+	await requestPageChange('edit', app.value, fullPath.value);
 };
 
 const onDelete = async () => {
-	const deleted = await confirmAndDeletePage(props.projectId, props.appId, props.pageId);
-	if (deleted) {
-		await router.push({
-			name: APP_DETAILS,
-			params: { projectId: props.projectId, appId: props.appId },
-		});
-	}
-};
-
-const openAddPageModal = (parentPageId: string) => {
-	uiStore.openModalWithData({
-		name: ADD_PAGE_MODAL_KEY,
-		data: { projectId: props.projectId, appId: props.appId, parentPageId },
-	});
+	if (!app.value) return;
+	await requestPageChange('delete', app.value, fullPath.value);
 };
 
 const openPage = async (pageId: string) => {
@@ -138,8 +110,31 @@ const openPage = async (pageId: string) => {
 	});
 };
 
-const onDeleteChildPage = async (pageId: string) => {
-	await confirmAndDeletePage(props.projectId, props.appId, pageId);
+const onAddChildPage = async () => {
+	if (!app.value) return;
+	await requestPageChange('add-child', app.value, fullPath.value);
+};
+
+/** From a descendant card's own "+": adds a child of that specific card, not of the current page. */
+const onAddChildUnder = async (parentPageId: string) => {
+	if (!app.value) return;
+	const page = appsStore.pages.find((p) => p.id === parentPageId);
+	if (!page) return;
+	await requestPageChange('add-child', app.value, getFullRoutePath(appsStore.pages, page));
+};
+
+const onEditDescendantPage = async (pageId: string) => {
+	if (!app.value) return;
+	const page = appsStore.pages.find((p) => p.id === pageId);
+	if (!page) return;
+	await requestPageChange('edit', app.value, getFullRoutePath(appsStore.pages, page));
+};
+
+const onDeleteDescendantPage = async (pageId: string) => {
+	if (!app.value) return;
+	const page = appsStore.pages.find((p) => p.id === pageId);
+	if (!page) return;
+	await requestPageChange('delete', app.value, getFullRoutePath(appsStore.pages, page));
 };
 
 onMounted(initialize);
@@ -162,9 +157,16 @@ watch(() => props.pageId, initialize);
 					:current-page-id="pageId"
 				/>
 				<div v-if="app" :class="$style.headerActions">
-					<N8nButton :loading="saving" data-test-id="page-save" @click="onSave">
-						{{ i18n.baseText('apps.page.save') }}
-					</N8nButton>
+					<N8nTooltip :content="i18n.baseText('apps.page.edit')">
+						<N8nButton
+							icon-only
+							icon="pencil"
+							variant="subtle"
+							:aria-label="i18n.baseText('apps.page.edit')"
+							data-test-id="page-edit"
+							@click="onEdit"
+						/>
+					</N8nTooltip>
 					<N8nButton
 						icon-only
 						icon="trash-2"
@@ -186,75 +188,32 @@ watch(() => props.pageId, initialize);
 				/>
 			</div>
 
-			<N8nSettingsSection>
-				<N8nSettingsRowGroup>
-					<N8nSettingsRow
-						:title="i18n.baseText('apps.page.input.route.label')"
-						:description="i18n.baseText('apps.page.add.input.route.hint')"
-						:max-description-lines="3"
-					>
-						<template #action>
-							<N8nInput
-								v-model="route"
-								:placeholder="i18n.baseText('apps.page.add.input.route.placeholder')"
-								data-test-id="page-route-input"
-							/>
-						</template>
-					</N8nSettingsRow>
-					<N8nSettingsRow
-						:title="i18n.baseText('apps.page.input.dataWorkflow.label')"
-						:description="i18n.baseText('apps.page.input.dataWorkflow.hint')"
-						:max-description-lines="3"
-					>
-						<template #action>
-							<N8nSelect
-								v-model="dataWorkflowId"
-								clearable
-								filterable
-								:placeholder="i18n.baseText('apps.page.input.dataWorkflow.placeholder')"
-								data-test-id="page-data-workflow-select"
-							>
-								<N8nOption
-									v-for="option in appsStore.dataWorkflowOptions"
-									:key="option.id"
-									:value="option.id"
-									:label="option.name"
-								/>
-							</N8nSelect>
-						</template>
-					</N8nSettingsRow>
-				</N8nSettingsRowGroup>
-			</N8nSettingsSection>
-
 			<div :class="$style.content" data-test-id="page-content-placeholder">
 				<N8nText color="text-light">{{ i18n.baseText('apps.page.content.placeholder') }}</N8nText>
 			</div>
 
 			<div :class="$style.header">
 				<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.page.subPages') }}</N8nText>
-				<N8nButton
-					v-if="route"
-					size="small"
-					data-test-id="page-add-child"
-					@click="openAddPageModal(pageId)"
-				>
+				<N8nButton v-if="route" size="small" data-test-id="page-add-child" @click="onAddChildPage">
 					{{ i18n.baseText('apps.page.new') }}
 				</N8nButton>
 			</div>
 
-			<N8nText v-if="childPages.length === 0" color="text-light">
+			<N8nText v-if="pageRows.length === 0" color="text-light">
 				{{ i18n.baseText('apps.pages.empty') }}
 			</N8nText>
 
 			<div :class="$style.pageGrid">
 				<PageCard
-					v-for="page in childPages"
-					:key="page.id"
-					:page="page"
-					:child-count="childCounts.get(page.id) ?? 0"
+					v-for="row in pageRows"
+					:key="row.page.id"
+					:page="row.page"
+					:indent="row.indent"
+					:child-count="childCounts.get(row.page.id) ?? 0"
 					@open="openPage"
-					@add-child="openAddPageModal"
-					@delete="onDeleteChildPage"
+					@add-child="onAddChildUnder"
+					@edit="onEditDescendantPage"
+					@delete="onDeleteDescendantPage"
 				/>
 			</div>
 		</div>

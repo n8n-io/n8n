@@ -4,7 +4,7 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
-import { mkdir, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { extract as extractTar, list as listTar } from 'tar';
 
@@ -88,12 +88,17 @@ export class AppVersionService {
 		return await this.appVersionRepository.listByAppId(appId);
 	}
 
-	/** Source tarball of the active version, or of the newest version when none is active. */
-	async readSource(app: App): Promise<{ versionId: string; data: Buffer } | null> {
+	/** The active version, or the newest version when none is active; `null` when the app has none yet. */
+	private async resolveVersion(app: App): Promise<AppVersion | null> {
 		const active = app.activeVersionId
 			? await this.appVersionRepository.findById(app.activeVersionId)
 			: null;
-		const version = active ?? (await this.appVersionRepository.listByAppId(app.id))[0];
+		return active ?? (await this.appVersionRepository.listByAppId(app.id))[0] ?? null;
+	}
+
+	/** Source tarball of the active version, or of the newest version when none is active. */
+	async readSource(app: App): Promise<{ versionId: string; data: Buffer } | null> {
+		const version = await this.resolveVersion(app);
 		if (!version) return null;
 
 		const data = await this.blobStore.readAsBuffer({
@@ -101,6 +106,38 @@ export class AppVersionService {
 			storageKey: version.sourceStorageKey,
 		});
 		return data ? { versionId: version.id, data } : null;
+	}
+
+	/**
+	 * `src/router.ts` of the same version `readSource` would return, or `null`
+	 * when the app has no version, or that version's source has no
+	 * `src/router.ts` (e.g. an app scaffolded with `template: "none"`).
+	 * Extracted to a throwaway directory and discarded once read — unlike
+	 * `distDir`, nothing here is served repeatedly, so there's nothing worth
+	 * caching.
+	 */
+	async readRouterSource(app: App): Promise<string | null> {
+		const source = await this.readSource(app);
+		if (!source) return null;
+
+		const tempDir = path.join(this.instanceSettings.n8nFolder, 'apps', `${randomUUID()}-src-tmp`);
+		await mkdir(tempDir, { recursive: true });
+		try {
+			// Source tarballs hold arbitrary project files, not just the served
+			// dist output, so extraction only needs the dist filter's path-safety
+			// checks — its file-type/size limits are dist-specific and don't apply.
+			await this.extract(
+				source.data,
+				tempDir,
+				createDistTarFilter({ ...DIST_TAR_LIMITS, maxBytes: MAX_UNPACKED_BYTES.source }),
+			);
+			return await readFile(path.join(tempDir, 'src', 'router.ts'), 'utf8');
+		} catch (error) {
+			if (isErrnoCode(error, ['ENOENT'])) return null;
+			throw error;
+		} finally {
+			await rm(tempDir, { recursive: true, force: true });
+		}
 	}
 
 	toResponse(version: AppVersion): AppVersionResponse {
@@ -216,8 +253,12 @@ export class AppVersionService {
 		return entries;
 	}
 
-	private async extract(tarball: Buffer, cwd: string): Promise<void> {
-		const unpack = extractTar({ cwd, strip: 0, filter: createDistTarFilter() });
+	private async extract(
+		tarball: Buffer,
+		cwd: string,
+		filter: ReturnType<typeof createDistTarFilter> = createDistTarFilter(),
+	): Promise<void> {
+		const unpack = extractTar({ cwd, strip: 0, filter });
 		await new Promise<void>((resolve, reject) => {
 			unpack.on('error', reject);
 			unpack.on('end', resolve);

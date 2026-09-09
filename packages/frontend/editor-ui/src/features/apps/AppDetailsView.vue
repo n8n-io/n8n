@@ -16,16 +16,16 @@ import { useRouter } from 'vue-router';
 
 import CopyInput from '@/app/components/CopyInput.vue';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
-import { useUIStore } from '@/app/stores/ui.store';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
 import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
 import AppThemeEditor from '@/features/apps/components/AppThemeEditor.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { useAppDeletion } from '@/features/apps/useAppDeletion';
-import { ADD_PAGE_MODAL_KEY, APP_PAGE_DETAILS, PROJECT_APPS } from '@/features/apps/apps.constants';
+import { useAppPageAssistant } from '@/features/apps/useAppPageAssistant';
+import { APP_PAGE_DETAILS, PROJECT_APPS } from '@/features/apps/apps.constants';
 import type { App } from '@/features/apps/apps.types';
-import { getChildCounts } from '@/features/apps/pageTree.utils';
+import { buildPageRows, getChildCounts, getFullRoutePath } from '@/features/apps/pageTree.utils';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
@@ -48,12 +48,14 @@ const props = withDefaults(
 	{ artifactMode: false, artifactVersionId: undefined },
 );
 
+const emit = defineEmits<{ 'assistant-handoff': [prompt: string] }>();
+
 const i18n = useI18n();
 const toast = useToast();
 const router = useRouter();
-const uiStore = useUIStore();
 const documentTitle = useDocumentTitle();
-const { confirmAndDeleteApp, confirmAndDeletePage } = useAppDeletion();
+const { confirmAndDeleteApp } = useAppDeletion();
+const { requestPageChange } = useAppPageAssistant();
 const instanceAiAvailable = useInstanceAiAvailable();
 const { openAppArtifactThread } = useInstanceAiHandoff();
 
@@ -68,6 +70,10 @@ const previewFrame = useTemplateRef<InstanceType<typeof AppPreviewFrame>>('previ
 
 const rootPages = computed(() => appsStore.pages.filter((page) => page.parentPageId === null));
 const childCounts = computed(() => getChildCounts(appsStore.pages));
+
+// The tree, indented, down to MAX_INLINE_PAGE_LEVELS deep — deeper pages
+// still exist, just require opening their nearest shown ancestor to reach.
+const pageRows = computed(() => buildPageRows(appsStore.pages, null));
 
 const appUrl = computed(() =>
 	app.value ? `${window.location.origin}/apps/${app.value.namespace}/` : '',
@@ -118,12 +124,11 @@ const initialize = async () => {
 	}
 };
 
-const openAddPageModal = (parentPageId: string | null) => {
-	uiStore.openModalWithData({
-		name: ADD_PAGE_MODAL_KEY,
-		data: { projectId: props.projectId, appId: props.appId, parentPageId },
-	});
-};
+// Embedded inside the app's own Instance AI thread: fill its composer
+// directly rather than opening another one — see `handleAppPreviewAssistantHandoff`.
+const onEmbeddedDraft = props.artifactMode
+	? (prompt: string) => emit('assistant-handoff', prompt)
+	: undefined;
 
 const openPage = async (pageId: string) => {
 	await router.push({
@@ -138,8 +143,45 @@ const onDeleteApp = async () => {
 	if (deleted) await router.push({ name: PROJECT_APPS, params: { projectId: props.projectId } });
 };
 
+const onAddRootPage = async () => {
+	if (!app.value) return;
+	await requestPageChange('add-root', app.value, '', onEmbeddedDraft);
+};
+
+const onAddChildPage = async (parentPageId: string) => {
+	if (!app.value) return;
+	const parent = appsStore.pages.find((page) => page.id === parentPageId);
+	if (!parent) return;
+	await requestPageChange(
+		'add-child',
+		app.value,
+		getFullRoutePath(appsStore.pages, parent),
+		onEmbeddedDraft,
+	);
+};
+
+const onEditPage = async (pageId: string) => {
+	if (!app.value) return;
+	const page = appsStore.pages.find((p) => p.id === pageId);
+	if (!page) return;
+	await requestPageChange(
+		'edit',
+		app.value,
+		getFullRoutePath(appsStore.pages, page),
+		onEmbeddedDraft,
+	);
+};
+
 const onDeletePage = async (pageId: string) => {
-	await confirmAndDeletePage(props.projectId, props.appId, pageId);
+	if (!app.value) return;
+	const page = appsStore.pages.find((p) => p.id === pageId);
+	if (!page) return;
+	await requestPageChange(
+		'delete',
+		app.value,
+		getFullRoutePath(appsStore.pages, page),
+		onEmbeddedDraft,
+	);
 };
 
 const onDeviceChange = (value: unknown) => {
@@ -318,11 +360,7 @@ watch(versionId, (next, previous) => {
 				<div v-if="buildTab === 'pages'" :class="$style.container">
 					<div :class="$style.header">
 						<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.pages') }}</N8nText>
-						<N8nButton
-							size="small"
-							data-test-id="app-page-add-root"
-							@click="openAddPageModal(null)"
-						>
+						<N8nButton size="small" data-test-id="app-page-add-root" @click="onAddRootPage">
 							{{ i18n.baseText('apps.page.new') }}
 						</N8nButton>
 					</div>
@@ -333,12 +371,14 @@ watch(versionId, (next, previous) => {
 
 					<div :class="$style.pageGrid">
 						<PageCard
-							v-for="page in rootPages"
-							:key="page.id"
-							:page="page"
-							:child-count="childCounts.get(page.id) ?? 0"
+							v-for="row in pageRows"
+							:key="row.page.id"
+							:page="row.page"
+							:indent="row.indent"
+							:child-count="childCounts.get(row.page.id) ?? 0"
 							@open="openPage"
-							@add-child="openAddPageModal"
+							@add-child="onAddChildPage"
+							@edit="onEditPage"
 							@delete="onDeletePage"
 						/>
 					</div>

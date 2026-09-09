@@ -5,32 +5,20 @@ import { ref } from 'vue';
 import {
 	applyAppThemeApi,
 	createAppApi,
-	createPageApi,
 	deleteAppApi,
-	deletePageApi,
 	fetchAppsApi,
-	fetchDataWorkflowsApi,
-	fetchPagesApi,
+	fetchRoutesApi,
 	getAppApi,
 	updateAppApi,
-	updatePageApi,
 } from '@/features/apps/apps.api';
 import { APPS_STORE } from '@/features/apps/apps.constants';
-import type {
-	App,
-	AppTheme,
-	DataWorkflowOption,
-	Page,
-	UpdateAppInput,
-	UpdatePageInput,
-} from '@/features/apps/apps.types';
+import type { App, AppTheme, Page, UpdateAppInput } from '@/features/apps/apps.types';
 
 export const useAppsStore = defineStore(APPS_STORE, () => {
 	const rootStore = useRootStore();
 
 	const apps = ref<App[]>([]);
 	const pages = ref<Page[]>([]);
-	const dataWorkflowOptions = ref<DataWorkflowOption[]>([]);
 
 	const fetchApps = async (projectId: string) => {
 		apps.value = await fetchAppsApi(rootStore.restApiContext, projectId);
@@ -64,53 +52,12 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 	};
 
 	const fetchPages = async (projectId: string, appId: string) => {
-		pages.value = await fetchPagesApi(rootStore.restApiContext, projectId, appId);
-	};
-
-	const createPage = async (
-		projectId: string,
-		appId: string,
-		route: string,
-		parentPageId?: string,
-	) => {
-		const page = await createPageApi(
-			rootStore.restApiContext,
-			projectId,
-			appId,
-			route,
-			parentPageId,
-		);
-		pages.value = [...pages.value, page];
-		return page;
-	};
-
-	const updatePage = async (
-		projectId: string,
-		appId: string,
-		pageId: string,
-		updates: UpdatePageInput,
-	) => {
-		const page = await updatePageApi(rootStore.restApiContext, projectId, appId, pageId, updates);
-		pages.value = pages.value.map((p) => (p.id === pageId ? page : p));
-		return page;
-	};
-
-	const fetchDataWorkflows = async (projectId: string) => {
-		dataWorkflowOptions.value = await fetchDataWorkflowsApi(rootStore.restApiContext, projectId);
-	};
-
-	const deletePage = async (projectId: string, appId: string, pageId: string) => {
-		await deletePageApi(rootStore.restApiContext, projectId, appId, pageId);
-		// Refetch rather than filter locally: deleting a page cascades to its
-		// sub-pages on the backend, and a shallow filter would leave those
-		// orphaned rows in the local list.
-		await fetchPages(projectId, appId);
+		pages.value = await fetchRoutesApi(rootStore.restApiContext, projectId, appId);
 	};
 
 	return {
 		apps,
 		pages,
-		dataWorkflowOptions,
 		fetchApps,
 		getApp,
 		createApp,
@@ -118,9 +65,5 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		applyAppTheme,
 		deleteApp,
 		fetchPages,
-		createPage,
-		updatePage,
-		deletePage,
-		fetchDataWorkflows,
 	};
 });
