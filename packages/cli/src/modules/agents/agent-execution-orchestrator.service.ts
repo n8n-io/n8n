@@ -665,6 +665,7 @@ export class AgentExecutionOrchestratorService {
 				integrationType: 'task',
 				usePublishedVersion: true,
 				sandboxPrincipalHash,
+				allowBackgroundTasks: false,
 			},
 			{ threadId: memory.threadId, userMessage: message, source: 'task', taskId, taskVersionId },
 		);
@@ -710,6 +711,7 @@ export class AgentExecutionOrchestratorService {
 			projectId,
 			user,
 			sandboxPrincipalHash,
+			allowBackgroundTasks: false,
 		});
 
 		try {

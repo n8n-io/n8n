@@ -40,6 +40,8 @@ import type { SetupRequest } from './setup-workflow.schema';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { InstanceAiContext } from '../../types';
 
+type SetupValidationMode = 'live' | 'configuration';
+
 // ── Credential cache ────────────────────────────────────────────────────────
 
 /** Cache for deduplicating credential fetches across nodes with the same types. */
@@ -443,6 +445,7 @@ async function resolveCredentialState(
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
 	prefersNewCredential = false,
+	validationMode: SetupValidationMode = 'live',
 ): Promise<CredentialState> {
 	// Use cache to avoid duplicate fetches for the same credential type across nodes.
 	// Scope to the workflow so we list only credentials the save path will accept —
@@ -474,6 +477,14 @@ async function resolveCredentialState(
 		typeof existingOnNode?.id === 'string' && existingOnNode.id ? existingOnNode.id : undefined;
 	const hasExistingOnNode =
 		existingCredentialId !== undefined || isAiGatewayManagedCredential(existingOnNode);
+	if (validationMode === 'configuration') {
+		const effectiveCredential = existingCredentials.find((c) => c.id === existingCredentialId);
+		return {
+			existingCredentials,
+			isAutoApplied: false,
+			...(effectiveCredential ? { effectiveCredential } : {}),
+		};
+	}
 	let isAutoApplied = false;
 	let autoAppliedGateway: true | undefined;
 
@@ -600,6 +611,7 @@ async function resolveAppliedCredentialState(
 	workflowId: string | undefined,
 	nodeCredentials: Record<string, SetupNodeCredential> | undefined,
 	prefersNewCredential = false,
+	validationMode: SetupValidationMode = 'live',
 ): Promise<CredentialState> {
 	if (!credentialType) {
 		return { existingCredentials: [], isAutoApplied: false };
@@ -611,6 +623,7 @@ async function resolveAppliedCredentialState(
 		cache,
 		workflowId,
 		prefersNewCredential,
+		validationMode,
 	);
 	if (state.isAutoApplied && nodeCredentials) {
 		if (state.autoAppliedGateway) {
@@ -629,6 +642,7 @@ async function resolveAppliedCredentialState(
 }
 
 interface NodeSetupContext {
+	validationMode: SetupValidationMode;
 	nodeName: string;
 	isTrigger: boolean;
 	isTestable: boolean;
@@ -687,6 +701,7 @@ async function buildRequestForCredentialType(
 		workflowId,
 		nodeCredentials,
 		prefersNewCredential,
+		nodeCtx.validationMode,
 	);
 
 	// The connected credential can rule out a parameter value chosen before it existed
@@ -701,7 +716,7 @@ async function buildRequestForCredentialType(
 			? { id: AI_GATEWAY_MANAGED_TAG, name: N8N_CONNECT_DISPLAY_NAME }
 			: undefined);
 	const unavailableIssues =
-		credentialType && locatorCredential
+		nodeCtx.validationMode === 'live' && credentialType && locatorCredential
 			? await computeUnavailableLocatorIssues(
 					context,
 					node,
@@ -794,6 +809,7 @@ export async function buildSetupRequests(
 	workflowId?: string,
 	preferNewCredentialTypes?: ReadonlySet<string>,
 	appliedCredentialIds?: ReadonlySet<string>,
+	validationMode: SetupValidationMode = 'live',
 ): Promise<SetupRequest[]> {
 	if (!node.name) return [];
 	if (node.disabled) return [];
@@ -801,9 +817,10 @@ export async function buildSetupRequests(
 	const typeVersion = node.typeVersion ?? 1;
 	const parameters = (node.parameters as Record<string, unknown>) ?? {};
 
-	const nodeDesc = await context.nodeService
-		.getDescription(node.type, typeVersion)
-		.catch(() => undefined);
+	const nodeDesc = await (validationMode === 'configuration'
+		? context.nodeService.getDescription(node.type, typeVersion, { includeGatewayMetadata: false })
+		: context.nodeService.getDescription(node.type, typeVersion)
+	).catch(() => undefined);
 
 	const isTrigger = nodeDesc?.group?.includes('trigger') ?? false;
 	const isTestable =
@@ -828,6 +845,7 @@ export async function buildSetupRequests(
 	const requests: SetupRequest[] = [];
 	const processedCredTypes = credentialTypes.length > 0 ? credentialTypes : [undefined];
 	const nodeCtx: NodeSetupContext = {
+		validationMode,
 		nodeName: node.name,
 		isTrigger,
 		isTestable,
@@ -1453,6 +1471,8 @@ export async function analyzeWorkflow(
 	workflowId: string,
 	triggerResults?: Record<string, { status: 'success' | 'error' | 'listening'; error?: string }>,
 	options?: {
+		/** Passive observation reads saved configuration without provider calls. Defaults to live validation. */
+		validationMode?: SetupValidationMode;
 		/** Keep settled requests (needsAction=false) in the result. For reporting
 		 *  consumers only (e.g. the apply path surfacing a just-applied credential
 		 *  whose test failed) — never for card rendering, where settled slots must
@@ -1488,6 +1508,7 @@ export async function analyzeWorkflow(
 				workflowId,
 				preferNewCredentialTypes,
 				appliedCredentialIds,
+				options?.validationMode,
 			);
 		}),
 	);

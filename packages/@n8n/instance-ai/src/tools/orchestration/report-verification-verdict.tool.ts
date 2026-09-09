@@ -179,7 +179,10 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 			}
 
 			return {
-				guidance: formatWorkflowLoopGuidance(action, { workItemId: input.workItemId }),
+				guidance: formatWorkflowLoopGuidance(action, {
+					workItemId: input.workItemId,
+					setupPanelEnabled: context.setupPanelEnabled === true,
+				}),
 			};
 		})
 		.build();

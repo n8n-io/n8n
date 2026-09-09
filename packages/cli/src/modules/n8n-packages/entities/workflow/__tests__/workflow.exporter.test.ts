@@ -29,6 +29,7 @@ function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 		nodes: [],
 		connections: {},
 		versionId: 'v1',
+		activeVersionId: null,
 		active: false,
 		isArchived: false,
 		settings: undefined,
@@ -185,7 +186,9 @@ describe('WorkflowExporter', () => {
 		expect(entries.map(({ id }) => id)).toEqual([a.id, b.id]);
 		expect(writer.files.map(({ path }) => path)).toEqual([
 			'workflows/alpha-wf-a/workflow.json',
+			'workflows/alpha-wf-a/workflow-lifecycle.json',
 			'workflows/beta-wf-b/workflow.json',
+			'workflows/beta-wf-b/workflow-lifecycle.json',
 		]);
 	});
 

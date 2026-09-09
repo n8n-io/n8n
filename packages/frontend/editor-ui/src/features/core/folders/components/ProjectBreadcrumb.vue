@@ -105,6 +105,8 @@ const onProjectMouseUp = () => {
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 .home-project {
 	display: flex;
 	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);

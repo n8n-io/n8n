@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils/is-record';
+
 /**
  * Coerce an eval mock's structured-output content to the schema the workflow
  * node declared.
@@ -14,10 +16,6 @@
  * non-JSON content, unparseable instructions), so the common no-schema path is
  * never disturbed.
  */
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 /** A parsed JSON value is treated as a schema only if it carries schema markers. */
 function looksLikeJsonSchema(value: unknown): value is Record<string, unknown> {
