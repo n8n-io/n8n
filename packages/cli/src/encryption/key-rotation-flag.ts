@@ -11,5 +11,5 @@ import { isEnvFeatureEnabled } from '@n8n/backend-common';
  * `EncryptionKeyManagerModule`).
  */
 export function isKeyRotationEnabled(): boolean {
-	return isEnvFeatureEnabled('ENCRYPTION_KEY_ROTATION');
+	return isEnvFeatureEnabled('N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION');
 }

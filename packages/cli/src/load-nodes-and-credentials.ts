@@ -95,7 +95,7 @@ export class LoadNodesAndCredentials {
 			this.excludeNodes.push('n8n-nodes-base.e2eTest');
 		}
 
-		if (!isEnvFeatureEnabled('DYNAMIC_CREDENTIALS')) {
+		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS')) {
 			this.excludeNodes = this.excludeNodes ?? [];
 			this.excludeNodes.push('n8n-nodes-base.dynamicCredentialCheck');
 		}
@@ -409,7 +409,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	private shouldInjectContextEstablishmentHooks() {
-		return isEnvFeatureEnabled('DYNAMIC_CREDENTIALS');
+		return isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS');
 	}
 
 	private injectContextEstablishmentHooks() {

@@ -9,7 +9,7 @@ import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 @BackendModule({ name: 'oauth-jwe' })
 export class OAuthJweModule implements ModuleInterface {
 	async init() {
-		if (!isEnvFeatureEnabled('OAUTH2_JWE')) return;
+		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_OAUTH2_JWE')) return;
 
 		const { OAuthJweDecryptService } = await import('./oauth-jwe-decrypt.service.js');
 		Container.get(OAuthJweServiceProxy).setHandler(Container.get(OAuthJweDecryptService));

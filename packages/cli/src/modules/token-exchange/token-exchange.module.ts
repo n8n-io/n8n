@@ -20,7 +20,7 @@ export class TokenExchangeModule implements ModuleInterface {
 	}
 
 	async init() {
-		if (!isEnvFeatureEnabled('TOKEN_EXCHANGE')) {
+		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_TOKEN_EXCHANGE')) {
 			return;
 		}
 
@@ -38,7 +38,7 @@ export class TokenExchangeModule implements ModuleInterface {
 	}
 
 	async systemTasks() {
-		if (!isEnvFeatureEnabled('TOKEN_EXCHANGE')) {
+		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_TOKEN_EXCHANGE')) {
 			return [];
 		}
 

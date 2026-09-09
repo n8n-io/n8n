@@ -8,7 +8,7 @@ import { RuntimeCredentialProxyService } from '@/services/runtime-credential-pro
 @BackendModule({ name: 'runtime-credentials' })
 export class RuntimeCredentialsModule implements ModuleInterface {
 	async init() {
-		if (!isEnvFeatureEnabled('RUNTIME_CREDENTIALS')) return;
+		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_RUNTIME_CREDENTIALS')) return;
 
 		const { RuntimeCredentialsService } = await import('./runtime-credentials.service.js');
 		Container.get(RuntimeCredentialsService).init();
