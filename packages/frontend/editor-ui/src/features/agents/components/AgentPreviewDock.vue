@@ -385,7 +385,9 @@ useKeybindings({
 }
 
 .sessionTitle {
+	width: 100%;
 	min-width: 0;
+	max-width: 100%;
 	flex: 1 1 auto;
 	margin-left: calc(var(--spacing--3xs) * -1);
 	padding-inline: var(--spacing--2xs);
@@ -398,6 +400,16 @@ useKeybindings({
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-size: var(--font-size--xs);
+}
+
+/** Let the button's inner container shrink so the session title can truncate. */
+.sessionTitle > div {
+	min-width: 0;
+}
+
+.sessionTitleLabel {
+	min-width: 0;
+	flex: 1 1 auto;
 }
 
 .sessionDropdownMenu {
