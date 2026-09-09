@@ -347,12 +347,6 @@ function viewPreviewTrace() {
 		padding-right: var(--agent-preview-chat-column-width, 30rem);
 	}
 
-	&.previewOpen:has([data-preview-layout='floating']),
-	&.previewOpen:has([data-preview-layout='fullpage']) {
-		padding-right: 0;
-		transition: none;
-	}
-
 	@media (prefers-reduced-motion: reduce) {
 		transition: none;
 	}

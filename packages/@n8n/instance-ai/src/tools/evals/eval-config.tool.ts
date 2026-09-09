@@ -2,7 +2,7 @@
  * Config-based evaluation tool — create, read, and mutate an `EvaluationConfig`
  * attached to a workflow via the evaluation-config API. This is the simplified,
  * off-canvas eval form (name + start/end node + judged metrics + a Data Table
- * dataset), distinct from the on-canvas eval nodes the `evals` tool wires.
+ * dataset), distinct from manually authored on-canvas evaluation nodes.
  *
  * The dataset is a Data Table the agent creates/populates via the `data-tables`
  * tool; here it is only linked by id.

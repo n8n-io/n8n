@@ -18,6 +18,7 @@ const WORKFLOW_PUBLISHING_POLICIES: Record<
 		sourcePublished,
 	}) => (status === 'updated' && currentlyPublished && sourcePublished ? 'publish' : 'noop'),
 	[WorkflowPublishingPolicy.MatchSource]: ({ status, sourcePublished, currentlyPublished }) => {
+		if (sourcePublished === undefined) return 'noop';
 		if (sourcePublished && (status === 'created' || status === 'updated')) {
 			return 'publish';
 		}

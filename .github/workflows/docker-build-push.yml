@@ -293,11 +293,11 @@ jobs:
       runners_distroless_digest: ${{ steps.get-digests.outputs.runners_distroless_digest }}
       runners_distroless_image: ${{ steps.get-digests.outputs.runners_distroless_image }}
     steps:
-      - name: Checkout
+      - name: Checkout CI helpers
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
 
       - name: Login to Docker registries
         uses: ./.github/actions/docker-registry-login
@@ -310,56 +310,64 @@ jobs:
       - name: Create GHCR multi-arch manifests
         env:
           BUILD_MATRIX: ${{ needs.determine-build-context.outputs.build_matrix }}
+          N8N_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
+          N8N_SHA_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_sha_manifest_tag }}
           N8N_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_date_manifest_tag }}
+          N8N_PC_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}
+          N8N_PC_SHA_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_sha_manifest_tag }}
           N8N_PC_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_date_manifest_tag }}
+          RUNNERS_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
+          RUNNERS_SHA_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_sha_manifest_tag }}
           RUNNERS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_date_manifest_tag }}
+          RUNNERS_DISTROLESS_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
+          RUNNERS_DISTROLESS_SHA_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_sha_manifest_tag }}
           RUNNERS_DISTROLESS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_date_manifest_tag }}
         run: |
+          set -euo pipefail
           HAS_ARM64="$(node -e "const matrix = JSON.parse(process.env.BUILD_MATRIX); process.stdout.write(String(matrix.platform.includes('arm64')))")"
 
-          # Function to create manifest for an image
           create_manifest() {
-            local IMAGE_NAME=$1
-            local MANIFEST_TAG=$2
+            local IMAGE_NAME="$1"
+            local SOURCE_TAG="$2"
+            shift 2
 
-            if [[ -z "$MANIFEST_TAG" ]]; then
-              echo "Skipping $IMAGE_NAME - no manifest tag"
+            if [[ -z "$SOURCE_TAG" ]]; then
+              echo "Skipping $IMAGE_NAME - no SHA manifest tag"
               return
             fi
 
-            echo "Creating GHCR manifest for $IMAGE_NAME: $MANIFEST_TAG"
+            local TAG
+            local -a TAG_ARGS=()
+            for TAG in "$@" "$SOURCE_TAG"; do
+              if [[ -n "$TAG" ]]; then
+                TAG_ARGS+=(--tag "$TAG")
+              fi
+            done
 
+            local -a SOURCES=("${SOURCE_TAG}-amd64")
             if [[ "$HAS_ARM64" == "true" ]]; then
-              docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
-                "${MANIFEST_TAG}-amd64" \
-                "${MANIFEST_TAG}-arm64"
-            else
-              docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
-                "${MANIFEST_TAG}-amd64"
+              SOURCES+=("${SOURCE_TAG}-arm64")
             fi
+
+            echo "Creating GHCR manifests for $IMAGE_NAME"
+            docker buildx imagetools create "${TAG_ARGS[@]}" "${SOURCES[@]}"
           }
 
-          # Create manifests for all images
-          create_manifest "n8n" "${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}"
-          create_manifest "n8n-pc" "${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}"
-          create_manifest "runners" "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
-          create_manifest "runners-distroless" "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
+          PIDS=()
+          create_manifest "n8n" "$N8N_SHA_MANIFEST_TAG" "$N8N_MANIFEST_TAG" "$N8N_DATE_MANIFEST_TAG" &
+          PIDS+=("$!")
+          create_manifest "n8n-pc" "$N8N_PC_SHA_MANIFEST_TAG" "$N8N_PC_MANIFEST_TAG" "$N8N_PC_DATE_MANIFEST_TAG" &
+          PIDS+=("$!")
+          create_manifest "runners" "$RUNNERS_SHA_MANIFEST_TAG" "$RUNNERS_MANIFEST_TAG" "$RUNNERS_DATE_MANIFEST_TAG" &
+          PIDS+=("$!")
+          create_manifest "runners-distroless" "$RUNNERS_DISTROLESS_SHA_MANIFEST_TAG" "$RUNNERS_DISTROLESS_MANIFEST_TAG" "$RUNNERS_DISTROLESS_DATE_MANIFEST_TAG" &
+          PIDS+=("$!")
 
-          # Create SHA-tagged manifests (immutable references for deployments)
-          create_manifest "n8n (sha)" "${{ needs.build-and-push-docker.outputs.n8n_sha_manifest_tag }}"
-          create_manifest "n8n-pc (sha)" "${{ needs.build-and-push-docker.outputs.n8n_pc_sha_manifest_tag }}"
-          create_manifest "runners (sha)" "${{ needs.build-and-push-docker.outputs.runners_sha_manifest_tag }}"
-          create_manifest "runners-distroless (sha)" "${{ needs.build-and-push-docker.outputs.runners_distroless_sha_manifest_tag }}"
-
-          # Create date-tagged manifests. The *_DATE_MANIFEST_TAG vars are empty unless the
-          # date_tag input was set (e.g. nightly), and create_manifest skips empty tags —
-          # so these calls are no-ops on non-dated builds.
-          create_manifest "n8n (date)" "$N8N_DATE_MANIFEST_TAG"
-          create_manifest "n8n-pc (date)" "$N8N_PC_DATE_MANIFEST_TAG"
-          create_manifest "runners (date)" "$RUNNERS_DATE_MANIFEST_TAG"
-          create_manifest "runners-distroless (date)" "$RUNNERS_DISTROLESS_DATE_MANIFEST_TAG"
+          FAILED=0
+          for PID in "${PIDS[@]}"; do
+            wait "$PID" || FAILED=1
+          done
+          exit "$FAILED"
 
       # Gates the release on the format itself. 2.26.0 shipped as a Docker
       # manifest list and every pull failed on older containerd (#31997). The
@@ -390,6 +398,7 @@ jobs:
           SHORT_SHA: ${{ needs.determine-build-context.outputs.short_sha }}
           N8N_PC_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}
         run: |
+          set -euo pipefail
           VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
           DOCKER_BASE="$DOCKER_USERNAME"
 
@@ -403,56 +412,59 @@ jobs:
             images["n8n-pc"]="${VERSION}-pc"
           fi
 
-          for image in "${!images[@]}"; do
-            TAG_SUFFIX="${images[$image]}"
-            IMAGE_NAME="${image//-distroless/}"  # Remove the variant suffix from the image name
+          create_docker_manifest() {
+            local IMAGE="$1"
+            local TAG_SUFFIX="$2"
+            local IMAGE_NAME="${IMAGE//-distroless/}"
             IMAGE_NAME="${IMAGE_NAME//-pc/}"
 
-            echo "Creating Docker Hub manifest for $image"
-            docker buildx imagetools create \
-              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
-
-            # Self-hosted pulls come from here, and this merge is independent of
-            # the GHCR one above, so it needs its own assertion. Always both
-            # arches: push_to_docker is never set for amd64-only branch builds.
-            node .github/scripts/docker/assert-manifest-format.mjs \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" --expect-platforms 2
-
-            # Create SHA-tagged manifest (immutable reference)
-            # For distroless, insert SHA between version and -distroless suffix
-            # to match docker-tags.mjs format: nightly-abc1234-distroless (not nightly-distroless-abc1234)
-            if [[ "$image" == *"-distroless"* ]]; then
+            local SHA_SUFFIX
+            if [[ "$IMAGE" == *"-distroless"* ]]; then
               SHA_SUFFIX="${VERSION}-${SHORT_SHA}-distroless"
-            elif [[ "$image" == *"-pc"* ]]; then
+            elif [[ "$IMAGE" == *"-pc"* ]]; then
               SHA_SUFFIX="${VERSION}-${SHORT_SHA}-pc"
             else
               SHA_SUFFIX="${TAG_SUFFIX}-${SHORT_SHA}"
             fi
-            echo "Creating Docker Hub SHA manifest for $image: ${SHA_SUFFIX}"
-            docker buildx imagetools create \
-              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}-amd64" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}-arm64"
 
-            # Create date-tagged manifest when a date suffix was provided (e.g. v3-nightly-20260625)
-            # Mirrors the SHA suffix placement: <version>-<date> and <version>-<date>-distroless
+            local PRIMARY_TAG="${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}"
+            local SHA_TAG="${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}"
+            local -a TAG_ARGS=(--tag "$PRIMARY_TAG" --tag "$SHA_TAG")
+
             if [[ -n "$DATE_TAG" ]]; then
-              if [[ "$image" == *"-distroless"* ]]; then
+              local DATE_SUFFIX
+              if [[ "$IMAGE" == *"-distroless"* ]]; then
                 DATE_SUFFIX="${VERSION}-${DATE_TAG}-distroless"
-              elif [[ "$image" == *"-pc"* ]]; then
+              elif [[ "$IMAGE" == *"-pc"* ]]; then
                 DATE_SUFFIX="${VERSION}-${DATE_TAG}-pc"
               else
                 DATE_SUFFIX="${TAG_SUFFIX}-${DATE_TAG}"
               fi
-              echo "Creating Docker Hub date manifest for $image: ${DATE_SUFFIX}"
-              docker buildx imagetools create \
-                --tag "${DOCKER_BASE}/${IMAGE_NAME}:${DATE_SUFFIX}" \
-                "${DOCKER_BASE}/${IMAGE_NAME}:${DATE_SUFFIX}-amd64" \
-                "${DOCKER_BASE}/${IMAGE_NAME}:${DATE_SUFFIX}-arm64"
+              TAG_ARGS+=(--tag "${DOCKER_BASE}/${IMAGE_NAME}:${DATE_SUFFIX}")
             fi
+
+            echo "Creating Docker Hub manifests for $IMAGE"
+            docker buildx imagetools create \
+              "${TAG_ARGS[@]}" \
+              "${SHA_TAG}-amd64" \
+              "${SHA_TAG}-arm64"
+
+            # Docker Hub merges independently from GHCR, so assert its published format.
+            node .github/scripts/docker/assert-manifest-format.mjs \
+              "$PRIMARY_TAG" --expect-platforms 2
+          }
+
+          PIDS=()
+          for IMAGE in "${!images[@]}"; do
+            create_docker_manifest "$IMAGE" "${images[$IMAGE]}" &
+            PIDS+=("$!")
           done
+
+          FAILED=0
+          for PID in "${PIDS[@]}"; do
+            wait "$PID" || FAILED=1
+          done
+          exit "$FAILED"
 
       - name: Get manifest digests for attestation
         id: get-digests

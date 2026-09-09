@@ -11,6 +11,8 @@ export const FilterConditionSchema = z.union([
 	z.literal('gte'),
 	z.literal('lt'),
 	z.literal('lte'),
+	z.literal('isEmpty'),
+	z.literal('isNotEmpty'),
 ]);
 
 export type DataTableFilterConditionType = z.infer<typeof FilterConditionSchema>;

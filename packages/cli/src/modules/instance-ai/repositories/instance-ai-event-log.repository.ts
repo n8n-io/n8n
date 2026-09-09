@@ -1,4 +1,4 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiEvent, InstanceAiSetupItem } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { DataSource, MoreThan, Repository } from '@n8n/typeorm';
@@ -179,6 +179,32 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		const { langsmithRunId, langsmithTraceId } = anchor.payload;
 		if (!langsmithRunId || !langsmithTraceId) return undefined;
 		return { langsmithRunId, langsmithTraceId };
+	}
+
+	/**
+	 * The thread's latest `setup-items` snapshot per workflow, oldest workflow
+	 * first. A later snapshot for the same workflow replaces the earlier one,
+	 * matching the reducer's last-wins fold. Snapshots are sparse (one per
+	 * changed checklist), so the whole-thread read stays small.
+	 */
+	async getSetupItemsSnapshots(
+		threadId: string,
+	): Promise<Array<{ workflowId: string; items: InstanceAiSetupItem[] }>> {
+		const rows = await this.find({
+			where: { threadId, type: 'setup-items' },
+			order: { seq: 'ASC' },
+		});
+		const latest = new Map<string, InstanceAiSetupItem[]>();
+		for (const row of rows) {
+			const event = this.toEvent(row);
+			if (event.type !== 'setup-items') continue;
+			const items = event.payload.items.filter(
+				(item): item is InstanceAiSetupItem => item !== null,
+			);
+			latest.delete(event.payload.workflowId);
+			latest.set(event.payload.workflowId, items);
+		}
+		return [...latest.entries()].map(([workflowId, items]) => ({ workflowId, items }));
 	}
 
 	/** Timestamp of the run's most recent durable fact (sweep liveness proxy). */
