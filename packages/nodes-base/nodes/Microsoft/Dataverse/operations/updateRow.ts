@@ -8,16 +8,15 @@ import {
 } from './lookups';
 import {
 	assertNonEmptyBody,
+	assertValidEntitySet,
 	assertValidRecordId,
 	buildRecordPath,
 	executeRequest,
-	normalizeEntitySet,
 	parseItemInput,
 } from './shared';
 import {
 	buildOptionsCollection,
 	commonEntitySetProperty,
-	commonPartitionIdOption,
 	commonRecordIdProperty,
 	commonReturnFullMetadataOption,
 	commonRowItemProperties,
@@ -40,10 +39,10 @@ export const updateRow: OperationDefinition = {
 		commonEntitySetProperty(['update']),
 		commonRecordIdProperty(['update']),
 		...commonRowItemProperties(['update']),
-		buildOptionsCollection('update', [commonPartitionIdOption(), commonReturnFullMetadataOption()]),
+		buildOptionsCollection('update', [commonReturnFullMetadataOption()]),
 	],
 	async execute(ctx, i, credentialType) {
-		const entitySet = normalizeEntitySet(ctx.getNodeParameter('entitySet', i));
+		const entitySet = assertValidEntitySet(ctx, i, ctx.getNodeParameter('entitySet', i));
 		const recordId = assertValidRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
 		// Validate before resolving lookup metadata so an empty Row Item fails fast
 		// without spending metadata requests. Lookup metadata is only resolved when the

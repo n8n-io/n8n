@@ -43,6 +43,8 @@ interface AttributeDefinition {
 	LogicalName: string;
 	AttributeOf?: string | null;
 	IsValidForRead?: boolean;
+	IsValidForCreate?: boolean;
+	IsValidForUpdate?: boolean;
 	AttributeType?: string;
 	DisplayName?: {
 		UserLocalizedLabel?: { Label?: string };
@@ -331,14 +333,17 @@ export async function searchRows(
  * `LogicalName`, so we look up the LogicalName first, then request
  * attributes. Two short metadata calls.
  */
-export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const entitySet = parameterValue(this.getCurrentNodeParameter('entitySet'));
+async function getColumns(
+	ctx: ILoadOptionsFunctions,
+	mode: 'read' | 'write',
+): Promise<INodePropertyOptions[]> {
+	const entitySet = parameterValue(ctx.getCurrentNodeParameter('entitySet'));
 	if (!entitySet) return [];
 	// `EntitySetName eq '<value>'` — the single quotes are OData literal
 	// syntax (not URL syntax), so they go in the value verbatim. The HTTP
 	// layer URL-encodes spaces/quotes; do not pre-encode.
 	const lookup = await dataverseGet<ODataCollection<{ LogicalName: string }>>(
-		this,
+		ctx,
 		'/EntityDefinitions',
 		{
 			$select: 'LogicalName',
@@ -350,20 +355,32 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	// Logical names are restricted to [a-z0-9_], so no encoding needed for the
 	// path segment; the HTTP layer encodes the single quotes around it.
 	const attrs = await dataverseGet<ODataCollection<AttributeDefinition>>(
-		this,
+		ctx,
 		`/EntityDefinitions(LogicalName='${logicalName}')/Attributes`,
-		{ $select: 'LogicalName,DisplayName,AttributeOf,IsValidForRead,AttributeType' },
+		{
+			$select:
+				'LogicalName,DisplayName,AttributeOf,IsValidForRead,IsValidForCreate,IsValidForUpdate,AttributeType',
+		},
 	);
+	const operation = parameterValue(ctx.getCurrentNodeParameter('operation'));
 	const options: INodePropertyOptions[] = [];
 	for (const attr of attrs.value ?? []) {
 		// Skip virtual sub-attributes (e.g. <lookup>name, <lookup>yominame) —
 		// they have an AttributeOf set and aren't queryable in their own right.
 		if (attr.AttributeOf) continue;
-		if (attr.IsValidForRead === false) continue;
+		if (mode === 'read' && attr.IsValidForRead === false) continue;
+		if (mode === 'write') {
+			if (operation === 'create' && attr.IsValidForCreate !== true) continue;
+			if (operation === 'update' && attr.IsValidForUpdate !== true) continue;
+			if (
+				operation !== 'create' &&
+				operation !== 'update' &&
+				(attr.IsValidForCreate !== true || attr.IsValidForUpdate !== true)
+			) {
+				continue;
+			}
+		}
 		const label = labelOf(attr) ?? attr.LogicalName;
-		// Lookup columns (incl. Customer/Owner) can't be written by logical name —
-		// the node rewrites them to @odata.bind. Flag them so users understand the
-		// column behaves differently from a plain value column.
 		const isLookup =
 			attr.AttributeType === 'Lookup' ||
 			attr.AttributeType === 'Customer' ||
@@ -371,8 +388,19 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 		const name = isLookup
 			? `${label} (${attr.LogicalName}) — lookup`
 			: `${label} (${attr.LogicalName})`;
-		options.push({ name, value: attr.LogicalName });
+		const value = mode === 'read' && isLookup ? `_${attr.LogicalName}_value` : attr.LogicalName;
+		options.push({ name, value });
 	}
 	options.sort((a, b) => a.name.localeCompare(b.name));
 	return options;
+}
+
+export async function getReadColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	return await getColumns(this, 'read');
+}
+
+export async function getWriteColumns(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	return await getColumns(this, 'write');
 }

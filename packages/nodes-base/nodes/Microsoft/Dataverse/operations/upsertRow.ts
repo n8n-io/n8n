@@ -10,16 +10,15 @@ import {
 import {
 	assertNonEmptyBody,
 	assertValidAlternateKey,
+	assertValidEntitySet,
 	assertValidRecordId,
 	buildRecordPath,
 	executeRequest,
-	normalizeEntitySet,
 	parseItemInput,
 } from './shared';
 import {
 	buildOptionsCollection,
 	commonEntitySetProperty,
-	commonPartitionIdOption,
 	commonRecordIdProperty,
 	commonReturnFullMetadataOption,
 	commonRowItemProperties,
@@ -81,7 +80,7 @@ export const upsertRow: OperationDefinition = {
 			required: true,
 			placeholder: "accountnumber='ACC-001'",
 			description:
-				"OData alternate-key predicate, e.g. accountnumber='ACC-001'. The table must have a matching alternate key configured.",
+				"OData alternate-key predicate, e.g. accountnumber='ACC-001'. For a partitioned elastic table, include its primary key and partitionid.",
 			displayOptions: {
 				show: { ...forOperation(['upsert']).show, identifierType: ['alternateKey'] },
 			},
@@ -112,12 +111,11 @@ export const upsertRow: OperationDefinition = {
 					},
 				],
 			},
-			commonPartitionIdOption(),
 			commonReturnFullMetadataOption(),
 		]),
 	],
 	async execute(ctx, i, credentialType) {
-		const entitySet = normalizeEntitySet(ctx.getNodeParameter('entitySet', i));
+		const entitySet = assertValidEntitySet(ctx, i, ctx.getNodeParameter('entitySet', i));
 		const identifierType = ctx.getNodeParameter('identifierType', i, 'guid') as string;
 		const identifier =
 			identifierType === 'alternateKey'

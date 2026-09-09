@@ -151,7 +151,7 @@ describe('Microsoft Dataverse operations', () => {
 			withParams({
 				entitySet: 'accounts',
 				recordId: ROW_ID,
-				getOptions: { select: 'name', expand: 'primarycontactid' },
+				getOptions: { select: 'name', expand: 'primarycontactid', partitionId: 'partition-1' },
 			});
 
 			await getRow.execute(ctx, 0, CREDENTIAL_TYPE);
@@ -159,7 +159,11 @@ describe('Microsoft Dataverse operations', () => {
 			const [, method, path, , qs, , credType] = singleCall();
 			expect(method).toBe('GET');
 			expect(path).toBe(`/accounts(${ROW_ID})`);
-			expect(qs).toMatchObject({ $select: 'name', $expand: 'primarycontactid' });
+			expect(qs).toMatchObject({
+				$select: 'name',
+				$expand: 'primarycontactid',
+				partitionId: 'partition-1',
+			});
 			expect(credType).toBe(CREDENTIAL_TYPE);
 		});
 
@@ -181,9 +185,23 @@ describe('Microsoft Dataverse operations', () => {
 
 			expect(singleCall()[2]).toBe(`/accounts(${ROW_ID})`);
 		});
+
+		it('rejects a table name containing path traversal before dispatching', async () => {
+			withParams({ entitySet: 'accounts\\..\\contacts', recordId: ROW_ID, getOptions: {} });
+
+			await expect(getRow.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(/"entitySet"/);
+			expect(dataverseApiRequest).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getManyRows', () => {
+		it('rejects control characters in the table name before dispatching', async () => {
+			withParams({ entitySet: 'accounts\n', returnAll: true, getAllOptions: {} });
+
+			await expect(getManyRows.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(/"entitySet"/);
+			expect(dataverseApiRequestAllItems).not.toHaveBeenCalled();
+		});
+
 		it('does not expose a Skip Token option', () => {
 			const options = getManyRows.properties.find((property) => property.name === 'getAllOptions');
 
@@ -213,6 +231,36 @@ describe('Microsoft Dataverse operations', () => {
 			expect(qs).toMatchObject({ $top: 25 });
 			expect(limit).toBe(25);
 			expect(credType).toBe(CREDENTIAL_TYPE);
+		});
+
+		it('maps a Limit of 5,000 to $top', async () => {
+			withParams({
+				entitySet: 'accounts',
+				returnAll: false,
+				limit: 5000,
+				getAllOptions: {},
+			});
+
+			await getManyRows.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			const [, , , qs, limit] = pagedCall();
+			expect(qs).toMatchObject({ $top: 5000 });
+			expect(limit).toBe(5000);
+		});
+
+		it('keeps server-driven paging for a Limit above 5,000', async () => {
+			withParams({
+				entitySet: 'accounts',
+				returnAll: false,
+				limit: 6000,
+				getAllOptions: {},
+			});
+
+			await getManyRows.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			const [, , , qs, limit] = pagedCall();
+			expect(qs).not.toHaveProperty('$top');
+			expect(limit).toBe(6000);
 		});
 
 		it('lets an explicit Row Count override the limit-derived $top', async () => {
@@ -369,9 +417,10 @@ describe('Microsoft Dataverse operations', () => {
 
 			await upsertRow.execute(ctx, 0, CREDENTIAL_TYPE);
 
-			const [, method, path, , , headers, credType] = singleCall();
+			const [, method, path, body, , headers, credType] = singleCall();
 			expect(method).toBe('PATCH');
 			expect(path).toBe(`/accounts(${ROW_ID})`);
+			expect(body).toEqual({ name: 'Acme' });
 			expect(headers?.['If-Match']).toBeUndefined();
 			expect(headers?.['If-None-Match']).toBeUndefined();
 			expect(credType).toBe(CREDENTIAL_TYPE);
@@ -421,8 +470,9 @@ describe('Microsoft Dataverse operations', () => {
 
 			await upsertRow.execute(ctx, 0, CREDENTIAL_TYPE);
 
-			const [, , path] = singleCall();
+			const [, , path, body] = singleCall();
 			expect(path).toBe("/accounts(accountnumber='ACC-001')");
+			expect(body).toEqual({ name: 'Acme' });
 		});
 
 		it('throws with the upsert-specific message when the body is empty', async () => {
@@ -456,18 +506,41 @@ describe('Microsoft Dataverse operations', () => {
 			await expect(upsertRow.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(/"alternateKey"/);
 			expect(dataverseApiRequest).not.toHaveBeenCalled();
 		});
+
+		it.each([
+			"accountnumber='x\\..\\contacts(00000000-0000-0000-0000-000000000002'",
+			"accountnumber='ACC\t001'",
+			"accountnumber='ACC\n001'",
+		])('rejects a URL-breaking alternate key before dispatching: %j', async (alternateKey) => {
+			withParams({
+				entitySet: 'accounts',
+				identifierType: 'alternateKey',
+				alternateKey,
+				inputMode: 'json',
+				fieldsJson: '{"name":"Acme"}',
+				upsertOptions: {},
+			});
+
+			await expect(upsertRow.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(/"alternateKey"/);
+			expect(dataverseApiRequest).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('deleteRow', () => {
 		it('DELETEs the record path and returns a synthetic success payload', async () => {
-			withParams({ entitySet: 'accounts', recordId: ROW_ID, deleteOptions: {} });
+			withParams({
+				entitySet: 'accounts',
+				recordId: ROW_ID,
+				deleteOptions: { partitionId: 'partition-1' },
+			});
 
 			const result = (await deleteRow.execute(ctx, 0, CREDENTIAL_TYPE)) as IDataObject;
 
 			expect(result).toEqual({ success: true, id: ROW_ID });
-			const [, method, path, , , , credType] = singleCall();
+			const [, method, path, , qs, , credType] = singleCall();
 			expect(method).toBe('DELETE');
 			expect(path).toBe(`/accounts(${ROW_ID})`);
+			expect(qs).toEqual({ partitionId: 'partition-1' });
 			expect(credType).toBe(CREDENTIAL_TYPE);
 		});
 

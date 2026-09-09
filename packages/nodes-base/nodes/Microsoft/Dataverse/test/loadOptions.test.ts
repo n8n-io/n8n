@@ -6,7 +6,13 @@ import type { ILoadOptionsFunctions, INode, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { getColumns, getEntitySets, searchEntitySets, searchRows } from '../loadOptions';
+import {
+	getEntitySets,
+	getReadColumns,
+	getWriteColumns,
+	searchEntitySets,
+	searchRows,
+} from '../loadOptions';
 
 const BASE_URL = 'https://org.crm.dynamics.com';
 
@@ -163,11 +169,11 @@ describe('Microsoft Dataverse loadOptions', () => {
 		});
 	});
 
-	describe('getColumns', () => {
+	describe('getReadColumns', () => {
 		it('returns an empty list when no table is selected', async () => {
 			ctx.getCurrentNodeParameter.mockReturnValue('');
 
-			expect(await getColumns.call(ctx)).toEqual([]);
+			expect(await getReadColumns.call(ctx)).toEqual([]);
 			expect(request).not.toHaveBeenCalled();
 		});
 
@@ -184,26 +190,43 @@ describe('Microsoft Dataverse loadOptions', () => {
 						AttributeType: 'Lookup',
 						DisplayName: { UserLocalizedLabel: { Label: 'Primary Contact' } },
 					},
+					{
+						LogicalName: 'customerid',
+						AttributeType: 'Customer',
+						DisplayName: { UserLocalizedLabel: { Label: 'Customer' } },
+					},
+					{
+						LogicalName: 'ownerid',
+						AttributeType: 'Owner',
+						DisplayName: { UserLocalizedLabel: { Label: 'Owner' } },
+					},
 					{ LogicalName: 'accountidname', AttributeOf: 'accountid' },
 					{ LogicalName: 'hidden', IsValidForRead: false },
 				],
 			});
 
-			const options = await getColumns.call(ctx);
+			const options = await getReadColumns.call(ctx);
 
 			expect(options).toEqual([
+				{ name: 'Customer (customerid) — lookup', value: '_customerid_value' },
 				{ name: 'Name (name)', value: 'name' },
-				{ name: 'Primary Contact (primarycontactid) — lookup', value: 'primarycontactid' },
+				{ name: 'Owner (ownerid) — lookup', value: '_ownerid_value' },
+				{
+					name: 'Primary Contact (primarycontactid) — lookup',
+					value: '_primarycontactid_value',
+				},
 			]);
 			const [, attrOptions] = request.mock.calls[1];
 			expect(attrOptions.qs.$select).toContain('AttributeType');
+			expect(attrOptions.qs.$select).toContain('IsValidForCreate');
+			expect(attrOptions.qs.$select).toContain('IsValidForUpdate');
 		});
 
 		it('returns an empty list when the table lookup finds nothing', async () => {
 			ctx.getCurrentNodeParameter.mockReturnValue('accounts');
 			request.mockResolvedValueOnce({ value: [] });
 
-			expect(await getColumns.call(ctx)).toEqual([]);
+			expect(await getReadColumns.call(ctx)).toEqual([]);
 			expect(request).toHaveBeenCalledTimes(1);
 		});
 
@@ -211,10 +234,59 @@ describe('Microsoft Dataverse loadOptions', () => {
 			ctx.getCurrentNodeParameter.mockReturnValue("o'brien");
 			request.mockResolvedValueOnce({ value: [] });
 
-			await getColumns.call(ctx);
+			await getReadColumns.call(ctx);
 
 			const [, options] = request.mock.calls[0];
 			expect(options.qs.$filter).toBe("EntitySetName eq 'o''brien'");
+		});
+	});
+
+	describe('getWriteColumns', () => {
+		it.each([
+			['create', 'IsValidForCreate', 'createonly'],
+			['update', 'IsValidForUpdate', 'updateonly'],
+		] as const)('filters %s fields by %s', async (operation, validityProperty, includedName) => {
+			ctx.getCurrentNodeParameter.mockImplementation((parameterName) =>
+				parameterName === 'entitySet' ? 'accounts' : operation,
+			);
+			request.mockResolvedValueOnce({ value: [{ LogicalName: 'account' }] }).mockResolvedValueOnce({
+				value: [
+					{ LogicalName: includedName, [validityProperty]: true },
+					{ LogicalName: 'computed', [validityProperty]: false },
+					{
+						LogicalName: 'primarycontactid',
+						AttributeType: 'Lookup',
+						[validityProperty]: true,
+					},
+				],
+			});
+
+			const options = await getWriteColumns.call(ctx);
+			expect(options).toHaveLength(2);
+			expect(options).toEqual(
+				expect.arrayContaining([
+					{ name: `${includedName} (${includedName})`, value: includedName },
+					{
+						name: 'primarycontactid (primarycontactid) — lookup',
+						value: 'primarycontactid',
+					},
+				]),
+			);
+		});
+
+		it('only offers fields valid for both create and update during upsert', async () => {
+			ctx.getCurrentNodeParameter.mockImplementation((parameterName) =>
+				parameterName === 'entitySet' ? 'accounts' : 'upsert',
+			);
+			request.mockResolvedValueOnce({ value: [{ LogicalName: 'account' }] }).mockResolvedValueOnce({
+				value: [
+					{ LogicalName: 'name', IsValidForCreate: true, IsValidForUpdate: true },
+					{ LogicalName: 'createdon', IsValidForCreate: false, IsValidForUpdate: false },
+					{ LogicalName: 'createonly', IsValidForCreate: true, IsValidForUpdate: false },
+				],
+			});
+
+			expect(await getWriteColumns.call(ctx)).toEqual([{ name: 'name (name)', value: 'name' }]);
 		});
 	});
 

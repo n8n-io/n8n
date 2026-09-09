@@ -2,7 +2,13 @@ import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow'
 import { NodeOperationError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { searchEntitySets, searchRows } from '../loadOptions';
+import {
+	getEntitySets,
+	getReadColumns,
+	getWriteColumns,
+	searchEntitySets,
+	searchRows,
+} from '../loadOptions';
 import { MicrosoftDataverse } from '../MicrosoftDataverse.node';
 import { createRow } from '../operations/createRow';
 import { getManyRows } from '../operations/getManyRows';
@@ -77,6 +83,11 @@ describe('MicrosoftDataverse Node', () => {
 			searchEntitySets,
 			searchRows,
 		});
+		expect(instance.methods.loadOptions).toEqual({
+			getEntitySets,
+			getReadColumns,
+			getWriteColumns,
+		});
 	});
 
 	it('lists operations alphabetically by name, matching the n8n catalog convention', () => {
@@ -88,6 +99,21 @@ describe('MicrosoftDataverse Node', () => {
 
 		expect(names).toEqual(['Create', 'Create or Update', 'Delete', 'Get', 'Get Many', 'Update']);
 		expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+	});
+
+	it('labels Update and Upsert request settings as Options', () => {
+		const instance = new MicrosoftDataverse();
+		const optionCollections = instance.description.properties.filter((property) =>
+			['updateOptions', 'upsertOptions'].includes(property.name),
+		);
+
+		expect(optionCollections).toHaveLength(2);
+		expect(optionCollections.every((property) => property.displayName === 'Options')).toBe(true);
+		expect(
+			optionCollections.every(
+				(property) => !property.options?.some((option) => option.name === 'partitionId'),
+			),
+		).toBe(true);
 	});
 
 	it('routes an operation to the matching op module and wraps the result', async () => {

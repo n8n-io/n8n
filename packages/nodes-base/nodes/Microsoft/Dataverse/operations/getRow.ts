@@ -1,11 +1,11 @@
 import type { IDataObject } from 'n8n-workflow';
 import type { OperationDefinition } from './types';
 import {
+	assertValidEntitySet,
 	assertValidRecordId,
 	buildODataQs,
 	buildRecordPath,
 	executeRequest,
-	normalizeEntitySet,
 } from './shared';
 import {
 	buildOptionsCollection,
@@ -39,7 +39,7 @@ export const getRow: OperationDefinition = {
 		]),
 	],
 	async execute(ctx, i, credentialType) {
-		const entitySet = normalizeEntitySet(ctx.getNodeParameter('entitySet', i));
+		const entitySet = assertValidEntitySet(ctx, i, ctx.getNodeParameter('entitySet', i));
 		const recordId = assertValidRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
 		const options = ctx.getNodeParameter('getOptions', i, {}) as IDataObject;
 		return await executeRequest(ctx, credentialType, {

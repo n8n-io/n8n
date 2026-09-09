@@ -7,8 +7,7 @@ export class MicrosoftDataverseOAuth2Api implements ICredentialType {
 
 	displayName = 'Microsoft Dataverse OAuth2 API';
 
-	documentationUrl =
-		'https://learn.microsoft.com/en-us/power-apps/developer/data-platform/authenticate-oauth';
+	documentationUrl = 'microsoftdataverse';
 
 	properties: INodeProperties[] = [
 		{

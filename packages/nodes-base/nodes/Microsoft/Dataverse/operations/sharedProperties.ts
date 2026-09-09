@@ -135,8 +135,8 @@ export function commonRowItemProperties(operations: string[]): INodeProperties[]
 							name: 'name',
 							type: 'options',
 							typeOptions: {
-								loadOptionsMethod: 'getColumns',
-								loadOptionsDependsOn: ['entitySet.value'],
+								loadOptionsMethod: 'getWriteColumns',
+								loadOptionsDependsOn: ['entitySet.value', 'operation'],
 							},
 							default: '',
 							description:
@@ -168,7 +168,7 @@ export function commonReturnFullMetadataOption(): INodeProperties {
 	};
 }
 
-/** Optional partition id (NoSQL / elastic tables). Sent as `?partitionId=…`. */
+/** Optional partition ID for supported elastic-table read and delete requests. */
 export function commonPartitionIdOption(): INodeProperties {
 	return {
 		displayName: 'Partition ID',
@@ -176,7 +176,7 @@ export function commonPartitionIdOption(): INodeProperties {
 		type: 'string',
 		default: '',
 		placeholder: 'partition-key-value',
-		description: 'Partition key for NoSQL / elastic tables (forwarded as ?partitionId=)',
+		description: 'Partition key for an elastic table read or delete request',
 	};
 }
 
@@ -187,7 +187,7 @@ export function commonSelectOption(): INodeProperties {
 		name: 'select',
 		type: 'multiOptions',
 		typeOptions: {
-			loadOptionsMethod: 'getColumns',
+			loadOptionsMethod: 'getReadColumns',
 			loadOptionsDependsOn: ['entitySet.value'],
 		},
 		default: [],

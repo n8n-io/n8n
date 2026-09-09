@@ -7,7 +7,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { getColumns, getEntitySets, searchEntitySets, searchRows } from './loadOptions';
+import {
+	getEntitySets,
+	getReadColumns,
+	getWriteColumns,
+	searchEntitySets,
+	searchRows,
+} from './loadOptions';
 import { RECORD_OPERATIONS, resolveOperation, toDropdownOption } from './operations';
 
 export class MicrosoftDataverse implements INodeType {
@@ -62,7 +68,8 @@ export class MicrosoftDataverse implements INodeType {
 	methods = {
 		loadOptions: {
 			getEntitySets,
-			getColumns,
+			getReadColumns,
+			getWriteColumns,
 		},
 		listSearch: {
 			searchEntitySets,

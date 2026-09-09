@@ -14,9 +14,7 @@ describe('MicrosoftDataverseOAuth2Api Credential', () => {
 			expect(credential.name).toBe('microsoftDataverseOAuth2Api');
 			expect(credential.extends).toEqual(['microsoftOAuth2Api']);
 			expect(credential.displayName).toBe('Microsoft Dataverse OAuth2 API');
-			expect(credential.documentationUrl).toBe(
-				'https://learn.microsoft.com/en-us/power-apps/developer/data-platform/authenticate-oauth',
-			);
+			expect(credential.documentationUrl).toBe('microsoftdataverse');
 		});
 	});
 

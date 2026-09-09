@@ -142,6 +142,34 @@ export function normalizeEntitySet(value: unknown): string {
 		.replace(/^\/+|\/+$/g, '');
 }
 
+const ASCII_CONTROL_CHARS = /[\x00-\x1f]/;
+const ENTITY_SET_PATTERN = /^[a-z][a-z0-9_]*$/i;
+
+/**
+ * Validate a table name before interpolating it into a request path.
+ * Dataverse entity-set names are identifiers, so path separators, URL
+ * delimiters, whitespace, and traversal segments are never valid here.
+ *
+ * @throws NodeOperationError naming the parameter.
+ */
+export function assertValidEntitySet(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	entitySet: unknown,
+	paramName = 'entitySet',
+): string {
+	const raw = resourceLocatorValue(entitySet);
+	const normalized = normalizeEntitySet(entitySet);
+	if (ASCII_CONTROL_CHARS.test(raw) || !ENTITY_SET_PATTERN.test(normalized)) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`Parameter "${paramName}" must be a valid Dataverse table name`,
+			{ itemIndex },
+		);
+	}
+	return normalized;
+}
+
 /**
  * Build the OData path segment for addressing a record. Supports two
  * identifier shapes that the dv connector / Dataverse Web API both accept:
@@ -151,9 +179,9 @@ export function normalizeEntitySet(value: unknown): string {
  *
  * `recordId` is forwarded as-is — Dataverse parses both shapes natively, so we
  * don't need to wrap quotes ourselves (callers must supply them when using
- * alt-keys with string values). Callers validate the identifier first
- * ({@link assertValidRecordId} for the GUID Row ID path, {@link assertValidAlternateKey}
- * for the predicate), so URL-breaking input never reaches here.
+ * alt-keys with string values). Callers validate the entity set with
+ * {@link assertValidEntitySet} and the identifier with {@link assertValidRecordId}
+ * or {@link assertValidAlternateKey}, so URL-breaking input never reaches here.
  */
 export function buildRecordPath(entitySet: string, recordId: string): string {
 	const safeSet = normalizeEntitySet(entitySet);
@@ -188,7 +216,7 @@ export function assertNonEmptyRecordId(
 
 const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Chars that would truncate or redirect the request URL if interpolated raw.
-const URL_BREAKING_CHARS = /[?#/]/;
+const URL_BREAKING_CHARS = /[?#/\\]|[\x00-\x1f]/;
 
 /**
  * Validate a Row ID before interpolating it into the request path. The field is
@@ -218,7 +246,8 @@ export function assertValidRecordId(
 /**
  * Validate an alternate-key predicate before interpolating it into the path. The
  * predicate legitimately uses quotes and commas, so we don't constrain the
- * syntax — but `?`/`#`/`/` would break the URL, so reject those.
+ * syntax. URL delimiters, path separators, and ASCII control characters would
+ * be reinterpreted or stripped by the URL parser, so reject those.
  *
  * @throws NodeOperationError naming the parameter.
  */
@@ -232,7 +261,7 @@ export function assertValidAlternateKey(
 	if (URL_BREAKING_CHARS.test(predicate)) {
 		throw new NodeOperationError(
 			ctx.getNode(),
-			`Parameter "${paramName}" must not contain "?", "#", or "/"`,
+			`Parameter "${paramName}" must not contain URL delimiters, path separators, or control characters`,
 			{ itemIndex },
 		);
 	}
@@ -261,12 +290,8 @@ export function assertNonEmptyBody(
 	return body;
 }
 
-/**
- * Build a partition-id query-string fragment for NoSQL/elastic tables. The dv
- * connector exposes this as an optional `Partition Id` field; we forward it as
- * the documented `?partitionId=` query parameter.
- */
-export function applyPartitionId(qs: IDataObject, partitionId?: unknown): IDataObject {
+/** Add a partition ID to the query string for supported read and delete requests. */
+export function applyPartitionIdToQuery(qs: IDataObject, partitionId?: unknown): IDataObject {
 	if (typeof partitionId === 'string' && partitionId.trim()) {
 		qs.partitionId = partitionId.trim();
 	}
@@ -286,7 +311,8 @@ export function applyPartitionId(qs: IDataObject, partitionId?: unknown): IDataO
  * - `body`/`qs`/`extraHeaders` are forwarded verbatim.
  * - `prefer` is converted to a `Prefer` header via {@link buildPreferHeader}
  *   and merged with the caller's `extraHeaders.Prefer` if both are present.
- * - `options.partitionId` is folded into the query string.
+ * - `options.partitionId` is folded into the query string for supported read
+ *   and delete requests.
  * - `options.returnFullMetadata` is folded into the Prefer header.
  *
  * For `paged: true`, the executor calls {@link dataverseApiRequestAllItems}
@@ -321,7 +347,7 @@ export async function executeRequest(
 ): Promise<IDataObject | IDataObject[]> {
 	const qs: DataverseQuery = { ...(plan.qs ?? {}) };
 	const options = plan.options ?? {};
-	applyPartitionId(qs as IDataObject, options.partitionId);
+	applyPartitionIdToQuery(qs as IDataObject, options.partitionId);
 
 	const prefer = buildPreferHeader({
 		...(plan.prefer ?? {}),

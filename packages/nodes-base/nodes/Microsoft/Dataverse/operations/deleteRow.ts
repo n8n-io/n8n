@@ -1,6 +1,11 @@
 import type { IDataObject } from 'n8n-workflow';
 import type { OperationDefinition } from './types';
-import { assertValidRecordId, buildRecordPath, executeRequest, normalizeEntitySet } from './shared';
+import {
+	assertValidEntitySet,
+	assertValidRecordId,
+	buildRecordPath,
+	executeRequest,
+} from './shared';
 import {
 	buildOptionsCollection,
 	commonEntitySetProperty,
@@ -26,7 +31,7 @@ export const deleteRow: OperationDefinition = {
 		buildOptionsCollection('delete', [commonPartitionIdOption()]),
 	],
 	async execute(ctx, i, credentialType) {
-		const entitySet = normalizeEntitySet(ctx.getNodeParameter('entitySet', i));
+		const entitySet = assertValidEntitySet(ctx, i, ctx.getNodeParameter('entitySet', i));
 		const recordId = assertValidRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
 		await executeRequest(ctx, credentialType, {
 			method: 'DELETE',

@@ -7,10 +7,11 @@ import { mockDeep } from 'vitest-mock-extended';
 
 import { dataverseApiRequest, dataverseApiRequestAllItems } from '../GenericFunctions';
 import {
-	applyPartitionId,
+	applyPartitionIdToQuery,
 	assertNonEmptyBody,
 	assertNonEmptyRecordId,
 	assertValidAlternateKey,
+	assertValidEntitySet,
 	assertValidRecordId,
 	buildODataQs,
 	buildPreferHeader,
@@ -211,6 +212,29 @@ describe('Microsoft Dataverse operations/shared', () => {
 		});
 	});
 
+	describe('assertValidEntitySet', () => {
+		it('returns a normalized table name from strings and resource locators', () => {
+			expect(assertValidEntitySet(ctx, 0, '  /accounts/ ')).toBe('accounts');
+			expect(assertValidEntitySet(ctx, 0, { mode: 'list', value: 'custom_table' })).toBe(
+				'custom_table',
+			);
+		});
+
+		it.each([
+			'',
+			'123accounts',
+			'account-name',
+			'accounts/../contacts',
+			'accounts\\..\\contacts',
+			'accounts?query',
+			'accounts#fragment',
+			'account name',
+			'accounts\t',
+		])('rejects an invalid table name: %j', (entitySet) => {
+			expect(() => assertValidEntitySet(ctx, 0, entitySet)).toThrow(/"entitySet"/);
+		});
+	});
+
 	describe('buildRecordPath', () => {
 		it('builds a GUID path', () => {
 			expect(buildRecordPath('accounts', '7c-guid')).toBe('/accounts(7c-guid)');
@@ -268,11 +292,19 @@ describe('Microsoft Dataverse operations/shared', () => {
 			expect(assertValidAlternateKey(ctx, 0, "key1='a',key2=123")).toBe("key1='a',key2=123");
 		});
 
-		it('rejects a predicate containing ?, #, or /, naming the parameter', () => {
+		it('rejects URL delimiters and path separators, naming the parameter', () => {
 			expect(() => assertValidAlternateKey(ctx, 0, "name='a?b'")).toThrow(/"alternateKey"/);
 			expect(() => assertValidAlternateKey(ctx, 0, "name='a#b'")).toThrow(/must not contain/);
 			expect(() => assertValidAlternateKey(ctx, 0, "name='a/b'")).toThrow(/must not contain/);
+			expect(() => assertValidAlternateKey(ctx, 0, "name='a\\b'")).toThrow(/must not contain/);
 		});
+
+		it.each(["name='a\0b'", "name='a\tb'", "name='a\nb'"])(
+			'rejects ASCII control characters in %j',
+			(predicate) => {
+				expect(() => assertValidAlternateKey(ctx, 0, predicate)).toThrow(/control characters/);
+			},
+		);
 	});
 
 	describe('assertNonEmptyBody', () => {
@@ -289,37 +321,35 @@ describe('Microsoft Dataverse operations/shared', () => {
 		});
 	});
 
-	describe('applyPartitionId', () => {
+	describe('applyPartitionIdToQuery', () => {
 		it('adds a trimmed partitionId to the query string', () => {
-			expect(applyPartitionId({}, '  p1 ')).toEqual({ partitionId: 'p1' });
+			expect(applyPartitionIdToQuery({}, '  p1 ')).toEqual({ partitionId: 'p1' });
 		});
 
 		it('leaves the query string untouched for empty or non-string input', () => {
-			expect(applyPartitionId({}, '   ')).toEqual({});
-			expect(applyPartitionId({}, undefined)).toEqual({});
+			expect(applyPartitionIdToQuery({}, '   ')).toEqual({});
+			expect(applyPartitionIdToQuery({}, undefined)).toEqual({});
 		});
 	});
 
 	describe('executeRequest', () => {
-		it('dispatches a single-shot request folding partitionId and Prefer', async () => {
+		it('dispatches a single-shot request folding partitionId into the query', async () => {
 			vi.mocked(dataverseApiRequest).mockResolvedValue({ id: 'row-1' });
 
 			const result = await executeRequest(ctx, CREDENTIAL_TYPE, {
-				method: 'POST',
+				method: 'GET',
 				path: '/accounts',
-				body: { name: 'Acme' },
-				prefer: { returnRepresentation: true },
 				options: { partitionId: 'p1', returnFullMetadata: true },
 			});
 
 			expect(result).toEqual({ id: 'row-1' });
 			expect(dataverseApiRequestAllItems).not.toHaveBeenCalled();
 			const [, method, path, body, qs, headers] = vi.mocked(dataverseApiRequest).mock.calls[0];
-			expect(method).toBe('POST');
+			expect(method).toBe('GET');
 			expect(path).toBe('/accounts');
-			expect(body).toEqual({ name: 'Acme' });
+			expect(body).toEqual({});
 			expect(qs).toEqual({ partitionId: 'p1' });
-			expect(headers?.Prefer).toBe('return=representation,odata.include-annotations="*"');
+			expect(headers?.Prefer).toBe('odata.include-annotations="*"');
 		});
 
 		it('omits the Prefer header when no metadata or prefer options are set', async () => {

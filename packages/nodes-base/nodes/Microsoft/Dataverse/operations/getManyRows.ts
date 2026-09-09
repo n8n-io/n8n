@@ -2,7 +2,7 @@ import type { IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { type DataverseQuery } from '../GenericFunctions';
-import { buildODataQs, executeRequest, normalizeEntitySet } from './shared';
+import { assertValidEntitySet, buildODataQs, executeRequest } from './shared';
 import {
 	buildOptionsCollection,
 	commonEntitySetProperty,
@@ -14,6 +14,8 @@ import {
 } from './sharedProperties';
 import type { OperationDefinition } from './types';
 
+const DATAVERSE_MAX_PAGE_SIZE = 5_000;
+
 /**
  * dv connector — "Get Many" rows (`ListRecords`).
  *
@@ -24,10 +26,9 @@ import type { OperationDefinition } from './types';
  * Two paging modes:
  *   - **Return All**: follows `@odata.nextLink` for OData queries until exhausted.
  *     FetchXML queries cannot use Return All.
- *   - **Limit**: stops after N rows (default 50). On the OData path, when the user
- *     hasn't set their own Row Count, this also caps the server page via
- *     `$top: N` so the environment isn't billed for rows we'd discard. FetchXML
- *     uses client-side capping only.
+ *   - **Limit**: stops after N rows (default 50). On the OData path, limits up to
+ *     5,000 use `$top: N`; larger limits keep server-driven paging so Dataverse
+ *     can return more than one page. FetchXML uses client-side capping only.
  */
 export const getManyRows: OperationDefinition = {
 	displayName: 'Get Many',
@@ -84,7 +85,7 @@ export const getManyRows: OperationDefinition = {
 				typeOptions: { minValue: 1 },
 				default: 0,
 				description:
-					'OData $top — server-side row cap (separate from the node-level Limit). 0 = unset.',
+					'Maximum number of rows Dataverse returns without paging. When unset, Limit is used here only when it is 5,000 or less.',
 			},
 			commonSelectOption(),
 			{
@@ -92,7 +93,7 @@ export const getManyRows: OperationDefinition = {
 				name: 'orderbyColumn',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getColumns',
+					loadOptionsMethod: 'getReadColumns',
 					loadOptionsDependsOn: ['entitySet.value'],
 				},
 				default: '',
@@ -122,7 +123,7 @@ export const getManyRows: OperationDefinition = {
 		]),
 	],
 	async execute(ctx, i, credentialType) {
-		const entitySet = normalizeEntitySet(ctx.getNodeParameter('entitySet', i));
+		const entitySet = assertValidEntitySet(ctx, i, ctx.getNodeParameter('entitySet', i));
 		const returnAll = ctx.getNodeParameter('returnAll', i, false) as boolean;
 		const limit = returnAll ? 0 : (ctx.getNodeParameter('limit', i, 50) as number);
 		const options = ctx.getNodeParameter('getAllOptions', i, {}) as IDataObject;
@@ -142,10 +143,11 @@ export const getManyRows: OperationDefinition = {
 			);
 		}
 		const userTop = typeof options.top === 'number' && options.top > 0 ? options.top : undefined;
-		// Map a client-side Limit to a server-side `$top` so we don't fetch (and
-		// discard) a full page. The user's explicit Row Count takes precedence, and
-		// FetchXML has no equivalent knob so it's OData-only.
-		const effectiveTop = userTop ?? (limit > 0 ? limit : undefined);
+		// `$top` disables server-driven paging, so only derive it when the requested
+		// limit fits within one standard Dataverse page. Explicit Row Count still
+		// takes precedence, and FetchXML has no equivalent option.
+		const limitTop = limit > 0 && limit <= DATAVERSE_MAX_PAGE_SIZE ? limit : undefined;
+		const effectiveTop = userTop ?? limitTop;
 		const qs: DataverseQuery = fetchXml
 			? { fetchXml }
 			: buildODataQs({

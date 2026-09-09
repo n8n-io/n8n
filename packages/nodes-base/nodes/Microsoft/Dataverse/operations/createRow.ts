@@ -6,7 +6,7 @@ import {
 	EMPTY_LOOKUP_FIELDS,
 	resolveLookupFields,
 } from './lookups';
-import { assertNonEmptyBody, executeRequest, normalizeEntitySet, parseItemInput } from './shared';
+import { assertNonEmptyBody, assertValidEntitySet, executeRequest, parseItemInput } from './shared';
 import {
 	buildOptionsCollection,
 	commonEntitySetProperty,
@@ -31,7 +31,7 @@ export const createRow: OperationDefinition = {
 		buildOptionsCollection('create', [commonReturnFullMetadataOption()]),
 	],
 	async execute(ctx, i, credentialType) {
-		const entitySet = normalizeEntitySet(ctx.getNodeParameter('entitySet', i));
+		const entitySet = assertValidEntitySet(ctx, i, ctx.getNodeParameter('entitySet', i));
 		// Validate before resolving lookup metadata so an empty Row Item fails fast
 		// without spending metadata requests. Lookup metadata is only resolved when the
 		// body actually carries a lookup-style value, so a plain write stays a single
