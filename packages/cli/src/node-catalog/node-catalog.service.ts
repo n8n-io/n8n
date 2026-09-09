@@ -330,11 +330,7 @@ export class NodeCatalogService {
 	 * results rather than erroring.
 	 */
 	private async getUninstalledParser(): Promise<NodeTypeParser | undefined> {
-		// Expire a tier that has outlived the registry refresh interval. Dropped
-		// only once a build has completed, so this never discards an in-flight one.
-		if (this.uninstalledParser && Date.now() - this.uninstalledBuiltAt > UNINSTALLED_TIER_TTL_MS) {
-			this.dropUninstalledTier();
-		}
+		this.expireStaleUninstalledTier();
 
 		this.uninstalledPromise ??= this.buildUninstalledTier();
 		await this.uninstalledPromise;
@@ -374,6 +370,20 @@ export class NodeCatalogService {
 		});
 	}
 
+	/**
+	 * Expire a tier that has outlived the registry refresh interval.
+	 *
+	 * Synchronous and cheap, because it has to run before the `getNodeTypes` and
+	 * `getNodeTypeDefinition` cache reads: those answer without ever consulting
+	 * the tier, so a check further down would never be reached on a cache hit.
+	 * Drops only a completed build, so an in-flight one is never discarded.
+	 */
+	private expireStaleUninstalledTier(): void {
+		if (!this.uninstalledParser) return;
+		if (Date.now() - this.uninstalledBuiltAt <= UNINSTALLED_TIER_TTL_MS) return;
+		this.dropUninstalledTier();
+	}
+
 	/** Discard the second tier so the next opt-in request rebuilds it. */
 	private dropUninstalledTier(): void {
 		this.uninstalledParser = undefined;
@@ -381,6 +391,14 @@ export class NodeCatalogService {
 		this.uninstalledCandidates = [];
 		this.uninstalledPromise = undefined;
 		this.uninstalledBuiltAt = 0;
+
+		// getNodeTypes and getNodeTypeDefinition answer from these caches before
+		// they ever consult the tier, so leaving them would keep serving
+		// pre-expiry second-tier definitions for the life of the process. Both
+		// also hold installed-node results, which are cheap to rebuild and are
+		// only discarded on a tier expiry or a node-type reload.
+		this.getCache.clear();
+		this.getDefinitionCache.clear();
 	}
 
 	/**
@@ -434,6 +452,8 @@ export class NodeCatalogService {
 
 	/** Get TypeScript type definitions for nodes, with result caching. */
 	async getNodeTypes(nodeIds: NodeRequest[], options: CatalogScopeOptions = {}): Promise<string> {
+		if (options.includeUninstalled) this.expireStaleUninstalledTier();
+
 		const cacheKey = JSON.stringify([
 			Boolean(options.includeUninstalled),
 			nodeIds.map((id) => (typeof id === 'string' ? id : JSON.stringify(id))).sort(),
@@ -483,6 +503,8 @@ export class NodeCatalogService {
 		options: CatalogScopeOptions = {},
 	): Promise<NodeTypeDefinitionResult> {
 		const includeUninstalled = Boolean(options.includeUninstalled);
+		if (includeUninstalled) this.expireStaleUninstalledTier();
+
 		const cacheKey = JSON.stringify([includeUninstalled, request]);
 		const cached = this.getDefinitionCache.get(cacheKey);
 		if (cached) return cached;

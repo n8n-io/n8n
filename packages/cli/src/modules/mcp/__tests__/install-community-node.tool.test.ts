@@ -117,6 +117,20 @@ describe('install_community_node MCP tool', () => {
 			expect(args.verify).toBe(true);
 		});
 
+		test('takes the version from findVetted, which is what the checksum describes', async () => {
+			// install() resolves the verification checksum through its own findVetted
+			// call and has no per-version fallback, so a version sourced from any
+			// other catalog entry would be verified against the wrong checksum.
+			communityNodeTypesService.getCommunityNodeType.mockResolvedValue(
+				catalogEntry({ npmVersion: '9.9.9' }),
+			);
+
+			await call();
+
+			const [args] = lifecycleService.install.mock.calls[0];
+			expect(args.version).toBe('1.4.2');
+		});
+
 		test('omits credential types when the installed nodes need none', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue({ description: {} } as never);
 

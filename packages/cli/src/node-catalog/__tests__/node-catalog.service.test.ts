@@ -588,6 +588,39 @@ describe('NodeCatalogService', () => {
 			}
 		});
 
+		test('does not serve a cached second-tier definition past the TTL', async () => {
+			// getNodeTypes answers from its own cache before it consults the tier, so
+			// expiring the tier alone would leave pre-refresh definitions readable.
+			const getCommunityNodeTypes = vi
+				.fn()
+				.mockResolvedValue([verifiedEntry('n8n-nodes-firecrawl.firecrawl')]);
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({ getCommunityNodeTypes }),
+			);
+			await service.initialize();
+
+			vi.useFakeTimers();
+			try {
+				vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+				const request = [{ nodeId: 'n8n-nodes-firecrawl.firecrawl' }];
+				await service.getNodeTypes(request, { includeUninstalled: true });
+				expect(getCommunityNodeTypes).toHaveBeenCalledTimes(1);
+
+				// Within the window the cache still answers, no rebuild.
+				await service.getNodeTypes(request, { includeUninstalled: true });
+				expect(getCommunityNodeTypes).toHaveBeenCalledTimes(1);
+
+				// Past it the cached answer must not survive the tier it came from.
+				vi.setSystemTime(new Date('2026-01-01T08:01:00Z'));
+				await service.getNodeTypes(request, { includeUninstalled: true });
+
+				expect(getCommunityNodeTypes).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		describe('findUninstalledNodeTypes', () => {
 			test('names the package that ships an uninstalled node type', async () => {
 				await service.initialize();

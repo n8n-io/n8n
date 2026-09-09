@@ -201,9 +201,12 @@ export const createInstallCommunityNodeTool = (
 			}
 
 			const installedPackage = await communityPackagesLifecycleService.install(
-				// Version comes from the matched entry, not the package-level lookup:
-				// findVetted returns whichever node in the package it saw first.
-				{ name: packageName, version: catalogEntry.npmVersion, verify: true },
+				// Version must come from findVetted, not from the matched entry:
+				// install() resolves the verification checksum through its own
+				// findVetted call and has no per-version fallback, so a version from
+				// any other entry would be checked against a checksum that does not
+				// describe it.
+				{ name: packageName, version: vetted.npmVersion, verify: true },
 				user,
 				'mcp',
 			);
