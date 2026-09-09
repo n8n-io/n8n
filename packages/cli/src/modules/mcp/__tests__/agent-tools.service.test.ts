@@ -697,6 +697,7 @@ describe('McpAgentToolsService', () => {
 				mutateInput({
 					type: 'skill.upsert',
 					skillId: 'skill-1',
+					baseSkillHash: 'skill-hash-0',
 					skill: { name: 'Skill', body: 'v2' },
 				}),
 			);
@@ -707,6 +708,7 @@ describe('McpAgentToolsService', () => {
 				'skill-1',
 				{ name: 'Skill', body: 'v2' },
 				{ user, modifiedBy: 'mcp' },
+				'skill-hash-0',
 			);
 			expect(result.structuredContent).toMatchObject({
 				resource: { type: 'skill', id: 'skill-1' },

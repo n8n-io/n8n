@@ -1703,6 +1703,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({
 				ok: true,
 				id: 'skill_create_tickets',
+				skillHash: expect.stringMatching(/^[a-f0-9]{64}$/),
 				skill: {
 					name: 'Create tickets',
 					description: 'Use when creating or updating tickets',
@@ -1742,6 +1743,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({
 				ok: true,
 				id: 'skill_create_tickets',
+				skillHash: expect.any(String),
 				skill: {
 					name: 'Create tickets',
 					description: 'Use when creating or updating tickets',
@@ -1858,7 +1860,10 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool).toBeDefined();
 			if (!tool) throw new Error('Expected update_skill tool');
 
-			const result = await tool.handler!({ skillId: 'skill_create_tickets', updates }, ctx);
+			const result = await tool.handler!(
+				{ skillId: 'skill_create_tickets', baseSkillHash: 'skill-hash-0', updates },
+				ctx,
+			);
 
 			expect(agentsService.updateSkill).toHaveBeenCalledWith(
 				agentId,
@@ -1866,6 +1871,7 @@ describe('AgentsBuilderToolsService', () => {
 				'skill_create_tickets',
 				updates,
 				{ user, modifiedBy: 'builder' },
+				'skill-hash-0',
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -1898,6 +1904,7 @@ describe('AgentsBuilderToolsService', () => {
 			await tool.handler!(
 				{
 					skillId: 'skill_create_tickets',
+					baseSkillHash: 'skill-hash-0',
 					updates: { allowedTools: null, references: null },
 				},
 				ctx,
@@ -1909,20 +1916,23 @@ describe('AgentsBuilderToolsService', () => {
 				'skill_create_tickets',
 				{ allowedTools: undefined, references: undefined },
 				{ user, modifiedBy: 'builder' },
+				'skill-hash-0',
 			);
 
 			const inputSchema = tool.inputSchema as unknown as {
 				safeParse: (input: unknown) => { success: boolean };
 			};
+			const baseInput = { skillId: 'skill_create_tickets', baseSkillHash: 'skill-hash-0' };
+			expect(inputSchema.safeParse({ ...baseInput, updates: { allowedTools: [] } }).success).toBe(
+				false,
+			);
+			expect(inputSchema.safeParse({ ...baseInput, updates: {} }).success).toBe(false);
 			expect(
 				inputSchema.safeParse({
 					skillId: 'skill_create_tickets',
-					updates: { allowedTools: [] },
+					updates: { instructions: 'Updated' },
 				}).success,
 			).toBe(false);
-			expect(inputSchema.safeParse({ skillId: 'skill_create_tickets', updates: {} }).success).toBe(
-				false,
-			);
 		});
 
 		it('soft-fails without a config mutation marker when the skill cannot be updated', async () => {

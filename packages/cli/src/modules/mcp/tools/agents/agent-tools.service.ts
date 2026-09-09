@@ -54,7 +54,7 @@ import { listMcpServerTools } from '@/modules/agents/json-config/mcp-client-fact
 import { sanitizeUnknownAgentCredentials } from '@/modules/agents/json-config/sanitize-unknown-agent-credentials';
 import { filterOfferedAgentModelProviders } from '@/modules/agents/model-catalog';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
-import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
+import { getAgentConfigHash, getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
@@ -260,6 +260,12 @@ const mutationOperationSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('skill.upsert'),
 		skillId: z.string().optional(),
+		baseSkillHash: z
+			.string()
+			.optional()
+			.describe(
+				'skillHashes[skillId] from get_agent; when set, the replace is rejected if the skill changed since',
+			),
 		skill: agentSkillSchema,
 	}),
 	z.object({ type: z.literal('skill.delete'), skillId: z.string().min(1) }),
@@ -1099,6 +1105,9 @@ export class McpAgentToolsService {
 			isRunnable: runnable.missing.length === 0,
 			missing: runnable.missing,
 			skills,
+			skillHashes: Object.fromEntries(
+				Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
+			),
 			tasks: tasks.map((task) => ({ ...task, enabled: taskEnabled.get(task.id) ?? false })),
 			customTools: Object.entries(agent.tools ?? {}).map(([id, tool]) => ({
 				id,
@@ -1359,6 +1368,7 @@ export class McpAgentToolsService {
 						operation.skillId,
 						operation.skill,
 						telemetryContext,
+						operation.baseSkillHash,
 					);
 					return { resource: { type: 'skill', id: result.id } };
 				} else {
