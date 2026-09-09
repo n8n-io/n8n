@@ -214,7 +214,7 @@ onBeforeUnmount(() => {
 						v-if="icon?.type === 'icon'"
 						:icon="icon.value"
 						:class="[$style['item-leading'], $style.icon]"
-						:color="disabled ? 'text-xlight' : destructive ? undefined : 'text-light'"
+						:color="disabled ? 'text-xlight' : 'text-light'"
 						size="large"
 					/>
 					<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
@@ -234,7 +234,7 @@ onBeforeUnmount(() => {
 				<Icon
 					icon="chevron-right"
 					:class="$style['sub-indicator']"
-					:color="disabled ? 'text-xlight' : destructive ? undefined : 'text-light'"
+					:color="disabled ? 'text-xlight' : 'text-light'"
 					size="large"
 				/>
 			</DropdownMenuSubTrigger>
