@@ -249,6 +249,11 @@ export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInst
 export const createInternalOperationTraceContext: typeof LangsmithTracingMod.createInternalOperationTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInternalOperationTraceContext);
 
+export { traceSandboxOperation } from './tracing/sandbox-tracing';
+
+export const withSandboxLifecycleTrace: typeof LangsmithTracingMod.withSandboxLifecycleTrace =
+	lazyFunction(() => loadLangsmithTracing().withSandboxLifecycleTrace);
+
 export const createTraceReplayOnlyContext: typeof LangsmithTracingMod.createTraceReplayOnlyContext =
 	lazyFunction(() => loadLangsmithTracing().createTraceReplayOnlyContext);
 

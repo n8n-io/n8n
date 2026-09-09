@@ -34,6 +34,7 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
+import { traceSandboxOperation, sandboxFileBytes } from '../tracing/sandbox-tracing';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
 import {
 	isLinkWorkspaceSdkEnabled,
@@ -74,7 +75,7 @@ export class SandboxWorkspaceSetupError extends Error {
 
 async function setupStep<T>(step: SandboxWorkspaceSetupStep, action: () => Promise<T>): Promise<T> {
 	try {
-		return await action();
+		return await traceSandboxOperation(step, {}, action);
 	} catch (error) {
 		throw new SandboxWorkspaceSetupError(step, error);
 	}
@@ -314,35 +315,52 @@ async function writeWorkspaceFiles(
 	root: string,
 	files: Map<string, string>,
 ): Promise<void> {
-	const filesystem = workspace.filesystem;
-	if (filesystem) {
-		// `writeFile` only creates parent dirs as a side-effect of writing a file.
-		await Promise.all(
-			ALWAYS_PRESENT_DIRS.map(
-				async (dir) =>
-					await createWorkspaceDirectory(workspace, filesystem, joinWorkspacePath(root, dir)),
-			),
-		);
-		await Promise.all(
-			[...files].map(
-				async ([path, content]) =>
-					await writeWorkspaceFile(workspace, filesystem, joinWorkspacePath(root, path), content),
-			),
-		);
-		return;
-	}
+	return await traceSandboxOperation(
+		'write-files',
+		{
+			kind: 'batch',
+			inputs: {
+				fileCount: files.size,
+				bytes: [...files.values()].reduce((sum, content) => sum + sandboxFileBytes(content), 0),
+			},
+		},
+		async () => {
+			const filesystem = workspace.filesystem;
+			if (filesystem) {
+				// `writeFile` only creates parent dirs as a side-effect of writing a file.
+				await Promise.all(
+					ALWAYS_PRESENT_DIRS.map(
+						async (dir) =>
+							await createWorkspaceDirectory(workspace, filesystem, joinWorkspacePath(root, dir)),
+					),
+				);
+				await Promise.all(
+					[...files].map(
+						async ([path, content]) =>
+							await writeWorkspaceFile(
+								workspace,
+								filesystem,
+								joinWorkspacePath(root, path),
+								content,
+							),
+					),
+				);
+				return;
+			}
 
-	const dirList = ALWAYS_PRESENT_DIRS.map(
-		(dir) => `'${escapeSingleQuotes(joinWorkspacePath(root, dir))}'`,
-	).join(' ');
-	const result = await runInSandbox(workspace, `mkdir -p ${dirList}`);
-	if (result.exitCode !== 0) {
-		throw new Error(`Sandbox setup failed: ${result.stderr}`);
-	}
+			const dirList = ALWAYS_PRESENT_DIRS.map(
+				(dir) => `'${escapeSingleQuotes(joinWorkspacePath(root, dir))}'`,
+			).join(' ');
+			const result = await runInSandbox(workspace, `mkdir -p ${dirList}`);
+			if (result.exitCode !== 0) {
+				throw new Error(`Sandbox setup failed: ${result.stderr}`);
+			}
 
-	for (const [path, content] of files) {
-		await writeFileViaSandbox(workspace, joinWorkspacePath(root, path), content);
-	}
+			for (const [path, content] of files) {
+				await writeFileViaSandbox(workspace, joinWorkspacePath(root, path), content);
+			}
+		},
+	);
 }
 
 type WorkspaceFilesystem = NonNullable<SandboxWorkspace['filesystem']>;
@@ -378,7 +396,11 @@ async function writeWorkspaceFile(
 		await filesystem.writeFile(path, content, { recursive: true });
 	} catch (error) {
 		try {
-			await writeFileViaSandbox(workspace, path, content);
+			await traceSandboxOperation(
+				'file-command-fallback',
+				{ inputs: { path } },
+				async () => await writeFileViaSandbox(workspace, path, content),
+			);
 		} catch (fallbackError) {
 			throw new Error(
 				`Failed to write sandbox workspace file "${path}": ${getErrorMessage(error)}; command fallback failed: ${getErrorMessage(fallbackError)}`,
@@ -432,86 +454,110 @@ export async function setupSandboxWorkspace(
 	workspace: SandboxWorkspace,
 	context: InstanceAiContext,
 ): Promise<boolean> {
-	const root = await setupStep(
-		'resolve-workspace-root',
-		async () => await getWorkspaceRoot(workspace),
-	);
-	const markerFile = joinWorkspacePath(root, '.sandbox-initialized');
+	return await traceSandboxOperation(
+		'initialize-workspace',
+		{ processResult: (initialized) => ({ outputs: { initialized, reused: !initialized } }) },
+		async () => {
+			const root = await setupStep(
+				'resolve-workspace-root',
+				async () => await getWorkspaceRoot(workspace),
+			);
+			const markerFile = joinWorkspacePath(root, '.sandbox-initialized');
 
-	// Check marker file for idempotency
-	const marker = await setupStep(
-		'read-initialization-marker',
-		async () => await readWorkspaceFile(workspace, markerFile),
-	);
-	if (marker !== null) {
-		await materializeKnowledgeBaseStep(workspace, root, context);
-		return false;
-	}
-
-	// ── Collect all files ──────────────────────────────────────────────────
-
-	const files = new Map<string, string>();
-
-	files.set('package.json', PACKAGE_JSON);
-	files.set('tsconfig.json', TSCONFIG_JSON);
-	files.set('build.mjs', BUILD_MJS);
-
-	// Node types catalog
-	const nodeTypes = await setupStep(
-		'list-node-types',
-		async () => await context.nodeService.listSearchable(),
-	);
-	const catalogLines = nodeTypes.map(formatNodeCatalogLine);
-	files.set('node-types/index.txt', catalogLines.join('\n'));
-
-	// Existing workflows as JSON (fetch in parallel)
-	try {
-		const { workflows } = await context.workflowService.list({ limit: 100 });
-		const results = await Promise.allSettled(
-			workflows.map(async (summary) => {
-				const detail = await context.workflowService.get(summary.id);
-				return { id: summary.id, json: JSON.stringify(detail, null, 2) };
-			}),
-		);
-		for (const r of results) {
-			if (r.status === 'fulfilled') {
-				files.set(`workflows/${r.value.id}.json`, r.value.json);
+			// Check marker file for idempotency
+			const marker = await setupStep(
+				'read-initialization-marker',
+				async () => await readWorkspaceFile(workspace, markerFile),
+			);
+			if (marker !== null) {
+				await materializeKnowledgeBaseStep(workspace, root, context);
+				return false;
 			}
-		}
-	} catch {
-		// Workflow listing failed — continue without syncing
-	}
 
-	// ── Write workspace files ──────────────────────────────────────────────
+			// ── Collect all files ──────────────────────────────────────────────────
 
-	await setupStep(
-		'write-workspace-files',
-		async () => await writeWorkspaceFiles(workspace, root, files),
+			const files = new Map<string, string>();
+
+			files.set('package.json', PACKAGE_JSON);
+			files.set('tsconfig.json', TSCONFIG_JSON);
+			files.set('build.mjs', BUILD_MJS);
+
+			// Node types catalog
+			const nodeTypes = await setupStep(
+				'list-node-types',
+				async () => await context.nodeService.listSearchable(),
+			);
+			const catalogLines = nodeTypes.map(formatNodeCatalogLine);
+			files.set('node-types/index.txt', catalogLines.join('\n'));
+
+			// Existing workflows as JSON (fetch in parallel)
+			try {
+				await traceSandboxOperation(
+					'sync-workflows',
+					{
+						processResult: (counts) => ({
+							outputs: counts,
+							metadata: { final_status: counts.failed > 0 ? 'partial' : 'completed' },
+						}),
+					},
+					async () => {
+						const { workflows } = await context.workflowService.list({ limit: 100 });
+						const results = await Promise.allSettled(
+							workflows.map(async (summary) => {
+								const detail = await context.workflowService.get(summary.id);
+								return { id: summary.id, json: JSON.stringify(detail, null, 2) };
+							}),
+						);
+						for (const r of results) {
+							if (r.status === 'fulfilled') {
+								files.set(`workflows/${r.value.id}.json`, r.value.json);
+							}
+						}
+						return {
+							requested: workflows.length,
+							synced: results.filter((r) => r.status === 'fulfilled').length,
+							failed: results.filter((r) => r.status === 'rejected').length,
+						};
+					},
+				);
+			} catch {
+				// Workflow listing failed — continue without syncing
+			}
+
+			// ── Write workspace files ──────────────────────────────────────────────
+
+			await setupStep(
+				'write-workspace-files',
+				async () => await writeWorkspaceFiles(workspace, root, files),
+			);
+			await materializeKnowledgeBaseStep(workspace, root, context);
+
+			// npm install (must run after package.json is in place)
+			await setupStep('install-dependencies', async () => {
+				const npmResult = await runInSandbox(workspace, `npm install ${NPM_INSTALL_FLAGS}`, root);
+				if (npmResult.exitCode !== 0) {
+					throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
+				}
+			});
+
+			if (isLinkWorkspaceSdkEnabled()) {
+				await setupStep(
+					'link-workspace-sdk',
+					async () => await linkWorkspaceSdkIfEnabled(workspace, root, context.logger),
+				);
+			}
+
+			await setupStep(
+				'write-initialization-marker',
+				async () =>
+					await writeWorkspaceFiles(
+						workspace,
+						root,
+						new Map([['.sandbox-initialized', new Date().toISOString()]]),
+					),
+			);
+
+			return true;
+		},
 	);
-	await materializeKnowledgeBaseStep(workspace, root, context);
-
-	// npm install (must run after package.json is in place)
-	await setupStep('install-dependencies', async () => {
-		const npmResult = await runInSandbox(workspace, `npm install ${NPM_INSTALL_FLAGS}`, root);
-		if (npmResult.exitCode !== 0) {
-			throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
-		}
-	});
-
-	await setupStep(
-		'link-workspace-sdk',
-		async () => await linkWorkspaceSdkIfEnabled(workspace, root, context.logger),
-	);
-
-	await setupStep(
-		'write-initialization-marker',
-		async () =>
-			await writeWorkspaceFiles(
-				workspace,
-				root,
-				new Map([['.sandbox-initialized', new Date().toISOString()]]),
-			),
-	);
-
-	return true;
 }

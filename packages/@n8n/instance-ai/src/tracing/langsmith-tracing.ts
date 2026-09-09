@@ -1,6 +1,7 @@
 import {
 	LangSmithTelemetry,
 	Telemetry,
+	isAbortError,
 	type AttributeValue,
 	type BuiltTelemetry,
 	type BuiltTool,
@@ -19,6 +20,7 @@ import {
 import type { Context as OtelContext, Span as OtelApiSpan } from '@opentelemetry/api';
 import { Client } from 'langsmith';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join, parse } from 'node:path';
@@ -723,6 +725,7 @@ interface CurrentTraceSpanOptions<T = unknown> {
 	metadata?: Record<string, unknown>;
 	inputs?: unknown;
 	processOutputs?: (result: T) => unknown;
+	processResult?: (result: T) => InstanceAiTraceRunFinishOptions;
 }
 
 type NativeToolContext = ToolContext | InterruptibleToolContext;
@@ -904,7 +907,7 @@ export async function withCurrentTraceSpan<T>(
 	fn: () => Promise<T>,
 ): Promise<T> {
 	const currentProductTrace = getCurrentProductTrace();
-	if (!currentProductTrace) {
+	if (!currentProductTrace || currentProductTrace.runtime.shutdown) {
 		return await fn();
 	}
 
@@ -919,7 +922,7 @@ export async function withCurrentTraceSpan<T>(
 			canonicalName: options.canonicalName,
 			runType: options.runType ?? 'chain',
 			tags: options.tags,
-			metadata: options.metadata,
+			metadata: mergeMetadata(currentProductTrace.currentRun.metadata, options.metadata),
 			inputs: options.inputs,
 			parentRun: currentProductTrace.currentRun,
 			...(activeParentContext ? { parentContext: activeParentContext } : {}),
@@ -930,15 +933,23 @@ export async function withCurrentTraceSpan<T>(
 
 	try {
 		const result = await withProductSpanContextBestEffort(currentProductTrace.runtime, spanRun, fn);
+		let finish: InstanceAiTraceRunFinishOptions = {};
+		try {
+			finish = options.processResult?.(result) ?? {
+				...(options.processOutputs ? { outputs: options.processOutputs(result) } : {}),
+			};
+		} catch {
+			// Trace serialization must not change the operation result.
+		}
 		await finishProductSpanBestEffort(currentProductTrace.runtime, spanRun, {
-			...(options.processOutputs ? { outputs: options.processOutputs(result) } : {}),
-			metadata: { final_status: 'completed' },
+			...finish,
+			metadata: { final_status: finish.error ? 'error' : 'completed', ...finish.metadata },
 		});
 		return result;
 	} catch (error) {
 		await finishProductSpanBestEffort(currentProductTrace.runtime, spanRun, {
 			error: getErrorMessage(error),
-			metadata: { final_status: 'error' },
+			metadata: { final_status: isAbortError(error) ? 'cancelled' : 'error' },
 		});
 		throw error;
 	}
@@ -1870,7 +1881,75 @@ export async function continueInstanceAiTraceContext(
 export async function createInternalOperationTraceContext(
 	options: CreateInternalOperationTraceContextOptions,
 ): Promise<InstanceAiTraceContext | undefined> {
-	if (!isInternalOperationTracingEnabled() || !isLangSmithTracingEnabled(!!options.proxyConfig)) {
+	if (!isInternalOperationTracingEnabled()) return undefined;
+	return await createOperationTraceContext(options);
+}
+
+export async function withSandboxLifecycleTrace<T>(
+	threadId: string,
+	operation: string,
+	inputs: Record<string, unknown>,
+	fn: () => Promise<T>,
+	resolveConfig?: () => Promise<{ userId: string; proxyConfig?: ServiceProxyConfig }>,
+): Promise<T> {
+	const current = getCurrentProductTrace();
+	if (current && !current.runtime.shutdown && current.currentRun.metadata?.thread_id === threadId) {
+		return await withCurrentTraceSpan(
+			{
+				name: `sandbox: ${operation}`,
+				canonicalName: `instance-ai.sandbox.${operation}`,
+				tags: ['sandbox'],
+				metadata: { sandbox_operation: operation },
+				inputs,
+			},
+			fn,
+		);
+	}
+
+	// Timers must not reuse the turn context that scheduled them.
+	let tracing: InstanceAiTraceContext | undefined;
+	try {
+		if (isLangSmithTracingEnabled(true)) {
+			const config = await resolveConfig?.();
+			tracing = await createOperationTraceContext({
+				threadId,
+				runId: randomUUID(),
+				userId: config?.userId ?? 'system',
+				proxyConfig: config?.proxyConfig,
+				operationName: `sandbox.${operation}`,
+				metadata: { sandbox_operation: operation },
+				input: inputs,
+			});
+		}
+	} catch {
+		// Trace configuration must not prevent cleanup.
+	}
+	if (!tracing) return await fn();
+
+	try {
+		const result = await tracing.withActiveSpan(tracing.rootRun, fn);
+		try {
+			await tracing.finishRun(tracing.rootRun, { metadata: { final_status: 'completed' } });
+		} catch {
+			// Export failures must not change the cleanup result.
+		}
+		return result;
+	} catch (error) {
+		try {
+			await tracing.failRun(tracing.rootRun, error);
+		} catch {
+			// Preserve the cleanup error.
+		}
+		throw error;
+	} finally {
+		releaseTraceClient(tracing.rootRun.traceId);
+	}
+}
+
+async function createOperationTraceContext(
+	options: CreateInternalOperationTraceContextOptions,
+): Promise<InstanceAiTraceContext | undefined> {
+	if (!isLangSmithTracingEnabled(!!options.proxyConfig)) {
 		return undefined;
 	}
 

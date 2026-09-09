@@ -9,6 +9,13 @@ vi.mock('@n8n/instance-ai', () => ({
 	createSandbox: vi.fn(),
 	createWorkspace: vi.fn(),
 	setupSandboxWorkspace: vi.fn(),
+	traceSandboxOperation: vi.fn(
+		async <T>(_operation: string, _options: unknown, fn: () => Promise<T>) => await fn(),
+	),
+	withSandboxLifecycleTrace: vi.fn(
+		async <T>(_threadId: string, _operation: string, _inputs: unknown, fn: () => Promise<T>) =>
+			await fn(),
+	),
 }));
 
 import {

@@ -7,6 +7,9 @@ import {
 	createSandbox,
 	createWorkspace,
 	setupSandboxWorkspace,
+	traceSandboxOperation,
+	withSandboxLifecycleTrace,
+	type ServiceProxyConfig,
 	type InstanceAiContext,
 	type Logger,
 	type ManagedBackgroundTask,
@@ -164,6 +167,9 @@ export type InstanceAiSandboxServiceOptions = {
 	backgroundTasks: InstanceAiSandboxBackgroundTasks;
 	settingsService: InstanceAiSandboxSettings;
 	aiService: InstanceAiSandboxProxy;
+	resolveTracingConfig?: (
+		threadId: string,
+	) => Promise<{ userId: string; proxyConfig?: ServiceProxyConfig }>;
 };
 
 /**
@@ -323,46 +329,74 @@ export class InstanceAiSandboxService {
 		threadId: string,
 		user: User,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const cacheGeneration = this.cacheGeneration;
-		const cacheState = await this.resolveSandboxCacheState(user);
-		if (cacheGeneration !== this.cacheGeneration) {
-			return await this.getOrCreateWorkspaceEntry(threadId, user);
-		}
-		const existing = this.sandboxes.get(threadId);
-		if (existing) {
-			if (
-				existing.configFingerprint !== cacheState.fingerprint ||
-				(this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId))
-			) {
-				this.evictSandboxEntry(threadId, existing);
-			} else {
-				this.touchSandboxEntry(threadId, existing);
-				return existing;
-			}
-		}
+		let outcome = 'acquired';
+		return await traceSandboxOperation(
+			'acquire',
+			{
+				inputs: { threadId },
+				processResult: (entry) => ({
+					outputs: {
+						outcome: entry ? outcome : 'disabled',
+						sandboxId: entry?.sandbox.id,
+						provider: entry?.sandbox.provider,
+					},
+				}),
+			},
+			async () => {
+				const cacheGeneration = this.cacheGeneration;
+				const cacheState = await traceSandboxOperation(
+					'resolve-config',
+					{ inputs: { threadId } },
+					async () => await this.resolveSandboxCacheState(user),
+				);
+				if (cacheGeneration !== this.cacheGeneration) {
+					return await this.getOrCreateWorkspaceEntry(threadId, user);
+				}
+				const existing = this.sandboxes.get(threadId);
+				if (existing) {
+					if (
+						existing.configFingerprint !== cacheState.fingerprint ||
+						(this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId))
+					) {
+						this.evictSandboxEntry(
+							threadId,
+							existing,
+							existing.configFingerprint !== cacheState.fingerprint ? 'config_changed' : 'idle',
+						);
+					} else {
+						this.touchSandboxEntry(threadId, existing);
+						outcome = 'cached';
+						return existing;
+					}
+				}
 
-		const pending = this.sandboxCreations.get(threadId);
-		if (pending?.fingerprint === cacheState.fingerprint) return await pending.promise;
+				const pending = this.sandboxCreations.get(threadId);
+				if (pending?.fingerprint === cacheState.fingerprint) {
+					outcome = 'shared_acquisition';
+					return await pending.promise;
+				}
 
-		const creation = this.createWorkspaceEntry(threadId, user, cacheState);
-		const pendingCreation = { fingerprint: cacheState.fingerprint, promise: creation };
-		this.sandboxCreations.set(threadId, pendingCreation);
-		try {
-			const entry = await creation;
-			if (
-				entry &&
-				cacheGeneration === this.cacheGeneration &&
-				this.sandboxCreations.get(threadId) === pendingCreation
-			) {
-				this.sandboxes.set(threadId, entry);
-				this.scheduleSandboxExpiry(threadId, entry);
-			}
-			return entry;
-		} finally {
-			if (this.sandboxCreations.get(threadId) === pendingCreation) {
-				this.sandboxCreations.delete(threadId);
-			}
-		}
+				const creation = this.createWorkspaceEntry(threadId, user, cacheState);
+				const pendingCreation = { fingerprint: cacheState.fingerprint, promise: creation };
+				this.sandboxCreations.set(threadId, pendingCreation);
+				try {
+					const entry = await creation;
+					if (
+						entry &&
+						cacheGeneration === this.cacheGeneration &&
+						this.sandboxCreations.get(threadId) === pendingCreation
+					) {
+						this.sandboxes.set(threadId, entry);
+						this.scheduleSandboxExpiry(threadId, entry);
+					}
+					return entry;
+				} finally {
+					if (this.sandboxCreations.get(threadId) === pendingCreation) {
+						this.sandboxCreations.delete(threadId);
+					}
+				}
+			},
+		);
 	}
 
 	/** Get or create the shared runtime sandbox + workspace for a thread. */
@@ -412,10 +446,18 @@ export class InstanceAiSandboxService {
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
 		try {
-			await workspace.init();
+			await traceSandboxOperation(
+				'start',
+				{ inputs: { threadId, sandboxId: sandbox.id, provider: sandbox.provider } },
+				async () => await workspace.init(),
+			);
 		} catch (error) {
 			try {
-				await workspace.destroy();
+				await traceSandboxOperation(
+					'cleanup-failed-start',
+					{ inputs: { threadId, sandboxId: sandbox.id } },
+					async () => await workspace.destroy(),
+				);
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
 			}
@@ -464,7 +506,11 @@ export class InstanceAiSandboxService {
 		}
 	}
 
-	private evictSandboxEntry(threadId: string, entry: RuntimeSandboxEntry): void {
+	private evictSandboxEntry(
+		threadId: string,
+		entry: RuntimeSandboxEntry,
+		reason = 'settings_changed',
+	): void {
 		if (this.sandboxes.get(threadId) !== entry) return;
 
 		this.sandboxes.delete(threadId);
@@ -472,6 +518,21 @@ export class InstanceAiSandboxService {
 			clearTimeout(entry.cleanupTimer);
 			entry.cleanupTimer = undefined;
 		}
+		void withSandboxLifecycleTrace(
+			threadId,
+			'evict-cache',
+			{
+				reason,
+				sandboxId: entry.sandbox.id,
+				provider: entry.sandbox.provider,
+				occurredAt: new Date().toISOString(),
+				remoteDestroyed: false,
+			},
+			async () => {},
+			this.lifecycleTraceConfig(threadId),
+		).catch(() => {
+			// Cache eviction does not depend on trace delivery.
+		});
 	}
 
 	/** Destroy and remove the shared runtime workspace for a thread. */
@@ -482,9 +543,15 @@ export class InstanceAiSandboxService {
 			return;
 		}
 
-		this.evictSandboxEntry(threadId, entry);
+		this.evictSandboxEntry(threadId, entry, reason);
 		try {
-			await entry.workspace?.destroy();
+			await withSandboxLifecycleTrace(
+				threadId,
+				'destroy',
+				{ reason, sandboxId: entry.sandbox.id, provider: entry.sandbox.provider },
+				async () => await entry.workspace.destroy(),
+				this.lifecycleTraceConfig(threadId),
+			);
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
 				threadId,
@@ -503,24 +570,38 @@ export class InstanceAiSandboxService {
 	 */
 	private async destroyUncachedSandbox(threadId: string, reason: string): Promise<void> {
 		try {
-			const base = this.getSandboxConfigFromEnv();
-			if (!base.enabled || base.provider !== 'n8n-sandbox') return;
-
-			const settings = await this.options.settingsService.resolveN8nSandboxConfig();
-			const config = withThreadScopedSandboxIdentity(
-				{
-					...base,
-					serviceUrl: settings.serviceUrl ?? base.serviceUrl,
-					apiKey: settings.apiKey ?? base.apiKey,
-				},
+			await withSandboxLifecycleTrace(
 				threadId,
+				'destroy',
+				{ reason, cached: false },
+				async () => {
+					const base = this.getSandboxConfigFromEnv();
+					if (!base.enabled || base.provider !== 'n8n-sandbox') return;
+
+					const settings = await this.options.settingsService.resolveN8nSandboxConfig();
+					const config = withThreadScopedSandboxIdentity(
+						{
+							...base,
+							serviceUrl: settings.serviceUrl ?? base.serviceUrl,
+							apiKey: settings.apiKey ?? base.apiKey,
+						},
+						threadId,
+					);
+					// Constructing the adapter makes no remote calls; destroy() issues the delete.
+					const sandbox = await createSandbox(config, {
+						logger: this.logger,
+						errorReporter: this.options.errorReporter,
+					});
+					await traceSandboxOperation(
+						'destroy-remote',
+						{
+							inputs: { sandboxId: sandbox?.id, provider: base.provider },
+						},
+						async () => await sandbox?.destroy?.(),
+					);
+				},
+				this.lifecycleTraceConfig(threadId),
 			);
-			// Constructing the adapter makes no remote calls; destroy() issues the delete.
-			const sandbox = await createSandbox(config, {
-				logger: this.logger,
-				errorReporter: this.options.errorReporter,
-			});
-			await sandbox?.destroy?.();
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
 				threadId,
@@ -528,6 +609,11 @@ export class InstanceAiSandboxService {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
+	}
+
+	private lifecycleTraceConfig(threadId: string) {
+		const resolve = this.options.resolveTracingConfig;
+		return resolve ? async () => await resolve(threadId) : undefined;
 	}
 
 	private get sandboxTtlMs(): number {
@@ -572,7 +658,7 @@ export class InstanceAiSandboxService {
 				this.touchSandboxEntry(threadId, entry);
 				return;
 			}
-			this.evictSandboxEntry(threadId, entry);
+			this.evictSandboxEntry(threadId, entry, 'idle');
 		}, delay);
 		entry.cleanupTimer.unref();
 	}

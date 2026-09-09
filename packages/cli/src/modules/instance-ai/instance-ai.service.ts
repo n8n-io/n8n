@@ -896,6 +896,12 @@ export class InstanceAiService {
 			backgroundTasks: this.backgroundTasks,
 			settingsService: this.settingsService,
 			aiService: this.aiService,
+			resolveTracingConfig: async (threadId) => {
+				const thread = await this.agentMemory.getThread(threadId);
+				if (!thread) return { userId: 'system' };
+				const { tracingProxyConfig } = await this.createProxyRunConfig({ id: thread.resourceId });
+				return { userId: thread.resourceId, proxyConfig: tracingProxyConfig };
+			},
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
 			// The terminal guard and outcome-replay dedup must see the run's events
@@ -942,7 +948,7 @@ export class InstanceAiService {
 		this.liveness.start();
 	}
 
-	private async createProxyRunConfig(user: User): Promise<{
+	private async createProxyRunConfig(user: Pick<User, 'id'>): Promise<{
 		searchProxyConfig?: ServiceProxyConfig;
 		tracingProxyConfig?: ServiceProxyConfig;
 		tokenManager?: ProxyTokenManager;
