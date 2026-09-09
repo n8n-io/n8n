@@ -18,6 +18,7 @@ export default {
 	'generic.close': 'Close',
 	'generic.moreInfo': 'More info',
 	'generic.delete': 'Delete',
+	'menuItem.new': 'New',
 	'aiModelSelector.credentialsMissing': 'Credentials missing',
 	'nds.auth.roles.owner': 'Owner',
 	'nds.userInfo.you': '(you)',

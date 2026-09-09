@@ -13,6 +13,7 @@ describe('components', function describeComponents() {
 				});
 
 				expect(screen.getByText('Default badge')).toBeVisible();
+				expect(wrapper.container.firstElementChild).toHaveClass('n8n-badge');
 				expect(wrapper.html()).toMatchSnapshot();
 			});
 
@@ -45,6 +46,7 @@ describe('components', function describeComponents() {
 					'type',
 					'button',
 				);
+				expect(screen.getByRole('button', { name: 'Clickable badge' })).toHaveClass('n8n-badge');
 				expect(wrapper.html()).toMatchSnapshot();
 			});
 		});

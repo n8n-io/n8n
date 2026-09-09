@@ -20,6 +20,28 @@ const createMenuItem = (overrides: Partial<IMenuItem> = {}): IMenuItem => ({
 });
 
 describe('N8nMenuItem', () => {
+	it('renders the New label as a badge', function testNewBadge() {
+		const { getByText, container } = render(N8nMenuItem, {
+			props: { item: createMenuItem({ new: true }) },
+			global: { stubs },
+		});
+
+		const badge = getByText('New').closest('.n8n-badge');
+		expect(badge).toBeVisible();
+		expect(badge?.tagName).toBe('SPAN');
+		expect(container.querySelector('.n8n-tag')).not.toBeInTheDocument();
+	});
+
+	it('hides the New badge in compact mode', function testCompactNewBadge() {
+		const { queryByText, container } = render(N8nMenuItem, {
+			props: { item: createMenuItem({ new: true }), compact: true },
+			global: { stubs },
+		});
+
+		expect(queryByText('New')).not.toBeInTheDocument();
+		expect(container.querySelector('.n8n-badge')).not.toBeInTheDocument();
+	});
+
 	describe('rendering', () => {
 		it('should render correctly with basic props', () => {
 			const { getByTestId, getByText } = render(N8nMenuItem, {

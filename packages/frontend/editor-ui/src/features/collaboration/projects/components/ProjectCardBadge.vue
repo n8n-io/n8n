@@ -161,7 +161,7 @@ const projectLocation = computed(() => {
 });
 </script>
 <template>
-	<div :class="{ [$style.wrapper]: true, [$style['no-border']]: showBadgeBorder }" v-bind="$attrs">
+	<div :class="$style.wrapper" v-bind="$attrs">
 		<N8nTooltip
 			v-if="badgeText"
 			:disabled="!badgeTooltip || numberOfMembersInHomeTeamProject !== 0"
@@ -169,7 +169,7 @@ const projectLocation = computed(() => {
 		>
 			<N8nBadge
 				:class="[$style.badge, $style.projectBadge, projectLocation && $style.link]"
-				variant="outline"
+				:variant="showBadgeBorder ? 'outline' : 'ghost'"
 				data-test-id="card-badge"
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
@@ -220,6 +220,12 @@ const projectLocation = computed(() => {
 </template>
 
 <style lang="scss" module>
+.wrapper {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+}
+
 .badge {
 	:global(.n8n-text),
 	a {

@@ -136,7 +136,7 @@ defineExpose({
 						<span v-if="isLoading" :class="$style.loading"></span>
 						<N8nBadge
 							v-if="credentialsMissing && !isLoading"
-							theme="danger"
+							variant="danger"
 							size="small"
 							:class="$style.credsBadge"
 						>
@@ -194,9 +194,8 @@ defineExpose({
 				<N8nBadge
 					v-if="item.data?.badgeLabel"
 					:class="$style.badge"
-					theme="secondary"
+					variant="secondary"
 					size="xsmall"
-					:show-border="false"
 				>
 					{{ item.data.badgeLabel }}
 				</N8nBadge>
