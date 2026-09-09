@@ -1,6 +1,10 @@
 import type { IconOrEmoji } from '@n8n/design-system';
 
-/** Who a preference applies to. */
+/**
+ * Who a preference applies to. Not a stored column: the `ai_preference` entity
+ * encodes it as a tri-state over `userId` and `projectId`, and a CHECK constraint
+ * forbids setting both. Derive it with `preferenceScope`.
+ */
 export type PreferenceScopeType = 'user' | 'project' | 'instance';
 
 export interface PreferenceProjectRef {
@@ -9,11 +13,13 @@ export interface PreferenceProjectRef {
 	icon?: IconOrEmoji | null;
 }
 
+/** One `ai_preference` row, as the REST layer is expected to return it. */
 export interface Preference {
 	id: string;
-	text: string;
-	scopeType: PreferenceScopeType;
-	/** Set only when `scopeType` is `project`. */
+	content: string;
+	/** Set when the preference belongs to one user. */
+	userId: string | null;
+	/** Set when the preference belongs to one project. */
 	projectId: string | null;
 	project: PreferenceProjectRef | null;
 	/**
@@ -38,15 +44,14 @@ export interface PreferenceListResponse {
 	data: Preference[];
 }
 
-export interface CreatePreferencePayload {
-	text: string;
-	scopeType: PreferenceScopeType;
-	projectId?: string | null;
-}
-
-export interface UpdatePreferencePayload {
-	text?: string;
-	scopeType?: PreferenceScopeType;
+/**
+ * The client states the scope it wants rather than the columns. It cannot set
+ * `userId` itself: for a personal preference the server uses the acting user.
+ */
+export interface PreferencePayload {
+	content: string;
+	scope: PreferenceScopeType;
+	/** Required when `scope` is `project`, ignored otherwise. */
 	projectId?: string | null;
 }
 

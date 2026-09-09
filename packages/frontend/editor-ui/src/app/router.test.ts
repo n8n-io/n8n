@@ -4,8 +4,9 @@ import { createComponentRenderer } from '@/__tests__/render';
 import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { CONTEXT_PREFERENCES_FLAG } from '@n8n/api-types';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
-import { CONTEXT_PREFERENCES_FLAG } from '@/features/settings/context/context.constants';
+
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';

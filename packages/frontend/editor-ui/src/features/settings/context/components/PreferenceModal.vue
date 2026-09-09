@@ -24,7 +24,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { PREFERENCE_MODAL_KEY, PREFERENCE_TEXT_MAX_LENGTH } from '../context.constants';
 import { useContextStore } from '../context.store';
 import type { Preference, PreferenceScopeType } from '../context.types';
-import { canWriteInstanceScope, canWriteProjectScope } from '../context.utils';
+import { canWriteInstanceScope, canWriteProjectScope, preferenceScope } from '../context.utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -52,22 +52,33 @@ const DEFAULT_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'layer-group' }
 
 function initialScopeValue() {
 	const preference = props.preference;
-	if (!preference || preference.scopeType === 'user') return USER_SCOPE_VALUE;
-	if (preference.scopeType === 'instance') return INSTANCE_SCOPE_VALUE;
-	return preference.projectId ? projectScopeValue(preference.projectId) : USER_SCOPE_VALUE;
+	if (!preference) return USER_SCOPE_VALUE;
+
+	const scope = preferenceScope(preference);
+	if (scope === 'instance') return INSTANCE_SCOPE_VALUE;
+	if (scope === 'project' && preference.projectId) {
+		return projectScopeValue(preference.projectId);
+	}
+	return USER_SCOPE_VALUE;
 }
 
 const form = reactive({
-	text: props.preference?.text ?? '',
+	content: props.preference?.content ?? '',
 	scope: initialScopeValue(),
 });
 
-const textValid = ref(false);
+const contentValid = ref(false);
 
-const textValidationRules: Array<Rule | RuleGroup> = [
+const contentValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'REQUIRED' },
 	{ name: 'MAX_LENGTH', config: { maximum: PREFERENCE_TEXT_MAX_LENGTH } },
 ];
+
+/**
+ * Stored and injected trimmed: the prompt renderer drops a blank preference, so
+ * whitespace-only text would save and then never reach the AI.
+ */
+const trimmedContent = computed(() => form.content.trim());
 
 type ScopeOption = { value: string; label: string; icon: IconOrEmoji; disabled: boolean };
 
@@ -112,12 +123,12 @@ const modalTitle = computed(() =>
 		: i18n.baseText('settings.context.preferences.modal.title.edit'),
 );
 
-const isValid = computed(() => textValid.value);
+const isValid = computed(() => contentValid.value && trimmedContent.value.length > 0);
 
-function parseScope(): { scopeType: PreferenceScopeType; projectId: string | null } {
-	if (form.scope === USER_SCOPE_VALUE) return { scopeType: 'user', projectId: null };
-	if (form.scope === INSTANCE_SCOPE_VALUE) return { scopeType: 'instance', projectId: null };
-	return { scopeType: 'project', projectId: form.scope.slice('project:'.length) };
+function parseScope(): { scope: PreferenceScopeType; projectId: string | null } {
+	if (form.scope === USER_SCOPE_VALUE) return { scope: 'user', projectId: null };
+	if (form.scope === INSTANCE_SCOPE_VALUE) return { scope: 'instance', projectId: null };
+	return { scope: 'project', projectId: form.scope.slice('project:'.length) };
 }
 
 function closeModal() {
@@ -127,28 +138,25 @@ function closeModal() {
 async function handleSubmit() {
 	if (!isValid.value || loading.value) return;
 
-	const { scopeType, projectId } = parseScope();
+	const { scope, projectId } = parseScope();
+	const content = trimmedContent.value;
 
 	try {
 		loading.value = true;
 		if (props.mode === 'new') {
-			await contextStore.createPreference({ text: form.text, scopeType, projectId });
+			await contextStore.createPreference({ content, scope, projectId });
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CREATED_PREFERENCE, {
-				scope_type: scopeType,
-				text_length: form.text.length,
+				scope_type: scope,
+				text_length: content.length,
 				...(projectId ? { project_id: projectId } : {}),
 			});
 		} else if (props.preference) {
-			await contextStore.updatePreference(props.preference.id, {
-				text: form.text,
-				scopeType,
-				projectId,
-			});
+			await contextStore.updatePreference(props.preference.id, { content, scope, projectId });
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
-				scope_type: scopeType,
-				text_length: form.text.length,
+				scope_type: scope,
+				text_length: content.length,
 				scope_changed:
-					scopeType !== props.preference.scopeType || projectId !== props.preference.projectId,
+					scope !== preferenceScope(props.preference) || projectId !== props.preference.projectId,
 				...(projectId ? { project_id: projectId } : {}),
 			});
 		}
@@ -179,8 +187,8 @@ onMounted(() => {
 		<template #content>
 			<div :class="$style.form">
 				<N8nFormInput
-					v-model="form.text"
-					name="text"
+					v-model="form.content"
+					name="content"
 					type="textarea"
 					focus-initially
 					required
@@ -190,9 +198,9 @@ onMounted(() => {
 					:maxlength="PREFERENCE_TEXT_MAX_LENGTH"
 					show-word-limit
 					:validate-on-blur="false"
-					:validation-rules="textValidationRules"
+					:validation-rules="contentValidationRules"
 					data-test-id="preference-modal-text-input"
-					@validate="(value: boolean) => (textValid = value)"
+					@validate="(value: boolean) => (contentValid = value)"
 				/>
 
 				<N8nInputLabel

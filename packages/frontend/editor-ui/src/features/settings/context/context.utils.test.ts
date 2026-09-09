@@ -8,14 +8,15 @@ import type { Preference } from './context.types';
 import {
 	canWriteInstanceScope,
 	canWriteProjectScope,
+	preferenceScope,
 	toPreferencePermissions,
 } from './context.utils';
 
 function preference(overrides: Partial<Preference> = {}): Preference {
 	return {
 		id: 'p1',
-		text: 'Keep replies short.',
-		scopeType: 'user',
+		content: 'Keep replies short.',
+		userId: 'user-1',
 		projectId: null,
 		project: null,
 		scopes: [],
@@ -38,6 +39,25 @@ const initialState = {
 describe('context.utils', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ initialState }));
+	});
+
+	describe('preferenceScope', () => {
+		it('reads a user row from its userId', () => {
+			expect(preferenceScope(preference({ userId: 'user-1', projectId: null }))).toBe('user');
+		});
+
+		it('reads a project row from its projectId', () => {
+			expect(preferenceScope(preference({ userId: null, projectId: 'proj' }))).toBe('project');
+		});
+
+		it('reads a row with neither id as instance-wide', () => {
+			expect(preferenceScope(preference({ userId: null, projectId: null }))).toBe('instance');
+		});
+
+		it('lets projectId win, matching how the prompt renderer groups rows', () => {
+			// A CHECK constraint forbids both, so this only guards against a bad row.
+			expect(preferenceScope(preference({ userId: 'user-1', projectId: 'proj' }))).toBe('project');
+		});
 	});
 
 	describe('toPreferencePermissions', () => {

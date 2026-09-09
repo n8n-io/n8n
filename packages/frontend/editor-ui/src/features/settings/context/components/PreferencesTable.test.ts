@@ -11,8 +11,8 @@ const READ_ONLY = ['preference:read'];
 function preference(overrides: Partial<Preference> = {}): Preference {
 	return {
 		id: 'p1',
-		text: 'Keep replies short.',
-		scopeType: 'user',
+		content: 'Keep replies short.',
+		userId: 'user-1',
 		projectId: null,
 		project: null,
 		scopes: WRITABLE,
@@ -37,8 +37,8 @@ describe('PreferencesTable', () => {
 
 	it('renders one row for each preference', () => {
 		const { getByText } = render([
-			preference({ id: 'a', text: 'First preference' }),
-			preference({ id: 'b', text: 'Second preference' }),
+			preference({ id: 'a', content: 'First preference' }),
+			preference({ id: 'b', content: 'Second preference' }),
 		]);
 
 		expect(getByText('First preference')).toBeInTheDocument();
@@ -47,11 +47,11 @@ describe('PreferencesTable', () => {
 
 	it('labels the scope of each row', () => {
 		const { getAllByTestId } = render([
-			preference({ id: 'a', scopeType: 'user' }),
-			preference({ id: 'b', scopeType: 'instance' }),
+			preference({ id: 'a', userId: 'user-1' }),
+			preference({ id: 'b', userId: null }),
 			preference({
 				id: 'c',
-				scopeType: 'project',
+				userId: null,
 				projectId: 'proj',
 				project: { id: 'proj', name: 'Darwin' },
 			}),

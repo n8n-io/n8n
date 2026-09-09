@@ -1,10 +1,8 @@
-export const CONTEXT_PREFERENCES_FLAG = '111_context_preferences';
-
 export const PREFERENCE_MODAL_KEY = 'preference';
 
 /**
- * Preferences are injected into the assistant system prompt, so this cap is a token
- * guard rather than a storage limit.
+ * `ai_preference.content` is a text column, so this cap is a UI-side token guard
+ * rather than a storage limit. Preferences are injected into AI prompts.
  */
 export const PREFERENCE_TEXT_MAX_LENGTH = 2000;
 

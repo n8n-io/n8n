@@ -7,7 +7,7 @@ import type { TableHeader, TableOptions } from '@n8n/design-system';
 import PreferenceScopeBadge from './PreferenceScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import type { Preference } from '../context.types';
-import { toPreferencePermissions } from '../context.utils';
+import { preferenceScope, toPreferencePermissions } from '../context.utils';
 
 const props = defineProps<{
 	preferences: Preference[];
@@ -41,13 +41,15 @@ const readOnlyHint = computed(() => i18n.baseText('settings.context.preferences.
 const headers = computed<Array<TableHeader<Preference>>>(() => [
 	{
 		title: i18n.baseText('settings.context.preferences.columns.preference'),
-		key: 'text',
+		key: 'content',
 		disableSort: true,
 		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.preferences.columns.scope'),
-		key: 'scopeType',
+		// Not a column on the row: derived from the userId/projectId tri-state.
+		key: 'scope',
+		value: (row) => preferenceScope(row),
 		width: 220,
 		disableSort: true,
 		resize: false,
@@ -84,12 +86,12 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 				<slot name="empty" />
 			</template>
 
-			<template #[`item.text`]="{ item }">
-				<N8nText :class="$style.text">{{ item.text }}</N8nText>
+			<template #[`item.content`]="{ item }">
+				<N8nText :class="$style.text">{{ item.content }}</N8nText>
 			</template>
 
-			<template #[`item.scopeType`]="{ item }">
-				<PreferenceScopeBadge :scope-type="item.scopeType" :project="item.project" />
+			<template #[`item.scope`]="{ item }">
+				<PreferenceScopeBadge :scope-type="preferenceScope(item)" :project="item.project" />
 			</template>
 
 			<template #[`item.actions`]="{ item }">

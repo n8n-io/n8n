@@ -1,8 +1,8 @@
 import { computed } from 'vue';
 
-import { usePostHog } from '@/app/stores/posthog.store';
+import { CONTEXT_PREFERENCES_FLAG } from '@n8n/api-types';
 
-import { CONTEXT_PREFERENCES_FLAG } from '../context.constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 /**
  * Gate for the Context settings surface.

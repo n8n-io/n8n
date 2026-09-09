@@ -23,6 +23,7 @@ import PreferencesTable from '../components/PreferencesTable.vue';
 import { PREFERENCES_DEFAULT_PAGE_SIZE, PREFERENCE_MODAL_KEY } from '../context.constants';
 import { useContextStore } from '../context.store';
 import type { Preference, PreferenceScopeType } from '../context.types';
+import { preferenceScope } from '../context.utils';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -99,7 +100,7 @@ async function onDelete(preference: Preference) {
 
 	try {
 		await contextStore.deletePreference(preference.id);
-		trackDelete('row', [preference.scopeType]);
+		trackDelete('row', [preferenceScope(preference)]);
 		selection.value = selection.value.filter((id) => id !== preference.id);
 		await load();
 		showMessage({
@@ -119,7 +120,10 @@ async function onDeleteSelected() {
 		await contextStore.deletePreferences(ids);
 		trackDelete(
 			'bulk',
-			ids.map((id) => contextStore.preferences.find((row) => row.id === id)?.scopeType),
+			ids.map((id) => {
+				const row = contextStore.preferences.find((candidate) => candidate.id === id);
+				return row ? preferenceScope(row) : undefined;
+			}),
 		);
 		selection.value = [];
 		await load();

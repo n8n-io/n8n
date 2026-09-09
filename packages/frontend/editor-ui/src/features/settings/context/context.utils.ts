@@ -3,7 +3,20 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 
-import type { Preference, PreferencePermissions } from './context.types';
+import type { Preference, PreferencePermissions, PreferenceScopeType } from './context.types';
+
+/**
+ * Reads the scope out of the entity's tri-state, the same way the backend does when
+ * it groups rows for a prompt: a project id wins, then a user id, and a row with
+ * neither applies to the whole instance.
+ */
+export function preferenceScope(
+	row: Pick<Preference, 'userId' | 'projectId'>,
+): PreferenceScopeType {
+	if (row.projectId) return 'project';
+	if (row.userId) return 'user';
+	return 'instance';
+}
 
 /**
  * Maps the row-level scopes the API sends onto the two actions the table offers.

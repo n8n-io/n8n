@@ -121,6 +121,34 @@ describe('PreferenceModal', () => {
 			expect(getByTestId('preference-modal-save-button')).toBeEnabled();
 		});
 
+		it('keeps Save disabled for whitespace-only text', async () => {
+			const { getByTestId } = renderModal({ props: { mode: 'new' }, global, pinia });
+
+			await userEvent.type(
+				getByTestId('preference-modal-text-input').querySelector('textarea')!,
+				'   ',
+			);
+
+			// The prompt renderer drops a blank preference, so it must not be saveable.
+			expect(getByTestId('preference-modal-save-button')).toBeDisabled();
+		});
+
+		it('trims the text it sends', async () => {
+			const { getByTestId } = renderModal({ props: { mode: 'new' }, global, pinia });
+
+			await userEvent.type(
+				getByTestId('preference-modal-text-input').querySelector('textarea')!,
+				'  Keep replies short.  ',
+			);
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			expect(contextStore.createPreference).toHaveBeenCalledWith({
+				content: 'Keep replies short.',
+				scope: 'user',
+				projectId: null,
+			});
+		});
+
 		it('caps the text at the injection budget', () => {
 			const { getByTestId } = renderModal({ props: { mode: 'new' }, global, pinia });
 
@@ -140,8 +168,8 @@ describe('PreferenceModal', () => {
 			await userEvent.click(getByTestId('preference-modal-save-button'));
 
 			expect(contextStore.createPreference).toHaveBeenCalledWith({
-				text: 'Keep replies short.',
-				scopeType: 'user',
+				content: 'Keep replies short.',
+				scope: 'user',
 				projectId: null,
 			});
 		});
@@ -164,8 +192,8 @@ describe('PreferenceModal', () => {
 		it('keeps the project scope when editing a project preference', async () => {
 			const preference: Preference = {
 				id: 'p1',
-				text: 'Use sub-workflows.',
-				scopeType: 'project',
+				content: 'Use sub-workflows.',
+				userId: null,
 				projectId: 'p-write',
 				project: { id: 'p-write', name: 'Writable Project' },
 				scopes: ['preference:read', 'preference:update', 'preference:delete'],
@@ -178,8 +206,8 @@ describe('PreferenceModal', () => {
 			await userEvent.click(getByTestId('preference-modal-save-button'));
 
 			expect(contextStore.updatePreference).toHaveBeenCalledWith('p1', {
-				text: 'Use sub-workflows.',
-				scopeType: 'project',
+				content: 'Use sub-workflows.',
+				scope: 'project',
 				projectId: 'p-write',
 			});
 		});
@@ -187,8 +215,8 @@ describe('PreferenceModal', () => {
 		it('reports an unchanged scope as scope_changed false', async () => {
 			const preference: Preference = {
 				id: 'p1',
-				text: 'Use sub-workflows.',
-				scopeType: 'project',
+				content: 'Use sub-workflows.',
+				userId: null,
 				projectId: 'p-write',
 				project: { id: 'p-write', name: 'Writable Project' },
 				scopes: ['preference:read', 'preference:update', 'preference:delete'],

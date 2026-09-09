@@ -4,12 +4,7 @@ import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import * as api from './context.api';
-import type {
-	CreatePreferencePayload,
-	Preference,
-	PreferenceListQuery,
-	UpdatePreferencePayload,
-} from './context.types';
+import type { Preference, PreferenceListQuery, PreferencePayload } from './context.types';
 
 export const useContextStore = defineStore('context', () => {
 	const rootStore = useRootStore();
@@ -43,11 +38,11 @@ export const useContextStore = defineStore('context', () => {
 		return response.count;
 	}
 
-	async function createPreference(payload: CreatePreferencePayload) {
+	async function createPreference(payload: PreferencePayload) {
 		return await api.createPreference(rootStore.restApiContext, payload);
 	}
 
-	async function updatePreference(id: string, payload: UpdatePreferencePayload) {
+	async function updatePreference(id: string, payload: PreferencePayload) {
 		return await api.updatePreference(rootStore.restApiContext, id, payload);
 	}
 

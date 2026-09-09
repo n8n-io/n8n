@@ -33,8 +33,8 @@ vi.mock('vue-router', () => ({
 function preference(overrides: Partial<Preference> = {}): Preference {
 	return {
 		id: 'p1',
-		text: 'Keep replies short.',
-		scopeType: 'user',
+		content: 'Keep replies short.',
+		userId: 'user-1',
 		projectId: null,
 		project: null,
 		scopes: ['preference:read', 'preference:update', 'preference:delete'],
@@ -124,7 +124,7 @@ describe('SettingsPreferencesView', () => {
 	});
 
 	it('reports a single-row delete', async () => {
-		contextStore.preferences = [preference({ scopeType: 'user' })];
+		contextStore.preferences = [preference({ userId: 'user-1' })];
 		contextStore.count = 1;
 
 		const { getByTestId } = renderView();
