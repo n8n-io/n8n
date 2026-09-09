@@ -3266,8 +3266,11 @@ export class InstanceAiAdapterService {
 				});
 			},
 
-			async getDescription(nodeType: string, version?: number) {
-				const [nodes, gatewayConfig] = await Promise.all([getNodes(), getGatewayConfig()]);
+			async getDescription(nodeType, version, options) {
+				const [nodes, gatewayConfig] = await Promise.all([
+					getNodes(),
+					options?.includeGatewayMetadata === false ? Promise.resolve(null) : getGatewayConfig(),
+				]);
 				let desc =
 					version !== undefined
 						? nodes.find((n) => {
