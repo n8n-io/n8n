@@ -189,21 +189,6 @@ export async function writeWorkspaceFile(
 	);
 }
 
-/** Keep the batch open until all started operations finish. */
-export async function settleWorkspaceOperations(operations: Array<Promise<void>>): Promise<void> {
-	let firstFailure: { error: unknown } | undefined;
-	await Promise.all(
-		operations.map(async (operation) => {
-			try {
-				await operation;
-			} catch (error) {
-				firstFailure ??= { error };
-			}
-		}),
-	);
-	if (firstFailure) throw firstFailure.error;
-}
-
 export async function writeWorkspaceFileMap(
 	workspace: WorkspaceFileTarget,
 	files: Map<string, string>,
@@ -219,7 +204,7 @@ export async function writeWorkspaceFileMap(
 			},
 		},
 		async () => {
-			await settleWorkspaceOperations(
+			await Promise.all(
 				Array.from(files, async ([filePath, content]) => {
 					await writeWorkspaceFile(workspace, filePath, content, options);
 				}),

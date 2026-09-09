@@ -29,7 +29,7 @@ const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
 const SENSITIVE_TELEMETRY_KEY_PATTERN =
-	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
+	/(api[_-]?key|private[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 /**
  * LangSmith structural identifier attributes. These carry the run/trace/span IDs

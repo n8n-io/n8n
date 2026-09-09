@@ -47,7 +47,6 @@ import {
 	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
-import { settleWorkspaceOperations } from './workspace-files';
 import { joinWorkspacePath } from './workspace-paths';
 import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
 import { traceSandboxOperation, sandboxFileBytes } from '../tracing/sandbox-tracing';
@@ -329,13 +328,13 @@ async function writeWorkspaceFiles(
 			const filesystem = workspace.filesystem;
 			if (filesystem) {
 				// `writeFile` only creates parent dirs as a side-effect of writing a file.
-				await settleWorkspaceOperations(
+				await Promise.all(
 					ALWAYS_PRESENT_DIRS.map(
 						async (dir) =>
 							await createWorkspaceDirectory(workspace, filesystem, joinWorkspacePath(root, dir)),
 					),
 				);
-				await settleWorkspaceOperations(
+				await Promise.all(
 					[...files].map(
 						async ([path, content]) =>
 							await writeWorkspaceFile(

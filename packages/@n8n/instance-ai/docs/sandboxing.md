@@ -180,9 +180,10 @@ preparation runs inside the agent's lazy build and uses the same trace context.
 | Retry and fallback | File path, failed attempt, retry delay, and command fallback |
 | Evict cache and destroy | Reason, provider, sandbox ID, and cleanup errors |
 
-Batch spans wait for all started file transfers to settle. They omit individual
-successful file operations. Retry and fallback spans remain visible. Internal file spans omit
-file contents. Command spans record byte counts instead of raw commands. Failed
+Batch operations reject on the first failure. Their spans end at that point.
+Transfers that already started can continue. Batch spans omit individual successful
+file operations. Retry and fallback spans remain visible. Internal file spans
+omit file contents. Command spans record byte counts instead of raw commands. Failed
 commands include stdout and stderr after filtering, limited to 2,000 characters
 each. The export filter also covers status messages and exception events.
 

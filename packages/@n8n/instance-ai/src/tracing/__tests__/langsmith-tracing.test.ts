@@ -2355,6 +2355,36 @@ describe('createInstanceAiTraceContext', () => {
 			},
 		);
 
+		it.each(['privateKey', 'private_key', 'private-key'])(
+			'filters %s fields in exported spans',
+			(key) => {
+				const value = 'opaque-test-material';
+				const span = {
+					attributes: { [key]: value },
+					events: [
+						{
+							name: 'operation',
+							attributes: { [key]: value, details: { [key]: value, format: 'example' } },
+						},
+					],
+				};
+				const filtered = redactLangSmithTelemetrySpan(span);
+				expect(filtered).toMatchObject({
+					attributes: { [key]: '[redacted]' },
+					events: [
+						{
+							name: 'operation',
+							attributes: {
+								[key]: '[redacted]',
+								details: { [key]: '[redacted]', format: 'example' },
+							},
+						},
+					],
+				});
+				expect(JSON.stringify(filtered)).not.toContain(value);
+			},
+		);
+
 		it('filters status and exception fields before export', () => {
 			const message = 'Could not open person@example.com.workflow.ts';
 			const span = {
@@ -2403,7 +2433,7 @@ describe('createInstanceAiTraceContext', () => {
 			expect(span?.attributes['langsmith.metadata.final_status']).toBe('cancelled');
 		});
 
-		it('keeps batch spans open until all started writes finish', async () => {
+		it('returns batch failure before remaining writes finish', async () => {
 			const tracing = await createSandboxTrace();
 			const slowWrite = createDeferredPromise();
 			const writeFile = vi.fn(async (path: string) => {
@@ -2421,21 +2451,21 @@ describe('createInstanceAiTraceContext', () => {
 						]),
 					),
 			);
-			const outcome = batch.catch((error: unknown) => error);
-			await vi.waitFor(() =>
-				expect(
-					agentsMock.getSpans().find((entry) => entry.name === 'sandbox: file-command-fallback')
-						?.ended,
-				).toBe(true),
-			);
-			const span = agentsMock.getSpans().find((entry) => entry.name === 'sandbox: write-files');
-			expect(span?.ended).toBe(false);
-			expect(agentsMock.getSpans().some((entry) => entry.name === 'sandbox: write-file')).toBe(
-				false,
-			);
-			slowWrite.resolve();
-			expect(await outcome).toBeInstanceOf(Error);
-			expect(span).toMatchObject({ ended: true, status: { code: 2 } });
+			let rejected = false;
+			const outcome = batch.catch((error: unknown) => {
+				rejected = true;
+				return error;
+			});
+			try {
+				await vi.waitFor(() => expect(rejected).toBe(true));
+				expect(writeFile).toHaveBeenCalledTimes(2);
+				expect(await outcome).toBeInstanceOf(Error);
+				const span = agentsMock.getSpans().find((entry) => entry.name === 'sandbox: write-files');
+				expect(span).toMatchObject({ ended: true, status: { code: 2 } });
+			} finally {
+				slowWrite.resolve();
+				await outcome;
+			}
 		});
 
 		it('creates detached lifecycle roots despite a live ambient turn', async () => {
