@@ -1236,6 +1236,14 @@ async function handleSetupApply(
 			resumeData.nodeParameters,
 		);
 
+		// Nothing was saved, so there is nothing to re-analyze. A failed result keeps
+		// the setup panel open with the user's input; a "partial" success would
+		// replace the panel and hide the reason (e.g. a credential the workflow's
+		// project cannot use).
+		if (applyResult.saveError) {
+			return { success: false, error: applyResult.saveError };
+		}
+
 		const failedNodes = applyResult.failed.length > 0 ? applyResult.failed : undefined;
 
 		// Fetch updated workflow to include in response so the frontend can refresh the canvas

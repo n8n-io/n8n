@@ -1740,6 +1740,7 @@ describe('applyNodeChanges', () => {
 		expect(result.applied).toHaveLength(0);
 		expect(result.failed).toHaveLength(1);
 		expect(result.failed[0].error).toContain('Failed to save workflow');
+		expect(result.saveError).toContain('Failed to save workflow');
 	});
 
 	it('strips credentials not valid for the current parameters', async () => {

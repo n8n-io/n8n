@@ -200,7 +200,8 @@ export class EnterpriseWorkflowService {
 		 * We only need to check nodes that use credentials the current user cannot access,
 		 * since these can be 2 possibilities:
 		 * - Same ID already exist: it's a read only node and therefore cannot be changed
-		 * - It's a new node which indicates tampering and therefore must fail saving
+		 * - It's a new node, or an existing node that newly references such a credential,
+		 *   which indicates tampering and therefore must fail saving
 		 */
 
 		const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
@@ -215,22 +216,29 @@ export class EnterpriseWorkflowService {
 			return newWorkflowVersion;
 		}
 
-		const previouslyExistingNodeIds = previousWorkflowVersion.nodes.map((node) => node.id);
-
-		// If it's a new node we can't allow it to be saved
-		// since it uses creds the node doesn't have access
-		const isTamperingAttempt = (inaccessibleCredNodeId: string) =>
-			!previouslyExistingNodeIds.includes(inaccessibleCredNodeId);
+		// Restoring the previous version of a node keeps a credential that version
+		// did not have, so a credential that is new on the node fails the save the
+		// same way a new node does.
+		const introducesInaccessibleCredential = (node: INode, previousNodeVersion: INode) => {
+			const previous = this.getNodeCredentialRefs(previousNodeVersion);
+			const current = this.getNodeCredentialRefs(node);
+			return (
+				(current.hasUnresolved && !previous.hasUnresolved) ||
+				current.ids.some((id) => !allowedCredentialIds.includes(id) && !previous.ids.includes(id))
+			);
+		};
 
 		nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
-			if (isTamperingAttempt(node.id)) {
+			const previousNodeVersion = previousWorkflowVersion.nodes.find(
+				(previousNode) => previousNode.id === node.id,
+			);
+			if (!previousNodeVersion || introducesInaccessibleCredential(node, previousNodeVersion)) {
 				this.logger.warn('Blocked workflow update due to tampering attempt', {
 					nodeType: node.type,
 					nodeName: node.name,
 					nodeId: node.id,
 					nodeCredentials: node.credentials,
 				});
-				// Node is new, so this is probably a tampering attempt. Throw an error
 				throw new NodeOperationError(
 					node,
 					`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
@@ -247,9 +255,6 @@ export class EnterpriseWorkflowService {
 				nodeName: node.name,
 				nodeId: node.id,
 			});
-			const previousNodeVersion = previousWorkflowVersion.nodes.find(
-				(previousNode) => previousNode.id === node.id,
-			);
 			// Allow changing only name, position and disabled status for read-only nodes
 			Object.assign(
 				newWorkflowVersion.nodes[nodeIdx],

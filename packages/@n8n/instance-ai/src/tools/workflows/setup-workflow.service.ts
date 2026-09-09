@@ -1041,6 +1041,8 @@ export function sortByExecutionOrder(
 export interface ApplyResult {
 	applied: string[];
 	failed: Array<{ nodeName: string; error: string }>;
+	/** Set when the single save failed: nothing was persisted. */
+	saveError?: string;
 }
 
 function addUnknownNodeFailures(
@@ -1330,6 +1332,7 @@ export async function applyNodeChanges(
 			result.failed.push({ nodeName, error: saveError });
 		}
 		result.applied = [];
+		result.saveError = saveError;
 	}
 
 	return result;
