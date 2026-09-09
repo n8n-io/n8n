@@ -47,7 +47,7 @@ describe('AddActivityEventResourceIndex migration', () => {
 			async (context) => await indexColumnsInOrder(context, INDEX_NAME),
 		);
 
-		expect(columns).toEqual(['resourceType', 'resourceId', 'id']);
+		expect(columns).toEqual(['resourceId', 'id']);
 	});
 
 	it('drops the index on revert', async () => {
