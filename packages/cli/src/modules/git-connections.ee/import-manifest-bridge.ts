@@ -44,16 +44,56 @@ export async function readLeftoverManifest(
 	}
 }
 
+/** Drop selected workflows from leftover requirement users before merging staging. */
+export function dropSelectedRequirementUsers(
+	leftover: PackageManifest | undefined,
+	selectedWorkflowIds: readonly string[],
+): PackageManifest | undefined {
+	if (leftover?.requirements === undefined || selectedWorkflowIds.length === 0) {
+		return leftover;
+	}
+
+	const selected = new Set(selectedWorkflowIds);
+	const requirements = compactRequirements({
+		credentials: dropSelectedUsers(leftover.requirements.credentials, selected),
+		dataTables: dropSelectedUsers(leftover.requirements.dataTables, selected),
+		workflows: dropSelectedUsers(leftover.requirements.workflows, selected),
+		variables: dropSelectedUsers(leftover.requirements.variables, selected),
+		tags: dropSelectedUsers(leftover.requirements.tags, selected),
+		nodeTypes: dropSelectedUsers(leftover.requirements.nodeTypes, selected),
+	});
+
+	return { ...leftover, ...(requirements ? { requirements } : { requirements: undefined }) };
+}
+
+function dropSelectedUsers<T extends { usedByWorkflows: string[] }>(
+	rows: T[] | undefined,
+	selectedWorkflowIds: Set<string>,
+): T[] | undefined {
+	if (rows === undefined) return undefined;
+	const kept = rows
+		.map((row) => ({
+			...row,
+			usedByWorkflows: row.usedByWorkflows.filter((id) => !selectedWorkflowIds.has(id)),
+		}))
+		.filter((row) => row.usedByWorkflows.length > 0);
+	return kept.length > 0 ? kept : undefined;
+}
+
 export async function writeImportManifest(options: {
 	exportFolder: string;
 	leftover: PackageManifest | undefined;
 	staging: PackageManifest;
 	sourceId: string;
+	selectedWorkflowIds?: readonly string[];
 }): Promise<void> {
-	const { exportFolder, leftover, staging, sourceId } = options;
+	const { exportFolder, leftover, staging, sourceId, selectedWorkflowIds = [] } = options;
 	const collections = await walkSnapshotCollections(exportFolder);
 	const remainingWorkflowIds = new Set((collections.workflows ?? []).map((entry) => entry.id));
-	const selectedWorkflowIds = new Set((staging.workflows ?? []).map((entry) => entry.id));
+	const selected = new Set([
+		...selectedWorkflowIds,
+		...(staging.workflows ?? []).map((entry) => entry.id),
+	]);
 	const variables = await collectVariables(exportFolder, leftover, staging);
 
 	const manifest = packageManifestSchema.parse({
@@ -63,7 +103,7 @@ export async function writeImportManifest(options: {
 		sourceId,
 		...collections,
 		...(variables.length > 0 ? { variables } : {}),
-		...requirementsBlock(leftover, staging, remainingWorkflowIds, selectedWorkflowIds),
+		...requirementsBlock(leftover, staging, remainingWorkflowIds, selected),
 	});
 
 	await fs.writeFile(path.join(exportFolder, MANIFEST_FILE), JSON.stringify(manifest, null, '\t'));

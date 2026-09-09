@@ -14,7 +14,11 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 
 import { containerPlacement, isUnder, pinPath, staleWorkflowTargets } from './branch-placement';
 import type { BranchState, Placement } from './branch-placement';
-import { readLeftoverManifest, writeImportManifest } from './import-manifest-bridge';
+import {
+	dropSelectedRequirementUsers,
+	readLeftoverManifest,
+	writeImportManifest,
+} from './import-manifest-bridge';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -256,13 +260,17 @@ export class WorkingCopyUpdater {
 				});
 			}
 			await this.overlayDirectory(stagingFolder, workFolder, placement);
-			const leftover = await readLeftoverManifest(workFolder);
+			const leftover = dropSelectedRequirementUsers(
+				await readLeftoverManifest(workFolder),
+				selection.workflowIds,
+			);
 			await fs.rm(await this.resolveContained(workFolder, MANIFEST_FILE), { force: true });
 			await writeImportManifest({
 				exportFolder: workFolder,
 				leftover,
 				staging,
 				sourceId: this.instanceSettings.instanceId,
+				selectedWorkflowIds: selection.workflowIds,
 			});
 
 			const backupPath = `${exportFolder}.bak`;

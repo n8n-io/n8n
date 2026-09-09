@@ -521,6 +521,36 @@ describe('WorkingCopyUpdater', () => {
 			]);
 		});
 
+		it('does not write leftover requirements a selected workflow no longer uses', async () => {
+			await apply(
+				{
+					manifest: makeManifest({
+						projects: [alpha],
+						workflows: [wf('w1')],
+						requirements: {
+							tags: [{ id: 't-old', name: 'prod', usedByWorkflows: ['w1'] }],
+						},
+					}),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+					},
+				},
+				{
+					manifest: makeManifest({
+						projects: [alpha],
+						workflows: [wf('w1')],
+					}),
+					files: {
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
+					},
+				},
+				{ workflowIds: ['w1'] },
+			);
+
+			expect((await readWrittenManifest()).requirements?.tags).toBeUndefined();
+		});
+
 		it('leaves an unused credential stub the selection dropped', async () => {
 			await apply(
 				{
