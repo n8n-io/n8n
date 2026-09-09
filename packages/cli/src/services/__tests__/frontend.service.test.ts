@@ -38,6 +38,7 @@ describe('FrontendService', () => {
 		tags: { disabled: false },
 		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
+		expressionEngine: { frontendEngine: 'legacy' },
 		hiringBanner: { enabled: false },
 		versionNotifications: {
 			enabled: false,
@@ -745,6 +746,14 @@ describe('FrontendService', () => {
 					N8N_ENV_FEAT_NEW_FLAG: 'true',
 				});
 			});
+		});
+	});
+
+	describe('expressionEngine setting', () => {
+		it('should surface the frontend expression engine from config', async () => {
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.expressionEngine).toBe('legacy');
 		});
 	});
 

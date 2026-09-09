@@ -4,6 +4,13 @@ import { Config, Env } from '../decorators';
 
 const expressionEngineSchema = z.enum(['legacy', 'vm', 'quickjs']);
 
+/**
+ * The engines the editor can run in a browser. `vm` is absent on purpose: isolated-vm
+ * is a native module, so the enum rejects it here instead of letting the editor accept
+ * the value and silently keep the legacy evaluator.
+ */
+const frontendExpressionEngineSchema = z.enum(['legacy', 'quickjs']);
+
 @Config
 export class ExpressionEngineConfig {
 	/**
@@ -14,6 +21,15 @@ export class ExpressionEngineConfig {
 	 */
 	@Env('N8N_EXPRESSION_ENGINE', expressionEngineSchema)
 	engine: 'legacy' | 'vm' | 'quickjs' = 'vm';
+
+	/**
+	 * Which expression engine the editor uses in the browser. Independent of `engine`:
+	 * the backend can evaluate with `vm` while the editor evaluates with `quickjs`.
+	 * - `legacy` (default) runs expressions without isolation. Soon to be deprecated.
+	 * - `quickjs` runs expressions in a QuickJS WASM sandbox.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_FRONTEND', frontendExpressionEngineSchema)
+	frontendEngine: 'legacy' | 'quickjs' = 'legacy';
 
 	/** Number of V8 isolates ready in the pool. */
 	@Env('N8N_EXPRESSION_ENGINE_POOL_SIZE')

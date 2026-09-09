@@ -435,6 +435,7 @@ export class FrontendService {
 				crdt: this.globalConfig.collaboration.crdt,
 			},
 			envFeatureFlags: this.collectEnvFeatureFlags(),
+			expressionEngine: this.globalConfig.expressionEngine.frontendEngine,
 		};
 	}
 
