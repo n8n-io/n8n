@@ -1,13 +1,15 @@
+import '../../openapi-extend';
+
 import { z } from 'zod';
 
-import { projectTypeSchema } from '../../schemas/project.schema';
+import { projectIconOpenApi } from './project-public.openapi';
+import { nullableObjectGuardSchema } from '../../schemas/object-guard.schema';
+import { projectTypeSchema, type ProjectIcon } from '../../schemas/project.schema';
 
-const projectIconPublicSchema = z
-	.object({
-		type: z.enum(['emoji', 'icon']),
-		value: z.string(),
-	})
-	.nullable();
+// `icon` is a JSON column, so a strict schema would strip a stored `color` and answer 500 for a
+// legacy shape. Check only the basic type, and let `.openapi()` document the shape.
+const projectIconPublicSchema =
+	nullableObjectGuardSchema<ProjectIcon>().openapi(projectIconOpenApi);
 
 const projectCustomTelemetryTagPublicSchema = z.object({
 	key: z.string(),

@@ -1,5 +1,7 @@
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User, Variables } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
@@ -189,6 +191,29 @@ describe('Variables in Public API', () => {
 				}
 			}
 			expect(response.body.data.filter((v: Variables) => v.project === null)).toHaveLength(1);
+		});
+
+		it('if licensed, should return the stored project icon unchanged', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+			// A stored icon can carry a `color` the entity type does not name.
+			const icon = { type: 'emoji', value: '🚀', color: '#ff0000' } as Project['icon'];
+			await Container.get(ProjectRepository).update(project.id, { icon });
+			await createProjectVariable('projectKey', 'projectValue', project);
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).get('/variables');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0].project.icon).toEqual(icon);
 		});
 
 		it('if licensed, should paginate with an opaque cursor', async () => {
