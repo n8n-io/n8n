@@ -56,6 +56,9 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		if (query.before) {
 			qb.andWhere('(execution.created_at, execution.id) < (:createdAt, :id)', query.before);
 		}
+		// A sort order other than the cursor's own (created_at, id) can skip or
+		// repeat rows at the page boundary if a row's status changes after the
+		// fact. Same limitation as the control plane's equivalent query.
 		if (query.order?.top) {
 			qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 		}
