@@ -1,3 +1,5 @@
+import type { AppAuthMode } from '@n8n/api-types';
+
 /**
  * Flat CSS custom-property overrides on top of the shadcn-vue template's default
  * :root/.dark block. Open-ended: the Theme tab writes a handful of derived keys
@@ -8,9 +10,6 @@ export interface AppTheme {
 	mode: 'light' | 'dark' | 'system';
 	vars: Record<string, string>;
 }
-
-/** Mirrors `appAuthModeSchema` in @n8n/api-types until that export lands. */
-export type AppAuthMode = 'public' | 'n8n';
 
 export interface App {
 	id: string;
