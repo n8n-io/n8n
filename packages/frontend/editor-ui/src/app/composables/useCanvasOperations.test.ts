@@ -1290,6 +1290,31 @@ describe('useCanvasOperations', () => {
 			});
 		});
 
+		it('tracks the target node count when the layout result includes baked positions', () => {
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'selection',
+				targetNodeCount: 2,
+				result: {
+					nodes: [
+						{ id: 'node1', x: 96, y: 96 },
+						{ id: 'node2', x: 208, y: 208 },
+						{ id: 'node3', x: 320, y: 320 },
+					],
+					boundingBox: { height: 96, width: 96, x: 0, y: 0 },
+				},
+			};
+
+			const { tidyUp } = useCanvasOperations();
+			tidyUp(event, { trackHistory: false });
+
+			expect(useTelemetry().track).toHaveBeenCalledWith('User tidied up canvas', {
+				nodes_count: 2,
+				source: 'canvas-button',
+				target: 'selection',
+			});
+		});
+
 		it('should send telemetry event when trackEvents is true', () => {
 			const event: CanvasLayoutEvent = {
 				source: 'canvas-button',

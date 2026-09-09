@@ -302,7 +302,7 @@ export function useCanvasOperations() {
 	 */
 
 	function tidyUp(
-		{ result, source, target }: CanvasLayoutEvent,
+		{ result, source, target, targetNodeCount }: CanvasLayoutEvent,
 		{
 			trackEvents = true,
 			trackHistory = true,
@@ -319,15 +319,15 @@ export function useCanvasOperations() {
 		);
 
 		if (trackEvents) {
-			trackTidyUp({ result, source, target });
+			trackTidyUp({ result, source, target, targetNodeCount });
 		}
 	}
 
-	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
+	function trackTidyUp({ result, source, target, targetNodeCount }: CanvasLayoutEvent) {
 		telemetry.track('User tidied up canvas', {
 			source,
 			target,
-			nodes_count: result.nodes.length,
+			nodes_count: targetNodeCount ?? result.nodes.length,
 		});
 	}
 

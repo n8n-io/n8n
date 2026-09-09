@@ -2,7 +2,7 @@
 import ContextMenu from '@/features/shared/contextMenu/components/ContextMenu.vue';
 import type { ContextMenuTarget } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
-import type { CanvasLayoutEvent } from '../composables/useCanvasLayout';
+import type { CanvasLayoutEvent, CanvasLayoutResult } from '../composables/useCanvasLayout';
 import { useCanvasLayout } from '../composables/useCanvasLayout';
 import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
@@ -667,6 +667,25 @@ function commitManualNodePositions(events: CanvasNodeMoveEvent[]) {
 
 function getCanvasNodesByIds(nodeIds: string[]) {
 	return nodeIds.map(findNode).filter(isPresent);
+}
+
+function settleLayoutResult(result: CanvasLayoutResult): CanvasLayoutResult {
+	const settled = injectedNodeGroupView?.settleManualNodePositions(
+		result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
+		getStoredNodePositionById,
+	);
+	if (!settled) return result;
+
+	const resultNodeById = new Map(result.nodes.map((node) => [node.id, node]));
+	return {
+		...result,
+		nodes: settled.map(({ id, position }) => ({
+			...resultNodeById.get(id),
+			id,
+			x: position.x,
+			y: position.y,
+		})),
+	};
 }
 
 // Bake the positions of nodes that `sourceGroupIds` were visually pushing into
@@ -1549,11 +1568,12 @@ async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 	const explicitNodeIds = explicitNodes.length > 1 ? explicitNodes.map(({ id }) => id) : undefined;
 	const applyOnSelection = explicitNodeIds !== undefined || selectedNodes.value.length > 1;
 	const target = applyOnSelection ? 'selection' : 'all';
-	const result = layout(target, explicitNodeIds ? { nodeIdsFilter: explicitNodeIds } : {});
+	const layoutResult = layout(target, explicitNodeIds ? { nodeIdsFilter: explicitNodeIds } : {});
+	const result = settleLayoutResult(layoutResult);
 
 	emit(
 		'tidy-up',
-		{ result, target, source: payload.source },
+		{ result, target, targetNodeCount: layoutResult.nodes.length, source: payload.source },
 		{
 			trackEvents: payload.trackEvents,
 			trackHistory: payload.trackHistory,

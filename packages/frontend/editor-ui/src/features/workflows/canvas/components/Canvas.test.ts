@@ -154,7 +154,10 @@ function getSelectionRing(container: Element) {
 	return container.querySelector('[data-test-id="canvas-node-group-selection-ring"]');
 }
 
-function createNodeGroupViewMock(initialCollapsed: boolean) {
+function createNodeGroupViewMock(
+	initialCollapsed: boolean,
+	overrides: Partial<CanvasNodeGroupView> = {},
+) {
 	const collapsedByGroupId = new Map<string, boolean>();
 	return {
 		isGroupCollapsed: (id: string) => collapsedByGroupId.get(id) ?? initialCollapsed,
@@ -166,6 +169,7 @@ function createNodeGroupViewMock(initialCollapsed: boolean) {
 		syncLayoutComponents: () => {},
 		settleManualNodePositions: (events: unknown) => events,
 		commitMovedPushSourceEffects: () => [],
+		...overrides,
 	} as unknown as CanvasNodeGroupView;
 }
 
@@ -306,6 +310,50 @@ describe('Canvas', () => {
 		expect(second).toBeDefined();
 		expect(second!.x - first!.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
 		expect(second!.y - first!.y).toBe(0);
+	});
+
+	it('settles node group offsets before emitting tidy positions', async () => {
+		workflowDocumentStore.setNodes([
+			createTestNode({ id: 'node-1', name: 'Node 1', position: [0, 0] }),
+			createTestNode({ id: 'node-2', name: 'Node 2', position: [0, 0] }),
+			createTestNode({ id: 'node-3', name: 'Node 3', position: [0, 0] }),
+		]);
+		const settleManualNodePositions = vi.fn(() => [
+			{ id: 'node-1', position: { x: 160, y: 0 } },
+			{ id: 'node-2', position: { x: 384, y: 0 } },
+			{ id: 'node-3', position: { x: 608, y: 0 } },
+		]);
+		const eventBus = createEventBus<CanvasEventBusEvents>();
+		const node1 = createCanvasNodeElement({ id: 'node-1', label: 'Node 1' });
+		const node2 = createCanvasNodeElement({ id: 'node-2', label: 'Node 2' });
+
+		const { emitted } = renderComponent({
+			props: {
+				nodes: [node1, node2],
+				connections: [createCanvasConnection(node1, node2)],
+				eventBus,
+				renderData: createEmptyCanvasRenderData(),
+			},
+			global: {
+				provide: {
+					[NodeGroupViewKey as symbol]: createNodeGroupViewMock(false, {
+						settleManualNodePositions,
+					}),
+				},
+			},
+		});
+
+		eventBus.emit('tidyUp', { source: 'canvas-button' });
+
+		await waitFor(() => expect(emitted()['tidy-up']).toHaveLength(1));
+		const tidyUpEvent = (emitted()['tidy-up'] as Array<[CanvasLayoutEvent]>)[0][0];
+		expect(settleManualNodePositions).toHaveBeenCalled();
+		expect(tidyUpEvent.result.nodes).toEqual([
+			{ id: 'node-1', x: 160, y: 0 },
+			{ id: 'node-2', x: 384, y: 0 },
+			{ id: 'node-3', x: 608, y: 0 },
+		]);
+		expect(tidyUpEvent.targetNodeCount).toBe(2);
 	});
 
 	it('should render group frame from live VueFlow node data', async () => {

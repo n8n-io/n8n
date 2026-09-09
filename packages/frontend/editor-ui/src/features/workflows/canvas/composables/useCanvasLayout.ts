@@ -53,6 +53,7 @@ export type CanvasLayoutResult = { boundingBox: BoundingBox; nodes: NodeLayoutRe
 export type CanvasLayoutEvent = {
 	result: CanvasLayoutResult;
 	source: CanvasLayoutSource;
+	targetNodeCount?: number;
 	target: CanvasLayoutTarget;
 };
 export type CanvasLayoutOptions = { nodeIdsFilter?: string[] };
