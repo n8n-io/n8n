@@ -1,0 +1,1952 @@
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-resolver.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,4-5,55,58
+packages/cli/src/modules/external-secrets.ee/external-secrets-provider-connection-manager.ee.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 39,50-53,88,91-97,117-119,141,212-227,229,233,237-248,257-258,283,287,299-305,315-317,320,323-326,334,342-343,350-351,353-354,356-361,370-380,382-393,399-403,413-415,417,420,423,429-439,443,458,464,467,480-491,493-499
+packages/@n8n/db/src/repositories/__tests__/deployment-key.repository.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-23
+.github/workflows/test-e2e-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 88
+packages/cli/src/executions/execution-data/types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,32-40
+packages/@n8n/agents/src/workspace/sandbox/n8n-sandbox-sandbox.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 13-14,138-141
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/14.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-89
+.github/workflows/ci-pr-quality.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 39,75
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-33
+packages/cli/src/encryption/__tests__/key-manager.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-752
+packages/@n8n/instance-ai/src/skills/__tests__/skill-gates.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-5,8-9,11,16-24
+packages/cli/src/credentials-helper.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 528
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,12,31-33,37,52-53,61,68,94-105
+packages/@n8n/node-engine-compatibility/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/cli/src/scaling/job-processor.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12,63-71,397,539,548,620-632,634
+packages/@n8n/agents/src/workspace/scoped-workspace.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 34-37,87-91
+packages/@n8n/ai-utilities/src/agent-config/from-ai-node-parameters.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7
+packages/@n8n/engine/src/execution/__tests__/execution-start.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 100,103,148,150
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-provider-connection-manager.ee.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 10,38,53-68,90-93,95-99,101-102,353-623,649,686,698,717,724-727,763,766
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-temporary-workflow.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 44-50,103-106,186-189
+packages/cli/src/errors/pre-execute-blocked.error.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-18
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 237-257
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/ssrf-default-blocked-ranges.rule.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-54
+.github/scripts/docker/should-smoke-build.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17,73-80,100-110,112-118
+packages/cli/src/executions/execution-crash.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-43
+packages/@n8n/scheduler/src/observability/__tests__/attributes.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-47
+packages/cli/src/modules/otel/otel-settings.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,4-5,18,35,40-46,68-95,99-100,107-113,130,134-141,146-191,193-196,202
+packages/@n8n/instance-ai/src/workspace/sandbox-setup.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 32,96-125,239,329,496-515
+packages/cli/src/public-api/v1/handlers/data-tables/__tests__/data-tables.utils.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-21
+packages/@n8n/eslint-config/src/rules/no-deployment-key-delete.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-247
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1283-1363
+.github/scripts/codespace-preview.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-237
+packages/cli/src/modules/insights/__tests__/insights.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11,110,835-861,1157-1177
+packages/@n8n/config/test/config.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 377,383,580
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,9,153-188
+packages/@n8n/module-cli/src/frontend.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 46,54,63-65,118,130
+packages/@n8n/backend-network/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+.github/workflows/test-dev-server-smoke-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 25
+packages/cli/src/modules/redaction/redaction.module.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7-12,15
+packages/@n8n/agents/src/runtime/model/prompt-cache.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,60,162
+packages/cli/src/modules/source-control.ee/types/source-control-action-origin.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1
+packages/@n8n/cli/src/commands/package/import.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 38
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 20-21,23,276-282
+packages/cli/src/modules/type-availability-policies/database/repositories/__tests__/type-availability-policy-locks.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-247
+packages/cli/src/modules/instance-ai/eval/structured-output-conformance.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-2
+packages/@n8n/eslint-plugin-community-nodes/src/rules/icon-validation.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 31,115,117,120
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 18
+packages/@n8n/decorators/src/controller/args.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,23-29
+.github/workflows/release-create-github-releases.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 74
+packages/cli/src/modules/instance-ai/repositories/conversation-history-search.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-35
+packages/@n8n/instance-ai/skills/instance-awareness/SKILL.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-122
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-122
+packages/cli/src/modules/insights/insights-compaction.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14,17,21-23,36-37,42,110,119-122,146,153-158,161-164,172-176
+packages/cli/src/services/__tests__/ai-gateway.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 242-270
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17,32
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 483,525,672,718,811,860
+.github/scripts/attest-image-sbom.test.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6-12,91-174
+packages/@n8n/workflow-sdk/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/cli/src/modules/mcp/tools/get-workflow-versions-diff.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 16,287-290
+packages/cli/src/errors/http-error-serializers.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 34-38
+packages/cli/src/public-api/v1/handlers/otel/spec/schemas/otel-settings.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5-7,24-36,40-43,47-49
+packages/cli/src/modules/agents/utils/agent-capabilities.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 59-76
+.agents/skills/create-instance-ai-eval/sourcing-cases.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 65-70,74,79,82-120
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 21
+packages/@n8n/eslint-plugin-community-nodes/src/rules/icon-validation.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 166-175,194-199
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6-7,35-45,97-128,344-410
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 129,131-133,149-151
+packages/@n8n/instance-ai/src/tools/workflows/detect-wrong-kind-locator.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 300,339,370,423,437,457
+.github/workflows/test-db-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14-18,36,51
+packages/@n8n/agents/src/workspace/tools/read-file.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12-16
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8,87,92
+packages/@n8n/instance-ai/evaluations/run/langsmith-driver.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 10,24,390-391
+packages/@n8n/agents/src/__tests__/workspace/sandbox/create-workspace.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 153-184
+packages/cli/src/public-api/__tests__/public-api-validation-error.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 66-75
+packages/cli/src/modules/insights/__tests__/insights.config.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-42
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 415,645,710
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/stream-agent-writes-a-file-and-streams-the-response.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 35,98,134,380,384-385,388,391,393-394,397,402-403,406,441,458,473,536,572,818,822-823,826,829,831-832,835,840-841,844
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 64,66
+packages/cli/src/modules/agents/__tests__/agent-dependency-index.listener.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-78
+packages/cli/src/modules/instance-ai/message-parser.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,8,45-47
+AGENTS.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 261-284,327-329
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,5-67,69-92,96-152,154-155,158-159,162-163,166-167,169-170,172-215,218-219,222-223,226-227,230-233,236-237,239,241-242,245-248,250-257,259-260,263-264,267-268,271-272,274-279
+.gitattributes
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2
+packages/@n8n/task-runner/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,56
+packages/cli/src/commands/base-command.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 35,205-208
+packages/cli/src/deprecation/deprecation.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 77-98
+packages/cli/src/executions/__tests__/enqueued-execution-recovery.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,10,25,36,87,99,110,124,133,145
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 63,878
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-2,65,96,175,178
+packages/@n8n/imap/src/types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,13-15
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,184-207
+.github/workflows/util-ensure-release-candidate-branches.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 31
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 54,905,1102-1129,2273,2279,2345,2400,2428,2456,2486,2492,2510-2544,2559,2600,2636,2642,2686,2692,2732,2738,2859,2865,2930
+packages/cli/src/modules/source-control.ee/types/source-control-get-status.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 10,64
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-checkpoint-store.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-published-state.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-21
+packages/@n8n/agents/src/runtime/model/raw-usage.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,86
+.github/workflows/test-workflow-scripts-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 25,33
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-29
+packages/cli/src/modules/data-table/__tests__/data-table.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,488-548
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 72,258-393
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 505-511,652-666
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.node-usage.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 150-153,155,158-159,166
+packages/@n8n/scheduler/src/observability/attributes.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,76-79,84-94
+packages/@n8n/api-types/src/dto/source-control/source-control-push-response-public.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-8
+packages/cli/src/modules/instance-ai/eval/provider-shapes.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 23,111,138,143,145,158,177,182,184,198,228,232,254,257-258,263,271,287,328,393,399,411,414,416,424,442-443,448,456,462
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 150
+packages/@n8n/imap/src/connection-options.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-47
+packages/@n8n/decorators/src/controller/__tests__/args.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,66-91
+packages/@n8n/module-cli/src/templates/frontend/setup.ts.template
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-4
+packages/cli/src/services/import.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 45
+packages/cli/src/services/__tests__/engine-data-plane-proxy.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 16,18
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-48
+packages/@n8n/mcp-apps/tsconfig.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 20-21
+packages/@n8n/instance-ai/src/__tests__/tool-test-utils.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-26
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 105-112,185,400,402
+packages/@n8n/permissions/src/constants.ee.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 111
+packages/cli/src/modules/otel/__tests__/support/otel-integration-utils.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11-18,62,163-181
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-telemetry.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14-15
+packages/@n8n/instance-ai/evaluations/comparison/fetch-baseline.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 23
+packages/@n8n/engine/src/auth/__tests__/action-token.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 53-67,69
+.github/workflows/util-refresh-cubic-schema.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 47
+packages/cli/src/executions/pre-execution-checks/__tests__/workflow-pre-execute.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-176
+packages/cli/eslint.config.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 50-75,410-411,421
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 20,37-44,78-81
+packages/cli/src/modules/breaking-changes/rules/v3/ssrf-default-blocked-ranges.rule.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-64
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-managed-setup.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 28-35,386,499,732
+packages/cli/src/modules/instance-registry/__tests__/stale-member-cleanup.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-52
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,126
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 18,70,199,232-234
+packages/@n8n/instance-ai/src/utils/eval-agents.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4,60,109
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 20-26
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2-4,19
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 22-25,36-37,875-882,911-912,978-1006
+packages/cli/src/executions/pre-execution-checks/workflow-pre-execute.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-113
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-77
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 72,76,89,93,113,115,117,131,136,159,183,207,228,233,260,274,288,299,313-403,418,423
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7-12,23-31,225,311,315,646-647,656,681,693,722,729-735,750-754,807-817,874,940-984,986-1041,1043-1101,1195,1374,1379,1393,1395,1397-1413,1416-1420,1423,1425-1426,1428-1431,1433-1436,1439,1441-1443,1445-1456,1458,1461,1463,1465,1467-1470,1475,1479-1482,1514-1525,4725,4974-5007
+  s_a871cc60b0c4d4::t_3113c235e2e77d 985,1042
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,12-13,24,30,34,48,76,81,90,165,182-189,196,285-299,385-389,414,417,420,423-429,446-447,465,467-470,484-488,553-557,559-573,575,577-578,580-590,593,595-596,600-626,796,798-803,825-826,854-935,950-981,1018-1097,1106,1130-1191,1193-1215,1384-1387,1391-1412,1502,1530,1534-1538,3269-3273,4521-4550
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting-settings.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-182
+packages/@n8n/config/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/cli/src/services/__tests__/jwt.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 81-85,96-97,102,108-112,117,123,129,131-132
+.github/workflows/clean-stale-branches.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 38
+packages/cli/src/modules/instance-reporting/instance-reporting-scheduler.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-195
+.github/workflows/util-qa-metrics-comment-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 28
+.github/workflows/release-populate-cloud-with-releases.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 51
+packages/@n8n/scan-community-package/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,19
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 590,617,742
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/missing-node-type-mode.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 34
+packages/cli/src/modules/instance-ai/eval/openai-responses-envelope.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,238,246,265,311,317,336,391,406
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5-7,887-897,903-1042
+packages/@n8n/engine/src/auth/action-token.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 10-12,14-16,32
+packages/@n8n/api-types/src/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 129-138,379-380,382,416
+packages/@n8n/node-engine-compatibility/src/types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5,15,30-31,46-57,60-62
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 45-46,126,345-353,382-383
+packages/cli/src/modules/mcp/__tests__/get-workflow-details.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 361-409
+.github/workflows/test-linting-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 27
+packages/cli/src/scheduling/__tests__/workflow-node-task-payload.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-18
+packages/cli/src/scheduling/agent-scheduled-job-owner.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-41
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-event-log.repository.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 219-273
+.github/workflows/ci-owners-review-recommendations.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 48-49
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-handles-multi-step-workflow-mkdir-write-list-read.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 35,98,134,378,381-382,385,388,390-391,393,397-398,401,435,439,450,467,472,487,550,586,830,833-834,837,840,842-843,845,849-850,853,887,891,902,919,924,934,938,949,965,970,985,1048,1084,1328,1332,1335,1338,1341,1343,1347-1348,1351
+packages/cli/src/modules/policy-infrastructure/__tests__/policy-decision.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,10,29-42,62-92,158-171,186-199,336-497
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 379,410,451
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/structured-output-parser-validator.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-140
+packages/@n8n/cli/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+.github/workflows/prepare-docker-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 37
+.agents/skills/ui-design/rules/web-interface-guidelines.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-98
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/icon-validation.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,11,30-31,37,48-51,63-64
+packages/@n8n/scheduler/src/observability/executor-tracing.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5,76
+packages/cli/src/modules/insights/insights.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 74,80,96,102
+.github/workflows/ci-detect-new-packages.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 23
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-persistence.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4,10-13,36-63,120-125,828-893
+.github/workflows/release-set-stable-npm-packages-to-latest.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 28
+packages/@n8n/instance-ai/evaluations/data/discovery/folder-scoped-workflow-list.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-16
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3-6,8-12,52-53
+packages/cli/src/services/pruning/execution-pruning-soft-delete.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-33
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 69,71,156,168-182
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,36,97-101,127-137
+packages/@n8n/instance-ai/scripts/print-prompts.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 42
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 13
+packages/cli/src/executions/__tests__/execution-recovery.service.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 31,81
+packages/@n8n/agents/src/__tests__/integration/mcp-client-boundary.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 46
+packages/@n8n/agents/src/types/utils/json.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1
+packages/@n8n/client-oauth2/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/backend-common/src/locking/single-flight-lease.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-42
+packages/@n8n/db/src/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 16
+packages/@n8n/instance-ai/src/tools/__tests__/provider-schema.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4,29
+packages/cli/src/utils/__tests__/is-billable-execution.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-42
+packages/cli/src/services/public-api-key.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11,79-80
+packages/cli/src/modules/instance-registry/checks/check.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12,23-26,137-143
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8,135,1169,1553-1561
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v1/ToolWorkflowV1.node.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 28-32,227-228,234
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/manifest.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 130-162
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 158-159
+.agents/skills/experiments/reference.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 69
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14,35,497-498,502-522
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 148-189,213-214,219,225,272,381-384,386,393,399,1028-1031
+packages/@n8n/blob-storage/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/agents/src/utils/zod.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 20-22,36-38,94,96-112,118-121,128-148,152-155,158-170
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 359,374,405
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17,19-25
+packages/cli/src/modules/promotions.ee/database/entities/promotion-connection.entity.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-36
+packages/cli/src/modules/instance-ai/browser/browser-local-mcp-server.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,54
+packages/@n8n/agents/src/runtime/telemetry/runtime-telemetry.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,59
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 339-367
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 164-168
+packages/@n8n/nodes-langchain/utils/schemaParsing.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 36-52,54,57
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 36,104-122,1082-1106
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-remediation.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-2,16
+packages/cli/src/encryption/encryption-bootstrap.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-48
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/switch-case-handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9,11-12,48-52,54,61,79,102-106,129,146
+packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-94
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-items.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-5,70-159,581-632
+packages/@n8n/eslint-config/src/rules/no-guardrail-disable.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-128
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,97-114,116,119-123,125,130,133,151
+packages/cli/src/modules/insights/__tests__/insights-collection.service.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 105,109-111,194-200,203,236-242,261-278,486-488,593,595,616,618,624,626,651-652,746-748
+packages/@n8n/node-engine-compatibility/src/__tests__/acceptance-fixtures.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 350-360
+packages/@n8n/instance-ai/src/workflow-loop/guidance.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5-6,36-45
+.agents/skills/create-instance-ai-eval/SKILL.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 56,66-74,210-211
+packages/cli/src/modules/instance-ai/eval/llm-completion-mock.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8,11-13
+packages/@n8n/imap/src/errors.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 28-33
+packages/cli/src/public-api/v1/handlers/otel/otel.handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 27-28,30
+packages/cli/src/modules/agents/agents.module.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 38-39,65-67,163-167,206-208,245
+.github/scripts/sync-bundle-branch.test.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6-7,13,32,35-37,54-66,69,71-74,80-85,117,121,126-151,159-161,229-232,259-262,303-430
+packages/@n8n/permissions/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/module-cli/src/templates/frontend/package.json.template
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17-18,37,39,42,49,53
+packages/cli/src/modules/agents/__tests__/agent-session-langsmith-export.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 15,19,183-196,206,249-250,252,285-286,288,290,306-464,486,500,507,526,541,567,577
+packages/cli/src/modules/instance-ai/conversation-history-content.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-16
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 93-97
+packages/cli/src/modules/insights/__tests__/insights.module.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11-12,57-63
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 20
+packages/@n8n/db/eslint.config.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,19-21
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6
+packages/cli/src/modules/instance-reporting/LOCAL_VERIFICATION.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-223
+packages/cli/src/modules/otel/otel.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,13,18,29-31,46,52,59-61,66-81,83-99,101-106,110,114-125,129-131,133,150-151,160,165-235,285-291,293-297,299-300,308-348
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/get-as-code-node-identity.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 77
+packages/cli/src/modules/otel/README.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 138-187
+packages/cli/src/modules/instance-registry/__tests__/instance-registry-reconciliation.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-41
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4,6,56,59-71,133-167,183,187,949-950,953-954,975-976,979
+packages/@n8n/instance-ai/src/stream/__tests__/consume-with-hitl.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-completion-mock.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8,55-57,66,68
+packages/cli/src/modules/instance-registry/stale-member-cleanup.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-41
+packages/cli/src/interfaces.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 253
+packages/@n8n/mcp-browser/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/GenericFunctions.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 285-288,386-435,495-529,626-629,661-690
+packages/cli/src/posthog/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8,232,253-254
+packages/@n8n/workflow-sdk/src/workflow-builder/connection-utils.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 42,163,174-192
+packages/cli/src/modules/insights/__tests__/insights-compaction.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-29
+packages/@n8n/agents/AGENTS.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 41,66
+packages/@n8n/db/src/repositories/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 38,84
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-config.dto.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-107
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policy.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-662
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-write-file-and-workspace-read-file-tools.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 35,98,134,378,381-382,385,388,390-391,393,397-398,401,435-436,439,451,467-472,487,550,586,830,833-834,837,840,842-843,845,849-850,853
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-675
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,8,14,90-92,96-100,104,132-135,138-140,148,171-174,308-329,366,373-375,377,382-611,749,788,822,859,901,911,921
+packages/cli/src/scheduling/__tests__/scheduled-job-owner-registry.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4,9,11,13,16
+packages/cli/src/modules/instance-ai/instance-ai-conversation-history.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-564
+packages/cli/src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 25
+packages/cli/src/modules/instance-reporting/instance-reporting.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-271
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 133-134,140-153
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,4,435,482,495-498,604-669
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 22-23,26-31,121-126,140
+packages/@n8n/ai-utilities/src/types/json.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/branch-handler-utils.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 15,33-76,84-89,133-137
+packages/@n8n/ai-utilities/src/json-schema/zod-to-json-schema.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-29
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 44,935-956,959,964-966,971-978
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 223-252
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8-9,30-45,92-94,128,163,179
+packages/@n8n/instance-ai/src/knowledge-base/extract-builder-templates-archive.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 22-29,40,42,101,112-118,125-160,171-188,307,321,404-406
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-40
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17,21-37,50,65,67,79,112,229,233-234,266,268-274,299,346,437,439-440
+packages/@n8n/instance-ai/evaluations/__tests__/data-discovery.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 27,39
+packages/cli/src/modules/instance-reporting/instance-reporting.config.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-27
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-verification.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 222,315
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,9-30,74-79
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3-5,36,47-48,54-57,59-65,67,78,1126-1127,1818-2076
+packages/cli/src/modules/instance-registry/instance-registry.module.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 32-37
+packages/@n8n/workflow-sdk/src/types/base.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 496-506
+packages/cli/src/modules/token-exchange/__tests__/token-exchange.module.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-25
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,8,10-38
+packages/@n8n/eslint-config/src/rules/no-guardrail-disable.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-99
+packages/@n8n/api-types/src/schemas/data-table-filter.schema.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14-15
+packages/@n8n/agents/src/workspace/tools/write-file.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12-16
+packages/cli/src/modules/instance-registry/checks/instance-registry-reconciliation.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-33
+packages/@n8n/agents/src/__tests__/workspace/sandbox/n8n-sandbox-sandbox.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 121,125-131,168-179
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 57,59
+packages/@n8n/engine/src/execution/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8,17
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-memory.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2
+.github/scripts/resolve-pnpm-version.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-73
+.github/workflows/sec-sync-bundle-branches.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 20-24,95-105,108-109,119,128
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 70,75,79-92,1408-1456
+packages/cli/src/modules/instance-ai/sandbox/instance-ai-sandbox.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 262
+packages/cli/src/services/engine-v2-payload-guard.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-71
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,12,18,27,29-32,64,88-112,118,130-150,182-191,234,251,362,468,499,589-613,615,622-627,633-635,663,722-724,1380-1439,1466-1475,1616-1622,2058
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 44-45,55,93-94,358-359
+packages/cli/src/modules/insights/__tests__/insights.service.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 55,90,94-95,102-103,110-111,201-265,1044-1071,1200,1238-1239,1241-1243,1248-1249,1251-1253,1507-1563,1678
+packages/cli/src/executions/__tests__/execution-crash.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-100
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 26,29
+packages/@n8n/eslint-config/src/plugin.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 34-35
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 16,215-219
+packages/cli/src/public-api/v1/openapi-gen/__tests__/path-parameter-docs.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-31
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-execute-command-tool.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 35,98,134,378,381-382,385,388,390-391,393,397-398,401,435,451,466,529,565,809,812-813,816,819,821-822,824,828-829,832
+packages/cli/src/scheduling/workflow-node-task-payload.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-14
+packages/@n8n/api-types/src/dto/credentials/list-credentials-query.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-9
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/defaults.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 30,58
+.github/workflows/backport.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 49
+packages/cli/src/modules/insights/insights.config.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,6-8,15,64
+packages/cli/src/modules/encryption-key-manager/encryption-key-manager.module.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9-13,22
+packages/cli/src/modules/type-availability-policies/type-availability-policy.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-585
+packages/cli/src/public-api/v1/handlers/data-tables/spec/schemas/dataTable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 39-41,49
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 52,54
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/icon-prefer-themed-variants.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 20-21
+packages/@n8n/nodes-langchain/utils/tests/schemaParsing.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9,383-412
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14,28-34,64,71,362,508
+packages/cli/src/modules/instance-ai/entities/instance-ai-checkpoint.entity.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow-lifecycle.schema.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-12
+packages/cli/src/modules/policy-infrastructure/policy-decision-audit.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-130
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 46,535,550,554-567,569,571
+packages/cli/src/modules/policy-infrastructure/README.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11-14,35,98,104-126,141-186,231-232,237
+packages/@n8n/engine/src/common/json.schema.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,16-18
+packages/cli/src/modules/n8n-packages/__tests__/export-git-blob-parity.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-109
+packages/@n8n/eslint-plugin-community-nodes/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4,31-32,40
+packages/@n8n/config/src/configs/agents.config.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 101
+packages/@n8n/instance-ai/src/tools/task-control.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5,13-26,33
+packages/cli/src/active-executions.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,7,17-21,41-42,322-375
+packages/cli/src/modules/encryption-key-manager/__tests__/encryption-key.controller.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7
+packages/cli/src/modules/external-secrets.ee/__tests__/retry-manager.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 68-95
+packages/@n8n/module-cli/README.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12-14
+packages/@n8n/workflow-sdk/src/workflow-builder/node-builders/node-builder.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 406-435,573-593,602-605,616-619,631-632,817-820,886-889
+packages/cli/src/modules/instance-registry/__tests__/instance-registry.module.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-11
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 18,267
+.github/workflows/sec-sync-retarget-prs.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-78
+packages/cli/src/modules/instance-ai/eval/__tests__/mock-handler.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 71-73,110,112
+packages/cli/src/modules/otel/execution-level-tracer.types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 20,22
+packages/cli/src/modules/instance-ai/__tests__/conversation-history-content.fixtures.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-52
+lefthook.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-20
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 31-47,55-57
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 16,61,87,973,1010-1011,1013
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-19
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 71-82
+.github/workflows/test-bench-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 29
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7,1373-1385,1389,1468-1478,2287-2290,2292,2296-2302
+packages/cli/src/utils/is-billable-execution.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-39
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 59-63,93,119,148,1450-1489,2010
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 43,286-290,308,329-386,777
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14,21,121-126
+packages/@n8n/api-types/src/dto/promotions/promotion-config.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-124
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11
+packages/cli/src/modules/workflow-index/agent-usage-provider-proxy.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-35
+packages/@n8n/backend-common/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/cli/src/modules/otel/__tests__/otel-settings.controller.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 22,135
+packages/@n8n/instance-ai/src/tools/workflows/setup-items.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 13,39-46,51-56,69-70,83-101
+packages/@n8n/module-cli/src/frontend.test.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 68-84,111,119,138-201,207,255,325,364-367
+packages/@n8n/instance-ai/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 36-39,931-1004
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7,15-21,48,51,62,64,72-90,99-105,119-125,143-149,165-171
+packages/@n8n/db/src/migrations/common/1788445119184-CreateInstanceMonitoringReportTable.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-40
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 182
+packages/@n8n/instance-ai/src/workspace/snapshot-manager.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 29,230
+packages/@n8n/api-types/src/dto/source-control/source-control-push-request-public.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-15
+packages/@n8n/engine/src/execution/start-execution.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5-10,15-19,23-24,65,67
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/plan.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,480-512
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-89
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.serializer.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-2,84-122
+packages/@n8n/db/src/repositories/project-relation.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,14-26
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/connect-panel.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 119-120,122,126-129
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4,14,33-34,76-123,152-160,167-179,197-230,317-500
+.agents/skills/experiments/SKILL.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 23
+packages/cli/src/services/workflow-statistics.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,24,29-32,35,65,92-97,107,114-164,173,181,194-195
+packages/@n8n/module-cli/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 13
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,8
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 248-417
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/defaults.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 24
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/test/LmChatAnthropic.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 665-697,836,854,1021,1033
+.github/workflows/release-recreate-failed-release.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 91
+packages/@n8n/agents/src/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 474
+packages/cli/src/__tests__/active-executions.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9,41,86,94,556-712
+packages/@n8n/eslint-config/src/configs/encryption-boundary.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7-24,28,30-31,36-38
+packages/cli/src/modules/agents/agent-setup-completion.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 13,110
+packages/@n8n/api-types/src/dto/otel/update-otel-settings.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5-15,18-20
+.code-health-baseline.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1305-1312
+packages/cli/src/services/__tests__/ownership.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 290,295
+packages/@n8n/instance-ai/docs/architecture.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 10-12,102,104,115,148,165-166,258,294,297,301-302,413
+packages/@n8n/workflow-sdk/src/workflow-builder.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1841-1947
+packages/cli/src/commands/worker.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 68,90-105
+packages/cli/src/controllers/ai.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 20,30,65-77,196,209,228,237,256,267,278,293,306,326,341,355
+packages/cli/src/modules/agents/integrations/__tests__/slack-setup.types.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-15
+packages/cli/src/modules/breaking-changes/rules/v3/task-runner-internal-mode.rule.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-51
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 30,126,133
+.github/workflows/ci-pull-requests.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 27,31,42,120-127,135-136,166-167,176-192,221-222,226-228,262,287,353-364,373,439,447
+packages/cli/src/oauth/__tests__/oauth.service.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,37,40-42,46
+packages/@n8n/imap/src/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,3
+packages/@n8n/engine/src/database/typeorm-execution-view-store.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12-13,36-41,44-63,65-68,79
+packages/@n8n/api-types/src/dto/source-control/source-control-push-conflict-error-public.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-9
+.github/scripts/owners/required-reviews.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 94,108-109,111-112,124,187
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7,42-46,50-58
+packages/@n8n/instance-ai/src/skills/skill-gates.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8-13,17,24
+packages/@n8n/instance-ai/src/tools/workspace.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,65,247-256,273,291
+packages/cli/src/encryption/key-rotation-flag.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-13
+packages/cli/src/public-api/v1/handlers/otel/spec/paths/settings.otel.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 31-32
+packages/@n8n/agents/src/utils/model.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3-20
+packages/cli/src/modules/agents/builder/agent-builder-preview-path.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5
+.github/workflows/release-update-pointer-tag.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 56
+packages/@n8n/instance-ai/README.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/vault.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 27,34,292-324,459-540,711-713,728,744-827
+packages/@n8n/engine/src/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 71,91
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5-11,22,57-58,117,203-207,209,212-232,263-266
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/token-provider.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 16,19
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 15-20,26,70-71,207-352,362-367,403-407,413,426-427,429-431,435-437,440,451-455
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9,240-241,298,497,522,525-528,550-554,638,809,828,961,972,988-991,1085
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/shell.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 184-185
+.github/workflows/test-frontend-declarations-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-44
+packages/cli/src/modules/insights/insights.module.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 18-23
+packages/@n8n/agents/src/sdk/mcp-client.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 105-106,108-110,116-125
+packages/@n8n/engine/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,10
+packages/cli/src/modules/insights/insights-pruning.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 35,38-42
+.github/scripts/attest-image-sbom.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11-12,66-69,78,85,97,101-102,106-117,123-125,127,131,134,138-153,155
+packages/@n8n/engine/docs/adr/ADR-20260904-store-the-workflow-with-the-execution.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-58
+packages/@n8n/node-engine-compatibility/src/__tests__/engine-step-data-loader.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 24
+packages/@n8n/ai-workflow-builder.ee/src/utils/stream-processor.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-task-handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17,63-68,86-88
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/structured-output-parser-validator.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-316
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 449-452,456-461,468-471,473-476,478,480,489-525
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11-13,42-45,855,942-943,967-1012,1094-1103
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-546
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-2,6-7,9-11,13-15,17,23-149,153-155,166-167,173-196,199-220,224-225,228-229,232-238,242-257
+packages/@n8n/utils/src/is-unknown-array.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-5
+.github/scripts/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5,7
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 146-150
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 13,15,31-32,37,252-264,266-275,277-278,281,283,293-356
+packages/cli/src/modules/instance-reporting/instance-reporting.constants.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-8
+packages/cli/src/services/__tests__/public-api-key.service.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 147-168
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11-12
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.get-as-code.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 86
+packages/@n8n/typeorm/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,73,79
+packages/cli/src/modules/external-secrets.ee/providers/vault.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 48,106-111,265-274,482-483,485,488,496,506-508,510,539-548,551-557,560-576,578-581,597,599,603,605,609-617,619-621,623,630,635-645,658-659,663-667
+packages/cli/src/modules/data-table/data-table-rows.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 67-75
+.github/scripts/nightly-sbom-context.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-105
+packages/@n8n/backend-common/src/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 24-26
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11,14-16,42,72,90,97-124,149,161
+packages/cli/src/services/__tests__/deployment-signing-secrets.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-128
+packages/cli/src/services/pruning/executions-pruning.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 19-21,26-28,76,81,84,86
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 26-28,69,108-121,156-167,180-181,189,220-221,226
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6-7,54-56,78,208,217-220,226-227,231,239-240,245,323-338,441,445-447,449,451-454,563-564,566-569,571,574-575,597
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 18,35-38,160-163,187,191,194,196,213,219,221-224,229,231,234-237,241-257,259-269,271-275,278-279,282-288,291-292,294-296,298-304,316,335,356,381,407,430,471,486,496,520,551,565,602,645,659,664-911,955,982,1007,1020,1051,1078,1093,1101,1450-1453,1455-1457,1461-1463,1465,1467-1478,1480-1487,1489,1491-1494,1497-1499,1501,1503-1506,1508-1516,1519-1523,1526-1527,1529-1534,1538-1539,1541-1545,1548,1550-1552,1555-1562,1572,1590,1609,1624,1636,1655,1678,1701,1714,1726,1746,1762,1804,1870,1913,1946,1965,1984,2008,2033,2061,2100,2137,2173,2213,2247,2272,2298,2469,2491,2505,2537,2575,2644,2658,2676,2712,2746,2763,2785,2806,2826,2843,2865,2892,2916,3001,3098,3115,3273-3581
+packages/cli/src/modules/n8n-packages/__tests__/entity-file-format-fence.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-25
+packages/@n8n/scheduler/src/observability/materializer-tracing.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,26
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 124-127,131-142
+packages/cli/src/public-api/v1/handlers/otel/spec/schemas/otel-test-trace.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 13-24,28-31,35-37
+packages/@n8n/task-runner/eslint.config.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,7-9
+packages/@n8n/api-types/src/agents/dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 120-126,129
+packages/@n8n/agents/src/workspace/sandbox/types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 65,67-75,93
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4-5
+packages/@n8n/db/src/migrations/common/1788527465971-AddWakeColumnsToAgentBackgroundJob.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-52
+.github/scripts/docker/should-smoke-build.test.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4-9,94-113
+packages/@n8n/telemetry/src/events/agents.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 214,218,451-456
+packages/@n8n/instance-ai/docs/memory.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 13,76,78-79
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,71
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-manager.ee.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1168,1181-1183,1187-1193,1357-1417
+packages/cli/src/utils/strapi-utils.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 38,100,103-110
+packages/@n8n/ai-utilities/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/api-types/src/dto/promotions/promotion-provider.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-177
+packages/@n8n/nodes-langchain/nodes/agents/Agent/Agent.node.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 119-163
+packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,6,53-57,86,127-145,150-170,177-179,182-185,187-188,190-203,206,208,278,298-300,306-308,447,451,456-458,483-524,529-552,560,562
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 20,70-72
+packages/cli/src/modules/instance-reporting/database/entities/instance-monitoring-report.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-65
+packages/@n8n/agents/src/workspace/tools/str-replace-file.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 15-19
+packages/@n8n/config/src/configs/executions.config.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 197-205
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 24,50,93-94,138,142,151-152,3040-3105,3152-3155,3158,3166,3171-3201,3204-3207,3220,3228-3231,3790,3798,3801,3810-3811,3825,3828,3843,3857,3860,4059-4062,4103,4108-4159,4177
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 54,374
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 143-144,258-260
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 220,234,255-257,261-266,269,274,276,278-280,292
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-target-binding.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12-13,445-515
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/connect-panel.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 52-58
+packages/@n8n/typescript-config/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/ai-utilities/src/utils/redact-secrets.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,38,63
+packages/cli/src/modules/agents/__tests__/agent-dependency-index.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-74
+packages/cli/src/modules/insights/insights.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-5,17-18,21-35,252-253,255-287,290,292-315,318-319
+packages/cli/src/modules/instance-ai/drop-rejected-attachments.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-33
+packages/cli/src/webhooks/__tests__/webhook-response-headers.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 98,102
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-folder-scoped-listing.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-124
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 233-238
+packages/@n8n/nodes-langchain/nodes/tools/ToolCode/ToolCode.node.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14,22-26,149-150,157
+packages/cli/src/modules/agents/agent-dependency-index.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-70
+.boundaries-baseline.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2
+packages/cli/src/modules/instance-ai/__tests__/drop-rejected-attachments.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2
+packages/@n8n/instance-ai/src/__tests__/tool-test-utils.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-32
+packages/cli/src/modules/mcp-registry/mcp-registry-refresh.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-35
+packages/cli/src/modules/type-availability-policies/type-availability-policies.module.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6-9
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 102-103,132-133,179-181,184-188,217-219,222-223,322,328-332,334-337,369
+.github/workflows/release-promote-github-release.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 45
+packages/cli/src/modules/encryption-key-manager/encryption-key.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12
+packages/@n8n/instance-ai/src/tools/activity.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-131
+package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,7,9,45-50,74-79,91
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,44,48-53,313-314,321,334-335,341,379-380,394,520-523
+packages/@n8n/imap/src/imap-simple.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-2,4-10,12,16-18,20,22-111,113-154,156-174,177,179-423,425-430,432-434,438-440,442-500,502,513,515,539,550-551,553,569,590-623,625,632,637-638,641-657,659-663
+packages/@n8n/instance-ai/evaluations/harness/scenario-execution.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 435,461,468
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-panel-state.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-363
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-2,853,856
+packages/@n8n/module-cli/src/templates/frontend/design-system-icons.test.ts.template
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-24
+packages/@n8n/ai-utilities/src/converters/tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7,56
+packages/cli/src/modules/redaction/instance-redaction-enforcement.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 28-31,79-81
+packages/@n8n/eslint-config/src/rules/no-deployment-key-delete.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-163
+packages/cli/src/modules/n8n-packages/io/entity-file-format.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-8
+.agents/skills/conventions/SKILL.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 72-73
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/workflow-lifecycle.schema.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-33
+packages/cli/src/services/export.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12
+docker/images/runners/Dockerfile.distroless
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 16,48,55
+.github/workflows/sec-poutine-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 23
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,83,114-116,144,5387,5391-5556,5605,5615,5652,5716,5747,5786-5812,5831-5833
+packages/cli/src/public-api/v1/handlers/data-tables/__tests__/data-tables.handler.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 61,160-252
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12,42,6656-6660,6664,6696,6709-6742
+packages/@n8n/agents/src/__tests__/workspace/scoped-workspace.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 65,68
+packages/@n8n/db/src/repositories/deployment-key.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2-4,9-14,33,38-99,133-144,214-239
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 25,34,64,73-79,386-413,415-418,420-463,742-840,927-931
+packages/cli/src/deprecation/__tests__/deprecation.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 79-85,209-227
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,34-35
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 31,60-65,79-80,120,136-137
+packages/@n8n/decorators/src/system-task/__tests__/resolve-schedule.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-33
+packages/cli/src/modules/agents/entities/agent-workflow-dependency.entity.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-22
+packages/cli/src/modules/mcp/__tests__/get-workflow-versions-diff.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 155-194
+packages/cli/src/services/pruning/__tests__/execution-pruning-soft-delete.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-29
+.github/workflows/docker-build-push.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 138,296,298-300,313-314,316-317,319-320,322-323,326,330-332,334-335,339-345,347,349,351-353,356-370,401,415-418,421-422,424,430-433,435-436,438,443,445-465,467,693
+packages/cli/src/modules/instance-ai/instance-ai-temporary-workflow.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 147
+packages/cli/src/commands/start.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 430
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-setup.types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4-7,49-57
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 132-207
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 31-36,51-52,86-89,94,99-119,156,203-210,217
+packages/@n8n/module-cli/src/templates/frontend/vite.config.ts.template
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4-5,15-42
+packages/cli/src/modules/instance-ai/__tests__/stream-transport-error.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-2,15-18
+packages/@n8n/db/src/utils/escape-like.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-7
+packages/cli/src/modules/otel/otel.constants.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,4-5,8
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-list-files-for-a-pre-existing-directory.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 35,98,134,378,381-382,385,388,390-391,393,397-398,401,435,452,467,530,566,810,813-814,817,820,822-823,825,829-830,833
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 51-52,251,265,353,363-364,408,457-460,476
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policy-instance.controller.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-41
+packages/@n8n/api-types/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/cli/src/modules/mcp/__tests__/get-workflow-version.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 88-114
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 28-29,87,91,210-250,479-517,530-531,613-645,1176,1193-1194,1335,1386,1393-1422
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 18-19,77-81
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-conversation-history.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-948
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 57
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 38,131,191,198-209
+packages/cli/src/telemetry/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 96,329,354,466
+packages/@n8n/backend-common/src/locking/__tests__/single-flight-lease.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-94
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-adapters.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,4-5,58-68,209-232
+packages/@n8n/benchmark/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/computer-use/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1
+packages/cli/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,143,185
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 15-18,31-36,72-77,82,88-112,117,126-137,152,171,179,184-189,195
+.devcontainer/codespaces/README.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 51-85,343-346
+packages/@n8n/scheduler/README.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 230,232
+packages/cli/src/modules/insights/__tests__/insights.controller.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12,164
+packages/@n8n/api-types/src/schemas/breaking-changes.schema.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 22
+packages/@n8n/cli/docs/commands/package.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 73
+packages/@n8n/instance-ai/src/workspace/__tests__/snapshot-manager.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 199-201
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-optimize.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-31
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 892
+packages/@n8n/instance-ai/src/tools/attachments/__tests__/parse-file-registration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 39,75-94,108-157,396,1140,1148
+packages/@n8n/imap/src/imap-simple.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,6-7,9-10,14,17-39,41-50,52,55-56,58,61-65,67-88,92-96,98-99,101-102,104-107,109-111,113,116-126,128-130,132,135-141,143-144,146-158,162-166,168-245,247-251,253-256,258-260,262-265,268-271,273-281,283,285,288,293-295,297-301,303-307,309-310,313-318,320-323,325-326,328-330,332-333,335-347,349,351-372,374-375,377-378,380-381,383-384,386-387,389-390,392-393,395,397,399-401,403-406,408-410,412-413,415-417,419-423,425-431,433-436,440-456,458-463,466-471,475-478,480,483-487,492-494,496-497,500-502,504,509-510,513,515,518-520,522
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,267
+packages/cli/src/modules/engine-v2/__tests__/engine-credentials.contract.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-41
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 10,205-208,229-232
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 56-65
+packages/cli/src/modules/agents/__tests__/agent-workflow-dependency.repository.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-144
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/GenericFunctions.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8,30-57,106,121,204-205,210-219,221,233-246,334-343
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-checkpoint.repository.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6
+packages/@n8n/instance-ai/src/tools/mcp-servers.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-2
+packages/@n8n/instance-ai/docs/configuration.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 48,104
+packages/cli/src/modules/mcp-registry/mcp-registry.module.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,17,22-28
+packages/cli/src/modules/otel/__tests__/otel.config.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-74
+packages/cli/src/modules/instance-ai/repositories/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+.github/workflows/docker-build-smoke.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 34,41
+packages/@n8n/decorators/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 234-242,262-264,368-371,373-378
+packages/@n8n/instance-ai/src/tools/conversation-history.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-181
+packages/cli/src/modules/token-exchange/token-exchange.module.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 42-50
+packages/@n8n/agents/src/sdk/agent.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,84,204-205,437-439,884-885,891-900,1088,1432-1434
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/parameter-update.utils.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,37,39
+packages/@n8n/chat-hub/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/instance-ai/src/tools/n8n-docs/registry.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,250
+packages/cli/src/controller.registry.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 15,21-22
+packages/@n8n/instance-ai/src/tools/workflows/setup-panel-state.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-282
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-269
+packages/@n8n/imap/src/part-data.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 61-70,87-90
+packages/@n8n/imap/test/fake-imap.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-87
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 395,403
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11,2381
+packages/cli/src/modules/insights/__tests__/insights-compaction.service.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,178-179,181,226-227,229,324-325,327,359-360,362,372,398-399,401,405,426-427,429,436,482-483,485,512-513,515,525,533-619,642-643,645,655
+CONTRIBUTING.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 85,99
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-connection.dto.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-137
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,983-1005,1366,1401
+packages/cli/src/services/__tests__/engine-v2-payload-guard.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-89
+packages/cli/src/events/maps/relay.event-map.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 27-31,736,1294-1338
+packages/@n8n/nodes-langchain/utils/output_parsers/N8nStructuredOutputParser.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 280
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-42
+packages/@n8n/ai-workflow-builder.ee/evaluations/harness/runner.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2
+packages/cli/src/scheduling/__tests__/resolve-task-trigger-node.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-49
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publisher.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 93,185,244,281,318
+packages/@n8n/engine/src/server/create-engine-server.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 10-16,37
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 79-115,183,190-215
+packages/cli/src/modules/instance-ai/repositories/instance-ai-conversation-history.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-351
+CHANGELOG.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-267
+packages/cli/src/eventbus/message-event-bus/__tests__/message-event-bus.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 53
+packages/cli/src/modules/instance-ai/instance-ai-verification.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 303
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key-refresh.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-25
+packages/cli/src/modules/engine-v2/engine-credentials.contract.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-42
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12-14,19,68-70,74,1940-1943,2009-2020,2057,2093-2102,2110,2129-2131,2387-2989,5057-5076,5103,5106-5111,5113-5120,5122-5140,5144-5192,5194-5195,5198-5199,5201-5203,5546-5549,5553-5556
+packages/cli/src/modules/instance-ai/extract-resolved-node-parameters.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 16,339
+packages/@n8n/eslint-config/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2-69
+packages/@n8n/api-types/src/dto/otel/__tests__/update-otel-settings.dto.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,18-19,21,27-40,64-127,144,152,158-162,165-173,176,179,182-207,211,213
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,9,11,23,25,30-33,35-36,44,100-101,104-105,107,113-115,235,266,278,292,306,435-459,492,504-559
+.github/workflows/util-codespace-preview.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-86
+packages/@n8n/instance-ai/src/tools/__tests__/task-control.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,215-247
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable.exporter.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,60-65,88
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,9,33,50-51,57-62,80,100,116,119-141,162,170-221,251,261,278,290,306,332
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,6-7,85-91,129-140,142-143
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,12,33,1311-1441
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17,47,82
+packages/cli/src/modules/instance-ai/storage/typeorm-observation-log-store.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 187-188,193,196,212,220,233,252,276,279-282,290,293,298,300-322
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3-10,12,21-30,34-40,63-64,71,75-84,87-89,99,103,110-122,140,142,150-153,163,194-203,205,209-210,218-246,261
+packages/@n8n/instance-ai/src/tools/n8n-docs.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,137
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/guidance.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 361-386
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/fileSearch/listStores.operation.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 21
+packages/cli/src/modules/breaking-changes/rules/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 40-41
+.github/workflows/ci-owners-required-reviews.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 32-36,146-149
+packages/cli/src/public-api/public-api-validation-error.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8-11
+packages/@n8n/expression-runtime/src/runtime/__tests__/lazy-proxy.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 540,563,581-588,632,634,636-638,641
+packages/cli/src/eventbus/message-event-bus/message-event-bus.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11,66,312
+packages/@n8n/imap/src/reconnect.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-403
+packages/cli/src/scaling/scaling.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17,38-45,68,207-217,249-262,265-302,305-319,321-325,783
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 91-95
+.github/workflows/sbom-validation-callable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-53
+packages/cli/src/modules/agents/utils/extract-agent-workflow-refs.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-14
+packages/@n8n/create-node/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+.github/scripts/resolve-pnpm-version.test.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-124
+packages/@n8n/imap/src/message.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-58
+packages/@n8n/client-oauth2/src/types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 37
+packages/cli/src/modules/instance-reporting/instance-reporting.module.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-34
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4,7-8,31-36,53-55,211,451,454,612,922-934,1308,1347,1356-1374,1578,1586-1599,1862
+packages/@n8n/instance-ai/src/tools/__tests__/conversation-history.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-369
+packages/cli/src/services/jwt.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5,33-35,39-41,44-48
+packages/cli/src/executions/execution-recovery.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,12,18,44,105,233
+packages/cli/src/utils/__tests__/strapi-utils.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,4,28-29,101-128
+.github/workflows/release-publish.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 34,64
+packages/@n8n/backend-test-utils/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,39
+packages/@n8n/agents/src/workspace/sandbox/create-workspace.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 63
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 135
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,257-362,808,811,853,856,904,907
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 333,338,364-365,431-434
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 111-123,246-320,343-347,349-350
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7,109-154
+packages/cli/src/modules/instance-ai/instance-ai-pending-agent.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-150
+.github/scripts/codespace-preview.test.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-162
+packages/@n8n/nodes-langchain/utils/output_parsers/N8nStructuredOutputParser.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 87
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 13,137,141-160
+packages/cli/src/public-api/v1/handlers/data-tables/data-tables.handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 16,55-59,88-95,131,150,176
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 15-16,86-123
+packages/cli/src/encryption/key-manager.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-387
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-48
+packages/@n8n/node-cli/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/cli/src/modules/agents/register-agent-usage-provider.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-36
+.github/workflows/release-promote-backport-labels.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 55
+.agents/skills/ui-design/SKILL.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-28
+packages/@n8n/engine/src/execution/execution-view-store.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8,23-24,34-37,48-49
+packages/cli/src/task-runners/__tests__/task-runner-module.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-53
+packages/cli/src/modules/agents/repositories/agent-workflow-dependency.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-131
+packages/@n8n/utils/src/is-unknown-array.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-31
+packages/@n8n/instance-ai/skills/planned-task-runtime/SKILL.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 159
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/15.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-94
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4,25-79,83,108-123,160,174-179,192,197-199,220-236,252-437,466-521,609-655,713,740-779,811-838
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/task-runner-internal-mode.rule.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-42
+packages/@n8n/db/src/repositories/__tests__/shared-credentials.repository.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,39,48-61
+packages/@n8n/instance-ai/docs/tools.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 18,25,232,234-239,252-254,256,270-284,335,341-342,395-416,1089-1148,1151-1159,1186-1187
+packages/@n8n/node-engine-compatibility/src/v1-adapters.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7,20-25,35-40,198-218,220-229,238-239
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17-22,73-85,134,150,156-157
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-5,94,128,140,145,193-223,250-251
+.github/scripts/owners/required-reviews.test.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 138,141-142,184,194-195,253,267
+.github/workflows/release-create-patch-pr.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 47
+OWNERS
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 84,188,192,253-266
+packages/@n8n/instance-ai/evaluations/run/reshape.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 15,108,119,124,129,136,141,156
+packages/cli/src/modules/redaction/__tests__/redaction.module.hook-registration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-46
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,453,583,620
+packages/cli/src/modules/insights/__tests__/insights-pruning.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-28
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9,112,167,203
+packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-67
+packages/@n8n/agents/src/workspace/tools/read-tool-result.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,180,200,333,362,385
+packages/cli/src/modules/mcp/tools/webhook-utils.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 162,227-230,233,298-300,361,369
+packages/@n8n/ai-utilities/src/__tests__/utils/refreshing-auth-fetch.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 262-314
+packages/@n8n/imap/src/connection-options.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-35
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14,16-23,66-89
+packages/@n8n/imap/src/part-data.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7-15,57-58,73-75,77-79
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 24,26
+packages/cli/src/modules/redaction/__tests__/redaction.module.instance-types.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-58
+packages/@n8n/nodes-langchain/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,216
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/16.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-89
+packages/cli/src/modules/promotions.ee/database/entities/promotion-connection-project.entity.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-36
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policies.module.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,14,17-26
+.github/scripts/db-test-matrix.test.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 128-155
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 26,43,292,1212-1256
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry.module.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-31
+.github/scripts/db-test-matrix.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 27-28,33-36,38,40-44,81-83,94,108-110
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 58-60,976,1027,1199-1200,1202-1203
+packages/@n8n/nodes-langchain/nodes/output_parser/OutputParserStructured/OutputParserStructured.node.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 23-27,202,204,210,212,218
+packages/@n8n/workflow-sdk/src/workflow-builder/connection-utils.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 47,70-80
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/chat-trigger-resource.base.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 99-100
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 28,61-63
+.github/workflows/test-evals-mcp.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 143
+packages/@n8n/api-types/src/dto/otel/test-otel-trace.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6
+packages/@n8n/engine/src/database/entities/workflow-execution.entity.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11,15,38-41,45-47
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 56-59,75,185
+packages/cli/src/public-api/v1/handlers/otel/otel.mapper.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 51-53
+packages/cli/src/public-api/v1/handlers/data-tables/data-tables.utils.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-15
+packages/cli/src/modules/otel/otel.config.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,4,12-15
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 442-443,604-608,646-647,729-732,743-756,759-761,770
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-edits-files-with-append-copy-move-delete-and-rmdir-tools.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 35,98,134,378,381-382,385,388,390-391,393,397-398,401,435,452,467,530,566,810,813-814,817,820,822-823,825,829-830,833,867,884,894,898,916,931,994,1030,1274,1277-1278,1281,1284,1286-1287,1289,1293-1294,1297,1331,1348,1358,1362,1380,1390,1394,1412,1427,1490,1526,1770,1773-1774,1777,1780,1782-1783,1785,1789-1790,1793,1827,1844,1854,1858,1876,1886,1890,1908,1918,1922,1938,1953,2016,2052,2296,2299-2300,2303,2306,2308-2309,2311,2315-2316,2319,2353,2370,2380,2384,2402,2412,2416,2434,2444,2448,2464,2474,2478,2496,2511,2574,2610,2854,2857-2858,2861,2864,2866-2867,2869,2873-2874,2877
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8,124,151,178
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 25
+packages/@n8n/db/src/migrations/common/1788522448804-CreateAgentWorkflowDependencyTable.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-23
+packages/cli/src/modules/agents/agent-dependency-index.listener.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-66
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 74,84,93,152,222,277,322,361,403,444
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 54-67,548,557,562-563,578,584,588,594,663,690,693-702,707-708,711-712,714-715,720-743,745-747,749-788,909-910
+packages/@n8n/instance-ai/src/runtime/__tests__/confirmation-payload.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 115
+packages/cli/src/modules/token-exchange/services/trusted-key-refresh.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-31
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,204-205,209-213
+packages/@n8n/api-types/src/dto/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 103-105,125-130,443-449,464-535
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-686
+packages/@n8n/db/src/repositories/shared-credentials.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9,19,27-36
+packages/cli/src/modules/promotions.ee/database/entities/promotion-provider.entity.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-36
+packages/@n8n/permissions/src/__tests__/types.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 25,86
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 255,295-304
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 395
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 45,71-78,413
+.github/workflows/release-create-pr.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 81
+packages/@n8n/instance-ai/src/errors/folder-resolution.error.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-17
+packages/cli/src/modules/agents/utils/__tests__/agent-capabilities.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-47
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,8,119-132,195-247
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-lifecycle.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 10,29,639,643
+packages/@n8n/ai-utilities/src/json-schema/zod-to-json-schema.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-45
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 10-11,43-45,143-152
+packages/cli/src/modules/agents/__tests__/agent-checkpoint-pruning.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-24
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 23,222,229
+packages/cli/src/modules/data-table/__tests__/data-table-filters.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 332-412
+packages/cli/src/services/ownership.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 233-235
+packages/@n8n/instance-ai/src/tools/evals/eval-config.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5,16,237,263
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/split-in-batches-handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 86-90
+.github/workflows/util-sync-master-to-3x.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 76
+packages/cli/src/modules/type-availability-policies/policy-evaluator.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 26-28,30
+.github/test-metrics/e2e-impact-map.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1
+packages/cli/src/modules/type-availability-policies/type-availability-policy-instance.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-159
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 142-174
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 155-164
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 651,672
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-workflow-converter.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 296-320
+packages/cli/src/modules/instance-reporting/database/repositories/__tests__/instance-monitoring-report.repository.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-198
+packages/cli/src/databases/repositories/__tests__/folder.repository.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 734-786
+packages/@n8n/instance-ai/src/tools/orchestration/report-verification-verdict.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 182-185
+packages/cli/src/executions/enqueued-execution-recovery.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 10,26,57,104
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-file-stat-to-get-file-metadata.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 35,98,134,378,381-382,385,388,390-391,393,397-398,401,433-436,439,455,470,533,569,813,816-817,820,823,825-826,828,832-833,836
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11,35-37,50,73-75
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/if-else-handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9,11-12,48-52,54,61-66,71-72,102-106,150,172
+packages/@n8n/db/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,56
+packages/cli/src/modules/data-table/data-table.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 806-810,814-826,898-909
+packages/@n8n/api-types/src/schemas/public-api-path-params.schema.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-24
+packages/@n8n/db/src/repositories/__tests__/project-relation.repository.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-56
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-folder-scope.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-127
+packages/cli/src/modules/instance-reporting/instance-reporting-settings.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-181
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 60,87,140-141,145,147-148,153-155,157-165,188,208,227,231-260
+packages/@n8n/engine/src/server/routes/workflow-executions.handlers.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 38,56-57
+packages/@n8n/agents/src/workspace/__tests__/scoped-workspace.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 98,129
+packages/cli/src/modules/otel/__tests__/otel-workflow-tracing.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,8,17,25,115-155
+packages/@n8n/decorators/src/controller/types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,27
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/commons.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1054-1096
+.github/workflows/test-unit-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 48,76,115,136,175,224
+packages/cli/src/controllers/__tests__/ai.controller.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9,15,92-99,520-528
+.github/workflows/test-e2e-pc-nightly.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 68
+packages/@n8n/instance-ai/src/tracing/langsmith-tracing.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11,940,1231
+packages/cli/src/services/__tests__/export.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 437-457
+packages/cli/src/webhooks/__tests__/test-webhooks.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 406
+packages/@n8n/instance-ai/docs/e2e-tests.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 117-118,215-216,415
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 13,72,100,878-894
+packages/@n8n/eslint-config/src/rules/no-misplaced-cipher-primitives.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-121
+packages/cli/src/modules/external-secrets.ee/retry-manager.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7,70-74,87,96
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-applies-multiple-string-replacements.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 35,98,134,378,381-382,385,388,390-391,393,397-398,401,435,465,480,543,579,823,826-827,830,833,835-836,838,842-843,846
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 252-257
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 179,192-194,202-272,504,533-535
+packages/cli/src/modules/promotions.ee/database/entities/promotion-config.entity.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-32
+packages/cli/src/utils/__tests__/auth-fetch.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 76
+.github/workflows/test-evals-discovery.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 50
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 282-297
+packages/cli/src/modules/instance-ai/repositories/instance-ai-checkpoint.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4
+packages/@n8n/instance-ai/src/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 189,212,214-215,217,496-500,617-619,654-655,695-705,707
+packages/cli/src/modules/insights/insights-pruning.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-37
+packages/@n8n/ai-node-sdk/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/cli/src/modules/insights/__tests__/insights-pruning.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7,14,25-27,30-32,35-37,40-44,46-48,50,52,55-58,60
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-125
+packages/@n8n/workflow-sdk/src/workflow-builder/control-flow-builders/switch-case.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 306-487
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting-scheduler.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-295
+packages/@n8n/api-types/src/dto/promotions/promotion-common.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-8
+packages/@n8n/instance-ai/src/stream/consume-with-hitl.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 46
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-trim.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-57
+packages/@n8n/instance-ai/src/tools/conversation-history.schema.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-49
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 12,140
+packages/@n8n/agents/src/runtime/__tests__/message-list.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 281-305
+packages/cli/src/modules/instance-registry/__tests__/check.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 53,124,138-162
+packages/@n8n/node-engine-compatibility/src/__tests__/fixtures.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9,21,214-216,237,262
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-7,9-10,28-39,43-49,55,57-60,64,68,70-106,109-121,124-133,135-141
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 21,23,685-853
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 32,189,191
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 228-247
+packages/cli/src/modules/instance-ai/stream-transport-error.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,8,14-17
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 219-543
+packages/cli/src/scheduling/scheduled-job-owner-registry.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4,13,17
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 24,350-353
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 335-338
+packages/cli/src/modules/insights/insights-compaction.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-35
+packages/cli/src/modules/mcp/__tests__/webhook-utils.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 246-274,396-417
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 23,30,33-34,39-45,67,127-133,174,178,543,547-549,553,1796,1895,1898-1900,1925,1938-1939,1941,1948-1983
+.github/workflows/util-determine-current-version.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 36
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,176,232,259,285,359,398
+packages/@n8n/scheduler/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/telemetry/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+.agents/skills/ui-design/rules/web-animation-guidelines.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-93
+packages/cli/src/encryption/__tests__/encryption-bootstrap.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-115
+packages/cli/src/modules/type-availability-policies/dto/update-policy-document.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,9-10
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-api.client.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 30,39,45,55,60,77
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,27-37,479,483-486,492-497,821-822,865-866,908-909,1006-1007
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 409-425
+.github/workflows/sec-zizmor-reusable.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17
+.github/workflows/release-version-release-notification.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 40
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 43-44,448,480-487,614,626,645,704,719,812,820-823,848,1474-1475,1511
+docker/images/runners/Dockerfile
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,33,40,142-144
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-published-state.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-14
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-refresh.task.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-37
+.githooks/check-pnpm.sh
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-13
+packages/@n8n/agents/src/sdk/__tests__/agent-isolated-runtime.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 9,91-127
+packages/@n8n/config/src/configs/logging.config.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 60
+packages/@n8n/eslint-config/src/rules/no-misplaced-cipher-primitives.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-165
+packages/cli/src/modules/instance-reporting/README.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-103
+packages/cli/src/oauth/oauth.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,12,98-108,134-135,138,735,740-792,796-797,802-803,815,817-834,836-847,849-864,866-870,872-883,885-896
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17,56,91,93,331-332,338-339
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 162-167,484-491
+packages/cli/src/executions/pre-execution-checks/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/db/src/migrations/common/1788759351166-CreatePromotionsTables.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-144
+.github/workflows/test-sbom-nightly.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-142
+.github/workflows/sec-sync-public-to-private.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11-13,107-108
+packages/@n8n/node-engine-compatibility/src/v1-workflow-converter.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 135-136
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 484,495-517
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/branch-handler-utils.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 57-75
+packages/cli/src/scheduling/resolve-task-trigger-node.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-37
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8-12,104,109
+packages/cli/src/services/data-table-export.constants.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-5
+packages/@n8n/decorators/src/system-task/__tests__/whole-seconds.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-12
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2-8,10-11,18-19,21,24-26,32
+packages/@n8n/engine/src/common/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2
+packages/@n8n/instance-ai/evaluations/discovery/types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 65-66
+.github/workflows/ci-owners-assign-reviewers.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 57-58
+packages/@n8n/workflow-sdk/src/workflow-builder/control-flow-builders/if-else.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 402-753
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14-15,130,147,165,185,202,223,240,262-263,285-286,313
+packages/@n8n/node-engine-compatibility/src/guards.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-2,25-37
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 22-23,25,55-57,73,80-86,89-97,99-100,102,104-106,110-112,114-115,118-122,151,159-163,182,194,220,225-232,256,266,273,287-294
+packages/@n8n/constants/src/scheduler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 166-167
+packages/@n8n/module-cli/src/templates/frontend/README.md.template
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6-9,13,37-52
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-conversation-history.repository.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-751
+packages/cli/src/encryption/__tests__/encryption-bootstrap.service.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-215
+packages/cli/src/modules/otel/__tests__/support/otel-workflow-fixtures.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 41-81
+packages/@n8n/api-types/src/dto/promotions/promotion-connection.dto.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-123
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 106-107,221-229,286-300
+.github/WORKFLOWS.md
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 234-238,248-338,373-375,528,581,587-602,647,650,678,686-687,692-702,713,777-780,920-926,1021-1048
+packages/@n8n/tournament/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 19-23,26,145-148,163-166,201-204
+packages/cli/src/services/pruning/workflow-history-compaction-optimize.task.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-35
+packages/@n8n/agents/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,115
+packages/cli/src/encryption/__tests__/key-rotation-cycle.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-76
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 159
+packages/cli/src/modules/otel/__tests__/otel.service.grpc-deps.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-109
+packages/cli/src/modules/instance-reporting/database/repositories/instance-monitoring-report.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-111
+packages/cli/src/modules/otel/__tests__/otel-settings.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,4-7,10,16,30,38-74,83,130,141-179,190,200-281,303,340,343-344,347-351,358,361-391,395-396,408-422,427,437-449
+packages/cli/src/modules/agents/agents.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 37-47,68-74,80-89,95,99-100,139-141,143,145,150
+packages/cli/src/modules/instance-ai/workflow-templates.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 23-24,359,412,461,487,510,532,626,652,680,698,716,762-763,800,828
+packages/@n8n/utils/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4
+.github/actions/setup-nodejs/action.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 46-60,62-72,75-105
+packages/@n8n/decorators/src/system-task/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-5,13
+packages/@n8n/instance-ai/src/tools/__tests__/workspace.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 238-317
+packages/@n8n/decorators/src/system-task/whole-seconds.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-4
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 46-50,183-185
+.github/workflows/util-cleanup-abandoned-release-branches.yml
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 33
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 83-98
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 107-139,372-373,408-409,421-422,595
+packages/@n8n/instance-ai/src/tools/orchestration/plan.tool.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11-15
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 40,305
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 47,694-704,712-713
+packages/cli/src/scheduling/__tests__/agent-scheduled-job-owner.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-67
+packages/cli/src/modules/insights/database/entities/insights-shared.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 32,40
+packages/@n8n/instance-ai/evaluations/__tests__/event-parser.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 375
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 31-41
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,25-35,42,51,87-88,93,173-180,184-225
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-2
+packages/@n8n/agents/src/sdk/catalog.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,293
+packages/@n8n/constants/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry-api.client.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 220-231,262-273,313-322
+packages/@n8n/instance-ai/evaluations/data/discovery/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 84
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.setup-panel.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-28
+packages/cli/src/modules/insights/insights-collection.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 16,185-191
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 38,183,346
+packages/@n8n/node-engine-compatibility/src/__tests__/guards.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-37
+packages/@n8n/instance-ai/src/tools/__tests__/activity.tool.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-130
+.github/scripts/sync-bundle-branch.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 29-36,38-39,59-66,79-119,135-136,139-142,146-156
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 15,17,29-32,123-124,129,142-144,149-150,155-179,320,326-329
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 40-41,49,60,63,322-323,329,346
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6-8,23,46,55-69,94-102,104-106
+packages/cli/src/modules/mcp/tools/schemas.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 33-41,50-52,54-55
+packages/cli/src/modules/instance-ai/instance-ai-folder-scope.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-97
+packages/cli/src/modules/policy-infrastructure/policy-decision.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 17-18,107-109,124-128,131-132,139-144,162-179,184,186,215
+packages/@n8n/mcp-apps/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,59
+packages/cli/src/modules/engine-v2/engine-v2.constants.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6-8
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7,173,308-316
+packages/cli/src/modules/source-control.ee/__tests__/source-control-export.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 6,18,45,66,69-71,78-80,107,111-116,142-143,152,156-158,219,223-225,278,282-287,316-317,376,380-385,407-480,497,542-576,721-726,752-757,777-782,793-843,846-848,852,1109,1114-1145
+packages/@n8n/imap/src/message.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-24
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publishing-policy.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 88-128
+packages/@n8n/ai-utilities/src/utils/text-editor.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-3,189
+packages/cli/src/utils/auth-fetch.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 8-22,32-36,81-82,84,94,100-106
+packages/@n8n/instance-ai/evaluations/harness/normalize-workflow.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 16,89,103
+packages/@n8n/ai-utilities/src/json-schema/index.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 2,7,19
+packages/cli/src/modules/token-exchange/services/trusted-key.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 4,52-57,104,296,310-313,315-324
+packages/@n8n/agents/src/runtime/model/raw-error.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,64
+packages/cli/src/modules/instance-ai/eval/mock-handler.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 11,14
+packages/@n8n/ai-utilities/src/utils/refreshing-auth-fetch.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7,25,56-59
+packages/@n8n/engine/src/server/api.types.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 7,25-29
+packages/@n8n/agents/src/runtime/loop/__tests__/stream-sink.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-88
+packages/@n8n/module-cli/src/main.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 103-104
+packages/@n8n/imap/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 26
+packages/cli/src/__tests__/chat-shell.template.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 144,162-163,502-511,523-524,529,547,579-586,663-673
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 316-327
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/LmChatAzureOpenAi.node.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-80
+packages/@n8n/nodes-langchain/nodes/chains/InformationExtractor/InformationExtractor.node.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 5,21-25,266,272-273
+packages/cli/src/eventbus/event-message-classes/event-message-audit.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 23,38-43
+packages/@n8n/expression-runtime/package.json
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.setup-integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 50
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-619
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,20-21,26,595-623,636-637,641,655,663
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-7,12,17,20,27,74-122
+packages/cli/src/services/ai-gateway.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 14,21,169-172,180,187,206-212
+packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 23-24,76,197,270,278-285,288,329
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 273-279,318,344,389,423,430-461,464-465,467,480-494,497-499,506-515,531-532
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 35-49,52-56,65,73-80,82-90,127-141
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 48,753,763-776,797-798
+packages/cli/src/task-runners/task-runner-module.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 70-77,92
+packages/@n8n/module-cli/src/templates/frontend/stylelint.config.mjs.template
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-9
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-provider.dto.test.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1-157
+packages/@n8n/backend-test-utils/eslint.config.mjs
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 3,5-15,17
+packages/cli/src/modules/token-exchange/token-exchange.config.ts
+  s_a871cc60b0c4d4::t_6ae3ddc36e38b6 1,35,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "586dd93253419d8edc62f220469975b21d7529ea",
+  "prompts": {},
+  "sessions": {
+    "s_a871cc60b0c4d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d9881b-2ca2-4c99-97d9-16b2f1609424",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

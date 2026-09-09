@@ -1,0 +1,58 @@
+packages/cli/test/integration/user.repository.test.ts
+  s_61c1fd31ebcb2c::t_41f2234fd5813c 214,216,230,232-243
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_61c1fd31ebcb2c::t_90396d37537339 13
+  s_61c1fd31ebcb2c::t_7247e8953eab06 96-98,101-105,114,116-123
+packages/cli/src/controllers/change-email.controller.ts
+  s_61c1fd31ebcb2c::t_d50992d8e5414d 176-181,190-194
+packages/@n8n/api-types/src/dto/user/resolve-change-email-token-query.dto.ts
+  s_75f9c24786b923::t_b8b9a8a4bbf036 2
+packages/@n8n/config/test/config.test.ts
+  s_4711b5569edd27::t_97921d214d23d1 179-180
+packages/@n8n/api-types/src/schemas/change-email-response.ts
+  s_75f9c24786b923::t_44d3b6d901a7b7 2
+packages/cli/src/controllers/__tests__/change-email.controller.test.ts
+  s_61c1fd31ebcb2c::t_b54d0e8389f2d8 42-43
+  s_61c1fd31ebcb2c::t_8ac4792210df63 52-56,65-67
+  s_61c1fd31ebcb2c::t_5a948dbc02ef23 24,26
+  s_61c1fd31ebcb2c::t_43865006c35e32 1-23,25,27-41,44-51,57-64,68-81
+packages/@n8n/api-types/src/dto/user/confirm-email-change-request.dto.ts
+  s_75f9c24786b923::t_15c30f350b1943 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2ed782968071b9e0476d811252367f8d4bab01d8",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4711b5569edd27": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ddeb5ea-dba3-4929-bc2d-97f9f46f48ce",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_61c1fd31ebcb2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7316dab9-7680-4600-a206-34358b5e9747",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_75f9c24786b923": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ccee414-ead1-4ec5-9593-0b69c0dbeac0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
