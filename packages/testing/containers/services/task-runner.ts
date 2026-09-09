@@ -20,7 +20,7 @@ export const taskRunner: Service<TaskRunnerResult> = {
 
 	getOptions(ctx) {
 		if (ctx.external) {
-			return { taskBrokerUri: `http://${EXTERNAL_HOST}:5679` } as TaskRunnerConfig;
+			return { taskBrokerUri: `http://${EXTERNAL_HOST}:5679` };
 		}
 		const { workers, mains, projectName } = ctx;
 		const taskBrokerHost =
@@ -29,7 +29,7 @@ export const taskRunner: Service<TaskRunnerResult> = {
 				: mains > 1
 					? `${projectName}-n8n-main-1`
 					: `${projectName}-n8n`;
-		return { taskBrokerUri: `http://${taskBrokerHost}:5679` } as TaskRunnerConfig;
+		return { taskBrokerUri: `http://${taskBrokerHost}:5679` };
 	},
 
 	async start(network, projectName, config?: unknown): Promise<TaskRunnerResult> {

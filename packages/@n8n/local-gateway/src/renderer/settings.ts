@@ -117,7 +117,7 @@ async function saveSettings(initial: AppSettings): Promise<AppSettings | null> {
 	const partial = readForm();
 	const result = await window.electronAPI.setSettings(partial);
 	if (result.ok) {
-		return { ...initial, ...partial } as AppSettings;
+		return { ...initial, ...partial };
 	}
 	alert(`Failed to save settings: ${result.error ?? 'Unknown error'}`);
 	return null;

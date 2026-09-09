@@ -32,7 +32,7 @@ describe('Utils', () => {
 
 			// Attach to document to verify values persist
 			const root = doc.getMap('test');
-			root.set('data', result as CRDTMap);
+			root.set('data', result);
 			const attached = root.get('data') as CRDTMap<string | number>;
 
 			expect(attached.get('name')).toBe('test');
@@ -47,7 +47,7 @@ describe('Utils', () => {
 
 			// Attach to document to verify values persist
 			const root = doc.getMap('test');
-			root.set('data', result as CRDTArray);
+			root.set('data', result);
 			const attached = root.get('data') as CRDTArray<number>;
 
 			expect(attached.get(0)).toBe(1);
@@ -68,7 +68,7 @@ describe('Utils', () => {
 
 			// Attach to document
 			const root = doc.getMap('test');
-			root.set('data', result as CRDTMap);
+			root.set('data', result);
 			const map = root.get('data') as CRDTMap;
 
 			const user = map.get('user') as CRDTMap;
@@ -88,7 +88,7 @@ describe('Utils', () => {
 
 			// Attach to document
 			const root = doc.getMap('test');
-			root.set('data', result as CRDTMap);
+			root.set('data', result);
 			const map = root.get('data') as CRDTMap;
 
 			const items = map.get('items') as CRDTArray;
@@ -111,7 +111,7 @@ describe('Utils', () => {
 
 			// Attach to document
 			const root = doc.getMap('test');
-			root.set('data', result as CRDTArray);
+			root.set('data', result);
 			const arr = root.get('data') as CRDTArray;
 
 			expect(arr.length).toBe(2);
@@ -154,7 +154,7 @@ describe('Utils', () => {
 
 			// Attach to document
 			const root = doc.getMap('test');
-			root.set('data', result as CRDTMap);
+			root.set('data', result);
 			const map = root.get('data') as CRDTMap;
 
 			expect(map.get('name')).toBe('workflow');
@@ -236,7 +236,7 @@ describe('Utils', () => {
 
 			// Attach to document before roundtrip
 			const root = doc.getMap('roundtrip');
-			root.set('data', seeded as CRDTMap);
+			root.set('data', seeded);
 			const attached = root.get('data') as CRDTMap;
 
 			const result = toJSON(attached);
@@ -263,7 +263,7 @@ describe('Utils', () => {
 
 			// Attach to document before roundtrip
 			const root = doc.getMap('roundtrip');
-			root.set('data', seeded as CRDTMap);
+			root.set('data', seeded);
 			const attached = root.get('data') as CRDTMap;
 
 			const result = toJSON(attached);
@@ -277,7 +277,7 @@ describe('Utils', () => {
 
 			// Attach to document before roundtrip
 			const root = doc.getMap('roundtrip');
-			root.set('data', seeded as CRDTArray);
+			root.set('data', seeded);
 			const attached = root.get('data') as CRDTArray;
 
 			const result = toJSON(attached);
@@ -303,7 +303,7 @@ describe('Utils', () => {
 					},
 				},
 			});
-			root.set('data', seeded as CRDTMap);
+			root.set('data', seeded);
 			const data = root.get('data') as CRDTMap;
 
 			expect(getNestedValue(data, ['user', 'profile', 'name'])).toBe('Bob');

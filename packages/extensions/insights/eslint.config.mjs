@@ -20,7 +20,9 @@ export default defineConfig(
 		files: ['src/backend/**/*.ts'],
 		languageOptions: {
 			parserOptions: {
-				project: ['./tsconfig.backend.json'],
+				projectService: {
+					defaultProject: './tsconfig.backend.json'
+				}
 			},
 		},
 	},
@@ -28,7 +30,9 @@ export default defineConfig(
 		files: ['src/frontend/**/*.ts'],
 		languageOptions: {
 			parserOptions: {
-				project: ['./tsconfig.frontend.json'],
+				projectService: {
+					defaultProject: './tsconfig.frontend.json'
+				}
 			},
 		},
 	},

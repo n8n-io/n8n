@@ -14,18 +14,16 @@ export type LoadableScenarioData = {
  * Loads scenario data files from FS
  */
 export class ScenarioDataFileLoader {
-	async loadDataForScenario(scenario: Scenario): Promise<LoadableScenarioData> {
-		const workflows = await Promise.all(
+	loadDataForScenario(scenario: Scenario): LoadableScenarioData {
+		const workflows =
 			scenario.scenarioData.workflowFiles?.map((workflowFilePath) =>
 				this.loadSingleWorkflowFromFile(path.join(scenario.scenarioDirPath, workflowFilePath)),
-			) ?? [],
-		);
+			) ?? [];
 
-		const credentials = await Promise.all(
+		const credentials =
 			scenario.scenarioData.credentialFiles?.map((credentialFilePath) =>
 				this.loadSingleCredentialFromFile(path.join(scenario.scenarioDirPath, credentialFilePath)),
-			) ?? [],
-		);
+			) ?? [];
 
 		const dataTable = scenario.scenarioData.dataTableFile
 			? this.loadSingleDataTableFromFile(

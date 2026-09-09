@@ -12,6 +12,10 @@ export const nodeConfig = tseslint.config(
 		languageOptions: {
 			ecmaVersion: 2024,
 			globals: globals.node,
+			parserOptions: {
+				projectService: true,
+				tsconfigRootDir: import.meta.dirname,
+			},
 		},
 	},
 );

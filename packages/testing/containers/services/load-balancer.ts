@@ -97,7 +97,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 			webhookCount: ctx.webhooks,
 			hostPort: ctx.allocatedPorts.loadBalancer,
 			policy: ctx.config.lbPolicy ?? 'first',
-		} as LoadBalancerConfig;
+		};
 	},
 
 	env(result) {

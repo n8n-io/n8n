@@ -10,7 +10,7 @@ function createMessage() {
 describe('getMessage', () => {
 	it('should resolve with attributes and parts', async () => {
 		const message = createMessage();
-		const promise = getMessage(message as never);
+		const promise = getMessage(message);
 
 		const bodyStream = Readable.from('hello');
 		message.emit('body', bodyStream, { which: 'TEXT', size: 5 });
@@ -26,7 +26,7 @@ describe('getMessage', () => {
 
 	it('should reject when the message emits an error', async () => {
 		const message = createMessage();
-		const promise = getMessage(message as never);
+		const promise = getMessage(message);
 
 		message.emit('error', new Error('message error'));
 
@@ -35,7 +35,7 @@ describe('getMessage', () => {
 
 	it('should reject when a body stream emits an error', async () => {
 		const message = createMessage();
-		const promise = getMessage(message as never);
+		const promise = getMessage(message);
 
 		const bodyStream = new Readable({ read() {} });
 		message.emit('body', bodyStream, { which: 'TEXT', size: 0 });
@@ -46,7 +46,7 @@ describe('getMessage', () => {
 
 	it('should not throw when a body stream emits multiple errors', async () => {
 		const message = createMessage();
-		const promise = getMessage(message as never);
+		const promise = getMessage(message);
 
 		const bodyStream = new Readable({ read() {} });
 		message.emit('body', bodyStream, { which: 'TEXT', size: 0 });

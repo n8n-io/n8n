@@ -18,7 +18,8 @@ const parse = (parser: LRParser, input: string) => {
 };
 
 const parseMixed = (parser: LRParser, input: string) => {
-	return String(parser.parse(input) as unknown);
+	// eslint-disable-next-line @typescript-eslint/no-base-to-string
+	return String(parser.parse(input));
 };
 
 describe('Parse MySQL tokens', () => {
