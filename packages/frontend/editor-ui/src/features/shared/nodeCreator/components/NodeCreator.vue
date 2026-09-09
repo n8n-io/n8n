@@ -200,6 +200,8 @@ onClickOutside(
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 :global(strong) {
 	font-weight: var(--font-weight--bold);
 }
