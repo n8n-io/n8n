@@ -3,11 +3,9 @@ import { ref, computed, inject, provide, shallowReactive, type InjectionKey } fr
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useInstanceAiProgressiveBuildingExperiment } from '@/experiments/instanceAiProgressiveBuilding/useInstanceAiProgressiveBuildingExperiment';
 import {
 	UNLIMITED_CREDITS,
 	type InstanceAiThreadSummary,
-	type InstanceAiBuildMode,
 	type InstanceAiAttachment,
 	type InstanceAiNodesAttachment,
 	type PushMessage,
@@ -50,8 +48,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	/** Whether the pool has been locked by the activation cap. */
 	const quotaLocked = ref(false);
 
-	const { isEnabled: progressiveBuildingEnabled } = useInstanceAiProgressiveBuildingExperiment();
-
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
 	const runtimeHooks = {
@@ -64,8 +60,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			void loadThreads();
 		},
 		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
-		getBuildMode: (): InstanceAiBuildMode | undefined =>
-			progressiveBuildingEnabled.value ? 'progressive' : undefined,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {

@@ -14,7 +14,7 @@ import {
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { getSystemPrompt } from './system-prompt';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
-import { getProgressiveBuildingInstructions, hasRuntimeSkills } from '../skills/runtime-skills';
+import { hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -93,7 +93,14 @@ export async function createInstanceAgent(
 	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
 	// explicit child runs that land on the active trace — orchestration tools
 	// (e.g. verify) already get it via OrchestrationContext.
-	const domainContext: InstanceAiContext = { ...context, tracing: orchestrationContext?.tracing };
+	const domainContext: InstanceAiContext = {
+		...context,
+		tracing: orchestrationContext?.tracing,
+		runtimeSkillCatalog:
+			orchestrationContext?.runtimeSkillCatalog ??
+			context.runtimeSkillCatalog ??
+			orchestrationContext?.runtimeSkills,
+	};
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change). The manager
 	// returns per-server connection failures alongside the tools so they travel
@@ -198,7 +205,6 @@ export async function createInstanceAgent(
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
 		projectId: context.projectId,
-		progressiveBuildingInstructions: await getProgressiveBuildingInstructions(context.buildMode),
 		// Presence of the service IS the experiment gate — the host only wires it
 		// for flagged-in users on project-bound runs.
 		conversationHistoryEnabled: Boolean(context.conversationHistoryService),

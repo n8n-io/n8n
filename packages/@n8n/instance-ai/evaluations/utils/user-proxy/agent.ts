@@ -3,7 +3,7 @@ import {
 	CONFIRMATION_TOOL_DESCRIPTIONS,
 	confirmationDecisionSchema,
 	USER_TURN_TOOL_DESCRIPTIONS,
-	userTurnDecisionSchema,
+	createUserTurnDecisionSchema,
 	userTurnWithoutExecutionSchema,
 	type Decision,
 	type ProxyDecisionMode,
@@ -18,18 +18,26 @@ export interface UserProxyAgentConfig {
 }
 
 export interface UserProxyAgent {
-	decide(userPrompt: string, mode: ProxyDecisionMode): Promise<Decision | undefined>;
+	decide(
+		userPrompt: string,
+		mode: ProxyDecisionMode,
+		savedWorkflowIds?: string[],
+	): Promise<Decision | undefined>;
 }
 
 export function createUserProxyAgent(config: UserProxyAgentConfig = {}): UserProxyAgent {
 	return {
-		async decide(userPrompt: string, mode: ProxyDecisionMode): Promise<Decision | undefined> {
+		async decide(
+			userPrompt: string,
+			mode: ProxyDecisionMode,
+			savedWorkflowIds: string[] = [],
+		): Promise<Decision | undefined> {
 			// The schema handed to the model is the action menu for this moment in
 			// the conversation — actions that cannot function now are not offered.
 			const schema =
 				mode === 'user-turn'
 					? config.allowUserExecution
-						? userTurnDecisionSchema
+						? createUserTurnDecisionSchema(savedWorkflowIds)
 						: userTurnWithoutExecutionSchema
 					: confirmationDecisionSchema;
 			const toolDescriptions =

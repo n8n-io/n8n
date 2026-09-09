@@ -1322,13 +1322,9 @@ export interface InstanceAiContext {
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
+	/** Selected skill source for inline tool guidance. */
+	runtimeSkillCatalog?: RuntimeSkillSource;
 	projectId?: string;
-	/**
-	 * Build style for the run. `progressive` selects the host-injected policy.
-	 * Retained per thread on the
-	 * host side so server-initiated follow-up runs keep the mode.
-	 */
-	buildMode?: InstanceAiBuildMode;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
 	 * is built. When true, the `workflows` list action advertises folder fields
@@ -1919,8 +1915,7 @@ export interface OrchestrationContext {
 	messageGroupId?: string;
 	userId: string;
 	projectId?: string;
-	/** Build style for the run — `progressive` disables planned-task orchestration
-	 *  (the tool is omitted) so increments cannot be batched past the execution gate. */
+	/** Progressive builds do not expose task planning. */
 	buildMode?: InstanceAiBuildMode;
 	/** Setup panel v2 flag, mirrored from the domain context's `setupItemsEmitter` presence. */
 	setupPanelEnabled?: boolean;

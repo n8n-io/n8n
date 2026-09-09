@@ -306,14 +306,14 @@ export class N8nClient {
 		threadId: string,
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
-		mode?: InstanceAiBuildMode,
+		mode: InstanceAiBuildMode = 'default',
 	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
 			body: {
 				message,
 				...(attachments && attachments.length > 0 ? { attachments } : {}),
-				...(mode ? { mode } : {}),
+				mode,
 			},
 		});
 		return result as { runId: string };

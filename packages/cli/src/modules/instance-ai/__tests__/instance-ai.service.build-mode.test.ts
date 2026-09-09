@@ -14,11 +14,12 @@ type Persistence = NonNullable<SerializableAgentState['persistence']>;
 type ServiceInternals = {
 	instanceAiConfig: { runDebugEnabled: boolean };
 	runState: RunStateRegistry<User>;
+	modeWhenEnvironmentBuilt?: InstanceAiBuildMode;
 	threadPushRef: Map<string, string>;
 	checkpointStore: { load: (key: string) => Promise<SerializableAgentState | undefined> };
 	revalidateActiveUser: (userId: string) => Promise<User>;
 	createExecutionEnvironment: () => Promise<{
-		orchestrationContext: { buildMode?: InstanceAiBuildMode };
+		orchestrationContext: object;
 	}>;
 	createAgentFromEnvironment: () => Promise<object>;
 	buildOrchestratorAgentStreamOptions: (
@@ -58,15 +59,16 @@ function createService(checkpoint?: SerializableAgentState): ServiceInternals {
 	service.threadPushRef = new Map();
 	service.checkpointStore = { load: vi.fn(async () => checkpoint) };
 	service.revalidateActiveUser = vi.fn(async () => user);
-	service.createExecutionEnvironment = vi.fn(async () => ({
-		orchestrationContext: { buildMode: service.runState.getBuildMode(orphan.threadId) },
-	}));
+	service.createExecutionEnvironment = vi.fn(async () => {
+		service.modeWhenEnvironmentBuilt = service.runState.getBuildMode(orphan.threadId);
+		return { orchestrationContext: {} };
+	});
 	service.createAgentFromEnvironment = vi.fn(async () => ({}));
 	return service;
 }
 
 describe('InstanceAiService build mode recovery', () => {
-	it.each([undefined, 'progressive'] as const)(
+	it.each(['default', 'progressive'] as const)(
 		'preserves mode %s when a saved run is rebuilt in a fresh service',
 		async (mode) => {
 			const original = createService();
@@ -78,7 +80,7 @@ describe('InstanceAiService build mode recovery', () => {
 				orphan.runId,
 				signal,
 			);
-			expect(persistence.hostMetadata).toEqual({ buildMode: mode ?? null });
+			expect(persistence.hostMetadata).toEqual({ buildMode: mode });
 
 			const checkpoint = mock<SerializableAgentState>({
 				persistence: structuredClone(persistence),
@@ -87,8 +89,8 @@ describe('InstanceAiService build mode recovery', () => {
 			const result = await restored.rebuildSuspendedRunFromCheckpoint(orphan);
 			expect(result.kind).toBe('ready');
 			if (result.kind !== 'ready') throw new Error('Expected a restored run');
-			expect(result.state.orchestrationContext?.buildMode).toBe(mode);
 			expect(restored.runState.getBuildMode(orphan.threadId)).toBe(mode);
+			expect(restored.modeWhenEnvironmentBuilt).toBe(mode);
 
 			const resumed = restored.buildOrchestratorResumeAgentOptions(
 				user,
@@ -98,7 +100,7 @@ describe('InstanceAiService build mode recovery', () => {
 				orphan.toolCallId,
 				signal,
 			);
-			expect(resumed.persistence.hostMetadata).toEqual({ buildMode: mode ?? null });
+			expect(resumed.persistence.hostMetadata).toEqual({ buildMode: mode });
 		},
 	);
 
@@ -117,8 +119,8 @@ describe('InstanceAiService build mode recovery', () => {
 			const result = await restored.rebuildSuspendedRunFromCheckpoint(orphan);
 			expect(result.kind).toBe('ready');
 			if (result.kind !== 'ready') throw new Error('Expected a restored run');
-			expect(result.state.orchestrationContext?.buildMode).toBeUndefined();
-			expect(restored.runState.getBuildMode(orphan.threadId)).toBeUndefined();
+			expect(restored.runState.getBuildMode(orphan.threadId)).toBe('default');
+			expect(restored.modeWhenEnvironmentBuilt).toBe('default');
 		},
 	);
 });

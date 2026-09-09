@@ -299,9 +299,7 @@ export interface MultiTurnConfig extends WaitConfig {
 	/** Restore the case's declared input rows before a normal user execution. */
 	beforeUserExecution?: (deadline: number) => Promise<void>;
 	allowUserExecution?: boolean;
-	/** Sent with every follow-up message — the mode is per-message on the wire
-	 *  and the backend keeps "latest message wins", so a follow-up that omitted
-	 *  it would silently clear the thread's mode. */
+	/** Repeat the eval override on each message to bypass the backend assignment. */
 	buildMode?: InstanceAiBuildMode;
 }
 

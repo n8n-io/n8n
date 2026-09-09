@@ -16,7 +16,7 @@ import { UserProxyLlm } from '../utils/user-proxy';
 import type { UserProxyAgent } from '../utils/user-proxy/agent';
 import {
 	confirmationDecisionSchema,
-	userTurnDecisionSchema,
+	createUserTurnDecisionSchema,
 	userTurnWithoutExecutionSchema,
 	type Decision,
 	type ProxyDecisionMode,
@@ -76,6 +76,7 @@ function fakeCredentialClient(
 class FakeAgent implements UserProxyAgent {
 	readonly prompts: string[] = [];
 	readonly modes: ProxyDecisionMode[] = [];
+	readonly savedWorkflowIds: string[][] = [];
 	private queue: Array<Decision | undefined | Error> = [];
 
 	enqueue(...decisions: Array<Decision | undefined | Error>): void {
@@ -83,9 +84,14 @@ class FakeAgent implements UserProxyAgent {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async decide(userPrompt: string, mode: ProxyDecisionMode): Promise<Decision | undefined> {
+	async decide(
+		userPrompt: string,
+		mode: ProxyDecisionMode,
+		savedWorkflowIds: string[] = [],
+	): Promise<Decision | undefined> {
 		this.prompts.push(userPrompt);
 		this.modes.push(mode);
+		this.savedWorkflowIds.push(savedWorkflowIds);
 		const next = this.queue.shift();
 		if (next instanceof Error) throw next;
 		return next;
@@ -1864,6 +1870,7 @@ describe('UserProxyLlm.decideFollowUp', () => {
 		await proxy.decideFollowUp();
 		expect(agent.prompts[0]).toContain('wf-primary');
 		expect(agent.prompts[0]).toContain('Contact log');
+		expect(agent.savedWorkflowIds[0]).toEqual(['wf-primary']);
 	});
 
 	it('returns done immediately when messageBudget is 0 without invoking the agent', async () => {
@@ -2023,6 +2030,21 @@ describe('UserProxyLlm.decideFollowUp', () => {
 // ---------------------------------------------------------------------------
 
 describe('mode-scoped decision schemas', () => {
+	const userTurnDecisionSchema = createUserTurnDecisionSchema(['workflow']);
+	it('restricts executions to saved IDs and omits the field without candidates', () => {
+		const schema = createUserTurnDecisionSchema(['primary-id', 'helper-id']);
+		const decision = { action: 'send_follow_up_message', message: 'I ran it' };
+		for (const runWorkflowId of ['primary-id', 'helper-id']) {
+			expect(schema.safeParse({ ...decision, runWorkflowId }).success).toBe(true);
+		}
+		for (const runWorkflowId of ['', 'Contact log', 'unknown-id']) {
+			expect(schema.safeParse({ ...decision, runWorkflowId }).success).toBe(false);
+		}
+		const emptySchema = createUserTurnDecisionSchema([]);
+		expect(emptySchema.safeParse({ ...decision, runWorkflowId: 'primary-id' }).success).toBe(false);
+		expect(emptySchema.safeParse(decision).success).toBe(true);
+	});
+
 	it('excludes user executions unless the case enables them', () => {
 		const decision = {
 			action: 'send_follow_up_message',

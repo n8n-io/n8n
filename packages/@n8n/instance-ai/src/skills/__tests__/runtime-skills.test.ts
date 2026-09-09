@@ -162,14 +162,12 @@ describe('Instance AI runtime skills', () => {
 		expect(
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: false,
-				progressiveBuildingEnabled: true,
 				instanceContextEnabled: true,
 			}),
 		).toContain(CONFIG_EVALS_SKILL_ID);
 		expect(
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: true,
-				progressiveBuildingEnabled: true,
 				instanceContextEnabled: true,
 			}),
 		).not.toContain(CONFIG_EVALS_SKILL_ID);
@@ -183,7 +181,6 @@ describe('Instance AI runtime skills', () => {
 		expect(
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: true,
-				progressiveBuildingEnabled: false,
 				instanceContextEnabled: true,
 			}),
 		).toContain('progressive-building');

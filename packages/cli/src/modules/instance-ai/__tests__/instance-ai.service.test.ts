@@ -50,7 +50,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
 		setupSandboxWorkspace: vi.fn(),
-		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
+		loadInstanceAiRuntimeSkillSourceForBuildMode: vi.fn(() => ({
 			registry: {
 				skillsHash: 'runtime-skills-hash',
 				skills: [{ id: 'data-table-manager' }],
@@ -226,7 +226,7 @@ import {
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
-	loadInstanceAiRuntimeSkillSource,
+	loadInstanceAiRuntimeSkillSourceForBuildMode,
 	resumeAgentRun,
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
@@ -636,7 +636,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			}),
 		);
 		(createLazyWorkspaceRuntimeSkillSource as Mock).mockImplementation(({ source }) => source);
-		(loadInstanceAiRuntimeSkillSource as Mock).mockImplementation(() => ({
+		(loadInstanceAiRuntimeSkillSourceForBuildMode as Mock).mockImplementation(() => ({
 			registry: {
 				skillsHash: 'runtime-skills-hash',
 				skills: [{ id: 'data-table-manager' }],
@@ -697,7 +697,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			oauth2CallbackUrl: string;
 			webhookBaseUrl: string;
 			formBaseUrl: string;
-			runState: { touchActiveRun: Mock; registerPendingConfirmation: Mock; getBuildMode: Mock };
+			runState: {
+				touchActiveRun: Mock;
+				registerPendingConfirmation: Mock;
+				getBuildMode: Mock;
+				setBuildMode: Mock;
+			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
 			schedulePlannedTasks: Mock;
@@ -761,6 +766,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			touchActiveRun: vi.fn(),
 			registerPendingConfirmation: vi.fn(),
 			getBuildMode: vi.fn(() => undefined),
+			setBuildMode: vi.fn(),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -823,7 +829,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			expect.objectContaining({ id: 'instance-ai-runtime-skill-workspace' }),
 		);
 		expect(createLazyWorkspaceRuntimeSkillSource).toHaveBeenCalledTimes(1);
-		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalledTimes(1);
+		expect(loadInstanceAiRuntimeSkillSourceForBuildMode).toHaveBeenCalledTimes(1);
 		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
@@ -912,7 +918,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(createLazyWorkspaceRuntimeSkillSource as Mock).mockClear();
 		(createSandbox as Mock).mockClear();
 		(setupSandboxWorkspace as Mock).mockClear();
-		(loadInstanceAiRuntimeSkillSource as Mock).mockClear();
+		(loadInstanceAiRuntimeSkillSourceForBuildMode as Mock).mockClear();
 		service.settingsService.getSandboxStatus.mockReturnValue({
 			enabled: true,
 			provider: 'n8n-sandbox',
@@ -939,7 +945,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
 
-	it('resolves the folder-exploration gate once and passes it into the context', async () => {
+	it.each([
+		[false, undefined, 'default'],
+		[true, undefined, 'progressive'],
+		[true, 'default', 'default'],
+		[false, 'progressive', 'progressive'],
+	] as const)('selects mode (%s, %s)', async (enabled, override, expected) => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -990,7 +1001,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			oauth2CallbackUrl: string;
 			webhookBaseUrl: string;
 			formBaseUrl: string;
-			runState: { touchActiveRun: Mock; registerPendingConfirmation: Mock; getBuildMode: Mock };
+			runState: {
+				touchActiveRun: Mock;
+				registerPendingConfirmation: Mock;
+				getBuildMode: Mock;
+				setBuildMode: Mock;
+			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
 			schedulePlannedTasks: Mock;
@@ -1024,6 +1040,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				configEvalsEnabled: true,
 				mcpConnectionsEnabled: false,
 				conversationHistoryEnabled: false,
+				progressiveBuildingEnabled: enabled,
 				nodeUsageEnabled: false,
 				folderExplorationEnabled: true,
 			}),
@@ -1049,7 +1066,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.runState = {
 			touchActiveRun: vi.fn(),
 			registerPendingConfirmation: vi.fn(),
-			getBuildMode: vi.fn(() => undefined),
+			getBuildMode: vi.fn(() => override),
+			setBuildMode: vi.fn(),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1086,7 +1104,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
 
-		await service.createExecutionEnvironment(
+		const environment = await service.createExecutionEnvironment(
 			fakeUser,
 			'thread-1',
 			'run-1',
@@ -1094,6 +1112,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		expect(service.adapterService.resolveExperimentGates).toHaveBeenCalledTimes(1);
+		expect(service.runState.setBuildMode).toHaveBeenCalledWith('thread-1', expected);
+		expect(loadInstanceAiRuntimeSkillSourceForBuildMode).toHaveBeenCalledWith(expected);
+		expect(environment.orchestrationContext).toMatchObject({ buildMode: expected });
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ folderExplorationEnabled: true }),

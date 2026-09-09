@@ -11,8 +11,10 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
-import type { AiGatewayConfigDto, InstanceAiBuildMode } from '@n8n/api-types';
+import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
@@ -430,8 +432,6 @@ export class InstanceAiAdapterService {
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
-			/** Build style for the run (sticky per thread via run state). */
-			buildMode?: InstanceAiBuildMode;
 		},
 	): InstanceAiContext {
 		const {
@@ -448,7 +448,6 @@ export class InstanceAiAdapterService {
 			conversationHistory,
 			folderExplorationEnabled,
 			modelId,
-			buildMode,
 		} = options ?? {};
 
 		// Record gateway availability once per context. Fire-and-forget: the
@@ -467,7 +466,6 @@ export class InstanceAiAdapterService {
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
 			modelId,
-			buildMode,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
@@ -567,6 +565,8 @@ export class InstanceAiAdapterService {
 		mcpConnectionsEnabled: boolean;
 		/** Past-conversation recall: tool, prompt section and first-turn hint. */
 		conversationHistoryEnabled: boolean;
+		/** Progressive workflow policy and planning-tool selection. */
+		progressiveBuildingEnabled: boolean;
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
@@ -589,6 +589,9 @@ export class InstanceAiAdapterService {
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+			progressiveBuildingEnabled:
+				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
+				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
 			folderExplorationEnabled: flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] === true,
 		};

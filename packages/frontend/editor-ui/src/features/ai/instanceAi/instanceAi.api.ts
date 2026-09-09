@@ -4,7 +4,6 @@ import type {
 	InstanceAiAttachment,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
-	InstanceAiBuildMode,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
@@ -33,7 +32,6 @@ export async function postMessage(
 	handoffContext?: InstanceAiHandoffContext,
 	timeZone?: string,
 	pushRef?: string,
-	mode?: InstanceAiBuildMode,
 ): Promise<InstanceAiSendMessageResponse> {
 	return await makeRestApiRequest<InstanceAiSendMessageResponse>(
 		context,
@@ -45,7 +43,6 @@ export async function postMessage(
 			...(handoffContext ? { context: handoffContext } : {}),
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),
-			...(mode ? { mode } : {}),
 		},
 	);
 }

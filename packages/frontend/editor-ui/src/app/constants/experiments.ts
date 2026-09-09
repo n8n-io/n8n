@@ -1,4 +1,7 @@
-import { INSTANCE_AI_MCP_CONNECTIONS_FLAG } from '@n8n/api-types';
+import {
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+} from '@n8n/api-types';
 
 function createExperiment<
 	const TName extends string,
@@ -144,7 +147,7 @@ export const OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT = createExperiment(
 );
 
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
-	'111_instance_ai_progressive_building',
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 );
 
 export const EXPERIMENTS_TO_TRACK = [

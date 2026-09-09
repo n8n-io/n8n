@@ -106,7 +106,7 @@ export function buildFollowUpPrompt(ctx: PromptContext): string {
 		formatTranscriptSection(ctx),
 		...(ctx.savedWorkflows?.length
 			? [
-					`For runWorkflowId, select the ID of the intended workflow from this list. Never put a workflow name in runWorkflowId. Helper workflows are separate targets.\n${JSON.stringify(ctx.savedWorkflows)}`,
+					`Saved workflows available to run. Select the intended workflow, not a prerequisite or cleanup workflow.\n${JSON.stringify(ctx.savedWorkflows)}`,
 				]
 			: []),
 		"It is now the user's turn: the agent finished its run and is waiting, and no widget is on screen. Decide what the user does — send a chat message or end the conversation.",

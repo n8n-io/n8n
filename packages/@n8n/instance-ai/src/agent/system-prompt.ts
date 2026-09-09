@@ -24,7 +24,6 @@ interface SystemPromptOptions {
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
 	conversationHistoryEnabled?: boolean;
-	progressiveBuildingInstructions?: string;
 	/** Setup panel v2 flag: `workflows(action="setup")` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
 }
@@ -179,7 +178,6 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		projectId,
 		workspaceRoot,
 		conversationHistoryEnabled,
-		progressiveBuildingInstructions,
 		setupPanelEnabled,
 	} = options;
 
@@ -187,7 +185,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
-${getProjectScopeSection(projectId)}${progressiveBuildingInstructions ? `\n${progressiveBuildingInstructions}` : ''}
+${getProjectScopeSection(projectId)}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}

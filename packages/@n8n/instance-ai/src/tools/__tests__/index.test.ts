@@ -1,10 +1,12 @@
+import { mock } from 'vitest-mock-extended';
+
 import {
 	createOrchestrationTools,
 	createOrchestratorDomainTools,
 	getActiveOrchestratorDomainToolNames,
 } from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
-import type { InstanceAiContext } from '../../types';
+import type { InstanceAiContext, OrchestrationContext } from '../../types';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
 
 vi.mock('../../parsers/structured-file-parser', () => ({
@@ -236,13 +238,10 @@ describe('domain tool construction', () => {
 		);
 	});
 
-	it('registers create-tasks but not the removed plan orchestration tool', () => {
-		const context = makeContext({
-			workflowTaskService: {},
-			domainContext: {},
-		} as Partial<InstanceAiContext>);
+	it.each([undefined, 'default'] as const)('registers create-tasks in %s mode', (buildMode) => {
+		const context = mock<OrchestrationContext>({ buildMode });
 
-		const orchestrationTools = createOrchestrationTools(context as never);
+		const orchestrationTools = createOrchestrationTools(context);
 
 		expect(orchestrationTools.has('create-tasks')).toBe(true);
 		expect(orchestrationTools.has('plan')).toBe(false);
@@ -251,11 +250,15 @@ describe('domain tool construction', () => {
 		expect(orchestrationTools.has('eval-data')).toBe(false);
 	});
 
-	it('omits task planning from the progressive tool registry', () => {
-		const context = makeContext({ buildMode: 'progressive' });
-		const tools = createOrchestrationTools(context as never);
-		expect(tools.has('create-tasks')).toBe(false);
-		expect(tools.has('task-control')).toBe(true);
+	it('omits create-tasks in progressive mode and retains task settlement tools', () => {
+		const context = mock<OrchestrationContext>({ buildMode: 'progressive' });
+
+		const orchestrationTools = createOrchestrationTools(context);
+
+		expect(orchestrationTools.has('create-tasks')).toBe(false);
+		expect(orchestrationTools.has('task-control')).toBe(true);
+		expect(orchestrationTools.has('complete-checkpoint')).toBe(true);
+		expect(orchestrationTools.has('verify-built-workflow')).toBe(true);
 	});
 
 	it('registers build-agent only when a builder delegate is present on the domain context', () => {

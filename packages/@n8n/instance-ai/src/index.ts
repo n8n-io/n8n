@@ -289,6 +289,8 @@ export type { SubAgentOptions } from './agent/sub-agent-factory';
 export declare const INSTANCE_AI_SKILLS_DIR: typeof RuntimeSkillsMod.INSTANCE_AI_SKILLS_DIR;
 export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSource =
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
+export const loadInstanceAiRuntimeSkillSourceForBuildMode: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSourceForBuildMode =
+	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSourceForBuildMode);
 export const createLazyWorkspaceRuntimeSkillSource: typeof MaterializeRuntimeSkillsMod.createLazyWorkspaceRuntimeSkillSource =
 	lazyFunction(() => loadMaterializeRuntimeSkills().createLazyWorkspaceRuntimeSkillSource);
 export {

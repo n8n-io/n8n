@@ -1186,30 +1186,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
-			undefined,
-		);
-	});
-
-	test('sendMessage forwards the build mode from the getBuildMode hook', async () => {
-		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
-		const hooks = {
-			onTitleUpdated: vi.fn(),
-			onRunFinish: vi.fn(),
-			getBuildMode: () => 'progressive' as const,
-		} satisfies Parameters<typeof createThreadRuntime>[1];
-		const runtime = createThreadRuntime(activeThreadId, hooks);
-
-		await runtime.sendMessage('hello');
-
-		expect(mockPostMessage).toHaveBeenCalledWith(
-			expect.anything(),
-			activeThreadId,
-			'hello',
-			undefined,
-			undefined,
-			expect.any(String),
-			undefined,
-			'progressive',
 		);
 	});
 
@@ -1241,7 +1217,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			context,
 			expect.any(String),
 			undefined,
-			undefined,
 		);
 	});
 
@@ -1257,7 +1232,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			undefined,
 			expect.any(String),
-			undefined,
 			undefined,
 		);
 	});

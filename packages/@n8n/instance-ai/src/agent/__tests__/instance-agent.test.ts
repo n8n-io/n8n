@@ -96,17 +96,6 @@ vi.mock('../../tracing/langsmith-tracing', () => ({
 	mergeTraceRunInputs: vi.fn(),
 }));
 
-vi.mock('../../skills/runtime-skills', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('../../skills/runtime-skills')>();
-	return {
-		...actual,
-		getProgressiveBuildingInstructions: vi.fn(
-			async (mode) =>
-				await Promise.resolve(mode === 'progressive' ? 'Progressive policy' : undefined),
-		),
-	};
-});
-
 vi.mock('../system-prompt', () => ({
 	getSystemPrompt: vi.fn().mockReturnValue('system prompt'),
 }));
@@ -173,24 +162,6 @@ describe('createInstanceAgent', () => {
 		createToolsFromLocalMcpServer.mockReset();
 		createToolsFromLocalMcpServer.mockReturnValue(new Map());
 	});
-
-	it.each([undefined, 'progressive'])(
-		'supplies the policy when creating a run with mode %s',
-		async (buildMode) => {
-			await createInstanceAgent({
-				modelId: 'test-model',
-				context: { buildMode },
-				orchestrationContext: { runId: 'follow-up' },
-				mcpManager: createMcpManagerStub(),
-				memoryConfig: {},
-			} as never);
-			expect(getSystemPrompt).toHaveBeenCalledWith(
-				expect.objectContaining({
-					progressiveBuildingInstructions: buildMode ? 'Progressive policy' : undefined,
-				}),
-			);
-		},
-	);
 
 	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
 		const memoryConfig = {} as never;
@@ -466,6 +437,32 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(runtimeSkills);
+		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
+			expect.objectContaining({ runtimeSkillCatalog: runtimeSkills }),
+		);
+	});
+
+	it('passes the selected catalog to domain tools before workspace materialization', async () => {
+		const runtimeSkillCatalog = {
+			registry: { schemaVersion: 1, skillsHash: 'selected-skills', skills: [] },
+			loadSkill: vi.fn(),
+		};
+		const runtimeSkills = {
+			registry: { schemaVersion: 1, skillsHash: 'workspace-skills', skills: [] },
+			loadSkill: vi.fn(),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {},
+			orchestrationContext: { runId: 'skills-test', runtimeSkillCatalog, runtimeSkills },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
+			expect.objectContaining({ runtimeSkillCatalog }),
+		);
 	});
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {

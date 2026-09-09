@@ -23,20 +23,20 @@ describe('eval build mode', () => {
 	afterEach(() => vi.unstubAllEnvs());
 	it('uses control unless the suite explicitly selects progressive', () => {
 		vi.stubEnv('N8N_EVAL_BUILD_MODE', '');
-		expect(resolveEvalBuildMode(undefined)).toBeUndefined();
+		expect(resolveEvalBuildMode(undefined)).toBe('default');
 		vi.stubEnv('N8N_EVAL_BUILD_MODE', 'progressive');
 		expect(resolveEvalBuildMode(undefined)).toBe('progressive');
 	});
 	it('preserves case overrides in both suite modes', () => {
 		vi.stubEnv('N8N_EVAL_BUILD_MODE', 'progressive');
-		expect(resolveEvalBuildMode('default')).toBeUndefined();
+		expect(resolveEvalBuildMode('default')).toBe('default');
 		vi.stubEnv('N8N_EVAL_BUILD_MODE', 'default');
 		expect(resolveEvalBuildMode('progressive')).toBe('progressive');
 	});
 
 	it.each([undefined, '', ' ', 'default', ' default '])('uses control for %s', (value) => {
 		vi.stubEnv('N8N_EVAL_BUILD_MODE', value);
-		expect(resolveEvalBuildMode(undefined)).toBeUndefined();
+		expect(resolveEvalBuildMode(undefined)).toBe('default');
 	});
 
 	it('rejects an invalid environment mode when a selected case needs it', () => {
@@ -46,7 +46,7 @@ describe('eval build mode', () => {
 
 	it('preserves explicit case overrides when the environment value is invalid', () => {
 		vi.stubEnv('N8N_EVAL_BUILD_MODE', 'progresssive');
-		expect(resolveEvalBuildMode('default')).toBeUndefined();
+		expect(resolveEvalBuildMode('default')).toBe('default');
 		expect(resolveEvalBuildMode('progressive')).toBe('progressive');
 		expect(
 			selectCases(args, [entry('default'), entry('progressive')], logger).testCasesWithFiles,

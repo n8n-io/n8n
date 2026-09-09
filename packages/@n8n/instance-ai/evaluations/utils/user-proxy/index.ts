@@ -328,7 +328,11 @@ export class UserProxyLlm {
 		}
 
 		const prompt = buildFollowUpPrompt(this.promptContext());
-		const decision = await this.agent.decide(prompt, 'user-turn');
+		const decision = await this.agent.decide(
+			prompt,
+			'user-turn',
+			this.savedWorkflows.map(({ id }) => id),
+		);
 		if (!decision) {
 			const [next] = this.remainingUserScriptTurns();
 			if (!next || hasStageDirection(next.text)) {

@@ -40,7 +40,7 @@ import {
 	createInstanceAgent,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
-	loadInstanceAiRuntimeSkillSource,
+	loadInstanceAiRuntimeSkillSourceForBuildMode,
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	threadProvenanceMetadata,
@@ -1433,8 +1433,8 @@ export class InstanceAiService {
 			this.runState.setTimeZone(threadId, timeZone);
 		}
 
-		// Always set (undefined clears): the latest user message wins, and
-		// server-initiated follow-up runs reuse the recorded value.
+		// A new user message resets selection. Explicit eval modes take precedence;
+		// otherwise environment creation selects and stores the backend assignment.
 		this.runState.setBuildMode(threadId, mode);
 
 		if (pushRef !== undefined) {
@@ -2405,6 +2405,7 @@ export class InstanceAiService {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			conversationHistoryEnabled,
+			progressiveBuildingEnabled,
 			nodeUsageEnabled,
 			folderExplorationEnabled,
 		} = await this.adapterService.resolveExperimentGates(user);
@@ -2412,8 +2413,11 @@ export class InstanceAiService {
 		const conversationHistory = conversationHistoryEnabled
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
 			: undefined;
-		// Sticky per thread (set on user runs, reused by follow-up runs) — see startRun.
-		const buildMode = this.runState.getBuildMode(threadId);
+		// Follow-ups and resumed runs retain the selected mode if flags change.
+		const buildMode =
+			this.runState.getBuildMode(threadId) ??
+			(progressiveBuildingEnabled ? 'progressive' : 'default');
+		this.runState.setBuildMode(threadId, buildMode);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2428,7 +2432,6 @@ export class InstanceAiService {
 			conversationHistory,
 			folderExplorationEnabled,
 			modelId,
-			buildMode,
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -2578,13 +2581,13 @@ export class InstanceAiService {
 		// preserved) so every derived skill source inherits the exclusion.
 		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
 			configEvalsEnabled,
-			progressiveBuildingEnabled: buildMode === 'progressive',
 			instanceContextEnabled: this.instanceAiConfig.instanceContextEnabled,
 		});
+		const selectedRuntimeSkills = await loadInstanceAiRuntimeSkillSourceForBuildMode(buildMode);
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0
-				? filterRuntimeSkillSource(loadInstanceAiRuntimeSkillSource(), flagDisabledSkillIds)
-				: loadInstanceAiRuntimeSkillSource();
+				? filterRuntimeSkillSource(selectedRuntimeSkills, flagDisabledSkillIds)
+				: selectedRuntimeSkills;
 		let runtimeSkills = allRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
@@ -4918,7 +4921,7 @@ export class InstanceAiService {
 			if (!state) return { kind: 'no-checkpoint' };
 			// Restore before rebuilding the prompt and tools. Older checkpoints use control.
 			const mode = instanceAiBuildModeSchema.safeParse(state.persistence?.hostMetadata?.buildMode);
-			this.runState.setBuildMode(orphan.threadId, mode.success ? mode.data : undefined);
+			this.runState.setBuildMode(orphan.threadId, mode.success ? mode.data : 'default');
 		} catch (error: unknown) {
 			return { kind: 'no-checkpoint', error };
 		}

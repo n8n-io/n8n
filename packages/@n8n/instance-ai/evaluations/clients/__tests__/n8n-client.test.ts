@@ -40,6 +40,28 @@ function stubFetch(body: unknown) {
 	return fetchMock;
 }
 
+describe('N8nClient chat build mode', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it.each([undefined, 'default', 'progressive'] as const)(
+		'sends an explicit eval mode when the override is %s',
+		async (mode) => {
+			const fetchMock = stubFetch({ data: { runId: 'run-1' } });
+			const client = new N8nClient(BASE_URL);
+
+			await client.sendMessage('thread-1', 'Build a workflow', undefined, mode);
+
+			expect(fetchMock).toHaveBeenCalledWith(
+				`${BASE_URL}/rest/instance-ai/chat/thread-1`,
+				expect.objectContaining({
+					method: 'POST',
+					body: JSON.stringify({ message: 'Build a workflow', mode: mode ?? 'default' }),
+				}),
+			);
+		},
+	);
+});
+
 describe('N8nClient — TRUST-229 artifact fetch methods', () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();
