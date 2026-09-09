@@ -6,19 +6,13 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 
-import { N8N_VERSION } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
-import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { containerPlacement, isUnder, pinPath, staleWorkflowTargets } from './branch-placement';
 import type { BranchState, Placement } from './branch-placement';
-import {
-	dropSelectedRequirementUsers,
-	readLeftoverManifest,
-	writeImportManifest,
-} from './import-manifest-bridge';
+import { writeImportManifest } from './import-manifest-bridge';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -71,16 +65,6 @@ export class WorkingCopyUpdater {
 		if (overlap.length > 0) {
 			throw new BadRequestError('A workflow cannot be both selected and deleted in the same push');
 		}
-	}
-
-	/** Manifest of a branch that has no export yet. */
-	emptyManifest(): PackageManifest {
-		return packageManifestSchema.parse({
-			packageFormatVersion: '1',
-			exportedAt: new Date().toISOString(),
-			sourceN8nVersion: N8N_VERSION,
-			sourceId: this.instanceSettings.instanceId,
-		});
 	}
 
 	/**
@@ -246,7 +230,6 @@ export class WorkingCopyUpdater {
 		let backupFolder: string | undefined;
 
 		try {
-			await fs.rm(workFolder, { recursive: true, force: true });
 			await fs.cp(exportFolder, workFolder, { recursive: true, verbatimSymlinks: true });
 
 			for (const target of staleWorkflowTargets(
@@ -260,14 +243,8 @@ export class WorkingCopyUpdater {
 				});
 			}
 			await this.overlayDirectory(stagingFolder, workFolder, placement);
-			const leftover = dropSelectedRequirementUsers(
-				await readLeftoverManifest(workFolder),
-				selection.workflowIds,
-			);
-			await fs.rm(await this.resolveContained(workFolder, MANIFEST_FILE), { force: true });
 			await writeImportManifest({
 				exportFolder: workFolder,
-				leftover,
 				staging,
 				sourceId: this.instanceSettings.instanceId,
 				selectedWorkflowIds: selection.workflowIds,

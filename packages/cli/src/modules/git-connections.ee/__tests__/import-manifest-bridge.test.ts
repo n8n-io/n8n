@@ -26,6 +26,17 @@ describe('import-manifest-bridge', () => {
 		}
 	};
 
+	const leftoverManifest = (overrides: Record<string, unknown> = {}) =>
+		JSON.stringify(
+			packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				exportedAt: '2026-01-01T00:00:00.000Z',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'old',
+				...overrides,
+			}),
+		);
+
 	it('reads a leftover manifest and ignores a malformed file', async () => {
 		await writeTree({
 			'manifest.json': JSON.stringify(
@@ -49,6 +60,10 @@ describe('import-manifest-bridge', () => {
 
 	it('writes an inventory of the files on disk, not only the staging selection', async () => {
 		await writeTree({
+			'manifest.json': leftoverManifest({
+				variables: [{ id: 'v-old', name: 'API_KEY', target: 'projects/alpha/variables/api-key' }],
+				workflows: [{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1' }],
+			}),
 			'projects/alpha/project.json': JSON.stringify({ id: 'p1', name: 'Alpha' }),
 			'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ id: 'w1', name: 'W1' }),
 			'projects/alpha/workflows/w2/workflow.json': JSON.stringify({ id: 'w2', name: 'W2' }),
@@ -58,14 +73,6 @@ describe('import-manifest-bridge', () => {
 
 		await writeImportManifest({
 			exportFolder,
-			leftover: packageManifestSchema.parse({
-				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
-				sourceN8nVersion: '1.0.0',
-				sourceId: 'old',
-				variables: [{ id: 'v-old', name: 'API_KEY', target: 'projects/alpha/variables/api-key' }],
-				workflows: [{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1' }],
-			}),
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
 				exportedAt: '2026-01-01T00:00:00.000Z',
@@ -98,17 +105,7 @@ describe('import-manifest-bridge', () => {
 
 	it('unions usedByWorkflows when leftover and staging share a requirement key', async () => {
 		await writeTree({
-			'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ id: 'w1', name: 'W1' }),
-			'projects/alpha/workflows/w2/workflow.json': JSON.stringify({ id: 'w2', name: 'W2' }),
-		});
-
-		await writeImportManifest({
-			exportFolder,
-			leftover: packageManifestSchema.parse({
-				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
-				sourceN8nVersion: '1.0.0',
-				sourceId: 'old',
+			'manifest.json': leftoverManifest({
 				requirements: {
 					tags: [
 						{ id: 't-shared', name: 'prod', usedByWorkflows: ['w1', 'w2'] },
@@ -116,6 +113,12 @@ describe('import-manifest-bridge', () => {
 					],
 				},
 			}),
+			'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ id: 'w1', name: 'W1' }),
+			'projects/alpha/workflows/w2/workflow.json': JSON.stringify({ id: 'w2', name: 'W2' }),
+		});
+
+		await writeImportManifest({
+			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
 				exportedAt: '2026-01-01T00:00:00.000Z',
@@ -139,20 +142,16 @@ describe('import-manifest-bridge', () => {
 
 	it('drops leftover requirement users that the staging selection no longer lists', async () => {
 		await writeTree({
+			'manifest.json': leftoverManifest({
+				requirements: {
+					tags: [{ id: 't-dropped', name: 'prod', usedByWorkflows: ['w2'] }],
+				},
+			}),
 			'projects/alpha/workflows/w2/workflow.json': JSON.stringify({ id: 'w2', name: 'W2' }),
 		});
 
 		await writeImportManifest({
 			exportFolder,
-			leftover: packageManifestSchema.parse({
-				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
-				sourceN8nVersion: '1.0.0',
-				sourceId: 'old',
-				requirements: {
-					tags: [{ id: 't-dropped', name: 'prod', usedByWorkflows: ['w2'] }],
-				},
-			}),
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
 				exportedAt: '2026-01-01T00:00:00.000Z',
@@ -174,18 +173,14 @@ describe('import-manifest-bridge', () => {
 		await mkdir(outsideDir, { recursive: true });
 		await writeFile(path.join(outsideDir, 'variable.json'), JSON.stringify({ name: 'LEAK' }));
 		await writeTree({
+			'manifest.json': leftoverManifest({
+				variables: [{ id: 'v-leak', name: 'LEAK', target: '../escape' }],
+			}),
 			'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ id: 'w1', name: 'W1' }),
 		});
 
 		await writeImportManifest({
 			exportFolder,
-			leftover: packageManifestSchema.parse({
-				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
-				sourceN8nVersion: '1.0.0',
-				sourceId: 'old',
-				variables: [{ id: 'v-leak', name: 'LEAK', target: '../escape' }],
-			}),
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
 				exportedAt: '2026-01-01T00:00:00.000Z',
@@ -208,18 +203,14 @@ describe('import-manifest-bridge', () => {
 		await mkdir(variableDir, { recursive: true });
 		await symlink(outside, path.join(variableDir, 'variable.json'));
 		await writeTree({
+			'manifest.json': leftoverManifest({
+				variables: [{ id: 'v-link', name: 'LINK', target: 'projects/alpha/variables/api-key' }],
+			}),
 			'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ id: 'w1', name: 'W1' }),
 		});
 
 		await writeImportManifest({
 			exportFolder,
-			leftover: packageManifestSchema.parse({
-				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
-				sourceN8nVersion: '1.0.0',
-				sourceId: 'old',
-				variables: [{ id: 'v-link', name: 'LINK', target: 'projects/alpha/variables/api-key' }],
-			}),
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
 				exportedAt: '2026-01-01T00:00:00.000Z',
