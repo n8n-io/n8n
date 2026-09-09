@@ -1,11 +1,11 @@
 import dagre from '@dagrejs/dagre';
 
-import { useVueFlow, type GraphEdge, type GraphNode, type XYPosition } from '@vue-flow/core';
+import { useVueFlow, type GraphNode, type XYPosition } from '@vue-flow/core';
 import {
+	CanvasConnectionMode,
 	CanvasNodeRenderType,
 	isCanvasGroupNode,
 	type BoundingBox,
-	type CanvasConnection,
 	type CanvasGroupNodeData,
 	type CanvasLayoutNode,
 	type CanvasLayoutNodeData,
@@ -55,9 +55,10 @@ export type CanvasLayoutEvent = {
 	source: CanvasLayoutSource;
 	target: CanvasLayoutTarget;
 };
+export type CanvasLayoutOptions = { nodeIdsFilter?: string[] };
 
 type CanvasLayoutNodeDictionary = Record<string, CanvasLayoutNode>;
-type LayoutConnection = CanvasConnection & Partial<Pick<GraphEdge, 'targetX' | 'targetY'>>;
+type LayoutConnection = { source: string; target: string; targetX?: number; targetY?: number };
 
 type CanvasLayoutTargetData = {
 	nodes: CanvasLayoutNode[];
@@ -66,6 +67,13 @@ type CanvasLayoutTargetData = {
 };
 
 type PositionedBox = { id: string; boundingBox: BoundingBox };
+
+/** A group's members tidied on their own, measured from the frame's top-left. */
+interface CanvasLayoutGroupContent {
+	frame: { width: number; height: number };
+	memberBoxesInFrame: Map<string, BoundingBox>;
+	contentBoxInFrame: BoundingBox;
+}
 
 interface CanvasLayoutGroupUnit {
 	node: GraphNode<CanvasGroupNodeData>;
@@ -78,6 +86,8 @@ interface CanvasLayoutGroupUnit {
 	boundingBox: BoundingBox;
 	/** What connections attach to: the tidied members, or the chip. */
 	contentBox: BoundingBox;
+	/** Member boxes from the group's own layout pass, measured from the frame's top-left. */
+	memberBoxesInFrame?: Map<string, BoundingBox>;
 }
 
 const NODE_Y_SPACING = GRID_SIZE * 6;
@@ -98,13 +108,20 @@ export function useCanvasLayout(
 ) {
 	const { findNode, getSelectedNodes, edges: allEdges, nodes: allNodes } = useVueFlow(canvasId);
 
-	function getSourceNodes(target: CanvasLayoutTarget) {
+	function getSourceNodes(target: CanvasLayoutTarget, options: CanvasLayoutOptions = {}) {
+		if (options.nodeIdsFilter) {
+			const ids = new Set(options.nodeIdsFilter);
+			return allNodes.value.filter((node) => ids.has(node.id));
+		}
 		return target === 'selection' ? getSelectedNodes.value : allNodes.value;
 	}
 
 	/** Returns the nodes, edges, and group units to pass into dagre. */
-	function getTargetData(target: CanvasLayoutTarget): CanvasLayoutTargetData {
-		const source = getSourceNodes(target);
+	function getTargetData(
+		target: CanvasLayoutTarget,
+		options: CanvasLayoutOptions = {},
+	): CanvasLayoutTargetData {
+		const source = getSourceNodes(target, options);
 		const sourceNodeIds = new Set(source.map((node) => node.id));
 
 		// Dagre lays out each complete group as one box:
@@ -186,11 +203,19 @@ export function useCanvasLayout(
 
 		const memberIds = groupData.group.nodeIds;
 
+		const members = memberIds
+			.map((memberId) => findNode<CanvasNodeData>(memberId))
+			.filter(isPresent);
+		const hasAllMembersInScope = memberIds.every((memberId) => sourceNodeIds.has(memberId));
+
 		if (groupData.isCollapsed) {
-			if (!sourceNodeIds.has(groupNode.id)) return undefined;
+			// Some callers target the hidden members instead of the group chip.
+			// Treat that as the whole collapsed group.
+			if (!sourceNodeIds.has(groupNode.id) && !hasAllMembersInScope) return undefined;
 
 			// The collapsed group chip already has the box dagre needs.
-			const chipBox = boundingBoxFromCanvasNode(groupNode);
+			const chipBox = computeGroupFrameRects(groupData.nodesRect).collapsed;
+			const tidied = layoutGroupContent(members);
 			return {
 				node: groupNode,
 				memberIds,
@@ -198,32 +223,146 @@ export function useCanvasLayout(
 				groupBox: chipBox,
 				boundingBox: chipBox,
 				contentBox: chipBox,
+				memberBoxesInFrame: tidied?.memberBoxesInFrame,
 			};
 		}
 
-		if (!memberIds.every((memberId) => sourceNodeIds.has(memberId))) return undefined;
+		if (!hasAllMembersInScope) return undefined;
 
-		// Expanded groups need their frame size, not only their member bounds.
-		const expandedFrame = computeGroupFrameRects(groupData.nodesRect).expanded;
-
+		// A group is tidied on its own first; its frame then wraps that result.
+		const tidied = layoutGroupContent(members);
+		// Measure from the members' rect, not the title bar: that one is snapped to
+		// the grid, and an offset "before" box would shift every run's anchor.
+		const currentFrame = computeGroupFrameRects(groupData.nodesRect).expanded;
+		const frame = tidied?.frame ?? currentFrame;
 		const frameBox = {
-			x: groupNode.position.x,
-			y: groupNode.position.y,
-			width: expandedFrame.width,
-			height: expandedFrame.height,
+			x: currentFrame.x,
+			y: currentFrame.y,
+			width: frame.width,
+			height: frame.height,
 		};
-		const memberBoxes = memberIds
-			.map((memberId) => findNode<CanvasNodeData>(memberId))
-			.filter(isPresent)
-			.map((member) => boundingBoxFromCanvasNode(member));
+		const contentBox = tidied
+			? {
+					...tidied.contentBoxInFrame,
+					x: frameBox.x + tidied.contentBoxInFrame.x,
+					y: frameBox.y + tidied.contentBoxInFrame.y,
+				}
+			: frameBox;
 		return {
 			node: groupNode,
 			memberIds,
 			stickyIds: [],
 			groupBox: frameBox,
 			boundingBox: frameBox,
-			contentBox: memberBoxes.length > 0 ? compositeBoundingBox(memberBoxes) : frameBox,
+			contentBox,
+			memberBoxesInFrame: tidied?.memberBoxesInFrame,
 		};
+	}
+
+	/**
+	 * Tidies a group's members in their own layout pass and sizes the frame
+	 * from the result. A group left with only stickies has nothing to tidy and
+	 * yields undefined.
+	 */
+	function layoutGroupContent(
+		members: Array<GraphNode<CanvasNodeData>>,
+	): CanvasLayoutGroupContent | undefined {
+		const memberIdSet = new Set(members.map(({ id }) => id));
+		const plainMembers: Array<GraphNode<CanvasNodeData>> = members.filter(
+			(member) => !isStickyCanvasNode(member),
+		);
+		if (plainMembers.length === 0) return undefined;
+		const stickyMembers = members.filter(isStickyCanvasNode);
+		const boxesBefore = new Map(
+			plainMembers.map((member) => [member.id, boundingBoxFromCanvasNode(member)]),
+		);
+		const memberEdges = getGroupContentConnections(members, memberIdSet);
+
+		const placedById = placeNodes({ nodes: plainMembers, edges: memberEdges, groupUnits: [] });
+		const positionedNodes = Object.entries(placedById).map(([id, boundingBox]) => ({
+			id,
+			boundingBox,
+		}));
+
+		const placedStickies = placeStickies(
+			stickyMembers,
+			positionedNodes,
+			(stickyBox) =>
+				new Set(
+					[...boxesBefore].filter(([, box]) => isCoveredBy(stickyBox, box)).map(([id]) => id),
+				),
+		);
+		// A sticky that covers no member keeps its place relative to the members' bounds.
+		const placedStickyIds = new Set(placedStickies.map(({ id }) => id));
+		const contentBefore = compositeBoundingBox([...boxesBefore.values()]);
+		const contentPlaced = compositeBoundingBox(
+			positionedNodes.map(({ boundingBox }) => boundingBox),
+		);
+		const looseStickies = stickyMembers
+			.filter((sticky) => !placedStickyIds.has(sticky.id))
+			.map((sticky) => {
+				const box = boundingBoxFromCanvasNode(sticky);
+				return {
+					id: sticky.id,
+					boundingBox: {
+						...box,
+						x: contentPlaced.x + (box.x - contentBefore.x),
+						y: contentPlaced.y + (box.y - contentBefore.y),
+					},
+				};
+			});
+
+		const placed = [...positionedNodes, ...placedStickies, ...looseStickies];
+		const nodesRect = compositeBoundingBox(placed.map(({ boundingBox }) => boundingBox));
+		const frame = computeGroupFrameRects(nodesRect).expanded;
+		const inFrame = (box: BoundingBox) => translateBox(box, { x: -frame.x, y: -frame.y });
+
+		return {
+			frame: { width: frame.width, height: frame.height },
+			memberBoxesInFrame: new Map(placed.map(({ id, boundingBox }) => [id, inFrame(boundingBox)])),
+			contentBoxInFrame: inFrame(nodesRect),
+		};
+	}
+
+	function getGroupContentConnections(
+		members: Array<GraphNode<CanvasNodeData>>,
+		memberIdSet: Set<string>,
+	): LayoutConnection[] {
+		const memberIdByName = new Map(members.map((member) => [member.data.name, member.id]));
+		const emittedConnectionKeys = new Set<string>();
+
+		const addConnection = (connections: LayoutConnection[], connection: LayoutConnection) => {
+			const key = JSON.stringify([connection.source, connection.target]);
+			if (emittedConnectionKeys.has(key)) return;
+			emittedConnectionKeys.add(key);
+			connections.push(connection);
+		};
+
+		// Use rendered edges when VueFlow still has member-to-member edges.
+		// Add canonical node connections for collapsed groups, whose edges point
+		// at the group chip instead.
+		const visibleConnections: LayoutConnection[] = [];
+		for (const edge of allEdges.value) {
+			if (memberIdSet.has(edge.source) && memberIdSet.has(edge.target)) {
+				addConnection(visibleConnections, edge);
+			}
+		}
+
+		const connections = visibleConnections;
+		for (const member of members) {
+			const outputConnections = member.data.connections[CanvasConnectionMode.Output];
+			for (const outputPorts of Object.values(outputConnections)) {
+				for (const portConnections of outputPorts) {
+					for (const connection of portConnections ?? []) {
+						const target = memberIdByName.get(connection.node);
+						if (!target) continue;
+						addConnection(connections, { source: member.id, target });
+					}
+				}
+			}
+		}
+
+		return connections;
 	}
 
 	/** Converts member connections to group-unit connections for dagre. */
@@ -784,8 +923,11 @@ export function useCanvasLayout(
 		return boundingBoxByNodeId;
 	}
 
-	function layout(target: CanvasLayoutTarget): CanvasLayoutResult {
-		const { nodes, edges, groupUnits } = getTargetData(target);
+	function layout(
+		target: CanvasLayoutTarget,
+		options: CanvasLayoutOptions = {},
+	): CanvasLayoutResult {
+		const { nodes, edges, groupUnits } = getTargetData(target, options);
 		const groupUnitBoundingBoxes = new Map(
 			groupUnits.map(({ node, boundingBox }) => [node.id, boundingBox]),
 		);
@@ -829,8 +971,9 @@ export function useCanvasLayout(
 
 		const attachedStickies: PositionedBox[] = [];
 
-		// Move group members and attached stickies by the offset of their dagre box,
-		// then remove that box. The rendered group position is derived from its members.
+		// Place group members into their unit's final box, then remove that box.
+		// Tidied members take their layout-pass position inside the frame. The
+		// rendered group position is derived from its members.
 		for (const groupUnit of groupUnits) {
 			const groupBox = boundingBoxByNodeId[groupUnit.node.id];
 			if (!groupBox) continue;
@@ -839,13 +982,20 @@ export function useCanvasLayout(
 				x: groupBox.x - groupUnit.boundingBox.x,
 				y: groupBox.y - groupUnit.boundingBox.y,
 			};
+			const frameOrigin = {
+				x: groupUnit.groupBox.x + delta.x,
+				y: groupUnit.groupBox.y + delta.y,
+			};
 
 			for (const memberId of groupUnit.memberIds) {
 				const member = findNode<CanvasNodeData>(memberId);
 				if (!member) continue;
 				const box = boundingBoxFromCanvasNode(member);
 				boundingBoxBeforeById.set(memberId, box);
-				boundingBoxByNodeId[memberId] = translateBox(box, delta);
+				const tidiedBox = groupUnit.memberBoxesInFrame?.get(memberId);
+				boundingBoxByNodeId[memberId] = tidiedBox
+					? translateBox(tidiedBox, frameOrigin)
+					: translateBox(box, delta);
 			}
 
 			for (const stickyId of groupUnit.stickyIds) {

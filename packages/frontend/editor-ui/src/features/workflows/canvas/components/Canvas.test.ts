@@ -6,6 +6,7 @@ import Canvas from './Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import {
 	CANVAS_NODE_GROUP_TYPE,
+	CanvasConnectionMode,
 	type CanvasConnection,
 	type CanvasEventBusEvents,
 	type CanvasGroupNode,
@@ -16,6 +17,7 @@ import {
 	createCanvasGroupElement,
 	createCanvasNodeElement,
 } from '@/features/workflows/canvas/__tests__/utils';
+import { createEmptyCanvasRenderData } from '../canvas.utils';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -28,6 +30,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
 import { computeGroupFrameRects } from '../composables/useCanvasMapping.groups';
+import type { CanvasLayoutEvent } from '../composables/useCanvasLayout';
 import {
 	NodeGroupViewKey,
 	useCanvasNodeGroupView,
@@ -42,6 +45,8 @@ import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanv
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@n8n/frontend-test-utils';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { DEFAULT_NODE_SIZE, NODE_X_SPACING } from '@/app/utils/nodeViewUtils';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -222,6 +227,85 @@ describe('Canvas', () => {
 		expect(container.querySelector(`[data-id="${nodes[0].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${nodes[1].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${connections[0].id}"]`)).toBeInTheDocument();
+	});
+
+	it('tidies hidden members when using the context menu on a collapsed group', async () => {
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+		workflowDocumentStore.setNodes([
+			createTestNode({ id: 'first-member', name: 'First member' }),
+			createTestNode({ id: 'second-member', name: 'Second member' }),
+		]);
+		workflowDocumentStore.setNodeGroups([
+			{
+				id: 'collapsed-group',
+				name: 'Collapsed group',
+				nodeIds: ['first-member', 'second-member'],
+			},
+		]);
+
+		const firstMember = {
+			...createCanvasNodeElement({
+				id: 'first-member',
+				label: 'First member',
+				position: { x: -272, y: 320 },
+				data: {
+					name: 'First member',
+					connections: {
+						[CanvasConnectionMode.Input]: {},
+						[CanvasConnectionMode.Output]: {
+							[NodeConnectionTypes.Main]: [
+								[{ node: 'Second member', type: NodeConnectionTypes.Main, index: 0 }],
+							],
+						},
+					},
+				},
+			}),
+			hidden: true,
+		};
+		const secondMember = {
+			...createCanvasNodeElement({
+				id: 'second-member',
+				label: 'Second member',
+				position: { x: 160, y: 144 },
+				data: { name: 'Second member' },
+			}),
+			hidden: true,
+		};
+		const groupNode = createCanvasGroupNode({
+			id: 'collapsed-group',
+			nodeIds: ['first-member', 'second-member'],
+			isCollapsed: true,
+			nodesRect: { x: -272, y: 144, width: 528, height: 272 },
+			position: { x: -336, y: 48 },
+		});
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				nodes: [firstMember, secondMember, groupNode],
+				renderData: createEmptyCanvasRenderData(),
+			},
+			global: {
+				provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(true) },
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('canvas-node-group')).toBeInTheDocument());
+		await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+		await waitFor(() => expect(getByTestId('context-menu-item-tidy_up')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('context-menu-item-tidy_up'));
+
+		await waitFor(() => expect(emitted()['tidy-up']).toHaveLength(1));
+		const { getSelectedNodes } = useVueFlow(canvasId);
+		expect(getSelectedNodes.value.map(({ id }) => id)).toEqual([groupNode.id]);
+		const tidyUpEvent = (emitted()['tidy-up'] as Array<[CanvasLayoutEvent]>)[0][0];
+		expect(tidyUpEvent.source).toBe('context-menu');
+		expect(tidyUpEvent.target).toBe('selection');
+		const first = tidyUpEvent.result.nodes.find((node) => node.id === 'first-member');
+		const second = tidyUpEvent.result.nodes.find((node) => node.id === 'second-member');
+		expect(first).toBeDefined();
+		expect(second).toBeDefined();
+		expect(second!.x - first!.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+		expect(second!.y - first!.y).toBe(0);
 	});
 
 	it('should render group frame from live VueFlow node data', async () => {

@@ -665,6 +665,10 @@ function commitManualNodePositions(events: CanvasNodeMoveEvent[]) {
 	);
 }
 
+function getCanvasNodesByIds(nodeIds: string[]) {
+	return nodeIds.map(findNode).filter(isPresent);
+}
+
 // Bake the positions of nodes that `sourceGroupIds` were visually pushing into
 // the document, so those targets stay put instead of snapping back when the
 // source stops pushing — whether it was moved or removed via ungroup.
@@ -1491,7 +1495,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
-			return await onTidyUp({ source: 'context-menu' });
+			return await onTidyUp({ source: 'context-menu', nodeIdsFilter: nodeIds });
 		case 'extract_sub_workflow':
 			return emit('extract-workflow', nodeIds);
 		case 'group_nodes': {
@@ -1541,13 +1545,11 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 }
 
 async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
-	if (payload.nodeIdsFilter && payload.nodeIdsFilter.length > 0) {
-		clearSelectedNodes();
-		addSelectedNodes(payload.nodeIdsFilter.map(findNode).filter(isPresent));
-	}
-	const applyOnSelection = selectedNodes.value.length > 1;
+	const explicitNodes = payload.nodeIdsFilter ? getCanvasNodesByIds(payload.nodeIdsFilter) : [];
+	const explicitNodeIds = explicitNodes.length > 1 ? explicitNodes.map(({ id }) => id) : undefined;
+	const applyOnSelection = explicitNodeIds !== undefined || selectedNodes.value.length > 1;
 	const target = applyOnSelection ? 'selection' : 'all';
-	const result = layout(target);
+	const result = layout(target, explicitNodeIds ? { nodeIdsFilter: explicitNodeIds } : {});
 
 	emit(
 		'tidy-up',
@@ -1561,7 +1563,7 @@ async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 
 	await nextTick();
 	if (applyOnSelection) {
-		await onFitBounds(selectedNodes.value);
+		await onFitBounds(explicitNodes.length > 0 ? explicitNodes : selectedNodes.value);
 	} else {
 		await onFitView();
 	}
