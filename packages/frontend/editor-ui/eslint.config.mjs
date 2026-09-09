@@ -1,10 +1,8 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { defineConfig } from 'eslint/config';
 import { frontendConfig } from '@n8n/eslint-config/frontend';
 import oxlint from 'eslint-plugin-oxlint';
+
+import { moduleEntryPatterns } from './eslint/module-entry-patterns.mjs';
 
 /**
  * Extraction ratchet: a feature that has become a module package must not reappear
@@ -32,47 +30,12 @@ const extractedFeatures = [
 	},
 ];
 
-const MODULES_DIR = fileURLToPath(new URL('../../modules', import.meta.url));
-
-/** The manifest of the frontend package of every module under `packages/modules`. */
-const moduleManifests = () =>
-	readdirSync(MODULES_DIR, { withFileTypes: true })
-		.filter((entry) => entry.isDirectory())
-		.map((entry) => join(MODULES_DIR, entry.name, 'frontend', 'package.json'))
-		.filter((manifest) => existsSync(manifest))
-		.map((manifest) => JSON.parse(readFileSync(manifest, 'utf8')))
-		.filter(({ name }) => typeof name === 'string' && name.startsWith('@n8n/frontend-module-'));
-
-/**
- * Deep-import ratchet: a module package is reachable only at the entries its own `exports`
- * map declares. Every other file under its `src` is internal, and a module has to be free to
- * move one.
- *
- * The Vite aliases and the `paths` in `tsconfig.json` no longer resolve a deep path, so this
- * is about the message: it names the entries to import instead. The list comes from the
- * `exports` maps, not from a copy of them here, so a new module and a new entry are both
- * covered on the day they land.
- *
- * The negations need gitignore semantics, which is what `no-restricted-imports` gives a
- * `group`. `src/app/moduleEntries.test.ts` lints real text to hold that.
- */
-const moduleEntryPatterns = moduleManifests().map(({ name, exports }) => {
-	const entries = Object.keys(exports ?? { '.': '' }).map((subpath) =>
-		subpath === '.' ? name : `${name}/${subpath.replace(/^\.\//, '')}`,
-	);
-
-	return {
-		group: [`${name}/**`, ...entries.filter((entry) => entry !== name).map((entry) => `!${entry}`)],
-		message: `${name} is reachable only at its declared entries: ${entries.join(', ')}. A deeper path is internal to the module. To add an entry, put it in the "exports" map of the package and in the paths of editor-ui/tsconfig.json.`,
-	};
-});
-
 /**
  * Spread into every block that sets `no-restricted-imports`. Flat-config replaces rule
  * options rather than merging them, so a scoped block that omits these patterns would switch
  * both ratchets off for its own files.
  */
-const moduleBoundaryPatterns = [...extractedFeatures, ...moduleEntryPatterns];
+const moduleBoundaryPatterns = [...extractedFeatures, ...moduleEntryPatterns()];
 
 export default defineConfig(
 	frontendConfig,

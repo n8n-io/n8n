@@ -153,6 +153,11 @@ register the descriptor without pulling the store into the eager graph — adds 
 the key in its own `exports` map, the `paths` entry in `editor-ui/tsconfig.json`, and nothing else.
 The alias generator reads the `exports` map, and `aliases.test.ts` fails if the two disagree.
 
+A module can opt out of the whole rule with a `"./*"` key (`"./*": "./src/*"` in `exports`, plus
+`"@n8n/frontend-module-x/*"` in the `paths` of editor-ui). Every file under `src` then resolves and
+lints clean, at any depth. Do this only for a module that means it: the entries are the part of a
+module you cannot move, so a wildcard makes the whole `src` tree the contract.
+
 ```ts
 // src/my-feature.module.ts
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';

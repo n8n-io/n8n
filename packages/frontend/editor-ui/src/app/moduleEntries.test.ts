@@ -4,6 +4,8 @@ import { join, resolve } from 'node:path';
 import { modulePackages } from '@n8n/frontend-vite-config';
 import { ESLint } from 'eslint';
 
+import { moduleEntryPattern } from '../../eslint/module-entry-patterns.mjs';
+
 /**
  * A module package is reachable only at the entries its own `exports` map declares. The Vite
  * aliases and the `paths` in `tsconfig.json` stop a deeper path from resolving;
@@ -42,8 +44,8 @@ describe('module entry ratchet', () => {
 		eslint = new ESLint({ cwd: process.cwd() });
 	});
 
-	const restrictions = async (source: string) => {
-		const [result] = await eslint.lintText(source, { filePath: PROBE });
+	const restrictions = async (source: string, instance = eslint) => {
+		const [result] = await instance.lintText(source, { filePath: PROBE });
 		return result.messages.filter((message) => message.ruleId === RULE);
 	};
 
@@ -84,4 +86,64 @@ describe('module entry ratchet', () => {
 
 		expect(await restrictions(source)).toHaveLength(1);
 	}, 60000);
+
+	describe('a module that declares "./*"', () => {
+		// The documented opt-out back into a wildcard. No module in the tree declares it, so the
+		// pattern comes from the same builder the config uses, fed to ESLint through
+		// `overrideConfig`. Without the two-segment case below, `!<name>/*` looked correct: a
+		// gitignore `*` stops at a `/`, while the `exports` key, the Vite alias and the tsconfig
+		// `paths` entry all match across one.
+		const WILDCARD = '@n8n/frontend-module-wildcard-probe';
+		const NARROW = '@n8n/frontend-module-narrow-probe';
+
+		const withPattern = (manifest: { name: string; exports: Record<string, string> }) =>
+			new ESLint({
+				cwd: process.cwd(),
+				overrideConfig: {
+					rules: { [RULE]: ['error', { patterns: [moduleEntryPattern(manifest)] }] },
+				},
+			});
+
+		it.each([
+			['the bare name', ''],
+			['one segment', '/one'],
+			['two segments', '/one/two'],
+			['three segments', '/one/two/three'],
+		])(
+			'allows %s under the wildcard key',
+			async (_label, subpath) => {
+				const instance = withPattern({
+					name: WILDCARD,
+					exports: { '.': './src/index.ts', './*': './src/*' },
+				});
+
+				expect(await restrictions(`import '${WILDCARD}${subpath}';\n`, instance)).toEqual([]);
+			},
+			60000,
+		);
+
+		it.each(['/one', '/one/two'])(
+			'still refuses %s under a narrow key',
+			async (subpath) => {
+				// The control. A module that declares one subpath does not get the wildcard by
+				// accident, at either depth.
+				const instance = withPattern({
+					name: NARROW,
+					exports: { '.': './src/index.ts', './narrow.module': './src/narrow.module.ts' },
+				});
+
+				expect(await restrictions(`import '${NARROW}${subpath}';\n`, instance)).toHaveLength(1);
+			},
+			60000,
+		);
+
+		it('allows the entry a narrow key declares', async () => {
+			const instance = withPattern({
+				name: NARROW,
+				exports: { '.': './src/index.ts', './narrow.module': './src/narrow.module.ts' },
+			});
+
+			expect(await restrictions(`import '${NARROW}/narrow.module';\n`, instance)).toEqual([]);
+		}, 60000);
+	});
 });
