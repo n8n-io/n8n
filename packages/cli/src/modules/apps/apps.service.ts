@@ -62,6 +62,11 @@ export class AppsService {
 		return this.appVersionService.toResponse(version);
 	}
 
+	async createSourceSnapshot(appId: string, source: Buffer) {
+		const version = await this.appVersionService.createSourceSnapshot(appId, source);
+		return this.appVersionService.toResponse(version);
+	}
+
 	async getSourceTarball(appId: string) {
 		const app = await this.getApp(appId);
 		return await this.appVersionService.readSource(app);

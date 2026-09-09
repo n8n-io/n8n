@@ -1045,7 +1045,7 @@ export interface InstanceAiAppService {
 		namespace: string;
 	}): Promise<{ app: AppSummary } | { conflict: true }>;
 	get(appId: string): Promise<Omit<AppSummary, 'createdAt'>>;
-	/** Gzipped source tarball of the active version (or the newest one); `null` when the app has no version. */
+	/** Gzipped source tarball of the newest version (per-turn snapshot or build); `null` when the app has none. */
 	getSourceTarball(appId: string): Promise<{ versionId: string; data: Uint8Array } | null>;
 	/** Stores both gzipped tarballs as a new version and makes it the served one. */
 	storeVersion(

@@ -797,6 +797,37 @@ describe('InstanceAiSandboxService', () => {
 		});
 	});
 
+	describe('getCachedWorkspaceEntry', () => {
+		it('returns the cached entry while it is fresh and never creates one', async () => {
+			vi.useFakeTimers();
+			try {
+				const { service } = createSandboxService({
+					config: { sandboxEnabled: true, sandboxProvider: 'daytona', builderSandboxTtlMs: 1000 },
+				});
+				const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+				(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+				(createWorkspace as Mock).mockReturnValue(workspace);
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBeUndefined();
+				expect(createSandbox).not.toHaveBeenCalled();
+
+				const entry = await service.getOrCreateWorkspace(
+					'thread-1',
+					fakeUser,
+					{} as InstanceAiContext,
+				);
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBe(entry);
+
+				vi.advanceTimersByTime(1000);
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBeUndefined();
+				expect(createSandbox).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
 	describe('expiry timers', () => {
 		it('evicts expired runtime sandbox entries without destroying the provider workspace', async () => {
 			vi.useFakeTimers();

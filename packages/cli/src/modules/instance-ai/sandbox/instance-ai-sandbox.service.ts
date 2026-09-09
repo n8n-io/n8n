@@ -365,6 +365,13 @@ export class InstanceAiSandboxService {
 		}
 	}
 
+	/** The thread's cached sandbox, if the thread used one recently; never creates one. */
+	getCachedWorkspaceEntry(threadId: string): RuntimeSandboxEntry | undefined {
+		const entry = this.sandboxes.get(threadId);
+		if (!entry || this.isSandboxEntryExpired(entry)) return undefined;
+		return entry;
+	}
+
 	/** Get or create the shared runtime sandbox + workspace for a thread. */
 	async getOrCreateWorkspace(
 		threadId: string,

@@ -74,11 +74,12 @@ work; a build only changes the published URL.
 For an already bound app (the conversation names an app id) skip step 1.
 Before you edit, confirm that `apps/<namespace>/` exists in this workspace
 (`workspace_execute_command` with `ls apps/<namespace>`). If it does not, call
-`apps(action="restore", appId)`: it unpacks the stored source into
+`apps(action="restore", appId)`: it unpacks the newest stored source into
 `apps/<namespace>/`, installs the dependencies and returns `workspacePath`,
-`versionId` and `installed`. Then continue with step 2. `{ denied, reason }`
-means there is nothing to restore (no source stored yet) or the directory
-already has files; read `reason`.
+`versionId` and `installed`. n8n stores a snapshot of the source after every
+turn, so this is your latest work, not only the last published build. Then
+continue with step 2. `{ denied, reason }` means there is nothing to restore
+(no source stored yet) or the directory already has files; read `reason`.
 
 ## Rules
 

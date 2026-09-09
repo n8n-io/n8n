@@ -142,6 +142,7 @@ import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { AppPreviewService } from './app-preview/app-preview.service';
+import { AppSourceSnapshotService } from './app-preview/app-source-snapshot.service';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';
@@ -1965,6 +1966,9 @@ export class InstanceAiService {
 		await this.deleteAgentBuilderSessions(threadId);
 		await this.sandboxService.destroySandbox(threadId);
 		Container.get(AppPreviewService).clearThread(threadId);
+		if (Container.get(ModuleRegistry).isActive('apps')) {
+			Container.get(AppSourceSnapshotService).clearThread(threadId);
+		}
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
 		await this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
@@ -4488,6 +4492,7 @@ export class InstanceAiService {
 			);
 			await this.finalizeRun(threadId, runId, result.status, {
 				userId: user.id,
+				user,
 				modelId,
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
@@ -5860,6 +5865,7 @@ export class InstanceAiService {
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, {
 				userId: opts.user.id,
+				user: opts.user,
 				// Forward modelId so title refinement fires on the resume path too — a run
 				// that suspends for HITL and completes here would otherwise never be titled.
 				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
@@ -6826,6 +6832,8 @@ export class InstanceAiService {
 		status: 'completed' | 'cancelled' | 'errored',
 		options?: {
 			userId?: string;
+			/** Enables the end-of-turn app source snapshot; it needs the user's scopes. */
+			user?: User;
 			modelId?: ModelConfig;
 			archivedWorkflowIds?: string[];
 			workSummary?: WorkSummary;
@@ -6846,6 +6854,36 @@ export class InstanceAiService {
 		this.emitRunMetrics(threadId, status, options);
 		if (status === 'completed' && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
+		}
+		if (status === 'completed' && options?.user) {
+			void this.snapshotAppSources(threadId, options.user);
+		}
+	}
+
+	/**
+	 * Persist the working copy of every app in the thread's sandbox once the
+	 * turn is over, so the source outlives the sandbox without a build.
+	 * Best-effort: only a sandbox the run already used is looked at, and any
+	 * failure is logged.
+	 */
+	private async snapshotAppSources(threadId: string, user: User): Promise<void> {
+		try {
+			if (!Container.get(ModuleRegistry).isActive('apps')) return;
+			const entry = this.sandboxService.getCachedWorkspaceEntry(threadId);
+			if (!entry) {
+				this.logger.debug('No cached sandbox to snapshot app sources from', { threadId });
+				return;
+			}
+			await Container.get(AppSourceSnapshotService).snapshotAfterRun(
+				threadId,
+				user,
+				entry.workspace,
+			);
+		} catch (error) {
+			this.logger.warn('App source snapshot failed', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 

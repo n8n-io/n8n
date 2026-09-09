@@ -237,6 +237,7 @@ import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instan
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AppPreviewService } from '../app-preview/app-preview.service';
+import { AppSourceSnapshotService } from '../app-preview/app-source-snapshot.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
 	InstanceAiTerminalOutcomeService,
@@ -5570,6 +5571,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 				return { deleteBuilderSessions };
 			}
 			if (token === AppPreviewService) return { clearThread: vi.fn() };
+			if (token === AppSourceSnapshotService) return { clearThread: vi.fn() };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 
@@ -5587,6 +5589,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 				return { deleteBuilderSessions };
 			}
 			if (token === AppPreviewService) return { clearThread: vi.fn() };
+			if (token === AppSourceSnapshotService) return { clearThread: vi.fn() };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 

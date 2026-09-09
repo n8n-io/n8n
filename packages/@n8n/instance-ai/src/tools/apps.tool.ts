@@ -503,8 +503,9 @@ export async function handleBuild(
 }
 
 /**
- * Rehydrate `apps/<namespace>/` from the stored source tarball. Needed when a
- * thread starts in a fresh sandbox that never held the app's files.
+ * Rehydrate `apps/<namespace>/` from the newest stored source (a per-turn
+ * snapshot or a build). Needed when a thread starts in a fresh sandbox that
+ * never held the app's files.
  */
 export async function handleRestore(
 	context: AppSandboxContext,
