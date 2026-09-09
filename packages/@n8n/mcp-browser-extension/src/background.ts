@@ -59,9 +59,40 @@ function setDrawerEnabled(enabled: boolean): void {
 	void chrome.action.setPopup({ popup: enabled ? DRAWER_PAGE : '' });
 }
 
+// ---------------------------------------------------------------------------
+// Recording indicator — while a recording is capturing, the toolbar icon
+// turns red so the user can tell it's running without opening the popup.
+// ---------------------------------------------------------------------------
+
+const DEFAULT_TITLE = 'n8n Browser Use'; // must match manifest.json action.default_title
+const RECORDING_TITLE = 'n8n Browser Use — Recording…';
+const RECORDING_BADGE_TEXT = '•';
+const RECORDING_BADGE_COLOR = '#D32F2F';
+
+// Tab lifecycle events call updateBadge() with a fresh tab count throughout a
+// recording (new tab attached, agent tab created, etc.) — this flag makes
+// updateBadge() a no-op while recording so those calls can't stomp the red
+// indicator with the tab-count badge.
+let recordingIndicatorActive = false;
+
+export function updateRecordingIndicator(active: boolean): void {
+	recordingIndicatorActive = active;
+	void chrome.action.setTitle({ title: active ? RECORDING_TITLE : DEFAULT_TITLE });
+	if (active) {
+		void chrome.action.setBadgeText({ text: RECORDING_BADGE_TEXT });
+		void chrome.action.setBadgeBackgroundColor({ color: RECORDING_BADGE_COLOR });
+	} else {
+		updateBadge(activeConnection?.relay.getControlledIds().length ?? 0);
+	}
+}
+
 // The disabled state persists across service-worker restarts while the pending
 // flow does not — reset on startup so the drawer can't get stuck disabled.
 setDrawerEnabled(true);
+// Same story for the badge/title: they're native state, not tied to the
+// service worker's lifetime — reset so a worker evicted mid-recording can't
+// leave the red indicator stuck on forever.
+updateRecordingIndicator(false);
 
 chrome.action.onClicked.addListener(() => {
 	void focusPendingConnectPage();
@@ -344,6 +375,7 @@ async function startRecording(): Promise<{ success: boolean; error?: string }> {
 		pendingRecordingTabIds.add(pendingTabId);
 		recordingTabIds.add(pendingTabId);
 	}
+	updateRecordingIndicator(true);
 	await Promise.all(
 		controlledTabs.map(async ({ chromeTabId }) => await injectRecorder(chromeTabId)),
 	);
@@ -382,6 +414,7 @@ async function stopRecording(): Promise<void> {
 	lastRecordingActionByTab.clear();
 	if (!recording || recording.status !== 'recording') return;
 	recording.status = 'review';
+	updateRecordingIndicator(false);
 	broadcastRecordingChange();
 }
 
@@ -1206,7 +1239,9 @@ function broadcastStatusChange(): void {
 // Badge
 // ---------------------------------------------------------------------------
 
-function updateBadge(tabCount: number): void {
+export function updateBadge(tabCount: number): void {
+	// The recording indicator takes precedence — don't let a tab-count refresh overwrite it.
+	if (recordingIndicatorActive) return;
 	// A prompt-free connect shows no UI at all, so mark the icon even before any tab attaches.
 	const text = tabCount > 0 ? String(tabCount) : activeConnection ? '•' : '';
 	void chrome.action.setBadgeText({ text });
