@@ -20,6 +20,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 	return {
 		...actual,
 		rename: vi.fn(async (from: string, to: string) => await actual.rename(from, to)),
+		rm: vi.fn(async (target, opts) => await actual.rm(target, opts)),
 	};
 });
 
@@ -735,6 +736,77 @@ describe('WorkingCopyUpdater', () => {
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1'),
 			);
+		});
+
+		it('leaves the new export in place when removing the backup fails', async () => {
+			await writeTree(exportFolder, {
+				'manifest.json': manifestFile(makeManifest({ projects: [alpha], workflows: [wf('w1')] })),
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+			const staging = makeManifest({
+				projects: [alpha],
+				workflows: [wf('w1')],
+			});
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
+			});
+			const { rm: actualRm } =
+				await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+			vi.mocked(rm).mockImplementation(async (target, opts) => {
+				if (String(target).includes('-bak-')) {
+					throw new Error('EACCES');
+				}
+				return await actualRm(target, opts);
+			});
+
+			try {
+				await updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					selection({ workflowIds: ['w1'] }),
+				);
+
+				expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+					workflowFile('w1', { v: 2 }),
+				);
+			} finally {
+				vi.mocked(rm).mockImplementation(async (target, opts) => await actualRm(target, opts));
+			}
+		});
+
+		it('moves the export aside to a unique backup directory', async () => {
+			await writeTree(exportFolder, {
+				'manifest.json': manifestFile(makeManifest({ projects: [alpha], workflows: [wf('w1')] })),
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+			const staging = makeManifest({
+				projects: [alpha],
+				workflows: [wf('w1')],
+			});
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
+			});
+
+			await updater.applySelection(
+				exportFolder,
+				stagingFolder,
+				staging,
+				selection({ workflowIds: ['w1'] }),
+			);
+
+			const aside = vi
+				.mocked(rename)
+				.mock.calls.find(([from]) => from === exportFolder)
+				?.at(1);
+			expect(aside).toEqual(expect.any(String));
+			expect(path.dirname(String(aside))).toBe(path.dirname(exportFolder));
+			expect(path.basename(String(aside))).toMatch(/^\.n8n-export-bak-[0-9a-f-]{36}$/);
+			expect(aside).not.toBe(`${exportFolder}.bak`);
 		});
 	});
 

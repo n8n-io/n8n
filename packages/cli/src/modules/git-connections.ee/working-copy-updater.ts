@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
@@ -250,13 +251,20 @@ export class WorkingCopyUpdater {
 				selectedWorkflowIds: selection.workflowIds,
 			});
 
-			const backupPath = `${exportFolder}.bak`;
-			await fs.rm(backupPath, { recursive: true, force: true });
+			const backupPath = path.join(parent, `.${path.basename(exportFolder)}-bak-${randomUUID()}`);
 			await fs.rename(exportFolder, backupPath);
 			backupFolder = backupPath;
 			await fs.rename(workFolder, exportFolder);
-			await fs.rm(backupFolder, { recursive: true, force: true });
+			// The swap is done. Do not restore the backup if cleanup fails.
 			backupFolder = undefined;
+			try {
+				await fs.rm(backupPath, { recursive: true, force: true });
+			} catch (cleanupError: unknown) {
+				this.logger.warn('Failed to remove the export backup after a successful swap', {
+					backupFolder: backupPath,
+					error: cleanupError,
+				});
+			}
 		} catch (error) {
 			if (backupFolder !== undefined) {
 				await fs
