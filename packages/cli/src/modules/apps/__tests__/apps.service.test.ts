@@ -16,6 +16,7 @@ import { AppsService } from '../apps.service';
 import { AppNotFoundError } from '../errors/app-not-found.error';
 import { AppQuotaExceededError } from '../errors/app-quota-exceeded.error';
 import { BindingIncompatibleError } from '../errors/binding-incompatible.error';
+import { BindingNotFoundError } from '../errors/binding-not-found.error';
 import { BindingProjectMismatchError } from '../errors/binding-project-mismatch.error';
 import { BindingWorkflowNotFoundError } from '../errors/binding-workflow-not-found.error';
 import { InvalidBindingsError } from '../errors/invalid-bindings.error';
@@ -262,6 +263,25 @@ describe('AppsService bindings', () => {
 			expect(app.bindings).toEqual([binding()]);
 			expect(result.bindings.map((b) => b.key)).toEqual(['submit']);
 			expect(result.warnings).toEqual([]);
+		});
+	});
+
+	describe('removeBinding', () => {
+		it('drops the key, saves the rest and describes them', async () => {
+			app.bindings = [binding(), binding('notify', 'wf-2')];
+			workflowLoader.loadWorkflow.mockResolvedValue(workflow({ id: 'wf-2', name: 'Notify' }));
+
+			const result = await service.removeBinding('app-1', 'submit');
+
+			expect(appRepository.updateBindings).toHaveBeenCalledWith(app, [binding('notify', 'wf-2')]);
+			expect(result.bindings.map((b) => b.key)).toEqual(['notify']);
+		});
+
+		it('throws BindingNotFoundError for an unbound key without saving', async () => {
+			app.bindings = [binding()];
+
+			await expect(service.removeBinding('app-1', 'nope')).rejects.toThrow(BindingNotFoundError);
+			expect(appRepository.updateBindings).not.toHaveBeenCalled();
 		});
 	});
 

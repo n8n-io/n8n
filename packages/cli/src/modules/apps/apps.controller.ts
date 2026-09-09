@@ -233,6 +233,18 @@ export class AppsController {
 		return await this.appsService.describeBindings(app);
 	}
 
+	@Delete('/:appId/bindings/:key')
+	@ProjectScope('app:update')
+	async removeBinding(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('key') key: string,
+	) {
+		this.checkInstanceWriteAccess();
+		return await this.appsService.removeBinding(appId, key);
+	}
+
 	@Post('/:appId/pages')
 	@ProjectScope('app:update')
 	async createPage(

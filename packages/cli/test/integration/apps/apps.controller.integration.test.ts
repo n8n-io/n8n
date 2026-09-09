@@ -257,6 +257,66 @@ describe('GET /projects/:projectId/apps/:appId/bindings', () => {
 	});
 });
 
+describe('DELETE /projects/:projectId/apps/:appId/bindings/:key', () => {
+	const passthroughWorkflow = async () =>
+		await createWorkflow(
+			{
+				name: 'Echo',
+				nodes: [
+					{
+						id: 'trigger',
+						name: 'When Executed by Another Workflow',
+						type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+						typeVersion: 1.1,
+						position: [0, 0],
+						parameters: { inputSource: 'passthrough' },
+					},
+				],
+			},
+			ownerProject,
+		);
+
+	test('removes the binding by key and describes the remaining ones', async () => {
+		const workflow = await passthroughWorkflow();
+		const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+		const app = await appRepository.updateBindings(created, [
+			{ key: 'submit', kind: 'workflow', workflowId: workflow.id },
+			{ key: 'notify', kind: 'workflow', workflowId: workflow.id },
+		]);
+
+		const response = await authOwnerAgent
+			.delete(`/projects/${ownerProject.id}/apps/${app.id}/bindings/submit`)
+			.expect(200);
+
+		expect(response.body.data.bindings.map((b: { key: string }) => b.key)).toEqual(['notify']);
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual([
+			{ key: 'notify', kind: 'workflow', workflowId: workflow.id },
+		]);
+	});
+
+	test('answers 404 for a key the app has not bound and keeps the others', async () => {
+		const workflow = await passthroughWorkflow();
+		const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+		const app = await appRepository.updateBindings(created, [
+			{ key: 'submit', kind: 'workflow', workflowId: workflow.id },
+		]);
+
+		await authOwnerAgent
+			.delete(`/projects/${ownerProject.id}/apps/${app.id}/bindings/nope`)
+			.expect(404);
+
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toHaveLength(1);
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+
+		await authMemberAgent
+			.delete(`/projects/${ownerProject.id}/apps/${app.id}/bindings/submit`)
+			.expect(403);
+	});
+});
+
 describe('App pages', () => {
 	test('creates a page and a nested child page under it', async () => {
 		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');

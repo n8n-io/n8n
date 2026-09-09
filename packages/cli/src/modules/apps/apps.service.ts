@@ -34,6 +34,7 @@ import { deriveRoutesFromRouterSource } from './derive-routes';
 import { AppNotFoundError } from './errors/app-not-found.error';
 import { AppQuotaExceededError } from './errors/app-quota-exceeded.error';
 import { BindingIncompatibleError } from './errors/binding-incompatible.error';
+import { BindingNotFoundError } from './errors/binding-not-found.error';
 import { BindingProjectMismatchError } from './errors/binding-project-mismatch.error';
 import { BindingWorkflowNotFoundError } from './errors/binding-workflow-not-found.error';
 import { DataWorkflowNotFoundError } from './errors/data-workflow-not-found.error';
@@ -150,6 +151,14 @@ export class AppsService {
 
 		const updated = await this.appRepository.updateBindings(app, parsed.data);
 		return await this.describeBindings(updated);
+	}
+
+	/** Drops one binding by key; the others are not re-checked. Returns the remaining ones described. */
+	async removeBinding(appId: string, key: string) {
+		const app = await this.getApp(appId);
+		if (!app.bindings.some((binding) => binding.key === key)) throw new BindingNotFoundError(key);
+		const remaining = app.bindings.filter((binding) => binding.key !== key);
+		return await this.describeBindings(await this.appRepository.updateBindings(app, remaining));
 	}
 
 	/**
