@@ -208,6 +208,19 @@ describe('AgentTaskJobRegistrar', () => {
 			});
 			expect(provisioner.deprovisionOwnerMember.mock.calls.at(-1)?.[0]).toEqual(owner('task-1'));
 		});
+
+		it('stops after a bounded number of passes when the active version never settles', async () => {
+			let publishes = 0;
+			agentRepository.findActiveVersionId.mockImplementation(async () => `version-${publishes++}`);
+
+			await makeRegistrar().reconcile(AGENT_ID);
+
+			expect(provisioner.provision).toHaveBeenCalledTimes(5);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Reconcile gave up'),
+				expect.objectContaining({ agentId: AGENT_ID }),
+			);
+		});
 	});
 
 	describe('reconcileAll', () => {

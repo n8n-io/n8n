@@ -1,4 +1,3 @@
-import { isValidTimeZone } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
@@ -11,10 +10,14 @@ import { AgentScheduledJobOwner } from '@/scheduling/agent-scheduled-job-owner';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 
 import { AGENT_TASK_TASK_TYPE, agentTaskJobName, type AgentTaskJobPayload } from './agent-task-job';
+import { knownTaskTimezone } from './task-timezone';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import { isValidCronExpression } from '../integrations/cron-validation';
 import { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import { AgentRepository } from '../repositories/agent.repository';
+
+/** Passes a reconcile makes before it stops chasing an active version that keeps changing. */
+const MAX_RECONCILE_PASSES = 5;
 
 /**
  * The write side of durable agent-task scheduling. It keeps the
@@ -56,14 +59,20 @@ export class AgentTaskJobRegistrar {
 		// Reconciles take no lock, so two can interleave: two publishes, or a
 		// publish and a delete. The one that acted on a stale read can undo the
 		// newer one. Each repeats until the version it applied is still the active
-		// one, so the last writer always applies the current version.
+		// one, so the last writer always applies the current version. The bound
+		// keeps a version that never settles from pinning startup, which awaits
+		// this; the publish that moved it reconciles again on its own.
 		let versionId = await this.agentRepository.findActiveVersionId(agentId);
-		for (;;) {
+		for (let pass = 1; pass <= MAX_RECONCILE_PASSES; pass++) {
 			await this.applyVersion(agentId, versionId);
 			const current = await this.agentRepository.findActiveVersionId(agentId);
 			if (current === versionId) return;
 			versionId = current;
 		}
+		this.logger.warn('Reconcile gave up, the active version changed on every pass', {
+			agentId,
+			passes: MAX_RECONCILE_PASSES,
+		});
 	}
 
 	private async applyVersion(agentId: string, versionId: string | null): Promise<void> {
@@ -178,15 +187,7 @@ export class AgentTaskJobRegistrar {
 			return null;
 		}
 
-		const timezone =
-			snapshot.timezone && isValidTimeZone(snapshot.timezone) ? snapshot.timezone : null;
-		if (snapshot.timezone && timezone === null) {
-			this.logger.warn('Task has unknown timezone, using instance timezone', {
-				taskId,
-				timezone: snapshot.timezone,
-			});
-		}
-
+		const timezone = knownTaskTimezone(snapshot.timezone, taskId, this.logger);
 		const schedule = { kind: 'cron' as const, cronExpression, timezone };
 
 		try {
