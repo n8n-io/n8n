@@ -5054,6 +5054,26 @@ describe('createNodeAdapter — n8n Connect annotations', () => {
 		});
 	});
 
+	it('reads a node description without fetching Gateway metadata when requested', async () => {
+		const { makeContext, getGatewayConfig } = createNodeServiceWithGateway([openAiNode], {
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+		});
+
+		const nodeService = makeContext().nodeService;
+		// Exclude the adapter's initial Gateway availability check.
+		getGatewayConfig.mockClear();
+		const description = await nodeService.getDescription('openAi', undefined, {
+			includeGatewayMetadata: false,
+		});
+
+		expect(description.name).toBe('openAi');
+		expect(description.properties).toEqual(openAiNode.properties);
+		expect(description.aiGateway).toBeUndefined();
+		expect(getGatewayConfig).not.toHaveBeenCalled();
+	});
+
 	it('preserves the __operation_only__ marker for nodes without a resource dimension', async () => {
 		const pdfCoNode = {
 			name: 'pdfCo',
