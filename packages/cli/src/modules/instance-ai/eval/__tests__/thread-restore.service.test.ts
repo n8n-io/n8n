@@ -1,6 +1,13 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	CredentialsRepository,
+	Project,
+	SharedWorkflowRepository,
+	User,
+	WorkflowRepository,
+} from '@n8n/db';
 import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -11,6 +18,8 @@ import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { EvalThreadRestoreService } from '../thread-restore.service';
 
@@ -29,13 +38,19 @@ function makeNode(overrides: Record<string, unknown> = {}): Record<string, unkno
 describe('EvalThreadRestoreService', () => {
 	const workflowRepo = mock<WorkflowRepository>();
 	const sharedWorkflowRepo = mock<SharedWorkflowRepository>();
+	const credentialsRepo = mock<CredentialsRepository>();
 	const dataTableService = mock<DataTableService>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const workflowService = mock<WorkflowService>();
 	const service = new EvalThreadRestoreService(
 		workflowRepo,
 		sharedWorkflowRepo,
+		credentialsRepo,
 		dataTableService,
 		policyEnforcementService,
+		workflowHistoryService,
+		workflowService,
 	);
 	const transactionManager = mock<EntityManager>();
 	const cleared = mock<PolicyCleared<'workflowSave'>>();
@@ -47,6 +62,7 @@ describe('EvalThreadRestoreService', () => {
 			async (ctx, fn) => await fn(transactionManager, ctx),
 		);
 		workflowRepo.findByIds.mockResolvedValue([]);
+		credentialsRepo.findByNameAndTypeInProject.mockResolvedValue([]);
 		policyEnforcementService.enforceWorkflowSave.mockResolvedValue(cleared);
 		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue(undefined);
 	});
@@ -95,7 +111,7 @@ describe('EvalThreadRestoreService', () => {
 		expect(workflowRepo.save).not.toHaveBeenCalled();
 	});
 
-	it('strips pre-attached node credentials so they cannot bypass the credential pin', async () => {
+	it('strips a node credential the project does not hold, so a seed cannot bypass the credential pin', async () => {
 		const node = makeNode({
 			credentials: { slackApi: { id: 'cred-from-source-instance', name: 'Slack' } },
 		});
@@ -105,10 +121,90 @@ describe('EvalThreadRestoreService', () => {
 			'project-1',
 		);
 
+		expect(credentialsRepo.findByNameAndTypeInProject).toHaveBeenCalledExactlyOnceWith(
+			'Slack',
+			'slackApi',
+			'project-1',
+		);
 		const saved = workflowRepo.create.mock.calls[0][0];
 		expect(saved.nodes).toHaveLength(1);
 		expect(saved.nodes?.[0]).not.toHaveProperty('credentials');
 		expect(saved.nodes?.[0]).toMatchObject({ name: 'Slack', parameters: expect.any(Object) });
+	});
+
+	it('points a node credential at the project credential of the same type and name', async () => {
+		credentialsRepo.findByNameAndTypeInProject.mockImplementation(async (name, type) =>
+			name === 'Slack' && type === 'slackApi'
+				? [mock<CredentialsEntity>({ id: 'cred-here', name: 'Slack' })]
+				: [],
+		);
+		const node = makeNode({
+			credentials: {
+				slackApi: { id: 'cred-from-source-instance', name: 'Slack' },
+				openAiApi: { id: 'cred-from-source-instance-2', name: 'OpenAI' },
+			},
+		});
+
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
+			'project-1',
+		);
+
+		const saved = workflowRepo.create.mock.calls[0][0];
+		expect(saved.nodes?.[0]?.credentials).toEqual({
+			slackApi: { id: 'cred-here', name: 'Slack' },
+		});
+	});
+
+	it('prefers the credential the thread is allowed to see when several share type and name', async () => {
+		credentialsRepo.findByNameAndTypeInProject.mockResolvedValue([
+			mock<CredentialsEntity>({ id: 'cred-other-thread', name: 'Slack' }),
+			mock<CredentialsEntity>({ id: 'cred-this-thread', name: 'Slack' }),
+		]);
+		const node = makeNode({ credentials: { slackApi: { id: '', name: 'Slack' } } });
+
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
+			'project-1',
+			new Map(),
+			new Set(['cred-this-thread']),
+		);
+
+		const saved = workflowRepo.create.mock.calls[0][0];
+		expect(saved.nodes?.[0]?.credentials).toEqual({
+			slackApi: { id: 'cred-this-thread', name: 'Slack' },
+		});
+	});
+
+	it('writes the seeded version to the workflow history, so the workflow can be published', async () => {
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
+			'project-1',
+		);
+
+		const saved = workflowRepo.create.mock.calls[0][0];
+		expect(workflowHistoryService.saveVersion).toHaveBeenCalledExactlyOnceWith(
+			'Eval seed',
+			{ versionId: saved.versionId, nodes: saved.nodes, connections: saved.connections },
+			'wf-1',
+			false,
+			undefined,
+			transactionManager,
+		);
+	});
+
+	it('publishes only the seeds flagged published, as the requesting user', async () => {
+		const user = mock<User>();
+
+		await service.publishSeedWorkflows(
+			[
+				{ id: 'wf-live', name: 'Live', nodes: [], connections: {}, published: true },
+				{ id: 'wf-draft', name: 'Draft', nodes: [], connections: {} },
+			],
+			user,
+		);
+
+		expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(user, 'wf-live');
 	});
 
 	it('does not re-grant ownership when the workflow already exists in this project', async () => {

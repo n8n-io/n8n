@@ -1,14 +1,17 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
-import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import { CredentialsRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import type { PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { EvalThreadRestoreService } from '../thread-restore.service';
 
@@ -39,8 +42,11 @@ describe('EvalThreadRestoreService.restoreDataTables (seed rows)', () => {
 		service = new EvalThreadRestoreService(
 			Container.get(WorkflowRepository),
 			Container.get(SharedWorkflowRepository),
+			Container.get(CredentialsRepository),
 			dataTableService,
 			Container.get(PolicyEnforcementService),
+			mock<WorkflowHistoryService>(),
+			mock<WorkflowService>(),
 		);
 	});
 
@@ -118,8 +124,11 @@ describe('EvalThreadRestoreService.reseedDataTableRows', () => {
 		service = new EvalThreadRestoreService(
 			Container.get(WorkflowRepository),
 			Container.get(SharedWorkflowRepository),
+			Container.get(CredentialsRepository),
 			dataTableService,
 			Container.get(PolicyEnforcementService),
+			mock<WorkflowHistoryService>(),
+			mock<WorkflowService>(),
 		);
 	});
 
@@ -210,8 +219,11 @@ describe('EvalThreadRestoreService.restoreWorkflows (policy seal)', () => {
 		service = new EvalThreadRestoreService(
 			workflowRepository,
 			Container.get(SharedWorkflowRepository),
+			Container.get(CredentialsRepository),
 			Container.get(DataTableService),
 			Container.get(PolicyEnforcementService),
+			mock<WorkflowHistoryService>(),
+			mock<WorkflowService>(),
 		);
 	});
 

@@ -1046,8 +1046,9 @@ export class InstanceAiController {
 	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
 	 * recreate the artifacts the history references — workflows (node credentials
-	 * stripped — see `EvalThreadRestoreService`), data tables and agents — then
-	 * write the native message log verbatim. The thread then continues as if the
+	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
+	 * and agents — then write the native message log verbatim and publish the
+	 * workflows the seed flags `published`. The thread then continues as if the
 	 * conversation really happened, so an eval can drive the next turn live.
 	 */
 	@Post('/eval/restore-thread')
@@ -1098,11 +1099,15 @@ export class InstanceAiController {
 		// rollback had already deleted.
 		let priorMetadata: Record<string, unknown> | undefined;
 		let bindingWritten = false;
+		// Seed node credentials resolve within the thread's pinned credential view,
+		// so a same-named credential of a concurrent case is never picked.
+		const allowedCredentialIds = this.evalCredentialAllowlists.get(payload.threadId);
 		try {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
 				idMap,
+				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
 			);
 			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
 			// Built (and validated) BEFORE the message write: a rejected binding — two
@@ -1138,6 +1143,8 @@ export class InstanceAiController {
 					payload.messages,
 				));
 			}
+			// Last: a refused activation leaves nothing live for the rollback to undo.
+			await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
 		} catch (error) {
 			if (bindingWritten) {
 				try {
