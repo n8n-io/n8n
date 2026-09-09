@@ -33,11 +33,16 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * after its credential is deleted — and its value reaches us through an agent
  * config field that zod bounds only with `min(1)`. In practice the integration
  * refuses to start unless the id resolves to a real credential, but nothing in
- * the database enforces that, so every column is measured before it is narrowed
- * and one that would truncate is left at its old width with a warning. This
- * migration is cosmetic; it must never be the reason an instance fails to boot.
+ * the database enforces that, so on Postgres every column is measured before it
+ * is narrowed and one that would truncate is left at its old width with a
+ * warning. This migration is cosmetic; it must never be the reason an instance
+ * fails to boot.
  *
- * On Postgres each step rewrites the table and holds an exclusive lock for the
+ * Only Postgres measures. SQLite does not enforce `varchar(n)` at all — the
+ * declared type is documentation — so there is nothing to fail there and the
+ * declaration is always brought in line.
+ *
+ * Each step rewrites the table on Postgres and holds an exclusive lock for the
  * length of the rewrite.
  */
 interface WidthChange {
@@ -69,46 +74,44 @@ const reverse = (changes: WidthChange[]): WidthChange[] =>
 	changes.map(({ table, column, from, to }) => ({ table, column, from: to, to: from }));
 
 /**
- * Drops any change whose column already holds a value longer than the width it
- * would move to. Only narrowing can trip this, so widening skips the scan.
+ * Whether existing data survives the narrowing. Widening always fits, so it
+ * never scans. Postgres only: the caller holds an exclusive lock on the table,
+ * which is what makes this answer still true by the time the ALTER runs.
  */
-async function applicable(
+async function fits(
 	{ runQuery, escape, logger, migrationName }: MigrationContext,
-	changes: WidthChange[],
-): Promise<WidthChange[]> {
-	const keep: WidthChange[] = [];
+	{ table, column, from, to }: WidthChange,
+): Promise<boolean> {
+	if (to >= from) return true;
 
-	for (const change of changes) {
-		const { table, column, from, to } = change;
-		if (to >= from) {
-			keep.push(change);
-			continue;
-		}
+	const rows = await runQuery<Array<{ longest: number | null }>>(
+		`SELECT MAX(LENGTH(${escape.columnName(column)})) AS longest FROM ${escape.tableName(table)};`,
+	);
+	const longest = Number(rows[0]?.longest ?? 0);
+	if (longest <= to) return true;
 
-		const rows = await runQuery<Array<{ longest: number | null }>>(
-			`SELECT MAX(LENGTH(${escape.columnName(column)})) AS longest FROM ${escape.tableName(table)};`,
-		);
-		const longest = Number(rows[0]?.longest ?? 0);
-
-		if (longest > to) {
-			logger.warn(
-				`[${migrationName}] Leaving ${table}.${column} at varchar(${from}): it holds a value of ${longest} characters, which varchar(${to}) cannot store. Shorten or remove those rows and this column is aligned by the next release.`,
-			);
-			continue;
-		}
-
-		keep.push(change);
-	}
-
-	return keep;
+	logger.warn(
+		`[${migrationName}] Leaving ${table}.${column} at varchar(${from}): it holds a value of ${longest} characters, which varchar(${to}) cannot store. Shorten or remove those rows and this column is aligned by the next release.`,
+	);
+	return false;
 }
 
 async function setWidths(context: MigrationContext, changes: WidthChange[]): Promise<void> {
 	const { isPostgres, isSqlite, runQuery, escape, tablePrefix } = context;
-	const applied = await applicable(context, changes);
 
 	if (isPostgres) {
-		for (const { table, column, to } of applied) {
+		for (const change of changes) {
+			const { table, column, to } = change;
+
+			// The ALTER below takes this lock anyway. Taking it before the scan is
+			// what makes the two atomic: without it a main still serving the old
+			// version could write an overlong value in between, and the ALTER would
+			// fail instead of taking the warning path. Migrations run with
+			// `transaction: 'each'`, so the lock is held until this one commits.
+			await runQuery(`LOCK TABLE ${escape.tableName(table)} IN ACCESS EXCLUSIVE MODE;`);
+
+			if (!(await fits(context, change))) continue;
+
 			await runQuery(
 				`ALTER TABLE ${escape.tableName(table)} ALTER COLUMN ${escape.columnName(column)} TYPE VARCHAR(${to});`,
 			);
@@ -118,12 +121,13 @@ async function setWidths(context: MigrationContext, changes: WidthChange[]): Pro
 
 	if (!isSqlite) return;
 
-	// SQLite does not enforce varchar limits, so only the declared schema needs
-	// to change. Rewriting it in place avoids recreating tables that other agent
-	// tables reference with ON DELETE CASCADE.
+	// SQLite does not enforce varchar limits, so the declared type is
+	// documentation and no value can make this fail — every column is updated,
+	// unmeasured. Rewriting the declaration in place also avoids recreating
+	// tables that other agent tables reference with ON DELETE CASCADE.
 	await runQuery('PRAGMA writable_schema = 1;');
 	try {
-		for (const { table, column, from, to } of applied) {
+		for (const { table, column, from, to } of changes) {
 			await runQuery(
 				"UPDATE sqlite_master SET sql = replace(sql, :from, :to) WHERE type = 'table' AND name = :tableName",
 				{
@@ -138,7 +142,7 @@ async function setWidths(context: MigrationContext, changes: WidthChange[]): Pro
 	}
 }
 
-export class AlignAgentIdColumnWidths1788853123113 implements ReversibleMigration {
+export class AlignAgentIdColumnWidths1789043151768 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await setWidths(context, COLUMNS);
 	}
