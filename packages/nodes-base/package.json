@@ -938,7 +938,7 @@
     "@aws-sdk/credential-providers": "3.808.0",
     "@smithy/node-http-handler": "4.5.0",
     "@smithy/protocol-http": "5.3.12",
-    "@smithy/signature-v4": "5.3.5",
+    "@smithy/signature-v4": "catalog:",
     "@smithy/types": "4.13.1",
     "@n8n/backend-network": "workspace:*",
     "@confluentinc/kafka-javascript": "catalog:",
