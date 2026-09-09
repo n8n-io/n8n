@@ -40,6 +40,16 @@ const fileOf = (value: string | undefined): string | undefined =>
 const stackOf = (value: string | undefined): string | undefined =>
 	value ? clip(stripBase(value), 4096) : undefined;
 
+type AppFrame = { file: string; line: number; column: number };
+
+// An uncaught error surfaces in the framework chunk that called the app code;
+// the app's own frame is the first `/src/` one in the stripped stack. Chrome:
+// `at boom (/src/pages/Home.vue?t=1:7:13)`, Firefox: `boom@/src/pages/Home.vue:7:13`.
+const appFrameOf = (stack: string | undefined): AppFrame | undefined => {
+	const match = stack ? /(?:^|[\s(@])(\/src\/[^\s()]*?):(\d+):(\d+)/.exec(stack) : null;
+	return match ? { file: match[1], line: Number(match[2]), column: Number(match[3]) } : undefined;
+};
+
 import.meta.hot?.on('vite:error', (payload: ErrorPayload) => {
 	post({
 		kind: 'vite-error',
@@ -51,22 +61,26 @@ import.meta.hot?.on('vite:error', (payload: ErrorPayload) => {
 });
 
 window.addEventListener('error', (event) => {
+	const stack = stackOf(event.error instanceof Error ? event.error.stack : undefined);
+	const frame = appFrameOf(stack);
 	post({
 		kind: 'uncaught',
 		message: messageOf(event.message),
-		file: fileOf(event.filename || undefined),
-		line: event.lineno || undefined,
-		column: event.colno || undefined,
-		stack: stackOf(event.error instanceof Error ? event.error.stack : undefined),
+		file: fileOf(frame?.file ?? (event.filename || undefined)),
+		line: frame?.line ?? (event.lineno || undefined),
+		column: frame?.column ?? (event.colno || undefined),
+		stack,
 	});
 });
 
 window.addEventListener('unhandledrejection', (event) => {
 	const reason: unknown = event.reason;
 	const error = reason instanceof Error ? reason : undefined;
+	const stack = stackOf(error?.stack);
 	post({
 		kind: 'uncaught',
 		message: messageOf(error?.message ?? reason),
-		stack: stackOf(error?.stack),
+		...appFrameOf(stack),
+		stack,
 	});
 });
