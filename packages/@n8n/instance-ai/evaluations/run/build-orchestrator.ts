@@ -13,6 +13,7 @@ import { sleep } from '@n8n/utils/sleep';
 
 import type { LaneAllocator } from './lane-allocator';
 import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
+import { collectExpectations } from '../build-expectations/collect';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
@@ -426,6 +427,23 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			searchableBuildText(build);
 		const testCase = testCaseByFileSlug.get(fileSlug);
 		if (!testCase) return;
+		// Staging never landed, so the case has no premise to be judged against. The row
+		// itself is short-circuited in `case-pipeline`, but expectations are counted
+		// separately and only a verdict's OWN `incomplete` excludes it — the row's flag
+		// does not reach them. A priorRuns case is usually expectation-only, so without
+		// this the single graded unit still lands in the builder's baseline as a red.
+		if (build.priorRunFailed) {
+			buildExpectationsByKey.set(
+				key,
+				Promise.resolve(
+					allFailVerdicts(
+						collectExpectations(testCase),
+						`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+					),
+				),
+			);
+			return;
+		}
 		// Deterministic credential-setup verdicts, started EAGERLY: per-build
 		// cleanup deletes artifacts later, and a credential read that lost that
 		// race would report "not created" for a run that did create one.

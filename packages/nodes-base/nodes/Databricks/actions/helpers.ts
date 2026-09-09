@@ -1,7 +1,41 @@
 import { NodeApiError, UserError } from 'n8n-workflow';
-import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+} from 'n8n-workflow';
+
+import { databricksUserAgent } from '../constants';
 
 import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
+
+/**
+ * Single egress point for the Databricks API, so every request carries the
+ * partner User-Agent. Enforced by eslint-user-agent-restriction.mjs.
+ *
+ * Takes `context` explicitly rather than the house `this`-binding style because
+ * some callers (e.g. `fetchResourcesInSchema` in methods/listSearch.ts) are plain
+ * functions with no `this`.
+ *
+ * Setting a User-Agent deliberately opts these calls out of the instance-wide
+ * outbound UA, including `N8N_GLOBAL_USER_AGENT_VALUE` — partner attribution
+ * requires a single predictable token.
+ */
+export async function databricksApiRequest(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	options: IHttpRequestOptions,
+): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
+	return await context.helpers.httpRequestWithAuthentication.call(context, credentialType, {
+		...options,
+		headers: {
+			...options.headers,
+			// Last, so a caller cannot override it
+			'User-Agent': databricksUserAgent(),
+		},
+	});
+}
 
 export function getActiveCredentialType(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
@@ -30,8 +64,9 @@ export function sanitizeApiMessage(message: string): string {
 	return message.replace(/[\x00-\x1f\x7f]+/g, ' ').slice(0, 500);
 }
 
-// Must be called at every request entry point (router catch, listSearch wrapper) —
-// the node has no shared transport helper. Keyed on PERMISSION_DENIED only; widen
+// Must be called at every request entry point (router catch, listSearch wrapper):
+// databricksApiRequest() only attaches the User-Agent and deliberately does not
+// wrap errors, so callers still own their catch. Keyed on PERMISSION_DENIED only; widen
 // the key if other Databricks error_codes with legible messages show up. Keyed on
 // the error_code, not HTTP 403, so expired-token 403s (which core retries via
 // refresh) aren't mislabeled if they leak through. Mutates rather than re-wraps:

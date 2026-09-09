@@ -237,6 +237,30 @@ describe('transcriptAsText', () => {
 		expect(text).toContain('prompt: Here is the plan, approve?');
 		expect(text).toContain('user feedback: No — use a Webhook trigger, not a Schedule');
 	});
+
+	it('surfaces ask-user question types for process expectations', () => {
+		const transcript: TranscriptTurn[] = [
+			{
+				steps: [
+					{
+						kind: 'ask-user',
+						questions: [
+							{
+								id: 'service',
+								question: 'Which service?',
+								type: 'single',
+								options: ['RocketChat', 'Zulip'],
+							},
+						],
+					},
+				],
+			},
+		];
+
+		expect(transcriptAsText(transcript)).toContain(
+			'Q (single): Which service? [RocketChat / Zulip]',
+		);
+	});
 });
 
 describe('perTurnToolCallCounts', () => {

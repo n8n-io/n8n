@@ -147,7 +147,7 @@ function buildQueryConfig(route: ResolvedPublicApiRoute): {
 function buildPathParams(route: ResolvedPublicApiRoute): z.AnyZodObject | undefined {
 	const shape: Record<string, z.ZodTypeAny> = {};
 	for (const arg of route.args) {
-		if (arg.type === 'param') shape[arg.key] = z.string();
+		if (arg.type === 'param') shape[arg.key] = arg.schema ?? z.string();
 	}
 	return Object.keys(shape).length ? z.object(shape) : undefined;
 }

@@ -1,5 +1,7 @@
 import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
 
+import { databricksUserAgent } from '../nodes/Databricks/constants';
+
 export class DatabricksOAuth2Api implements ICredentialType {
 	name = 'databricksOAuth2Api';
 
@@ -172,6 +174,7 @@ export class DatabricksOAuth2Api implements ICredentialType {
 			baseURL: '={{$credentials.host.replace(/\\/$/, "")}}',
 			url: '/api/2.0/preview/scim/v2/Me',
 			method: 'GET',
+			headers: { 'User-Agent': databricksUserAgent() },
 		},
 	};
 }

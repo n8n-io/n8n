@@ -15,6 +15,7 @@ export { N8nBinaryLoader } from './utils/n8n-binary-loader';
 export { N8nJsonLoader } from './utils/n8n-json-loader';
 export { N8nPdfLoader } from './utils/loaders/n8n-pdf-loader';
 export { N8nLlmTracing } from './utils/n8n-llm-tracing';
+export { redactHeaderValues } from './utils/redact-headers';
 export {
 	TextEditorDocument,
 	NoMatchFoundError,
@@ -55,6 +56,7 @@ export {
 	getNodeProxyAgent,
 	proxyFetch,
 	type AgentTimeoutOptions,
+	type ProxyFetchOptions,
 } from './utils/http-proxy-agent';
 export { braveSearch, searxngSearch, type BraveSearchOptions } from './web-search';
 export type { WebSearchOptions, WebSearchResponse, WebSearchResult } from './web-search';
@@ -62,6 +64,10 @@ export {
 	fetchFollowingRedirects,
 	type FollowRedirectsOptions,
 } from './utils/follow-redirects';
+export {
+	createRefreshingAuthFetch,
+	type RefreshingAuthFetchOptions,
+} from './utils/refreshing-auth-fetch';
 export {
 	getConnectionHintNoticeField,
 	metadataFilterField,
@@ -85,6 +91,7 @@ export {
 	processDocument,
 } from './utils/vector-store/processDocuments';
 export type { ServerSentEventMessage } from './utils/sse';
+export { stripNonXHeaders } from './utils/strip-non-x-headers';
 
 // Converters
 export { getParametersJsonSchema } from './converters/tool';

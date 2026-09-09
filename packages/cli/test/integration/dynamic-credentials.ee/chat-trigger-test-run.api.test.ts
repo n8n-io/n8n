@@ -52,7 +52,6 @@ import { loadNodesFromDist } from '../shared/utils/node-types-data';
 mockInstance(Telemetry);
 
 process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
-process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true';
 
 const testServer = setupTestServer({
 	endpointGroups: ['workflows', 'credentials'],

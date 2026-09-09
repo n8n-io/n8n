@@ -45,7 +45,9 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_THINKING_ENABLED` | boolean | `true` | Extended thinking / reasoning. When `false`, reasoning is not enabled on the model. |
 | `N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED` | boolean | `false` | Force-enable the MCP-connections experiment. `false` falls back to the PostHog flag. The MCP registry module and admin MCP access must also be enabled before the MCP registry discovery tool is wired. |
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
+| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflows(action="list")`). `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Computer Use browser tooling, used for credential setup. |
+| `N8N_INSTANCE_AI_SETUP_PANEL_ENABLED` | boolean | `false` | Non-blocking setup panel (setup panel v2) instead of the suspending setup wizard. |
 | `N8N_INSTANCE_AI_ACTIVATION_CAPPED` | boolean | `false` | Activation capping. |
 | `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` | number | `1` | Assistant messages that must be sent, in addition to instance activation, before an activation lock applies. |
 
@@ -99,7 +101,7 @@ without search results. `research(action="fetch-url")` still works.
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | number | `300000` | Default command timeout in the sandbox (milliseconds). |
 | `N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS` | number | `900` | Eval-harness-only Daytona cold-provisioning timeout in seconds. It must be a positive integer. |
 | `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | string | `''` | Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`). Also surfaced as a `name_prefix` label. Empty in production. |
-| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | boolean | `false` | When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate. |
+| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | boolean | `false` | When true, sandboxes are created ephemeral: the provider deletes them once idle instead of leaving them stopped. Applies to both `n8n-sandbox` and `daytona`. Intended for throwaway eval instances so sandboxes don't accumulate. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | number | `15` | Minutes an idle Daytona sandbox waits before being stopped. `0` disables auto-stop. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | number | `60` (1 hour) | Minutes a stopped Daytona sandbox waits before being archived to cold storage. `0` uses Daytona's maximum interval. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | number | `10080` (7 days) | Minutes a stopped Daytona sandbox waits before being deleted. Negative disables auto-delete; `0` deletes on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |
@@ -210,7 +212,7 @@ The same storage backend is used for:
 - Message history
 - Observational memory (observation log, cursors, and task locks)
 - Plan storage (thread-scoped in thread metadata)
-- Run snapshots and checkpoints (separate tables)
+- Checkpoints (separate table)
 
 ## Event Bus
 

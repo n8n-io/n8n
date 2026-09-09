@@ -47,14 +47,36 @@ export default defineConfig(
 
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
-			// The allowlist below is the only place @n8n/typeorm exceptions may live; block inline disables.
-			'n8n-local-rules/no-misplaced-typeorm-import-disable': 'error',
-			// Public API handler-pattern ratchet — the allowlist is the only escape hatch; block inline disables.
-			'n8n-local-rules/no-public-api-guardrail-disable': 'error',
+			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a
+			// violation. `no-unsealed-workflow-entity-write` (on for every package via the plugin) has none.
+			'n8n-local-rules/no-guardrail-disable': [
+				'error',
+				{
+					guarded: [
+						{
+							rule: 'misplaced-n8n-typeorm-import',
+							message:
+								'Keep TypeORM in the persistence layer: put the query behind a use-case repository method in @n8n/db.',
+						},
+						{
+							rule: 'no-repository-in-public-api-handler',
+							message: 'Call a service instead of reaching the repository.',
+						},
+						{
+							rule: 'require-public-api-controller',
+							message: 'Migrate to `@PublicApiController`.',
+						},
+						{
+							rule: 'no-unsealed-workflow-entity-write',
+							message: 'Route the write through a token-gated `WorkflowRepository` method.',
+						},
+					],
+				},
+			],
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
-			// Seal WorkflowEntity node-writes to the token-gated repository methods.
-			// The allowlist below must shrink to empty; a new unsealed write fails CI.
-			'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
+			// Periodic leader-only work must be a @SystemTask() class; hand-rolled
+			// @OnLeaderTakeover timers are reserved for the allowlisted services below.
+			'n8n-local-rules/no-on-leader-takeover': 'error',
 			// The clearance minter lives on the `policy-internal` subpath, off the public barrel.
 			// Only PolicyEnforcementService may reach it; callers use enforce*/evaluate*.
 			'@typescript-eslint/no-restricted-imports': [
@@ -160,7 +182,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
 			'./src/public-api/v1/handlers/discover/discover.handler.ts',
 			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
-			'./src/public-api/v1/handlers/executions/executions.handler.ts',
 			'./src/public-api/v1/handlers/folders/folders.handler.ts',
 			'./src/public-api/v1/handlers/insights/insights.handler.ts',
 			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
@@ -210,18 +231,6 @@ export default defineConfig(
 				},
 			],
 		},
-	},
-	{
-		// Shrink-only ratchet: node-write sites not yet migrated to the sealed repository path.
-		// NEVER add — a new unsealed write must fail CI. Remove each entry as its site migrates.
-		files: [
-			'./src/workflows/workflow-creation.service.ts',
-			'./src/services/import.service.ts',
-			'./src/modules/source-control.ee/source-control-import.service.ee.ts',
-			'./src/modules/instance-ai/instance-ai.adapter.service.ts',
-			'./src/modules/chat-hub/chat-hub-workflow.service.ts',
-		],
-		rules: { 'n8n-local-rules/no-unsealed-workflow-entity-write': 'off' },
 	},
 	{
 		// Only the PEP may import the clearance minter.
@@ -382,9 +391,44 @@ export default defineConfig(
 		},
 	},
 	{
+		// Sanctioned `@OnLeaderTakeover` users. Permanent, but additions need review:
+		// the system task runner itself, services that hold live resources on the
+		// leader (webhooks, pollers, sockets, queue consumers), and services that
+		// run a documented one-shot catch-up pass on takeover.
+		files: [
+			'./src/scheduling/system-tasks/system-task-runner.ts',
+			'./src/active-workflow-manager.ts',
+			'./src/metrics/prometheus/instance-role-metrics.service.ts',
+			'./src/scaling/scaling.service.ts',
+			'./src/wait-tracker.ts',
+			'./src/workflows/publication/workflow-publication-outbox-consumer.ts',
+			'./src/workflows/publication/workflow-publication-reconciler.service.ts',
+			'./src/modules/agents/agent-task.service.ts',
+			'./src/modules/agents/integrations/agent-channel-reconciler.service.ts',
+			'./src/modules/agents/integrations/leader-channel-relay.service.ts',
+			'./src/modules/agents/integrations/platforms/discord-integration.ts',
+			'./src/modules/token-exchange/services/trusted-key.service.ts',
+			'./src/services/pruning/workflow-history-compaction.service.ts',
+		],
+		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
+	},
+	{
+		// Shrink-only ratchet: periodic leader timers not yet migrated to system
+		// tasks. NEVER add to this list — new periodic leader work must be a
+		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
+		files: [
+			'./src/license.ts',
+			'./src/modules/instance-reporting/instance-reporting-scheduler.service.ts',
+			'./src/services/pruning/executions-pruning.service.ts',
+			'./src/services/workflow-statistics-rollup.service.ts',
+		],
+		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
+	},
+	{
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'off',
+			'n8n-local-rules/no-on-leader-takeover': 'off',
 		},
 	},
 	{

@@ -21,7 +21,10 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import type {
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
 	AddConnectionCommand,
@@ -38,6 +41,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
+	createMockEnterpriseSettings,
 	createMockNodeTypes,
 	createTestNode,
 	createTestNodeProperties,
@@ -71,9 +75,11 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
+	EnterpriseEditionFeature,
 } from '@/app/constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
@@ -123,12 +129,8 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
-import {
-	AGENT_NODE_SIZE,
-	DEFAULT_NODE_SIZE,
-	GRID_SIZE,
-	HORIZONTAL_NODE_STEP,
-} from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE, HORIZONTAL_NODE_STEP } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('n8n-workflow')>();
@@ -710,30 +712,38 @@ describe('useCanvasOperations', () => {
 			]);
 		});
 
-		it('centers a node after an agent using the agent measured height', () => {
-			const uiStore = mockedStore(useUIStore);
-			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
-			const nodeTypesStore = mockedStore(useNodeTypesStore);
-			const node = createTestNode({ id: 'target', type: SET_NODE_TYPE, typeVersion: 1 });
-			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE, version: 1 });
-			const agent = createTestNode({
-				id: 'agent',
-				position: [112, 57],
-				type: MESSAGE_AN_AGENT_NODE_TYPE,
-				typeVersion: 2,
-			});
+		it.each([
+			['measured', 206, 96],
+			['unmeasured', undefined, 64],
+		])(
+			'centers a node after an agent using the %s height (%s) with handle offset %s',
+			(_measurement, measuredHeight, expectedHandleOffset) => {
+				const uiStore = mockedStore(useUIStore);
+				const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				const node = createTestNode({ id: 'target', type: SET_NODE_TYPE, typeVersion: 1 });
+				const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE, version: 1 });
+				const agent = createTestNode({
+					id: 'agent',
+					position: [112, 64],
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+				});
 
-			uiStore.lastInteractedWithNodeId = agent.id;
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(agent as INodeUi);
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(agent as INodeUi);
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
-			geometryStore.getNodeHeight.mockReturnValue(206);
+				uiStore.lastInteractedWithNodeId = agent.id;
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(agent as INodeUi);
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(agent as INodeUi);
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+				geometryStore.getNodeHeight.mockReturnValue(measuredHeight);
 
-			const { resolveNodePosition } = useCanvasOperations();
-			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+				const { resolveNodePosition } = useCanvasOperations();
+				const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position[1] + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.position[1] + 206 / 2);
-		});
+				expect(position[1] + DEFAULT_NODE_SIZE[1] / 2).toBe(
+					agent.position[1] + expectedHandleOffset,
+				);
+			},
+		);
 
 		it('should place the node below the last interacted with node if it has non-main outputs', () => {
 			const uiStore = mockedStore(useUIStore);
@@ -4692,6 +4702,146 @@ describe('useCanvasOperations', () => {
 			const copiedData = getNodesToSave([nodes[0]]);
 
 			expect(copiedData.nodeGroups).toBeUndefined();
+		});
+
+		it('keeps n8n credits credentials when copying nodes', () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: {
+					1: mockNodeTypeDescription({
+						name: SET_NODE_TYPE,
+						credentials: [{ name: 'openAiApi', required: true }],
+					}),
+				},
+			};
+
+			const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
+			const node = mockNode({ id: '1', name: 'Node 1', type: SET_NODE_TYPE });
+			node.position = [40, 40];
+			node.credentials = { openAiApi: gatewayCredential };
+
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const { getNodesToSave } = useCanvasOperations();
+			const copiedData = getNodesToSave([node]);
+
+			expect(copiedData.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		function copyNodeCredentialsWithSharing({
+			credentials,
+			usedCredentials = {},
+			usableCredentials = [],
+		}: {
+			credentials: INodeUi['credentials'];
+			usedCredentials?: Record<string, IUsedCredential>;
+			usableCredentials?: ICredentialsResponse[];
+		}) {
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.Sharing]: true,
+			});
+
+			const credentialsStore = useCredentialsStore();
+			vi.spyOn(credentialsStore, 'allCredentials', 'get').mockReturnValue(usableCredentials);
+
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: {
+					1: mockNodeTypeDescription({
+						name: SET_NODE_TYPE,
+						credentials: [{ name: 'openAiApi', required: true }],
+					}),
+				},
+			};
+
+			const node = mockNode({ id: '1', name: 'Node 1', type: SET_NODE_TYPE });
+			node.position = [40, 40];
+			node.credentials = credentials;
+
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.spyOn(workflowDocumentStoreInstance, 'usedCredentials', 'get').mockReturnValue(
+				usedCredentials,
+			);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			return useCanvasOperations().getNodesToSave([node]).nodes[0].credentials;
+		}
+
+		it('keeps n8n credits credentials when sharing is enabled', () => {
+			const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: gatewayCredential },
+				}),
+			).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		it('drops id-less credentials that are not n8n credits when sharing is enabled', () => {
+			const orphanCredential = { id: null, name: 'Orphan' };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: orphanCredential },
+				}),
+			).toEqual({});
+		});
+
+		it('keeps stored credentials that are not in usedCredentials when sharing is enabled', () => {
+			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
+			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: storedCredential },
+					usableCredentials: [ownedCredential],
+				}),
+			).toEqual({ openAiApi: storedCredential });
+		});
+
+		it('keeps stored credentials the current user can access when sharing is enabled', () => {
+			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
+			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: storedCredential },
+					usableCredentials: [ownedCredential],
+					usedCredentials: {
+						[ownedCredential.id]: {
+							id: ownedCredential.id,
+							name: ownedCredential.name,
+							credentialType: 'openAiApi',
+							currentUserHasAccess: true,
+						},
+					},
+				}),
+			).toEqual({ openAiApi: storedCredential });
+		});
+
+		it('drops stored credentials the current user cannot access when sharing is enabled', () => {
+			const foreignCredential = mock<ICredentialsResponse>({
+				id: 'cred-foreign',
+				name: 'Someone else',
+			});
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: {
+						openAiApi: { id: foreignCredential.id, name: foreignCredential.name },
+					},
+					usableCredentials: [foreignCredential],
+					usedCredentials: {
+						[foreignCredential.id]: {
+							id: foreignCredential.id,
+							name: foreignCredential.name,
+							credentialType: 'openAiApi',
+							currentUserHasAccess: false,
+						},
+					},
+				}),
+			).toEqual({});
 		});
 	});
 

@@ -1062,7 +1062,10 @@ describe('GET /workflows/:id/:versionId', () => {
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/version-123');
+
 		expect(response.statusCode).toBe(404);
+		// The deprecated path keeps one message for both cases. Callers may match on it.
+		expect(response.body.message).toBe('Version not found');
 	});
 
 	test('should fail due to non-existing version', async () => {
@@ -1136,6 +1139,106 @@ describe('GET /workflows/:id/:versionId', () => {
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/${versionId}`);
 
 		expect(response.statusCode).toBe(403);
+	});
+});
+
+describe('GET /workflows/:workflowId/versions/:versionId', () => {
+	test('should fail due to non-existing workflow', async () => {
+		const response = await authOwnerAgent.get('/workflows/non-existing/versions/version-123');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow not found');
+	});
+
+	test('should fail due to non-existing version', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.get(
+			`/workflows/${workflow.id}/versions/non-existing-version`,
+		);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Version not found');
+	});
+
+	test('should retrieve workflow version', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const versionId = uuid();
+		const versionData = {
+			versionId,
+			workflowId: workflow.id,
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					parameters: {},
+					position: [0, 0] as [number, number],
+					typeVersion: 1,
+				},
+			],
+			connections: {},
+			authors: 'Test User',
+			name: 'Version Name',
+			description: 'Version Description',
+		};
+		await createWorkflowHistoryItem(workflow.id, versionData);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/versions/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		const body = response.body as Partial<WorkflowHistory>;
+		expect(body).toEqual({
+			workflowId: workflow.id,
+			versionId,
+			name: 'Version Name',
+			description: 'Version Description',
+			nodes: versionData.nodes,
+			connections: versionData.connections,
+			nodeGroups: [],
+			authors: 'Test User',
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			createdAt: expect.any(String),
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			updatedAt: expect.any(String),
+		});
+	});
+
+	test('should retrieve version for non-owned workflow when owner', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const versionId = uuid();
+		const versionName = 'Version Name';
+		await createWorkflowHistoryItem(workflow.id, { versionId, name: versionName });
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/versions/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.name).toBe(versionName);
+	});
+
+	test('should fail to retrieve version without read permission', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const versionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId });
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}/versions/${versionId}`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return the same body as the deprecated path', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const versionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId, name: 'Version Name' });
+
+		const deprecatedPath = await authOwnerAgent.get(`/workflows/${workflow.id}/${versionId}`);
+		const currentPath = await authOwnerAgent.get(`/workflows/${workflow.id}/versions/${versionId}`);
+
+		expect(deprecatedPath.statusCode).toBe(200);
+		expect(currentPath.statusCode).toBe(200);
+		expect(currentPath.body).toEqual(deprecatedPath.body);
 	});
 });
 
@@ -1763,7 +1866,7 @@ describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) =>
 	});
 });
 
-describe('Deprecation header on legacy activate/deactivate aliases', () => {
+describe('Deprecation header on legacy paths', () => {
 	// RFC 9745 structured-field Date: "@" followed by unix seconds. Assert the contract, not a
 	// specific date, so the test doesn't couple to the (release-owned) deprecation date.
 	const rfc9745Date = /^@\d+$/;
@@ -1799,6 +1902,28 @@ describe('Deprecation header on legacy activate/deactivate aliases', () => {
 		const workflow = await createActiveWorkflow({}, member);
 
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unpublish`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBeUndefined();
+	});
+
+	test('should return a Deprecation header on the two-variable version path', async () => {
+		const workflow = await createWorkflow({}, member);
+		const versionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId });
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toMatch(rfc9745Date);
+	});
+
+	test('should not return a Deprecation header on the versions path', async () => {
+		const workflow = await createWorkflow({}, member);
+		const versionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId });
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}/versions/${versionId}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.headers.deprecation).toBeUndefined();

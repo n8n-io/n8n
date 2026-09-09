@@ -21,11 +21,11 @@ import {
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '@/app/constants';
 import {
-	AGENT_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
 	GRID_SIZE,
 	NODE_X_SPACING,
 } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 import type { INodeUi } from '@/Interface';
 import {
 	computeGroupFrameRects,
@@ -327,6 +327,28 @@ describe('useCanvasLayout', () => {
 		expect(node.y + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.y + AGENT_NODE_SIZE[1] / 2);
 	});
 
+	test('should keep a measured agent card on the grid with its handle on the row axis', () => {
+		const nodes = [
+			createCanvasGraphNode({ id: 'node' }),
+			createCanvasGraphNode({
+				id: 'agent',
+				data: { render: { type: CanvasNodeRenderType.Agent, options: {} } },
+				dimensions: { width: AGENT_NODE_SIZE[0], height: 356 },
+			}),
+		];
+
+		const { layout } = createTestSetup(nodes, [['node', 'agent']]);
+		const result = layout('all');
+		const node = result.nodes.find(({ id }) => id === 'node');
+		const agent = result.nodes.find(({ id }) => id === 'agent');
+
+		assert(node);
+		assert(agent);
+		// The card's handle sits on the grid line nearest its center: 176px, not 178px.
+		expect(agent.y % GRID_SIZE).toBe(0);
+		expect(agent.y + 176).toBe(node.y + DEFAULT_NODE_SIZE[1] / 2);
+	});
+
 	test('should calculate dimensions for configurable nodes with missing dimensions', () => {
 		const nodes = [
 			createCanvasGraphNode({
@@ -506,8 +528,11 @@ describe('useCanvasLayout', () => {
 			});
 		}
 
-		function createCollapsedGroupSetup(selectedNodeIds?: string[]) {
-			const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 }, hidden: true });
+		function createCollapsedGroupSetup(
+			m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } }),
+			selectedNodeIds?: string[],
+		) {
+			const hiddenM1 = { ...m1, hidden: true };
 			const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 960, y: 1200 }, hidden: true });
 			const before = createCanvasGraphNode({ id: 'before', position: { x: 0, y: 0 } });
 			const after = createCanvasGraphNode({ id: 'after', position: { x: 2000, y: 0 } });
@@ -519,7 +544,7 @@ describe('useCanvasLayout', () => {
 				position: { x: 944, y: 908 },
 			});
 
-			const nodes = [before, m1, m2, after, group];
+			const nodes = [before, hiddenM1, m2, after, group];
 			const connections: Array<[string, string]> = [
 				['before', chipId],
 				[chipId, 'after'],
@@ -589,6 +614,22 @@ describe('useCanvasLayout', () => {
 			expect(matchesGrid(result)).toBe(true);
 		});
 
+		test('keeps a collapsed agent card on the grid when restoring group members', () => {
+			const agent = createCanvasGraphNode({
+				id: 'm1',
+				data: { render: { type: CanvasNodeRenderType.Agent, options: {} } },
+				dimensions: { width: AGENT_NODE_SIZE[0], height: 356 },
+				position: { x: 1008, y: 1008 },
+				hidden: true,
+			});
+			const { layout } = createCollapsedGroupSetup(agent);
+			const result = layout('all');
+			const positionedAgent = result.nodes.find(({ id }) => id === agent.id);
+
+			assert(positionedAgent);
+			expect(positionedAgent.y % GRID_SIZE).toBe(0);
+		});
+
 		test('keeps a collapsed group clustered between its external neighbours', () => {
 			const { layout } = createCollapsedGroupSetup();
 			const result = layout('all');
@@ -607,7 +648,7 @@ describe('useCanvasLayout', () => {
 		});
 
 		test('tidies hidden members when a collapsed group chip is selected', () => {
-			const { layout } = createCollapsedGroupSetup([chipId]);
+			const { layout } = createCollapsedGroupSetup(undefined, [chipId]);
 			const result = layout('selection');
 
 			const ids = result.nodes.map((n) => n.id);

@@ -17,6 +17,7 @@ import {
 	buildGetQuery,
 	buildOrQuery,
 	buildQuery,
+	getApiDefinition,
 	getSchemaHeader,
 	mapPairedItemsFrom,
 	supabaseApiRequest,
@@ -102,17 +103,8 @@ export class Supabase implements INodeType {
 		loadOptions: {
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const header = getSchemaHeader(this, 'GET', 'loadOptions');
-				const { paths } = await supabaseApiRequest.call(
-					this,
-					'GET',
-					'/',
-					{},
-					{},
-					undefined,
-					header,
-				);
-				for (const path of Object.keys(paths as IDataObject)) {
+				const { paths } = await getApiDefinition.call(this);
+				for (const path of Object.keys(paths ?? {})) {
 					// omit introspection path and skip RPCs, leaving only tables
 					if (path === '/' || path.startsWith('/rpc/')) {
 						continue;
@@ -128,20 +120,9 @@ export class Supabase implements INodeType {
 			async getTableColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tableName = this.getCurrentNodeParameter('tableId') as string;
-				const header = getSchemaHeader(this, 'GET', 'loadOptions');
-				const { definitions } = await supabaseApiRequest.call(
-					this,
-					'GET',
-					'/',
-					{},
-					{},
-					undefined,
-					header,
-				);
+				const { definitions } = await getApiDefinition.call(this);
 
-				const properties = definitions[tableName]?.properties as
-					| { [column: string]: { type: string } }
-					| undefined;
+				const properties = definitions?.[tableName]?.properties;
 				if (!properties) {
 					return returnData;
 				}

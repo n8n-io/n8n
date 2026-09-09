@@ -517,6 +517,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		// Sub-nodes, such as a chat model connected to a chain or agent, inherit executeData.node
+		// from their parent. Prefer expressionResolveValues.node when present: it is always
+		// the node making this call to resolve credentials.
+		const consumerNode = expressionResolveValues?.node ?? executeData?.node;
+
 		if (nodeCredentials.__aiGatewayManaged) {
 			const { userId, workflowId, projectId, executionId } = additionalData;
 			return await this.aiGatewayService.getSyntheticCredential({
@@ -525,6 +530,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				workflowId,
 				projectId,
 				executionId,
+				node: consumerNode,
 			});
 		}
 
@@ -534,7 +540,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await this.policyEnforcementService.enforceCredentialDecrypt({
 			credentialType: type,
 			credentialId: credentialsEntity.id,
-			consumer: executeData ? { nodeType: executeData.node.type } : null,
+			consumer: consumerNode ? { nodeType: consumerNode.type } : null,
 			projectId: additionalData.projectId ?? null,
 		});
 

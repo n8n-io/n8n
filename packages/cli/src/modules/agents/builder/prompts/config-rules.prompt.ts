@@ -1,8 +1,7 @@
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { AgentJsonConfigBaseSchema, AgentModelSchema } from '@n8n/api-types';
-import type { JSONSchema7 } from 'json-schema';
 import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer';
 
@@ -69,7 +68,7 @@ export function getConfigRulesSection(): string {
 
 export function getSchemaReferenceSection(): string {
 	const zodSchema: ZodObject<ZodRawShape> = BuilderPromptAgentJsonConfigSchema;
-	const jsonSchemaText = jsonSchemaToCompactText(zodToJsonSchema(zodSchema) as JSONSchema7);
+	const jsonSchemaText = jsonSchemaToCompactText(zodSchemaToJsonSchema(zodSchema));
 	return `\
 #### Config Schema Reference
 

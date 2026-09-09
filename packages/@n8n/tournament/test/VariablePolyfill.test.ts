@@ -105,3 +105,52 @@ describe('jsVariablePolyfill', () => {
 		});
 	});
 });
+
+describe('generated code', () => {
+	it('generates identifier code independent of the global JSON.stringify', () => {
+		const [pristine] = evaluator.getExpressionCode('{{ someFreeName }}');
+		expect(pristine).toContain('"someFreeName"');
+
+		const bogus = 'BOGUS_STRINGIFY_OUTPUT';
+		const originalStringify = JSON.stringify;
+		let generated: string;
+		try {
+			JSON.stringify = (() => bogus) as unknown as typeof JSON.stringify;
+			[generated] = evaluator.getExpressionCode('{{ anotherFreeName }}');
+		} finally {
+			JSON.stringify = originalStringify;
+		}
+
+		expect(generated).not.toContain(bogus);
+		expect(generated).toBe(pristine.replace(/someFreeName/g, 'anotherFreeName'));
+	});
+
+	it('renders text chunks and the join separator independent of the global JSON.stringify', () => {
+		const [pristine] = evaluator.getExpressionCode('prefix {{ value }}');
+		expect(pristine).toContain('["prefix "');
+		expect(pristine).toContain('].join("")');
+
+		const bogus = 'BOGUS_STRINGIFY_OUTPUT';
+		const originalStringify = JSON.stringify;
+		let generated: string;
+		try {
+			JSON.stringify = (() => bogus) as unknown as typeof JSON.stringify;
+			[generated] = evaluator.getExpressionCode('prefix {{ value }}');
+		} finally {
+			JSON.stringify = originalStringify;
+		}
+
+		// The text chunk and join separator render verbatim; neither is routed
+		// through the global.
+		expect(generated).toContain('["prefix "');
+		expect(generated).toContain('].join("")');
+	});
+
+	it.each([
+		['a line separator', 'a\u2028b'],
+		['a paragraph separator', 'a\u2029b'],
+		['quotes, a backslash and a newline', 'he said "hi"\\\n\ttab'],
+	])('round-trips text chunks containing %s', (_, text) => {
+		expect(evaluator.execute(`${text} {{ 1 }}`, {})).toBe(`${text} 1`);
+	});
+});

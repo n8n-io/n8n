@@ -26,7 +26,7 @@ import {
 	BuilderTemplatesService,
 	builderTemplatesOptionsFromEnv,
 } from './builder-templates-service';
-import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
+import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS, NPM_INSTALL_FLAGS } from './sandbox-setup';
 import { stageWorkspaceFilesForImage } from './snapshot-image-context';
 import { buildRuntimeSkillWorkspaceBundle } from '../skills/materialize-runtime-skills';
 import { loadInstanceAiRuntimeSkillSource } from '../skills/runtime-skills';
@@ -227,7 +227,7 @@ export class SnapshotManager {
 		const image = Image.base(base)
 			.addLocalDir(stagingDir, DAYTONA_WORKSPACE_BAKE_ROOT)
 			.runCommands(
-				`cp -a ${DAYTONA_WORKSPACE_BAKE_ROOT}/. ${DAYTONA_WORKSPACE_ROOT}/ && mkdir -p ${layoutDirs} && cd ${DAYTONA_WORKSPACE_ROOT} && npm install --ignore-scripts`,
+				`cp -a ${DAYTONA_WORKSPACE_BAKE_ROOT}/. ${DAYTONA_WORKSPACE_ROOT}/ && mkdir -p ${layoutDirs} && cd ${DAYTONA_WORKSPACE_ROOT} && npm install ${NPM_INSTALL_FLAGS}`,
 			);
 
 		this.logger.info('Builder image descriptor prepared', {

@@ -71,7 +71,6 @@ export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservat
 export interface RunObservationLogObserverOpts {
 	memory: ObservationLogObserverMemory;
 	observationScopeId: string;
-	observerThresholdTokens: number;
 	observationLogTailLimit: number;
 	observe: ObservationLogObserveFn;
 	tokenCounter?: TokenCounter;
@@ -83,7 +82,6 @@ export interface RunObservationLogObserverOpts {
 
 export type RunObservationLogObserverResult =
 	| { status: 'skipped'; reason: 'no-delta' | 'pending-tool-call' }
-	| { status: 'skipped'; reason: 'below-threshold'; tokenCount: number }
 	| {
 			status: 'ran';
 			observationsWritten: number;
@@ -204,9 +202,6 @@ export async function runObservationLogObserver(
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
 	const transcript = renderObserverTranscript(observable);
 	const tokenCount = await tokenCounter(transcript);
-	if (tokenCount < opts.observerThresholdTokens) {
-		return { status: 'skipped', reason: 'below-threshold', tokenCount };
-	}
 
 	const observationLogTail = (
 		await memory.getActiveObservationLog({
@@ -339,7 +334,7 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	for (const [key, entryValue] of entries.slice(0, maxObjectKeys)) {
 		if (isSensitiveKey(key)) {
 			result[key] = REDACTED_VALUE;
-		} else if (shouldStripBlob(key, entryValue)) {
+		} else if (shouldStripBlob(key, entryValue, maxStringChars)) {
 			result[key] = '[omitted large blob]';
 		} else {
 			result[key] = compactForObserver(entryValue, options);
@@ -355,9 +350,9 @@ function isSensitiveKey(key: string): boolean {
 	return SENSITIVE_KEY_PATTERN.test(key);
 }
 
-function shouldStripBlob(key: string, value: unknown): boolean {
+function shouldStripBlob(key: string, value: unknown, maxStringChars: number): boolean {
 	if (typeof value !== 'string') return false;
-	if (value.length <= DEFAULT_MAX_STRING_CHARS) return false;
+	if (value.length <= maxStringChars) return false;
 	return /blob|base64|data|file|image/i.test(key);
 }
 

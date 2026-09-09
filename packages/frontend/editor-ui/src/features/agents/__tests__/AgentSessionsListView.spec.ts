@@ -155,7 +155,6 @@ vi.mock('@/app/utils/formatters/dateFormatter', () => ({
 }));
 
 vi.mock('@/features/agents/constants', () => ({
-	AGENT_PREVIEW_VIEW: 'AgentPreviewView',
 	AGENT_SESSION_DETAIL_VIEW: 'AgentSessionDetailView',
 	CONTINUE_SESSION_ID_PARAM: 'continueSessionId',
 	EXECUTIONS_SECTION_KEY: '__executions',

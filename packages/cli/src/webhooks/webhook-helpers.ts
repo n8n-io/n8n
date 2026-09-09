@@ -7,6 +7,7 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type express from 'express';
@@ -52,16 +53,19 @@ import {
 	OperationalError,
 	tryToParseUrl,
 	UnexpectedError,
+	UserError,
 	WAIT_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
+import { Readable } from 'node:stream';
 import { finished } from 'stream/promises';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -87,6 +91,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { EngineV2Webhooks } from './engine-v2-webhooks';
 import { applySandboxCSP } from './webhook-response-headers';
 import {
 	WebhookResponseHeaders,
@@ -94,6 +99,29 @@ import {
 } from './webhook-response-headers';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
+
+const deferCleanupUntilStreamEnds = (
+	stream: Readable,
+	res: express.Response,
+	cleanup: () => Promise<void>,
+) => {
+	let cleanupPromise: Promise<void> | undefined;
+	const cleanupOnce = async () => {
+		cleanupPromise ??= cleanup();
+		await cleanupPromise;
+	};
+	const cleanupOnClose = () => {
+		stream.destroy();
+		void cleanupOnce();
+	};
+
+	void finished(stream).then(cleanupOnce, cleanupOnce);
+	res.once('close', cleanupOnClose);
+	if (res.closed) {
+		res.off('close', cleanupOnClose);
+		cleanupOnClose();
+	}
+};
 
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {
@@ -473,8 +501,16 @@ export function prepareExecutionData(
 	if (executionId !== undefined) {
 		// Set the data the webhook node did return on the waiting node if executionId
 		// already exists as it means that we are restarting an existing execution.
-		runExecutionData.executionData!.nodeExecutionStack[0].data.main =
-			webhookResultData.workflowData ?? [];
+		// The resuming node is flagged as disabled to stop the wait from starting over,
+		// so mark it to forward every output branch (not just the first). Otherwise items
+		// routed to outputs other than 0 are silently dropped.
+		// See https://github.com/n8n-io/n8n/issues/12823
+		const resumingNodeExecutionData = runExecutionData.executionData!.nodeExecutionStack[0];
+		resumingNodeExecutionData.data.main = webhookResultData.workflowData ?? [];
+		resumingNodeExecutionData.metadata = {
+			...resumingNodeExecutionData.metadata,
+			forwardAllOutputs: true,
+		};
 	}
 
 	if (Object.keys(runExecutionDataMerge).length !== 0) {
@@ -599,6 +635,17 @@ export async function executeWebhook(
 		};
 	};
 
+	additionalData.getUserById = async (id: string) => {
+		const user = await Container.get(UserRepository).findByIdWithRole(id);
+		if (!user) return undefined;
+		return {
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName,
+			lastName: user.lastName,
+		};
+	};
+
 	const translateAuthFailureReason = (reason?: AuthFailureReason): OAuth2FailureReason => {
 		switch (reason) {
 			case 'verifier_not_registered':
@@ -618,6 +665,9 @@ export async function executeWebhook(
 
 	additionalData.completeN8nOAuth2Flow = async (code: string, state: string) =>
 		await Container.get(OAuth2FlowProxy).complete(code, state);
+
+	additionalData.refreshN8nOAuth2Flow = async (refreshToken: string, resourceUrl: string) =>
+		await Container.get(OAuth2FlowProxy).refreshVirtualClientToken(refreshToken, resourceUrl);
 
 	// Captured here so `establishTriggerIdentity` seals the gate that admitted this
 	// request, instead of resolving the resource a second time.
@@ -705,13 +755,32 @@ export async function executeWebhook(
 	};
 
 	let didSendResponse = false;
+	/** Whether this run goes to the engine 2.0 data plane instead of the v1 path. */
+	let routesToEngineV2 = false;
 	let runExecutionDataMerge = {};
+	const engineV2Webhooks = Container.get(EngineV2Webhooks);
+	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
 	try {
 		// Run the webhook function to see what should be returned and if
 		// the workflow should be executed or not
 		let webhookResultData: IWebhookResponseData;
 
-		await parseRequestBody(req, workflowStartNode, workflow, executionMode, additionalKeys);
+		// Before the node runs: a streaming node, and the chat, MCP and Agent365
+		// triggers, answer the request themselves, so a later refusal could not send
+		// the 400. Also before the request body is parsed, so no file is stored for a
+		// run that will not start.
+		routesToEngineV2 = engineV2Webhooks.handles(workflowData, executionMode);
+		if (routesToEngineV2) {
+			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
+		}
+
+		cleanupMultipartFiles = await parseRequestBody(
+			req,
+			workflowStartNode,
+			workflow,
+			executionMode,
+			additionalKeys,
+		);
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
@@ -796,6 +865,13 @@ export async function executeWebhook(
 			};
 		}
 
+		if (cleanupMultipartFiles && webhookResultData.webhookResponse instanceof Readable) {
+			deferCleanupUntilStreamEnds(webhookResultData.webhookResponse, res, cleanupMultipartFiles);
+		} else {
+			await cleanupMultipartFiles?.();
+		}
+		cleanupMultipartFiles = undefined;
+
 		const responseHeaders = evaluateResponseHeaders(context);
 
 		if (!res.headersSent && responseHeaders) {
@@ -837,6 +913,10 @@ export async function executeWebhook(
 			}
 			return;
 		}
+
+		// The node's output is the only place a file shows up, so this cannot run with
+		// the checks above.
+		if (routesToEngineV2) engineV2Webhooks.assertPayloadSupported(webhookResultData);
 
 		// Reactive credential-status gate. Runs only once we know the workflow will
 		// execute (workflowData is defined), so a falsy "Only Run If" short-circuits
@@ -885,6 +965,10 @@ export async function executeWebhook(
 			projectName: project?.name,
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
+			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
+			// sets, so carrying it here changes nothing for v1. Engine 2.0 has no way to
+			// stop at a node, and its dispatcher refuses the run on this field.
+			destinationNode,
 		};
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
@@ -1002,8 +1086,13 @@ export async function executeWebhook(
 		/**
 		 * We track the webhook response mode so that `WorkflowRunner` can decide whether it
 		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
+		 *
+		 * A v2 run has no control-plane execution to record it against, and the
+		 * `engine-v2` module refuses queue mode, so there is nothing to track.
 		 */
-		Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
+		if (!routesToEngineV2) {
+			Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
+		}
 
 		if (shouldDeferOnReceivedResponse) {
 			additionalKeys.$executionId = executionId;
@@ -1059,6 +1148,10 @@ export async function executeWebhook(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
 			{ executionId },
 		);
+
+		// Engine 2.0 serves `onReceived` only, so the response is already out. Nothing
+		// below applies: the run has no control-plane execution to wait on.
+		if (routesToEngineV2) return executionId;
 
 		const activeExecutions = Container.get(ActiveExecutions);
 
@@ -1196,6 +1289,10 @@ export async function executeWebhook(
 		let error: Error;
 		if (e instanceof ResponseError && e.httpStatusCode < 500) {
 			error = e;
+		} else if (routesToEngineV2 && e instanceof UserError) {
+			// The v2 path never falls back to v1, so its reason is the answer. The
+			// branch below would replace it with a generic 500 and report it as a bug.
+			error = new BadRequestError(e.message);
 		} else {
 			Container.get(ErrorReporter).error(e, { executionId });
 			error = new OperationalError('There was a problem executing the workflow', { cause: e });
@@ -1203,6 +1300,8 @@ export async function executeWebhook(
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
 		return;
+	} finally {
+		await cleanupMultipartFiles?.();
 	}
 }
 
@@ -1296,7 +1395,9 @@ async function parseRequestBody(
 
 	const { contentType } = req;
 	if (contentType === 'multipart/form-data') {
-		req.body = await parseFormData(req);
+		const { body, cleanup } = await parseFormData(req);
+		req.body = body;
+		return cleanup;
 	} else {
 		if (nodeVersion > 1) {
 			if (
@@ -1312,6 +1413,8 @@ async function parseRequestBody(
 			await parseBody(req);
 		}
 	}
+
+	return undefined;
 }
 
 /**

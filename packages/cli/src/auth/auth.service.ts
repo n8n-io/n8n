@@ -7,6 +7,7 @@ import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import escapeRegExp from 'lodash/escapeRegExp';
 import type { StringValue as TimeUnitValue } from 'ms';
 
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -37,10 +38,6 @@ interface IssuedJWT extends AuthJwtPayload {
 interface PasswordResetToken {
 	sub: string;
 	hash: string;
-}
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 interface CreateAuthMiddlewareOptions {

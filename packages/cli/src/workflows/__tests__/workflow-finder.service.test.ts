@@ -43,7 +43,7 @@ describe('WorkflowFinderService', () => {
 		});
 
 		it('groups workflow ids by their parent folder', async () => {
-			const { service } = makeService([
+			const { service, sharedWorkflowRepository } = makeService([
 				{ workflow: { id: 'w1', parentFolder: { id: 'f1' } } },
 				{ workflow: { id: 'w2', parentFolder: { id: 'f1' } } },
 				{ workflow: { id: 'w3', parentFolder: { id: 'f2' } } },
@@ -53,6 +53,20 @@ describe('WorkflowFinderService', () => {
 
 			expect(result.get('f1')).toEqual(['w1', 'w2']);
 			expect(result.get('f2')).toEqual(['w3']);
+			expect(sharedWorkflowRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { workflow: expect.objectContaining({ isArchived: false }) },
+				}),
+			);
+		});
+
+		it('includes archived workflows when requested', async () => {
+			const { service, sharedWorkflowRepository } = makeService([]);
+
+			await service.findWorkflowIdsByFolder(['f1'], { includeArchived: true });
+
+			const where = sharedWorkflowRepository.find.mock.calls[0][0]?.where;
+			expect(where).toEqual({ workflow: { parentFolder: expect.anything() } });
 		});
 
 		it('dedupes a workflow that surfaces via several share rows', async () => {

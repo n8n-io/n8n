@@ -158,6 +158,15 @@ describe('countFilteredAdditions', () => {
 		assert.equal(countFilteredAdditions([], EXCLUDE_PATTERNS), 0);
 	});
 
+	it('excludes test and misc files inside dot-directories', () => {
+		const files = [
+			{ filename: '.github/scripts/owners/owners.mjs', additions: 50 },
+			{ filename: '.github/scripts/owners/owners.test.mjs', additions: 100 },
+			{ filename: '.github/WORKFLOWS.md', additions: 100 },
+		];
+		assert.equal(countFilteredAdditions(files, EXCLUDE_PATTERNS), 50);
+	});
+
 	it('applies EXCLUDE_PATTERNS to common test file extensions', () => {
 		const files = [
 			{ filename: 'src/service.ts', additions: 50 },

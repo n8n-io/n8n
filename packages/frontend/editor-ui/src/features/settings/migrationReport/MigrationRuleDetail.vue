@@ -67,7 +67,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.name'),
 			key: 'name',
-			width: 200,
+			width: 240,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.status'),
@@ -76,26 +76,27 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 				row.active
 					? i18n.baseText('settings.migrationReport.detail.table.active')
 					: i18n.baseText('settings.migrationReport.detail.table.deactivated'),
-			width: 40,
+			width: 120,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
 			key: 'issues',
+			width: 240,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.numberOfExecutions'),
 			key: 'numberOfExecutions',
-			width: 40,
+			width: 160,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.lastExecuted'),
 			key: 'lastExecutedAt',
-			width: 40,
+			width: 120,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.lastUpdated'),
 			key: 'lastUpdatedAt',
-			width: 40,
+			width: 120,
 		},
 	];
 
