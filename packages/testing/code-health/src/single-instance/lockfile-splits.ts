@@ -1,3 +1,4 @@
+import { PUBLISHED_SECTIONS } from './libs.js';
 import type { LockGraph } from '../utils/pnpm-lock-parser.js';
 
 /**
@@ -71,16 +72,53 @@ function diffPeers(keys: string[]): PeerDelta[] {
 	return deltas.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** A declaration that can fork the graph: an explicit range, not a catalog or workspace reference. */
+/**
+ * A declaration that can fork the graph: anything but the default catalog or a workspace link.
+ *
+ * Only the bare `catalog:` is safe. A *named* catalog (`catalog:undici-v7`) exists precisely to
+ * resolve a name differently from the default one, so it forks the graph just like a literal range.
+ */
 export function isPinned(culprit: SplitCulprit): boolean {
-	return !culprit.specifier.startsWith('catalog:') && !culprit.specifier.startsWith('workspace:');
+	return culprit.specifier !== 'catalog:' && !culprit.specifier.startsWith('workspace:');
+}
+
+/**
+ * Snapshot keys reachable from a published dependency edge.
+ *
+ * A `devDependency` is never installed by a consumer, so a peer context that exists only under one
+ * cannot put a second copy in a shipped process — counting it would fail the rule for a duplicate
+ * that never ships. Only importer sections in `PUBLISHED_SECTIONS` seed the walk; snapshot edges are
+ * already runtime-only (a published tarball carries no devDependencies), so everything reachable
+ * from a published seed ships too.
+ */
+export function publishedSnapshotKeys(graph: LockGraph): Set<string> {
+	const queue: string[] = [];
+	for (const deps of graph.importers.values()) {
+		for (const [name, dep] of deps) {
+			// A `link:` to another workspace package resolves to no snapshot; that importer is walked
+			// in its own right, so its published dependencies are already covered.
+			if (dep.version.startsWith('link:')) continue;
+			if (!PUBLISHED_SECTIONS.some((section) => section === dep.section)) continue;
+			queue.push(`${name}@${dep.version}`);
+		}
+	}
+
+	const reachable = new Set<string>();
+	while (queue.length > 0) {
+		const key = queue.pop();
+		if (key === undefined || reachable.has(key)) continue;
+		reachable.add(key);
+		for (const edge of graph.snapshotDeps.get(key) ?? []) queue.push(edge);
+	}
+	return reachable;
 }
 
 export function findLockfileSplits(graph: LockGraph, libs: readonly string[]): LockfileSplit[] {
 	const splits: LockfileSplit[] = [];
+	const published = publishedSnapshotKeys(graph);
 
 	for (const lib of libs) {
-		const keys = (graph.snapshotKeys.get(lib) ?? []).slice().sort();
+		const keys = (graph.snapshotKeys.get(lib) ?? []).filter((key) => published.has(key)).sort();
 		if (keys.length <= 1) continue;
 
 		const variants: SplitVariant[] = keys.map((key) => ({ key, importers: [] }));
@@ -123,6 +161,18 @@ function list(items: string[], separator = ', '): string {
 	const shown = items.slice(0, MAX_LISTED).join(separator);
 	const rest = items.length - MAX_LISTED;
 	return rest > 0 ? `${shown} (+${rest} more)` : shown;
+}
+
+/**
+ * The fix depends on who can change the resolution. A workspace package that pins a differing peer
+ * can be edited here; when nothing in the repo declares one, the version came from a third party's
+ * own range and only an override or a dependency bump moves it.
+ */
+export function remediationFor(split: LockfileSplit): string {
+	if (split.culprits.some(isPinned)) {
+		return 'Align the differing dependency so every context resolves the same version — add it to the pnpm-workspace.yaml catalog and reference it as "catalog:". Check the peer range it must satisfy before picking the version.';
+	}
+	return 'No workspace package pins the differing dependency, so a catalog entry cannot move it — it comes from a third party\'s own range. Bump or replace the dependency that requires the odd version, or add a pnpm override in pnpm-workspace.yaml. Run "pnpm why <dependency>" to find the requirer.';
 }
 
 /** Human-readable diagnosis: what split, along which peer, and who declares it. */

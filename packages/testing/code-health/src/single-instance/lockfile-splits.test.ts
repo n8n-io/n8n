@@ -1,15 +1,53 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeSplit, findLockfileSplits, peerAtoms } from './lockfile-splits.js';
-import type { LockGraph } from '../utils/pnpm-lock-parser.js';
+import {
+	describeSplit,
+	findLockfileSplits,
+	isPinned,
+	peerAtoms,
+	remediationFor,
+} from './lockfile-splits.js';
+import type { ImporterSection, LockGraph } from '../utils/pnpm-lock-parser.js';
 
+type TestDep = { specifier: string; version: string; section?: ImporterSection };
+
+/**
+ * Build a `LockGraph`. When `importers` is omitted every snapshot key is seeded from its own
+ * published importer, so a test that is not about reachability does not have to model it.
+ */
 const graph = (
 	snapshotKeys: Record<string, string[]>,
-	importers: Record<string, Record<string, { specifier: string; version: string }>> = {},
-): LockGraph => ({
-	snapshotKeys: new Map(Object.entries(snapshotKeys)),
-	importers: new Map(Object.entries(importers).map(([k, v]) => [k, new Map(Object.entries(v))])),
-});
+	importers?: Record<string, Record<string, TestDep>>,
+	snapshotDeps: Record<string, string[]> = {},
+): LockGraph => {
+	const entries = Object.entries(snapshotKeys);
+	const seeded: Record<string, Record<string, TestDep>> = {};
+	if (!importers) {
+		let i = 0;
+		for (const [name, keys] of entries) {
+			for (const key of keys) {
+				seeded[`packages/seed-${i++}`] = {
+					[name]: { specifier: 'catalog:', version: key.slice(name.length + 1) },
+				};
+			}
+		}
+	}
+	return {
+		snapshotKeys: new Map(entries),
+		importers: new Map(
+			Object.entries(importers ?? seeded).map(([path, deps]) => [
+				path,
+				new Map(
+					Object.entries(deps).map(([name, d]) => [
+						name,
+						{ specifier: d.specifier, version: d.version, section: d.section ?? 'dependencies' },
+					]),
+				),
+			]),
+		),
+		snapshotDeps: new Map(Object.entries(snapshotDeps)),
+	};
+};
 
 describe('peerAtoms', () => {
 	it('drops the leading version and keeps top-level peers', () => {
@@ -81,7 +119,11 @@ describe('findLockfileSplits', () => {
 			graph(
 				{ zod: ['zod@3(a@1)', 'zod@3(a@2)'] },
 				{
-					'packages/one': { a: { specifier: '1', version: '1' } },
+					'packages/one': {
+						zod: { specifier: 'catalog:', version: '3(a@1)' },
+						a: { specifier: '1', version: '1' },
+					},
+					'packages/two': { zod: { specifier: 'catalog:', version: '3(a@2)' } },
 				},
 			),
 			['zod'],
@@ -98,7 +140,11 @@ describe('describeSplit', () => {
 			graph(
 				{ zod: ['zod@3(a@1)', 'zod@3(a@2)'] },
 				{
-					'packages/one': { a: { specifier: '1', version: '1' } },
+					'packages/one': {
+						zod: { specifier: 'catalog:', version: '3(a@1)' },
+						a: { specifier: '1', version: '1' },
+					},
+					'packages/two': { zod: { specifier: 'catalog:', version: '3(a@2)' } },
 				},
 			),
 			['zod'],
@@ -116,8 +162,14 @@ describe('culprit ordering', () => {
 			graph(
 				{ zod: ['zod@3(a@1)', 'zod@3(a@2)'] },
 				{
-					'packages/catalogued': { a: { specifier: 'catalog:', version: '2' } },
-					'packages/pinned': { a: { specifier: '1', version: '1' } },
+					'packages/catalogued': {
+						zod: { specifier: 'catalog:', version: '3(a@2)' },
+						a: { specifier: 'catalog:', version: '2' },
+					},
+					'packages/pinned': {
+						zod: { specifier: 'catalog:', version: '3(a@1)' },
+						a: { specifier: '1', version: '1' },
+					},
 				},
 			),
 			['zod'],
@@ -126,5 +178,101 @@ describe('culprit ordering', () => {
 			'packages/pinned',
 			'packages/catalogued',
 		]);
+	});
+});
+
+describe('isPinned', () => {
+	const culprit = (specifier: string) => ({
+		importer: 'packages/one',
+		peer: 'a',
+		specifier,
+		resolved: '1',
+	});
+
+	it('treats the default catalog as unable to fork the graph', () => {
+		expect(isPinned(culprit('catalog:'))).toBe(false);
+	});
+
+	it('treats a workspace link as unable to fork the graph', () => {
+		expect(isPinned(culprit('workspace:*'))).toBe(false);
+	});
+
+	it('treats a named catalog as forking, since it exists to resolve differently', () => {
+		expect(isPinned(culprit('catalog:undici-v7'))).toBe(true);
+	});
+
+	it('treats a literal range as forking', () => {
+		expect(isPinned(culprit('^1.0.0'))).toBe(true);
+	});
+});
+
+describe('published reachability', () => {
+	const twoContexts = { zod: ['zod@3(a@1)', 'zod@3(a@2)'] };
+
+	it('ignores a context reachable only through a devDependency', () => {
+		const splits = findLockfileSplits(
+			graph(twoContexts, {
+				'packages/ships': { zod: { specifier: 'catalog:', version: '3(a@1)' } },
+				'packages/tooling': {
+					zod: { specifier: 'catalog:', version: '3(a@2)', section: 'devDependencies' },
+				},
+			}),
+			['zod'],
+		);
+		expect(splits).toEqual([]);
+	});
+
+	it('counts a context both of whose importers publish it', () => {
+		const splits = findLockfileSplits(
+			graph(twoContexts, {
+				'packages/one': { zod: { specifier: 'catalog:', version: '3(a@1)' } },
+				'packages/two': {
+					zod: { specifier: 'catalog:', version: '3(a@2)', section: 'optionalDependencies' },
+				},
+			}),
+			['zod'],
+		);
+		expect(splits).toHaveLength(1);
+	});
+
+	it('reaches a transitive context through published snapshot edges', () => {
+		const splits = findLockfileSplits(
+			graph(
+				twoContexts,
+				{
+					'packages/one': { zod: { specifier: 'catalog:', version: '3(a@1)' } },
+					'packages/two': { dep: { specifier: '1.0.0', version: '1.0.0' } },
+				},
+				{ 'dep@1.0.0': ['zod@3(a@2)'] },
+			),
+			['zod'],
+		);
+		expect(splits).toHaveLength(1);
+	});
+});
+
+describe('remediationFor', () => {
+	const splitWith = (importers: Record<string, Record<string, TestDep>>) =>
+		findLockfileSplits(graph({ zod: ['zod@3(a@1)', 'zod@3(a@2)'] }, importers), ['zod'])[0];
+
+	it('points at the catalog when a workspace package pins the differing dependency', () => {
+		const split = splitWith({
+			'packages/one': {
+				zod: { specifier: 'catalog:', version: '3(a@1)' },
+				a: { specifier: '1', version: '1' },
+			},
+			'packages/two': { zod: { specifier: 'catalog:', version: '3(a@2)' } },
+		});
+		expect(remediationFor(split)).toContain('catalog');
+		expect(remediationFor(split)).not.toContain('third party');
+	});
+
+	it('points at the third-party requirer when nothing in the repo pins it', () => {
+		const split = splitWith({
+			'packages/one': { zod: { specifier: 'catalog:', version: '3(a@1)' } },
+			'packages/two': { zod: { specifier: 'catalog:', version: '3(a@2)' } },
+		});
+		expect(remediationFor(split)).toContain('third party');
+		expect(remediationFor(split)).toContain('pnpm why');
 	});
 });

@@ -18,10 +18,16 @@ interface LockImporter {
 	optionalDependencies?: Record<string, LockImporterDep>;
 }
 
+/** A `snapshots:` entry. Only runtime edges exist here — a published tarball ships no devDeps. */
+interface LockSnapshot {
+	dependencies?: Record<string, string>;
+	optionalDependencies?: Record<string, string>;
+}
+
 interface LockFile {
 	importers?: Record<string, LockImporter>;
 	packages?: Record<string, unknown>;
-	snapshots?: Record<string, unknown>;
+	snapshots?: Record<string, LockSnapshot | null>;
 }
 
 function parseProjectLockfile(content: string): LockFile | null {
@@ -100,12 +106,17 @@ function parsePackageKey(key: string): { name: string; version: string } | null 
 	return { name: clean.slice(0, atIdx), version: clean.slice(atIdx + 1) };
 }
 
+/** Manifest sections the lockfile records for an importer. */
+export type ImporterSection = 'dependencies' | 'devDependencies' | 'optionalDependencies';
+
 /** One importer's view of a direct dependency, as the lockfile records it. */
 export interface ImporterDep {
 	/** Range the manifest declares (`catalog:`, `1.2.3`, `workspace:*`, …). */
 	specifier: string;
 	/** Resolution pnpm picked, peer suffix included (`1.2.8(openai@6.46.0(…))`). */
 	version: string;
+	/** Which section declared it. `devDependencies` never reaches a consumer's install. */
+	section: ImporterSection;
 }
 
 export interface LockGraph {
@@ -116,6 +127,8 @@ export interface LockGraph {
 	snapshotKeys: Map<string, string[]>;
 	/** Importer path (repo-relative, `.` for the root) -> direct dep name -> how it resolved. */
 	importers: Map<string, Map<string, ImporterDep>>;
+	/** Snapshot key -> the snapshot keys it depends on, so the runtime closure can be walked. */
+	snapshotDeps: Map<string, string[]>;
 }
 
 /**
@@ -127,36 +140,48 @@ export interface LockGraph {
  */
 export function parsePnpmLockGraph(rootDir: string, lockFile = 'pnpm-lock.yaml'): LockGraph {
 	const filePath = path.join(rootDir, lockFile);
-	const empty: LockGraph = { snapshotKeys: new Map(), importers: new Map() };
+	const empty: LockGraph = {
+		snapshotKeys: new Map(),
+		importers: new Map(),
+		snapshotDeps: new Map(),
+	};
 	if (!fs.existsSync(filePath)) return empty;
 
 	const lock = parseProjectLockfile(fs.readFileSync(filePath, 'utf-8'));
 	if (!lock) return empty;
 
 	const snapshotKeys = new Map<string, string[]>();
-	for (const key of Object.keys(lock.snapshots ?? {})) {
+	const snapshotDeps = new Map<string, string[]>();
+	for (const [key, snapshot] of Object.entries(lock.snapshots ?? {})) {
 		const parsed = parsePackageKey(key);
 		if (!parsed) continue;
 		const keys = snapshotKeys.get(parsed.name);
 		if (keys) keys.push(key);
 		else snapshotKeys.set(parsed.name, [key]);
+
+		const edges: string[] = [];
+		for (const section of [snapshot?.dependencies, snapshot?.optionalDependencies]) {
+			for (const [name, version] of Object.entries(section ?? {})) edges.push(`${name}@${version}`);
+		}
+		snapshotDeps.set(key, edges);
 	}
 
 	const importers = new Map<string, Map<string, ImporterDep>>();
 	for (const [importerPath, importer] of Object.entries(lock.importers ?? {})) {
 		const deps = new Map<string, ImporterDep>();
-		for (const section of [
-			importer.dependencies,
-			importer.devDependencies,
-			importer.optionalDependencies,
-		]) {
-			for (const [name, info] of Object.entries(section ?? {})) {
+		const sections: Array<[ImporterSection, Record<string, LockImporterDep> | undefined]> = [
+			['dependencies', importer.dependencies],
+			['devDependencies', importer.devDependencies],
+			['optionalDependencies', importer.optionalDependencies],
+		];
+		for (const [section, entries] of sections) {
+			for (const [name, info] of Object.entries(entries ?? {})) {
 				if (typeof info?.specifier !== 'string' || typeof info?.version !== 'string') continue;
-				deps.set(name, { specifier: info.specifier, version: info.version });
+				deps.set(name, { specifier: info.specifier, version: info.version, section });
 			}
 		}
 		importers.set(importerPath, deps);
 	}
 
-	return { snapshotKeys, importers };
+	return { snapshotKeys, importers, snapshotDeps };
 }

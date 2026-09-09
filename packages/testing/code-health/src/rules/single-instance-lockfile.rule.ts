@@ -4,7 +4,11 @@ import * as path from 'node:path';
 
 import type { CodeHealthContext } from '../context.js';
 import { CURATED_LIBS } from '../single-instance/libs.js';
-import { describeSplit, findLockfileSplits } from '../single-instance/lockfile-splits.js';
+import {
+	describeSplit,
+	findLockfileSplits,
+	remediationFor,
+} from '../single-instance/lockfile-splits.js';
 import type { LockfileSplit } from '../single-instance/lockfile-splits.js';
 import { findPackageJsonFiles, parsePackageJson } from '../utils/package-json-scanner.js';
 import { parsePnpmLockGraph } from '../utils/pnpm-lock-parser.js';
@@ -52,7 +56,7 @@ export class SingleInstanceLockfileRule extends BaseRule<CodeHealthContext> {
 				anchor?.line ?? 1,
 				5,
 				describeSplit(split),
-				'Align the differing dependency so every context resolves the same version — add it to the pnpm-workspace.yaml catalog and reference it as "catalog:". Check the peer range it must satisfy before picking the version.',
+				remediationFor(split),
 			);
 		});
 	}
