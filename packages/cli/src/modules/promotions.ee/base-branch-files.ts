@@ -14,12 +14,17 @@ const BASE_BRANCH_ENTITIES = {
 	tags: { ...PACKAGE_ENTITY_LAYOUT.tags, type: 'tag', includeRoot: true },
 } as const satisfies Record<ManifestEntityCollection, { type: string; includeRoot: boolean }>;
 
-export type BaseBranchFile = {
-	key: string;
+export type PackageFile = Readonly<{
+	id: string;
+	slug: string;
+	projectId: string | null;
+	fileName:
+		| (typeof PACKAGE_ENTITY_LAYOUT)[ManifestEntityCollection]['fileName']
+		| typeof WORKFLOW_LIFECYCLE_FILE_NAME;
 	path: string;
 	blobSha: string;
 	type: (typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]['type'];
-};
+}>;
 
 export const BASE_BRANCH_DIRECTORIES: string[] = Object.values(BASE_BRANCH_ENTITIES)
 	.filter(({ includeRoot }) => includeRoot)
@@ -37,7 +42,7 @@ function entityIdOfSegment(segment: string): string {
 export function parseBaseBranchFiles(
 	lsTreeOutput: string,
 	options: { exportRoot: string; projectId: string },
-): BaseBranchFile[] {
+): PackageFile[] {
 	const files = lsTreeOutput.split('\0').flatMap((record) => {
 		const tabIndex = record.indexOf('\t');
 		if (tabIndex === -1) return [];
@@ -50,9 +55,9 @@ export function parseBaseBranchFiles(
 export function parsePackageFiles(
 	packageFiles: Array<{ path: string; blobSha: string }>,
 	{ exportRoot, projectId }: { exportRoot: string; projectId: string },
-): BaseBranchFile[] {
+): PackageFile[] {
 	const { projects, folders } = BASE_BRANCH_ENTITIES;
-	const files: BaseBranchFile[] = [];
+	const files: PackageFile[] = [];
 	const rootPrefix = `${exportRoot}/`;
 
 	for (const { path, blobSha } of packageFiles) {
@@ -81,11 +86,15 @@ export function parsePackageFiles(
 		const { type } = entity;
 
 		const entitySegment = segments[segments.length - 2];
-		const key =
-			type === 'variable'
-				? entitySegment.slice(0, entitySegment.lastIndexOf('-'))
-				: entityIdOfSegment(entitySegment);
-		files.push({ key, path, blobSha, type });
+		files.push({
+			id: entityIdOfSegment(entitySegment),
+			slug: entitySegment.slice(0, entitySegment.lastIndexOf('-')),
+			projectId: segments[0] === projects.directory ? projectId : null,
+			fileName: isWorkflowLifecycle ? WORKFLOW_LIFECYCLE_FILE_NAME : entity.fileName,
+			path,
+			blobSha,
+			type,
+		});
 	}
 
 	return files;

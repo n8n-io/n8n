@@ -526,7 +526,7 @@ describe('Promotion base branch listing', () => {
 			},
 			{ user: owner, role: 'credential:owner' },
 		);
-		await createVariable('API_URL', 'https://api.example.com');
+		const variable = await createVariable('API_URL', 'https://api.example.com');
 		const workflow = await createWorkflow(
 			{
 				name: 'Process order',
@@ -583,17 +583,17 @@ describe('Promotion base branch listing', () => {
 
 		const files = await service.listBaseBranchFiles(project.id);
 
-		expect(files.map(({ key, type }) => ({ key, type }))).toEqual(
+		expect(files.map(({ id, type }) => ({ id, type }))).toEqual(
 			expect.arrayContaining([
-				{ key: project.id, type: 'project' },
-				{ key: parentFolder.id, type: 'folder' },
-				{ key: childFolder.id, type: 'folder' },
-				{ key: workflow.id, type: 'workflow' },
-				{ key: credential.id, type: 'credential' },
-				{ key: 'apiurl', type: 'variable' },
-				{ key: tag.id, type: 'tag' },
-				{ key: projectTable.id, type: 'dataTable' },
-				{ key: sharedTable.id, type: 'dataTable' },
+				{ id: project.id, type: 'project' },
+				{ id: parentFolder.id, type: 'folder' },
+				{ id: childFolder.id, type: 'folder' },
+				{ id: workflow.id, type: 'workflow' },
+				{ id: credential.id, type: 'credential' },
+				{ id: variable.id, type: 'variable' },
+				{ id: tag.id, type: 'tag' },
+				{ id: projectTable.id, type: 'dataTable' },
+				{ id: sharedTable.id, type: 'dataTable' },
 			]),
 		);
 		expect(files.map(({ path }) => path).sort()).toEqual(expectedPaths.sort());
@@ -620,7 +620,10 @@ describe('Promotion base branch listing', () => {
 		await service.clone(instance.id, 'promote');
 		expect(await service.listBaseBranchFiles(project.id)).toEqual([
 			{
-				key: project.id,
+				id: project.id,
+				slug: 'orders',
+				projectId: project.id,
+				fileName: 'project.json',
 				path: projectPath,
 				blobSha: await remoteBlobSha(remote, projectPath),
 				type: 'project',
@@ -644,7 +647,10 @@ describe('Promotion base branch listing', () => {
 
 		expect(await service.listBaseBranchFiles(project.id)).toEqual([
 			{
-				key: project.id,
+				id: project.id,
+				slug: 'orders',
+				projectId: project.id,
+				fileName: 'project.json',
 				path: projectPath,
 				blobSha: (await remote.git.revparse([`production:${projectPath}`])).trim(),
 				type: 'project',
@@ -677,7 +683,10 @@ describe('Promotion base branch listing', () => {
 		const firstListing = await service.listBaseBranchFiles(project.id);
 		expect(firstListing).toHaveLength(2);
 		expect(firstListing).toContainEqual({
-			key: 'my "quoted" var',
+			id: 'Va45zz67',
+			slug: 'my "quoted" var',
+			projectId: null,
+			fileName: 'variable.json',
 			path: variablePath,
 			blobSha: await remoteBlobSha(remote, variablePath),
 			type: 'variable',
@@ -690,7 +699,10 @@ describe('Promotion base branch listing', () => {
 		const secondListing = await service.listBaseBranchFiles(project.id);
 
 		expect(secondListing).toContainEqual({
-			key: 'Wf99zz88',
+			id: 'Wf99zz88',
+			slug: 'my-hyphen-ated-slug',
+			projectId: project.id,
+			fileName: 'workflow.json',
 			path: workflowPath,
 			blobSha: await remoteBlobSha(remote, workflowPath),
 			type: 'workflow',
@@ -714,15 +726,46 @@ describe('Promotion base branch listing', () => {
 		const remote = await createRemote();
 		const projectRoot = `n8n-export/projects/orders-${project.id}`;
 		const entities = [
-			{ key: '42', type: 'folder', path: `${projectRoot}/folders/legacy-42/folder.json` },
 			{
-				key: '42',
+				id: '42',
+				slug: 'legacy',
+				projectId: project.id,
+				fileName: 'folder.json',
+				type: 'folder',
+				path: `${projectRoot}/folders/legacy-42/folder.json`,
+			},
+			{
+				id: '42',
+				slug: 'order',
+				projectId: project.id,
+				fileName: 'workflow.json',
 				type: 'workflow',
 				path: `${projectRoot}/folders/legacy-42/workflows/order-42/workflow.json`,
 			},
-			{ key: '42', type: 'credential', path: `${projectRoot}/credentials/api-42/credential.json` },
-			{ key: 'apiurl', type: 'variable', path: `${projectRoot}/variables/apiurl-1/variable.json` },
-			{ key: 'apiurl', type: 'variable', path: 'n8n-export/variables/apiurl-2/variable.json' },
+			{
+				id: '42',
+				slug: 'api',
+				projectId: project.id,
+				fileName: 'credential.json',
+				type: 'credential',
+				path: `${projectRoot}/credentials/api-42/credential.json`,
+			},
+			{
+				id: '1',
+				slug: 'apiurl',
+				projectId: project.id,
+				fileName: 'variable.json',
+				type: 'variable',
+				path: `${projectRoot}/variables/apiurl-1/variable.json`,
+			},
+			{
+				id: '2',
+				slug: 'apiurl',
+				projectId: null,
+				fileName: 'variable.json',
+				type: 'variable',
+				path: 'n8n-export/variables/apiurl-2/variable.json',
+			},
 		];
 		for (const entity of entities) {
 			await writeRemoteFile(remote, entity.path, '{}');
@@ -774,7 +817,10 @@ describe('Promotion base branch listing', () => {
 
 		expect(files).toEqual([
 			{
-				key: project.id,
+				id: project.id,
+				slug: 'orders',
+				projectId: project.id,
+				fileName: 'project.json',
 				path: projectPath,
 				blobSha: (await remote.git.revparse([`production:${projectPath}`])).trim(),
 				type: 'project',

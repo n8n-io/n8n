@@ -50,23 +50,49 @@ it('compares Git and writer output without losing scoped identities or lifecycle
 			exportRoot: 'n8n-export',
 			projectId: 'Project1',
 		});
+		expect(baseFiles.filter(({ type }) => type === 'variable')).toEqual([
+			expect.objectContaining({
+				id: '1',
+				slug: 'api',
+				projectId: 'Project1',
+				fileName: 'variable.json',
+			}),
+			expect.objectContaining({
+				id: '2',
+				slug: 'api',
+				projectId: null,
+				fileName: 'variable.json',
+			}),
+		]);
+		expect(desiredFiles.filter(({ type }) => type === 'variable')).toEqual([
+			expect.objectContaining({ id: '1', slug: 'api', projectId: 'Project1' }),
+			expect.objectContaining({ id: '2', slug: 'api', projectId: null }),
+		]);
 
 		const differences = diffPackageFiles(baseFiles, desiredFiles);
 
-		expect(differences.map(({ key, type, change }) => ({ key, type, change }))).toEqual(
+		expect(
+			differences.map((difference) => {
+				const file = difference.change === 'removed' ? difference.base : difference.desired;
+				return { id: file.id, type: file.type, change: difference.change };
+			}),
+		).toEqual(
 			expect.arrayContaining([
-				{ key: 'Edit', type: 'workflow', change: 'modified' },
-				{ key: 'Move', type: 'workflow', change: 'moved' },
-				{ key: 'Both', type: 'workflow', change: 'moved-and-modified' },
-				{ key: 'Delete', type: 'workflow', change: 'removed' },
-				{ key: 'Life', type: 'workflow', change: 'modified' },
-				{ key: 'New', type: 'workflow', change: 'created' },
-				{ key: 'api', type: 'variable', change: 'modified' },
+				{ id: 'Edit', type: 'workflow', change: 'modified' },
+				{ id: 'Move', type: 'workflow', change: 'moved' },
+				{ id: 'Both', type: 'workflow', change: 'moved-and-modified' },
+				{ id: 'Delete', type: 'workflow', change: 'removed' },
+				{ id: 'Life', type: 'workflow', change: 'modified' },
+				{ id: 'New', type: 'workflow', change: 'created' },
+				{ id: '2', type: 'variable', change: 'modified' },
 			]),
 		);
 		expect(differences).toHaveLength(7);
-		expect(differences.find(({ key }) => key === 'Life')?.desired?.path).toMatch(
-			/\/workflow-lifecycle\.json$/,
+		expect(differences).toContainEqual(
+			expect.objectContaining({
+				change: 'modified',
+				desired: expect.objectContaining({ id: 'Life', fileName: 'workflow-lifecycle.json' }),
+			}),
 		);
 		expect(diffPackageFiles(baseFiles, baseFiles)).toEqual([]);
 	} finally {

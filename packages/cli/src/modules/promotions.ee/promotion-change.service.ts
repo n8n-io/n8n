@@ -24,7 +24,7 @@ import { serializedWorkflowLifecycleSchema } from '@/modules/n8n-packages/spec/s
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { parsePackageFiles, type BaseBranchFile } from './base-branch-files';
+import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { diffPackageFiles } from './diff-package-files';
 import { PromotionsService } from './promotions.service';
@@ -89,16 +89,17 @@ export class PromotionChangeService {
 			{ exportRoot: PACKAGE_SUBFOLDER, projectId },
 		);
 		const differences = diffPackageFiles(base, desired);
-		const changedIds = new Set(
-			differences.filter(({ type }) => type === 'workflow').map(({ key }) => key),
-		);
-		const changedPaths = new Set(
-			differences.flatMap(({ base, desired }) => [base?.path, desired?.path]),
-		);
-		const projectPrefix = `${PACKAGE_SUBFOLDER}/${PACKAGE_ENTITY_LAYOUT.projects.directory}/`;
-		const baseDependencies = new Map<string, BaseBranchFile[]>();
+		const changedIds = new Set<string>();
+		const changedPaths = new Set<string>();
+		for (const difference of differences) {
+			if (difference.change !== 'created') changedPaths.add(difference.base.path);
+			if (difference.change !== 'removed') changedPaths.add(difference.desired.path);
+			const file = difference.change === 'removed' ? difference.base : difference.desired;
+			if (file.type === 'workflow') changedIds.add(file.id);
+		}
+		const baseDependencies = new Map<string, PackageFile[]>();
 		for (const file of base) {
-			const key = JSON.stringify([file.path.split('/').at(-1), file.key]);
+			const key = JSON.stringify([file.fileName, file.type === 'variable' ? file.slug : file.id]);
 			const group = baseDependencies.get(key) ?? [];
 			group.push(file);
 			baseDependencies.set(key, group);
@@ -120,13 +121,9 @@ export class PromotionChangeService {
 					baseDependencies.get(
 						JSON.stringify([PACKAGE_ENTITY_LAYOUT[collection].fileName, baseKey]),
 					) ?? [];
-				const projectFiles = group.filter(({ path }) => path.startsWith(projectPrefix));
+				const projectFiles = group.filter((file) => file.projectId === projectId);
 				const scopedFiles = projectFiles.length ? projectFiles : group;
-				const sameId = entry
-					? scopedFiles.filter(({ path }) =>
-							path.endsWith(`-${entry.id}/${PACKAGE_ENTITY_LAYOUT[collection].fileName}`),
-						)
-					: [];
+				const sameId = entry ? scopedFiles.filter(({ id }) => id === entry.id) : [];
 				const previous = sameId.length ? sameId : scopedFiles;
 				const currentPath = entry
 					? `${PACKAGE_SUBFOLDER}/${entityFilePath(collection, entry.target)}`
@@ -146,7 +143,7 @@ export class PromotionChangeService {
 			fields: ['updatedAt', 'versionCounter'],
 		});
 		const metadataById = new Map(metadata.map((workflow) => [workflow.id, workflow]));
-		const baseIds = new Set(base.filter(({ type }) => type === 'workflow').map(({ key }) => key));
+		const baseIds = new Set(base.filter(({ type }) => type === 'workflow').map(({ id }) => id));
 		return [...changedIds].map((id) => {
 			const entry = desiredWorkflows.get(id);
 			const workflow = metadataById.get(id);

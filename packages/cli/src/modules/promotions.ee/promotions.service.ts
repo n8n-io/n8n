@@ -37,7 +37,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import {
 	BASE_BRANCH_DIRECTORIES,
 	parseBaseBranchFiles,
-	type BaseBranchFile,
+	type PackageFile,
 } from './base-branch-files';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
 import { PromotionConfigResolver } from './promotion-config.resolver';
@@ -240,7 +240,7 @@ export class PromotionsService {
 		};
 	}
 
-	async listBaseBranchFiles(projectId: string): Promise<BaseBranchFile[]> {
+	async listBaseBranchFiles(projectId: string): Promise<PackageFile[]> {
 		const input = await this.resolver.resolveForProject(projectId, 'promote');
 		await this.assertCheckoutReady(input, 'listing branch files');
 
