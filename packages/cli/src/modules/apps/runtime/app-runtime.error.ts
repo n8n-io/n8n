@@ -9,7 +9,9 @@ export type AppRuntimeErrorCode =
 	| 'workflow_not_callable'
 	| 'invalid_input'
 	| 'payload_too_large'
-	| 'too_many_requests';
+	| 'too_many_requests'
+	| 'unauthorized'
+	| 'forbidden';
 
 /** One rejected input field: where and which check failed, nothing about the expected shape. */
 export interface AppRuntimeInputIssue {

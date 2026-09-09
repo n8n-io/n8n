@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { AppsConfig, GlobalConfig } from '@n8n/config';
-import type { WorkflowEntity } from '@n8n/db';
+import type { User, UserRepository, WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
@@ -17,11 +17,13 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
 import type { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
+import type { AppResourceResolver } from '@/modules/oauth-server/protected-resource-resolvers/app-resource.resolver';
 import type { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { App } from '../../app.entity';
 import type { AppRepository } from '../../app.repository';
+import type { AppPageTokenService } from '../../serving/app-page-token';
 import { AppRuntimeError } from '../app-runtime.error';
 import { AppRuntimeService } from '../app-runtime.service';
 
@@ -55,8 +57,11 @@ const app = {
 	id: 'app-1',
 	namespace: 'runner',
 	projectId: 'proj-1',
+	authMode: 'public',
 	bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' }],
 } as unknown as App;
+
+const PAGE_TOKEN = 'page-token';
 
 const failedRun = (lastNodeExecuted: string, message: string): IRun =>
 	({
@@ -106,7 +111,13 @@ describe('AppRuntimeService', () => {
 	let executionPersistence: ReturnType<typeof mock<ExecutionPersistence>>;
 	let logger: ReturnType<typeof mock<Logger>>;
 	let appsConfig: AppsConfig;
+	let appPageTokenService: ReturnType<typeof mock<AppPageTokenService>>;
+	let appResourceResolver: ReturnType<typeof mock<AppResourceResolver>>;
+	let userRepository: ReturnType<typeof mock<UserRepository>>;
 	let service: AppRuntimeService;
+
+	const run = async (body: unknown = {}, ...token: [string | undefined] | []) =>
+		await service.runWorkflow('runner', 'submit', body, token.length === 0 ? PAGE_TOKEN : token[0]);
 
 	beforeEach(() => {
 		appRepository = mock<AppRepository>();
@@ -118,6 +129,9 @@ describe('AppRuntimeService', () => {
 		executionPersistence = mock<ExecutionPersistence>();
 		logger = mock<Logger>();
 		appsConfig = mock<AppsConfig>({ runtimeMaxConcurrent: 10 });
+		appPageTokenService = mock<AppPageTokenService>();
+		appResourceResolver = mock<AppResourceResolver>();
+		userRepository = mock<UserRepository>();
 		service = new AppRuntimeService(
 			appRepository,
 			workflowLoader,
@@ -128,8 +142,14 @@ describe('AppRuntimeService', () => {
 			executionPersistence,
 			logger,
 			mock<GlobalConfig>({ apps: appsConfig }),
+			appPageTokenService,
+			appResourceResolver,
+			userRepository,
 		);
 
+		appPageTokenService.verify.mockImplementation((token, appId) =>
+			token === PAGE_TOKEN && appId === 'app-1' ? {} : null,
+		);
 		appRepository.findByNamespace.mockResolvedValue(app);
 		workflowLoader.loadWorkflow.mockResolvedValue(workflow());
 		subworkflowPolicyChecker.checkForProject.mockResolvedValue(undefined);
@@ -143,21 +163,92 @@ describe('AppRuntimeService', () => {
 		vi.useRealTimers();
 	});
 
+	describe('authentication', () => {
+		it('returns unauthorized without a page token', async () => {
+			await expectRuntimeError(run({}, undefined), 401, 'unauthorized');
+			expect(workflowLoader.loadWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('returns unauthorized for a token the app does not verify', async () => {
+			await expectRuntimeError(run({}, 'other-token'), 401, 'unauthorized');
+			expect(appPageTokenService.verify).toHaveBeenCalledWith('other-token', 'app-1');
+		});
+
+		it('answers a public app with principal null and no appUserId', async () => {
+			const result = await run({ message: 'hi' });
+
+			expect(result.principal).toBeNull();
+			const runData = workflowRunner.run.mock.calls[0][0];
+			expect(runData.executionData?.resultData.metadata).not.toHaveProperty('appUserId');
+			expect(userRepository.findByIdWithRole).not.toHaveBeenCalled();
+		});
+
+		describe('n8n app', () => {
+			const user = mock<User>({ id: 'user-1' });
+
+			beforeEach(() => {
+				appRepository.findByNamespace.mockResolvedValue({ ...app, authMode: 'n8n' } as App);
+				appPageTokenService.verify.mockReturnValue({ userId: 'user-1' });
+				userRepository.findByIdWithRole.mockResolvedValue(user);
+				appResourceResolver.canOpen.mockResolvedValue(true);
+			});
+
+			it('answers with the visitor as principal and records it in the custom data', async () => {
+				const result = await run({ message: 'hi' });
+
+				expect(result.principal).toEqual({ userId: 'user-1' });
+				expect(appResourceResolver.canOpen).toHaveBeenCalledWith(
+					user,
+					expect.objectContaining({ id: 'app-1' }),
+				);
+				const runData = workflowRunner.run.mock.calls[0][0];
+				expect(runData.executionData?.resultData.metadata).toMatchObject({ appUserId: 'user-1' });
+			});
+
+			it('returns forbidden for a token without a user', async () => {
+				appPageTokenService.verify.mockReturnValue({});
+
+				await expectRuntimeError(run({}), 403, 'forbidden');
+				expect(workflowLoader.loadWorkflow).not.toHaveBeenCalled();
+			});
+
+			it('returns forbidden when the user is gone', async () => {
+				userRepository.findByIdWithRole.mockResolvedValue(null);
+
+				await expectRuntimeError(run({}), 403, 'forbidden');
+			});
+
+			it('returns forbidden when the user lost app:read on the project', async () => {
+				appResourceResolver.canOpen.mockResolvedValue(false);
+
+				await expectRuntimeError(run({}), 403, 'forbidden');
+			});
+		});
+	});
+
 	describe('resolution', () => {
 		it('returns app_not_found for an unknown namespace', async () => {
 			appRepository.findByNamespace.mockResolvedValue(null);
 
-			await expectRuntimeError(service.runWorkflow('nobody', 'submit', {}), 404, 'app_not_found');
+			await expectRuntimeError(
+				service.runWorkflow('nobody', 'submit', {}, PAGE_TOKEN),
+				404,
+				'app_not_found',
+			);
 			expect(workflowLoader.loadWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('returns binding_not_found for a key the app has not bound', async () => {
-			await expectRuntimeError(service.runWorkflow('runner', 'nope', {}), 404, 'binding_not_found');
+			await expectRuntimeError(
+				service.runWorkflow('runner', 'nope', {}, PAGE_TOKEN),
+				404,
+				'binding_not_found',
+			);
 			expect(workflowLoader.loadWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('loads the published version of the bound workflow as the app project', async () => {
-			await service.runWorkflow('runner', 'submit', {});
+			await run({});
 
 			expect(workflowLoader.loadWorkflow).toHaveBeenCalledWith(
 				'proj-1',
@@ -169,11 +260,7 @@ describe('AppRuntimeService', () => {
 		it('returns workflow_not_found when the workflow left the project', async () => {
 			workflowLoader.loadWorkflow.mockResolvedValue(null);
 
-			await expectRuntimeError(
-				service.runWorkflow('runner', 'submit', {}),
-				404,
-				'workflow_not_found',
-			);
+			await expectRuntimeError(run({}), 404, 'workflow_not_found');
 		});
 
 		it('returns workflow_not_published when the workflow has no published version', async () => {
@@ -181,11 +268,7 @@ describe('AppRuntimeService', () => {
 				new WorkflowToolUnavailableError('not_published', 'not published'),
 			);
 
-			await expectRuntimeError(
-				service.runWorkflow('runner', 'submit', {}),
-				409,
-				'workflow_not_published',
-			);
+			await expectRuntimeError(run({}), 409, 'workflow_not_published');
 		});
 
 		it('returns workflow_incompatible when the workflow contains a Form node', async () => {
@@ -201,11 +284,7 @@ describe('AppRuntimeService', () => {
 				}),
 			);
 
-			await expectRuntimeError(
-				service.runWorkflow('runner', 'submit', {}),
-				409,
-				'workflow_incompatible',
-			);
+			await expectRuntimeError(run({}), 409, 'workflow_incompatible');
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
@@ -219,11 +298,7 @@ describe('AppRuntimeService', () => {
 				} as ConstructorParameters<typeof SubworkflowPolicyDenialError>[0]),
 			);
 
-			await expectRuntimeError(
-				service.runWorkflow('runner', 'submit', {}),
-				403,
-				'workflow_not_callable',
-			);
+			await expectRuntimeError(run({}), 403, 'workflow_not_callable');
 			expect(subworkflowPolicyChecker.checkForProject).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
 				'proj-1',
@@ -232,29 +307,21 @@ describe('AppRuntimeService', () => {
 		});
 
 		it('returns invalid_input with issues when the body does not match the trigger fields', async () => {
-			const error = await expectRuntimeError(
-				service.runWorkflow('runner', 'submit', { count: 'many' }),
-				400,
-				'invalid_input',
-			);
+			const error = await expectRuntimeError(run({ count: 'many' }), 400, 'invalid_input');
 
 			expect(error.issues).toEqual([{ path: ['count'], code: 'invalid_type' }]);
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('returns invalid_input for a body that is not an object', async () => {
-			await expectRuntimeError(service.runWorkflow('runner', 'submit', [1]), 400, 'invalid_input');
-			await expectRuntimeError(
-				service.runWorkflow('runner', 'submit', 'text'),
-				400,
-				'invalid_input',
-			);
+			await expectRuntimeError(run([1]), 400, 'invalid_input');
+			await expectRuntimeError(run('text'), 400, 'invalid_input');
 		});
 	});
 
 	describe('execution', () => {
 		it('pins the parsed input on the trigger and runs in integrated mode', async () => {
-			await service.runWorkflow('runner', 'submit', { message: 'hi', count: '3' });
+			await run({ message: 'hi', count: '3' });
 
 			const runData = workflowRunner.run.mock.calls[0][0];
 			expect(runData.executionMode).toBe('integrated');
@@ -271,7 +338,7 @@ describe('AppRuntimeService', () => {
 		});
 
 		it('returns the last node items as output with principal null', async () => {
-			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const result = await run({ message: 'hi' });
 
 			expect(result).toEqual({
 				executionId: 'exec-1',
@@ -306,7 +373,7 @@ describe('AppRuntimeService', () => {
 				statusCode: 200,
 			});
 
-			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const result = await run({ message: 'hi' });
 
 			expect(relay.restoreOffloadedBody).toHaveBeenCalledWith(relayed, {
 				reclaim: true,
@@ -329,7 +396,7 @@ describe('AppRuntimeService', () => {
 				},
 			);
 
-			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const result = await run({ message: 'hi' });
 
 			expect(result).toMatchObject({ status: 'success', output: null, outputTruncated: true });
 		});
@@ -344,7 +411,7 @@ describe('AppRuntimeService', () => {
 				failedRun('Set', 'connect ECONNREFUSED 10.1.2.3:5432'),
 			);
 
-			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const result = await run({ message: 'hi' });
 
 			expect(result).toEqual({
 				executionId: 'exec-1',
@@ -371,7 +438,7 @@ describe('AppRuntimeService', () => {
 				status: 'waiting',
 			});
 
-			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const result = await run({ message: 'hi' });
 
 			expect(result).toEqual({
 				executionId: 'exec-1',
@@ -394,7 +461,7 @@ describe('AppRuntimeService', () => {
 				failedRun('Stop', 'Amount must be positive'),
 			);
 
-			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const result = await run({ message: 'hi' });
 
 			expect(result).toMatchObject({
 				status: 'error',
@@ -407,7 +474,7 @@ describe('AppRuntimeService', () => {
 			activeExecutions.has.mockReturnValue(false);
 			executionPersistence.findSingleExecution.mockResolvedValue(undefined);
 
-			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const result = await run({ message: 'hi' });
 
 			expect(executionPersistence.findSingleExecution).toHaveBeenCalledWith('exec-1', {
 				includeData: true,
@@ -425,7 +492,7 @@ describe('AppRuntimeService', () => {
 			vi.useFakeTimers();
 			activeExecutions.getPostExecutePromise.mockReturnValue(new Promise<IRun>(() => {}));
 
-			const pending = service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const pending = run({ message: 'hi' });
 			await vi.advanceTimersByTimeAsync(60_000);
 
 			expect(await pending).toEqual({ executionId: 'exec-1', status: 'running', principal: null });
@@ -437,15 +504,11 @@ describe('AppRuntimeService', () => {
 			appsConfig.runtimeMaxConcurrent = 1;
 			activeExecutions.getPostExecutePromise.mockReturnValue(new Promise<IRun>(() => {}));
 
-			const first = service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const first = run({ message: 'hi' });
 			await vi.advanceTimersByTimeAsync(0);
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 
-			await expectRuntimeError(
-				service.runWorkflow('runner', 'submit', { message: 'hi' }),
-				429,
-				'too_many_requests',
-			);
+			await expectRuntimeError(run({ message: 'hi' }), 429, 'too_many_requests');
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 
 			await vi.advanceTimersByTimeAsync(60_000);
@@ -455,8 +518,8 @@ describe('AppRuntimeService', () => {
 		it('releases the slot when the run completes', async () => {
 			appsConfig.runtimeMaxConcurrent = 1;
 
-			await service.runWorkflow('runner', 'submit', { message: 'hi' });
-			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+			await run({ message: 'hi' });
+			const result = await run({ message: 'hi' });
 
 			expect(result).toMatchObject({ status: 'success' });
 			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
@@ -467,12 +530,12 @@ describe('AppRuntimeService', () => {
 			appsConfig.runtimeMaxConcurrent = 1;
 			activeExecutions.getPostExecutePromise.mockReturnValue(new Promise<IRun>(() => {}));
 
-			const first = service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const first = run({ message: 'hi' });
 			await vi.advanceTimersByTimeAsync(60_000);
 			expect(await first).toMatchObject({ status: 'running' });
 
 			activeExecutions.getPostExecutePromise.mockResolvedValue(finishedRun([{ reply: 'late' }]));
-			const second = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const second = await run({ message: 'hi' });
 
 			expect(second).toMatchObject({ status: 'success' });
 			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
@@ -487,7 +550,7 @@ describe('AppRuntimeService', () => {
 				}),
 			);
 
-			const pending = service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const pending = run({ message: 'hi' });
 			await vi.advanceTimersByTimeAsync(59_000);
 			finish(finishedRun([{ reply: 'late' }]));
 

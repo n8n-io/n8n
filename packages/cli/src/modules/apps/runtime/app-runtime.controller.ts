@@ -10,6 +10,11 @@ import { AppRuntimeService } from './app-runtime.service';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 
+const bearerToken = (req: Request) => {
+	const header = req.headers.authorization;
+	return header?.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : undefined;
+};
+
 const rateLimit = createIpRateLimit(
 	Container.get(GlobalConfig).apps.runtimeRateLimit,
 	Time.minutes.toMilliseconds,
@@ -17,8 +22,8 @@ const rateLimit = createIpRateLimit(
 
 /**
  * The served page runs on an opaque origin (`sandbox` CSP), so every call is
- * cross-origin with `Origin: null`. `*` is safe because no credentials are ever
- * accepted; `Authorization` is allowed so a later visitor token needs no CORS change.
+ * cross-origin with `Origin: null`. `*` is safe because no cookie is ever accepted;
+ * the page token travels in `Authorization`, which the preflight has to allow.
  */
 function setCorsHeaders(res: Response) {
 	res.setHeader('Access-Control-Allow-Origin', '*');
@@ -48,7 +53,10 @@ export class AppRuntimeController {
 		res.status(204).end();
 	}
 
-	/** Anonymous by design: the app's bindings are the allow-list (`Authorization` is reserved, ignored in v1). */
+	/**
+	 * `skipAuth`: the caller is the served page, which has no session; it proves itself
+	 * with the page token n8n put into its HTML, checked by the service against the app.
+	 */
 	@Post('/:namespace/api/workflows/:key', { skipAuth: true, ipRateLimit: rateLimit })
 	async runWorkflow(req: Request<{ namespace: string; key: string }>, res: Response) {
 		setCorsHeaders(res);
@@ -67,6 +75,7 @@ export class AppRuntimeController {
 				req.params.namespace,
 				req.params.key,
 				req.body,
+				bearerToken(req),
 			);
 			res.status(result.status === 'running' ? 202 : 200).json(result);
 		} catch (error) {

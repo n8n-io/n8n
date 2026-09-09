@@ -14,7 +14,8 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { AppVersionService } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { AppRuntimeService } from '@/modules/apps/runtime/app-runtime.service';
-import { createOwner } from '@test-integration/db/users';
+import { AppPageTokenService } from '@/modules/apps/serving/app-page-token';
+import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 import { loadNodesFromDist } from '@test-integration/utils/node-types-data';
@@ -23,6 +24,10 @@ let owner: User;
 let ownerProject: Project;
 /** The served page calls the runtime API without a session and without the `/rest` prefix. */
 let visitor: SuperAgentTest;
+
+/** The token n8n put into the served page; the SDK sends it back as bearer token. */
+const pageToken = (appId: string, userId?: string) =>
+	`Bearer ${Container.get(AppPageTokenService).mint(appId, userId)}`;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['apps'],
@@ -144,8 +149,12 @@ const createEchoWorkflow = async ({ published }: { published: boolean }) => {
 	);
 };
 
-const createBoundApp = async (workflowId: string, key = 'submit') => {
-	const app = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+const createBoundApp = async (
+	workflowId: string,
+	{ key = 'submit', authMode = 'public' as 'public' | 'n8n' } = {},
+) => {
+	const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+	const app = await appRepository.updateApp(created, { authMode });
 	return await appRepository.updateBindings(app, [{ key, kind: 'workflow', workflowId }]);
 };
 
@@ -184,6 +193,7 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 		const response = await visitor
 			.post('/apps/runner/api/workflows/submit')
 			.set('Origin', 'null')
+			.set('Authorization', pageToken(app.id))
 			.send({ message: 'hi', count: 3 })
 			.expect(200);
 
@@ -209,10 +219,11 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 
 	test('fails a workflow that ends in Respond to Webhook, which needs a Webhook-type parent', async () => {
 		const workflow = await createPublishedWorkflow(respondWorkflow(), 'Respond');
-		await createBoundApp(workflow.id);
+		const app = await createBoundApp(workflow.id);
 
 		const response = await visitor
 			.post('/apps/runner/api/workflows/submit')
+			.set('Authorization', pageToken(app.id))
 			.send({ message: 'hi', count: 3 })
 			.expect(200);
 
@@ -230,9 +241,13 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 
 	test('answers 404 binding_not_found for a key the app has not bound', async () => {
 		const workflow = await createEchoWorkflow({ published: true });
-		await createBoundApp(workflow.id);
+		const app = await createBoundApp(workflow.id);
 
-		const response = await visitor.post('/apps/runner/api/workflows/nope').send({}).expect(404);
+		const response = await visitor
+			.post('/apps/runner/api/workflows/nope')
+			.set('Authorization', pageToken(app.id))
+			.send({})
+			.expect(404);
 
 		expect(response.body).toMatchObject({ code: 'binding_not_found' });
 	});
@@ -245,10 +260,11 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 
 	test('answers 409 workflow_not_published until the bound workflow is published', async () => {
 		const workflow = await createEchoWorkflow({ published: false });
-		await createBoundApp(workflow.id);
+		const app = await createBoundApp(workflow.id);
 
 		const response = await visitor
 			.post('/apps/runner/api/workflows/submit')
+			.set('Authorization', pageToken(app.id))
 			.send({ message: 'hi', count: 3 })
 			.expect(409);
 
@@ -257,10 +273,11 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 
 	test('answers 400 invalid_input with the issues when a field has the wrong type', async () => {
 		const workflow = await createEchoWorkflow({ published: true });
-		await createBoundApp(workflow.id);
+		const app = await createBoundApp(workflow.id);
 
 		const response = await visitor
 			.post('/apps/runner/api/workflows/submit')
+			.set('Authorization', pageToken(app.id))
 			.send({ message: 'hi', count: 'many' })
 			.expect(400);
 
@@ -283,14 +300,92 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 
 	test('resolves a multipart request like any other instead of failing on the size check', async () => {
 		const workflow = await createEchoWorkflow({ published: true });
-		await createBoundApp(workflow.id);
+		const app = await createBoundApp(workflow.id);
 
 		const response = await visitor
 			.post('/apps/runner/api/workflows/nope')
+			.set('Authorization', pageToken(app.id))
 			.field('message', 'hi')
 			.expect(404);
 
 		expect(response.body).toMatchObject({ code: 'binding_not_found' });
+	});
+
+	test('answers 401 unauthorized without a page token', async () => {
+		const workflow = await createEchoWorkflow({ published: true });
+		await createBoundApp(workflow.id);
+
+		const response = await visitor
+			.post('/apps/runner/api/workflows/submit')
+			.set('Origin', 'null')
+			.send({ message: 'hi', count: 3 })
+			.expect(401);
+
+		expect(response.body).toMatchObject({ code: 'unauthorized' });
+		expect(response.headers['access-control-allow-origin']).toBe('*');
+	});
+
+	test('answers 401 unauthorized for a page token of another app', async () => {
+		const workflow = await createEchoWorkflow({ published: true });
+		await createBoundApp(workflow.id);
+		const other = await appRepository.createApp(ownerProject.id, 'Other', 'other');
+
+		const response = await visitor
+			.post('/apps/runner/api/workflows/submit')
+			.set('Authorization', pageToken(other.id))
+			.send({ message: 'hi', count: 3 })
+			.expect(401);
+
+		expect(response.body).toMatchObject({ code: 'unauthorized' });
+	});
+
+	test('runs for the signed-in visitor of an n8n app and records the user', async () => {
+		const workflow = await createEchoWorkflow({ published: true });
+		const app = await createBoundApp(workflow.id, { authMode: 'n8n' });
+
+		const response = await visitor
+			.post('/apps/runner/api/workflows/submit')
+			.set('Authorization', pageToken(app.id, owner.id))
+			.send({ message: 'hi', count: 3 })
+			.expect(200);
+
+		expect(response.body).toMatchObject({
+			status: 'success',
+			output: [{ reply: 'got hi x3' }],
+			principal: { userId: owner.id },
+		});
+		const execution = await Container.get(ExecutionPersistence).findSingleExecution(
+			response.body.executionId,
+			{ includeData: true, unflattenData: true },
+		);
+		expect(execution?.customData).toMatchObject({ appUserId: owner.id });
+	});
+
+	test('answers 403 forbidden on an n8n app for a page token without a user', async () => {
+		const workflow = await createEchoWorkflow({ published: true });
+		const app = await createBoundApp(workflow.id, { authMode: 'n8n' });
+
+		const response = await visitor
+			.post('/apps/runner/api/workflows/submit')
+			.set('Authorization', pageToken(app.id))
+			.send({ message: 'hi', count: 3 })
+			.expect(403);
+
+		expect(response.body).toMatchObject({ code: 'forbidden' });
+	});
+
+	test('answers 403 forbidden on an n8n app for a user without app:read on the project', async () => {
+		const workflow = await createEchoWorkflow({ published: true });
+		const app = await createBoundApp(workflow.id, { authMode: 'n8n' });
+		const member = await createMember();
+
+		const response = await visitor
+			.post('/apps/runner/api/workflows/submit')
+			.set('Authorization', pageToken(app.id, member.id))
+			.send({ message: 'hi', count: 3 })
+			.expect(403);
+
+		expect(response.body).toMatchObject({ code: 'forbidden' });
 	});
 
 	test('answers 500 execution_failed with CORS headers when the run cannot start', async () => {

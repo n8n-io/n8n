@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { WorkflowEntity } from '@n8n/db';
+import { UserRepository, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -27,10 +27,13 @@ import {
 } from '@/modules/agents/tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
 import { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
+import { AppResourceResolver } from '@/modules/oauth-server/protected-resource-resolvers/app-resource.resolver';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
+import { AppPageTokenService } from '../serving/app-page-token';
 import { AppRuntimeError } from './app-runtime.error';
 
 /**
@@ -44,8 +47,11 @@ const SYNC_WAIT_MS = 60_000;
 const STOP_AND_ERROR_NODE_TYPE = 'n8n-nodes-base.stopAndError';
 const GENERIC_FAILURE_MESSAGE = 'The workflow failed.';
 
+/** The signed-in visitor of an `n8n` app; `null` for a public app's anonymous visitor. */
+export type AppRuntimePrincipal = { userId: string } | null;
+
 export type AppRuntimeRunResult =
-	| { executionId: string; status: 'running'; principal: null }
+	| { executionId: string; status: 'running'; principal: AppRuntimePrincipal }
 	| {
 			executionId: string;
 			status: string;
@@ -53,7 +59,7 @@ export type AppRuntimeRunResult =
 			/** Set when a Respond to Webhook node answered with binary, which v1 does not stream. */
 			outputTruncated?: true;
 			error?: string;
-			principal: null;
+			principal: AppRuntimePrincipal;
 	  };
 
 /** The input arrived as a JSON body, so a parsed object is JSON-compatible. */
@@ -61,11 +67,12 @@ function isDataObject(value: unknown): value is IDataObject {
 	return isRecord(value);
 }
 
-/** Which app binding started a run; goes into logs, never into the response. */
+/** Which app binding started a run, and for whom; goes into logs and custom data, never into the response. */
 interface RunOrigin {
 	appId: string;
 	namespace: string;
 	key: string;
+	principal: AppRuntimePrincipal;
 }
 
 @Service()
@@ -86,18 +93,28 @@ export class AppRuntimeService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
+		private readonly appPageTokenService: AppPageTokenService,
+		private readonly appResourceResolver: AppResourceResolver,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	/**
 	 * Runs the published workflow bound to `key` as the app's project, the way an agent
-	 * tool does. Each refusal has its own code so the app can tell a missing binding from
-	 * an unpublished workflow.
+	 * tool does, for the visitor the page token names. Each refusal has its own code so
+	 * the app can tell a missing binding from an unpublished workflow.
 	 */
-	async runWorkflow(namespace: string, key: string, body: unknown): Promise<AppRuntimeRunResult> {
+	async runWorkflow(
+		namespace: string,
+		key: string,
+		body: unknown,
+		pageToken: string | undefined,
+	): Promise<AppRuntimeRunResult> {
 		const app = await this.appRepository.findByNamespace(namespace);
 		if (!app) {
 			throw new AppRuntimeError(404, 'app_not_found', `No app is served at /apps/${namespace}.`);
 		}
+
+		const principal = await this.authenticate(app, pageToken);
 
 		const binding = app.bindings.find((b) => b.key === key && b.kind === 'workflow');
 		if (!binding) {
@@ -155,7 +172,34 @@ export class AppRuntimeService {
 			appId: app.id,
 			namespace: app.namespace,
 			key,
+			principal,
 		});
+	}
+
+	/**
+	 * The page token proves the call comes from a page n8n served for this app. For an
+	 * `n8n` app it also names the visitor, whose `app:read` on the project is checked
+	 * again here: the token outlives a permission change by up to its 15 minutes otherwise.
+	 */
+	private async authenticate(
+		app: App,
+		pageToken: string | undefined,
+	): Promise<AppRuntimePrincipal> {
+		const claims = pageToken ? this.appPageTokenService.verify(pageToken, app.id) : null;
+		if (!claims) {
+			throw new AppRuntimeError(
+				401,
+				'unauthorized',
+				'The request carries no valid page token. Reload the app to get a new one.',
+			);
+		}
+		if (app.authMode !== 'n8n') return claims.userId ? { userId: claims.userId } : null;
+
+		const user = claims.userId ? await this.userRepository.findByIdWithRole(claims.userId) : null;
+		if (!user || !(await this.appResourceResolver.canOpen(user, app))) {
+			throw new AppRuntimeError(403, 'forbidden', 'You no longer have access to this app.');
+		}
+		return { userId: user.id };
 	}
 
 	private async loadPublishedWorkflow(projectId: string, workflowId: string) {
@@ -208,6 +252,7 @@ export class AppRuntimeService {
 						appId: origin.appId,
 						appNamespace: origin.namespace,
 						appBindingKey: origin.key,
+						...(origin.principal ? { appUserId: origin.principal.userId } : {}),
 					},
 				},
 				executionData: {
@@ -244,7 +289,8 @@ export class AppRuntimeService {
 			);
 			return { executionId, run: await this.waitForRun(executionId) };
 		});
-		if (run === 'running') return { executionId, status: 'running', principal: null };
+		const { principal } = origin;
+		if (run === 'running') return { executionId, status: 'running', principal };
 
 		// Same lookup as `extractResult`, kept apart because the failing node is needed below.
 		const execution =
@@ -253,7 +299,7 @@ export class AppRuntimeService {
 				includeData: true,
 				unflattenData: true,
 			}));
-		if (!execution) return { executionId, status: 'unknown', output: [], principal: null };
+		if (!execution) return { executionId, status: 'unknown', output: [], principal };
 
 		const result = formatResult(executionId, execution.status, execution.data, false);
 		if (result.status !== 'success') {
@@ -265,7 +311,7 @@ export class AppRuntimeService {
 				status: result.status,
 				error: result.error,
 			});
-			const failure = { executionId, status: result.status, output: [], principal: null };
+			const failure = { executionId, status: result.status, output: [], principal };
 			if (result.status !== 'error') return failure;
 			const failedNode = workflow.nodes.find(
 				(node) => node.name === execution.data.resultData.lastNodeExecuted,
@@ -276,7 +322,7 @@ export class AppRuntimeService {
 					: GENERIC_FAILURE_MESSAGE;
 			return { ...failure, error };
 		}
-		const base = { executionId, status: result.status, principal: null };
+		const base = { executionId, status: result.status, principal };
 
 		if (isWorkflowToolResponse(webhookResponse)) {
 			const { body } = await this.webhookResponseRelay.restoreOffloadedBody(webhookResponse, {
