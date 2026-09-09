@@ -146,7 +146,10 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
+import type {
+	CanvasLayoutEvent,
+	NodeLayoutResult,
+} from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { isChatNode } from '@/app/utils/aiUtils';
@@ -313,10 +316,7 @@ export function useCanvasOperations() {
 			trackBulk?: boolean;
 		} = {},
 	) {
-		updateNodesPosition(
-			result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
-			{ trackBulk, trackHistory },
-		);
+		updateNodesLayout(result.nodes, { trackBulk, trackHistory });
 
 		if (trackEvents) {
 			trackTidyUp({ result, source, target, targetNodeCount });
@@ -351,6 +351,68 @@ export function useCanvasOperations() {
 		changedEvents.forEach(({ id, position }) => {
 			updateNodePosition(id, position, { trackHistory });
 		});
+
+		if (trackHistory && trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
+	function getStickyParametersForLayout(node: INodeUi, layoutNode: NodeLayoutResult) {
+		if (node.type !== STICKY_NODE_TYPE) return undefined;
+		if (layoutNode.width === undefined || layoutNode.height === undefined) return undefined;
+		if (
+			node.parameters.width === layoutNode.width &&
+			node.parameters.height === layoutNode.height
+		) {
+			return undefined;
+		}
+
+		return {
+			...node.parameters,
+			width: layoutNode.width,
+			height: layoutNode.height,
+		};
+	}
+
+	function updateNodesLayout(
+		layoutNodes: NodeLayoutResult[],
+		{ trackHistory = false, trackBulk = true } = {},
+	) {
+		const updates = layoutNodes.flatMap((layoutNode) => {
+			const node = workflowDocumentStore.value.getNodeById(layoutNode.id);
+			if (!node) return [];
+
+			const positionChanged =
+				node.position[0] !== layoutNode.x || node.position[1] !== layoutNode.y;
+			const parameters = getStickyParametersForLayout(node, layoutNode);
+			if (!positionChanged && !parameters) return [];
+
+			return [
+				{
+					layoutNode,
+					node,
+					parameters,
+					positionChanged,
+				},
+			];
+		});
+		if (updates.length === 0) return;
+
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		for (const { layoutNode, node, parameters, positionChanged } of updates) {
+			if (positionChanged) {
+				updateNodePosition(layoutNode.id, { x: layoutNode.x, y: layoutNode.y }, { trackHistory });
+			}
+			if (parameters) {
+				replaceNodeParameters(layoutNode.id, node.parameters, parameters, {
+					trackHistory,
+					trackBulk: false,
+				});
+			}
+		}
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();

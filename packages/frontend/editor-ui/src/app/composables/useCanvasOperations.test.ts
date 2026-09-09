@@ -1286,6 +1286,45 @@ describe('useCanvasOperations', () => {
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node2', [208, 208]);
 		});
 
+		it('updates sticky note dimensions from the layout result', () => {
+			const sticky = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [0, 0],
+				parameters: { content: 'Note', width: 300, height: 200 },
+			});
+			const node = createTestNode({ id: 'node', position: [0, 0] });
+			const nodesById = new Map([
+				[sticky.id, sticky],
+				[node.id, node],
+			]);
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'all',
+				result: {
+					nodes: [
+						{ id: 'sticky', x: 96, y: 96, width: 520, height: 360 },
+						{ id: 'node', x: 0, y: 0, width: 999, height: 999 },
+					],
+					boundingBox: { height: 96, width: 96, x: 0, y: 0 },
+				},
+			};
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id: string) =>
+				nodesById.get(id),
+			);
+			const setNodeParametersSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodeParameters');
+
+			const { tidyUp } = useCanvasOperations();
+			tidyUp(event, { trackHistory: false });
+
+			expect(setNodeParametersSpy).toHaveBeenCalledTimes(1);
+			expect(setNodeParametersSpy).toHaveBeenCalledWith({
+				name: 'Sticky',
+				value: { content: 'Note', width: 520, height: 360 },
+			});
+		});
+
 		it('does not update or record history when tidy positions are unchanged', () => {
 			const historyStore = useHistoryStore();
 			const event: CanvasLayoutEvent = {

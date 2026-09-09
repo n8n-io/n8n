@@ -67,7 +67,12 @@ type CanvasLayoutTargetData = {
 	groupUnits: CanvasLayoutGroupUnit[];
 };
 
-type PositionedBox = { id: string; boundingBox: BoundingBox };
+type PositionedBox = { id: string; boundingBox: BoundingBox; coverageBox?: BoundingBox };
+type GroupBox = { id: string; box: BoundingBox };
+type StickyPreferredXResolver = (
+	stickyBox: BoundingBox,
+	coveredTargetIds: Set<string>,
+) => number | undefined;
 
 /** A group's members tidied on their own, measured from the frame's top-left. */
 interface CanvasLayoutGroupContent {
@@ -102,6 +107,51 @@ function translateBox(box: BoundingBox, offset: XYPosition): BoundingBox {
 	return { ...box, x: box.x + offset.x, y: box.y + offset.y };
 }
 
+function withGridSnapTolerance(box: BoundingBox): BoundingBox {
+	const padding = GRID_SIZE / 2;
+	return {
+		x: box.x - padding,
+		y: box.y - padding,
+		width: box.width + padding * 2,
+		height: box.height + padding * 2,
+	};
+}
+
+function floorToGrid(value: number) {
+	return Math.floor(value / GRID_SIZE) * GRID_SIZE;
+}
+
+function ceilToGrid(value: number) {
+	return Math.ceil(value / GRID_SIZE) * GRID_SIZE;
+}
+
+function snapAxisToContainTarget(
+	targetStart: number,
+	targetSize: number,
+	start: number,
+	size: number,
+): { start: number; size: number } {
+	const targetEnd = targetStart + targetSize;
+	if (start <= targetStart && start + size >= targetEnd) return { start, size };
+
+	if (size >= targetSize) {
+		const minStart = targetEnd - size;
+		const maxStart = targetStart;
+		const clampedStart = Math.min(Math.max(start, minStart), maxStart);
+		const candidates = [floorToGrid(clampedStart), ceilToGrid(clampedStart)].filter(
+			(candidate) => candidate >= minStart && candidate <= maxStart,
+		);
+		const closest = candidates.sort(
+			(a, b) => Math.abs(a - start) - Math.abs(b - start) || a - b,
+		)[0];
+
+		if (closest !== undefined) return { start: closest, size };
+	}
+
+	const snappedStart = floorToGrid(targetStart);
+	return { start: snappedStart, size: targetEnd - snappedStart };
+}
+
 export function useCanvasLayout(
 	canvasId: string,
 	isEmbeddedNdvActive: ComputedRef<boolean>,
@@ -132,13 +182,30 @@ export function useCanvasLayout(
 			.map((groupNode) => getGroupUnitForTarget(groupNode, sourceNodeIds))
 			.filter(isPresent);
 		const groupedMemberIds = new Set(groupUnits.flatMap(({ memberIds }) => memberIds));
+		const allGroupMemberIds = new Set(
+			allNodes.value
+				.filter(isCanvasGroupNode)
+				.flatMap((groupNode) => groupNode.data?.group.nodeIds ?? []),
+		);
+		const externalStickyCandidates = allNodes.value.filter(
+			(node) => !isCanvasGroupNode(node) && !node.hidden && !allGroupMemberIds.has(node.id),
+		);
+		const blockingNodes = allNodes.value.filter(
+			(node) => !isCanvasGroupNode(node) && !node.hidden && !groupedMemberIds.has(node.id),
+		);
+		const groupBoxes = allNodes.value.filter(isCanvasGroupNode).map(getCurrentGroupBox);
 
 		// Grouped members move with their group box after dagre runs.
 		const regularNodes = source.filter(
 			(node) => !isCanvasGroupNode(node) && !node.hidden && !groupedMemberIds.has(node.id),
 		);
 
-		const unitsWithStickies = attachCoveringStickies(groupUnits, regularNodes);
+		const unitsWithStickies = attachCoveringStickies(
+			groupUnits,
+			externalStickyCandidates,
+			blockingNodes,
+			groupBoxes,
+		);
 		const attachedStickyIds = new Set(unitsWithStickies.flatMap(({ stickyIds }) => stickyIds));
 
 		return {
@@ -151,6 +218,14 @@ export function useCanvasLayout(
 		};
 	}
 
+	function getCurrentGroupBox(groupNode: GraphNode<CanvasGroupNodeData>): GroupBox {
+		const frameRects = computeGroupFrameRects(groupNode.data.nodesRect);
+		return {
+			id: groupNode.id,
+			box: groupNode.data.isCollapsed ? frameRects.collapsed : frameRects.expanded,
+		};
+	}
+
 	/**
 	 * Folds a sticky that covers exactly one group, and nothing else, into that
 	 * group's layout unit. Dagre then reserves room for the sticky too, so it
@@ -158,24 +233,30 @@ export function useCanvasLayout(
 	 */
 	function attachCoveringStickies(
 		groupUnits: CanvasLayoutGroupUnit[],
-		regularNodes: CanvasLayoutNode[],
+		externalStickyCandidates: CanvasLayoutNode[],
+		blockingNodes: CanvasLayoutNode[],
+		groupBoxes: GroupBox[],
 	): CanvasLayoutGroupUnit[] {
-		const stickies = regularNodes.filter(isStickyCanvasNode);
+		const stickies = externalStickyCandidates.filter(isStickyCanvasNode);
 		if (stickies.length === 0 || groupUnits.length === 0) return groupUnits;
 
-		const plainNodeBoxes = regularNodes
+		const plainNodeBoxes = blockingNodes
 			.filter((node) => !isStickyCanvasNode(node))
 			.map((node) => boundingBoxFromCanvasNode(node));
+		const groupUnitIds = new Set(groupUnits.map(({ node }) => node.id));
 
 		const stickiesByUnitId = new Map<string, Array<{ id: string; box: BoundingBox }>>();
 		for (const sticky of stickies) {
 			const stickyBox = boundingBoxFromCanvasNode(sticky);
 			if (plainNodeBoxes.some((box) => isCoveredBy(stickyBox, box))) continue;
 
-			const coveredUnits = groupUnits.filter(({ groupBox }) => isCoveredBy(stickyBox, groupBox));
-			if (coveredUnits.length !== 1) continue;
+			const coveredGroupIds = groupBoxes
+				.filter(({ box }) => isCoveredBy(stickyBox, box))
+				.map(({ id }) => id);
+			if (coveredGroupIds.length !== 1) continue;
 
-			const unitId = coveredUnits[0].node.id;
+			const unitId = coveredGroupIds[0];
+			if (!groupUnitIds.has(unitId)) continue;
 			stickiesByUnitId.set(unitId, [
 				...(stickiesByUnitId.get(unitId) ?? []),
 				{ id: sticky.id, box: stickyBox },
@@ -729,35 +810,39 @@ export function useCanvasLayout(
 	}
 
 	/**
-	 * Re-seats stickies over the nodes they covered: centered horizontally on the
-	 * covered nodes' new bounds, bottom-aligned with a little padding. Stickies
+	 * Re-seats stickies over the targets they covered: horizontally contained by
+	 * the targets' new bounds, bottom-aligned with a little padding. Stickies
 	 * that cover nothing are left out; callers decide what to do with them.
 	 */
 	function placeStickies(
 		stickies: Array<GraphNode<CanvasNodeData>>,
-		positionedNodes: PositionedBox[],
-		getCoveredNodeIds: (stickyBox: BoundingBox) => Set<string>,
+		placementTargets: PositionedBox[],
+		getCoveredTargetIds: (stickyBox: BoundingBox) => Set<string>,
+		getPreferredX?: StickyPreferredXResolver,
 	): PositionedBox[] {
 		return stickies
 			.map((sticky) => {
 				const stickyBox = boundingBoxFromCanvasNode(sticky);
-				const coveredNodeIds = getCoveredNodeIds(stickyBox);
-				const coveredBoxesAfter = positionedNodes
-					.filter(({ id }) => coveredNodeIds.has(id))
+				const coveredTargetIds = getCoveredTargetIds(stickyBox);
+				const coveredBoxesAfter = placementTargets
+					.filter(({ id }) => coveredTargetIds.has(id))
 					.map(({ boundingBox }) => boundingBox);
 
 				if (coveredBoxesAfter.length === 0) return null;
 
-				const coveredNodesBoxAfter = compositeBoundingBox(coveredBoxesAfter);
+				const coveredTargetsBoxAfter = compositeBoundingBox(coveredBoxesAfter);
+				const preferredX = getPreferredX?.(stickyBox, coveredTargetIds);
+				const bottomAlignedY =
+					coveredTargetsBoxAfter.y +
+					coveredTargetsBoxAfter.height -
+					stickyBox.height +
+					STICKY_BOTTOM_PADDING;
 				return {
 					id: sticky.id,
+					coverageBox: withGridSnapTolerance(coveredTargetsBoxAfter),
 					boundingBox: {
-						x: centerHorizontally(coveredNodesBoxAfter, stickyBox),
-						y:
-							coveredNodesBoxAfter.y +
-							coveredNodesBoxAfter.height -
-							stickyBox.height +
-							STICKY_BOTTOM_PADDING,
+						x: preferredX ?? centerHorizontally(coveredTargetsBoxAfter, stickyBox),
+						y: bottomAlignedY,
 						height: stickyBox.height,
 						width: stickyBox.width,
 					},
@@ -971,6 +1056,7 @@ export function useCanvasLayout(
 		);
 
 		const attachedStickies: PositionedBox[] = [];
+		const groupBoxesAfter: PositionedBox[] = [];
 
 		// Place group members into their unit's final box, then remove that box.
 		// Tidied members take their layout-pass position inside the frame. The
@@ -987,6 +1073,10 @@ export function useCanvasLayout(
 				x: groupUnit.groupBox.x + delta.x,
 				y: groupUnit.groupBox.y + delta.y,
 			};
+			groupBoxesAfter.push({
+				id: groupUnit.node.id,
+				boundingBox: translateBox(groupUnit.groupBox, delta),
+			});
 
 			for (const memberId of groupUnit.memberIds) {
 				const member = findNode<CanvasNodeData>(memberId);
@@ -1013,6 +1103,18 @@ export function useCanvasLayout(
 			id,
 			boundingBox,
 		}));
+		const positionedStickyIds = new Set(
+			positionedNodes
+				.filter(({ id }) => {
+					const node = findNode<CanvasNodeData>(id);
+					return node ? isStickyCanvasNode(node) : false;
+				})
+				.map(({ id }) => id),
+		);
+		const positionedRegularNodes = positionedNodes.filter(({ id }) => !positionedStickyIds.has(id));
+		const positionedMemberStickies = positionedNodes.filter(({ id }) =>
+			positionedStickyIds.has(id),
+		);
 
 		const anchor = {
 			x: boundingBoxAfter.x - boundingBoxBefore.x,
@@ -1024,23 +1126,31 @@ export function useCanvasLayout(
 			.map((node) => findNode<CanvasNodeData>(node.id))
 			.filter(isPresent);
 
-		// A sticky covers a group when it covers the group frame or chip; it then
-		// follows all of that group's members.
-		function getCoveredNodeIds(stickyBox: BoundingBox): Set<string> {
-			const coveredNodeIds = new Set<string>();
+		// A sticky covers a group when it covers the group frame or chip. Use that
+		// box as a target so expanded-frame padding stays covered after layout.
+		function getCoveredBoxIds(stickyBox: BoundingBox): Set<string> {
+			const coveredBoxIds = new Set<string>();
 			for (const [id, box] of boundingBoxBeforeById) {
-				if (isCoveredBy(stickyBox, box)) coveredNodeIds.add(id);
+				if (isCoveredBy(stickyBox, box)) coveredBoxIds.add(id);
 			}
-			for (const { memberIds, boundingBox } of groupUnits) {
-				if (!isCoveredBy(stickyBox, boundingBox)) continue;
-				for (const memberId of memberIds) coveredNodeIds.add(memberId);
+			for (const { node, memberIds, groupBox } of groupUnits) {
+				if (isCoveredBy(stickyBox, groupBox)) {
+					coveredBoxIds.add(node.id);
+				} else if (intersects(stickyBox, groupBox)) {
+					for (const memberId of memberIds) coveredBoxIds.delete(memberId);
+				}
 			}
-			return coveredNodeIds;
+			return coveredBoxIds;
 		}
+		const groupUnitIds = new Set(groupUnits.map(({ node }) => node.id));
 
-		const positionedStickies = placeStickies(stickies, positionedNodes, getCoveredNodeIds).concat(
-			attachedStickies,
-		);
+		const positionedStickies = placeStickies(
+			stickies,
+			[...positionedNodes, ...groupBoxesAfter],
+			getCoveredBoxIds,
+			(stickyBox, coveredBoxIds) =>
+				[...coveredBoxIds].some((id) => groupUnitIds.has(id)) ? stickyBox.x + anchor.x : undefined,
+		).concat(attachedStickies, positionedMemberStickies);
 
 		const snapToGrid = (value: number) => Math.round(value / GRID_SIZE) * GRID_SIZE;
 
@@ -1050,7 +1160,7 @@ export function useCanvasLayout(
 		// (e.g. the content-sized agent card) off the shared axis, leaving its
 		// connections slightly inclined. For default-size nodes the two are
 		// equivalent, since half their extent is already grid-aligned.
-		const finalNodes = positionedNodes
+		const finalNodes = positionedRegularNodes
 			.map(({ id, boundingBox }) => {
 				const [x, y] = snapPositionToGridByCenter(
 					[boundingBox.x - anchor.x, boundingBox.y - anchor.y],
@@ -1065,11 +1175,35 @@ export function useCanvasLayout(
 			// Stickies have no connections to keep straight, so their top-left
 			// corner staying on the grid is the better-looking behavior.
 			.concat(
-				positionedStickies.map(({ id, boundingBox }) => {
+				positionedStickies.map(({ id, boundingBox, coverageBox }) => {
+					const node = findNode<CanvasNodeData>(id);
+					const currentBox = node ? boundingBoxFromCanvasNode(node) : undefined;
+					let x = snapToGrid(boundingBox.x - anchor.x);
+					let y = snapToGrid(boundingBox.y - anchor.y);
+					let width = boundingBox.width;
+					let height = boundingBox.height;
+					if (coverageBox) {
+						const target = {
+							x: coverageBox.x - anchor.x,
+							y: coverageBox.y - anchor.y,
+							width: coverageBox.width,
+							height: coverageBox.height,
+						};
+						const containedX = snapAxisToContainTarget(target.x, target.width, x, width);
+						const containedY = snapAxisToContainTarget(target.y, target.height, y, height);
+						x = containedX.start;
+						y = containedY.start;
+						width = containedX.size;
+						height = containedY.size;
+					}
+					const dimensionsChanged =
+						currentBox !== undefined &&
+						(width !== currentBox.width || height !== currentBox.height);
 					return {
 						id,
-						x: snapToGrid(boundingBox.x - anchor.x),
-						y: snapToGrid(boundingBox.y - anchor.y),
+						x,
+						y,
+						...(dimensionsChanged ? { width, height } : {}),
 					};
 				}),
 			);
