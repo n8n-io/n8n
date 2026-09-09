@@ -202,7 +202,7 @@ describe('`parseRangeQuery` middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should leave `before` unset without a cursor', () => {
+		test('should leave `beforeId` unset without a cursor', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
 					cursor: undefined,
@@ -215,13 +215,12 @@ describe('`parseRangeQuery` middleware', () => {
 
 			parseRangeQuery(req, res, nextFn);
 
-			expect(req.rangeQuery.range.before).toBeUndefined();
+			expect(req.rangeQuery.range.beforeId).toBeUndefined();
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should set range.before from a valid cursor', () => {
-			const position = { timestamp: '2026-01-01T00:00:00.000Z', id: '123' };
-			const cursor = encodeExecutionCursor({ version: 1, v1: position }) as SerializedCursor;
+		test('should set range.beforeId from a valid cursor', () => {
+			const cursor = encodeExecutionCursor('123');
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
 					cursor,
@@ -234,7 +233,7 @@ describe('`parseRangeQuery` middleware', () => {
 
 			parseRangeQuery(req, res, nextFn);
 
-			expect(req.rangeQuery.range.before).toEqual(position);
+			expect(req.rangeQuery.range.beforeId).toBe('123');
 			expect(nextFn).toBeCalledTimes(1);
 		});
 

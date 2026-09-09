@@ -1,4 +1,4 @@
-import type { DeleteExecutionsDto } from '@n8n/api-types';
+import type { DeleteExecutionsDto, SerializedCursor } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -66,7 +66,7 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
-import { encodeCursorForRow } from './execution-cursor';
+import { encodeCursorForId } from './execution-cursor';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import { isExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
@@ -116,11 +116,11 @@ export const allowedExecutionsQueryFilterFields = Object.keys(
 );
 
 /** Cursor to continue a page, or `null` when a partial page means there's nothing more. */
-function nextCursorFor(rows: ExecutionSummary[], limit: number): string | null {
+function nextCursorFor(rows: ExecutionSummary[], limit: number): SerializedCursor | null {
 	if (rows.length < limit) return null;
 
 	const lastRow = rows[rows.length - 1];
-	return lastRow ? encodeCursorForRow(lastRow) : null;
+	return lastRow ? encodeCursorForId(lastRow.id) : null;
 }
 
 @Service()
@@ -541,11 +541,10 @@ export class ExecutionService {
 		const completedQuery: ExecutionSummaries.RangeQuery = {
 			...query,
 			status: completedStatuses,
-			order: { startedAt: 'DESC' },
 		};
 		const { range: _, ...countQuery } = completedQuery;
 
-		const { before: _cursor, ...currentRange } = query.range;
+		const { beforeId: _cursor, ...currentRange } = query.range;
 
 		const currentQuery: ExecutionSummaries.RangeQuery = {
 			...query,

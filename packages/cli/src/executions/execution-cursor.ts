@@ -1,65 +1,46 @@
+import type { SerializedCursor } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { isExecutionIdV2 } from './execution-id';
 
-const timestamp = z.string().datetime({ offset: true });
 const Cursor = z
 	.object({
 		version: z.literal(1),
 		// TODO: add a `v2` position for engine 2.0 (UUID) execution ids, as a followup.
 		v1: z
-			.object({
-				timestamp,
-				id: z
-					.string()
-					.regex(/^[1-9]\d*$/)
-					.refine((id) => Number(id) <= 2147483647),
-			})
-			.strict(),
+			.string()
+			.regex(/^[1-9]\d*$/)
+			.refine((id) => Number(id) <= 2147483647),
 	})
 	.strict();
 
-export type ExecutionCursor = z.infer<typeof Cursor>;
-export type ExecutionPosition = ExecutionCursor['v1'];
-
-/** Parse a cursor, or return `undefined` when the caller asks for the first page. */
-export function parseExecutionCursor(value?: string): ExecutionCursor | undefined {
+/** Parse a cursor into the execution ID to page from, or `undefined` for the first page. */
+export function parseExecutionCursor(value?: string): string | undefined {
 	if (value === undefined) return undefined;
 	try {
 		if (!value.length || value.length > 2048 || !/^[A-Za-z0-9_-]+$/.test(value)) {
 			throw new BadRequestError('Invalid execution cursor');
 		}
-		return Cursor.parse(JSON.parse(Buffer.from(value, 'base64url').toString('utf8')));
+		return Cursor.parse(JSON.parse(Buffer.from(value, 'base64url').toString('utf8'))).v1;
 	} catch {
 		throw new BadRequestError('Invalid execution cursor');
 	}
 }
 
-export function encodeExecutionCursor(cursor: ExecutionCursor): string {
-	return Buffer.from(JSON.stringify(cursor)).toString('base64url');
-}
-
-/** The row position to keep paging from. */
-export function positionOf(cursor?: ExecutionCursor): ExecutionPosition | undefined {
-	return cursor?.v1;
+export function encodeExecutionCursor(id: string): SerializedCursor {
+	return Buffer.from(JSON.stringify({ version: 1, v1: id })).toString(
+		'base64url',
+	) as SerializedCursor;
 }
 
 /**
- * Encode the cursor that continues a list from just after `row`, or `null` if `row` is an
- * engine 2.0 execution — those aren't supported as a cursor position yet.
+ * Encode the cursor that continues a list from just after execution `id`, or `null` if `id`
+ * is an engine 2.0 execution ID — those aren't supported as a cursor position yet.
  */
-export function encodeCursorForRow(row: {
-	id: string;
-	startedAt: Date | string | null;
-	createdAt: Date | string;
-}): string | null {
-	if (isExecutionIdV2(row.id)) return null;
+export function encodeCursorForId(id: string): SerializedCursor | null {
+	if (isExecutionIdV2(id)) return null;
 
-	const position: ExecutionPosition = {
-		timestamp: new Date(row.startedAt ?? row.createdAt).toISOString(),
-		id: row.id,
-	};
-	return encodeExecutionCursor({ version: 1, v1: position });
+	return encodeExecutionCursor(id);
 }
