@@ -3247,6 +3247,11 @@ export class InstanceAiAdapterService {
 				return { ...(await appsService.describeBindings(app)), stored: app.bindings };
 			},
 
+			async countBindings(appId) {
+				const app = await getAccessibleApp(['app:read'], appId);
+				return app.bindings.length;
+			},
+
 			async getSdkTarball() {
 				return { filename: APP_SDK_TARBALL_FILENAME, data: await getAppSdkTarball() };
 			},

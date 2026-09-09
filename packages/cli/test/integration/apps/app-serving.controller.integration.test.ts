@@ -291,9 +291,23 @@ describe('GET /apps/:namespace of an n8n app without a version', () => {
 		const app = await appRepository.updateApp(created, { authMode: 'n8n' });
 		await pageRepository.createPage(app.id, null, '');
 
-		const response = await visitor.get('/apps/acme').expect(302);
+		const response = await visitor.get('/apps/acme/').expect(302);
 
 		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
+	});
+
+	test('redirects the bare namespace to the trailing-slash URL, where the page cookie applies', async () => {
+		const created = await createApp();
+		const app = await appRepository.updateApp(created, { authMode: 'n8n' });
+		await pageRepository.createPage(app.id, null, '');
+		const cookie = Container.get(AppPageTokenService).mint(app.id, owner.id);
+
+		const response = await visitor
+			.get('/apps/acme?x=1')
+			.set('Cookie', pageCookie(cookie))
+			.expect(302);
+
+		expect(response.headers.location).toBe('/apps/acme/?x=1');
 	});
 
 	test('serves the page to a visitor with a valid page cookie', async () => {
@@ -309,11 +323,20 @@ describe('GET /apps/:namespace of an n8n app without a version', () => {
 });
 
 describe('GET /apps/:namespace', () => {
+	test('redirects the bare namespace to the trailing-slash URL', async () => {
+		const app = await createApp();
+		await pageRepository.createPage(app.id, null, '');
+
+		const response = await visitor.get('/apps/acme').expect(302);
+
+		expect(response.headers.location).toBe('/apps/acme/');
+	});
+
 	test('serves the index page of an App without a session', async () => {
 		const app = await createApp();
 		await pageRepository.createPage(app.id, null, '');
 
-		const response = await visitor.get('/apps/acme').expect(200);
+		const response = await visitor.get('/apps/acme/').expect(200);
 
 		expect(response.headers['content-type']).toContain('text/html');
 		expect(response.text).toContain('Acme Portal');
@@ -323,7 +346,7 @@ describe('GET /apps/:namespace', () => {
 		const app = await createApp();
 		await pageRepository.createPage(app.id, null, '');
 
-		const response = await visitor.get('/apps/acme').expect(200);
+		const response = await visitor.get('/apps/acme/').expect(200);
 
 		expect(response.headers['content-security-policy']).toContain('sandbox');
 		expect(response.headers['content-security-policy']).not.toContain('allow-same-origin');

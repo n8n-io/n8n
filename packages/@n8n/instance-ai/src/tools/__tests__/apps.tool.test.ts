@@ -75,6 +75,7 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 			.mockResolvedValue({ versionId: 'v-1', url: 'http://localhost:5678/apps/greeter/' }),
 		setBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [] }),
 		getBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [], stored: [] }),
+		countBindings: vi.fn().mockResolvedValue(0),
 		getSdkTarball: vi.fn().mockResolvedValue({ filename: 'n8n-app-sdk.tgz', data: SDK_TARBALL }),
 	};
 	return {
@@ -1029,10 +1030,24 @@ describe('apps tool', () => {
 				requestId: expect.any(String),
 				message:
 					'Connect workflow "Echo" (wf-1) to app "Greeter" as "submit"; ' +
-					'Connect workflow "Echo" (wf-2) to app "Greeter" as "notify"',
+					'Connect workflow "Echo" (wf-2) to app "Greeter" as "notify" ' +
+					'(public app: callable by anyone with the URL)',
 				severity: 'warning',
 			});
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('leaves out the public exposure note for an n8n app', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'get').mockResolvedValue({ ...APP, authMode: 'n8n' });
+			const suspend = vi.fn().mockResolvedValue('suspended');
+
+			await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(suspend.mock.calls[0][0].message).toBe(
+				'Connect workflow "Echo" (wf-1) to app "Greeter" as "submit"; ' +
+					'Connect workflow "Echo" (wf-2) to app "Greeter" as "notify"',
+			);
 		});
 
 		it('falls back to the workflow id when the workflow cannot be read', async () => {
@@ -1091,20 +1106,13 @@ describe('apps tool', () => {
 			expect(parsed.success).toBe(false);
 		});
 
-		describe('making an app with connected workflows public', () => {
-			const stored = [
-				{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' },
-				{ key: 'notify', kind: 'workflow', workflowId: 'wf-2' },
-			];
+		describe('making an n8n app with connected workflows public', () => {
 			const makePublic = { action: 'settings', authMode: 'public' };
 
 			function contextWithBindings(overrides: Partial<InstanceAiContext> = {}) {
 				const context = createMockContext(overrides);
-				appServiceMock(context, 'getBindings').mockResolvedValue({
-					bindings: [],
-					warnings: [],
-					stored,
-				});
+				appServiceMock(context, 'get').mockResolvedValue({ ...APP, authMode: 'n8n' });
+				appServiceMock(context, 'countBindings').mockResolvedValue(2);
 				return context;
 			}
 
@@ -1160,14 +1168,28 @@ describe('apps tool', () => {
 
 			it('skips the card when the app has no connected workflows', async () => {
 				const context = createMockContext();
+				appServiceMock(context, 'get').mockResolvedValue({ ...APP, authMode: 'n8n' });
 				const suspend = vi.fn();
 
 				await runAction(context, makePublic, { resumeData: undefined, suspend });
 
 				expect(suspend).not.toHaveBeenCalled();
+				expect(appServiceMock(context, 'getBindings')).not.toHaveBeenCalled();
 				expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalledWith('app-1', {
 					authMode: 'public',
 				});
+			});
+
+			it('skips the card when the app is already public', async () => {
+				const context = createMockContext();
+				appServiceMock(context, 'countBindings').mockResolvedValue(2);
+				const suspend = vi.fn();
+
+				await runAction(context, makePublic, { resumeData: undefined, suspend });
+
+				expect(suspend).not.toHaveBeenCalled();
+				expect(appServiceMock(context, 'countBindings')).not.toHaveBeenCalled();
+				expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalled();
 			});
 
 			it('skips the card when switching to n8n, whatever the bindings', async () => {
@@ -1181,7 +1203,7 @@ describe('apps tool', () => {
 				);
 
 				expect(suspend).not.toHaveBeenCalled();
-				expect(appServiceMock(context, 'getBindings')).not.toHaveBeenCalled();
+				expect(appServiceMock(context, 'countBindings')).not.toHaveBeenCalled();
 				expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalled();
 			});
 		});

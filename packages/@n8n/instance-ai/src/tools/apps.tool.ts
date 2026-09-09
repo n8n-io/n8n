@@ -878,8 +878,10 @@ async function handleBind(
 					`Connect workflow "${await resolveWorkflowName(context, workflowId)}" (${workflowId}) to app "${app.name}" as "${key}"`,
 			),
 		);
+		const exposure =
+			app.authMode === 'public' ? ' (public app: callable by anyone with the URL)' : '';
 		// One line: the card renders the message as plain HTML text, which folds newlines.
-		return lines.join('; ');
+		return lines.join('; ') + exposure;
 	});
 	if (denied) return denied;
 
@@ -925,15 +927,15 @@ async function handleSettings(
 	ctx: ConfirmationToolContext,
 ) {
 	const appService = requireAppService(context);
-	if (input.authMode === 'public') {
-		const app = await appService.get(input.appId);
-		const { stored } = await appService.getBindings(app.id);
-		if (stored.length > 0) {
+	const current = await appService.get(input.appId);
+	if (input.authMode === 'public' && current.authMode !== 'public') {
+		const count = await appService.countBindings(current.id);
+		if (count > 0) {
 			const denied = await requireBindAppWorkflowApproval(
 				context,
 				ctx,
 				() =>
-					`Make app "${app.name}" public: ${stored.length} connected ${stored.length === 1 ? 'workflow becomes' : 'workflows become'} callable by anyone with the URL`,
+					`Make app "${current.name}" public: ${count} connected ${count === 1 ? 'workflow becomes' : 'workflows become'} callable by anyone with the URL`,
 			);
 			if (denied) return denied;
 		}

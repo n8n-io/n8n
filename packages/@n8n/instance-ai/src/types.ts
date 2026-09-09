@@ -1073,6 +1073,8 @@ export interface InstanceAiAppService {
 	getBindings(
 		appId: string,
 	): Promise<{ bindings: DescribedBinding[]; warnings: string[]; stored: AppBinding[] }>;
+	/** Size of the stored list, without describing it. */
+	countBindings(appId: string): Promise<number>;
 	/** `@n8n/app-sdk` as an npm tarball for the app's `vendor/` dir; same bytes on every call. */
 	getSdkTarball(): Promise<{ filename: string; data: Uint8Array }>;
 }

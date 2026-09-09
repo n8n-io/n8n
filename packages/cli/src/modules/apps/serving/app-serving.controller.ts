@@ -52,14 +52,15 @@ export class AppServingController {
 		}
 		const resolved = await this.appServingService.resolve(req.params.namespace, segments);
 
+		// A built app links its assets relative to its base URL, and the page cookie
+		// is scoped to `/apps/<ns>/`, so the root document has to carry the trailing slash.
+		const { pathname, search } = new URL(req.originalUrl, 'http://n8n');
+		if (resolved && segments.length === 0 && !pathname.endsWith('/')) {
+			res.redirect(302, `/apps/${req.params.namespace}/${search}`);
+			return;
+		}
+
 		if (resolved?.kind === 'static') {
-			// A built app links its assets relative to its base URL, so the
-			// root document has to carry the trailing slash.
-			const { pathname, search } = new URL(req.originalUrl, 'http://n8n');
-			if (segments.length === 0 && !pathname.endsWith('/')) {
-				res.redirect(302, `/apps/${req.params.namespace}/${search}`);
-				return;
-			}
 			const isDocument = path.extname(resolved.filePath) === '.html';
 			const visitor = await this.appPageAuthService.admit(req, res, resolved.app, {
 				recheckAccess: isDocument,

@@ -5094,6 +5094,23 @@ describe('createContext — app service wiring', () => {
 		});
 	});
 
+	it('counts stored bindings after checking app:read, without describing them', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const describeBindings = vi.fn();
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			describeBindings,
+		});
+		const appService = service.createContext(mockUser).appService;
+
+		await expect(appService?.countBindings('app-1')).resolves.toBe(1);
+		expect(describeBindings).not.toHaveBeenCalled();
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:read'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
 	it('returns the packed SDK tarball under its vendor filename', async () => {
 		mockAppsModule(true);
 		const service = createAdapterWithApps({});
