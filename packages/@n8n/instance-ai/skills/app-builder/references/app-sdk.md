@@ -107,6 +107,7 @@ class N8nAppError extends Error {
 | `workflow_not_callable`  | 403  | The workflow's "This workflow can be called by" setting excludes the app's project.         |
 | `invalid_input`          | 400  | The body does not match the trigger fields; `issues` lists the fields. Fix the call.        |
 | `payload_too_large`      | 413  | The body is over 1 MiB.                                                                     |
+| `too_many_requests`      | 429  | The instance already holds its maximum of concurrent app runs (default 10). Retry after a moment. |
 | `execution_failed`       | 500  | n8n could not start the run. Retry later; the message is safe to show.                      |
 | `request_failed`         | 0/any | No readable response: network error, or a 429 from the rate limiter (the browser hides it, `status` is 0). Retry later. |
 
@@ -120,4 +121,7 @@ Show `error.message` to the user; it is written for people.
   credentials. It appears in the executions list with mode `integrated`.
 - Only the published version runs. Draft changes take effect on publish.
 - Rate limit: 60 calls per minute per IP by default (instance setting).
+- Concurrency: at most 10 calls per instance hold a run at the same time by
+  default (instance setting). A call holds its run until it ends or until the
+  call answers 202.
 - Body limit: 1 MiB, JSON object only (arrays are rejected).

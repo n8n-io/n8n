@@ -30,6 +30,7 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { AppRepository } from '../app.repository';
+import { AppsConfig } from '../apps.config';
 import { AppRuntimeError } from './app-runtime.error';
 
 /**
@@ -69,6 +70,12 @@ interface RunOrigin {
 
 @Service()
 export class AppRuntimeService {
+	/**
+	 * Calls that hold a run right now. `integrated` runs are exempt from the instance
+	 * concurrency queue, so this public route needs its own cap.
+	 */
+	private inFlight = 0;
+
 	constructor(
 		private readonly appRepository: AppRepository,
 		private readonly workflowLoader: WorkflowToolWorkflowLoader,
@@ -78,6 +85,7 @@ export class AppRuntimeService {
 		private readonly webhookResponseRelay: WebhookResponseRelay,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly logger: Logger,
+		private readonly appsConfig: AppsConfig,
 	) {}
 
 	/**
@@ -214,15 +222,16 @@ export class AppRuntimeService {
 			})
 			.catch(() => {});
 
-		const executionId = await this.workflowRunner.run(
-			runData,
-			undefined,
-			undefined,
-			undefined,
-			responsePromise,
-		);
-
-		const run = await this.waitForRun(executionId);
+		const { executionId, run } = await this.holdRun(async () => {
+			const executionId = await this.workflowRunner.run(
+				runData,
+				undefined,
+				undefined,
+				undefined,
+				responsePromise,
+			);
+			return { executionId, run: await this.waitForRun(executionId) };
+		});
 		if (run === 'running') return { executionId, status: 'running', principal: null };
 
 		// Same lookup as `extractResult`, kept apart because the failing node is needed below.
@@ -268,6 +277,24 @@ export class AppRuntimeService {
 		// `collectResultData` keys the last node's items by its name; the app only wants the items.
 		const output = result.data ? Object.values(result.data)[0] : [];
 		return { ...base, output };
+	}
+
+	/** The slot is held while the call blocks on the run; a 202 releases it although the run goes on. */
+	private async holdRun<T>(runAndWait: () => Promise<T>): Promise<T> {
+		const max = this.appsConfig.runtimeMaxConcurrent;
+		if (max > 0 && this.inFlight >= max) {
+			throw new AppRuntimeError(
+				429,
+				'too_many_requests',
+				'Too many workflow runs are in progress. Try again in a moment.',
+			);
+		}
+		this.inFlight++;
+		try {
+			return await runAndWait();
+		} finally {
+			this.inFlight--;
+		}
 	}
 
 	/** `undefined` when the execution already left the active set (e.g. it failed before starting). */

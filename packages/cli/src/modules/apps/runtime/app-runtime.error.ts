@@ -8,7 +8,8 @@ export type AppRuntimeErrorCode =
 	| 'workflow_incompatible'
 	| 'workflow_not_callable'
 	| 'invalid_input'
-	| 'payload_too_large';
+	| 'payload_too_large'
+	| 'too_many_requests';
 
 /** A refused runtime API call; the browser gets `{ code, message, issues? }` with `status`. */
 export class AppRuntimeError extends UserError {

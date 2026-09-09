@@ -21,6 +21,7 @@ import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { App } from '../../app.entity';
 import type { AppRepository } from '../../app.repository';
+import type { AppsConfig } from '../../apps.config';
 import { AppRuntimeError } from '../app-runtime.error';
 import { AppRuntimeService } from '../app-runtime.service';
 
@@ -104,6 +105,7 @@ describe('AppRuntimeService', () => {
 	let relay: ReturnType<typeof mock<WebhookResponseRelay>>;
 	let executionPersistence: ReturnType<typeof mock<ExecutionPersistence>>;
 	let logger: ReturnType<typeof mock<Logger>>;
+	let appsConfig: AppsConfig;
 	let service: AppRuntimeService;
 
 	beforeEach(() => {
@@ -115,6 +117,7 @@ describe('AppRuntimeService', () => {
 		relay = mock<WebhookResponseRelay>();
 		executionPersistence = mock<ExecutionPersistence>();
 		logger = mock<Logger>();
+		appsConfig = { runtimeRateLimit: 60, runtimeMaxConcurrent: 10 };
 		service = new AppRuntimeService(
 			appRepository,
 			workflowLoader,
@@ -124,6 +127,7 @@ describe('AppRuntimeService', () => {
 			relay,
 			executionPersistence,
 			logger,
+			appsConfig,
 		);
 
 		appRepository.findByNamespace.mockResolvedValue(app);
@@ -405,6 +409,52 @@ describe('AppRuntimeService', () => {
 
 			expect(await pending).toEqual({ executionId: 'exec-1', status: 'running', principal: null });
 			expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
+		});
+
+		it('answers 429 too_many_requests without starting a run once the cap is reached', async () => {
+			vi.useFakeTimers();
+			appsConfig.runtimeMaxConcurrent = 1;
+			activeExecutions.getPostExecutePromise.mockReturnValue(new Promise<IRun>(() => {}));
+
+			const first = service.runWorkflow('runner', 'submit', { message: 'hi' });
+			await vi.advanceTimersByTimeAsync(0);
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+			await expectRuntimeError(
+				service.runWorkflow('runner', 'submit', { message: 'hi' }),
+				429,
+				'too_many_requests',
+			);
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(await first).toMatchObject({ status: 'running' });
+		});
+
+		it('releases the slot when the run completes', async () => {
+			appsConfig.runtimeMaxConcurrent = 1;
+
+			await service.runWorkflow('runner', 'submit', { message: 'hi' });
+			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+
+			expect(result).toMatchObject({ status: 'success' });
+			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+		});
+
+		it('releases the slot when the call answers running after 60 s', async () => {
+			vi.useFakeTimers();
+			appsConfig.runtimeMaxConcurrent = 1;
+			activeExecutions.getPostExecutePromise.mockReturnValue(new Promise<IRun>(() => {}));
+
+			const first = service.runWorkflow('runner', 'submit', { message: 'hi' });
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(await first).toMatchObject({ status: 'running' });
+
+			activeExecutions.getPostExecutePromise.mockResolvedValue(finishedRun([{ reply: 'late' }]));
+			const second = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+
+			expect(second).toMatchObject({ status: 'success' });
+			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 		});
 
 		it('does not answer running before the 60 s are over', async () => {

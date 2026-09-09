@@ -9,4 +9,12 @@ export class AppsConfig {
 	 */
 	@Env('N8N_APPS_RUNTIME_RATE_LIMIT', z.number({ coerce: true }).int().nonnegative())
 	runtimeRateLimit: number = 60;
+
+	/**
+	 * Maximum number of runtime API calls on this instance that hold a workflow run at
+	 * the same time. A call holds its run until the run ends or the call answers 202.
+	 * Set to `0` to disable the cap.
+	 */
+	@Env('N8N_APPS_RUNTIME_MAX_CONCURRENT', z.number({ coerce: true }).int().nonnegative())
+	runtimeMaxConcurrent: number = 10;
 }
