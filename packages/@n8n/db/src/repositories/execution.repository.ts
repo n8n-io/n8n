@@ -1004,13 +1004,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return [...summariesById.values()];
 	}
 
-	/**
-	 * One page of execution summaries, newest first.
-	 *
-	 * A page that a cursor pages from is ordered by the immutable `id`. The cursor
-	 * pages by `id`, so any other order would let a page skip or repeat rows at
-	 * its boundary. Only a page without a cursor honours `order`.
-	 */
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
 		// Due to performance reasons, we use custom query builder with raw SQL.
 		// IMPORTANT: it produces duplicate rows for executions with multiple tags, which we need to reduce manually
@@ -1166,17 +1159,16 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 			qb.limit(limit);
 
-			if (beforeId) qb.andWhere('execution.id < :cursorId', { cursorId: beforeId });
+			if (beforeId) qb.andWhere('execution.id < :beforeId', { beforeId });
 
-			// Only a page that no cursor pages past can choose its order. A cursor
-			// pages by `id`, so any other order would let a cursor page skip or
-			// repeat rows at its boundary.
-			if (!beforeId) {
-				if (query.order?.startedAt === 'DESC') {
-					qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' });
-				} else if (query.order?.top) {
-					qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
-				}
+			// Since a cursor pages by id, using a sort order other than `id` together
+			// with a cursor may skip or repeat rows at the boundary. This is because
+			// the row's status AND/OR startedAt timestamps can change after the fact.
+			// We accept this as a current limitation in the implementation.
+			if (query.order?.startedAt === 'DESC') {
+				qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' });
+			} else if (query.order?.top) {
+				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 			}
 			qb.addOrderBy('execution.id', 'DESC');
 		}
@@ -1184,7 +1176,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
 		if (query.id) qb.andWhere('execution.id = :filterId', { filterId: query.id });
 		if (query.mode) qb.andWhere('execution.mode = :filterMode', { filterMode: query.mode });
-		if (finished !== undefined) qb.andWhere({ finished });
+		if (finished) qb.andWhere({ finished });
 		if (workflowId) qb.andWhere({ workflowId });
 		const startedAt = startedAtCondition({ startedAfter, startedBefore });
 		if (startedAt) qb.andWhere({ startedAt });
@@ -1289,15 +1281,13 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		// postgres returned to the natural order again, listing executions in the
 		// order they were created.
 		if (query.kind === 'range') {
-			if (!query.range.beforeId) {
-				if (query.order?.startedAt === 'DESC') {
-					const table = qb.escape('e');
-					const startedAt = qb.escape('startedAt');
-					const createdAt = qb.escape('createdAt');
-					qb.orderBy({ [`COALESCE(${table}.${startedAt}, ${table}.${createdAt})`]: 'DESC' });
-				} else if (query.order?.top) {
-					qb.orderBy(`(CASE WHEN e.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
-				}
+			if (query.order?.startedAt === 'DESC') {
+				const table = qb.escape('e');
+				const startedAt = qb.escape('startedAt');
+				const createdAt = qb.escape('createdAt');
+				qb.orderBy({ [`COALESCE(${table}.${startedAt}, ${table}.${createdAt})`]: 'DESC' });
+			} else if (query.order?.top) {
+				qb.orderBy(`(CASE WHEN e.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 			}
 			qb.addOrderBy('e.id', 'DESC');
 		}
