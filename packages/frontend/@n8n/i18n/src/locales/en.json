@@ -139,6 +139,8 @@
 	"generic.ownedByMe": "(You)",
 	"generic.moreInfo": "More info",
 	"generic.more": "More",
+	"resizeWrapper.resize": "Resize",
+	"resizeWrapper.drag": "Drag",
 	"generic.next": "Next",
 	"generic.pro": "Pro",
 	"generic.variable_plural": "Variables",
