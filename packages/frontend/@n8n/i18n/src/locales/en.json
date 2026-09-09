@@ -5195,6 +5195,8 @@
 	"apps.connections.unpublished": "Not published",
 	"apps.connections.input": "Input",
 	"apps.connections.input.passthrough": "Accepts any input",
+	"apps.connections.output": "Output",
+	"apps.connections.output.unknown": "Output not inferred yet",
 	"apps.pages": "Pages",
 	"apps.page.subPageCount": "{count} sub-page | {count} sub-pages",
 	"apps.page.subPages": "Sub-pages",

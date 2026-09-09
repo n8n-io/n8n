@@ -525,6 +525,22 @@ watch(versionId, (next, previous) => {
 									/>
 								</template>
 							</div>
+							<div :class="$style.connectionRow" data-test-id="app-connection-output">
+								<N8nText color="text-light" size="small">
+									{{ i18n.baseText('apps.connections.output') }}
+								</N8nText>
+								<N8nText v-if="binding.output === 'unknown'" color="text-light" size="small">
+									{{ i18n.baseText('apps.connections.output.unknown') }}
+								</N8nText>
+								<template v-else>
+									<N8nTag
+										v-for="field in binding.output"
+										:key="field.name"
+										:text="`${field.name}${field.optional ? '?' : ''}: ${field.type}${field.nullable ? ' | null' : ''}`"
+										:clickable="false"
+									/>
+								</template>
+							</div>
 						</N8nCard>
 					</div>
 				</div>

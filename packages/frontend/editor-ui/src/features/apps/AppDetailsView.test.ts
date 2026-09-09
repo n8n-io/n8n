@@ -301,7 +301,7 @@ describe('AppDetailsView', () => {
 		});
 	});
 
-	it('lists the connected workflows with a link, publish state and input fields', async () => {
+	it('lists the connected workflows with a link, publish state, input and output fields', async () => {
 		const bindings: DescribedBinding[] = [
 			{
 				key: 'submit',
@@ -310,6 +310,11 @@ describe('AppDetailsView', () => {
 				name: 'Echo',
 				published: true,
 				input: [{ name: 'message', type: 'string' }, { name: 'count' }],
+				output: [
+					{ name: 'reply', type: 'string', nullable: false, optional: false },
+					{ name: 'total', type: 'number', nullable: true, optional: true },
+				],
+				outputSource: { kind: 'execution', executionId: '42', at: '2026-09-09T10:00:01.000Z' },
 			},
 			{
 				key: 'notify',
@@ -318,6 +323,8 @@ describe('AppDetailsView', () => {
 				name: 'Notify',
 				published: false,
 				input: 'passthrough',
+				output: 'unknown',
+				outputSource: { kind: 'unknown' },
 			},
 		];
 		appsStore.bindings = bindings;
@@ -335,9 +342,12 @@ describe('AppDetailsView', () => {
 		expect(getAllByTestId('app-connection-published')[0]).toHaveTextContent('Published');
 		expect(getAllByTestId('app-connection-input')[0]).toHaveTextContent('message: string');
 		expect(getAllByTestId('app-connection-input')[0]).toHaveTextContent('count');
+		expect(getAllByTestId('app-connection-output')[0]).toHaveTextContent('reply: string');
+		expect(getAllByTestId('app-connection-output')[0]).toHaveTextContent('total?: number | null');
 
 		expect(getAllByTestId('app-connection-published')[1]).toHaveTextContent('Not published');
 		expect(getAllByTestId('app-connection-input')[1]).toHaveTextContent('Accepts any input');
+		expect(getAllByTestId('app-connection-output')[1]).toHaveTextContent('Output not inferred yet');
 		expect(getByTestId('app-connection-warning')).toHaveTextContent('is not published');
 	});
 
