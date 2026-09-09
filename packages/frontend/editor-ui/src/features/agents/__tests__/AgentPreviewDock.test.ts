@@ -61,16 +61,6 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-vi.mock('../components/AgentSessionTimelinePanel.vue', function mockSessionTimelinePanel() {
-	return {
-		default: {
-			name: 'AgentSessionTimelinePanel',
-			props: ['projectId', 'agentId', 'threadId'],
-			template: '<div data-testid="agent-preview-session-timeline" />',
-		},
-	};
-});
-
 vi.mock('@n8n/design-system', () => ({
 	N8nButton: {
 		name: 'N8nButton',
@@ -118,12 +108,6 @@ const AgentPreviewChatPageStub = {
 	template: '<div data-testid="agent-preview-chat-page-stub" />',
 };
 
-const AgentSessionTimelinePanelStub = {
-	name: 'AgentSessionTimelinePanel',
-	props: ['projectId', 'agentId', 'threadId'],
-	template: '<div data-testid="agent-preview-session-timeline" />',
-};
-
 const AgentPreviewMoreMenuStub = {
 	name: 'AgentPreviewMoreMenu',
 	props: [
@@ -168,7 +152,6 @@ function mountDock(
 			stubs: {
 				AgentPreviewChatPage: AgentPreviewChatPageStub,
 				AgentPreviewMoreMenu: AgentPreviewMoreMenuStub,
-				AgentSessionTimelinePanel: AgentSessionTimelinePanelStub,
 			},
 		},
 	});
@@ -469,78 +452,15 @@ describe('AgentPreviewDock', () => {
 		outsideButton.remove();
 	});
 
-	it('shows the session timeline in full-page layout without navigating', async () => {
+	it('docks the preview before opening the session view', async () => {
+		/** TODO: Remove this test when https://linear.app/n8n/issue/AGENT-808 removes preview chat from the session trace view. */
 		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
 		const wrapper = mountDock();
 
 		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
 
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-show-chat-btn"]').exists()).toBe(true);
-		expect(
-			wrapper
-				.find('[data-testid="agent-preview-show-chat-btn"]')
-				.find('[data-icon="message-circle"]')
-				.exists(),
-		).toBe(true);
-	});
-
-	it('returns to chat from the full-page timeline view', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		await wrapper.get('[data-testid="agent-preview-show-chat-btn"]').trigger('click');
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(true);
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-	});
-
-	it('returns to chat when switching from full-page timeline to docked layout', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-		const moreMenu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(true);
-
-		moreMenu.vm.$emit('toggle-full-width');
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(true);
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-	});
-
-	it('returns to chat when starting a new session from the full-page timeline', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		await wrapper.get('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(true);
-		expect(wrapper.emitted('new-session')).toEqual([[]]);
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-	});
-
-	it('returns to chat when the dock closes while showing the timeline', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(true);
-
-		await wrapper.setProps({ isOpen: false });
-		await wrapper.setProps({ isOpen: true });
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(true);
+		expect(localStorage.getItem('N8N_AGENT_PREVIEW_LAYOUT')).toBe('docked');
+		expect(wrapper.emitted('view-trace')).toEqual([[]]);
 	});
 });
 

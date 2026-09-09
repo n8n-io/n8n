@@ -31,10 +31,6 @@ import type {
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
-import AgentSessionTimelinePanel from './AgentSessionTimelinePanel.vue';
-
-type DockBody = 'chat' | 'timeline';
-const dockView = ref<DockBody>('chat');
 
 interface SessionOption {
 	id: string;
@@ -111,15 +107,9 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 
 function viewTrace() {
 	if (!props.hasSession || !props.effectiveSessionId) return;
-	if (layout.value === PreviewLayout.Fullpage) {
-		dockView.value = 'timeline';
-		return;
-	}
+	/** Dock the chat so it does not cover the session view after navigation. */
+	storedLayout.value = PreviewLayout.Docked;
 	emit('view-trace');
-}
-
-function showChat() {
-	dockView.value = 'chat';
 }
 
 function exportSession() {
@@ -132,7 +122,6 @@ function exportSession() {
 }
 
 function createNewSession() {
-	showChat();
 	emit('new-session');
 }
 
@@ -181,15 +170,6 @@ function toggleFullWidth() {
 	storedLayout.value =
 		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
 }
-
-watch(
-	[layout, () => props.isOpen, () => props.hasSession],
-	function resetDockView([nextLayout, isOpen, hasSession]) {
-		if (nextLayout !== PreviewLayout.Fullpage || !isOpen || !hasSession) {
-			showChat();
-		}
-	},
-);
 
 watch(
 	[() => props.isOpen, () => props.initialized, () => props.effectiveSessionId],
@@ -266,19 +246,12 @@ useKeybindings({
 				<div :class="$style.actions">
 					<N8nTooltip
 						v-if="props.hasSession && props.effectiveSessionId"
-						:content="
-							i18n.baseText(
-								dockView === 'chat'
-									? 'agents.builder.preview.viewSession'
-									: ('agents.builder.preview.showChat' as BaseTextKey),
-							)
-						"
+						:content="i18n.baseText('agents.builder.preview.viewSession')"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
 						data-testid="agent-preview-view-session-tooltip"
 					>
 						<N8nIconButton
-							v-if="dockView === 'chat'"
 							icon="list-tree"
 							variant="ghost"
 							size="small"
@@ -286,16 +259,6 @@ useKeybindings({
 							:aria-label="i18n.baseText('agents.builder.preview.viewSession')"
 							data-testid="agent-preview-view-session-btn"
 							@click="viewTrace"
-						/>
-						<N8nIconButton
-							v-else
-							icon="message-circle"
-							variant="ghost"
-							size="small"
-							icon-size="large"
-							:aria-label="i18n.baseText('agents.builder.preview.showChat' as BaseTextKey)"
-							data-testid="agent-preview-show-chat-btn"
-							@click="showChat"
 						/>
 					</N8nTooltip>
 
@@ -348,7 +311,6 @@ useKeybindings({
 			</header>
 
 			<AgentPreviewChatPage
-				v-show="dockView === 'chat'"
 				ref="previewChatPage"
 				:initialized="props.initialized"
 				:project-id="props.projectId"
@@ -363,13 +325,6 @@ useKeybindings({
 				@continue-loaded="emit('continue-loaded', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
-			/>
-			<AgentSessionTimelinePanel
-				v-if="dockView === 'timeline' && props.effectiveSessionId"
-				:project-id="props.projectId"
-				:agent-id="props.agentId"
-				:thread-id="props.effectiveSessionId"
-				data-testid="agent-preview-session-timeline"
 			/>
 		</div>
 	</aside>
