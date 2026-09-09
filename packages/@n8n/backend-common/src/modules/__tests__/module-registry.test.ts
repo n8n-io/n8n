@@ -226,7 +226,7 @@ describe('loadModules routes', () => {
 		expect(importInsights).not.toHaveBeenCalled();
 	});
 
-	it('should preserve the requested load order across both routes', async () => {
+	it('should preserve the requested load order between manifest modules', async () => {
 		const loaded: string[] = [];
 		const recordLoad = (name: string) => async () => {
 			loaded.push(name);
@@ -244,8 +244,46 @@ describe('loadModules routes', () => {
 		expect(loaded).toEqual(['oauth-server', 'mcp']);
 	});
 
+	it('should run a manifest module before a later filesystem module', async () => {
+		const importPackagedModule = vi.fn().mockResolvedValue({});
+		const moduleRegistry = newRegistry();
+		moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+		// `otel` is absent from the manifest, so it takes the filesystem route and
+		// throws here. `insights` precedes it, so the manifest entry runs first.
+		await expect(moduleRegistry.loadModules(['insights', 'otel'])).rejects.toThrowError(
+			MissingModuleError,
+		);
+
+		expect(importPackagedModule).toHaveBeenCalledTimes(1);
+	});
+
+	it('should stop at a failing filesystem module before a later manifest module', async () => {
+		const importPackagedModule = vi.fn().mockResolvedValue({});
+		const moduleRegistry = newRegistry();
+		moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+		await expect(moduleRegistry.loadModules(['otel', 'insights'])).rejects.toThrowError(
+			MissingModuleError,
+		);
+
+		// One ordered pass serves both routes. A route-first pass would import
+		// `insights` before it ever reached `otel`.
+		expect(importPackagedModule).not.toHaveBeenCalled();
+	});
+
 	it('should wrap a failing manifest import in `PackagedModuleLoadError`', async () => {
 		const importPackagedModule = vi.fn().mockRejectedValue(new Error('Cannot find package'));
+		const moduleRegistry = newRegistry();
+		moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+		await expect(moduleRegistry.loadModules(['insights'])).rejects.toThrowError(
+			PackagedModuleLoadError,
+		);
+	});
+
+	it('should wrap a manifest import that rejects with a non-Error', async () => {
+		const importPackagedModule = vi.fn().mockRejectedValue('Cannot find package');
 		const moduleRegistry = newRegistry();
 		moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
 

@@ -7,13 +7,13 @@ import type { NodeLoader } from 'n8n-workflow';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
+import { LicenseState } from '../license-state';
+import { Logger } from '../logging/logger';
 import { MissingModuleError } from './errors/missing-module.error';
 import { ModuleConfusionError } from './errors/module-confusion.error';
 import { PackagedModuleLoadError } from './errors/packaged-module-load.error';
 import { ModulesConfig } from './modules.config';
 import type { ModuleName } from './modules.config';
-import { LicenseState } from '../license-state';
-import { Logger } from '../logging/logger';
 
 /**
  * Modules that live in a workspace package instead of `n8n/dist/modules`, keyed
