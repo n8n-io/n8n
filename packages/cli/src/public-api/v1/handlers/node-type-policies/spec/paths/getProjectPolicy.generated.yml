@@ -1,0 +1,29 @@
+operationId: getProjectPolicy
+tags:
+  - NodeTypePolicy
+summary: Retrieve a project's node type policy
+description: "Returns the project's own composed policy, not the result of combining it with the instance policy. A project that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`."
+x-required-scope: nodeTypePolicy:manage
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/nodeTypePolicyEffectivePublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

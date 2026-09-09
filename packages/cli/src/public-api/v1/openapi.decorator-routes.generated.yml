@@ -31,6 +31,16 @@ paths:
   /executions/{executionId}/retry:
     post:
       $ref: ./handlers/executions/spec/paths/retryExecution.generated.yml
+  /node-type-policies/instance:
+    get:
+      $ref: ./handlers/node-type-policies/spec/paths/getInstancePolicy.generated.yml
+    put:
+      $ref: ./handlers/node-type-policies/spec/paths/putInstancePolicy.generated.yml
+  /node-type-policies/projects/{projectId}:
+    get:
+      $ref: ./handlers/node-type-policies/spec/paths/getProjectPolicy.generated.yml
+    put:
+      $ref: ./handlers/node-type-policies/spec/paths/putProjectPolicy.generated.yml
   /projects:
     get:
       $ref: ./handlers/projects/spec/paths/getProjects.generated.yml
