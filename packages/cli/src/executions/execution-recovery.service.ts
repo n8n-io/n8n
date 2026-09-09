@@ -1,30 +1,26 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import {
-	In,
-	type IExecutionResponse,
-	ProjectRelationRepository,
-	WorkflowEntity,
-	User,
-} from '@n8n/db';
+import { type IExecutionResponse, ProjectRelationRepository, WorkflowEntity, User } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { DateTime } from 'luxon';
 import { sleep } from '@n8n/utils/sleep';
+import type { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
-import { ExecutionStatus, type IRun, type ITaskData } from 'n8n-workflow';
+import type { IRun, ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 
 import { isNodeEventMessage, type EventMessageTypes } from '../eventbus/event-message-classes';
 
@@ -44,6 +40,8 @@ export class ExecutionRecoveryService {
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly ownershipService: OwnershipService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly workflowPushNotifier: WorkflowPushNotifier,
+		private readonly executionCrashService: ExecutionCrashService,
 	) {}
 
 	async autoDeactivateWorkflowsIfNeeded(workflowIds: Set<string>) {
@@ -88,7 +86,10 @@ export class ExecutionRecoveryService {
 
 						this.push.once('editorUiConnected', async () => {
 							await sleep(1000);
-							this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
+							await this.workflowPushNotifier.notify(workflowId, {
+								type: 'workflowAutoDeactivated',
+								data: { workflowId },
+							});
 						});
 					} catch (error) {
 						// A throw here would abort startup recovery for the remaining
@@ -101,10 +102,7 @@ export class ExecutionRecoveryService {
 					}
 				}
 
-				await this.executionRepository.update(
-					{ workflowId, status: In<ExecutionStatus>(['running', 'new']) },
-					{ status: 'crashed', stoppedAt: new Date() },
-				);
+				await this.executionCrashService.markWorkflowExecutionsAsCrashed(workflowId);
 			}
 		}
 	}
@@ -127,9 +125,14 @@ export class ExecutionRecoveryService {
 
 		await this.runHooks(amendedExecution);
 
+		const { workflowId } = amendedExecution;
+
 		this.push.once('editorUiConnected', async () => {
 			await sleep(1000);
-			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
+			await this.workflowPushNotifier.notify(workflowId, {
+				type: 'executionRecovered',
+				data: { executionId },
+			});
 		});
 
 		return amendedExecution;
@@ -227,7 +230,7 @@ export class ExecutionRecoveryService {
 
 		if (!exists) return null;
 
-		await this.executionRepository.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashedWithoutCounting(executionId);
 
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,

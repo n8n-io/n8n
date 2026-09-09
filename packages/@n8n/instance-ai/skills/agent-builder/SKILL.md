@@ -22,6 +22,29 @@ when the conversation already targets an Agent and the user is continuing that
 build. Do not rerun intent recognition for routine Agent edits or extensions.
 Use `build-agent` only for Agent artifacts.
 
+When the conversation opens from an existing Agent in the editor and the user
+asks to change its configuration or capabilities, that is an agent-anchored
+request — target that Agent and call `build-agent`. Do not reroute to
+`workflow-builder`, and do not spawn a workflow to satisfy a capability change
+on the Agent.
+
+## Supported channels & unsupported requests
+
+`list-agent-capabilities` returns every chat channel n8n Agents support, each
+with `capabilities`, `useIntegrationWhen`, and `useNodeToolWhen`. It is the
+authoritative source the orchestrator can read before building; a channel
+absent from its result is unsupported for agents.
+
+When the user asks for a channel that is not supported (e.g. WhatsApp,
+Microsoft Teams), do not forward it to the builder as a channel to configure
+and do not fake it by adding the platform as an agent tool. Explain the channel
+is unsupported for agents, offer the supported alternatives, and ask which to
+use — or whether the user explicitly wants that unsupported platform as the
+conversation surface, in which case offer the `agent-entrypoint` workflow
+bridge described in Prerequisites (it connects the platform trigger to Message
+an Agent; it is not a channel config). Only forward a channel to `build-agent`
+once it is a supported type or the user has chosen an alternative.
+
 ## Faithful handoff
 
 Treat `message` as a faithful handoff of the user's request, not an Agent build
@@ -104,22 +127,16 @@ Naming or renaming the current Agent never silently creates another one.
 ## Saved sub-agent dependencies
 
 When the user asks for an Agent that uses other newly built Agents as saved
-sub-agents, treat publication as a dependency:
+sub-agents:
 
 1. Build each child Agent under its own `agentRef` before attaching it to the
    parent.
-2. A saved sub-agent must be published before the parent can attach it. Building
-   the child does not imply publication. Never attach a draft child or pass its
-   raw `agentId` to the parent builder as a user requirement.
-3. If the user already asked to publish, activate, or make the Agents usable,
-   call `build-agent` for the child and faithfully forward that publication
-   intent. Otherwise, ask whether to publish the child before continuing with
-   the parent attachment.
-4. Wait for the child publication to succeed. Then call `build-agent` for the
-   parent and identify the child by its display name. The parent builder must
-   discover the published child and map its name to the valid stored ID.
-5. If publication is declined or fails, leave the child unattached and explain
-   that saved sub-agents must be published first.
+2. Call `build-agent` for the parent and identify the child by its display name.
+   The parent builder must discover the saved child and map its name to the
+   valid stored ID. Do not pass a raw `agentId` as a user requirement.
+3. Publication is not required for saved sub-agent delegation. Forward
+   publication intent only when the user explicitly asks to publish or activate
+   an Agent.
 
 ## Builder-owned interactions
 

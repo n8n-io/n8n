@@ -32,7 +32,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to read"
+								"description": "Path to the file to read, relative to the workspace root (absolute paths must be under it)"
 							},
 							"encoding": {
 								"type": "string",
@@ -95,7 +95,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to edit"
+								"description": "Path to the file to edit, relative to the workspace root (absolute paths must be under it)"
 							},
 							"replacements": {
 								"type": "array",
@@ -131,7 +131,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to write"
+								"description": "Path to the file to write, relative to the workspace root (absolute paths must be under it)"
 							},
 							"content": {
 								"type": "string",
@@ -375,30 +375,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCvqWBeQyF3FDe8vS6R\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_015G9eW7CkM1TaGdXDqhySy2\",\"name\":\"workspace_file_stat\",\"input\":{\"path\":\"/data.json\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2811,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":59,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011Ceii5g4SUciVuKysZp7Xa\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll check the file information for /data.json.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01TnX2DdBDDUFR9SoxK8qNxS\",\"name\":\"workspace_file_stat\",\"input\":{\"path\":\"/data.json\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2850,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":71,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:48Z",
+			"anthropic-ratelimit-input-tokens-remaining": "9998000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-04T16:24:02Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:48Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-04T16:24:03Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:47Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-04T16:24:02Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:48Z",
+			"anthropic-ratelimit-tokens-remaining": "11998000",
+			"anthropic-ratelimit-tokens-reset": "2026-09-04T16:24:02Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a2a55d377c5b5ac3-VIE",
+			"cf-ray": "a35e5795ddeec2fa-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Thu, 13 Aug 2026 05:36:48 GMT",
-			"request-id": "req_011CdzCvq77vo1hFZmLjptG3",
+			"date": "Fri, 04 Sep 2026 16:24:03 GMT",
+			"request-id": "req_011Ceii5fYS517zg2DvYDLPD",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-3bda4e01dd271888f79b8d557e579b2f-ac70e71bdf4ff168-01",
+			"traceresponse": "00-f0bbe906bbc42f6a932602d9a5930df3-d13674f355c4bd2f-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -431,8 +431,12 @@
 					"role": "assistant",
 					"content": [
 						{
+							"type": "text",
+							"text": "I'll check the file information for /data.json."
+						},
+						{
 							"type": "tool_use",
-							"id": "toolu_015G9eW7CkM1TaGdXDqhySy2",
+							"id": "toolu_01TnX2DdBDDUFR9SoxK8qNxS",
 							"name": "workspace_file_stat",
 							"input": {
 								"path": "/data.json"
@@ -448,7 +452,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_015G9eW7CkM1TaGdXDqhySy2",
+							"tool_use_id": "toolu_01TnX2DdBDDUFR9SoxK8qNxS",
 							"content": "{\"name\":\"data.json\",\"path\":\"/data.json\",\"type\":\"file\",\"size\":29,\"createdAt\":\"2026-01-01T00:00:00.000Z\",\"modifiedAt\":\"2026-01-01T00:00:00.000Z\"}"
 						}
 					]
@@ -463,7 +467,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to read"
+								"description": "Path to the file to read, relative to the workspace root (absolute paths must be under it)"
 							},
 							"encoding": {
 								"type": "string",
@@ -526,7 +530,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to edit"
+								"description": "Path to the file to edit, relative to the workspace root (absolute paths must be under it)"
 							},
 							"replacements": {
 								"type": "array",
@@ -562,7 +566,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to write"
+								"description": "Path to the file to write, relative to the workspace root (absolute paths must be under it)"
 							},
 							"content": {
 								"type": "string",
@@ -806,30 +810,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCvuEQpo8q7mGRTBscr\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The file **/data.json** is a **file** with a size of **29 bytes**.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2944,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":25,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011Ceii5jtsb1WNBYnx4Ms3N\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The file **/data.json** is:\\n- **Type**: file\\n- **Size**: 29 bytes\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2995,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":28,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:48Z",
+			"anthropic-ratelimit-input-tokens-remaining": "9998000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-04T16:24:03Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:48Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-04T16:24:03Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:48Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-04T16:24:03Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:48Z",
+			"anthropic-ratelimit-tokens-remaining": "11998000",
+			"anthropic-ratelimit-tokens-reset": "2026-09-04T16:24:03Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a2a55d3cef695ac3-VIE",
+			"cf-ray": "a35e579b7b3ec2fa-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Thu, 13 Aug 2026 05:36:49 GMT",
-			"request-id": "req_011CdzCvtpc6kQU7wCTqTyRr",
+			"date": "Fri, 04 Sep 2026 16:24:03 GMT",
+			"request-id": "req_011Ceii5jQrM5pkG2XgwK4ZF",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-5b10a9c82434a1ad0e872d6f046dfe53-05d38249ab2f62f9-01",
+			"traceresponse": "00-702b348a39873b8b7baa9d2af97c57c6-ffdcb8d7be8afbab-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

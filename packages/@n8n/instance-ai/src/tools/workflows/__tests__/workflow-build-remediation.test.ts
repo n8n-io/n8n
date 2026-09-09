@@ -13,6 +13,7 @@ describe('createSaveFailureRemediation', () => {
 			reason: 'workflow_modified_externally',
 		});
 		expect(remediation.guidance).toContain('get-as-code');
+		expect(remediation.guidance).toContain('status "conflict"');
 	});
 
 	it('blocks source edits when a user holds the editor write lock', () => {

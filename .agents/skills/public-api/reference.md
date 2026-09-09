@@ -21,8 +21,9 @@ snippet here — a copy would drift. The moving parts:
 - `decodeCursor` / `encodeNextCursor` live in
   `v1/shared/services/pagination.service.ts`. Decode the incoming cursor to
   `{ offset, limit }`, guard the decoded shape, and pass `offset`/`limit` to the
-  service — `offset` is an internal implementation detail of the cursor here,
-  never a client-facing query param.
+  service — never `{ skip, take }`. `offset` is an internal implementation
+  detail of the cursor here, never a client-facing query param. TypeORM's
+  `skip`/`take` stay inside the repository, at the `find` call.
 - Treat the cursor as opaque; never hand-encode a token.
 - Return an envelope `{ data, nextCursor }` — never a bare array.
 - `encodeNextCursor(...)` returns `null` when there is no further page; surface
@@ -99,7 +100,8 @@ scope, RBAC denial. Add whichever apply, matching the nearest existing tests:
   `PUT` with the exact sentinel keeps the secret; any other value replaces it;
   the sentinel is never persisted as a real secret.
 - Migration: path, method, status codes, scope, and response contract are
-  unchanged.
+  unchanged. Tests alone cannot show this — see
+  [Verifying a migration](#verifying-a-migration).
 
 ## Migrating legacy EOV endpoints
 
@@ -146,3 +148,36 @@ not templates.
   — never extend them).
 - For complex legacy-only, multipart, or non-standard endpoints, study the
   nearest existing handler first.
+- Keep each field in its original position when you extract a request shape shared
+  by two routes, and destructure out the ones a route doesn't take. The generator
+  emits properties in shape order, so a moved field rewrites the `*.generated.yml`
+  of a route the PR wasn't changing.
+
+## Verifying a migration
+
+Tests are written against the new code, so they can't show that the old behavior
+survived. These checks can:
+
+- Diff live responses against master. Run the route on an instance per branch and
+  compare status, body, and error message for the same requests. Reading the old
+  YAML beside the new Zod schema doesn't find the differences.
+- Check whether a field is absent or `null`. `activeVersion` omitted is not the
+  same response as `activeVersion: null`; use a conditional spread to omit it.
+- Check query-param coercion at the edges (`""`, `"0"`, `"false"`, absent). A Zod
+  DTO and the old validator don't coerce identically.
+- Request a route the PR didn't migrate. A shared DTO change can stop the spec
+  bundle compiling at startup, which turns every legacy route into a `500` without
+  failing a test.
+
+## CI and merging
+
+Two failures that a migration hits outside the code itself:
+
+- Merge master in before merging. A generator change on master leaves every
+  branch's committed `*.generated.yml` stale, and `generated-spec-drift.test.ts`
+  then fails only on the merge commit, so the PR itself stays green and
+  `MERGEABLE`. `gh pr checks` hides `merge_group` runs; look for the run on
+  `gh-readonly-queue/master/pr-<number>-<sha>`.
+- Ask a maintainer for a `/size-limit-override` early. Generated YAML counts
+  toward the 1,000-line PR size limit, so a single-route migration can exceed it
+  on generator output alone.

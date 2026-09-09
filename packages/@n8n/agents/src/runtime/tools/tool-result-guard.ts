@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import type { AgentDbMessage, AgentMessage, MessageContent } from '../../types/sdk/message';
@@ -49,6 +50,8 @@ const EXPIRED_OFFLOADED_TOOL_RESULT_JSON = JSON.stringify(EXPIRED_OFFLOADED_TOOL
 
 export interface ToolResultGuardStorage extends ToolResultStorageScope {
 	filesystem: WorkspaceFilesystem;
+	/** Invoked after a result was successfully offloaded to the workspace filesystem. */
+	onOffloaded?: () => void;
 }
 
 export interface GuardedToolResult {
@@ -170,10 +173,6 @@ export async function guardToolMessageForModel(
 	return { ...message, content };
 }
 
-function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function isOffloadedToolResult(value: unknown): boolean {
 	return (
 		isRecord(value) &&
@@ -241,6 +240,7 @@ async function tryOffloadResult(
 
 	try {
 		const path = await storeToolResult(storage.filesystem, storage, kind, serialized);
+		storage.onOffloaded?.();
 		return {
 			_offloaded: true,
 			path,

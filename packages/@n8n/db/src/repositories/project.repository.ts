@@ -33,6 +33,16 @@ export class ProjectRepository extends Repository<Project> {
 		});
 	}
 
+	/** IDs of every team project, ordered for a stable export. */
+	async findTeamProjectIds(): Promise<string[]> {
+		const rows = await this.find({
+			where: { type: 'team' },
+			select: { id: true },
+			order: { id: 'ASC' },
+		});
+		return rows.map(({ id }) => id);
+	}
+
 	async getAccessibleProjects(userId: string) {
 		return await this.find({
 			where: {

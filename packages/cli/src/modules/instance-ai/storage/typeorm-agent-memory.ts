@@ -1,4 +1,7 @@
 import {
+	type AgentDbMessage,
+	type AgentMessage,
+	type BuiltMemory,
 	type BuiltObservationLogStore,
 	type BuiltObservationLogTaskLockStore,
 	type MemoryDescriptor,
@@ -13,6 +16,7 @@ import {
 	type ObservationLogTaskLockHandle,
 	type JSONObject,
 	type JSONValue,
+	type Thread,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -20,10 +24,6 @@ import { isRecord } from '@n8n/utils/is-record';
 import {
 	SUB_AGENT_RESOURCE_PREFIX,
 	createSubAgentResourceIdPrefix,
-	type AgentDbMessage,
-	type AgentMessage,
-	type BuiltMemory,
-	type Thread,
 	type ThreadPatch,
 } from '@n8n/instance-ai';
 import { In, LessThan, Like } from '@n8n/typeorm';
@@ -365,7 +365,7 @@ export class TypeORMAgentMemory
 	/**
 	 * Delete every thread owned by `resourceId` (a user), the sub-agent threads
 	 * spawned under those threads, and all of their working-memory resources.
-	 * Downstream rows (messages, checkpoints, run snapshots, iteration logs,
+	 * Downstream rows (messages, checkpoints, event-log entries, iteration logs,
 	 * grants, pending confirmations, observations) cascade via their `threadId`
 	 * FK; resources have no FK to threads and are removed explicitly. Returns the
 	 * number of owner threads deleted.

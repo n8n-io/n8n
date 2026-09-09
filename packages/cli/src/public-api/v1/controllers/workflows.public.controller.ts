@@ -2,18 +2,26 @@ import {
 	ActivateWorkflowPublicDto,
 	CreatedWorkflowPublicDto,
 	CreateWorkflowPublicDto,
+	DeletedWorkflowPublicDto,
 	GetWorkflowQueryDto,
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
 	PublishWorkflowPublicDto,
 	TagIdsPublicDto,
 	TransferWorkflowPublicDto,
+	UpdatedWorkflowPublicDto,
+	UpdateWorkflowPublicDto,
+	UpdateWorkflowQueryDto,
 	WorkflowListPublicDto,
 	WorkflowPublicDto,
 	WorkflowPublishBlockedErrorPublicDto,
+	WorkflowPublishForbiddenErrorPublicDto,
 	WorkflowPublishPublicDto,
 	WorkflowTagsPublicDto,
 	WorkflowVersionHistoryListPublicDto,
+	WorkflowVersionPublicDto,
+	workflowIdParamSchema,
+	workflowVersionIdParamSchema,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -33,6 +41,7 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Deprecated,
 	Get,
 	Param,
@@ -43,12 +52,17 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import {
 	decodeCursor,
 	encodeNextCursor,
@@ -63,6 +77,16 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 const DEPRECATED_ALIAS_SINCE = new Date('2026-07-23T00:00:00Z');
+
+const UPDATE_CONFLICT_DESCRIPTION =
+	'Conflict, e.g. re-publication blocked by an open workflow review (then `reason` and ' +
+	'`workflowReviewRequestId` are present; the update itself is still saved as a draft) or a ' +
+	'webhook path conflict.';
+
+const UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION =
+	'The update would re-publish the workflow, but the API key lacks `workflow:activate` or the ' +
+	'caller lacks `workflow:publish` on the project. The update is still saved as a draft, named ' +
+	'by `versionId`, and the published version stays live.';
 
 const PUBLISH_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. publication blocked by an open workflow review (then `reason` and ' +
@@ -129,8 +153,7 @@ function toPublicListSharedWorkflow(sharedWorkflow: SharedWorkflow) {
 	};
 }
 
-/** Same, for the active version: the list query does not load its publish history. */
-function toPublicListActiveVersion(activeVersion: WorkflowHistory) {
+function toPublicActiveVersionWithoutHistory(activeVersion: WorkflowHistory) {
 	return {
 		versionId: activeVersion.versionId,
 		workflowId: activeVersion.workflowId,
@@ -143,6 +166,21 @@ function toPublicListActiveVersion(activeVersion: WorkflowHistory) {
 		autosaved: activeVersion.autosaved,
 		createdAt: activeVersion.createdAt.toISOString(),
 		updatedAt: activeVersion.updatedAt.toISOString(),
+	};
+}
+
+function toPublicWorkflowVersion(version: WorkflowHistory) {
+	return {
+		versionId: version.versionId,
+		workflowId: version.workflowId,
+		nodes: version.nodes,
+		connections: version.connections,
+		nodeGroups: version.nodeGroups,
+		authors: version.authors,
+		name: version.name,
+		description: version.description,
+		createdAt: version.createdAt.toISOString(),
+		updatedAt: version.updatedAt.toISOString(),
 	};
 }
 
@@ -159,21 +197,18 @@ function toPublicWorkflowPublishHistory(entry: WorkflowPublishHistory) {
 
 function toPublicActiveVersion(activeVersion: WorkflowHistory) {
 	return {
-		versionId: activeVersion.versionId,
-		workflowId: activeVersion.workflowId,
-		nodes: activeVersion.nodes,
-		connections: activeVersion.connections,
-		nodeGroups: activeVersion.nodeGroups,
-		authors: activeVersion.authors,
-		name: activeVersion.name,
-		description: activeVersion.description,
-		autosaved: activeVersion.autosaved,
-		createdAt: activeVersion.createdAt.toISOString(),
-		updatedAt: activeVersion.updatedAt.toISOString(),
+		...toPublicActiveVersionWithoutHistory(activeVersion),
 		workflowPublishHistory: activeVersion.workflowPublishHistory.map(
 			toPublicWorkflowPublishHistory,
 		),
 	};
+}
+
+/** Update only loads the publish history when it republished, so both shapes reach the client. */
+function toPublicUpdatedActiveVersion(activeVersion: WorkflowHistory) {
+	return activeVersion.workflowPublishHistory
+		? toPublicActiveVersion(activeVersion)
+		: toPublicActiveVersionWithoutHistory(activeVersion);
 }
 
 @PublicApiController('/workflows')
@@ -269,7 +304,7 @@ export class WorkflowsPublicController {
 				...(workflow.tags ? { tags: workflow.tags.map(toPublicTag) } : {}),
 				shared: workflow.shared.map(toPublicListSharedWorkflow),
 				activeVersion: workflow.activeVersion
-					? toPublicListActiveVersion(workflow.activeVersion)
+					? toPublicActiveVersionWithoutHistory(workflow.activeVersion)
 					: null,
 			})),
 			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
@@ -321,7 +356,7 @@ export class WorkflowsPublicController {
 	async getWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Query query: GetWorkflowQueryDto,
 	): Promise<WorkflowPublicDto> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
@@ -346,6 +381,95 @@ export class WorkflowsPublicController {
 		return this.toWorkflowPublicDto(workflow, { excludePinnedData: query.excludePinnedData });
 	}
 
+	@Put('/:workflowId')
+	@ApiKeyScope('workflow:update')
+	@ProjectScope('workflow:update')
+	@ApiSummary('Update a workflow')
+	@ApiDescription(
+		'Update a workflow. If the workflow is published, the updated version will be ' +
+			'automatically re-published unless `publishIfActive` is set to `false`. Because that ' +
+			're-publication puts a new version live, it additionally requires the `workflow:activate` ' +
+			'API key scope and the `workflow:publish` project permission. A caller without either can ' +
+			'still save: the new version is stored as a draft and the response is a `403` naming the ' +
+			'missing permission, leaving the published version live. Saving an unpublished workflow, ' +
+			'or saving with `publishIfActive=false`, only needs `workflow:update`.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, UpdatedWorkflowPublicDto)
+	@ApiErrorResponse(403, {
+		dto: WorkflowPublishForbiddenErrorPublicDto,
+		description: UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION,
+	})
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(422)
+	@ApiErrorResponse(409, {
+		dto: WorkflowPublishBlockedErrorPublicDto,
+		description: UPDATE_CONFLICT_DESCRIPTION,
+	})
+	async updateWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Body body: UpdateWorkflowPublicDto,
+		@Query query: UpdateWorkflowQueryDto,
+	): Promise<UpdatedWorkflowPublicDto> {
+		const { parentFolderId, shared: _shared, ...rest } = body;
+
+		// null moves the workflow to the project root, absent leaves the current folder untouched
+		const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
+
+		let updatedWorkflow: WorkflowEntity;
+		try {
+			// Credential tamper protection is enforced centrally in WorkflowService.update
+			updatedWorkflow = await this.workflowService.update(
+				req.user,
+				createWorkflowEntityFromPayload(rest),
+				workflowId,
+				{
+					parentFolderId: resolvedParentFolderId,
+					forceSave: true, // Skip version conflict check for public API
+					publicApi: true,
+					publishIfActive: query.publishIfActive,
+					// A save can publish, so the key's publish scope has to be enforced too
+					apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
+					source: 'api',
+				},
+			);
+		} catch (error) {
+			if (error instanceof FolderNotFoundError) throw new NotFoundError(error.message);
+			if (error instanceof ResponseError) throw error;
+			if (error instanceof PolicyViolationError) throw error;
+			if (error instanceof Error) throw new BadRequestError(error.message);
+			throw error;
+		}
+
+		return this.toUpdatedWorkflowPublicDto(updatedWorkflow);
+	}
+
+	@Delete('/:workflowId')
+	@ApiKeyScope('workflow:delete')
+	@ProjectScope('workflow:delete')
+	@ApiSummary('Delete a workflow')
+	@ApiDescription('Delete a workflow.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, DeletedWorkflowPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async deleteWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+	): Promise<DeletedWorkflowPublicDto> {
+		const workflow = await this.workflowService.deleteForPublicApi(req.user, workflowId);
+
+		if (!workflow) {
+			// the user cannot see this workflow, or it does not exist
+			throw new NotFoundError('Not Found');
+		}
+
+		return this.toDeletedWorkflowPublicDto(workflow);
+	}
+
 	@Post('/:workflowId/archive')
 	@ApiKeyScope('workflow:delete')
 	@ProjectScope('workflow:delete')
@@ -360,7 +484,7 @@ export class WorkflowsPublicController {
 	async archiveWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
 		const workflow = await this.workflowService.archiveForPublicApi(req.user, workflowId);
 
@@ -383,7 +507,7 @@ export class WorkflowsPublicController {
 	async unarchiveWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
 		const workflow = await this.workflowService.unarchiveForPublicApi(req.user, workflowId);
 
@@ -405,7 +529,7 @@ export class WorkflowsPublicController {
 	async transferWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: TransferWorkflowPublicDto,
 	): Promise<void> {
 		await this.enterpriseWorkflowService.transferWorkflow(
@@ -415,14 +539,11 @@ export class WorkflowsPublicController {
 		);
 	}
 
-	/**
-	 * Every public workflow field except `shared`. Publishing re-reads the workflow without that
-	 * relation, so reading it here would throw for those routes.
-	 */
-	private toWorkflowPublishPublicDto(
+	/** Every public workflow field except the relations each route loads differently. */
+	private toWorkflowFieldsPublicDto(
 		workflow: WorkflowEntity,
 		options: { excludePinnedData?: boolean } = {},
-	): WorkflowPublishPublicDto {
+	): Omit<WorkflowPublishPublicDto, 'activeVersion'> {
 		return {
 			id: workflow.id,
 			name: workflow.name,
@@ -444,7 +565,35 @@ export class WorkflowsPublicController {
 			meta: toPublicJson(workflow.meta),
 			...(options.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
 			...(workflow.tags ? { tags: workflow.tags.map(toPublicTag) } : {}),
+		};
+	}
+
+	private toWorkflowPublishPublicDto(
+		workflow: WorkflowEntity,
+		options: { excludePinnedData?: boolean } = {},
+	): WorkflowPublishPublicDto {
+		return {
+			...this.toWorkflowFieldsPublicDto(workflow, options),
 			activeVersion: workflow.activeVersion ? toPublicActiveVersion(workflow.activeVersion) : null,
+		};
+	}
+
+	private toUpdatedWorkflowPublicDto(workflow: WorkflowEntity): UpdatedWorkflowPublicDto {
+		return {
+			...this.toWorkflowFieldsPublicDto(workflow),
+			activeVersion: workflow.activeVersion
+				? toPublicUpdatedActiveVersion(workflow.activeVersion)
+				: null,
+		};
+	}
+
+	private toDeletedWorkflowPublicDto(workflow: WorkflowEntity): DeletedWorkflowPublicDto {
+		return {
+			...this.toWorkflowFieldsPublicDto(workflow),
+			shared: workflow.shared.map(toPublicSharedWorkflow),
+			...(workflow.activeVersion
+				? { activeVersion: toPublicActiveVersion(workflow.activeVersion) }
+				: {}),
 		};
 	}
 
@@ -474,7 +623,7 @@ export class WorkflowsPublicController {
 	async publishWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: PublishWorkflowPublicDto,
 	): Promise<WorkflowPublishPublicDto> {
 		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
@@ -500,7 +649,7 @@ export class WorkflowsPublicController {
 	async unpublishWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
 		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId, {
 			source: 'api',
@@ -528,7 +677,7 @@ export class WorkflowsPublicController {
 	async activateWorkflow(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: ActivateWorkflowPublicDto,
 	): Promise<WorkflowPublishPublicDto> {
 		return await this.publishWorkflow(req, res, workflowId, body);
@@ -546,7 +695,7 @@ export class WorkflowsPublicController {
 	async deactivateWorkflow(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
 		return await this.unpublishWorkflow(req, res, workflowId);
 	}
@@ -564,7 +713,7 @@ export class WorkflowsPublicController {
 	async getWorkflowHistory(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Query query: ListWorkflowHistoryQueryDto,
 	): Promise<WorkflowVersionHistoryListPublicDto> {
 		const { offset, limit } = resolveOffsetPagination(query);
@@ -599,6 +748,43 @@ export class WorkflowsPublicController {
 		}
 	}
 
+	@Get('/:workflowId/versions/:versionId')
+	@ApiKeyScope('workflow:read')
+	@ProjectScope('workflow:read')
+	@ApiSummary('Retrieve a workflow version')
+	@ApiDescription('Retrieve a single version of a workflow from its version history.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowVersionPublicDto)
+	@ApiErrorResponse(404)
+	async getWorkflowVersion(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Param('versionId', workflowVersionIdParamSchema) versionId: string,
+	): Promise<WorkflowVersionPublicDto> {
+		let version: WorkflowHistory;
+		try {
+			version = await this.workflowHistoryService.getVersion(req.user, workflowId, versionId, {
+				includePublishHistory: false,
+			});
+		} catch (error) {
+			if (error instanceof SharedWorkflowNotFoundError) {
+				throw new NotFoundError('Workflow not found');
+			}
+			if (error instanceof WorkflowHistoryVersionNotFoundError) {
+				throw new NotFoundError('Version not found');
+			}
+			throw error;
+		}
+
+		this.eventService.emit('user-retrieved-workflow-version', {
+			userId: req.user.id,
+			publicApi: true,
+		});
+
+		return toPublicWorkflowVersion(version);
+	}
+
 	@Get('/:workflowId/tags')
 	@ApiKeyScope('workflowTags:list')
 	@ProjectScope('workflow:read')
@@ -611,7 +797,7 @@ export class WorkflowsPublicController {
 	async getWorkflowTags(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowTagsPublicDto> {
 		this.assertWorkflowTagsEnabled();
 
@@ -639,7 +825,7 @@ export class WorkflowsPublicController {
 	async updateWorkflowTags(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: TagIdsPublicDto,
 	): Promise<WorkflowTagsPublicDto> {
 		this.assertWorkflowTagsEnabled();

@@ -295,6 +295,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'agent-completed':
 		case 'confirmation-request':
 		case 'tasks-update':
+		case 'setup-items':
 		case 'status': {
 			const { runState } = resolveTarget(state, event.runId);
 			if (runState) {

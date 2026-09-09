@@ -32,7 +32,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to read"
+								"description": "Path to the file to read, relative to the workspace root (absolute paths must be under it)"
 							},
 							"encoding": {
 								"type": "string",
@@ -95,7 +95,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to edit"
+								"description": "Path to the file to edit, relative to the workspace root (absolute paths must be under it)"
 							},
 							"replacements": {
 								"type": "array",
@@ -131,7 +131,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to write"
+								"description": "Path to the file to write, relative to the workspace root (absolute paths must be under it)"
 							},
 							"content": {
 								"type": "string",
@@ -377,33 +377,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013cd564d8fd33010bdf75744734e21a9a876956b572c020921b4200141d634996d4c1d3bd89376d92aff1db96db6493f602fd0e6e6f9f0bcf766a2312d48731294e41cce483846cb831c19936005fcab2248a0e784b03d43b282d2e4a420814c619dd3b04039af87af86e3e1281a8de3288a210499fb3bdc4c44713cc91f278b6cc1b7a67cfb61449f5e5f4fbe1610ee558210ac51de80ce49c7a87dd9cc6826cd907cfb1e826353094be88c8644d74a6d4d8e7ed6a433ea19736294cab5b6ba452f7555b3603327ed20195dc7710819660589cc12b2345af443a2d66f09f353be36d757a0aaa0922c2a312e0fe377deb8d8f73621989a7bf8c62138b20b999160491612f0d2e46873afb2be27eb998b191948401b16b840a970aa089a26e87ecd60409bc66f45155365b2f9f1f61f0959d7cbe961c3baebf7a4b7796c8c12b5a37604fcb91651fcae9c4eefde4f6e8a2ff4f899efccf216df7cbc811034963e6f69ecdc559891585ac924eea55adfe1f58164d5789d95f2fc9f4ae5d252c65d963b8695d4b33d4a0178239c522127c5f86715d6213d1536961da44d3b7f38a39f822bb42c51ad8d90001c437b1624ab142ae422f5ca341781288597052905cf1bdbff04cabce0074ee1b2408541babd750fd7b981b11fa7141c5fc84859c2525ece3fa767c1d2f45b766e81e62e85a60be9f49a30d5dfb684a93a707a77b5cf89a3b47a4ee8d0e82dfcee6e79e6da6ffee1dedf5bd45757cda182bb47d4a1765d1fac937e03f6bc92d697090000"
+			"1f8b0800000000000013cd564d8fda3010bdf32ba2398736b04b59f9d60f690f2d52d54bd596ca9a4d06e2c5b1537b02dba2fcf7ca81b084856d2f2de4e699b1e7bd377666684986455490f73827e9191df7326414d11af8674920a0e384b85d8358436133d22020d55865d4cf512daafe757fd41f26c3d12049061083cac2197e2e93c1e02d2935fafcfae3d5fdf5646568f2cece6f32880f32410cceea6040ef956734216d6a0d936110dfbec7e0d996d2117a6b40984aebadc9d38f8a4c4a1d63468c4afbd656b5e895292b966c17643c88e1cd288921c53427993a4256d6c86ec8ceef08b353be766fc840654e0539d472543c8d7ff40ef2436f1d83adb883ef550c9edc52a52459910301419a0c5d50509919b9c05ccec982006359e21295c63b4d50d751f8ea5e8f3605df8a29efb44d17c7cb7e24a4c993d1c386edbe3f90ddee636bb5ac3cb5a50feb4a268351f1f57652fda255f9e9cdb8b8faf2fe76395b7c80180c1661dfcaba852f3125b9728a49ce946ece08ba8058d7415fad03ef5daa4c394ab965171d702c95991f908a2018e1940e1969c6e77568423a3a6c2c8fa03685bcf7d6ec824b74ac5037461000f533b5f84f18d6d30d8ce8a874678154e206d1996170be93e6cc484434859739c1f1eb7d16485adb17fcc0ddcb73664c71747897cf0c28b5e6129e78386eda5c22cfee229e1661a12eedaf63e651e83c9750303f851aead34dda967fead1b6dc83704ae6769e3bcaaae3843d169d896bbfc9ffe5dc55ffc3c1eb60521a8feba76c8fc9b7ef8346a2dfa6b97a5b100b0000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "9998000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:44Z",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-04T16:24:00Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:44Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-04T16:24:00Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:44Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-04T16:24:00Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "11998000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:44Z",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-09-04T16:24:00Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a2a55d2498dd5ac3-VIE",
+			"cf-ray": "a35e578739bdc2fa-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Thu, 13 Aug 2026 05:36:45 GMT",
-			"request-id": "req_011CdzCvcBF7Mv4P1ps4ckaz",
+			"date": "Fri, 04 Sep 2026 16:24:00 GMT",
+			"request-id": "req_011Ceii5VaAP1tXGjUY3VVzk",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-36f47c02adf95b01a770276051513429-9fc7717bcbf20592-01",
+			"traceresponse": "00-c92fa8284e11b8a33b457a136bf52dfe-fbb18fadfeadaefd-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -438,7 +438,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01KmbbTNCDhYezVtTowGaHRD",
+							"id": "toolu_015mZGMuzewpRB7m3YKGvfkL",
 							"name": "workspace_write_file",
 							"input": {
 								"path": "/hello.txt",
@@ -455,7 +455,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01KmbbTNCDhYezVtTowGaHRD",
+							"tool_use_id": "toolu_015mZGMuzewpRB7m3YKGvfkL",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -470,7 +470,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to read"
+								"description": "Path to the file to read, relative to the workspace root (absolute paths must be under it)"
 							},
 							"encoding": {
 								"type": "string",
@@ -533,7 +533,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to edit"
+								"description": "Path to the file to edit, relative to the workspace root (absolute paths must be under it)"
 							},
 							"replacements": {
 								"type": "array",
@@ -569,7 +569,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to write"
+								"description": "Path to the file to write, relative to the workspace root (absolute paths must be under it)"
 							},
 							"content": {
 								"type": "string",
@@ -815,33 +815,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013c555b16edb3010ddfd15ec2d5de454326214e516a44bb7a01d9b82b988178b354daae4c9511ae8df0bda562c394eda25ae1641ef1defbd3b8a475a9363295614232e4845c6c0138d8c523c023fd40412462464fd37c84758794d162494161b4dd30acdb2999e4fe7d3593e9b17795e400646a71c71a1f2a2b8d4bf2fd7cb8f3fbf9aab16ababb67cf8d65c4076a00419046f1380319ac8e8926ce91d936390df7f6410d9d72a1046ef40bac6da1d14e95743aea411a889d1d8d8634defdeb8ba61c57e492e829c7dcacf3328b1ac489581908d776a1c92f77c20d42f71fddaa44075452b0a68d57cf53c7ecf16d521db65e01b1e42450691c2da94a4d8500009a9331a834e4d76771452e16a411e2438cf0ad7682cde5a82ae13427493096d777bd749756b7db93cbee74742362a9ada6da9433e55ba5bc7d4a6c0cd4b027443d9dab8c5818e8004c24bd63459c6d7ad6d4246d6b6c8d8d253d8ced867ef52574e2dfb4e7c79bf26b1f94348a7eef4cfc9ad08ae48dc194be2e6c37f355291b5fe8c5bbe11f786ab8daf5d5e710d7b6b2737163910ae8c5b887b1f96f11acea07be510f9fa6f67c8d7030ffb44fd783d5ac8888481f1d10004725a71131cfcf318ecde700e1e0caed9ac1b6fe0fe4279deb4210769cd1ff96b6c01a2060000"
+			"1f8b0800000000000013b554c172d33010bde72bc49e9d62871a26ba75caf0031c29a36ead25d658968cb44e031dff3be32426b693142ed5c5a3f79eb46f77b5a62d3996a2a61871432a32065e686494e205f857432061424232ec41be40ed35599050586c352d4b3455bbbc5de6cb55bacab334cd2001a3fb3be246a559764fc6e4c5c7fc0ef3dfd5fddda7edd7b5af219945820482b73d80319ac8e8fab085774c8e417efb9e4064dfa84018bd03e95a6b8f50a49f2db98226a0264663e380b5837be39a9615fb8a5c04b95adf7e48a0c0a22455044236dea9a9241df840a8af71c3d93e023525d514d0aabc3ed79fd8ac9cb35d02bee531942510296c4d418a0d0590d0574663d07d91dd0f0a7de26a431e2438cf0ab7682c3e5982ae13dd6241875e1feba89eac2faacb1dbf20d9c7d0b43b243ae6fb3c8fe79876bd70ff91009d18af9383c6b8cd2ca4801e846b2e3559c6d75dee2513970764eaeeafece8f1b37734f329aed6eacd5cbc135f8c25b17f39a405b2787c5f92b5fe8677fc289e0d978315f1009103616ddc463cfb50c507b881d7faeb9b7fb5d73723c7a78b86b9bf98f68484519a93c904725a711b1cfcf77c766f38a0f3895a77d71a7ffae79d976fccc1f9d3f903e33b8cf453050000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "9998000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:46Z",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-04T16:24:01Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:46Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-04T16:24:01Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:46Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-04T16:24:01Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "11998000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:46Z",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-09-04T16:24:01Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a2a55d2c5d515ac3-VIE",
+			"cf-ray": "a35e57901943c2fa-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Thu, 13 Aug 2026 05:36:46 GMT",
-			"request-id": "req_011CdzCvhVUVPFCNU2Y77TZQ",
+			"date": "Fri, 04 Sep 2026 16:24:01 GMT",
+			"request-id": "req_011Ceii5bc48bofgyMzQdAW6",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-4bf9c5d36d62537b31ce24b873e2d455-48916de6fcde9c36-01",
+			"traceresponse": "00-fffb78370d81b133bf9802bea3839cdd-7a01d90177eb7d92-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"

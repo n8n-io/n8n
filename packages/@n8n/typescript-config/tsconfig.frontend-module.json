@@ -38,6 +38,8 @@
 			"@n8n/frontend-constants/*": ["../../frontend/@n8n/frontend-constants/src/*"],
 			"@n8n/frontend-module-sdk": ["../../frontend/@n8n/frontend-module-sdk/src/index.ts"],
 			"@n8n/frontend-module-sdk/*": ["../../frontend/@n8n/frontend-module-sdk/src/*"],
+			"@n8n/frontend-test-utils": ["../../frontend/@n8n/frontend-test-utils/src/index.ts"],
+			"@n8n/frontend-test-utils/*": ["../../frontend/@n8n/frontend-test-utils/src/*"],
 			"@n8n/frontend-utils/*": ["../../frontend/@n8n/frontend-utils/src/*"],
 			"@n8n/i18n": ["../../frontend/@n8n/i18n/src/index.ts"],
 			"@n8n/i18n/*": ["../../frontend/@n8n/i18n/src/*"],

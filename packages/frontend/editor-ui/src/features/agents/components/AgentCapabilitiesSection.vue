@@ -17,6 +17,8 @@ import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY, AGENT_TASK_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { isWarningIssue } from '../utils/validationIssues';
+import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
@@ -98,10 +100,7 @@ const selectedSubAgentIds = computed(() =>
 const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
 const availableSubAgents = computed(() =>
 	(projectAgents.value ?? []).filter(
-		(agent) =>
-			agent.id !== props.agentId &&
-			Boolean(agent.activeVersionId) &&
-			!selectedSubAgentIdSet.value.has(agent.id),
+		(agent) => agent.id !== props.agentId && !selectedSubAgentIdSet.value.has(agent.id),
 	),
 );
 const selectedSubAgents = computed(() =>
@@ -187,6 +186,7 @@ const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.validation.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
 	no_supported_trigger:
 		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
+	not_published: 'agents.builder.validation.issue.tool.workflow.notPublished' as BaseTextKey,
 };
 
 function issueMessage(issue: AgentConfigValidationIssue): string {
@@ -198,7 +198,9 @@ function issueMessage(issue: AgentConfigValidationIssue): string {
 			: undefined) ??
 		SPECIFIC_ISSUE_KEYS[`${kind}.${issue.code}`] ??
 		GENERIC_ISSUE_KEYS[issue.code];
-	return i18n.baseText(key, { interpolate: { id: id ?? '' } });
+	return i18n.baseText(key, {
+		interpolate: { id: id ?? '', trigger: workflowToolTriggerLabel() },
+	});
 }
 
 function issueMessages(issues: AgentConfigValidationIssue[]): string[] {
@@ -213,9 +215,11 @@ function issuesFor(kind: AgentConfigValidationIssue['capability']['kind']) {
 function groupIssueMessages<TKey>(
 	kind: AgentConfigValidationIssue['capability']['kind'],
 	keyOf: (issue: AgentConfigValidationIssue) => TKey | undefined,
+	include: (issue: AgentConfigValidationIssue) => boolean = () => true,
 ): Map<TKey, string[]> {
 	const byKey = new Map<TKey, AgentConfigValidationIssue[]>();
 	for (const issue of issuesFor(kind)) {
+		if (!include(issue)) continue;
 		const key = keyOf(issue);
 		if (key === undefined) continue;
 		const existing = byKey.get(key);
@@ -225,8 +229,17 @@ function groupIssueMessages<TKey>(
 	return new Map([...byKey].map(([key, issues]) => [key, issueMessages(issues)]));
 }
 
+// Warnings (an unpublished workflow) render orange and leave the preview usable;
+// everything else is a red error.
 const toolIssueMessages = computed(() =>
-	groupIssueMessages('tool', (issue) => issue.capability.index),
+	groupIssueMessages(
+		'tool',
+		(issue) => issue.capability.index,
+		(issue) => !isWarningIssue(issue),
+	),
+);
+const toolWarningMessages = computed(() =>
+	groupIssueMessages('tool', (issue) => issue.capability.index, isWarningIssue),
 );
 const mcpServerIssueMessages = computed(() =>
 	groupIssueMessages('mcpServer', (issue) => issue.capability.id),
@@ -412,6 +425,8 @@ const toolRows = computed<ToolRow[]>(() => {
 		capabilityTools.value.map((entry) => {
 			const nodeType = toolNodeType(entry);
 			const reasons = toolEntryReasons(entry);
+			const warningReasons =
+				entry.kind === 'tool' ? (toolWarningMessages.value.get(entry.index) ?? []) : [];
 			return {
 				index: entry.index,
 				label: toolLabel(entry),
@@ -422,6 +437,8 @@ const toolRows = computed<ToolRow[]>(() => {
 				openTarget: entry.openTarget,
 				invalid: reasons.length > 0,
 				invalidReasons: reasons,
+				warning: warningReasons.length > 0,
+				warningReasons,
 			};
 		}),
 	);
@@ -525,6 +542,7 @@ function openExistingSubAgentModal(subAgent: {
 				id: subAgent.id,
 				name: subAgent.name,
 			},
+			agentHref: `/projects/${encodeURIComponent(props.projectId)}/agents/${encodeURIComponent(subAgent.id)}`,
 			useWhen: subAgent.useWhen,
 			invalidReasons: subAgent.invalidReasons,
 			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
@@ -568,6 +586,8 @@ function openExistingSubAgentModal(subAgent: {
 								<AgentChipButton
 									:invalid="tool.invalid"
 									:invalid-reasons="tool.invalidReasons"
+									:warning="tool.warning"
+									:warning-reasons="tool.warningReasons"
 									:disabled="props.disabled"
 									:class="$style.capabilityChip"
 									data-testid="agent-capabilities-tool-row"
@@ -612,6 +632,8 @@ function openExistingSubAgentModal(subAgent: {
 							v-else-if="tool.nodeType"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:warning="tool.warning"
+							:warning-reasons="tool.warningReasons"
 							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
@@ -627,6 +649,8 @@ function openExistingSubAgentModal(subAgent: {
 							:icon="tool.fallbackIcon"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:warning="tool.warning"
+							:warning-reasons="tool.warningReasons"
 							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"

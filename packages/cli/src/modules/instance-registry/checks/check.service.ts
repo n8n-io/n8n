@@ -9,14 +9,8 @@ import type {
 	ClusterStateDiff,
 	IClusterCheck,
 } from '@n8n/decorators';
-import {
-	ClusterCheckMetadata,
-	OnLeaderStepdown,
-	OnLeaderTakeover,
-	OnShutdown,
-} from '@n8n/decorators';
+import { ClusterCheckMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 
 import type { EventNamesAuditType } from '@/eventbus/event-message-classes';
 import type { EventPayloadAudit } from '@/eventbus/event-message-classes/event-message-audit';
@@ -24,28 +18,21 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { Push } from '@/push';
 
 import { InstanceRegistryService } from '../instance-registry.service';
-import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 
 /**
- * Leader-only service that reconciles cluster state and runs health checks
- * on a fixed interval. Discovers checks via `ClusterCheckMetadata`, fans them
- * out with error isolation, and forwards each result into logs, the audit
- * event bus, and the push channel.
+ * Reconciles cluster state and runs health checks. Discovers checks via
+ * `ClusterCheckMetadata`, fans them out with error isolation, and forwards
+ * each result into logs, the audit event bus, and the push channel. The
+ * periodic cadence is the `instance-registry-reconciliation` system task.
  */
 @Service()
 export class CheckService {
-	private reconcileController?: AbortController;
-	private reconcileTimer: NodeJS.Timeout | undefined;
-
-	private isShuttingDown = false;
-
 	private readonly checks: IClusterCheck[] = [];
 
 	private readonly logger: Logger;
 
 	constructor(
 		logger: Logger,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly instanceRegistryService: InstanceRegistryService,
 		private readonly clusterCheckMetadata: ClusterCheckMetadata,
 		private readonly messageEventBus: MessageEventBus,
@@ -56,41 +43,6 @@ export class CheckService {
 
 	init() {
 		this.discoverChecks();
-		if (this.instanceSettings.isLeader) this.startReconciliation();
-	}
-
-	@OnLeaderTakeover()
-	startReconciliation() {
-		if (this.isShuttingDown || this.reconcileController) return;
-		this.reconcileController = new AbortController();
-		const { signal } = this.reconcileController;
-
-		void this.runReconcileSafely(signal);
-		this.scheduleNextReconcile(signal);
-
-		this.logger.debug('Cluster check reconciliation scheduled');
-	}
-
-	@OnLeaderStepdown()
-	stopReconciliation() {
-		this.reconcileController?.abort();
-		this.reconcileController = undefined;
-		clearTimeout(this.reconcileTimer);
-		this.reconcileTimer = undefined;
-	}
-
-	@OnShutdown()
-	shutdown() {
-		this.isShuttingDown = true;
-		this.stopReconciliation();
-	}
-
-	private scheduleNextReconcile(signal: AbortSignal) {
-		if (signal.aborted) return;
-		this.reconcileTimer = setTimeout(async () => {
-			await this.runReconcileSafely(signal);
-			this.scheduleNextReconcile(signal);
-		}, REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
 	}
 
 	private discoverChecks() {
@@ -110,14 +62,6 @@ export class CheckService {
 		this.logger.info(`Discovered ${this.checks.length} cluster checks`, {
 			names: this.checks.map((c) => c.checkDescription.name),
 		});
-	}
-
-	private async runReconcileSafely(signal: AbortSignal) {
-		try {
-			await this.reconcile(signal);
-		} catch (error) {
-			this.logger.warn('Reconciliation cycle failed', { error });
-		}
 	}
 
 	/**
@@ -190,7 +134,13 @@ export class CheckService {
 		return { currentState, results };
 	}
 
-	private async reconcile(signal: AbortSignal) {
+	/**
+	 * One reconciliation cycle: run every check, dispatch the results, and
+	 * persist the observed cluster state as the baseline for the next diff.
+	 * Runs on the leader only, which keeps `lastKnownState` single-writer.
+	 * Stops between phases once `signal` aborts.
+	 */
+	async reconcile(signal: AbortSignal) {
 		if (this.checks.length === 0) return;
 
 		if (signal.aborted) return;

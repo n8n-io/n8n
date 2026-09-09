@@ -23,8 +23,11 @@ function selectorMatches(selector: PolicySelector, typeName: string): boolean {
  * Floor attachments first, normal attachments after; each partition ordered by `priority`
  * ascending. Same-priority collisions within one partition are a write-time invariant
  * (DB unique index) — this trusts that invariant rather than re-validating or tie-breaking it.
+ *
+ * Exported so callers that display or compose the effective rule set (not just evaluate one
+ * type) use the same ordering as this evaluator, instead of a second implementation drifting.
  */
-function orderedAttachments(attachments: readonly PolicyAttachment[]): PolicyAttachment[] {
+export function orderedAttachments(attachments: readonly PolicyAttachment[]): PolicyAttachment[] {
 	const byPriority = (a: PolicyAttachment, b: PolicyAttachment) => a.priority - b.priority;
 
 	const floor = attachments.filter((a) => a.isFloor).sort(byPriority);

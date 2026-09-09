@@ -19,6 +19,7 @@ import {
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import {
+	appendAttributionToForm,
 	formDescription,
 	formFields,
 	formFieldsDynamic,
@@ -259,6 +260,11 @@ const completionProperties = updateDisplayOptions(
 			default: {},
 			options: [
 				{ ...formTitle, required: false, displayName: 'Completion Page Title' },
+				{
+					...appendAttributionToForm,
+					description:
+						'Whether to include the link “Form automated with n8n” at the bottom of the page. Defaults to the Form Trigger’s setting.',
+				},
 				{
 					displayName: 'Custom Form Styling',
 					name: 'customCss',

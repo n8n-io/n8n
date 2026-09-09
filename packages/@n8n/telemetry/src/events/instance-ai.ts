@@ -34,6 +34,8 @@ const setupSnapshotProps = {
 
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
+// Experiment cleanup: remove with openWorkflowInAssistant.
+const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
 
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CLICKED_AI_CREDIT_BALANCE: {
@@ -59,6 +61,49 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			variant: freeNudgeTreatmentVariant,
 			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/105_instance_ai_free_nudge': freeNudgeTreatmentVariant,
+		}),
+	},
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	OPEN_BY_DEFAULT_NOTIFICATION_SHOWN: {
+		name: 'Open in assistant notification shown',
+		description:
+			'The open-by-default experiment notification rendered after a workflow list card auto-opened in the AI Assistant.',
+		properties: z.object({
+			workflow_id: z.string().nullable(),
+			variant: openWorkflowInAssistantVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
+		}),
+	},
+	OPEN_BY_DEFAULT_NOTIFICATION_ACTION: {
+		name: 'Open in assistant notification actioned',
+		description: 'The user acted on the open-by-default experiment notification.',
+		properties: z.object({
+			method: z.enum(['got_it', 'never_show_again', 'close', 'settings_link']),
+			variant: openWorkflowInAssistantVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
+		}),
+	},
+	DEFAULT_EDITOR_PREFERENCE_CHANGED: {
+		name: 'Default editor preference changed',
+		description: 'The user saved the default-editor preference on the AI Assistant settings page.',
+		properties: z.object({
+			value: z.enum(['assistant', 'manual']),
+			variant: openWorkflowInAssistantVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
+		}),
+	},
+	MANUAL_EDITOR_OPENED: {
+		name: 'Manual editor opened from assistant',
+		description: 'The user clicked the Manual Editor button on a workflow artifact tab.',
+		properties: z.object({
+			workflow_id: z.string(),
+			thread_id: z.string().optional(),
+			variant: openWorkflowInAssistantVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
 	USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON: {
@@ -271,5 +316,53 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A self-hosted instance reached a complete AI Assistant setup for the first time: model configured, sandbox configured, and web search decided (configured or explicitly disabled) — the same predicate that unlocks the assistant UI. Fires at most once per instance, guarded by a persisted settings key, regardless of how the last piece was set: emitted from the settings save path, with a boot-time check so an env-var finish is also counted. No "User" prefix because the last piece can land via env vars with no acting user.',
 		properties: z.object({ ...setupSnapshotProps }),
+	},
+	USER_ADDED_NODES_TO_CHAT: {
+		name: 'User added nodes to chat',
+		description:
+			'The user attached one or more canvas nodes as context to the Instance AI chat. Fires once per add action, after the attachment is built — so node_count reflects the nodes actually attached (unresolved ids dropped, capped at the per-set maximum), not the raw selection.',
+		properties: z.object({
+			source: z
+				.enum(['node_toolbar', 'selection_toolbar', 'context_menu', 'group_title_bar', 'keyboard'])
+				.describe('Which affordance triggered the add'),
+			node_count: z.number().describe('Number of nodes actually attached in this add action'),
+		}),
+	},
+	USER_SENT_CHAT_MESSAGE_WITH_NODES: {
+		name: 'User sent chat message with nodes',
+		description:
+			'The user sent an Instance AI chat message that carried node context. Fires only when the submitted message includes at least one node attachment; node_count is the total nodes across every attached set in the message.',
+		properties: z.object({
+			node_count: z.number().describe('Total nodes attached across the sent message'),
+		}),
+	},
+	BUILDER_LISTED_WORKFLOWS: {
+		name: 'Builder listed workflows',
+		description:
+			'Instance AI called workflows(action="list"). Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string().optional(),
+			folder_exploration_enabled: z
+				.boolean()
+				.describe('Whether the run had the folder-exploration flag on'),
+			folder_scope: z
+				.enum(['none', 'path', 'id'])
+				.describe('How the caller addressed a folder, if at all'),
+			recursive: z.boolean().optional().describe('Only when a folder was addressed'),
+			folder_resolution: z
+				.enum(['resolved', 'not_found', 'ambiguous', 'unsupported', 'scope_too_wide'])
+				.optional()
+				.describe('Only when a folder was addressed'),
+			candidate_count: z
+				.number()
+				.int()
+				.optional()
+				.describe('Folders offered back on an unresolved request'),
+			scope: z.enum(['project', 'instance']),
+			has_query: z.boolean().describe('Whether a name filter was also passed'),
+			result_count: z.number().int().describe('Rows returned on this page'),
+			total: z.number().int().describe('Rows matching every filter, ignoring limit'),
+		}),
 	},
 });
