@@ -60,7 +60,7 @@ import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
-import type { FetchFn } from '../model/model-factory';
+import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
@@ -875,6 +875,7 @@ export class AgentRuntime {
 				effectiveInstructions,
 				instructionProviderOptions,
 				volatileInstructions,
+				supportsSplitSystemMessages(this.config.model),
 			);
 			// Runtime breakpoints (conversation history, static tools) are per-call
 			// only — never persisted back to the message list or tool set.

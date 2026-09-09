@@ -12,11 +12,11 @@ import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 
-const createRunMock = vi.hoisted(() => vi.fn());
+const batchIngestRunsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('langsmith', () => ({
 	Client: class {
-		createRun = createRunMock;
+		batchIngestRuns = batchIngestRunsMock;
 	},
 }));
 
@@ -180,6 +180,20 @@ function setup(
 	return { service, agentExecutionService, threadRepository };
 }
 
+function setupSession(execution: AgentExecution) {
+	const result = setup();
+	result.agentExecutionService.getThreadDetail.mockResolvedValue({
+		thread: makeThread(),
+		executions: [execution],
+	});
+	result.threadRepository.findByParentThreadId.mockResolvedValue([]);
+	return result;
+}
+
+function submittedRuns() {
+	return batchIngestRunsMock.mock.calls.flatMap(([{ runCreates }]) => runCreates ?? []);
+}
+
 describe('AgentSessionLangSmithExportService', () => {
 	const input = {
 		projectId: 'project-1',
@@ -189,7 +203,7 @@ describe('AgentSessionLangSmithExportService', () => {
 	};
 
 	beforeEach(() => {
-		createRunMock.mockReset();
+		batchIngestRunsMock.mockReset();
 	});
 
 	it('exports a complete redacted session tree with stable snapshot IDs', async () => {
@@ -232,28 +246,10 @@ describe('AgentSessionLangSmithExportService', () => {
 			threadId === 'parent-thread' ? [childThread] : [],
 		);
 
-		let releaseLastRun = () => {};
-		let blockLastRun = true;
-		const lastRunBlocked = new Promise<void>((resolve) => {
-			releaseLastRun = resolve;
-		});
-		createRunMock.mockImplementation(async (run: { outputs?: Record<string, unknown> }) => {
-			if (blockLastRun && run.outputs?.text === 'Child response') {
-				await lastRunBlocked;
-			}
-		});
+		const firstResult = await service.exportSession(input);
+		const firstRuns = submittedRuns();
 
-		let resolved = false;
-		const firstExport = service.exportSession(input).then((result) => {
-			resolved = true;
-			return result;
-		});
-		await vi.waitFor(() => expect(createRunMock).toHaveBeenCalledTimes(10));
-		expect(resolved).toBe(false);
-		releaseLastRun();
-		const firstResult = await firstExport;
-		const firstRuns = createRunMock.mock.calls.map(([run]) => run);
-
+		expect(batchIngestRunsMock).toHaveBeenCalledTimes(1);
 		expect(firstRuns.map((run) => run.name)).toEqual([
 			'Agent session: Parent Agent',
 			'Agent turn',
@@ -286,11 +282,12 @@ describe('AgentSessionLangSmithExportService', () => {
 			steps: [{ toolName: 'lookup' }],
 		});
 		expect(firstRuns[7].parent_run_id).toBe(firstRuns[6].id);
+		expect(firstRuns.every((run) => run.session_name === 'n8n-user-agents-debug')).toBe(true);
+		expect(firstRuns.every((run) => !('project_name' in run))).toBe(true);
 
-		blockLastRun = false;
-		createRunMock.mockClear();
+		batchIngestRunsMock.mockClear();
 		const secondResult = await service.exportSession(input);
-		const secondRuns = createRunMock.mock.calls.map(([run]) => run);
+		const secondRuns = submittedRuns();
 		expect(secondResult.traceId).toBe(firstResult.traceId);
 		expect(secondRuns.map((run) => run.id)).toEqual(firstRuns.map((run) => run.id));
 
@@ -304,6 +301,165 @@ describe('AgentSessionLangSmithExportService', () => {
 		);
 		const changedResult = await service.exportSession(input);
 		expect(changedResult.traceId).not.toBe(firstResult.traceId);
+	});
+
+	it('sends 300 runs in three ordered batches', async () => {
+		const timeline = Array.from({ length: 298 }, (_, index) => ({
+			type: 'text' as const,
+			content: `response-${index}`,
+			timestamp: index + 1,
+			endTime: index + 1,
+		}));
+		const { service } = setupSession(makeExecution({ timeline }));
+
+		await service.exportSession(input);
+
+		const batches = batchIngestRunsMock.mock.calls.map(([{ runCreates }]) => runCreates ?? []);
+		const runs = batches.flat();
+		expect(batches.map((batch) => batch.length)).toEqual([100, 100, 100]);
+		expect(runs[99].outputs.text).toBe('response-97');
+		expect(runs[100].outputs.text).toBe('response-98');
+		expect(runs.at(-1)?.outputs.text).toBe('response-297');
+	});
+
+	it('keeps each multi-run batch below five megabytes', async () => {
+		// NUL uses six bytes in JSON, so this crosses the byte limit without a slow PII scan.
+		const output = '\0'.repeat(40_000);
+		const timeline = Array.from({ length: 22 }, (_, index) => ({
+			type: 'tool-call' as const,
+			kind: 'tool' as const,
+			name: `large-output-${index}`,
+			toolCallId: `tool-${index}`,
+			input: {},
+			output: { result: output },
+			startTime: index + 1,
+			endTime: index + 1,
+			success: true,
+		}));
+		const { service } = setupSession(makeExecution({ timeline }));
+
+		await service.exportSession(input);
+
+		const batches = batchIngestRunsMock.mock.calls.map(([{ runCreates }]) => runCreates ?? []);
+		expect(batches).toHaveLength(2);
+		for (const batch of batches) {
+			expect(Buffer.byteLength(JSON.stringify({ post: batch, patch: [] }))).toBeLessThanOrEqual(
+				5 * 1024 * 1024,
+			);
+		}
+		expect(batches.flat()).toHaveLength(24);
+	});
+
+	it('rejects a run larger than five megabytes before submission', async () => {
+		// NUL uses six bytes in JSON, which keeps the source fixture compact.
+		const metadataValue = '\0'.repeat(875_000);
+		const { service } = setupSession(
+			makeExecution({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'node',
+						name: 'large-metadata',
+						toolCallId: 'large-metadata',
+						input: {},
+						output: {},
+						startTime: 1,
+						endTime: 2,
+						success: true,
+						nodeParameters: { note: metadataValue },
+					},
+				],
+			}),
+		);
+
+		await expect(service.exportSession(input)).rejects.toMatchObject({
+			message: "Session couldn't be sent to LangSmith. Try again.",
+			httpStatusCode: 503,
+		});
+		expect(batchIngestRunsMock).not.toHaveBeenCalled();
+	});
+
+	it('truncates large run fields without truncating metadata', async () => {
+		const largeValue = '\0'.repeat(60_000);
+		const metadataValue = '\0'.repeat(60_000);
+		const { service } = setupSession(
+			makeExecution({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'node',
+						name: 'large-output',
+						toolCallId: 'large-output',
+						input: { query: largeValue },
+						output: { message: largeValue },
+						startTime: 1,
+						endTime: 2,
+						success: false,
+						nodeParameters: { note: metadataValue },
+					},
+				],
+			}),
+		);
+
+		await service.exportSession(input);
+
+		const toolRun = submittedRuns().find(({ name }) => name === 'large-output');
+		const truncated = `${largeValue.slice(0, 50_000)}… [truncated 10000 chars]`;
+		expect(toolRun).toMatchObject({
+			inputs: { query: truncated },
+			outputs: { message: truncated },
+			error: truncated,
+			extra: { metadata: { nodeParameters: { note: metadataValue } } },
+		});
+	});
+
+	it('redacts run fields before applying their size limit', async () => {
+		const credential = `${'\0'.repeat(49_985)} sk-ant-${'a'.repeat(20)}`;
+		const { service } = setupSession(
+			makeExecution({
+				userMessage: credential,
+				error: credential,
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'credential-output',
+						toolCallId: 'credential-output',
+						input: { value: credential },
+						output: { message: credential },
+						startTime: 1,
+						endTime: 2,
+						success: false,
+					},
+				],
+			}),
+		);
+
+		await service.exportSession(input);
+
+		const exportedRuns = JSON.stringify(submittedRuns());
+		expect(exportedRuns).not.toContain('sk-ant-');
+		expect(exportedRuns).not.toContain('[truncated');
+		expect(exportedRuns.match(/\[REDACTED\]/g)).toHaveLength(5);
+	});
+
+	it('stops waiting for a stalled batch after 60 seconds', async () => {
+		vi.useFakeTimers();
+		try {
+			batchIngestRunsMock.mockImplementation(async () => await new Promise(() => {}));
+			const { service } = setupSession(makeExecution({ timeline: [] }));
+
+			const exportPromise = service.exportSession(input);
+			await vi.waitFor(() => expect(batchIngestRunsMock).toHaveBeenCalledOnce());
+			const rejection = expect(exportPromise).rejects.toMatchObject({
+				message: "Session couldn't be sent to LangSmith. Try again.",
+				httpStatusCode: 503,
+			});
+			await vi.advanceTimersByTimeAsync(60_000);
+			await rejection;
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('exports HITL response timeline events', async () => {
@@ -327,9 +483,7 @@ describe('AgentSessionLangSmithExportService', () => {
 
 		await service.exportSession(input);
 
-		const hitlRun = createRunMock.mock.calls
-			.map(([run]) => run)
-			.find(({ name }) => name === 'HITL response');
+		const hitlRun = submittedRuns().find(({ name }) => name === 'HITL response');
 		expect(hitlRun).toMatchObject({
 			inputs: { toolCallId: 'tool-approval' },
 			outputs: { approved: false, reason: 'Needs changes' },
@@ -343,14 +497,14 @@ describe('AgentSessionLangSmithExportService', () => {
 			'LangSmith debug export is not enabled',
 		);
 		expect(agentExecutionService.getThreadDetail).not.toHaveBeenCalled();
-		expect(createRunMock).not.toHaveBeenCalled();
+		expect(batchIngestRunsMock).not.toHaveBeenCalled();
 	});
 
 	it('rejects inaccessible sessions without submitting a run', async () => {
 		const { service } = setup();
 
 		await expect(service.exportSession(input)).rejects.toThrow('Thread "parent-thread" not found');
-		expect(createRunMock).not.toHaveBeenCalled();
+		expect(batchIngestRunsMock).not.toHaveBeenCalled();
 	});
 
 	it('rejects when a child session is still running', async () => {
@@ -369,7 +523,7 @@ describe('AgentSessionLangSmithExportService', () => {
 			threadId === 'parent-thread' ? [childThread] : [],
 		);
 		await expect(child.service.exportSession(input)).rejects.toThrow('Session is still running');
-		expect(createRunMock).not.toHaveBeenCalled();
+		expect(batchIngestRunsMock).not.toHaveBeenCalled();
 	});
 
 	it('rejects when blob-stored execution data is unavailable', async () => {
@@ -384,7 +538,7 @@ describe('AgentSessionLangSmithExportService', () => {
 				"Session couldn't be exported because some execution data is unavailable. Try again.",
 			httpStatusCode: 503,
 		});
-		expect(createRunMock).not.toHaveBeenCalled();
+		expect(batchIngestRunsMock).not.toHaveBeenCalled();
 	});
 
 	it('rejects cyclic child links without submitting a run', async () => {
@@ -410,7 +564,7 @@ describe('AgentSessionLangSmithExportService', () => {
 		await expect(service.exportSession(input)).rejects.toThrow(
 			'Agent session contains a cyclic child link',
 		);
-		expect(createRunMock).not.toHaveBeenCalled();
+		expect(batchIngestRunsMock).not.toHaveBeenCalled();
 	});
 
 	it('returns a retryable error when LangSmith submission fails', async () => {
@@ -420,7 +574,7 @@ describe('AgentSessionLangSmithExportService', () => {
 			executions: [makeExecution({ timeline: [] })],
 		});
 		threadRepository.findByParentThreadId.mockResolvedValue([]);
-		createRunMock.mockRejectedValueOnce(new Error('upstream unavailable'));
+		batchIngestRunsMock.mockRejectedValueOnce(new Error('upstream unavailable'));
 
 		await expect(service.exportSession(input)).rejects.toThrow(
 			"Session couldn't be sent to LangSmith. Try again.",

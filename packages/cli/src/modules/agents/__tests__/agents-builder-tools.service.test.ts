@@ -6,9 +6,9 @@ import {
 	type CredentialProvider,
 	type SerializableAgentState,
 	type StreamChunk,
-	zodToJsonSchema,
 } from '@n8n/agents';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	type AgentJsonConfig,
@@ -2378,7 +2378,7 @@ describe('AgentsBuilderToolsService', () => {
 				sessionId: 'session-1',
 				executionId: 'execution-1',
 				suspensions: [{ runId: 'run-1', toolCallId: 'tool-call-1', toolName: 'schedule_record' }],
-				previewPath: '/projects/project-1/agents/agent-1/preview',
+				previewPath: '/projects/project-1/agents/agent-1?openPreview=true',
 			});
 		});
 	});

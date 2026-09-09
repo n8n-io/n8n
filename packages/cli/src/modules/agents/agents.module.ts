@@ -190,6 +190,11 @@ export class AgentsModule implements ModuleInterface {
 		}
 	}
 
+	async systemTasks() {
+		const { AgentCheckpointPruningTask } = await import('./agent-checkpoint-pruning.task.js');
+		return [AgentCheckpointPruningTask];
+	}
+
 	@OnShutdown()
 	async shutdown() {
 		if (this.interruptedExecutionSweepTimer) {

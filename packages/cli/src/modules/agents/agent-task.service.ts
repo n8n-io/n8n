@@ -23,6 +23,7 @@ import {
 } from './agent-modification-telemetry.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentTaskJobRegistrar } from './scheduling/agent-task-job-registrar';
+import { knownTaskTimezone } from './scheduling/task-timezone';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
@@ -777,22 +778,10 @@ export class AgentTaskService {
 		}
 	}
 
-	/**
-	 * Timezone a task's cron is evaluated in. Null means "instance timezone" —
-	 * the only option before tasks carried their own zone. An unresolvable zone
-	 * falls back to the instance timezone rather than dropping the task, since
-	 * `CronTime` would throw and take the agent's whole reconcile with it.
-	 */
 	private resolveTaskTimezone(taskTimezone: string | null | undefined, taskId: string): string {
-		if (!taskTimezone) return this.globalConfig.generic.timezone;
-		if (!isValidTimeZone(taskTimezone)) {
-			this.logger.warn('[AgentTaskService] Task has unknown timezone, using instance timezone', {
-				taskId,
-				timezone: taskTimezone,
-			});
-			return this.globalConfig.generic.timezone;
-		}
-		return taskTimezone;
+		return (
+			knownTaskTimezone(taskTimezone, taskId, this.logger) ?? this.globalConfig.generic.timezone
+		);
 	}
 
 	private toDto(task: AgentTask): AgentTaskDto {
