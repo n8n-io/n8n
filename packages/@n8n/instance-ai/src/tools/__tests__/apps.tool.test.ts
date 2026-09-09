@@ -189,6 +189,43 @@ describe('apps tool', () => {
 			expect(result).toEqual({
 				app: APP,
 				workspacePath: '/home/daytona/workspace/apps/greeter',
+				installed: true,
+			});
+		});
+
+		it('installs the dependencies after the scaffold so the live preview can start', async () => {
+			const context = createMockContext();
+			await runCreate(context);
+
+			const calls = executeCommandMock(context).mock.calls as Array<
+				[string, string[], { cwd: string; env?: Record<string, string>; timeout?: number }]
+			>;
+			expect(calls[4][0]).toBe(
+				'ulimit -c 0; if [ -f package.json ]; then npm install --ignore-scripts --no-audit --no-fund --prefer-offline; else exit 99; fi',
+			);
+			expect(calls[4][2]).toMatchObject({
+				cwd: '/home/daytona/workspace/apps/greeter',
+				env: { CI: 'true' },
+				timeout: 600_000,
+			});
+		});
+
+		it('returns the created app with a warning when the install fails', async () => {
+			const context = createMockContext();
+			executeCommandMock(context).mockImplementation(
+				async (command: string) =>
+					await Promise.resolve(
+						command.includes('npm install') ? fail('npm ERR! code E404 left-pad') : ok(),
+					),
+			);
+
+			const result = await runCreate(context);
+
+			expect(result).toEqual({
+				app: APP,
+				workspacePath: '/home/daytona/workspace/apps/greeter',
+				installed: false,
+				warnings: [expect.stringMatching(/npm install failed.*run `npm install`.*E404 left-pad/)],
 			});
 		});
 
@@ -200,6 +237,7 @@ describe('apps tool', () => {
 				expect.objectContaining({ namespace: 'hello' }),
 			);
 			expect(commandsRun(context).some((command) => command.includes('cp -r'))).toBe(false);
+			expect(commandsRun(context).some((command) => command.includes('npm install'))).toBe(false);
 		});
 
 		it('returns denied on a namespace conflict without touching the workspace', async () => {
@@ -228,6 +266,7 @@ describe('apps tool', () => {
 
 			expect(result).toMatchObject({
 				app: APP,
+				installed: true,
 				warnings: [expect.stringContaining('git is unavailable')],
 			});
 		});
@@ -259,7 +298,7 @@ describe('apps tool', () => {
 			const calls = executeCommandMock(context).mock.calls as Array<
 				[string, string[], { abortSignal?: AbortSignal }]
 			>;
-			expect(calls).toHaveLength(4);
+			expect(calls).toHaveLength(5);
 			for (const call of calls) expect(call[2].abortSignal).toBe(abortSignal);
 		});
 	});
@@ -504,7 +543,10 @@ describe('apps tool', () => {
 			);
 			expect(commands[3]).toContain('git init');
 			expect(commands[3]).toContain('commit -qm restore --allow-empty');
-			expect(commands[4]).toMatch(
+			expect(commands[4]).toBe(
+				'ulimit -c 0; if [ -f package.json ]; then npm install --ignore-scripts --no-audit --no-fund --prefer-offline; else exit 99; fi',
+			);
+			expect(commands[5]).toMatch(
 				/^rm -f '\/home\/daytona\/workspace\/\.app-builds\/greeter-\d+-restore\.tgz'$/,
 			);
 			expect(result).toEqual({
@@ -514,8 +556,32 @@ describe('apps tool', () => {
 				projectId: 'proj-1',
 				versionId: 'v-1',
 				workspacePath: '/home/daytona/workspace/apps/greeter',
+				installed: true,
 				warnings: [],
 			});
+		});
+
+		it('restores with a warning when the install fails, and without one when there is no package.json', async () => {
+			const context = createMockContext();
+			executeCommandMock(context).mockImplementation(async (command: string) => {
+				if (command.startsWith('[ -d ')) return await Promise.resolve(fail(''));
+				if (command.includes('npm install')) return await Promise.resolve(fail('npm ERR! E404'));
+				return await Promise.resolve(ok());
+			});
+
+			expect(await runRestore(context)).toMatchObject({
+				versionId: 'v-1',
+				installed: false,
+				warnings: [expect.stringMatching(/npm install failed.*E404/)],
+			});
+
+			executeCommandMock(context).mockImplementation(async (command: string) => {
+				if (command.startsWith('[ -d ')) return await Promise.resolve(fail(''));
+				if (command.includes('npm install')) return await Promise.resolve(fail('', 99));
+				return await Promise.resolve(ok());
+			});
+
+			expect(await runRestore(context)).toMatchObject({ installed: false, warnings: [] });
 		});
 
 		it('returns denied when the app has no stored version', async () => {
@@ -527,7 +593,7 @@ describe('apps tool', () => {
 
 			expect(result).toEqual({
 				denied: true,
-				reason: expect.stringContaining('no stored version'),
+				reason: expect.stringContaining('no stored source'),
 			});
 			expect(writeFileMock(context)).not.toHaveBeenCalled();
 			expect(commandsRun(context)).toHaveLength(1);
@@ -605,7 +671,7 @@ describe('apps tool', () => {
 			const commandCalls = executeCommandMock(context).mock.calls as Array<
 				[string, string[], { abortSignal?: AbortSignal }]
 			>;
-			expect(commandCalls).toHaveLength(5);
+			expect(commandCalls).toHaveLength(6);
 			for (const call of commandCalls) expect(call[2].abortSignal).toBe(abortSignal);
 
 			const writeCalls = writeFileMock(context).mock.calls as Array<

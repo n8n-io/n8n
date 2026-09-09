@@ -5,9 +5,9 @@ description: >-
   change an app, dashboard, form, landing page, website, UI, or frontend that
   people open in a browser — "build me a hello world app", "make a dashboard
   for X", "add a form page", "make the heading red". Covers the whole loop:
-  create the app, edit its source files in the workspace, build, open the
-  URL, read the build log, fix, build again. Not for n8n workflows, agents,
-  or data tables on their own.
+  create the app, edit its source files in the workspace while the live
+  preview follows, fix the preview errors, and build only when the user asks
+  to publish. Not for n8n workflows, agents, or data tables on their own.
 recommended_tools:
   - apps
   - workspace_write_file
@@ -21,31 +21,44 @@ recommended_tools:
 
 You build small static web apps that n8n serves at `/apps/<namespace>/`. The
 source lives in the sandbox workspace under `apps/<namespace>/`; `apps` has
-four actions: `create` registers an app, `build` turns the source into a
-published version, `restore` brings the stored source back into a workspace
-that does not have it, `add-component` copies a component from this skill's
-own catalog (built on `@ark-ui/vue`) into an app — `create` uses it for the
-two the starter page needs, and every other component goes through it too.
+four actions: `create` registers an app and installs its dependencies,
+`build` publishes the source as a served version, `restore` brings the stored
+source back into a workspace that does not have it, `add-component` copies a
+component from this skill's own catalog (built on `@ark-ui/vue`) into an app —
+`create` uses it for the two the starter page needs, and every other
+component goes through it too.
+
+The user sees a live preview of the source in the workspace. n8n runs a dev
+server for it: every file you write appears in the preview by itself (hot
+module reload), without a build. The preview is the source of truth while you
+work; a build only changes the published URL.
 
 ## The loop
 
 1. `apps(action="create", projectId, name)` once per app. Pass `namespace`
    only when the user asked for a specific URL slug; otherwise it is derived
-   from the name. The result carries `app.id`, `app.namespace` and
-   `workspacePath` (the absolute app directory). If the result is
-   `{ denied, reason }` the namespace is taken: pick another and call again.
+   from the name. The result carries `app.id`, `app.namespace`,
+   `workspacePath` (the absolute app directory) and `installed`. If the
+   result is `{ denied, reason }` the namespace is taken: pick another and
+   call again. `installed: false` comes with a `warnings` entry that holds the
+   `npm install` log; fix the cause, then run `npm install` in the app
+   directory with `workspace_execute_command`.
    You need a `projectId`: use the one bound to this conversation, or
    `workspace(action="list-projects")` and ask when there is more than one.
 2. Edit files under `workspacePath` with `workspace_write_file` and
    `workspace_str_replace_file`. The template's `AI_RULES.md` describes the
-   layout. Do not start a dev server; n8n runs one for the live preview, so
-   edits appear there without a build. Preview errors arrive as context on
-   the user's next message; fix them before anything else.
-3. `apps(action="build", appId)`. Success returns `url`, `versionId`,
-   `namespace`, `projectId`. Give the user the `url`. You cannot see the
-   page: after a styling change, grep the built CSS in `dist/assets/` for the
-   class you added to confirm it compiled, and do not claim visual results.
-4. On `{ error, stage, message, log }` read `log` (last 4 KB of the build
+   layout. Do not start a dev server and do not run a build to check your
+   work: the live preview updates on its own. Never call `apps(action="build")`
+   while iterating. Tell the user what changed and stop; the preview shows it.
+3. Preview errors (compile errors, uncaught exceptions) arrive as context on
+   the user's next message. Fix them before anything else. Run
+   `npm run typecheck` in the app directory when you changed TypeScript.
+   You cannot see the page: do not claim visual results.
+4. Publish only when the user asks to publish, deploy, share or go live:
+   `apps(action="build", appId)`. Success returns `url`, `versionId`,
+   `namespace`, `projectId`; it stores a version and updates
+   `/apps/<namespace>/`. Give the user the `url`.
+5. On `{ error, stage, message, log }` read `log` (last 4 KB of the build
    output), fix the cause, build again. Do not retry the same build without a
    change.
    - `install`: `npm install` failed. Check `package.json` dependency names
@@ -57,18 +70,15 @@ two the starter page needs, and every other component goes through it too.
    - `check`: the output is not a servable static site: `<outDir>/index.html`
      is missing, a `server/` directory exists, or a tarball is over 20 MB.
    - `store`: n8n rejected the upload; `message` says why.
-5. Change requests on an existing app: edit, then `build` again. Every build
-   is a new version and becomes the live one.
 
 For an already bound app (the conversation names an app id) skip step 1.
-Before you edit or build, confirm that `apps/<namespace>/` exists in this
-workspace (`workspace_execute_command` with `ls apps/<namespace>`). If it does
-not, call `apps(action="restore", appId)`: it unpacks the source of the
-latest published version into `apps/<namespace>/` and returns `workspacePath`
-and `versionId`. Then continue with step 2. The first build after a restore
-installs dependencies again (about 25 s). `{ denied, reason }` means there is
-nothing to restore (no version yet) or the directory already has files; read
-`reason`.
+Before you edit, confirm that `apps/<namespace>/` exists in this workspace
+(`workspace_execute_command` with `ls apps/<namespace>`). If it does not, call
+`apps(action="restore", appId)`: it unpacks the stored source into
+`apps/<namespace>/`, installs the dependencies and returns `workspacePath`,
+`versionId` and `installed`. Then continue with step 2. `{ denied, reason }`
+means there is nothing to restore (no source stored yet) or the directory
+already has files; read `reason`.
 
 ## Rules
 
@@ -82,9 +92,9 @@ nothing to restore (no version yet) or the directory already has files; read
 - Default to the Vue template. Use another stack only when the user asks for
   it; then follow `references/frameworks.md` for the static-export and
   base-path settings and pass matching `command`/`outDir` to `build`.
-- The build runs in 512 MiB of memory. Keep type checking out of the build
-  script (`npm run typecheck` is separate; run it before `build` when you
-  changed TypeScript).
+- The sandbox has 512 MiB of memory, shared by the dev server and a build.
+  Keep type checking out of the build script (`npm run typecheck` is
+  separate; run it after you changed TypeScript).
 - Look: build UI from this skill's own catalog components (`Button`, `Input`,
   `Card`, `Dialog`, `Select`, `Tabs`, `Badge`, `Switch`, `Checkbox`, `Tooltip`,
   `DropdownMenu` — see `references/design-system.md` for the full catalog and
@@ -99,8 +109,9 @@ nothing to restore (no version yet) or the directory already has files; read
   outside the curated catalog), styled with the same utilities. Only build a
   different look when the user asks for one — and point them at the app's
   Theme tab for color/font/radius changes instead of hardcoding a look.
-- Keep dependencies few. Adding one means a cold `npm install` on the next
-  build, and every dependency costs build memory.
+- Keep dependencies few. Adding one means you must run `npm install` in the
+  app directory yourself (the dev server does not), and every dependency
+  costs build memory.
 - Never paste file contents into the chat; point at the file path.
 
 ## Template

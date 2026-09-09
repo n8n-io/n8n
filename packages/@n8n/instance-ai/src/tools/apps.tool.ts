@@ -43,6 +43,9 @@ const GIT_COMMIT = 'git -c user.name=n8n -c user.email=n8n@localhost commit -qm'
 const NO_CORE_DUMPS = 'ulimit -c 0;';
 /** Custom build commands get the local binaries the way npm scripts do (`vite build` instead of `npx vite build`). */
 const BUILD_COMMAND_PREFIX = `${NO_CORE_DUMPS} export PATH="$PWD/node_modules/.bin:$PATH";`;
+const NPM_INSTALL_COMMAND = `npm install ${NPM_INSTALL_FLAGS}`;
+/** Exit code `installDependencies` reserves for "nothing to install"; npm itself never uses it. */
+const NO_PACKAGE_JSON_EXIT = 99;
 /** Core dump names: `core`, `core.<pid>`, `<name>.core`. Anchored to the app root so `src/core/` stays in. */
 const CORE_DUMP_EXCLUDES = ['./core', './core.*', './*.core'];
 /** Where n8n's live-preview dev server writes its output and pid inside the app directory. */
@@ -138,6 +141,7 @@ export interface AppRestoreSuccess {
 	projectId: string;
 	versionId: string;
 	workspacePath: string;
+	installed: boolean;
 	warnings: string[];
 }
 
@@ -305,6 +309,28 @@ const gitInitCommand = (commitMessage: string) =>
 const GIT_UNAVAILABLE_WARNING =
 	'git is unavailable in the sandbox; the app directory is not version-controlled.';
 
+/**
+ * The live preview's dev server needs node_modules, so `create` and `restore`
+ * install right away instead of leaving it to the first build. A failed install
+ * is a warning, not a failed action: the app directory is in place and the
+ * agent can run `npm install` itself.
+ */
+async function installDependencies(
+	run: SandboxRunner,
+	appDir: string,
+): Promise<{ installed: boolean; warning?: string }> {
+	const install = await run(
+		`${NO_CORE_DUMPS} if [ -f package.json ]; then ${NPM_INSTALL_COMMAND}; else exit ${NO_PACKAGE_JSON_EXIT}; fi`,
+		{ cwd: appDir, env: { CI: 'true' }, timeout: COMMAND_TIMEOUT_MS },
+	);
+	if (install.exitCode === 0) return { installed: true };
+	if (install.exitCode === NO_PACKAGE_JSON_EXIT) return { installed: false };
+	return {
+		installed: false,
+		warning: `npm install failed, so the live preview cannot start yet. Fix package.json if needed, then run \`npm install\` in the app directory. Log: ${tailLog(combinedLog(install))}`,
+	};
+}
+
 function requireFilesystem(
 	workspace: NonNullable<InstanceAiContext['workspace']>,
 	purpose: string,
@@ -361,8 +387,7 @@ async function handleCreate(
 
 		// The Vue template's own Home.vue demonstrates real catalog components rather
 		// than hand-rolled markup, so it needs them to exist from the start. This is a
-		// local copy, not an install: node_modules is left to the first `build` call,
-		// same as the "none" template.
+		// local copy, not an install.
 		if (template === 'vue') {
 			const addStarters = await run(
 				copyComponentsScript(componentRegistryDir(root), appDir, STARTER_COMPONENTS),
@@ -374,11 +399,17 @@ async function handleCreate(
 		}
 
 		const git = await run(gitInitCommand('scaffold'), { cwd: appDir });
-		const warnings = git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING];
+		const install =
+			template === 'none' ? { installed: false } : await installDependencies(run, appDir);
+		const warnings = [
+			...(git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING]),
+			...(install.warning ? [install.warning] : []),
+		];
 
 		return {
 			app: created.app,
 			workspacePath,
+			installed: install.installed,
 			...(warnings.length > 0 ? { warnings } : {}),
 		};
 	} catch (error) {
@@ -410,7 +441,7 @@ export async function handleBuild(
 	const command = input.command ?? DEFAULT_BUILD_COMMAND;
 
 	const install = await run(
-		`${NO_CORE_DUMPS} if [ -f package.json ] && [ ! -d node_modules ]; then npm install ${NPM_INSTALL_FLAGS}; fi`,
+		`${NO_CORE_DUMPS} if [ -f package.json ] && [ ! -d node_modules ]; then ${NPM_INSTALL_COMMAND}; fi`,
 		{ cwd: appDir, env: { CI: 'true' }, timeout: COMMAND_TIMEOUT_MS },
 	);
 	if (install.exitCode !== 0) {
@@ -502,7 +533,7 @@ export async function handleRestore(
 	if (!tarball) {
 		return {
 			denied: true,
-			reason: `App "${app.name}" has no stored version to restore. Write the files under ${workspacePath} by hand, then call build.`,
+			reason: `App "${app.name}" has no stored source to restore. Write the files under ${workspacePath} by hand.`,
 		};
 	}
 
@@ -525,6 +556,7 @@ export async function handleRestore(
 		}
 
 		const git = await run(gitInitCommand('restore'), { cwd: appDir });
+		const install = await installDependencies(run, appDir);
 		return {
 			appId: app.id,
 			name: app.name,
@@ -532,7 +564,11 @@ export async function handleRestore(
 			projectId: app.projectId,
 			versionId: tarball.versionId,
 			workspacePath,
-			warnings: git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING],
+			installed: install.installed,
+			warnings: [
+				...(git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING]),
+				...(install.warning ? [install.warning] : []),
+			],
 		};
 	} catch (error) {
 		return { error: true, stage: 'restore', message: getErrorMessage(error) };
@@ -548,9 +584,9 @@ export async function handleRestore(
  * dependency already in the template's `package.json` from `create`, so a
  * copy never changes dependencies. A future component that needs its own
  * extra dependency must add it to the template's base `package.json` too
- * (the way `class-variance-authority` already is) — `handleBuild` only
- * installs when `node_modules` is missing, so it won't pick up a dependency
- * added after the app's first build.
+ * (the way `class-variance-authority` already is) — `create` installs once
+ * and `handleBuild` only installs when `node_modules` is missing, so neither
+ * picks up a dependency added later.
  */
 async function handleAddComponent(
 	context: AppSandboxContext,
@@ -610,11 +646,12 @@ export function createAppsTool(context: InstanceAiContext) {
 
 	return new Tool(APPS_TOOL_ID)
 		.description(
-			'Create, restore and build user-facing web apps served by n8n at /apps/<namespace>/. ' +
+			'Create, restore and publish user-facing web apps served by n8n at /apps/<namespace>/. ' +
 				'Load the `app-builder` skill via `load_skill` before calling this tool. ' +
-				'`create` registers the app and copies a starter template into apps/<namespace>/ in the workspace; ' +
-				'edit the files there, then call `build` to compile them and publish a new version. ' +
-				'`build` returns the live `url` on success, or `{ error, stage, message, log }` to fix and retry. ' +
+				'`create` registers the app, copies a starter template into apps/<namespace>/ in the workspace and installs its dependencies; ' +
+				'edit the files there and the live preview updates by itself. Never call `build` while iterating. ' +
+				'Call `build` only when the user asks to publish, deploy or share the app: it compiles the files, stores a version and updates /apps/<namespace>/. ' +
+				'`build` returns the published `url` on success, or `{ error, stage, message, log }` to fix and retry. ' +
 				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet. ' +
 				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too.",
 		)
