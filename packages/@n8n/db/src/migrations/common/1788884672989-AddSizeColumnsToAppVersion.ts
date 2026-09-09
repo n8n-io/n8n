@@ -5,6 +5,9 @@ const APP_VERSION_TABLE = 'app_version';
 /**
  * Byte sizes of each version's tarballs, so a project's total app storage can
  * be summed without reading blobs back from storage.
+ *
+ * Known limitation: rows that predate this migration default to 0/null, so
+ * the quota sum ignores their real size until a separate backfill lands.
  */
 export class AddSizeColumnsToAppVersion1788884672989 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {

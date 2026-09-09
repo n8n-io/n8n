@@ -57,8 +57,10 @@ erDiagram
 "public.app_version" {
   varchar_36_ appId FK
   timestamp_3__with_time_zone createdAt
+  integer distSizeBytes
   varchar_255_ distStorageKey
   varchar_36_ id
+  integer sourceSizeBytes
   varchar_255_ sourceStorageKey
   varchar_8_ storedAt
   timestamp_3__with_time_zone updatedAt

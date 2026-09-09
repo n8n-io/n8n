@@ -6,8 +6,10 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | appId | varchar(36) |  | false |  | [public.app](public.app.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| distSizeBytes | integer |  | true |  |  | Size of the dist tarball, in bytes; null once pruned by retention |
 | distStorageKey | varchar(255) |  | true |  |  | Blob key of the built dist tarball; null once pruned by retention |
 | id | varchar(36) |  | false | [public.app](public.app.md) |  |  |
+| sourceSizeBytes | integer | 0 | false |  |  | Size of the source tarball, in bytes |
 | sourceStorageKey | varchar(255) |  | false |  |  | Blob key of the source tarball (project minus node_modules, dist, .git) |
 | storedAt | varchar(8) |  | false |  |  | Execution data storage mode the tarballs were written with |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -22,6 +24,7 @@
 | app_version_appId_not_null | n | NOT NULL "appId" |
 | app_version_createdAt_not_null | n | NOT NULL "createdAt" |
 | app_version_id_not_null | n | NOT NULL id |
+| app_version_sourceSizeBytes_not_null | n | NOT NULL "sourceSizeBytes" |
 | app_version_sourceStorageKey_not_null | n | NOT NULL "sourceStorageKey" |
 | app_version_storedAt_not_null | n | NOT NULL "storedAt" |
 | app_version_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -44,8 +47,10 @@ erDiagram
 "public.app_version" {
   varchar_36_ appId FK
   timestamp_3__with_time_zone createdAt
+  integer distSizeBytes
   varchar_255_ distStorageKey
   varchar_36_ id
+  integer sourceSizeBytes
   varchar_255_ sourceStorageKey
   varchar_8_ storedAt
   timestamp_3__with_time_zone updatedAt
