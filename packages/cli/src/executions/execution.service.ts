@@ -77,8 +77,6 @@ export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
 	type: 'object',
 	properties: {
-		id: { type: 'string' },
-		finished: { type: 'boolean' },
 		mode: { type: 'string' },
 		status: {
 			type: 'array',

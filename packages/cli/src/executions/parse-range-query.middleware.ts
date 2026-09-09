@@ -8,7 +8,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import * as ResponseHelper from '@/response-helper';
 
 import { parseExecutionCursor } from './execution-cursor';
-import { isExecutionIdV2 } from './execution-id';
 import {
 	allowedExecutionsQueryFilterFields as ALLOWED_FILTER_FIELDS,
 	schemaGetExecutionsQueryFilter as SCHEMA,
@@ -29,12 +28,6 @@ function parseFilter(rawFilter: unknown, rangeQuery: ExecutionSummaries.RangeQue
 	}
 
 	if (!isValid(jsonFilter)) throw new UnexpectedError('Query does not match schema');
-	if (
-		typeof jsonFilter.id === 'string' &&
-		!isExecutionIdV2(jsonFilter.id) &&
-		(!/^[1-9]\d*$/.test(jsonFilter.id) || Number(jsonFilter.id) > 2147483647)
-	)
-		throw new BadRequestError('Invalid execution ID');
 
 	return { ...rangeQuery, ...jsonFilter };
 }
@@ -47,7 +40,9 @@ export const parseRangeQuery = (req: Request, res: Response, next: NextFunction)
 
 	try {
 		if (firstId !== undefined || lastId !== undefined)
-			throw new BadRequestError('Use cursor to load execution pages');
+			throw new BadRequestError(
+				'Use cursor to load execution pages. Your n8n instance has most likely updated. Please refresh the page.',
+			);
 
 		if (req.query.cursor !== undefined && typeof req.query.cursor !== 'string')
 			throw new BadRequestError('Invalid execution cursor');

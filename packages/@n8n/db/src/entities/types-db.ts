@@ -212,8 +212,6 @@ export namespace ExecutionSummaries {
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
 
 	export type FilterFields = Partial<{
-		id: string;
-		finished: boolean;
 		mode: WorkflowExecuteMode;
 		status: ExecutionStatus[];
 		workflowId: string;
