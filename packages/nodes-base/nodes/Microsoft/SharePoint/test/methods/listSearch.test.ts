@@ -532,5 +532,91 @@ describe('Microsoft SharePoint Node', () => {
 				],
 			});
 		});
+
+		// A single entry without a label used to throw
+		// "Cannot read properties of undefined (reading 'localeCompare')" from the
+		// sort comparator, which failed the whole dropdown instead of one row.
+		it('labels a site without a title by its ID instead of failing the list', async () => {
+			mockRequestWithAuthentication.mockReturnValue({
+				value: [
+					{ id: 'mydomain.sharepoint.com,site-b,web-b', title: 'Site B' },
+					{ id: 'mydomain.sharepoint.com,site-a,web-a' },
+				],
+			});
+
+			const listSearchResult = await node.methods.listSearch.getSites.call(loadOptionsFunctions);
+
+			expect(listSearchResult.results).toEqual([
+				{
+					name: 'mydomain.sharepoint.com,site-a,web-a',
+					value: 'mydomain.sharepoint.com,site-a,web-a',
+				},
+				{ name: 'Site B', value: 'mydomain.sharepoint.com,site-b,web-b' },
+			]);
+		});
+
+		it.each([
+			['getSites', undefined],
+			['getLists', 'site'],
+			['getFolders', 'site'],
+		] as const)('returns no results when %s gets no collection back', async (method, siteParam) => {
+			if (siteParam) {
+				loadOptionsFunctions.getNodeParameter.mockReturnValueOnce(siteParam);
+			}
+			mockRequestWithAuthentication.mockReturnValue({
+				error: { code: 'invalidRequest', message: 'Bad request' },
+			});
+
+			const listSearchResult = await node.methods.listSearch[method].call(loadOptionsFunctions);
+
+			expect(listSearchResult.results).toEqual([]);
+		});
+
+		it('labels a list without a display name by its ID', async () => {
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			mockRequestWithAuthentication.mockReturnValue({
+				value: [{ id: 'zz-list', displayName: 'Alpha' }, { id: 'mm-list' }],
+			});
+
+			const listSearchResult = await node.methods.listSearch.getLists.call(loadOptionsFunctions);
+
+			expect(listSearchResult.results).toEqual([
+				{ name: 'Alpha', value: 'zz-list' },
+				{ name: 'mm-list', value: 'mm-list' },
+			]);
+		});
+
+		it('labels an item without a fields object by its ID', async () => {
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('list');
+			mockRequestWithAuthentication.mockReturnValue({
+				value: [{ id: '2', fields: { Title: 'Title 2' } }, { id: '1' }],
+			});
+
+			const listSearchResult = await node.methods.listSearch.getItems.call(loadOptionsFunctions);
+
+			expect(listSearchResult.results).toEqual([
+				{ name: '1', value: '1' },
+				{ name: 'Title 2', value: '2' },
+			]);
+		});
+
+		it('labels a file without a name by its ID', async () => {
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('folder');
+			mockRequestWithAuthentication.mockReturnValue({
+				value: [
+					{ id: 'file-b', name: 'file-b.txt', file: {} },
+					{ id: 'file-a', file: {} },
+				],
+			});
+
+			const listSearchResult = await node.methods.listSearch.getFiles.call(loadOptionsFunctions);
+
+			expect(listSearchResult.results).toEqual([
+				{ name: 'file-a', value: 'file-a' },
+				{ name: 'file-b.txt', value: 'file-b' },
+			]);
+		});
 	});
 });
