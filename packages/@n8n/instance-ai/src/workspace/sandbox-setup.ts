@@ -66,17 +66,42 @@ export class SandboxWorkspaceSetupError extends Error {
 	constructor(
 		readonly step: SandboxWorkspaceSetupStep,
 		readonly originalError: unknown,
+		readonly durationMs?: number,
 	) {
-		super(`Sandbox workspace setup failed during ${step}: ${getErrorMessage(originalError)}`);
+		const elapsed = durationMs === undefined ? '' : ` after ${durationMs}ms`;
+		super(
+			`Sandbox workspace setup failed during ${step}${elapsed}: ${getErrorMessage(originalError)}`,
+		);
 		this.name = 'SandboxWorkspaceSetupError';
 	}
 }
 
-async function setupStep<T>(step: SandboxWorkspaceSetupStep, action: () => Promise<T>): Promise<T> {
+/**
+ * Run one setup step and record how long it took. The duration is the signal that
+ * matters: a step killed by a gateway idle timeout looks the same as a genuine
+ * failure until you see that it stopped on a round number of seconds.
+ */
+async function setupStep<T>(
+	step: SandboxWorkspaceSetupStep,
+	action: () => Promise<T>,
+	logger?: Logger,
+): Promise<T> {
+	const startedAt = Date.now();
 	try {
-		return await action();
+		const result = await action();
+		logger?.debug('Sandbox workspace setup step finished', {
+			step,
+			durationMs: Date.now() - startedAt,
+		});
+		return result;
 	} catch (error) {
-		throw new SandboxWorkspaceSetupError(step, error);
+		const durationMs = Date.now() - startedAt;
+		logger?.warn('Sandbox workspace setup step failed', {
+			step,
+			durationMs,
+			error: getErrorMessage(error),
+		});
+		throw new SandboxWorkspaceSetupError(step, error, durationMs);
 	}
 }
 
@@ -103,6 +128,15 @@ function resolveHostDepVersion(name: string): string {
  * can install a newly published SDK version.
  */
 export const NPM_INSTALL_FLAGS = '--ignore-scripts --no-audit --no-fund --prefer-online';
+
+/**
+ * Last non-empty line of `npm install` output — its one-line summary. With audit and
+ * funding output off, nothing else follows it.
+ */
+function npmSummaryLine(stdout: string): string {
+	const lines = stdout.split('\n').filter((line) => line.trim() !== '');
+	return lines.at(-1)?.trim().slice(0, 200) ?? '';
+}
 
 /**
  * Versions pinned from the host's installed packages. Pinning is load-bearing
@@ -409,15 +443,19 @@ async function materializeKnowledgeBaseStep(
 	root: string,
 	context: InstanceAiContext,
 ): Promise<void> {
-	await setupStep('materialize-knowledge-base', async () => {
-		const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
-		await materializeKnowledgeBaseIntoWorkspace({
-			workspace,
-			root,
-			logger: context.logger,
-			templatesArchive: templatesBundle?.archive ?? null,
-		});
-	});
+	await setupStep(
+		'materialize-knowledge-base',
+		async () => {
+			const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
+			await materializeKnowledgeBaseIntoWorkspace({
+				workspace,
+				root,
+				logger: context.logger,
+				templatesArchive: templatesBundle?.archive ?? null,
+			});
+		},
+		context.logger,
+	);
 }
 
 /**
@@ -432,19 +470,39 @@ export async function setupSandboxWorkspace(
 	workspace: SandboxWorkspace,
 	context: InstanceAiContext,
 ): Promise<boolean> {
+	const setupStartedAt = Date.now();
 	const root = await setupStep(
 		'resolve-workspace-root',
 		async () => await getWorkspaceRoot(workspace),
+		context.logger,
 	);
 	const markerFile = joinWorkspacePath(root, '.sandbox-initialized');
+
+	// The pinned versions decide whether the baked snapshot tree still matches. When they
+	// drift from the snapshot, `install-dependencies` stops being a no-op and does a cold
+	// install instead.
+	context.logger.debug('Sandbox workspace setup starting', {
+		root,
+		sdkVersion: SANDBOX_SDK_VERSION,
+		tsxVersion: SANDBOX_TSX_VERSION,
+	});
 
 	// Check marker file for idempotency
 	const marker = await setupStep(
 		'read-initialization-marker',
 		async () => await readWorkspaceFile(workspace, markerFile),
+		context.logger,
 	);
 	if (marker !== null) {
+		context.logger.debug('Sandbox workspace already initialized; skipping setup', { root });
 		await materializeKnowledgeBaseStep(workspace, root, context);
+		// The reattach path still refreshes the knowledge base, so it has a duration worth
+		// measuring. Log it here too, or a reattach shows a start with no end.
+		context.logger.debug('Sandbox workspace setup finished', {
+			root,
+			durationMs: Date.now() - setupStartedAt,
+			initializationRan: false,
+		});
 		return false;
 	}
 
@@ -460,6 +518,7 @@ export async function setupSandboxWorkspace(
 	const nodeTypes = await setupStep(
 		'list-node-types',
 		async () => await context.nodeService.listSearchable(),
+		context.logger,
 	);
 	const catalogLines = nodeTypes.map(formatNodeCatalogLine);
 	files.set('node-types/index.txt', catalogLines.join('\n'));
@@ -487,20 +546,33 @@ export async function setupSandboxWorkspace(
 	await setupStep(
 		'write-workspace-files',
 		async () => await writeWorkspaceFiles(workspace, root, files),
+		context.logger,
 	);
 	await materializeKnowledgeBaseStep(workspace, root, context);
 
 	// npm install (must run after package.json is in place)
-	await setupStep('install-dependencies', async () => {
-		const npmResult = await runInSandbox(workspace, `npm install ${NPM_INSTALL_FLAGS}`, root);
-		if (npmResult.exitCode !== 0) {
-			throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
-		}
-	});
+	await setupStep(
+		'install-dependencies',
+		async () => {
+			const command = `npm install ${NPM_INSTALL_FLAGS}`;
+			context.logger.debug('Sandbox npm install starting', { command, cwd: root });
+			const npmResult = await runInSandbox(workspace, command, root);
+			if (npmResult.exitCode !== 0) {
+				throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
+			}
+			// npm's summary ("up to date in 1s" vs "added 47 packages in 28s") shows at a glance
+			// whether this step did real work or only revalidated an already-baked tree.
+			context.logger.debug('Sandbox npm install finished', {
+				summary: npmSummaryLine(npmResult.stdout),
+			});
+		},
+		context.logger,
+	);
 
 	await setupStep(
 		'link-workspace-sdk',
 		async () => await linkWorkspaceSdkIfEnabled(workspace, root, context.logger),
+		context.logger,
 	);
 
 	await setupStep(
@@ -511,7 +583,14 @@ export async function setupSandboxWorkspace(
 				root,
 				new Map([['.sandbox-initialized', new Date().toISOString()]]),
 			),
+		context.logger,
 	);
+
+	context.logger.debug('Sandbox workspace setup finished', {
+		root,
+		durationMs: Date.now() - setupStartedAt,
+		initializationRan: true,
+	});
 
 	return true;
 }
