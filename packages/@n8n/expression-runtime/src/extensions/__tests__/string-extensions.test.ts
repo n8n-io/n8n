@@ -34,6 +34,40 @@ describe('extractUrlPath (imperative parser, no URL constructor)', () => {
 	])('should return undefined for malformed input: %s', (input) => {
 		expect(extractUrlPath(input)).toBeUndefined();
 	});
+
+	// The legacy engine, and the expression preview in the editor, read the path
+	// from `new URL()`. The parser must give the same path for the same URL.
+	it.each([
+		'https://example.com/v1/../v2/users',
+		'https://example.com/a/./b',
+		'https://example.com/a/b/..',
+		'https://example.com/../a',
+		'https://example.com/a/../../b',
+		'https://example.com/./',
+		'https://example.com/a/..',
+		'https://example.com/path/',
+		'https://de.wikipedia.org/wiki/Käse',
+		'https://example.com/日本',
+		'https://example.com/my report.pdf',
+		'https://example.com/a"b',
+		'https://example.com/a<b>c',
+		'https://example.com/a`b',
+		'https://example.com/a{b}c',
+		'https://example.com/a^b',
+		'https://example.com/a|b',
+		"https://example.com/a'b",
+		'https://example.com/a+b;c=d',
+		'https://example.com/a:b@c',
+		'https://example.com/a%2fb',
+		'https://example.com/%7Efoo',
+		'https://example.com/%20',
+		'https://example.com/a%b',
+		'https://example.com/emoji/😀',
+		'https://example.com/path?q=1',
+		'https://example.com/path#frag',
+	])('should give the same path as new URL() for %s', (input) => {
+		expect(extractUrlPath(input)).toBe(new URL(input).pathname);
+	});
 });
 
 describe('toSentenceCase', () => {

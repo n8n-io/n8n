@@ -375,11 +375,56 @@ function isDigit(ch: number): boolean {
 	return ch >= 48 && ch <= 57;
 }
 
+// The punctuation in the path percent-encode set of the WHATWG URL parser. The
+// set also holds `?` and `#`, but they end the path and cannot reach here.
+const PATH_PERCENT_ENCODE_PUNCTUATION = '"<>^`{}';
+
+// Percent-encode the path percent-encode set: the punctuation above, C0
+// controls, space, DEL, and every code point above ASCII.
+function percentEncodePath(path: string): string {
+	let encoded = '';
+	// A string iterates by code point, so an astral character is encoded once.
+	for (const codePoint of path) {
+		const code = codePoint.codePointAt(0) as number;
+		if (code > 0x20 && code < 0x7f && !PATH_PERCENT_ENCODE_PUNCTUATION.includes(codePoint)) {
+			encoded += codePoint;
+		} else {
+			try {
+				encoded += encodeURIComponent(codePoint);
+			} catch {
+				// A lone surrogate. The URL parser replaces it with U+FFFD.
+				encoded += '%EF%BF%BD';
+			}
+		}
+	}
+	return encoded;
+}
+
+// Resolve `.` and `..` segments, as RFC 3986 section 5.2.4 specifies. `path`
+// always starts with a "/", so the first segment is empty and the join adds it
+// back.
+function removeDotSegments(path: string): string {
+	const segments = path.split('/');
+	const kept: string[] = [];
+	for (let i = 1; i < segments.length; i++) {
+		const segment = segments[i];
+		if (segment === '.' || segment === '..') {
+			if (segment === '..') kept.pop();
+			// A trailing dot segment leaves the path ending in a slash
+			if (i === segments.length - 1) kept.push('');
+		} else {
+			kept.push(segment);
+		}
+	}
+	return `/${kept.join('/')}`;
+}
+
 // DIVERGENCE from packages/workflow/src/extensions/string-extensions.ts:
 // The original uses the URL constructor which is a Web API unavailable inside
 // the V8 isolate. A simple imperative parser extracts the pathname instead.
 // It requires a scheme (e.g. "https://") followed by a non-empty host, then
-// returns everything from the first "/" up to "?" or "#" (or "/" if no path).
+// returns everything from the first "/" up to "?" or "#" (or "/" if no path),
+// normalized the way the URL constructor normalizes a pathname.
 function extractUrlPath(value: string) {
 	const protoEnd = value.indexOf('://');
 	if (protoEnd < 1) return undefined;
@@ -417,7 +462,9 @@ function extractUrlPath(value: string) {
 		pathEnd++;
 	}
 
-	return value.slice(pathStart, pathEnd) || '/';
+	// The URL parser removes tabs and newlines before it reads the path.
+	const path = value.slice(pathStart, pathEnd).replace(/[\t\n\r]/g, '') || '/';
+	return percentEncodePath(removeDotSegments(path));
 }
 
 function parseJson(value: string): unknown {
