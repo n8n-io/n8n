@@ -181,6 +181,8 @@ watch(
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/utils';
+
 .content {
 	position: absolute;
 	display: block;
@@ -222,7 +224,7 @@ $descriptionBoxMaxWidth: 330px;
 
 .mainLine {
 	display: block;
-	@include mixins.utils-ellipsis;
+	@include utils.utils-ellipsis;
 	cursor: default;
 }
 

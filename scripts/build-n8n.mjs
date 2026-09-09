@@ -563,8 +563,8 @@ try {
 	// scripts, so we don't carry a second isolated install.
 	//
 	// Default: skip. cdxgen + license rendering adds ~minutes to every build:deploy and
-	// is only needed for the release SBOM job. The release-publish workflow opts in by
-	// setting N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
+	// is only needed for release and nightly SBOM validation. Those workflows opt in
+	// with N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
 	if (generateLicenses) {
 		echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
 		try {
