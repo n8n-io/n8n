@@ -30,6 +30,6 @@ export const UNTRUSTED_OUTPUT_DOCTRINE =
 export function wrapUntrustedData(content: string, source: string, label?: string): string {
 	const safeSource = escapeAttribute(source);
 	const safeLabel = label ? ` label="${escapeAttribute(label)}"` : '';
-	const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
+	const safeContent = content.replace(/<(\s*\/\s*untrusted_data)/gi, '&lt;$1');
 	return `<untrusted_data source="${safeSource}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 }
