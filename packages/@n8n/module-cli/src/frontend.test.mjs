@@ -216,9 +216,10 @@ describe('createFrontend', () => {
 			expect(read(root, 'editorUiTsconfig')).toContain(
 				`"${PACKAGE}": ["../../modules/${NAME}/frontend/src/index.ts"],`,
 			);
-			expect(read(root, 'editorUiTsconfig')).toContain(
-				`"${PACKAGE}/*": ["../../modules/${NAME}/frontend/src/*"],`,
-			);
+			// No `/*` wildcard beside it. A wildcard resolves every file under the module's `src`,
+			// which makes each of them part of the contract by accident. The `exports` map of the
+			// template declares `.` only, and the two have to say the same.
+			expect(read(root, 'editorUiTsconfig')).not.toContain(`"${PACKAGE}/*"`);
 			expect(read(root, 'manifest')).toContain(`import { MyFeatureModule } from '${PACKAGE}';`);
 			expect(read(root, 'manifest')).toMatch(/\tMyFeatureModule,\n\];/);
 		});
@@ -292,7 +293,7 @@ describe('createFrontend', () => {
 			expect(occurrences(manifest, 'MyFeatureModule')).toBe(2);
 			expect(occurrences(read(root, 'viteConfig'), PACKAGE)).toBe(1);
 			expect(occurrences(read(root, 'editorUiPackage'), PACKAGE)).toBe(1);
-			expect(occurrences(read(root, 'editorUiTsconfig'), PACKAGE)).toBe(2);
+			expect(occurrences(read(root, 'editorUiTsconfig'), PACKAGE)).toBe(1);
 		});
 	});
 
@@ -316,7 +317,7 @@ describe('createFrontend', () => {
 			]);
 			expect(occurrences(read(root, 'viteConfig'), PACKAGE)).toBe(1);
 			expect(occurrences(read(root, 'editorUiPackage'), PACKAGE)).toBe(1);
-			expect(occurrences(read(root, 'editorUiTsconfig'), PACKAGE)).toBe(2);
+			expect(occurrences(read(root, 'editorUiTsconfig'), PACKAGE)).toBe(1);
 			expect(occurrences(read(root, 'manifest'), PACKAGE)).toBe(1);
 		});
 

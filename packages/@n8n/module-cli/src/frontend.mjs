@@ -63,8 +63,9 @@ const files = (name) => [
  *   2. `editor-ui/package.json` gets the devDependency. pnpm then links the package, and a bare
  *      import of it also resolves outside Vite, for vue-tsc and for Node. editor-ui bundles
  *      everything it imports, so all of its dependencies are devDependencies.
- *   3. `editor-ui/tsconfig.json` gets the two `paths` entries. vue-tsc then reads the same source
- *      that Vite reads. `editor-ui/vite/aliases.test.ts` fails when 1 and 3 disagree.
+ *   3. `editor-ui/tsconfig.json` gets the `paths` entry for the declared entry of the module.
+ *      vue-tsc then reads the same source that Vite reads. `editor-ui/vite/aliases.test.ts` fails
+ *      when 1 and 3 disagree.
  *   4. `editor-ui/src/app/modules.manifest.ts` gets the descriptor.
  */
 export const createFrontend = ({ name, packageDir, substitutions, root = repoRoot }) => {
@@ -131,6 +132,9 @@ export const createFrontend = ({ name, packageDir, substitutions, root = repoRoo
 	}
 
 	// 3. The tsconfig paths. Keep them next to the SDK, which every module depends on.
+	//    One entry, and no `/*` wildcard beside it: the `exports` map of the template declares
+	//    `.` only, and a wildcard here would make every file under `src` reachable from the
+	//    shell. A module that declares a second entry in `exports` adds its pair by hand.
 	if (
 		editLines(target.editorUiTsconfig, (lines) => {
 			if (lines.some((line) => line.includes(`"${packageName}"`))) return undefined;
@@ -140,7 +144,6 @@ export const createFrontend = ({ name, packageDir, substitutions, root = repoRoo
 				at + 1,
 				0,
 				`\t\t\t"${packageName}": ["../../modules/${name}/frontend/src/index.ts"],`,
-				`\t\t\t"${packageName}/*": ["../../modules/${name}/frontend/src/*"],`,
 			);
 			return lines;
 		})

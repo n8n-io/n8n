@@ -1,3 +1,7 @@
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'eslint/config';
 import { frontendConfig } from '@n8n/eslint-config/frontend';
 import oxlint from 'eslint-plugin-oxlint';
@@ -9,10 +13,6 @@ import oxlint from 'eslint-plugin-oxlint';
  * The old path no longer resolves, so this is about the message, not the failure: it
  * names the package and it says that the shell reaches a module through
  * `src/app/modules.manifest.ts`, not through a deep path.
- *
- * Spread into every block that sets `no-restricted-imports`. Flat-config replaces
- * rule options rather than merging them, so a scoped block that omits these patterns
- * would switch the ratchet off for its own files.
  */
 const extractedFeatures = [
 	{
@@ -31,6 +31,48 @@ const extractedFeatures = [
 			'insights is the @n8n/frontend-module-insights package. The shell registers a module through src/app/modules.manifest.ts.',
 	},
 ];
+
+const MODULES_DIR = fileURLToPath(new URL('../../modules', import.meta.url));
+
+/** The manifest of the frontend package of every module under `packages/modules`. */
+const moduleManifests = () =>
+	readdirSync(MODULES_DIR, { withFileTypes: true })
+		.filter((entry) => entry.isDirectory())
+		.map((entry) => join(MODULES_DIR, entry.name, 'frontend', 'package.json'))
+		.filter((manifest) => existsSync(manifest))
+		.map((manifest) => JSON.parse(readFileSync(manifest, 'utf8')))
+		.filter(({ name }) => typeof name === 'string' && name.startsWith('@n8n/frontend-module-'));
+
+/**
+ * Deep-import ratchet: a module package is reachable only at the entries its own `exports`
+ * map declares. Every other file under its `src` is internal, and a module has to be free to
+ * move one.
+ *
+ * The Vite aliases and the `paths` in `tsconfig.json` no longer resolve a deep path, so this
+ * is about the message: it names the entries to import instead. The list comes from the
+ * `exports` maps, not from a copy of them here, so a new module and a new entry are both
+ * covered on the day they land.
+ *
+ * The negations need gitignore semantics, which is what `no-restricted-imports` gives a
+ * `group`. `src/app/moduleEntries.test.ts` lints real text to hold that.
+ */
+const moduleEntryPatterns = moduleManifests().map(({ name, exports }) => {
+	const entries = Object.keys(exports ?? { '.': '' }).map((subpath) =>
+		subpath === '.' ? name : `${name}/${subpath.replace(/^\.\//, '')}`,
+	);
+
+	return {
+		group: [`${name}/**`, ...entries.filter((entry) => entry !== name).map((entry) => `!${entry}`)],
+		message: `${name} is reachable only at its declared entries: ${entries.join(', ')}. A deeper path is internal to the module. To add an entry, put it in the "exports" map of the package and in the paths of editor-ui/tsconfig.json.`,
+	};
+});
+
+/**
+ * Spread into every block that sets `no-restricted-imports`. Flat-config replaces rule
+ * options rather than merging them, so a scoped block that omits these patterns would switch
+ * both ratchets off for its own files.
+ */
+const moduleBoundaryPatterns = [...extractedFeatures, ...moduleEntryPatterns];
 
 export default defineConfig(
 	frontendConfig,
@@ -268,7 +310,7 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-argument': 'warn',
 			'@typescript-eslint/no-unsafe-member-access': 'warn',
 			'@typescript-eslint/no-unsafe-return': 'warn',
-			'@typescript-eslint/no-restricted-imports': ['error', { patterns: extractedFeatures }],
+			'@typescript-eslint/no-restricted-imports': ['error', { patterns: moduleBoundaryPatterns }],
 		},
 	},
 	{
@@ -330,7 +372,7 @@ export default defineConfig(
 				'error',
 				{
 					patterns: [
-						...extractedFeatures,
+						...moduleBoundaryPatterns,
 						{
 							group: ['**/ndv/runData/components/RunData.vue'],
 							message:

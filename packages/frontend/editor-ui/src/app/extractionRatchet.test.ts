@@ -1,16 +1,20 @@
+import { modulePackages } from '@n8n/frontend-vite-config';
 import { ESLint } from 'eslint';
 
 /**
- * The extraction ratchet must hold for every file under `src`.
+ * The two module ratchets must hold for every file under `src`: an extracted feature
+ * must not reappear at its old path, and a module package is reachable only at the
+ * entries its `exports` map declares.
  *
  * `no-restricted-imports` is not mergeable across flat-config blocks — a later
  * block replaces the rule outright. That is exactly how the ratchet was turned off
  * for `src/features/agents/**` once already: a narrower block set the rule without
- * spreading `extractedFeatures`. A comment cannot hold that, so this asserts
+ * spreading `moduleBoundaryPatterns`. A comment cannot hold that, so this asserts
  * the *resolved* config rather than the config source.
  *
  * Add a block that sets `no-restricted-imports` for some subtree and forgets the
- * spread, and the matching path below fails.
+ * spread, and the matching path below fails. `moduleEntries.test.ts` holds the other
+ * half: that the deep-import patterns say what they mean.
  */
 type RestrictedImports = [
 	string | number,
@@ -63,6 +67,16 @@ describe('extraction ratchet', () => {
 		const groups = (options.patterns ?? []).flatMap((pattern) => pattern.group ?? []);
 		for (const { group, package: pkg } of EXTRACTED_MODULES) {
 			expect(groups, `${path} does not restrict ${pkg}'s old path`).toContain(group);
+		}
+	});
+
+	it.each(PATHS)('restricts every undeclared path inside a module package for %s', (path) => {
+		const groups = ((configs.get(path) as RestrictedImports)[1].patterns ?? []).flatMap(
+			(pattern) => pattern.group ?? [],
+		);
+
+		for (const { name } of modulePackages) {
+			expect(groups, `${path} lets a deep import into ${name} through`).toContain(`${name}/**`);
 		}
 	});
 

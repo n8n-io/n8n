@@ -28,13 +28,20 @@ const readTsconfig = (file: string) =>
  * This function treats the short `"@n8n/x*"` form as the `"@n8n/x"` plus `"@n8n/x/*"` pair. That
  * holds for the directory each maps to, but not for how TypeScript resolves a bare specifier — see
  * `resolves the bare specifier of every entry package to src` below.
+ *
+ * A subpath key of a module package (`"@n8n/frontend-module-insights/insights.module"`) collapses
+ * onto its package, because every key of one package points into the same `src`.
  */
 const pathsByPackage = (file: string) => {
 	const paths = readTsconfig(file).compilerOptions?.paths ?? {};
 	const byPackage = new Map<string, string>();
 
 	for (const [key, [target]] of Object.entries(paths)) {
-		const name = key.replace(/\/?\*$/, '');
+		const name = key
+			.replace(/\/?\*$/, '')
+			.split('/')
+			.slice(0, 2)
+			.join('/');
 		if (!name.startsWith('@n8n/')) continue;
 
 		const resolved = resolve(dirname(file), target.replace(/\/?\*$/, ''));
@@ -42,6 +49,27 @@ const pathsByPackage = (file: string) => {
 	}
 
 	return byPackage;
+};
+
+/** Every `paths` key of a module package, mapped to the absolute file it names. */
+const modulePathEntries = (file: string, name: string) =>
+	new Map(
+		Object.entries(readTsconfig(file).compilerOptions?.paths ?? {})
+			.filter(([key]) => key === name || key.startsWith(`${name}/`))
+			.map(([key, [target]]) => [key, resolve(dirname(file), target)]),
+	);
+
+/** The `exports` map of a module package, as the specifier-to-file pairs it declares. */
+const declaredEntries = (packagesDir: string, name: string, dir: string) => {
+	const packageDir = resolve(packagesDir, dir);
+	const { exports } = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')) as {
+		exports: Record<string, string>;
+	};
+
+	return Object.entries(exports).map(([subpath, target]) => ({
+		specifier: subpath === '.' ? name : `${name}/${subpath.replace(/^\.\//, '')}`,
+		file: resolve(packageDir, target),
+	}));
 };
 
 /**
@@ -73,14 +101,39 @@ describe('editor-ui vite aliases', () => {
 
 	// This is a real failure. For months, four packages used `src` for the typecheck and `dist`
 	// for the build.
-	it.each([...sourcePackages, ...modulePackages])(
-		'resolves $name to the same src as tsconfig does',
-		({ name, dir }) => {
-			const srcDir = resolve(packagesDir, dir, 'src');
-			const src = relative(repoRoot, srcDir);
+	it.each(sourcePackages)('resolves $name to the same src as tsconfig does', ({ name, dir }) => {
+		const srcDir = resolve(packagesDir, dir, 'src');
+		const src = relative(repoRoot, srcDir);
 
-			expect(resolveSpecifier(`${name}/probe`, aliases)).toBe(`${src}/probe`);
-			expect(editorUiPaths.get(name)).toBe(srcDir);
+		expect(resolveSpecifier(`${name}/probe`, aliases)).toBe(`${src}/probe`);
+		expect(editorUiPaths.get(name)).toBe(srcDir);
+	});
+
+	// A module package gets no catch-all, so it is checked entry by entry instead. See
+	// `moduleEntryAliases` in `@n8n/frontend-vite-config`.
+	it.each(modulePackages)(
+		'resolves every declared entry of $name, and nothing deeper',
+		({ name, dir }) => {
+			const tsconfigEntries = modulePathEntries(join(editorUiDir, 'tsconfig.json'), name);
+			const declared = declaredEntries(packagesDir, name, dir);
+
+			expect(editorUiPaths.get(name)).toBe(resolve(packagesDir, dir, 'src'));
+			expect(declared.length).toBeGreaterThan(0);
+
+			for (const { specifier, file } of declared) {
+				expect(resolveSpecifier(specifier, aliases)).toBe(relative(repoRoot, file));
+				// vue-tsc has to read the same file. Without the `paths` entry it would fall back to
+				// node resolution, which reads the `exports` map — the same file today, but only by
+				// luck once a module gains a `dist`.
+				expect(tsconfigEntries.get(specifier)).toBe(file);
+			}
+
+			// The gap this closes: a `^<name>/(.+)$` alias made every file under `src` resolve, so a
+			// consumer could import an internal one and no check said a word.
+			expect(resolveSpecifier(`${name}/probe`, aliases)).toBe('dist');
+			expect([...tsconfigEntries.keys()].sort()).toEqual(
+				declared.map(({ specifier }) => specifier).sort(),
+			);
 		},
 	);
 
@@ -134,8 +187,7 @@ describe('editor-ui vite aliases', () => {
 			configPath,
 		);
 
-		const offenders = [...sourcePackages, ...modulePackages]
-			.filter(({ entry = true }) => entry)
+		const offenders = [...sourcePackages.filter(({ entry = true }) => entry), ...modulePackages]
 			.filter(({ name }) => !KNOWN_DIST_FALLBACK.has(name))
 			.filter(({ name }) => {
 				const resolved = ts.resolveModuleName(name, probe, options, ts.sys).resolvedModule;

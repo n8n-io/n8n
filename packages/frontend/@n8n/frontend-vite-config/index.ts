@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Alias } from 'vite';
 
@@ -18,7 +19,7 @@ import type { Alias } from 'vite';
  * `entry: false` marks a package with no `src/index.ts`. The `exports` map of such a package has no
  * `.` key. A bare import of it does not resolve, so do not make an alias for it.
  */
-export const sourcePackages = [
+export const sourcePackages: Array<{ name: string; dir: string; entry?: boolean }> = [
 	{ name: '@n8n/api-types', dir: '@n8n/api-types' },
 	{ name: '@n8n/chat', dir: 'frontend/@n8n/chat' },
 	{ name: '@n8n/chat-hub', dir: '@n8n/chat-hub' },
@@ -42,8 +43,11 @@ export const sourcePackages = [
  *
  * A module that aliases the other modules lets a cross-module import resolve in its own test run.
  * The module tsconfig base holds that boundary.
+ *
+ * A module entry carries no `entry` flag: the `exports` map of the package says which specifiers
+ * resolve. See `moduleEntryAliases`.
  */
-export const modulePackages: Array<{ name: string; dir: string; entry?: boolean }> = [
+export const modulePackages: Array<{ name: string; dir: string }> = [
 	{ name: '@n8n/frontend-module-insights', dir: 'modules/insights/frontend' },
 	{ name: '@n8n/frontend-module-instance-registry', dir: 'modules/instance-registry/frontend' },
 	{ name: '@n8n/frontend-module-otel', dir: 'modules/otel/frontend' },
@@ -63,7 +67,7 @@ const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, 
  * `@n8n/chat`, because `(.+)` needs one more character after the name. That bare import then
  * resolves to `dist`.
  */
-const expand = (packagesDir: string, packages: typeof modulePackages): Alias[] =>
+const expand = (packagesDir: string, packages: typeof sourcePackages): Alias[] =>
 	packages.flatMap(({ name, dir, entry = true }) => {
 		const src = resolve(packagesDir, dir, 'src');
 		const pattern = escapeForRegExp(name);
@@ -79,9 +83,52 @@ const expand = (packagesDir: string, packages: typeof modulePackages): Alias[] =
 export const frontendSourceAliases = (packagesDir: string): Alias[] =>
 	expand(packagesDir, sourcePackages);
 
+/**
+ * One alias per key in the `exports` map of the module package, and no wildcard beside them.
+ *
+ * A module declares its public entries in `exports`. `expand` above instead gives every package a
+ * `^<name>/(.+)$` catch-all, which resolves any file under `src` and so makes each of them part of
+ * the contract by accident. A module then cannot move an internal file, and a consumer that
+ * reaches for an SFC directly re-enters the eager import graph that the declared entries were
+ * chosen to keep out of.
+ *
+ * The catch-all stays for `sourcePackages`: `@n8n/stores` and `@n8n/composables` are subpath-only
+ * by design, and their `exports` maps use a wildcard.
+ *
+ * A module that needs a second entry adds the key to its own `exports` map, and the matching
+ * `paths` entry to `editor-ui/tsconfig.json`. A `"./*"` key opts that module back into a wildcard.
+ */
+const moduleEntryAliases = (packagesDir: string, name: string, dir: string): Alias[] => {
+	const packageDir = resolve(packagesDir, dir);
+	const { exports } = JSON.parse(readFileSync(resolve(packageDir, 'package.json'), 'utf8')) as {
+		exports?: Record<string, unknown>;
+	};
+
+	const entries = Object.entries(exports ?? {});
+	if (entries.length === 0) {
+		throw new Error(`${name} declares no "exports" map, so no specifier of it resolves to src.`);
+	}
+
+	return entries.map(([subpath, target]) => {
+		if (typeof target !== 'string') {
+			throw new Error(`${name} maps "${subpath}" to a condition object, which this cannot alias.`);
+		}
+
+		const specifier = subpath === '.' ? name : `${name}/${subpath.replace(/^\.\//, '')}`;
+		const file = resolve(packageDir, target);
+
+		return specifier.includes('*')
+			? {
+					find: new RegExp(`^${escapeForRegExp(specifier).replace('\\*', '(.+)')}$`),
+					replacement: file.replace('*', '$1'),
+				}
+			: { find: new RegExp(`^${escapeForRegExp(specifier)}$`), replacement: file };
+	});
+};
+
 /** Only the shell uses this map. See `modulePackages`. */
 export const frontendModuleAliases = (packagesDir: string): Alias[] =>
-	expand(packagesDir, modulePackages);
+	modulePackages.flatMap(({ name, dir }) => moduleEntryAliases(packagesDir, name, dir));
 
 /**
  * `n8n-workflow` imports `astVisit` from `@n8n/tournament` for its expression sandbox. Nothing

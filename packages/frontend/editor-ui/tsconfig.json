@@ -25,16 +25,17 @@
 			"@n8n/composables*": ["../@n8n/composables/src*"],
 			"@n8n/constants*": ["../../@n8n/constants/src*"],
 			"@n8n/frontend-module-sdk": ["../@n8n/frontend-module-sdk/src/index.ts"],
+			// One entry per key in the `exports` map of the module package, and no `/*` wildcard
+			// beside them: a wildcard here makes every file under a module's `src` part of its
+			// contract. `editor-ui/vite/aliases.test.ts` fails when this set and that map disagree.
 			"@n8n/frontend-module-insights": ["../../modules/insights/frontend/src/index.ts"],
-			"@n8n/frontend-module-insights/*": ["../../modules/insights/frontend/src/*"],
+			"@n8n/frontend-module-insights/insights.module": [
+				"../../modules/insights/frontend/src/insights.module.ts"
+			],
 			"@n8n/frontend-module-instance-registry": [
 				"../../modules/instance-registry/frontend/src/index.ts"
 			],
-			"@n8n/frontend-module-instance-registry/*": [
-				"../../modules/instance-registry/frontend/src/*"
-			],
 			"@n8n/frontend-module-otel": ["../../modules/otel/frontend/src/index.ts"],
-			"@n8n/frontend-module-otel/*": ["../../modules/otel/frontend/src/*"],
 			"@n8n/frontend-test-utils": ["../@n8n/frontend-test-utils/src/index.ts"],
 			"@n8n/frontend-test-utils/*": ["../@n8n/frontend-test-utils/src/*"],
 			"@n8n/frontend-utils*": ["../@n8n/frontend-utils/src*"],

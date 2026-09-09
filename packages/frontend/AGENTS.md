@@ -6,6 +6,8 @@ Extra information, specific to the frontend codebase. Use this when doing any fr
   Scaffold one with `pnpm n8n-module-sdk create`. Then obey `packages/@n8n/module-cli/frontend-module-guide.md`.
   A module owns its tsconfig, its lint config and its vitest config.
   A module must never import `@/…` or another `@n8n/frontend-module-*`.
+  The shell reaches a module only at the entries its `exports` map declares. A deeper path
+  resolves nowhere and fails lint.
 - When rendering `el-plus` popovers/dropdowns/selects inside `N8nDialog`, prefer to keep them in the dialog stacking context with `:teleported="false"` unless they intentionally need to escape.
 - Available icon names are in `packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts`.
   Use keys from `updatedIconSet` only — `deprecatedIconSet` entries must not be used in new code.

@@ -142,8 +142,16 @@ export { MyFeatureModule } from './my-feature.module';
 export { useMyFeatureStore } from './my-feature.store';
 ```
 
-A deep path into `src/` is not part of the contract. If the shell or another package needs a
-value, export that value here.
+A deep path into `src/` is not part of the contract, and nothing resolves one. The `exports` map of
+the package declares the entries, and the Vite aliases and the `paths` of editor-ui carry exactly
+those entries — no wildcard. A deep import fails `lint` with a message that names the entries, and
+fails `typecheck` with `TS2307`. If the shell or another package needs a value, export that value
+here.
+
+A module that needs a second entry — insights exports `./insights.module`, so the shell can
+register the descriptor without pulling the store into the eager graph — adds three lines together:
+the key in its own `exports` map, the `paths` entry in `editor-ui/tsconfig.json`, and nothing else.
+The alias generator reads the `exports` map, and `aliases.test.ts` fails if the two disagree.
 
 ```ts
 // src/my-feature.module.ts
@@ -428,7 +436,7 @@ hand, or when you debug a CI failure.
 | - | ---------------------------------------------- | ----------------------------------------- | ----------- |
 | 1 | `@n8n/frontend-vite-config/index.ts`           | an entry in the `modulePackages` array     | ✅          |
 | 2 | `editor-ui/package.json`                       | `"@n8n/frontend-module-x": "workspace:*"`  | ✅          |
-| 3 | `editor-ui/tsconfig.json`                      | two `paths` entries (bare + `/*`)          | ✅          |
+| 3 | `editor-ui/tsconfig.json`                      | one `paths` entry per declared export      | ✅          |
 | 4 | `editor-ui/src/app/modules.manifest.ts`        | import + array entry                       | ✅          |
 | 5 | `.github/CODEOWNERS`                           | one line for the new package               | ❌ do this  |
 
@@ -441,7 +449,9 @@ resolver:
 - **#1** is the Vite alias. It makes the dev server and the production bundle read your module
   from `src`. A person maintains this table by hand. It does not appear without that edit.
 - **#2** makes a bare import resolve outside Vite, for `vue-tsc` and for node.
-- **#3** makes `vue-tsc` resolve the same `src` that Vite resolves.
+- **#3** makes `vue-tsc` resolve the same `src` that Vite resolves. One entry for each key in the
+  `exports` map of the module, and no `/*` wildcard beside it. A wildcard makes every file under
+  `src` part of the contract by accident, which is the failure the `exports` map prevents.
 
 **Note:** the list came from the file system in the past. It does not now. Commit `fae4c98` made
 that change on purpose, and gave a table that you read and edit. If you read an older description
@@ -471,8 +481,9 @@ is a real gate, and not a convention. The failure is also real: for months, `vue
 packages from `src` while the build used their `dist`.
 
 **Note:** the test makes sure that the alias table, the `paths` of editor-ui and the shared module
-base agree. It says nothing about an import of one module by another module. That is the separate
-boundary above, and no tool enforces it.
+base agree. It also checks each module entry by entry: every key of the `exports` map resolves, and
+`<package>/probe` resolves nowhere. It says nothing about an import of one module by another module.
+That is the separate boundary above, and no tool enforces it.
 
 The old `pnpm check:frontend-aliases` script is gone. `aliases.test.ts` replaced it. The guard now
 runs in the standard frontend test job, and not in `lint:ci`.
