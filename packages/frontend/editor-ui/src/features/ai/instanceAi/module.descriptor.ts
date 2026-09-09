@@ -14,11 +14,35 @@ import {
 } from './composables/useInstanceAiHandoff';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { launchWorkflowThread } from '@/experiments/openWorkflowInAssistant/launchWorkflowThread';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import {
 	useInstanceAiAvailable,
 	useInstanceAiReady,
 } from './composables/useInstanceAiAvailability';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { canManageInstanceAi } from './instanceAiPermissions';
+
+/**
+ * The settings page renders its sections only for a viewer who can manage
+ * Instance AI. Everybody else gets a page with nothing but its header. The one
+ * exception is the default editor row, which the openWorkflowInAssistant
+ * experiment adds for members in its treatment group. The sidebar entry and the
+ * route use the same gate, so n8n does not offer or serve an empty page.
+ *
+ * Experiment cleanup: drop the treatment term with openWorkflowInAssistant.
+ */
+function hasInstanceAiSettingsContent(): boolean {
+	if (canManageInstanceAi()) return true;
+
+	// The view drops the default editor row while the assistant is off — it shows
+	// the empty state instead — so the row is the member's only reason to visit.
+	// A member never loads the admin settings, so `enabled` on the module
+	// settings is the flag the view falls back to for them.
+	const isAssistantEnabled = useSettingsStore().moduleSettings['instance-ai']?.enabled === true;
+
+	return isAssistantEnabled && useOpenWorkflowInAssistantStore().isTreatment;
+}
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
@@ -121,10 +145,14 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			path: 'assistant',
 			name: INSTANCE_AI_SETTINGS_VIEW,
 			component: SettingsInstanceAiView,
+			beforeEnter: () => (hasInstanceAiSettingsContent() ? true : { name: VIEWS.HOMEPAGE }),
 			meta: {
 				layout: 'settings',
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: {
+					// `beforeEnter` is the gate that matters. Keep `instanceAi:message`
+					// here, because a member in the openWorkflowInAssistant treatment
+					// must also pass this check to reach their default editor row.
 					rbac: {
 						scope: ['instanceAi:message', 'instanceAi:manage'],
 					},
@@ -183,9 +211,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			preview: true,
 			get available() {
-				return hasPermission(['rbac'], {
-					rbac: { scope: ['instanceAi:message', 'instanceAi:manage'] },
-				});
+				return hasInstanceAiSettingsContent();
 			},
 		},
 	],
