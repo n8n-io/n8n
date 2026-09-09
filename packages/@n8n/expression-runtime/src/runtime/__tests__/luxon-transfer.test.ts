@@ -3,10 +3,14 @@ import { describe, it, expect } from 'vitest';
 
 import {
 	dateTimeToSentinel,
+	decodeLuxonSentinel,
 	durationToSentinel,
+	encodeLuxonValue,
 	intervalToSentinel,
 	unwrapLuxonValues,
 } from '../luxon-transfer';
+import { __prepareForTransfer } from '../serialize';
+import { TRANSFER_TYPE_KEY } from '../transfer';
 
 describe('luxon transfer', () => {
 	describe('round trip', () => {
@@ -223,6 +227,157 @@ describe('luxon transfer', () => {
 			expect(1 in result).toBe(false);
 			expect(result[0]).toBe(1);
 			expect(result[2]).toBe(3);
+		});
+	});
+	describe('the values a marker carries', () => {
+		it('should keep a fixed offset zone', () => {
+			const value = DateTime.fromISO('2024-01-15T12:00:00', { zone: 'UTC+5:30' });
+
+			const result = unwrapLuxonValues(dateTimeToSentinel(value)) as DateTime;
+
+			expect(result.isValid).toBe(true);
+			expect(result.zone.type).toBe('fixed');
+			expect(result.offset).toBe(330);
+		});
+
+		it('should keep the milliseconds of a value', () => {
+			const value = DateTime.fromISO('2024-01-15T12:00:00.123Z', { zone: 'utc' });
+
+			const result = unwrapLuxonValues(dateTimeToSentinel(value)) as DateTime;
+
+			expect(result.toMillis()).toBe(value.toMillis());
+			expect(result.millisecond).toBe(123);
+		});
+
+		it('should keep a date before the common era', () => {
+			const value = DateTime.fromObject({ year: -44, month: 3, day: 15 }, { zone: 'utc' });
+
+			const result = unwrapLuxonValues(dateTimeToSentinel(value)) as DateTime;
+
+			expect(result.isValid).toBe(true);
+			expect(result.year).toBe(-44);
+			expect(result.toMillis()).toBe(value.toMillis());
+		});
+
+		it('should keep the zone of each end of an interval', () => {
+			const value = Interval.fromDateTimes(
+				DateTime.fromISO('2024-01-01T00:00:00', { zone: 'Europe/Paris' }),
+				DateTime.fromISO('2024-01-02T00:00:00', { zone: 'Asia/Tokyo' }),
+			);
+
+			const result = unwrapLuxonValues(intervalToSentinel(value)) as Interval;
+
+			expect(result.isValid).toBe(true);
+			expect(result.start?.zoneName).toBe('Europe/Paris');
+			expect(result.end?.zoneName).toBe('Asia/Tokyo');
+		});
+
+		it('should keep a duration whose units are zero or negative', () => {
+			const value = Duration.fromObject({ days: 0, hours: -3, minutes: 30 });
+
+			const result = unwrapLuxonValues(durationToSentinel(value)) as Duration;
+
+			expect(result.isValid).toBe(true);
+			expect(result.toObject()).toEqual({ days: 0, hours: -3, minutes: 30 });
+			expect(result.as('minutes')).toBe(value.as('minutes'));
+		});
+
+		it('should keep an interval whose ends are the same instant', () => {
+			const instant = DateTime.fromISO('2024-01-01T00:00:00.000Z', { zone: 'utc' });
+
+			const result = unwrapLuxonValues(
+				intervalToSentinel(Interval.fromDateTimes(instant, instant)),
+			) as Interval;
+
+			expect(result.isValid).toBe(true);
+			expect(result.length('milliseconds')).toBe(0);
+		});
+	});
+
+	describe('the encoder', () => {
+		it('should claim each luxon type', () => {
+			expect(encodeLuxonValue(DateTime.now())?.[TRANSFER_TYPE_KEY]).toBe('DateTime');
+			expect(encodeLuxonValue(Duration.fromObject({ days: 1 }))?.[TRANSFER_TYPE_KEY]).toBe(
+				'Duration',
+			);
+			expect(
+				encodeLuxonValue(
+					Interval.fromDateTimes(DateTime.now(), DateTime.now().plus({ days: 1 })),
+				)?.[TRANSFER_TYPE_KEY],
+			).toBe('Interval');
+		});
+
+		it('should claim an invalid value of each luxon type', () => {
+			expect(encodeLuxonValue(DateTime.invalid('bad'))?.[TRANSFER_TYPE_KEY]).toBe('DateTime');
+			expect(encodeLuxonValue(Duration.invalid('bad'))?.[TRANSFER_TYPE_KEY]).toBe('Duration');
+			expect(encodeLuxonValue(Interval.invalid('bad'))?.[TRANSFER_TYPE_KEY]).toBe('Interval');
+		});
+
+		it('should not claim a value that only carries the luxon flags', () => {
+			// The luxon `is*` helpers read a flag any object can hold, so the encoder
+			// checks the prototype as well.
+			expect(encodeLuxonValue({ isLuxonDateTime: true })).toBeUndefined();
+			expect(encodeLuxonValue({ isLuxonDuration: true })).toBeUndefined();
+			expect(encodeLuxonValue({ isLuxonInterval: true })).toBeUndefined();
+		});
+
+		it('should not claim any other value', () => {
+			expect(encodeLuxonValue(new Date())).toBeUndefined();
+			expect(encodeLuxonValue({})).toBeUndefined();
+			expect(encodeLuxonValue([])).toBeUndefined();
+		});
+	});
+
+	describe('the decoder', () => {
+		it('should give back a marker of a type it does not own', () => {
+			const marker = { [TRANSFER_TYPE_KEY]: 'Temporal', when: 1 };
+
+			expect(decodeLuxonSentinel(marker)).toBe(marker);
+		});
+	});
+
+	describe('the round trip through both walks', () => {
+		it('should rebuild a luxon value wherever it sits', () => {
+			const when = DateTime.fromISO('2024-01-15T12:00:00', { zone: 'Europe/Paris' });
+
+			const result = unwrapLuxonValues(
+				__prepareForTransfer({ when, list: [when], deep: { when } }),
+			) as Record<string, unknown>;
+
+			for (const rebuilt of [
+				result.when,
+				(result.list as unknown[])[0],
+				(result.deep as Record<string, unknown>).when,
+			]) {
+				expect(DateTime.isDateTime(rebuilt)).toBe(true);
+				expect((rebuilt as DateTime).zoneName).toBe('Europe/Paris');
+				expect((rebuilt as DateTime).toMillis()).toBe(when.toMillis());
+			}
+		});
+
+		it('should rebuild a luxon value next to a user key that copies a framing key', () => {
+			const when = DateTime.fromISO('2024-01-15T12:00:00.000Z', { zone: 'utc' });
+
+			const result = unwrapLuxonValues(
+				__prepareForTransfer({ [TRANSFER_TYPE_KEY]: 'user data', when }),
+			) as Record<string, unknown>;
+
+			expect(result[TRANSFER_TYPE_KEY]).toBe('user data');
+			expect(DateTime.isDateTime(result.when)).toBe(true);
+		});
+
+		it('should not enter a class instance to reach the luxon value inside it', () => {
+			class Row {
+				when = DateTime.fromISO('2024-01-15T12:00:00.000Z', { zone: 'utc' });
+			}
+			const row = new Row();
+
+			const result = unwrapLuxonValues(__prepareForTransfer({ row })) as Record<string, unknown>;
+
+			// Neither walk enters a class the host cannot rebuild, so the value inside
+			// never becomes a marker. Across a real isolate the structured clone then
+			// strips its prototype, which `integration.test.ts` covers.
+			expect(result.row).toBe(row);
 		});
 	});
 });

@@ -399,6 +399,56 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			});
 		});
 
+		it('should rebuild a luxon value that appears in more than one place', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ var d = DateTime.fromISO("2024-01-15T12:00:00.000Z"); return { a: d, b: [d] }; })() }}',
+				data,
+				caller,
+			) as Record<string, unknown>;
+
+			const first = result.a as DateTime;
+			const second = (result.b as unknown[])[0] as DateTime;
+			expect(DateTime.isDateTime(first)).toBe(true);
+			expect(DateTime.isDateTime(second)).toBe(true);
+			expect(second.toMillis()).toBe(first.toMillis());
+		});
+
+		// The QuickJS engine reads a result out of the sandbox with vm.dump(), which
+		// fills the holes of a sparse array. A plain sparse array with no luxon value
+		// in it loses its holes on that engine too, so the limit belongs to the
+		// engine and not to the transfer.
+		it.runIf(!isQuickJS)('should keep the holes of a sparse array that holds a luxon value', () => {
+			const data = { $json: {} };
+
+			const result = evaluator.evaluate(
+				'{{ (function(){ var a = new Array(3); a[0] = DateTime.fromISO("2024-01-15T12:00:00.000Z"); a[2] = 3; return a; })() }}',
+				data,
+				caller,
+			) as unknown[];
+
+			expect(result).toHaveLength(3);
+			expect(1 in result).toBe(false);
+			expect(DateTime.isDateTime(result[0])).toBe(true);
+			expect(result[2]).toBe(3);
+		});
+
+		it('should rebuild a luxon value under many levels of nesting', () => {
+			const data = { $json: {} };
+			const depth = 50;
+
+			const result = evaluator.evaluate(
+				`{{ (function(){ var v = DateTime.fromISO("2024-01-15T12:00:00.000Z"); for (var i = 0; i < ${depth}; i++) v = { down: v }; return v; })() }}`,
+				data,
+				caller,
+			);
+
+			let node: unknown = result;
+			for (let i = 0; i < depth; i++) node = (node as Record<string, unknown>).down;
+			expect(DateTime.isDateTime(node)).toBe(true);
+		});
+
 		// The isolate engine sends a class instance across by structured clone, which
 		// resolves a value that refers to itself. The QuickJS engine walks the value
 		// instead, and that walk does not end on this shape. The restriction is a

@@ -144,7 +144,11 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
 		// is our framing. Give it back as it is. A walked payload only had its own
 		// keys collide, so the walk goes on below and rebuilds markers deeper in.
 		if (isOpaqueTransferValue(value)) return inner;
-		if (typeof inner !== 'object' || inner === null || !isPlainObject(inner)) return inner;
+		if (typeof inner !== 'object' || inner === null) return inner;
+		// An array payload is walked as an array. Its own entries carry no framing,
+		// so reading it as a marker is never right.
+		if (Array.isArray(inner)) return unwrapValue(inner, decode, seen);
+		if (!isPlainObject(inner)) return inner;
 		return unwrapPlainObject(inner, decode, seen);
 	}
 	return unwrapPlainObject(value, decode, seen);
