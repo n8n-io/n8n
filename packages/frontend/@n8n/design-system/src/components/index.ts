@@ -73,6 +73,7 @@ export { default as N8nLink } from './N8nLink';
 export { default as N8nLogo } from './N8nLogo';
 export { default as N8nLoading } from './N8nLoading';
 export { default as N8nMarkdown } from './N8nMarkdown';
+/** @deprecated Use N8nChatActions with `showRating` instead. */
 export { default as N8nMessageRating } from './AskAssistantChat/messages/MessageRating.vue';
 export { default as N8nMenuItem } from './N8nMenuItem';
 export { default as N8nNavigationDropdown } from './N8nNavigationDropdown';
@@ -108,6 +109,14 @@ export {
 	type ChatInputAutoFocusTarget,
 } from './N8nChatInput';
 export { default as N8nChatMessage } from './N8nChatMessage';
+export { default as N8nChatActions } from './N8nChatActions/ChatActions.vue';
+export type {
+	ChatActionCopyResult,
+	ChatActionCopyStatus,
+	ChatActionReadAloudResult,
+	ChatActionReadAloudStatus,
+	ChatActionsProps,
+} from './N8nChatActions/ChatActions.types';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nSegmentControl } from './N8nSegmentControl';

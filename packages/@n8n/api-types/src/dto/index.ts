@@ -103,23 +103,6 @@ export { SourceControlStatusPublicDto } from './source-control/source-control-st
 export { SourceControlPushRequestPublicDto } from './source-control/source-control-push-request-public.dto';
 export { SourceControlPushResponsePublicDto } from './source-control/source-control-push-response-public.dto';
 export { SourceControlPushConflictErrorPublicDto } from './source-control/source-control-push-conflict-error-public.dto';
-export {
-	CloneGitConnectionDto,
-	CreateGitConnectionDto,
-	GitConnectionListPublicDto,
-	GitConnectionProjectListPublicDto,
-	GitConnectionProjectPublicDto,
-	GitConnectionPublicDto,
-	GitConnectionPullResultDto,
-	GitConnectionPushResultDto,
-	ListGitConnectionsQueryDto,
-	PushGitConnectionDto,
-	UpdateGitConnectionDto,
-	gitConnectionTypeSchema,
-	gitKeyGeneratorTypeSchema,
-	type GitConnectionType,
-	type GitKeyGeneratorType,
-} from './git-connections/git-connections.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export {
@@ -508,6 +491,10 @@ export {
 	type PromotionConnectionConfigsPublic,
 	type PromotionDirection,
 } from './promotions/promotion-config.dto';
+export {
+	PromotionCheckoutPublicDto,
+	promotionCheckoutPublicSchema,
+} from './promotions/promotion-checkout.dto';
 export {
 	CreatePromotionConnectionDto,
 	ListPromotionConnectionsQueryDto,
