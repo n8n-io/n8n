@@ -1,0 +1,40 @@
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_ecdf2f2961dcf9::t_c3a539837eeef8 31,87
+  s_ecdf2f2961dcf9::t_bc79e518c092c1 114
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_ecdf2f2961dcf9::t_8a9a057036e8b7 327
+  s_ecdf2f2961dcf9::t_25486b20b1c284 506
+  s_ecdf2f2961dcf9::t_7ced0ab0b0c903 34
+  s_ecdf2f2961dcf9::t_7acdff2eb6a67f 361
+  s_ecdf2f2961dcf9::t_9b567dd4e23d7f 475
+  s_ecdf2f2961dcf9::t_029a78771b7407 228
+  s_ecdf2f2961dcf9::t_6540e8eb4fc9b4 114,117,124
+  s_ecdf2f2961dcf9::t_f40d7c24b28c15 525
+  s_ecdf2f2961dcf9::t_13ca851a61f1ce 560
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_ecdf2f2961dcf9::t_a95acdd0e66dc1 318
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_ecdf2f2961dcf9::t_41cbf7f0292bcc 452
+  s_ecdf2f2961dcf9::t_1337602365ede4 20
+  s_ecdf2f2961dcf9::t_c325a134f3b991 384
+  s_ecdf2f2961dcf9::t_256687e28c38ba 163,168
+  s_ecdf2f2961dcf9::t_bac752c05493ae 120
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_ecdf2f2961dcf9::t_468f53e3673230 37,59,80,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "dc4551001ce70ac05fd38d0b5da80ba8864365e7",
+  "prompts": {},
+  "sessions": {
+    "s_ecdf2f2961dcf9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0475ca00-eb98-4b38-b867-bbb22a8bcde4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
