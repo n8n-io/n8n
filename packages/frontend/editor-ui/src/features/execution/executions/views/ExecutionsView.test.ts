@@ -129,7 +129,7 @@ describe('ExecutionsView', () => {
 
 		await fireEvent.click(getByTestId('stop-stub'));
 
-		expect(executionsStore.fetchExecutions).toHaveBeenCalledWith(undefined, undefined, true);
+		expect(executionsStore.refreshExecutions).toHaveBeenCalled();
 	});
 
 	it('checks workflow emptiness for the current project scope', async () => {

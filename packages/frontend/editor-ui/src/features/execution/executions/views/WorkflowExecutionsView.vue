@@ -173,15 +173,10 @@ async function onRefreshData() {
 	}
 
 	try {
-		// Refresh the first page only, and keep the cursor of the pages already loaded.
-		await executionsStore.fetchExecutions(
-			{
-				...executionsStore.executionsFilters,
-				workflowId: workflowId.value,
-			},
-			undefined,
-			true,
-		);
+		await executionsStore.refreshExecutions({
+			...executionsStore.executionsFilters,
+			workflowId: workflowId.value,
+		});
 	} catch (error) {
 		if (error.errorCode === NO_NETWORK_ERROR_CODE) {
 			toast.showMessage(
@@ -323,10 +318,7 @@ async function loadMore(): Promise<void> {
 	loadingMore.value = true;
 
 	try {
-		await executionsStore.fetchExecutions(
-			executionsStore.executionsFilters,
-			executionsStore.nextCursor ?? undefined,
-		);
+		await executionsStore.loadMoreExecutions();
 	} catch (error) {
 		loadingMore.value = false;
 		toast.showError(error, i18n.baseText('executionsList.showError.loadMore.title'));

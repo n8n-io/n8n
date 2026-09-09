@@ -39,7 +39,9 @@ export function useUserExecutions() {
 		let cursor: SerializedCursor | undefined;
 		let seen = 0;
 		for (let page = 0; page < MAX_PAGES; page++) {
-			const list = await executionsStore.fetchExecutions(
+			// A page of its own: this scan must not replace the executions list the
+			// user is looking at.
+			const list = await executionsStore.fetchExecutionsPage(
 				{ status: ['success'], workflowId },
 				cursor,
 			);
