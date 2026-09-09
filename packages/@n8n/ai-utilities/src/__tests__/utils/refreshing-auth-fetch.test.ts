@@ -61,6 +61,25 @@ describe('createRefreshingAuthFetch', () => {
 		expect(init.referrerPolicy).toBe('no-referrer');
 	});
 
+	it('keeps a Request value when init passes that option as undefined', async () => {
+		const baseFetch = vi.fn().mockResolvedValue(new Response('ok'));
+		const request = new Request('https://example.com/mcp', {
+			method: 'POST',
+			body: 'payload',
+			integrity: 'sha256-abc',
+		});
+		const fetchWithAuth = createRefreshingAuthFetch({
+			baseFetch,
+			initialHeaders: { Authorization: 'Bearer token' },
+		});
+
+		await fetchWithAuth(request, { method: undefined, integrity: undefined });
+
+		const [, init] = baseFetch.mock.calls[0] as [string, RequestInit];
+		expect(init.method).toBe('POST');
+		expect(init.integrity).toBe('sha256-abc');
+	});
+
 	describe('a caller that handles redirects itself', () => {
 		it('returns the redirect unfollowed when the caller asked for manual', async () => {
 			const baseFetch = vi.fn().mockResolvedValue(makeRedirect('https://example.com/v2/mcp'));

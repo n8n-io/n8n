@@ -33,6 +33,17 @@ function initFromRequest(request: Request): RequestInit {
 	} satisfies Record<CarriedRequestField, unknown>;
 }
 
+function applyInit(base: RequestInit, init: RequestInit | undefined): RequestInit {
+	const merged: RequestInit = { ...base };
+	if (init) {
+		Object.assign(
+			merged,
+			Object.fromEntries(Object.entries(init).filter(([, value]) => value !== undefined)),
+		);
+	}
+	return merged;
+}
+
 function mergeHeaders(requestHeaders: HeadersInit | undefined, authHeaders: Headers): Headers {
 	const merged = new Headers(requestHeaders);
 	authHeaders.forEach((value, name) => merged.set(name, value));
@@ -134,7 +145,7 @@ export function createRefreshingAuthFetch({
 		const startUrl = input instanceof Request ? input.url : input;
 		let redirectInit = init;
 		if (input instanceof Request) {
-			redirectInit = { ...initFromRequest(input), ...init };
+			redirectInit = applyInit(initFromRequest(input), init);
 			if (redirectInit.body === undefined && input.body) {
 				redirectInit.body = await input.arrayBuffer();
 			}
