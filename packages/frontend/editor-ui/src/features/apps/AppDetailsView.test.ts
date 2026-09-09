@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -346,7 +347,11 @@ describe('AppDetailsView', () => {
 			expect(links[0]).toHaveAttribute('target', '_blank');
 			expect(links[0]).toHaveTextContent('Echo');
 			expect(rows[0].querySelector('[data-test-id="app-connection-warning"]')).toBeNull();
-			expect(rows[1].querySelector('[data-test-id="app-connection-warning"]')).not.toBeNull();
+			const warned = rows[1].querySelector('[data-test-id="app-connection-warning"]');
+			expect(warned).not.toBeNull();
+			await userEvent.hover(warned!);
+			const tooltip = await screen.findByText(/workflow "Notify" is not published/);
+			expect(tooltip).not.toHaveTextContent("Binding 'notify'");
 			expect(getAllByTestId('app-connection-delete')).toHaveLength(2);
 			expect(getByTestId('app-connections-warning')).toHaveTextContent("Binding 'gone'");
 			expect(getByTestId('app-connections-warning')).not.toHaveTextContent("Binding 'notify'");

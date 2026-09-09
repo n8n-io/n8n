@@ -111,8 +111,13 @@ const buildTabOptions = computed(() => [
 ]);
 
 // The API reports warnings as one flat list; each starts with the quoted binding key.
-const bindingWarnings = (key: string) =>
-	appsStore.bindingWarnings.filter((warning) => warning.startsWith(`Binding '${key}':`));
+// The key is not shown in the UI, so the tooltip drops that prefix.
+const bindingWarnings = (key: string) => {
+	const prefix = `Binding '${key}':`;
+	return appsStore.bindingWarnings
+		.filter((warning) => warning.startsWith(prefix))
+		.map((warning) => warning.slice(prefix.length).trim());
+};
 
 // Warnings about bindings the API left out (workflow gone or incompatible) have no row.
 const unlistedBindingWarnings = computed(() =>
