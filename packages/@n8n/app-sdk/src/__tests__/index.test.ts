@@ -69,7 +69,22 @@ describe('createClient', () => {
 			);
 		});
 
-		it('reloads the page once and still rejects', async () => {
+		// `reloadedOnce` is module state, so this case runs before any reload happened.
+		it('does not reload when the page had no token to send', async () => {
+			vi.stubGlobal('document', { querySelector: vi.fn(() => null) });
+
+			await expect(createClient({ baseUrl: '/x' }).workflows.run('submit')).rejects.toMatchObject({
+				status: 401,
+			});
+
+			expect(reload).not.toHaveBeenCalled();
+		});
+
+		it('reloads the page once and still rejects when the page had a token', async () => {
+			vi.stubGlobal('document', {
+				querySelector: vi.fn(() => ({ getAttribute: () => 'expired.token' })),
+			});
+
 			await expect(createClient({ baseUrl: '/x' }).workflows.run('submit')).rejects.toMatchObject({
 				status: 401,
 				code: 'unauthorized',

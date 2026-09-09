@@ -849,7 +849,8 @@ async function handleBind(
 					`Connect workflow "${await resolveWorkflowName(context, workflowId)}" (${workflowId}) to app "${app.name}" as "${key}"`,
 			),
 		);
-		return lines.join('\n');
+		// One line: the card renders the message as plain HTML text, which folds newlines.
+		return lines.join('; ');
 	});
 	if (denied) return denied;
 

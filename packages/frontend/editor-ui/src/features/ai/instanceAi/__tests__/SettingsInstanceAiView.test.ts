@@ -643,7 +643,15 @@ describe('SettingsInstanceAiView', () => {
 	describe('Permissions groups', () => {
 		it('renders a row per permission group', () => {
 			const { getByTestId } = renderComponent();
-			for (const group of ['workflows', 'folders', 'dataTables', 'credentials', 'system', 'web']) {
+			for (const group of [
+				'workflows',
+				'folders',
+				'dataTables',
+				'credentials',
+				'system',
+				'web',
+				'apps',
+			]) {
 				expect(getByTestId(`n8n-agent-permission-group-${group}`)).toBeVisible();
 			}
 		});

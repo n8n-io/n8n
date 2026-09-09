@@ -126,6 +126,7 @@ describe('GET /apps/:namespace/ with an active version', () => {
 
 		expect(response.headers['content-type']).toContain('text/html');
 		expect(response.headers['content-security-policy']).toContain('sandbox');
+		expect(response.headers['cache-control']).toBe('no-store');
 		expect(response.headers['set-cookie']).toBeUndefined();
 		const token = pageTokenOf(response.text);
 		expect(response.text).toBe(

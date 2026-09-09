@@ -980,7 +980,7 @@ describe('apps tool', () => {
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
 		});
 
-		it('suspends for approval with one line per workflow on the first call', async () => {
+		it('suspends for approval naming every workflow on the first call', async () => {
 			const context = createMockContext();
 			const suspend = vi.fn().mockResolvedValue('suspended');
 
@@ -990,7 +990,7 @@ describe('apps tool', () => {
 			expect(suspend).toHaveBeenCalledWith({
 				requestId: expect.any(String),
 				message:
-					'Connect workflow "Echo" (wf-1) to app "Greeter" as "submit"\n' +
+					'Connect workflow "Echo" (wf-1) to app "Greeter" as "submit"; ' +
 					'Connect workflow "Echo" (wf-2) to app "Greeter" as "notify"',
 				severity: 'warning',
 			});

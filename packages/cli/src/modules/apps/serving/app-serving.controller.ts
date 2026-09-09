@@ -89,7 +89,7 @@ export class AppServingController {
 		res.type('html').send(await renderAppPage(resolved.context));
 	}
 
-	/** HTML is the entry point: it carries the page token and must revalidate so a new version shows up on reload. */
+	/** HTML is the entry point: it carries the page token, so no cache may keep it, and a reload shows a new version. */
 	private async sendHtml(res: Response, filePath: string, token: string) {
 		let html: string;
 		try {
@@ -99,7 +99,7 @@ export class AppServingController {
 			return;
 		}
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-		res.setHeader('Cache-Control', 'no-cache');
+		res.setHeader('Cache-Control', 'no-store');
 		res.type('html').send(injectInspectorScript(injectPageToken(html, token)));
 	}
 

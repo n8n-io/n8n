@@ -186,8 +186,8 @@ Rules:
 `authMode` is `"public"` (default) or `"n8n"`. Set it at
 `apps(action="create", ..., authMode)` or later with
 `apps(action="settings", appId, authMode)`; the user can also change it on
-the app's Details tab. Switching an app with connected workflows to `public`
-asks the user for approval first, like `bind` does.
+the Settings tab of the app's Build view. Switching an app with connected
+workflows to `public` asks the user for approval first, like `bind` does.
 
 - `public`: anyone with the URL opens the app and can run its bound
   workflows. `result.principal` is `null`.

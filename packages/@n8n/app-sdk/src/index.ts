@@ -96,10 +96,12 @@ function pageToken(): string | undefined {
 	);
 }
 
-// A 401 means the page token expired (15 min): a fresh navigation re-mints it, and for an
-// `n8n` app the cookie or the OAuth flow signs the visitor in again. Once per page load, so a
-// server that keeps answering 401 cannot loop the page. The call still rejects, because the
-// reload is asynchronous and the caller's error handling must not hang on it.
+// A 401 for a call that sent a token means it expired (15 min): a fresh navigation re-mints
+// it, and for an `n8n` app the cookie or the OAuth flow signs the visitor in again. Without a
+// token the page was not served by n8n (a dev preview), and a reload would change nothing.
+// Once per page load, so a server that keeps answering 401 cannot loop the page. The call
+// still rejects, because the reload is asynchronous and the caller's error handling must not
+// hang on it.
 let reloadedOnce = false;
 
 function reloadOnce(): void {
@@ -134,7 +136,7 @@ export function createClient(opts: { baseUrl?: string } = {}): N8nAppClient {
 				});
 				const body = await readJson(response);
 
-				if (response.status === 401) reloadOnce();
+				if (response.status === 401 && token) reloadOnce();
 				if (!response.ok) {
 					const error = isRecord(body) ? body : {};
 					throw new N8nAppError(
