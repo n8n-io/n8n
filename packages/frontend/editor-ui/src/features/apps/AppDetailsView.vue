@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { AppPreviewStatus, InstanceAiAppPreviewDiagnostic } from '@n8n/api-types';
 import {
+	type ActionDropdownItem,
+	N8nActionDropdown,
 	N8nBadge,
 	N8nButton,
 	N8nCallout,
@@ -13,11 +15,11 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import CopyInput from '@/app/components/CopyInput.vue';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useMessage } from '@/app/composables/useMessage';
@@ -41,6 +43,7 @@ import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useIn
 type BuilderMode = 'build' | 'preview';
 type PreviewDevice = 'desktop' | 'mobile';
 type BuildTab = 'pages' | 'theme' | 'versions' | 'code';
+type PublishMenuAction = 'open' | 'copy-url' | 'unpublish';
 
 const PREVIEW_WIDTHS: Record<PreviewDevice, string> = { desktop: '100%', mobile: '390px' };
 
@@ -78,6 +81,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
+const clipboard = useClipboard();
 const message = useMessage();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
@@ -121,6 +125,12 @@ const hasPreviewSource = computed(() => Boolean(props.liveUrl ?? versionId.value
 const publishUpToDate = computed(
 	() => Boolean(app.value?.activeVersionId) && !app.value?.hasUnpublishedChanges,
 );
+
+const publishMenuActions = computed<Array<ActionDropdownItem<PublishMenuAction>>>(() => [
+	{ id: 'open', label: i18n.baseText('apps.builder.openApp') },
+	{ id: 'copy-url', label: i18n.baseText('apps.builder.copyUrl') },
+	{ id: 'unpublish', label: i18n.baseText('apps.builder.versions.unpublish'), divided: true },
+]);
 
 // Without a build the preview pane shows the banner alone while n8n restores the
 // app and starts its dev server; only `no-source` (nothing stored for the app at
@@ -360,6 +370,17 @@ const onPublish = async () => {
 	}
 };
 
+const onPublishMenuSelect = async (action: PublishMenuAction) => {
+	if (action === 'open') {
+		window.open(appUrl.value, '_blank', 'noopener');
+	} else if (action === 'copy-url') {
+		await clipboard.copy(appUrl.value);
+		toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+	} else {
+		await onUnpublish();
+	}
+};
+
 const onOpenInAssistant = async () => {
 	if (!app.value) return;
 	await openAppArtifactThread(
@@ -410,38 +431,56 @@ watch(buildTab, async (tab) => {
 				/>
 				<div :class="$style.toolbarEnd">
 					<template v-if="app">
-						<N8nBadge
-							v-if="app.hasUnpublishedChanges"
-							theme="tertiary"
-							data-test-id="app-unpublished-changes"
-						>
-							{{ i18n.baseText('apps.builder.unpublishedChanges') }}
-						</N8nBadge>
-						<N8nTooltip :disabled="!publishUpToDate">
-							<template #content>{{ i18n.baseText('apps.builder.publish.upToDate') }}</template>
-							<N8nButton
-								size="small"
-								icon="upload"
-								:loading="publishing"
-								:disabled="publishUpToDate"
-								data-test-id="app-publish"
-								@click="onPublish"
+						<div :class="$style.buttonGroup">
+							<N8nTooltip :disabled="!publishUpToDate">
+								<template #content>{{ i18n.baseText('apps.builder.publish.upToDate') }}</template>
+								<N8nButton
+									:class="{ [$style.groupButtonLeft]: app.activeVersionId }"
+									variant="ghost"
+									size="small"
+									:loading="publishing"
+									:disabled="publishUpToDate"
+									data-test-id="app-publish"
+									@click="onPublish"
+								>
+									<span :class="$style.publishLabel">
+										<span
+											v-if="app.activeVersionId"
+											:class="[
+												$style.indicatorDot,
+												publishUpToDate ? $style.indicatorPublished : $style.indicatorChanges,
+											]"
+											data-test-id="app-publish-indicator"
+										/>
+										<span :class="{ [$style.indicatorPublishedText]: publishUpToDate }">
+											{{
+												i18n.baseText(
+													publishUpToDate ? 'generic.published' : 'apps.builder.publish',
+												)
+											}}
+										</span>
+									</span>
+								</N8nButton>
+							</N8nTooltip>
+							<N8nActionDropdown
+								v-if="app.activeVersionId"
+								:items="publishMenuActions"
+								placement="bottom-end"
+								data-test-id="app-publish-menu"
+								@select="onPublishMenuSelect"
 							>
-								{{ i18n.baseText('apps.builder.publish') }}
-							</N8nButton>
-						</N8nTooltip>
-						<CopyInput :class="$style.urlCopy" :value="appUrl" collapse data-test-id="app-url" />
-						<N8nButton
-							v-if="app.activeVersionId"
-							:href="appUrl"
-							target="_blank"
-							variant="subtle"
-							size="small"
-							icon="external-link"
-							data-test-id="app-open"
-						>
-							{{ i18n.baseText('apps.builder.openApp') }}
-						</N8nButton>
+								<template #activator>
+									<N8nIconButton
+										:class="$style.groupButtonRight"
+										variant="ghost"
+										size="small"
+										icon="chevron-down"
+										:aria-label="i18n.baseText('node.moreActions')"
+										data-test-id="app-publish-menu-button"
+									/>
+								</template>
+							</N8nActionDropdown>
+						</div>
 						<N8nButton
 							v-if="!props.artifactMode && instanceAiAvailable"
 							variant="subtle"
@@ -710,9 +749,57 @@ watch(buildTab, async (tab) => {
 	justify-content: flex-end;
 }
 
-.urlCopy {
-	max-width: 260px;
-	min-width: 0;
+.buttonGroup {
+	display: inline-flex;
+	border: var(--border);
+	border-radius: var(--radius--3xs);
+}
+
+.groupButtonLeft,
+.groupButtonLeft:disabled,
+.groupButtonLeft:hover:disabled {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+	border-right-color: transparent;
+}
+
+.groupButtonLeft:hover {
+	border-right-color: inherit;
+}
+
+.groupButtonRight {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+	border-left: var(--border);
+}
+
+.buttonGroup:has(.groupButtonLeft:not(:disabled):hover) .groupButtonRight {
+	border-left-color: transparent;
+}
+
+.publishLabel {
+	display: flex;
+	align-items: center;
+}
+
+.indicatorDot {
+	height: var(--spacing--2xs);
+	width: var(--spacing--2xs);
+	border-radius: 50%;
+	display: inline-block;
+	margin-right: var(--spacing--2xs);
+}
+
+.indicatorPublished {
+	background-color: var(--color--mint-600);
+}
+
+.indicatorChanges {
+	background-color: var(--color--yellow-500);
+}
+
+.indicatorPublishedText {
+	color: var(--color--text--tint-1);
 }
 
 .preview {

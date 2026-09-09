@@ -11,6 +11,7 @@ import type { App, AppVersion } from './apps.types';
 
 const openAppArtifactThread = vi.hoisted(() => vi.fn());
 const confirm = vi.hoisted(() => vi.fn());
+const clipboardCopy = vi.hoisted(() => vi.fn());
 const instanceAiAvailable = vi.hoisted(() => ({ value: true }));
 const toast = vi.hoisted(() => ({ showError: vi.fn(), showMessage: vi.fn() }));
 
@@ -20,6 +21,10 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm }),
+}));
+
+vi.mock('@n8n/composables/useClipboard', () => ({
+	useClipboard: () => ({ copy: clipboardCopy }),
 }));
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
@@ -94,6 +99,7 @@ describe('AppDetailsView', () => {
 		createTestingPinia();
 		openAppArtifactThread.mockReset();
 		confirm.mockReset();
+		clipboardCopy.mockReset();
 		toast.showError.mockReset();
 		toast.showMessage.mockReset();
 		instanceAiAvailable.value = true;
@@ -212,54 +218,109 @@ describe('AppDetailsView', () => {
 		);
 	});
 
-	it('links and copies the served app URL once a version is published', async () => {
-		const { getByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
+	describe('publish menu', () => {
+		const appUrl = `${window.location.origin}/apps/greeter/`;
 
-		expect(getByTestId('app-open')).toHaveAttribute(
-			'href',
-			`${window.location.origin}/apps/greeter/`,
-		);
-		expect(getByTestId('app-open')).toHaveAttribute('target', '_blank');
-		expect(getByTestId('app-url')).toHaveTextContent(`${window.location.origin}/apps/greeter/`);
-	});
+		async function openPublishMenu(app: App) {
+			const rendered = await renderApp(app);
+			await userEvent.click(rendered.getByTestId('app-publish-menu-button'));
+			return rendered;
+		}
 
-	it('hides "Open app" until something is published', async () => {
-		const { queryByTestId, getByTestId } = await renderApp(makeApp());
+		it('is hidden until something is published', async () => {
+			const { queryByTestId } = await renderApp(makeApp());
 
-		expect(queryByTestId('app-open')).not.toBeInTheDocument();
-		expect(getByTestId('app-url')).toBeInTheDocument();
+			expect(queryByTestId('app-publish-menu-button')).not.toBeInTheDocument();
+		});
+
+		it('opens the served app in a new tab', async () => {
+			const open = vi.spyOn(window, 'open').mockReturnValue(null);
+			const { getByTestId } = await openPublishMenu(makeApp({ activeVersionId: 'v-7' }));
+
+			await userEvent.click(getByTestId('app-publish-menu-item-open'));
+
+			expect(open).toHaveBeenCalledWith(appUrl, '_blank', 'noopener');
+			open.mockRestore();
+		});
+
+		it('copies the served app URL and confirms', async () => {
+			const { getByTestId } = await openPublishMenu(makeApp({ activeVersionId: 'v-7' }));
+
+			await userEvent.click(getByTestId('app-publish-menu-item-copy-url'));
+
+			expect(clipboardCopy).toHaveBeenCalledWith(appUrl);
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: 'Copied to clipboard',
+				type: 'success',
+			});
+		});
+
+		it('unpublishes the app after confirmation and hides itself', async () => {
+			confirm.mockResolvedValue('confirm');
+			appsStore.setActiveVersion.mockResolvedValue(
+				makeApp({ activeVersionId: null, hasUnpublishedChanges: true }),
+			);
+			const { getByTestId, queryByTestId } = await openPublishMenu(
+				makeApp({ activeVersionId: 'v-7' }),
+			);
+
+			await userEvent.click(getByTestId('app-publish-menu-item-unpublish'));
+			await waitAllPromises();
+
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining('/apps/greeter/'),
+				'Unpublish app?',
+				expect.objectContaining({ confirmButtonText: 'Unpublish app' }),
+			);
+			expect(appsStore.setActiveVersion).toHaveBeenCalledWith('proj-1', 'app-1', null);
+			expect(queryByTestId('app-publish-menu-button')).not.toBeInTheDocument();
+			expect(queryByTestId('app-publish-indicator')).not.toBeInTheDocument();
+			expect(getByTestId('app-publish')).toBeEnabled();
+		});
 	});
 
 	describe('publish', () => {
 		const published = { versionId: 'v-8', url: 'http://localhost/apps/greeter/' };
 
-		it('is disabled with an explanation when the published version is the newest', async () => {
-			const { getByTestId, queryByTestId } = await renderApp(
+		it('reads "Published" with a green dot, disabled, when the published version is the newest', async () => {
+			const { getByTestId } = await renderApp(
 				makeApp({ activeVersionId: 'v-7', hasUnpublishedChanges: false }),
 			);
 
 			expect(getByTestId('app-publish')).toBeDisabled();
-			expect(queryByTestId('app-unpublished-changes')).not.toBeInTheDocument();
+			expect(getByTestId('app-publish')).toHaveTextContent('Published');
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+			expect(getByTestId('app-publish-menu-button')).toBeInTheDocument();
 		});
 
-		it.each([
-			{ name: 'a draft newer than the published version', activeVersionId: 'v-7' },
-			{ name: 'a draft and nothing published yet', activeVersionId: null },
-		])('is enabled and flags the unpublished changes with $name', async ({ activeVersionId }) => {
+		it('is enabled with a yellow dot when a draft is newer than the published version', async () => {
 			const { getByTestId } = await renderApp(
-				makeApp({ activeVersionId, hasUnpublishedChanges: true }),
+				makeApp({ activeVersionId: 'v-7', hasUnpublishedChanges: true }),
 			);
 
 			expect(getByTestId('app-publish')).toBeEnabled();
-			expect(getByTestId('app-unpublished-changes')).toHaveTextContent('Unpublished changes');
+			expect(getByTestId('app-publish')).toHaveTextContent('Publish');
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
+			expect(getByTestId('app-publish-menu-button')).toBeInTheDocument();
+		});
+
+		it('is enabled without a dot or menu when nothing is published yet', async () => {
+			const { getByTestId, queryByTestId } = await renderApp(
+				makeApp({ activeVersionId: null, hasUnpublishedChanges: true }),
+			);
+
+			expect(getByTestId('app-publish')).toBeEnabled();
+			expect(getByTestId('app-publish')).toHaveTextContent('Publish');
+			expect(queryByTestId('app-publish-indicator')).not.toBeInTheDocument();
+			expect(queryByTestId('app-publish-menu-button')).not.toBeInTheDocument();
 		});
 
 		it('publishes the thread draft in artifact mode, then refreshes the app and confirms', async () => {
 			appsStore.publishApp.mockResolvedValue(published);
-			const { getByTestId, queryByTestId } = await renderApp(
-				makeApp({ hasUnpublishedChanges: true }),
-				{ artifactMode: true, threadId: 'thread-1' },
-			);
+			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }), {
+				artifactMode: true,
+				threadId: 'thread-1',
+			});
 			appsStore.getApp.mockResolvedValue(
 				makeApp({ activeVersionId: 'v-8', hasUnpublishedChanges: false }),
 			);
@@ -273,9 +334,9 @@ describe('AppDetailsView', () => {
 				message: published.url,
 				type: 'success',
 			});
-			expect(queryByTestId('app-unpublished-changes')).not.toBeInTheDocument();
 			expect(getByTestId('app-publish')).toBeDisabled();
-			expect(getByTestId('app-open')).toBeInTheDocument();
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+			expect(getByTestId('app-publish-menu-button')).toBeInTheDocument();
 		});
 
 		it('publishes without a thread outside artifact mode', async () => {
@@ -307,8 +368,8 @@ describe('AppDetailsView', () => {
 				type: 'error',
 			});
 			expect(appsStore.getApp).not.toHaveBeenCalled();
-			expect(getByTestId('app-unpublished-changes')).toBeInTheDocument();
 			expect(getByTestId('app-publish')).toBeEnabled();
+			expect(getByTestId('app-publish')).toHaveTextContent('Publish');
 		});
 
 		it('reports a request failure through the error toast', async () => {
@@ -417,7 +478,7 @@ describe('AppDetailsView', () => {
 				title: 'Version published',
 				type: 'success',
 			});
-			expect(getByTestId('app-unpublished-changes')).toBeInTheDocument();
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
 		});
 
 		it('unpublishes the active version after confirmation', async () => {
@@ -442,7 +503,7 @@ describe('AppDetailsView', () => {
 			);
 			expect(appsStore.setActiveVersion).toHaveBeenCalledWith('proj-1', 'app-1', null);
 			expect(toast.showMessage).toHaveBeenCalledWith({ title: 'App unpublished', type: 'success' });
-			expect(queryByTestId('app-open')).not.toBeInTheDocument();
+			expect(queryByTestId('app-publish-menu-button')).not.toBeInTheDocument();
 		});
 
 		it('keeps the version when the unpublish is cancelled', async () => {
@@ -537,17 +598,20 @@ describe('AppDetailsView', () => {
 	});
 
 	it('hands the thread to the theme editor and flags the draft after a save, staying on Build', async () => {
-		const { getByTestId, getByRole, queryByTestId } = await renderApp(makeApp(), {
-			artifactMode: true,
-			threadId: 'thread-1',
-		});
+		const { getByTestId, getByRole, queryByTestId } = await renderApp(
+			makeApp({ activeVersionId: 'v-7' }),
+			{ artifactMode: true, threadId: 'thread-1' },
+		);
+		await userEvent.click(getByTestId('radio-button-build'));
 
 		await userEvent.click(getByRole('tab', { name: 'Theme' }));
 		expect(getByTestId('app-theme-editor-stub')).toHaveAttribute('data-thread-id', 'thread-1');
+		expect(getByTestId('app-publish')).toBeDisabled();
 
 		await userEvent.click(getByTestId('app-theme-editor-stub'));
 
-		expect(getByTestId('app-unpublished-changes')).toBeInTheDocument();
+		expect(getByTestId('app-publish')).toBeEnabled();
+		expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
 		expect(getByTestId('app-builder-build')).toBeInTheDocument();
 		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
 	});
