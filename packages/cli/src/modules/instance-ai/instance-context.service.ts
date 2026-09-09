@@ -5,15 +5,18 @@ import {
 	ActivityEventRepository,
 	activityEventCategories,
 	ExecutionRepository,
+	ProjectRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import type { ActivityEvent, ActivityEventCategory, ActivityResourceType, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
 import type { InstanceAiActivityEntry, InstanceAiActivityExpansion } from '@n8n/instance-ai';
+import { hasGlobalScope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject } from 'n8n-workflow';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { INSTANCE_CONTEXT_CLOSE_TAG, INSTANCE_CONTEXT_OPEN_TAG } from './internal-messages';
 
@@ -77,6 +80,25 @@ const seenIdsCap = activityLagIds;
  * leaves room for the age filter to discard rows and still fill a window.
  */
 const entryFetchLimit = windowSize * fetchMultiplier;
+
+/**
+ * Which projects a read may see, and whose visibility rules apply on top.
+ *
+ * The two surfaces differ because only one of them has a conversation. Instance AI reads inside a
+ * thread that was bound to a project when it was created; an MCP client has no such binding, so
+ * its scope is resolved from the caller's own access instead.
+ */
+export type InstanceContextScope =
+	/** Instance AI, bound to the thread's own project. Without one it reads nothing. */
+	| { surface: 'conversation'; projectId?: string }
+	/**
+	 * An external MCP client. With no conversation to bind to, the scope is every project the
+	 * caller can read workflows in, narrowed to one when the caller names it.
+	 *
+	 * `credentialsVisible` mirrors the caller's `credential:read` grant. A grant that cannot list
+	 * credentials must not read their history either.
+	 */
+	| { surface: 'mcp'; projectId?: string; credentialsVisible: boolean };
 
 /** Thread-metadata key holding what this thread has already been shown. */
 export const INSTANCE_CONTEXT_CURSOR = 'instanceContext';
@@ -151,6 +173,8 @@ export class InstanceContextService {
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
 	}
@@ -184,7 +208,12 @@ export class InstanceContextService {
 		try {
 			const now = input.now ?? new Date();
 			const isUpdate = input.cursor !== null;
-			const projectIds = await this.readableProjectIds(input.user, input.projectId);
+			// Conversation-bound: the per-turn block is Instance AI's, and its run and inventory legs
+			// have no MCP-visibility filter yet. The MCP surface reads through `list` and `expand`.
+			const projectIds = await this.resolveProjectIds(input.user, {
+				surface: 'conversation',
+				...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
+			});
 
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
 			// boundary available. Nothing in scope means nothing to show, never something wider.
@@ -227,47 +256,103 @@ export class InstanceContextService {
 		}
 	}
 
-	/** Backs `activity(action="list")` — the same log, without the window's caps. */
+	/**
+	 * Backs the `list` action for Instance AI, whose tool has no paging affordance and so has no
+	 * use for the `hasMore` half of the answer.
+	 */
 	async list(input: {
 		user: User;
-		projectId?: string;
+		scope: InstanceContextScope;
 		limit: number;
 		category?: string;
 		resourceId?: string;
 		beforeId?: number;
 	}): Promise<InstanceAiActivityEntry[]> {
-		// A category the vocabulary does not hold matches nothing. Dropping the filter instead would
-		// answer a narrowing request by widening it to the whole feed.
-		if (input.category !== undefined && !isKnownCategory(input.category)) return [];
-
-		const projectIds = await this.readableProjectIds(input.user, input.projectId);
-		if (projectIds.length === 0) return [];
-
-		const rows = await this.activityEventRepository.findFeed({
-			limit: input.limit,
-			projectIds,
-			...(input.category !== undefined ? { category: input.category } : {}),
-			...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
-			...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
-		});
-		return rows.map((row) => toActivityEntry(row, input.user.id));
+		return (await this.listPage(input)).entries;
 	}
 
 	/**
-	 * Backs `activity(action="expand")`. Returns nothing for an entry outside the caller's scope,
-	 * exactly as it does for one that was pruned — an id is a guess the agent may get wrong, and
-	 * the two cases must be indistinguishable from outside.
+	 * One page of the log, and whether the feed holds more below it.
+	 *
+	 * `hasMore` exists because the MCP read filters after fetching: `availableInMCP` defaults to
+	 * withheld, so on an instance that predates it almost every workflow is hidden and a page can
+	 * come back short — or empty — while plenty sits further back. Without the flag an agent reads
+	 * that as "nothing has happened", which is the wrong conclusion and an expensive one.
+	 */
+	async listPage(input: {
+		user: User;
+		scope: InstanceContextScope;
+		limit: number;
+		category?: string;
+		resourceId?: string;
+		beforeId?: number;
+	}): Promise<{ entries: InstanceAiActivityEntry[]; hasMore: boolean }> {
+		// A category the vocabulary does not hold matches nothing. Dropping the filter instead would
+		// answer a narrowing request by widening it to the whole feed.
+		const empty = { entries: [], hasMore: false };
+
+		if (input.category !== undefined && !isKnownCategory(input.category)) return empty;
+
+		const category = resolveCategory(input.category, input.scope);
+		// A caller who may not see credentials and asked for exactly those gets nothing, rather
+		// than the workflow entries they did not ask for.
+		if (category === null) return empty;
+
+		const projectIds = await this.resolveProjectIds(input.user, input.scope);
+		if (projectIds.length === 0) return empty;
+
+		// Withheld workflows are dropped after the read, so a page of exactly `limit` rows would
+		// come back short. Over-fetch and slice back; what the over-fetch cannot promise is covered
+		// by `hasMore`.
+		const filtersWithheld = input.scope.surface === 'mcp';
+		const fetchLimit = filtersWithheld ? input.limit * fetchMultiplier : input.limit;
+
+		const rows = await this.activityEventRepository.findFeed({
+			limit: fetchLimit,
+			projectIds,
+			...(category !== undefined ? { category } : {}),
+			...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
+			...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
+		});
+
+		const visible = filtersWithheld ? await this.withoutWithheldWorkflows(rows) : rows;
+
+		// More is below either because the filter cut this page short of a full read, or because a
+		// full page was returned and the read itself was capped. Both mean "page again", so both
+		// answer the same.
+		const hasMore = visible.length > input.limit || rows.length === fetchLimit;
+
+		return {
+			entries: visible.slice(0, input.limit).map((row) => toActivityEntry(row, input.user.id)),
+			hasMore,
+		};
+	}
+
+	/**
+	 * Backs the `expand` action. Returns nothing for an entry outside the caller's scope, exactly
+	 * as it does for one that was pruned — an id is a guess the agent may get wrong, and the two
+	 * cases must be indistinguishable from outside.
+	 *
+	 * Every later refusal here answers the same way, for the same reason: a distinct "exists but
+	 * withheld" would turn the id into a probe for what the caller cannot see.
 	 */
 	async expand(input: {
 		id: number;
 		user: User;
-		projectId?: string;
+		scope: InstanceContextScope;
 	}): Promise<InstanceAiActivityExpansion | null> {
-		const projectIds = await this.readableProjectIds(input.user, input.projectId);
+		const projectIds = await this.resolveProjectIds(input.user, input.scope);
 		if (projectIds.length === 0) return null;
 
 		const row = await this.activityEventRepository.findEntry({ id: input.id, projectIds });
 		if (!row) return null;
+
+		if (input.scope.surface === 'mcp') {
+			if (row.category === 'credential' && !input.scope.credentialsVisible) return null;
+			// The history below is about this same resource, so one check covers both.
+			const [visible] = await this.withoutWithheldWorkflows([row]);
+			if (!visible) return null;
+		}
 
 		const history =
 			row.resourceType && row.resourceId
@@ -279,7 +364,7 @@ export class InstanceContextService {
 					})
 				: [];
 
-		const hint = liveRecordHint(row);
+		const hint = liveRecordHint(row, input.scope.surface);
 
 		return {
 			entry: toActivityEntry(row, input.user.id),
@@ -384,29 +469,96 @@ export class InstanceContextService {
 	}
 
 	/**
-	 * The one project this reader may see: the conversation's own, which the thread is bound to
-	 * and which was authorised when the thread was created. A conversation without one reads
-	 * nothing.
+	 * The projects this reader may see.
 	 *
-	 * Deliberately not "every project the user belongs to". That would be a second scoping path
-	 * beside `SharedWorkflowRepository.buildSharedWorkflowIdsSubquery`, which the rest of the
-	 * codebase reads through, and a second path is the likeliest thing here to drift into a leak.
-	 * Bare project membership is also not read access — `project:chatUser` holds neither
-	 * `workflow:read` nor `credential:read`.
+	 * A conversation sees exactly one: its own, which the thread was bound to and which was
+	 * authorised when the thread was created. A conversation without one reads nothing. That is
+	 * deliberately not "every project the user belongs to" — bare project membership is not read
+	 * access, since `project:chatUser` holds neither `workflow:read` nor `credential:read`.
+	 *
+	 * An MCP client has no conversation, so there is nothing to bind to and the same rule would
+	 * make the surface read nothing at all. It resolves the caller's own access instead, through
+	 * `ProjectService.getProjectIdsWithScope` — the same path
+	 * `WorkflowReviewAuthorizationService.resolveReadableProjectIds` takes, including its personal
+	 * project union, rather than a path of its own. That union matters: the scoped query returns
+	 * team projects only for a member, and directly shared workflows hang off the personal one.
 	 */
-	private async readableProjectIds(user: User, projectId?: string): Promise<string[]> {
-		if (projectId === undefined) return [];
-
-		// Re-checked every turn, not trusted from the binding. A thread outlives the membership that
-		// authorised it — `assertThreadAccess` proves the thread is the caller's own and nothing more
-		// — so a user removed from a project would otherwise keep reading it here for the life of the
-		// thread, while every other read in this module refused them.
+	private async resolveProjectIds(user: User, scope: InstanceContextScope): Promise<string[]> {
+		// Re-checked on every read, not trusted from the binding. A thread outlives the membership
+		// that authorised it — `assertThreadAccess` proves the thread is the caller's own and
+		// nothing more — so a user removed from a project would otherwise keep reading it here for
+		// the life of the thread, while every other read in this module refused them.
 		//
 		// `workflow:read` stands for the whole block: it is what the inventory and run legs expose,
 		// and credential entries carry a name and a type rather than a secret.
-		const allowed = await userHasScopes(user, ['workflow:read'], false, { projectId });
-		return allowed ? [projectId] : [];
+		if (scope.projectId !== undefined) {
+			const allowed = await userHasScopes(user, ['workflow:read'], false, {
+				projectId: scope.projectId,
+			});
+			return allowed ? [scope.projectId] : [];
+		}
+
+		if (scope.surface === 'conversation') return [];
+
+		// The scoped query returns team projects only for a member, and directly shared workflows
+		// hang off the personal one — so it has to be unioned in. A global reader already gets every
+		// project from that query, personal ones included, so the extra lookup is skipped rather
+		// than run and discarded. `hasGlobalScope` reads the user's own roles, with no query.
+		const isGlobalReader = hasGlobalScope(user, ['workflow:read'], { mode: 'allOf' });
+
+		const [scopedIds, personalProject] = await Promise.all([
+			this.projectService.getProjectIdsWithScope(user, ['workflow:read']),
+			isGlobalReader ? null : this.projectRepository.getPersonalProjectForUser(user.id),
+		]);
+
+		return personalProject ? [...new Set([...scopedIds, personalProject.id])] : scopedIds;
 	}
+
+	/**
+	 * Drops entries about workflows the instance withholds from MCP.
+	 *
+	 * MCP reads are filtered per workflow by `settings.availableInMCP` — `search_workflow_executions`
+	 * and the workflow history, version and diff tools all enforce it — so a feed that ignored it
+	 * would report the edits and runs of workflows the user has deliberately kept off this surface.
+	 *
+	 * An entry whose workflow no longer resolves is kept. A deleted workflow cannot be withheld
+	 * from anything, and its deletion is the entry most worth carrying: dropping it to be safe
+	 * would lose the one signal this surface exists to give.
+	 */
+	private async withoutWithheldWorkflows(rows: ActivityEvent[]): Promise<ActivityEvent[]> {
+		const workflowIds = [
+			...new Set(
+				rows.flatMap((row) =>
+					row.resourceType === 'workflow' && row.resourceId ? [row.resourceId] : [],
+				),
+			),
+		];
+		if (workflowIds.length === 0) return rows;
+
+		const availability = await this.workflowRepository.findMcpAvailabilityByIds(workflowIds);
+
+		return rows.filter((row) => {
+			if (row.resourceType !== 'workflow' || !row.resourceId) return true;
+			return availability.get(row.resourceId) ?? true;
+		});
+	}
+}
+
+/**
+ * The category a read should filter on, or `null` when the caller asked for exactly the one they
+ * may not see. `undefined` means no filter.
+ */
+function resolveCategory(
+	requested: string | undefined,
+	scope: InstanceContextScope,
+): ActivityEventCategory | undefined | null {
+	const category = isKnownCategory(requested) ? requested : undefined;
+	if (scope.surface !== 'mcp' || scope.credentialsVisible) return category;
+
+	if (category === 'credential') return null;
+	// No category asked for, and only one of the two is visible — so name it rather than reading
+	// both and filtering after.
+	return category ?? 'workflow';
 }
 
 const initialPreamble = [
@@ -535,15 +687,32 @@ function toActivityEntry(row: ActivityEvent, currentUserId: string): InstanceAiA
  * Names the tool that fetches the live record, rather than fetching it here: those reads already
  * exist, they carry their own permission checks, and duplicating them would drift from them.
  */
-function liveRecordHint(row: ActivityEvent): string | undefined {
-	const resourceTypeHints: Record<ActivityResourceType, string | undefined> = {
-		workflow: row.resourceId
-			? `workflows(action="get", workflowId="${row.resourceId}")`
-			: undefined,
-		credential: 'credentials(action="list")',
+/**
+ * The call that fetches the live record behind an entry — named in the caller's own vocabulary,
+ * because the two surfaces do not share tool names. An MCP client handed `workflows(action="get")`
+ * would be told to call a tool its server does not expose.
+ */
+function liveRecordHint(
+	row: ActivityEvent,
+	surface: InstanceContextScope['surface'],
+): string | undefined {
+	const hints: Record<
+		InstanceContextScope['surface'],
+		Record<ActivityResourceType, string | undefined>
+	> = {
+		conversation: {
+			workflow: row.resourceId
+				? `workflows(action="get", workflowId="${row.resourceId}")`
+				: undefined,
+			credential: 'credentials(action="list")',
+		},
+		mcp: {
+			workflow: row.resourceId ? `get_workflow_details(workflowId="${row.resourceId}")` : undefined,
+			credential: 'list_credentials()',
+		},
 	};
 
-	return row.resourceType ? resourceTypeHints[row.resourceType] : undefined;
+	return row.resourceType ? hints[surface][row.resourceType] : undefined;
 }
 
 function toFeedEntry(row: ActivityEvent, currentUserId: string, now: Date): string {

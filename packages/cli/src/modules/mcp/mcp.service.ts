@@ -4,6 +4,7 @@ import {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
+	MCP_INSTANCE_CONTEXT_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -47,9 +48,9 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import type {
 	McpAppsTelemetryVariant,
 	McpAuthContext,
@@ -72,10 +73,15 @@ import {
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
 import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
+import {
+	createExpandInstanceActivityTool,
+	createGetInstanceActivityTool,
+} from './tools/instance-activity.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListN8nGatewayServicesTool } from './tools/list-n8n-gateway-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
@@ -123,6 +129,8 @@ export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
 	/** Canvas node-group support in the workflow-builder tools. */
 	canvasGroupsEnabled: boolean;
+	/** The instance-context read surface: the activity tools and node-usage. */
+	instanceContextEnabled: boolean;
 };
 
 type McpAppTelemetryResolution = {
@@ -230,19 +238,22 @@ export class McpService {
 	 * PostHog; the lookup is skipped entirely when every feature is overridden.
 	 */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
-		const { mcpAppsEnabled, mcpCanvasGroupsEnabled } = this.globalConfig.endpoints;
+		const { mcpAppsEnabled, mcpCanvasGroupsEnabled, mcpInstanceContextEnabled } =
+			this.globalConfig.endpoints;
 
 		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
 		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
 		// surfacing as `unassigned`).
 		const flags =
-			mcpAppsEnabled && mcpCanvasGroupsEnabled
+			mcpAppsEnabled && mcpCanvasGroupsEnabled && mcpInstanceContextEnabled
 				? undefined
 				: await this.postHogClient.getFeatureFlags(user);
 
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags?.[MCP_CANVAS_GROUPS_FLAG] === true,
+			instanceContextEnabled:
+				mcpInstanceContextEnabled || flags?.[MCP_INSTANCE_CONTEXT_FLAG] === true,
 		};
 	}
 
@@ -571,6 +582,36 @@ export class McpService {
 		if (!this.globalConfig.tags.disabled) {
 			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
 			registerIfAllowed(listTagsTool);
+		}
+
+		// Instance-context reads. Resolved lazily rather than injected: the reader belongs to the
+		// `instance-ai` module, and an instance with the surface off should not construct it at all.
+		if (featureFlags.instanceContextEnabled && this.moduleRegistry.isActive('instance-ai')) {
+			const { InstanceContextService } = await import(
+				'@/modules/instance-ai/instance-context.service.js'
+			);
+			const { WorkflowDependencyQueryService } = await import(
+				'@/modules/workflow-index/workflow-dependency-query.service.js'
+			);
+			const instanceContext = Container.get(InstanceContextService);
+
+			// A grant that cannot list credentials must not read their history either. `undefined`
+			// is a non-scope-bearing credential (API key), which sees everything.
+			const credentialsVisible = allowedToolNames?.has('list_credentials') ?? true;
+
+			registerIfAllowed(
+				createGetInstanceActivityTool(user, instanceContext, this.telemetry, {
+					credentialsVisible,
+				}),
+			);
+			registerIfAllowed(
+				createExpandInstanceActivityTool(user, instanceContext, this.telemetry, {
+					credentialsVisible,
+				}),
+			);
+			registerIfAllowed(
+				createGetNodeUsageTool(user, Container.get(WorkflowDependencyQueryService), this.telemetry),
+			);
 		}
 
 		// Data table tools

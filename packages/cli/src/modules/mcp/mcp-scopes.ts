@@ -24,6 +24,11 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_workflow_sdk_reference',
 		'validate_workflow',
 		'validate_node_config',
+		// Instance-context reads. Both describe workflows, so `workflow:read` is the bar; the
+		// activity tools drop credential entries for a grant that lacks `credential:read`.
+		'get_instance_activity',
+		'expand_instance_activity',
+		'get_node_usage',
 	],
 	'workflow:write': [
 		'create_workflow_from_code',
@@ -125,6 +130,18 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'search_projects',
 	'search_folders',
 	...FOLDER_FEATURE_TOOLS,
+]);
+
+/**
+ * Tools only registered when the instance-context read surface is on
+ * (`N8N_MCP_INSTANCE_CONTEXT_ENABLED` or its rollout flag) and the `instance-ai`
+ * module is active. Same role as BUILDER_TOOLS and AGENT_TOOLS: it lets the
+ * scope-map drift guard tell "not mapped" from "not registered here".
+ */
+export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
+	'get_instance_activity',
+	'expand_instance_activity',
+	'get_node_usage',
 ]);
 
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([

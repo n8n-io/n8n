@@ -11,6 +11,8 @@ import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -32,7 +34,13 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 
-import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import {
+	AGENT_TOOLS,
+	BUILDER_TOOLS,
+	getAllowedToolNames,
+	INSTANCE_CONTEXT_TOOLS,
+	TOOLS_BY_SCOPE,
+} from '../mcp-scopes';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
@@ -45,6 +53,7 @@ const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	canvasGroupsEnabled: false,
+	instanceContextEnabled: false,
 	...overrides,
 });
 
@@ -91,7 +100,11 @@ describe('getAllowedToolNames', () => {
 describe('McpService scope enforcement', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 
-	const buildService = ({ builderEnabled = true, foldersLicensed = true } = {}) =>
+	const buildService = ({
+		builderEnabled = true,
+		foldersLicensed = true,
+		instanceAiActive = false,
+	} = {}) =>
 		new McpService(
 			mockLogger(),
 			mockInstance(ExecutionsConfig, { mode: 'regular' }),
@@ -138,7 +151,11 @@ describe('McpService scope enforcement', () => {
 			mockInstance(AiGatewayService, {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
-			mockInstance(ModuleRegistry),
+			mockInstance(ModuleRegistry, {
+				isActive: vi
+					.fn()
+					.mockImplementation((name: string) => instanceAiActive && name === 'instance-ai'),
+			}),
 			mockInstance(EventService),
 			mockInstance(FolderService),
 		);
@@ -160,11 +177,67 @@ describe('McpService scope enforcement', () => {
 		const registered = getRegisteredToolNames(server);
 
 		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts.
+		// drift guard lives in agent-tools.service.test.ts. Instance-context
+		// tools need the `instance-ai` module, inactive here for the same reason.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter(
-			(name) => !registered.has(name) && !AGENT_TOOLS.has(name),
+			(name) =>
+				!registered.has(name) && !AGENT_TOOLS.has(name) && !INSTANCE_CONTEXT_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
+	});
+
+	/**
+	 * The registration branch itself, which every other test here leaves dark. It resolves the
+	 * reader out of the container behind a dynamic import, so a wrong path or a missing binding
+	 * would otherwise only surface at runtime on a real instance.
+	 */
+	it('registers the instance-context tools when the flag and the module are both on', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+		);
+
+		const registered = getRegisteredToolNames(server);
+		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).toContain(name);
+	});
+
+	it('registers none of them with the module active but the flag off', async () => {
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: false }),
+		);
+
+		const registered = getRegisteredToolNames(server);
+		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
+	});
+
+	it('registers none of them with the flag on but the module inactive', async () => {
+		const server = await buildService({ instanceAiActive: false }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+		);
+
+		const registered = getRegisteredToolNames(server);
+		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
+	});
+
+	/** They ride on `workflow:read`, so a grant without it must not reach them. */
+	it('withholds them from a grant that does not cover them', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+			undefined,
+			{ grantedScopes: ['execution:read'] },
+		);
+
+		const registered = getRegisteredToolNames(server);
+		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
 	});
 
 	it('BUILDER_TOOLS matches the tools gated behind the builder flag (drift guard)', async () => {
@@ -208,7 +281,11 @@ describe('McpService scope enforcement', () => {
 			grantedScopes: ['workflow:read'],
 		});
 
-		expect(getRegisteredToolNames(server)).toEqual(new Set(TOOLS_BY_SCOPE['workflow:read']));
+		// Instance-context tools ride on this scope but need their own flag and the `instance-ai`
+		// module, neither of which is on here.
+		expect(getRegisteredToolNames(server)).toEqual(
+			new Set(TOOLS_BY_SCOPE['workflow:read'].filter((name) => !INSTANCE_CONTEXT_TOOLS.has(name))),
+		);
 	});
 
 	it('filters builder tools out of a scope when the builder is disabled', async () => {

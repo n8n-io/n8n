@@ -92,6 +92,9 @@ export function agentToolReferenceWhere(
 	return where;
 }
 
+/** Ids per `IN (...)`, kept clear of sqlite's 999 bound variables with room to spare. */
+const MCP_AVAILABILITY_CHUNK = 500;
+
 @Service()
 export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	constructor(
@@ -153,6 +156,37 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				active: Boolean(Number(row.active)),
 			})),
 		};
+	}
+
+	/**
+	 * Per-workflow MCP visibility for the ids given, as a map. An id absent from the map names a
+	 * workflow that no longer exists, which a caller must tell apart from one that is merely
+	 * withheld: a deleted workflow cannot be withheld from anything.
+	 *
+	 * Reads `settings` and tests the flag in memory rather than filtering in SQL, because the
+	 * caller needs the withheld ids too, not only the visible ones. Bounded by the id list, which
+	 * a caller sizes to one page of its own results.
+	 */
+	async findMcpAvailabilityByIds(workflowIds: string[]): Promise<Map<string, boolean>> {
+		if (workflowIds.length === 0) return new Map();
+
+		const availability = new Map<string, boolean>();
+
+		// Chunked because the caller's page size and this query's bound live in different packages,
+		// with nothing tying either to sqlite's 999 bound variables. Chunking here means the ceiling
+		// cannot be crossed by someone raising a limit somewhere else.
+		for (let start = 0; start < workflowIds.length; start += MCP_AVAILABILITY_CHUNK) {
+			const rows = await this.find({
+				where: { id: In(workflowIds.slice(start, start + MCP_AVAILABILITY_CHUNK)) },
+				select: ['id', 'settings'],
+			});
+
+			for (const row of rows) {
+				availability.set(row.id, row.settings?.availableInMCP === true);
+			}
+		}
+
+		return availability;
 	}
 
 	async get(
