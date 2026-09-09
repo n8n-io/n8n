@@ -53,6 +53,7 @@ export async function writeImportManifest(options: {
 	const { exportFolder, leftover, staging, sourceId } = options;
 	const collections = await walkSnapshotCollections(exportFolder);
 	const remainingWorkflowIds = new Set((collections.workflows ?? []).map((entry) => entry.id));
+	const selectedWorkflowIds = new Set((staging.workflows ?? []).map((entry) => entry.id));
 	const variables = await collectVariables(exportFolder, leftover, staging);
 
 	const manifest = packageManifestSchema.parse({
@@ -62,7 +63,7 @@ export async function writeImportManifest(options: {
 		sourceId,
 		...collections,
 		...(variables.length > 0 ? { variables } : {}),
-		...requirementsBlock(leftover, staging, remainingWorkflowIds),
+		...requirementsBlock(leftover, staging, remainingWorkflowIds, selectedWorkflowIds),
 	});
 
 	await fs.writeFile(path.join(exportFolder, MANIFEST_FILE), JSON.stringify(manifest, null, '\t'));
@@ -142,9 +143,11 @@ async function collectVariables(
 
 	const kept: ManifestEntry[] = [];
 	for (const entry of byId.values()) {
-		const file = path.join(exportFolder, ...entry.target.split('/'), 'variable.json');
+		const file = resolveContainedFile(exportFolder, entry.target, 'variable.json');
+		if (file === undefined) continue;
 		try {
-			await fs.stat(file);
+			const info = await fs.lstat(file);
+			if (!info.isFile()) continue;
 			kept.push(entry);
 		} catch {
 			continue;
@@ -153,46 +156,72 @@ async function collectVariables(
 	return kept;
 }
 
+/** Leftover targets are untrusted. Keep only a regular file inside the export. */
+function resolveContainedFile(
+	exportFolder: string,
+	target: string,
+	fileName: string,
+): string | undefined {
+	const segments = target.split(/[\\/]/).filter(Boolean);
+	if (segments.length === 0 || segments.some((segment) => segment === '.' || segment === '..')) {
+		return undefined;
+	}
+
+	const resolvedBase = path.resolve(exportFolder);
+	const resolvedDir = path.resolve(exportFolder, ...segments);
+	if (resolvedDir !== resolvedBase && !resolvedDir.startsWith(resolvedBase + path.sep)) {
+		return undefined;
+	}
+	return path.join(resolvedDir, fileName);
+}
+
 function requirementsBlock(
 	leftover: PackageManifest | undefined,
 	staging: PackageManifest,
 	remainingWorkflowIds: Set<string>,
+	selectedWorkflowIds: Set<string>,
 ): Pick<PackageManifest, 'requirements'> {
 	const requirements = compactRequirements({
 		credentials: mergeRequirementRows(
 			leftover?.requirements?.credentials,
 			staging.requirements?.credentials,
 			remainingWorkflowIds,
+			selectedWorkflowIds,
 			(row) => row.id,
 		),
 		dataTables: mergeRequirementRows(
 			leftover?.requirements?.dataTables,
 			staging.requirements?.dataTables,
 			remainingWorkflowIds,
+			selectedWorkflowIds,
 			(row) => row.id,
 		),
 		workflows: mergeRequirementRows(
 			leftover?.requirements?.workflows,
 			staging.requirements?.workflows,
 			remainingWorkflowIds,
+			selectedWorkflowIds,
 			(row) => row.id,
 		),
 		variables: mergeRequirementRows(
 			leftover?.requirements?.variables,
 			staging.requirements?.variables,
 			remainingWorkflowIds,
+			selectedWorkflowIds,
 			(row) => row.name,
 		),
 		tags: mergeRequirementRows(
 			leftover?.requirements?.tags,
 			staging.requirements?.tags,
 			remainingWorkflowIds,
+			selectedWorkflowIds,
 			(row) => row.id,
 		),
 		nodeTypes: mergeRequirementRows(
 			leftover?.requirements?.nodeTypes,
 			staging.requirements?.nodeTypes,
 			remainingWorkflowIds,
+			selectedWorkflowIds,
 			(row) => `${row.type}@${row.typeVersion}`,
 		),
 	});
@@ -203,11 +232,15 @@ function mergeRequirementRows<T extends { usedByWorkflows: string[] }>(
 	leftover: T[] | undefined,
 	staging: T[] | undefined,
 	remainingWorkflowIds: Set<string>,
+	selectedWorkflowIds: Set<string>,
 	keyOf: (row: T) => string,
 ): T[] | undefined {
 	const byKey = new Map<string, T>();
 	for (const row of leftover ?? []) {
-		const usedByWorkflows = remainingUsers(row.usedByWorkflows, remainingWorkflowIds);
+		const usedByWorkflows = remainingUsers(
+			row.usedByWorkflows.filter((id) => !selectedWorkflowIds.has(id)),
+			remainingWorkflowIds,
+		);
 		if (usedByWorkflows.length === 0) continue;
 		byKey.set(keyOf(row), { ...row, usedByWorkflows });
 	}

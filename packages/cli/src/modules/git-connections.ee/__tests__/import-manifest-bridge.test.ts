@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -135,5 +135,103 @@ describe('import-manifest-bridge', () => {
 			{ id: 't-shared', name: 'production', usedByWorkflows: ['w1', 'w2'] },
 			{ id: 't-w1-only', name: 'draft', usedByWorkflows: ['w1'] },
 		]);
+	});
+
+	it('drops leftover requirement users that the staging selection no longer lists', async () => {
+		await writeTree({
+			'projects/alpha/workflows/w2/workflow.json': JSON.stringify({ id: 'w2', name: 'W2' }),
+		});
+
+		await writeImportManifest({
+			exportFolder,
+			leftover: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				exportedAt: '2026-01-01T00:00:00.000Z',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'old',
+				requirements: {
+					tags: [{ id: 't-dropped', name: 'prod', usedByWorkflows: ['w2'] }],
+				},
+			}),
+			staging: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				exportedAt: '2026-01-01T00:00:00.000Z',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'inst-1',
+				workflows: [{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2' }],
+			}),
+			sourceId: 'inst-test',
+		});
+
+		const written = packageManifestSchema.parse(
+			JSON.parse(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')),
+		);
+		expect(written.requirements?.tags).toBeUndefined();
+	});
+
+	it('ignores a leftover variable target that escapes the export folder', async () => {
+		const outsideDir = path.join(path.dirname(exportFolder), 'escape');
+		await mkdir(outsideDir, { recursive: true });
+		await writeFile(path.join(outsideDir, 'variable.json'), JSON.stringify({ name: 'LEAK' }));
+		await writeTree({
+			'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ id: 'w1', name: 'W1' }),
+		});
+
+		await writeImportManifest({
+			exportFolder,
+			leftover: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				exportedAt: '2026-01-01T00:00:00.000Z',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'old',
+				variables: [{ id: 'v-leak', name: 'LEAK', target: '../escape' }],
+			}),
+			staging: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				exportedAt: '2026-01-01T00:00:00.000Z',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'inst-1',
+			}),
+			sourceId: 'inst-test',
+		});
+
+		const written = packageManifestSchema.parse(
+			JSON.parse(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')),
+		);
+		expect(written.variables).toBeUndefined();
+	});
+
+	it('ignores a leftover variable whose file is a symbolic link', async () => {
+		const outside = path.join(path.dirname(exportFolder), 'outside-variable.json');
+		await writeFile(outside, JSON.stringify({ name: 'LINK' }));
+		const variableDir = path.join(exportFolder, 'projects', 'alpha', 'variables', 'api-key');
+		await mkdir(variableDir, { recursive: true });
+		await symlink(outside, path.join(variableDir, 'variable.json'));
+		await writeTree({
+			'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ id: 'w1', name: 'W1' }),
+		});
+
+		await writeImportManifest({
+			exportFolder,
+			leftover: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				exportedAt: '2026-01-01T00:00:00.000Z',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'old',
+				variables: [{ id: 'v-link', name: 'LINK', target: 'projects/alpha/variables/api-key' }],
+			}),
+			staging: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				exportedAt: '2026-01-01T00:00:00.000Z',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'inst-1',
+			}),
+			sourceId: 'inst-test',
+		});
+
+		const written = packageManifestSchema.parse(
+			JSON.parse(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')),
+		);
+		expect(written.variables).toBeUndefined();
 	});
 });
