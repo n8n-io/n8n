@@ -1,9 +1,8 @@
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
-import AppBindingApproval, {
-	type AppBindingMeta,
-} from '@/features/ai/instanceAi/components/AppBindingApproval.vue';
+import type { AppBindingMeta } from '@n8n/api-types';
+import AppBindingApproval from '@/features/ai/instanceAi/components/AppBindingApproval.vue';
 import type { ApprovalOption } from '@/features/ai/instanceAi/components/ApprovalOptionList.vue';
 
 const APP_BINDING: AppBindingMeta = {

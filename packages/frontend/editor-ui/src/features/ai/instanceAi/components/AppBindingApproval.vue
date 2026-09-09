@@ -1,21 +1,10 @@
 <script lang="ts" setup>
+import type { AppBindingMeta } from '@n8n/api-types';
 import { N8nCollapsiblePanel, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { JSONSchema7 } from 'json-schema';
 import { ref } from 'vue';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
-
-// mirrors @n8n/api-types; integrator swaps
-export interface AppBindingMeta {
-	appId: string;
-	appName: string;
-	appNamespace: string;
-	workflowId: string;
-	workflowName: string;
-	key: string;
-	inputSchema: JSONSchema7;
-	outputSchema: JSONSchema7;
-}
 
 defineProps<{ appBinding: AppBindingMeta; options: ApprovalOption[] }>();
 const emit = defineEmits<{ select: [key: string] }>();

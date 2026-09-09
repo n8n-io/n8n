@@ -8,7 +8,8 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import AppDetailsView from './AppDetailsView.vue';
 import { useAppsStore } from './apps.store';
 import { APP_DETAILS, APP_PAGE_DETAILS, PROJECT_APPS } from './apps.constants';
-import type { App, DescribedBinding } from './apps.types';
+import type { DescribedBinding } from '@n8n/api-types';
+import type { App } from './apps.types';
 
 const openAppArtifactThread = vi.hoisted(() => vi.fn());
 const instanceAiAvailable = vi.hoisted(() => ({ value: true }));

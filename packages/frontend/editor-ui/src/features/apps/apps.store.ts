@@ -1,3 +1,4 @@
+import type { DescribedBinding } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -14,13 +15,7 @@ import {
 	updateAppApi,
 } from '@/features/apps/apps.api';
 import { APPS_STORE } from '@/features/apps/apps.constants';
-import type {
-	App,
-	AppTheme,
-	DescribedBinding,
-	Page,
-	UpdateAppInput,
-} from '@/features/apps/apps.types';
+import type { App, AppTheme, Page, UpdateAppInput } from '@/features/apps/apps.types';
 
 export const useAppsStore = defineStore(APPS_STORE, () => {
 	const rootStore = useRootStore();
@@ -65,15 +60,17 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		pages.value = await fetchRoutesApi(rootStore.restApiContext, projectId, appId);
 	};
 
-	const fetchBindings = async (projectId: string, appId: string) => {
-		const described = await fetchBindingsApi(rootStore.restApiContext, projectId, appId);
+	const setBindings = (described: { bindings: DescribedBinding[]; warnings: string[] }) => {
 		bindings.value = described.bindings;
 		bindingWarnings.value = described.warnings;
 	};
 
+	const fetchBindings = async (projectId: string, appId: string) => {
+		setBindings(await fetchBindingsApi(rootStore.restApiContext, projectId, appId));
+	};
+
 	const deleteBinding = async (projectId: string, appId: string, key: string) => {
-		await deleteBindingApi(rootStore.restApiContext, projectId, appId, key);
-		await fetchBindings(projectId, appId);
+		setBindings(await deleteBindingApi(rootStore.restApiContext, projectId, appId, key));
 	};
 
 	return {

@@ -10,7 +10,7 @@ import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
-import AppBindingApproval, { type AppBindingMeta } from './AppBindingApproval.vue';
+import AppBindingApproval from './AppBindingApproval.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
@@ -41,23 +41,6 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const telemetry = useTelemetry();
 const { getToolLabel } = useToolLabel();
-
-function isAppBindingMeta(value: unknown): value is AppBindingMeta {
-	if (typeof value !== 'object' || value === null) return false;
-	const meta: Partial<Record<keyof AppBindingMeta, unknown>> = value;
-	return (
-		typeof meta.appName === 'string' &&
-		typeof meta.workflowId === 'string' &&
-		typeof meta.workflowName === 'string' &&
-		typeof meta.key === 'string'
-	);
-}
-
-// mirrors @n8n/api-types; integrator swaps for `conf.appBinding`
-function getAppBindingMeta(conf: InstanceAiConfirmation): AppBindingMeta | undefined {
-	if (!('appBinding' in conf) || !isAppBindingMeta(conf.appBinding)) return undefined;
-	return conf.appBinding;
-}
 
 function getConfirmationType(conf: InstanceAiConfirmation): string {
 	if (conf.credentialDestination) return 'credential-destination';
@@ -671,8 +654,8 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 
 						<!-- App binding -->
 						<AppBindingApproval
-							v-else-if="getAppBindingMeta(chunk.item.toolCall.confirmation)"
-							:app-binding="getAppBindingMeta(chunk.item.toolCall.confirmation)!"
+							v-else-if="chunk.item.toolCall.confirmation.appBinding"
+							:app-binding="chunk.item.toolCall.confirmation.appBinding!"
 							:options="buildApprovalOptions(chunk.item)"
 							@select="(key) => handleApprovalSelect(chunk.item, key)"
 						/>

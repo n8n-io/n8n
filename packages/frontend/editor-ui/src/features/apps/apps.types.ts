@@ -1,6 +1,3 @@
-import type { OutputSource } from '@n8n/api-types';
-import type { JSONSchema7 } from 'json-schema';
-
 /**
  * Flat CSS custom-property overrides on top of the shadcn-vue template's default
  * :root/.dark block. Open-ended: the Theme tab writes a handful of derived keys
@@ -39,16 +36,4 @@ export interface UpdateAppInput {
 	name?: string;
 	namespace?: string;
 	theme?: AppTheme;
-}
-
-// mirrors @n8n/api-types; integrator swaps
-export interface DescribedBinding {
-	key: string;
-	kind: 'workflow';
-	workflowId: string;
-	name: string;
-	published: boolean;
-	input: JSONSchema7;
-	output: JSONSchema7;
-	outputSource: OutputSource;
 }
