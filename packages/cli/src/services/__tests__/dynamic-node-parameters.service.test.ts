@@ -219,6 +219,26 @@ describe('DynamicNodeParametersService', () => {
 			expect(result.paginationToken).toBeUndefined();
 		});
 
+		it('should not throw when a listSearch method returns nothing', async () => {
+			const listSearchMethod = vi.fn().mockResolvedValue(undefined);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { listSearch: { searchModels: listSearchMethod } },
+				}),
+			);
+
+			const result = await service.getResourceLocatorResults(
+				'searchModels',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(result).toBeUndefined();
+		});
+
 		it('should acquire and release isolate around getResourceMappingFields', async () => {
 			const resourceMappingMethod = vi.fn().mockResolvedValue({
 				fields: [{ id: '1', displayName: 'F', defaultMatch: false, required: true, display: true }],

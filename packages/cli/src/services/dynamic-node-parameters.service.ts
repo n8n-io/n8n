@@ -317,7 +317,7 @@ export class DynamicNodeParametersService {
 			// `INodeListSearchResult` types the token as a string, but offset-style
 			// methods return a number. Convert it here so every caller gets a string.
 			// The RLC dropdown and the MCP output schema both require one.
-			const token: unknown = result.paginationToken;
+			const token: unknown = result?.paginationToken;
 			return typeof token === 'number' ? { ...result, paginationToken: String(token) } : result;
 		});
 	}
