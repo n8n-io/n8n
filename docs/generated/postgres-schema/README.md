@@ -104,6 +104,10 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
+| [public.promotion_config](public.promotion_config.md) | 7 |  | BASE TABLE |
+| [public.promotion_connection](public.promotion_connection.md) | 7 |  | BASE TABLE |
+| [public.promotion_connection_project](public.promotion_connection_project.md) | 4 |  | BASE TABLE |
+| [public.promotion_provider](public.promotion_provider.md) | 8 |  | BASE TABLE |
 | [public.role](public.role.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
@@ -307,6 +311,10 @@ erDiagram
 "public.project_relation" }o--|| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug)"
 "public.project_secrets_provider_access" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_secrets_provider_access" }o--|| "public.secrets_provider_connection" : "FOREIGN KEY (#quot;secretsProviderConnectionId#quot;) REFERENCES secrets_provider_connection(id) ON DELETE CASCADE"
+"public.promotion_config" }o--|| "public.promotion_connection" : "FOREIGN KEY (#quot;connectionId#quot;) REFERENCES promotion_connection(id) ON DELETE CASCADE"
+"public.promotion_connection" }o--|| "public.promotion_provider" : "FOREIGN KEY (#quot;providerId#quot;) REFERENCES promotion_provider(id) ON DELETE RESTRICT"
+"public.promotion_connection_project" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.promotion_connection_project" }o--|| "public.promotion_connection" : "FOREIGN KEY (#quot;connectionId#quot;) REFERENCES promotion_connection(id) ON DELETE CASCADE"
 "public.role_mapping_rule" }o--|| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.role_mapping_rule_project" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.role_mapping_rule_project" }o--|| "public.role_mapping_rule" : "FOREIGN KEY (#quot;roleMappingRuleId#quot;) REFERENCES role_mapping_rule(id) ON DELETE CASCADE"
@@ -1322,6 +1330,40 @@ erDiagram
   varchar_36_ projectId FK
   varchar_128_ role
   integer secretsProviderConnectionId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.promotion_config" {
+  varchar_36_ connectionId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_16_ direction
+  varchar_36_ id
+  varchar_128_ name
+  json settings
+  timestamp_3__with_time_zone updatedAt
+}
+"public.promotion_connection" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_128_ name
+  varchar_36_ providerId FK
+  varchar_16_ scope
+  json target
+  timestamp_3__with_time_zone updatedAt
+}
+"public.promotion_connection_project" {
+  varchar_36_ connectionId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.promotion_provider" {
+  text auth
+  varchar_32_ authType
+  json config
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_128_ name
+  varchar_32_ type
   timestamp_3__with_time_zone updatedAt
 }
 "public.role" {
