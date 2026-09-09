@@ -401,6 +401,42 @@ describe('Cipher', () => {
 
 				expect(emitSpy).not.toHaveBeenCalled();
 			});
+
+			it('should emit the decrypt event even when decryption fails', async () => {
+				const keyId = 'test-uuid-fail';
+				const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
+				withProvider({
+					getKeyById: async (id: string) =>
+						id === keyId
+							? { id, value: encryptedDataKey, algorithm: 'aes-256-gcm', format: 'prefixed' }
+							: null,
+				});
+				const emitSpy = vi.spyOn(cipher.events, 'emit');
+
+				await expect(cipher.decryptV2(`${keyId}:not-valid-ciphertext`)).rejects.toThrow();
+
+				expect(emitSpy).toHaveBeenCalledWith('decrypt', {
+					algorithm: 'aes-256-gcm',
+					durationMs: expect.any(Number),
+				});
+			});
+
+			it('should emit the key-lookup event even when the provider rejects', async () => {
+				withProvider({
+					getKeyById: async () => {
+						throw new Error('provider down');
+					},
+				});
+				const emitSpy = vi.spyOn(cipher.events, 'emit');
+
+				await expect(cipher.decryptV2('some-id:abc')).rejects.toThrow('provider down');
+
+				expect(emitSpy).toHaveBeenCalledWith('key-lookup', {
+					source: 'prefixed',
+					durationMs: expect.any(Number),
+				});
+				expect(emitSpy).not.toHaveBeenCalledWith('decrypt', expect.anything());
+			});
 		});
 	});
 });

@@ -138,21 +138,27 @@ export class Cipher {
 		if (!keyInfo) throw new UnexpectedError('Encryption key not found!');
 
 		const algorithm = keyInfo.algorithm as CipherAlgorithm;
-		const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
-		const plaintext = this.decryptWithKey(ciphertext, plaintextKey, algorithm);
-		this.events.emit('decrypt', { algorithm, durationMs: performance.now() - start });
-		return plaintext;
+		try {
+			const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
+			return this.decryptWithKey(ciphertext, plaintextKey, algorithm);
+		} finally {
+			// Emit even on failure so the metric also captures slow or failing decryptions.
+			this.events.emit('decrypt', { algorithm, durationMs: performance.now() - start });
+		}
 	}
 
-	/** Times a key lookup and emits its latency before returning the descriptor. */
+	/** Times a key lookup and emits its latency, whether the lookup succeeds or fails. */
 	private async lookupKey(
 		source: 'prefixed' | 'legacy',
 		lookup: () => Promise<KeyInfo | null>,
 	): Promise<KeyInfo | null> {
 		const start = performance.now();
-		const keyInfo = await lookup();
-		this.events.emit('key-lookup', { source, durationMs: performance.now() - start });
-		return keyInfo;
+		try {
+			return await lookup();
+		} finally {
+			// Emit even on failure so the metric also captures slow or failing lookups.
+			this.events.emit('key-lookup', { source, durationMs: performance.now() - start });
+		}
 	}
 
 	/**
