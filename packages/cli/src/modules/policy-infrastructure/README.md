@@ -12,9 +12,10 @@ Why these six points, why every check must pass, and why a check that does not
 answer blocks: read the policy infrastructure RFC in Notion. This README is the
 working reference for writing a check. It does not restate the RFC.
 
-Opt-in while it is built out: `N8N_ENABLED_MODULES=policy-infrastructure`.
-With the module off, nothing is checked and everything is allowed. That is the
-documented break-glass lever.
+The module is on by default. `N8N_DISABLED_MODULES=policy-infrastructure` turns
+it off: nothing is checked and everything is allowed. That is the documented
+break-glass lever. An instance with no check registered behaves the same either
+way — the module by itself changes nothing a user can see.
 
 ## Architecture
 
@@ -31,7 +32,7 @@ flowchart LR
         pes["PolicyEnforcementService<br/>enforce* · evaluate* · hasChecksFor"]
     end
 
-    subgraph module["policy-infrastructure module (opt-in)"]
+    subgraph module["policy-infrastructure module (default, disable to opt out)"]
         pds["PolicyDecisionService<br/>deadline per check · all checks must pass<br/>crash or timeout = fail closed<br/>one audit line per veto"]
         registry["PolicyCheckMetadata<br/>registry in @n8n/decorators"]
         checks["@PolicyCheck() classes<br/>onWorkflowSave · onWorkflowPublish · …"]
