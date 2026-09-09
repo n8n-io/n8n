@@ -607,6 +607,7 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.errors?.join('\n')).toContain('[GROUPING_DECISION_MISSING]');
 			expect(result.errors?.join('\n')).toContain('Step 0, Step 1');
 			expect(result.remediation?.reason).toBe('workflow_grouping_decision_missing');
+			expect(result.grouping).toMatchObject({ groupCount: 0, decision: 'missing' });
 			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 			expect(trackTelemetry).toHaveBeenCalledWith(
 				'instance_ai_workflow_source_build',

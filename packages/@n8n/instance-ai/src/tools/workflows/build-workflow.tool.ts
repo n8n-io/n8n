@@ -435,6 +435,39 @@ interface ValidationFailureArgs {
 	grouping?: GroupingOutcome;
 }
 
+/**
+ * The grouping decision this build ends with, for the result and telemetry.
+ *
+ * - `grouped`: the agent made groups.
+ * - `not_warranted`: the agent made no groups and gave a reason.
+ * - `under_ceiling`: the canvas has `TOP_LEVEL_ITEM_CEILING` boxes or fewer, so
+ *   groups are not needed.
+ * - `missing`: the canvas has more than `TOP_LEVEL_ITEM_CEILING` boxes, and the
+ *   agent made no groups and gave no reason. It skipped the decision. The build
+ *   is refused.
+ */
+function resolveGroupingDecision(input: {
+	groupCount: number;
+	overCeiling: boolean;
+	groupingDecision: 'grouped' | 'not_warranted' | undefined;
+}): GroupingOutcome['decision'] {
+	if (input.groupCount > 0) {
+		return 'grouped';
+	}
+
+	if (input.groupingDecision !== undefined) {
+		return input.groupingDecision;
+	}
+
+	// No groups and no reason given. With more than `TOP_LEVEL_ITEM_CEILING` boxes on
+	// the canvas, the agent had to make groups or give a reason. It did neither.
+	if (input.overCeiling) {
+		return 'missing';
+	}
+
+	return 'under_ceiling';
+}
+
 async function handleValidationFailure(args: ValidationFailureArgs) {
 	const {
 		context,
@@ -1187,7 +1220,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					ceiling: topLevel.ceiling,
 					groupCount: topLevel.groupCount,
 					droppedGroupCount,
-					decision: topLevel.groupCount > 0 ? 'grouped' : (groupingDecision ?? 'under_ceiling'),
+					decision: resolveGroupingDecision({
+						groupCount: topLevel.groupCount,
+						overCeiling: topLevel.overCeiling,
+						groupingDecision,
+					}),
 					...(groupingReason ? { reason: groupingReason } : {}),
 				};
 				// The check applies to canvases this run is responsible for: a new

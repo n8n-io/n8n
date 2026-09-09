@@ -32,7 +32,7 @@ export function trackWorkflowSourceBuild(
 		droppedGroupCount?: number;
 		topLevelItemCount?: number;
 		groupCount?: number;
-		groupingDecision?: 'grouped' | 'not_warranted' | 'under_ceiling';
+		groupingDecision?: 'grouped' | 'not_warranted' | 'under_ceiling' | 'missing';
 		groupingReasonProvided?: boolean;
 	},
 ): void {

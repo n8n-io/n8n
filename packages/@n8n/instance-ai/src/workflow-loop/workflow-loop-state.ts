@@ -343,7 +343,7 @@ export const groupingOutcomeSchema = z.object({
 	ceiling: z.number().int().min(1),
 	groupCount: z.number().int().min(0),
 	droppedGroupCount: z.number().int().min(0),
-	decision: z.enum(['grouped', 'not_warranted', 'under_ceiling']),
+	decision: z.enum(['grouped', 'not_warranted', 'under_ceiling', 'missing']),
 	reason: z.string().optional(),
 });
 
