@@ -22,6 +22,7 @@ import {
 	getProviderQuirks,
 	PROVIDER_QUIRKS,
 	providerIdFromModelId,
+	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
@@ -38,6 +39,7 @@ export interface StaticLoopContext {
 	reasoning: AgentRuntimeConfig['reasoning'];
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
+	maxOutputTokens?: number;
 }
 
 /**
@@ -87,6 +89,7 @@ export class RuntimeContextBuilder {
 			reasoning: this.config.reasoning,
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
+			maxOutputTokens: execOptions?.maxOutputTokens ?? resolveDefaultMaxOutputTokens(this.modelId),
 		};
 	}
 

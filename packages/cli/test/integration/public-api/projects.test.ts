@@ -11,6 +11,7 @@ import { Container } from '@n8n/di';
 import type { MockInstance } from 'vitest';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Telemetry } from '@/telemetry';
 import {
@@ -24,12 +25,19 @@ describe('Projects in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
 	mockInstance(Telemetry);
 
+	let emitSpy: MockInstance<EventService['emit']>;
+
 	beforeAll(async () => {
 		await testDb.init();
 	});
 
 	beforeEach(async () => {
 		await testDb.truncate(['Project', 'User']);
+		emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+	});
+
+	afterEach(() => {
+		emitSpy.mockRestore();
 	});
 
 	describe('GET /projects', () => {
@@ -156,6 +164,11 @@ describe('Projects in Public API', () => {
 				scopes: expect.any(Array),
 			});
 			await expect(getProjectByNameOrFail(projectPayload.name)).resolves.not.toThrow();
+			expect(emitSpy).toHaveBeenCalledWith('team-project-created', {
+				userId: owner.id,
+				role: owner.role.slug,
+				uiContext: undefined,
+			});
 		});
 
 		it('if not authenticated, should reject', async () => {
@@ -249,6 +262,13 @@ describe('Projects in Public API', () => {
 			 */
 			expect(response.status).toBe(204);
 			await expect(getProjectByNameOrFail(project.id)).rejects.toThrow();
+			expect(emitSpy).toHaveBeenCalledWith('team-project-deleted', {
+				userId: owner.id,
+				role: owner.role.slug,
+				projectId: project.id,
+				removalType: 'delete',
+				targetProjectId: undefined,
+			});
 		});
 
 		it('if not authenticated, should reject', async () => {
@@ -338,6 +358,11 @@ describe('Projects in Public API', () => {
 			 */
 			expect(response.status).toBe(204);
 			await expect(getProjectByNameOrFail('new-name')).resolves.not.toThrow();
+			expect(emitSpy).toHaveBeenCalledWith('team-project-updated', {
+				userId: owner.id,
+				role: owner.role.slug,
+				projectId: project.id,
+			});
 		});
 
 		it('if not authenticated, should reject', async () => {

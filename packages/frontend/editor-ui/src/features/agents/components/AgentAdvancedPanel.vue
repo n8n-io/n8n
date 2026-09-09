@@ -9,7 +9,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { AGENT_REASONING_LEVELS, type AgentReasoningLevel } from '@n8n/api-types';
 import {
 	N8nIcon,
-	N8nInputNumber2,
+	N8nInputNumber,
 	N8nOption,
 	N8nSelect,
 	N8nSwitch2,
@@ -115,7 +115,7 @@ type NumberFieldOptions =
 
 /**
  * Creates a ref, debounced config-emit, change handler, and watch-sync
- * function for one numeric field inside `config`. Designed for N8nInputNumber2
+ * function for one numeric field inside `config`. Designed for N8nInputNumber
  * which emits numbers directly (NaN when the field is cleared).
  *
  * Pass a number for fields that always persist their fallback (e.g. concurrency).
@@ -468,10 +468,11 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 								{{ i18n.baseText('agents.builder.advanced.webSearch.maxUses.hint') }}
 							</N8nText>
 						</div>
-						<N8nInputNumber2
+						<N8nInputNumber
 							:model-value="Number(webSearchMaxUses)"
 							:min="1"
 							:precision="0"
+							:controls="false"
 							:disabled="props.disabled"
 							:class="$style.shortInput"
 							data-testid="agent-web-search-max-uses"
@@ -655,11 +656,12 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						{{ i18n.baseText('agents.builder.advanced.concurrency.hint') }}
 					</N8nText>
 				</div>
-				<N8nInputNumber2
+				<N8nInputNumber
 					:model-value="concurrencyModelValue"
 					:min="CONCURRENCY_MIN"
 					:max="CONCURRENCY_MAX"
 					:precision="0"
+					:controls="false"
 					:disabled="props.disabled"
 					:class="$style.shortInput"
 					data-testid="agent-concurrency-input"
@@ -676,11 +678,12 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						{{ i18n.baseText('agents.builder.advanced.maxIterations.hint') }}
 					</N8nText>
 				</div>
-				<N8nInputNumber2
+				<N8nInputNumber
 					:model-value="maxIterationsModelValue"
 					:min="MAX_ITERATIONS_MIN"
 					:max="MAX_ITERATIONS_MAX"
 					:precision="0"
+					:controls="false"
 					:disabled="props.disabled"
 					:class="$style.shortInput"
 					data-testid="agent-max-iterations-input"

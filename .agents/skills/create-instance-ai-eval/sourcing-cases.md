@@ -36,6 +36,12 @@ claude mcp add --scope local --transport http langtracer-hosted \
 session start, so reconnect to pick it up. (The LangSmith MCP is usually already
 connected.)
 
+The MCP returns ids; the driver needs pages. Every thread, cluster, and case you
+cite while sourcing has a web URL off the same base — `<base>/conversations/<threadId>`,
+`<base>/clusters/<id>`, `<base>/test-cases/<id>` — so cite them as links, not bare
+ids. Full table in
+[Share links, never bare ids](SKILL.md#share-links-never-bare-ids).
+
 ## Discover → verify → encode
 
 1. **Scan cluster themes** — `list_cluster_runs` / `get_latest_cluster_run`
@@ -56,17 +62,62 @@ connected.)
    content-dependent claim ("invented ID", "missing node") can be wrong when it
    couldn't see the built workflow. Confirm against the raw trace before building
    a case around it.
-4. **Encode a durable synthetic case** — turn the confirmed failure into an
+4. **Optionally record the selection as an observation.** Offer to save why this
+   thread was selected and what the developer observed. This is a best-effort
+   LangTracer note, not a gate: skip it when the developer declines or has not
+   stated a preference, and continue if the write fails. See
+   [Optional: record the selection as an observation](#optional-record-the-selection-as-an-observation).
+5. **Encode a durable synthetic case** — turn the confirmed failure into an
    authored case ([SKILL.md](SKILL.md), [`case-shapes.md`](case-shapes.md)). The
    failure mode is the anchor; the conversation is yours to write, in the user's
    voice.
-5. **Push it to a curated suite** (don't commit the JSON) with
+6. **Push it to a curated suite** (don't commit the JSON) with
    `eval:langtracer-push` — see
    [Push to a lang-tracer suite](SKILL.md#push-to-a-lang-tracer-suite). An `inline`
    seed rides along with the case. Exception: a `replay` case is refused and listed
    under `skipped:` — it's reconstructed from a trace at run time, so it dies when
-   that trace is pruned and has no durable home; that's exactly why step 4 turns the
+   that trace is pruned and has no durable home; that's exactly why step 5 turns the
    confirmed failure into a durable synthetic case.
+
+## Optional: record the selection as an observation
+
+After the raw trace confirms the finding, offer the developer one optional
+record before drafting:
+
+- **Why did you choose this thread?** Capture why it is useful eval coverage,
+  such as impact, recurrence, reproducibility, or a gap in the current suite.
+- **What did you observe?** Capture the concrete behavior, the expected behavior,
+  and the run or turn that contains the strongest evidence.
+
+If the developer opts in, call LangTracer's `create_observation` tool. Map the
+record like this:
+
+- `sourceThreadId`: the selected imported thread.
+- `sourceRunId` and `anchorRunId`: the evidence run, when the finding is narrower
+  than the whole conversation.
+- `kind`: `capability_gap` for a confirmed failure, `regression` for successful
+  behavior worth protecting, or `binary_check` when that is the intended output.
+- `description`: why the developer selected this thread.
+- `openCodeNote`: what the developer observed, in reviewer voice.
+- `expectedBehavior`, `failurePattern`, and `proposedCheck`: the rule, the
+  observed deviation, and the check the eval should enforce.
+- `severity` and `failureClass`: include them only when the evidence supports the
+  classification.
+- `isTestCaseCandidate`: `true` because the developer selected it for eval
+  authoring.
+
+This record is optional. Do not pause an autonomous run to request it when the
+driver has not already opted in. In checkpoint mode, offer it once with the
+selection proposal. A declined offer, unavailable MCP tool, or failed write must
+not stop the eval workflow. Report a successful observation by id with the source
+conversation link; otherwise omit it from the handoff.
+
+Calibration can sharpen the note. If an observation exists, use
+`update_observation` only for mutable details such as the expected behavior,
+failure pattern, proposed check, severity, failure class, or reviewer note. Its
+`kind` and source provenance are immutable, so classify the source evidence
+before creation. Both observation tools are LangTracer-local. Do not create or
+update LangSmith feedback for this record.
 
 ## Was the workflow handed over? (sourcing an `attach` opening)
 

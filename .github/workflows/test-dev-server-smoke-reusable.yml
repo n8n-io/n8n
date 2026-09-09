@@ -16,7 +16,7 @@ jobs:
   smoke:
     name: Dev-server smoke
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
 
@@ -33,9 +33,18 @@ jobs:
       - name: Install Browsers
         run: pnpm turbo run install-browsers --filter=n8n-playwright
 
+      # Both steps run from repo root so PLAYWRIGHT_BROWSERS_PATH (relative)
+      # resolves correctly. cd-ing into the playwright package double-nests it.
+      - name: Run dev-server smoke spec (non-default ports)
+        # Runs FIRST, while nothing has ever listened on 5678, so a regression
+        # to the 5678 fallback fails with a connection error instead of being
+        # satisfied by a server leaked from the default run. The broker moves
+        # too, so it cannot squat on 5679 for the run below.
+        run: pnpm --filter=n8n-playwright test:dev-server-smoke:alt-port --reporter=list
+
       - name: Run dev-server smoke spec
-        # Run from repo root so PLAYWRIGHT_BROWSERS_PATH (relative) resolves
-        # correctly. cd-ing into the playwright package double-nests it.
+        # Always run: a flake above must not cost the default-port signal.
+        if: ${{ !cancelled() }}
         run: pnpm --filter=n8n-playwright test:dev-server-smoke --reporter=list
 
       - name: Upload Failure Artifacts

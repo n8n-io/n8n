@@ -16,40 +16,72 @@ import type {
 import { BaseRepository } from './base-repository';
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
-import type { OperationContext } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
-	constructor(dataSource: DataSource) {
-		super(SharedWorkflow, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(SharedWorkflow, dataSource.manager, transactionRunner);
 	}
 
-	async getSharedWorkflowIds(workflowIds: string[]) {
-		const sharedWorkflows = await this.find({
-			select: ['workflowId'],
-			where: {
-				workflowId: In(workflowIds),
-			},
-		});
-		return sharedWorkflows.map((sharing) => sharing.workflowId);
+	/**
+	 * SharedWorkflow maps workflows to projects, so user access is checked through
+	 * project relations with the supplied project roles.
+	 */
+	async findWorkflowIdsInUserProjects(
+		workflowIds: string[],
+		userId: string,
+		projectRoleSlugs: string[],
+	): Promise<Set<string>> {
+		if (workflowIds.length === 0 || projectRoleSlugs.length === 0) return new Set();
+
+		const found = new Set<string>();
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.find({
+				select: { workflowId: true },
+				where: {
+					workflowId: In(chunk),
+					project: { projectRelations: { userId, role: { slug: In(projectRoleSlugs) } } },
+				},
+			});
+			for (const row of rows) {
+				found.add(row.workflowId);
+			}
+		}
+
+		return found;
 	}
 
 	async findByWorkflowIds(workflowIds: string[]) {
-		return await this.find({
-			where: {
-				role: 'workflow:owner',
-				workflowId: In(workflowIds),
-			},
-			relations: { project: { projectRelations: { user: true, role: true } } },
-		});
+		const rows = new Map<string, SharedWorkflow>();
+
+		for (const chunk of chunkIds(workflowIds)) {
+			const found = await this.find({
+				where: {
+					role: 'workflow:owner',
+					workflowId: In(chunk),
+				},
+				relations: { project: { projectRelations: { user: true, role: true } } },
+			});
+			for (const row of found) rows.set(row.workflowId, row);
+		}
+
+		return [...rows.values()];
 	}
 
 	/** Owner project of each workflow, keyed by workflow id. */
 	async findOwnerProjectsByWorkflowIds(workflowIds: string[]): Promise<Map<string, Project>> {
-		const ownerRows = await this.find({
-			where: { workflowId: In(workflowIds), role: 'workflow:owner' },
-			relations: { project: true },
-		});
+		const ownerRows: SharedWorkflow[] = [];
+
+		for (const chunk of chunkIds(workflowIds)) {
+			ownerRows.push(
+				...(await this.find({
+					where: { workflowId: In(chunk), role: 'workflow:owner' },
+					relations: { project: true },
+				})),
+			);
+		}
 
 		return new Map(ownerRows.map(({ workflowId, project }) => [workflowId, project]));
 	}
@@ -129,6 +161,24 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 	 */
 	async findProjectIds(workflowId: string) {
 		const rows = await this.find({ where: { workflowId }, select: ['projectId'] });
+
+		const projectIds = rows.reduce<string[]>((acc, row) => {
+			if (row.projectId) acc.push(row.projectId);
+			return acc;
+		}, []);
+
+		return [...new Set(projectIds)];
+	}
+
+	/**
+	 * Find the IDs of all the projects where a workflow is shared with one of
+	 * the given sharing roles.
+	 */
+	async findProjectIdsByRole(workflowId: string, roles: string[]) {
+		const rows = await this.find({
+			where: { workflowId, role: In(roles) },
+			select: ['projectId'],
+		});
 
 		const projectIds = rows.reduce<string[]>((acc, row) => {
 			if (row.projectId) acc.push(row.projectId);

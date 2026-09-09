@@ -8,6 +8,21 @@ import type { EventMessageQueue } from './event-message-queue';
 import type { EventMessageRunner } from './event-message-runner';
 import type { EventMessageWorkflow } from './event-message-workflow';
 
+/**
+ * Naming rules for log streaming events:
+ *
+ * Event names are a public contract with log streaming consumers and cannot be
+ * renamed once released. Events that record a user action (logins, grants,
+ * tool calls, settings changes) must be named under `n8n.audit.`: external
+ * pipelines filter the audit trail by that prefix, and the destination UI
+ * groups events by the first two name segments, so a new top-level prefix
+ * creates its own opt-in group outside the audit trail. A group can keep its
+ * own name list and message class while living under the audit prefix (see
+ * `eventNamesMcp`). Introducing a new operational group (like `n8n.runner.`)
+ * is a taxonomy decision that needs sign-off from the owning team; the guard
+ * test in `__tests__/event-names.test.ts` enforces this.
+ */
+
 export const eventNamesAiNodes = [
 	'n8n.ai.memory.get.messages',
 	'n8n.ai.memory.added.message',
@@ -139,6 +154,13 @@ export const eventNamesAudit = [
 	'n8n.audit.cluster.instance-left',
 	'n8n.audit.oauth.callback.binding.rejected',
 	'n8n.audit.credentials.authorize.rejected',
+	'n8n.audit.workflow-reviews.enabled',
+	'n8n.audit.workflow-reviews.disabled',
+	'n8n.audit.workflow-review.requested',
+	'n8n.audit.workflow-review.version-updated',
+	'n8n.audit.workflow-review.approved',
+	'n8n.audit.workflow-review.changes-requested',
+	'n8n.audit.workflow-review.closed',
 ] as const;
 
 // Instance MCP server events. Kept as their own list and message class because the payload

@@ -2,8 +2,9 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed } from 'vue';
 
-const openThreadWithContextMock = vi.fn();
+const openAgentArtifactThreadMock = vi.fn();
 const trackMock = vi.fn();
+const FIX_WITH_ASSISTANT_DRAFT = 'Investigate the tool errors in this agent run and fix the agent';
 let instanceAiAvailable = true;
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -29,7 +30,7 @@ vi.mock('../composables/useInstanceAiHandoff', () => ({
 		threadId,
 		...(executionId ? { executionId } : {}),
 	}),
-	useInstanceAiHandoff: () => ({ openThreadWithContext: openThreadWithContextMock }),
+	useInstanceAiHandoff: () => ({ openAgentArtifactThread: openAgentArtifactThreadMock }),
 }));
 
 describe('useInstanceAiAgentPreviewHandoff', () => {
@@ -38,8 +39,8 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 		instanceAiAvailable = true;
 	});
 
-	it('starts a new-tab instance AI thread with agent preview context', async () => {
-		openThreadWithContextMock.mockResolvedValue(true);
+	it('opens the agent artifact in the same tab with preview context', async () => {
+		openAgentArtifactThreadMock.mockResolvedValue(true);
 		const { useInstanceAiAgentPreviewHandoff } = await import(
 			'../composables/useInstanceAiAgentPreviewHandoff'
 		);
@@ -50,19 +51,24 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 			threadId: 'thread-1',
 		});
 
-		expect(openThreadWithContextMock).toHaveBeenCalledWith(
-			'project-1',
+		expect(openAgentArtifactThreadMock).toHaveBeenCalledWith(
 			{
-				source: 'agent-preview',
-				agentId: 'agent-1',
-				threadId: 'thread-1',
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'project-1',
 			},
 			{
 				source: 'agent_preview',
 				origin: 'internal',
 				sourceContext: { agentId: 'agent-1', previewThreadId: 'thread-1' },
 			},
-			{ newTab: true },
+			{
+				context: {
+					source: 'agent-preview',
+					agentId: 'agent-1',
+					threadId: 'thread-1',
+				},
+			},
 		);
 		expect(trackMock).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW,
@@ -74,7 +80,7 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 	});
 
 	it('passes executionId into preview handoff context and telemetry', async () => {
-		openThreadWithContextMock.mockResolvedValue(true);
+		openAgentArtifactThreadMock.mockResolvedValue(true);
 		const { useInstanceAiAgentPreviewHandoff } = await import(
 			'../composables/useInstanceAiAgentPreviewHandoff'
 		);
@@ -84,22 +90,29 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 			agentId: 'agent-1',
 			threadId: 'thread-1',
 			executionId: 'exec-1',
+			initialDraft: FIX_WITH_ASSISTANT_DRAFT,
 		});
 
-		expect(openThreadWithContextMock).toHaveBeenCalledWith(
-			'project-1',
+		expect(openAgentArtifactThreadMock).toHaveBeenCalledWith(
 			{
-				source: 'agent-preview',
-				agentId: 'agent-1',
-				threadId: 'thread-1',
-				executionId: 'exec-1',
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'project-1',
 			},
 			{
 				source: 'agent_preview',
 				origin: 'internal',
 				sourceContext: { agentId: 'agent-1', previewThreadId: 'thread-1' },
 			},
-			{ newTab: true },
+			{
+				context: {
+					source: 'agent-preview',
+					agentId: 'agent-1',
+					threadId: 'thread-1',
+					executionId: 'exec-1',
+				},
+				initialDraft: FIX_WITH_ASSISTANT_DRAFT,
+			},
 		);
 		expect(trackMock).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW,
@@ -112,7 +125,7 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 	});
 
 	it('does not track telemetry when opening the instance AI thread fails', async () => {
-		openThreadWithContextMock.mockResolvedValue(false);
+		openAgentArtifactThreadMock.mockResolvedValue(false);
 		const { useInstanceAiAgentPreviewHandoff } = await import(
 			'../composables/useInstanceAiAgentPreviewHandoff'
 		);
@@ -123,7 +136,7 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 			threadId: 'thread-1',
 		});
 
-		expect(openThreadWithContextMock).toHaveBeenCalled();
+		expect(openAgentArtifactThreadMock).toHaveBeenCalled();
 		expect(trackMock).not.toHaveBeenCalled();
 	});
 
@@ -139,7 +152,7 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 			threadId: 'thread-1',
 		});
 
-		expect(openThreadWithContextMock).not.toHaveBeenCalled();
+		expect(openAgentArtifactThreadMock).not.toHaveBeenCalled();
 		expect(trackMock).not.toHaveBeenCalled();
 	});
 });

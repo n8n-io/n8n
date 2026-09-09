@@ -30,6 +30,16 @@ vi.mock('@n8n/agents', () => ({
 const proxyFetchMock = vi.fn();
 const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown as CustomFetch;
 
+function headersToCaseInsensitiveRecord(headers: HeadersInit | undefined): Record<string, string> {
+	const values = Object.fromEntries(new Headers(headers).entries());
+	return new Proxy(values, {
+		get: (target, property) => {
+			if (typeof property !== 'string') return Reflect.get(target, property);
+			return target[property] ?? target[property.toLowerCase()];
+		},
+	});
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -97,7 +107,7 @@ describe('buildMcpClientForServer — header derivation', () => {
 		const fetchFn = configs[0].fetch;
 		await fetchFn('https://example.test/mcp');
 		const [, init] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
-		return (init.headers ?? {}) as Record<string, string>;
+		return headersToCaseInsensitiveRecord(init.headers);
 	}
 
 	it('sends no auth headers for authentication: "none"', async () => {
@@ -183,8 +193,8 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 		// First call uses the stale header, second uses the refreshed one.
 		const [, firstInit] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
 		const [, secondInit] = proxyFetchMock.mock.calls[1] as [unknown, RequestInit];
-		expect((firstInit.headers as Record<string, string>).Authorization).toBe('Bearer stale-token');
-		expect((secondInit.headers as Record<string, string>).Authorization).toBe('Bearer fresh-token');
+		expect(new Headers(firstInit.headers).get('authorization')).toBe('Bearer stale-token');
+		expect(new Headers(secondInit.headers).get('authorization')).toBe('Bearer fresh-token');
 	});
 
 	it('does NOT call refreshOAuth2CredentialById for non-OAuth2 auth schemes', async () => {
@@ -332,7 +342,7 @@ describe('buildMcpClientForServer — auth header edge cases', () => {
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
 		await configs[0].fetch('https://example.test/mcp');
 		const [, init] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
-		return (init.headers ?? {}) as Record<string, string>;
+		return headersToCaseInsensitiveRecord(init.headers);
 	}
 
 	it('sends no Authorization header for bearerAuth when the resolved token is an empty string', async () => {
@@ -378,12 +388,21 @@ describe('buildMcpClientForServer — auth header edge cases', () => {
 		expect(headers).toEqual({});
 	});
 
-	it('uses the OAuth2 path for service-specific McpOAuth2Api variants (e.g. notionMcpOAuth2Api)', async () => {
+	it('requires registry metadata for service-specific McpOAuth2Api credentials', async () => {
+		await expect(
+			captureInitialHeaders(
+				makeServer({ authentication: 'notionMcpOAuth2Api' as never, credential: 'cred-1' }),
+				{ oauthTokenData: { access_token: 'notion-oauth-token' } },
+			),
+		).rejects.toThrow('requires an MCP registry node');
+	});
+
+	it('uses the OAuth2 path for native OAuth2 credential types', async () => {
 		const headers = await captureInitialHeaders(
-			makeServer({ authentication: 'notionMcpOAuth2Api' as never, credential: 'cred-1' }),
-			{ oauthTokenData: { access_token: 'notion-oauth-token' } },
+			makeServer({ authentication: 'githubOAuth2Api', credential: 'cred-1' }),
+			{ oauthTokenData: { access_token: 'github-oauth-token' } },
 		);
-		expect(headers.Authorization).toBe('Bearer notion-oauth-token');
+		expect(headers.Authorization).toBe('Bearer github-oauth-token');
 	});
 });
 
@@ -413,8 +432,25 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 		});
 
 		await buildMcpClientForServer(
-			makeServer({ authentication: 'notionMcpOAuth2Api' as never, credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+			makeServer({
+				authentication: 'notionMcpOAuth2Api' as never,
+				credential: 'cred-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.notion' },
+			}),
+			{
+				credentialProvider,
+				oauthService,
+				projectId: 'proj-1',
+				proxyFetch,
+				resolveRegistryConnection: async () => ({
+					nodeTypeName: '@n8n/mcp-registry.notion',
+					endpointUrl: 'https://example.test/mcp',
+					endpointHostname: 'example.test',
+					transport: 'httpStreamable',
+					credentialBindings: [{ credentialType: 'notionMcpOAuth2Api', selector: 'oAuth2' }],
+					isTemplated: false,
+				}),
+			},
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -475,6 +511,28 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
 		await expect(configs[0].fetch('https://example.test/mcp')).rejects.toThrow(UserError);
 		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+
+	it('falls back to the MCP hostname for native OAuth2 credentials in none mode', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			oauthTokenData: { access_token: 'github-token' },
+			allowedHttpRequestDomains: 'none',
+		} as never);
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(
+			makeServer({
+				authentication: 'githubOAuth2Api',
+				credential: 'cred-1',
+				url: 'https://api.githubcopilot.com/mcp/',
+			}),
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await expect(configs[0].fetch('https://api.githubcopilot.com/mcp/')).resolves.toBeDefined();
+		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('blocks requests when the server URL is not in the credential allowlist', async () => {
@@ -571,6 +629,82 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 			}),
 		).resolves.toBeDefined();
 		expect(credentialProvider.resolve).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildMcpClientForServer — unresolvable credential
+// ---------------------------------------------------------------------------
+
+describe('buildMcpClientForServer — unresolvable credential', () => {
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		proxyFetchMock.mockReset();
+		proxyFetchMock.mockResolvedValue(makeOk());
+	});
+
+	it('fails the connection with the resolution error instead of connecting unauthenticated', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockRejectedValue(
+			new Error('Could not load secrets [Error resolving credentials]'),
+		);
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(
+			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await expect(configs[0].fetch('https://example.test/mcp')).rejects.toThrow(
+			'Could not resolve the credential for MCP server "srv": Could not load secrets [Error resolving credentials]',
+		);
+		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+
+	it('keeps a templated URL parseable so the credential error is what surfaces', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		// No `oauthTokenData`, so `prepareMcpRegistryConnection` rejects before it
+		// substitutes the URL, leaving the raw `$self`-expression behind.
+		credentialProvider.resolve.mockResolvedValue({ host: 'https://tenant.test' } as never);
+		const oauthService = mock<OauthService>();
+
+		const templatedUrl = '={{$self["host"]}}/api/2.0/mcp/genie';
+
+		await buildMcpClientForServer(
+			makeServer({
+				url: templatedUrl,
+				authentication: 'databricksGenieMcpOAuth2Api' as never,
+				credential: 'cred-1',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.databricksGenie' },
+			}),
+			{
+				credentialProvider,
+				oauthService,
+				projectId: 'proj-1',
+				proxyFetch,
+				resolveRegistryConnection: async () => ({
+					nodeTypeName: '@n8n/mcp-registry.databricksGenie',
+					credentialBindings: [
+						{
+							credentialType: 'databricksGenieMcpOAuth2Api',
+							selector: 'oAuth2',
+						},
+					],
+					urlTemplate: templatedUrl,
+					transport: 'httpStreamable',
+					isTemplated: true,
+				}),
+			},
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ url: string; fetch: typeof fetch }>];
+		expect(configs[0].url).not.toBe(templatedUrl);
+		expect(() => new URL(configs[0].url)).not.toThrow();
+		await expect(configs[0].fetch(configs[0].url)).rejects.toThrow(
+			'does not contain an OAuth2 access token',
+		);
+		expect(proxyFetchMock).not.toHaveBeenCalled();
 	});
 });
 

@@ -107,11 +107,22 @@ export const codeSnippetAssistantResponse = {
 
 // #region Test Requirements for different scenarios
 
+/**
+ * The legacy AI Assistant entry points (canvas action button, node error view
+ * button, credential help) only render while Instance AI is off, so these
+ * suites pin the module off. Instance AI's own entry points are covered by
+ * `tests/e2e/instance-ai`.
+ */
+export const INSTANCE_AI_DISABLED: NonNullable<TestRequirements['config']>['moduleSettings'] = {
+	'instance-ai': { enabled: false },
+};
+
 export const aiDisabledRequirements: TestRequirements = {
 	config: {
 		settings: {
 			aiAssistant: { enabled: false, setup: false },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: false },
 	},
 };
@@ -121,6 +132,7 @@ export const aiEnabledRequirements: TestRequirements = {
 		settings: {
 			aiAssistant: { enabled: true, setup: true },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 };
@@ -130,6 +142,7 @@ export const aiEnabledWithWorkflowRequirements: TestRequirements = {
 		settings: {
 			aiAssistant: { enabled: true, setup: true },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 	workflow: {
@@ -148,6 +161,7 @@ export const aiEnabledWithQuickRepliesRequirements: TestRequirements = {
 		settings: {
 			aiAssistant: { enabled: true, setup: true },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true },
 	},
 	workflow: {
@@ -185,6 +199,7 @@ export const aiEnabledWithEndSessionRequirements: TestRequirements = {
 		settings: {
 			aiAssistant: { enabled: true, setup: true },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true },
 	},
 	workflow: {
@@ -218,6 +233,7 @@ export const aiEnabledWorkflowBaseRequirements: TestRequirements = {
 		settings: {
 			aiAssistant: { enabled: true, setup: true },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 	workflow: {
@@ -240,6 +256,7 @@ export const aiEnabledWithSimpleChatRequirements: TestRequirements = {
 		settings: {
 			aiAssistant: { enabled: true, setup: true },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 	intercepts: {
@@ -255,6 +272,7 @@ export const aiEnabledWithCodeSnippetRequirements: TestRequirements = {
 		settings: {
 			aiAssistant: { enabled: true, setup: true },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 	intercepts: {
@@ -270,6 +288,7 @@ export const aiEnabledWithHttpWorkflowRequirements: TestRequirements = {
 		settings: {
 			aiAssistant: { enabled: true, setup: true },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 	workflow: {

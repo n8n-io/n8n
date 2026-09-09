@@ -1,63 +1,72 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { computed, onMounted, ref } from 'vue';
+import { useEventListener } from '@vueuse/core';
+import { N8nButton, N8nCallout, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { isBrowserUseSupportedForBrowser } from '@/experiments/instanceAiBrowserUse';
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
+import BrowserUseConnectStep from './BrowserUseConnectStep.vue';
 
-import { CHROME_EXTENSION_URL } from './constants';
-
-const CONNECT_URL_REFRESH_MARGIN_MS = 30_000;
+import { CHROME_EXTENSION_URL } from '../../constants';
+import {
+	detectBrowserUseExtension,
+	type BrowserUseExtensionState,
+} from '../../utils/browserUseExtension';
 
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
+		autoConnect?: boolean;
 	}>(),
 	{
 		embedded: false,
+		autoConnect: false,
 	},
 );
+
+const emit = defineEmits<{ close: [] }>();
 
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
+const { onDocumentVisible } = useDocumentVisibility();
 
+const isBrowserSupported = isBrowserUseSupportedForBrowser();
 const isConnected = computed(() => store.browserConnected);
-const connectUrl = ref<string | null>(null);
-let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+const statusChecked = ref(false);
+const extensionState = ref<BrowserUseExtensionState>('unknown');
+const isExtensionMissing = computed(() => extensionState.value === 'not-installed');
+const isExtensionInstalled = computed(() => extensionState.value === 'installed');
+let isProbingExtension = false;
 
-function clearRefreshTimer(): void {
-	if (refreshTimer) {
-		clearTimeout(refreshTimer);
-		refreshTimer = undefined;
+async function refreshExtensionState(): Promise<void> {
+	// Returning to the tab can fire both triggers below, so skip a probe while one is in flight.
+	if (!isBrowserSupported || store.browserConnected || isProbingExtension) return;
+
+	isProbingExtension = true;
+	try {
+		extensionState.value = await detectBrowserUseExtension();
+	} finally {
+		isProbingExtension = false;
 	}
 }
 
-async function refreshConnectUrl(): Promise<void> {
-	clearRefreshTimer();
-	connectUrl.value = await store.fetchBrowserConnectUrl();
-
-	const expiresAt = store.browserConnectUrlExpiresAt;
-	if (!connectUrl.value || !expiresAt) return;
-
-	const delay = Date.parse(expiresAt) - Date.now() - CONNECT_URL_REFRESH_MARGIN_MS;
-	if (!Number.isFinite(delay) || delay <= 0) return;
-
-	refreshTimer = setTimeout(() => void refreshConnectUrl(), delay);
-}
-
-onMounted(() => {
-	telemetry.trackModalOpened();
-	void store.fetchBrowserStatus();
-	if (!store.browserConnected) {
-		void refreshConnectUrl();
-	}
+onMounted(async () => {
+	if (!isBrowserSupported) return;
+	await Promise.all([refreshExtensionState(), store.fetchBrowserStatus()]);
+	statusChecked.value = true;
 });
 
-onBeforeUnmount(() => {
-	clearRefreshTimer();
-	store.clearBrowserConnectUrl();
-});
+// Re-probe when the user returns from installing the extension. Coming back by tab switch
+// only fires `visibilitychange` — the window's focus can land in DevTools or another pane —
+// while coming back from a separate window only fires `focus`, so we listen for both.
+const reprobeExtension = () => {
+	void refreshExtensionState();
+};
+onDocumentVisible(reprobeExtension);
+useEventListener(window, 'focus', reprobeExtension);
 </script>
 
 <template>
@@ -68,7 +77,22 @@ onBeforeUnmount(() => {
 			</N8nHeading>
 		</div>
 
-		<template v-if="isConnected">
+		<template v-if="!isBrowserSupported">
+			<N8nCallout theme="warning" data-test-id="browser-use-unsupported-browser">
+				{{ i18n.baseText('instanceAi.browserUse.unsupportedBrowser') }}
+			</N8nCallout>
+			<div v-if="!props.embedded" :class="$style.footer">
+				<N8nButton
+					:label="i18n.baseText('generic.close')"
+					variant="outline"
+					size="medium"
+					data-test-id="browser-use-unsupported-close"
+					@click="emit('close')"
+				/>
+			</div>
+		</template>
+
+		<template v-else-if="isConnected">
 			<div :class="$style.statusRow">
 				<span :class="[$style.statusDot, $style.statusDotConnected]" />
 				<N8nText size="small" :bold="true">
@@ -85,7 +109,7 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('instanceAi.browserUse.modal.description') }}
 			</N8nText>
 
-			<div :class="$style.step">
+			<div v-if="!isExtensionInstalled" :class="$style.step">
 				<N8nText :bold="true" size="small">
 					{{ i18n.baseText('instanceAi.browserUse.step.extension.title') }}
 				</N8nText>
@@ -96,7 +120,7 @@ onBeforeUnmount(() => {
 					:label="i18n.baseText('instanceAi.browserUse.step.extension.cta')"
 					:href="CHROME_EXTENSION_URL"
 					target="_blank"
-					variant="outline"
+					:variant="isExtensionMissing ? 'solid' : 'outline'"
 					size="medium"
 					icon="external-link"
 					data-test-id="browser-use-install-extension"
@@ -104,29 +128,17 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 
-			<div :class="$style.step">
+			<div v-if="isExtensionMissing" :class="$style.step">
 				<N8nText :bold="true" size="small">
 					{{ i18n.baseText('instanceAi.browserUse.step.connect.title') }}
 				</N8nText>
-				<N8nText color="text-light" size="small">
-					{{ i18n.baseText('instanceAi.browserUse.step.connect.description') }}
+				<N8nText color="text-light" size="small" data-test-id="browser-use-extension-missing-note">
+					{{ i18n.baseText('instanceAi.browserUse.step.connect.extensionMissing') }}
 				</N8nText>
-				<N8nButton
-					:label="i18n.baseText('instanceAi.browserUse.step.connect.cta')"
-					:href="connectUrl ?? undefined"
-					target="_blank"
-					variant="solid"
-					size="medium"
-					icon="external-link"
-					:disabled="!connectUrl"
-					data-test-id="browser-use-open-connect-page"
-					@click="telemetry.trackOpenExtensionClicked"
-				/>
 			</div>
 
-			<div :class="$style.waitingRow">
-				<N8nIcon icon="spinner" color="primary" spin size="small" />
-				<span>{{ i18n.baseText('instanceAi.browserUse.step.extension.waiting') }}</span>
+			<div v-else-if="statusChecked" :class="$style.step">
+				<BrowserUseConnectStep :auto-connect="props.autoConnect" />
 			</div>
 		</template>
 	</div>
@@ -171,6 +183,11 @@ onBeforeUnmount(() => {
 	border-radius: var(--radius);
 }
 
+.footer {
+	display: flex;
+	justify-content: flex-end;
+}
+
 .statusRow {
 	display: flex;
 	align-items: center;
@@ -186,17 +203,5 @@ onBeforeUnmount(() => {
 
 .statusDotConnected {
 	background: var(--color--success);
-}
-
-.waitingRow {
-	display: flex;
-	font-size: var(--font-size--2xs);
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	background: var(--color--background--light-2);
-	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--bold);
-	border-radius: var(--radius);
 }
 </style>

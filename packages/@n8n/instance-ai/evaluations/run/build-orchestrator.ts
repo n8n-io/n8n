@@ -12,11 +12,19 @@ import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import { sleep } from '@n8n/utils/sleep';
 
 import type { LaneAllocator } from './lane-allocator';
+import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
+import { collectExpectations } from '../build-expectations/collect';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
-import { buildWorkflowViaMcp, type McpBuildSettings } from '../cli/mcp-builder';
-import type { N8nClient } from '../clients/n8n-client';
+import {
+	buildWorkflowViaMcp,
+	stageLaneMcpConfig,
+	unlinkStagedMcpConfig,
+	type McpBuildResult,
+	type McpBuildSettings,
+} from '../cli/mcp-builder';
+import { N8nClient } from '../clients/n8n-client';
 import {
 	fetchAgentScenarioContext,
 	findAgentArtifactRef,
@@ -24,9 +32,20 @@ import {
 } from '../harness/agent-execution';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import { attributionForExpectation } from '../harness/attribution';
-import { buildFailedOnInfra, type BuildResult } from '../harness/build-workflow';
+import {
+	buildFailedOnInfra,
+	leakHaystackFor,
+	redactLocalRunSecrets,
+	searchableBuildText,
+	scrubLocalSecretsFromBuild,
+	type BuildResult,
+} from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
+import {
+	credentialSetupExpectationTexts,
+	runCredentialSetupChecks,
+} from '../harness/credential-setup-checks';
 import type { EvalLogger } from '../harness/logger';
 import {
 	fetchPrebuiltBuild,
@@ -36,6 +55,7 @@ import {
 import type { executeScenario } from '../harness/scenario-execution';
 import type { ScenarioSeedContext } from '../harness/seed-tables';
 import {
+	extractErrorMessage,
 	findProviderOutage,
 	isRequestAbort,
 	isTransientNetworkError,
@@ -45,6 +65,7 @@ import {
 import type {
 	BuildExpectationResult,
 	ExecutionScenario,
+	TestCaseCredential,
 	TranscriptTurn,
 	WorkflowTestCase,
 } from '../types';
@@ -68,9 +89,9 @@ export interface Lane {
 	 *  per-lane because prebuilt/MCP-built workflows only exist on their own lane —
 	 *  deleting them via another lane's client would 404. */
 	workflowIdsToDelete: Set<string>;
-	/** Staged `claude` MCP config for this lane (`--build-via-mcp` only). Points
-	 *  `claude -p` at this lane's own MCP server + minted API key. Cleaned up on exit. */
-	mcpConfigPath?: string;
+	/** Pool of invited member users for `--build-via-mcp` — each build claims one
+	 *  so its MCP credential/workflow view is isolated to that user. */
+	mcpUserPool?: LaneUserPool;
 }
 
 /** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
@@ -89,7 +110,21 @@ export type BuildArgs = Pick<
 	| 'seed'
 	| 'executionScenarios'
 	| 'outcomeExpectations'
-> & { timeoutMs: number };
+	// Load-bearing, not metadata: the credential-setup lane is selected from
+	// this, and a build that never receives it silently runs without a browser —
+	// the case then fails as if the AGENT had misbehaved. `wrap()` erases the
+	// callback's parameter type, so tsc cannot catch a dropped field here; the
+	// orchestrator test pins it.
+	| 'credentialFixture'
+> & {
+	timeoutMs: number;
+	/** Which case this build is, and which repeat of it. Not used by the build
+	 *  itself — it rides to `ensureThread` as sourceContext so the LangSmith
+	 *  trace carries `source_context.evalCase` / `evalIteration`. Without it
+	 *  every build in a traced project is an anonymous conversation. */
+	fileSlug: string;
+	iteration: number;
+};
 
 /** A lane plus the allocator-managed counters and the caller-provided (traced)
  *  build/execute wrappers. `runner` is the underlying Lane (n8n client,
@@ -136,10 +171,15 @@ function mcpBuildSettingsFromArgs(args: CliArgs): McpBuildSettings {
  * verify path is identical to `--prebuilt-workflows`. Never throws: a failed
  * build resolves to an unsuccessful BuildResult. The workflow lives on `lane`,
  * so the caller must verify it on that same lane.
+ *
+ * Each build runs as its own member user with the declared credentials seeded
+ * into that user's personal project (see lane-users.ts); the lane owner's
+ * global scopes cover the fetch-back and verification.
  */
 async function buildWorkflowViaMcpOnLane(config: {
 	lane: Lane;
 	conversation: WorkflowTestCase['conversation'];
+	credentials?: TestCaseCredential[];
 	slug: string;
 	iteration: number;
 	args: CliArgs;
@@ -148,26 +188,52 @@ async function buildWorkflowViaMcpOnLane(config: {
 	/** Run-wide spend collector; every attempt is recorded, success or not. */
 	buildSpend: McpBuildSpend[];
 }): Promise<BuildResult> {
-	const { lane, conversation, slug, iteration, args, logDir, logger, buildSpend } = config;
-	if (!lane.mcpConfigPath) {
-		return {
-			success: false,
-			error: `Lane ${lane.baseUrl} has no staged MCP config — cannot build via MCP`,
-			workflowJsons: [],
-			createdWorkflowIds: [],
-			createdDataTableIds: [],
-		};
+	const { lane, conversation, credentials, slug, iteration, args, logDir, logger, buildSpend } =
+		config;
+	const failure = (error: string): BuildResult => ({
+		success: false,
+		error,
+		workflowJsons: [],
+		createdWorkflowIds: [],
+		createdDataTableIds: [],
+	});
+	if (!lane.mcpUserPool) {
+		return failure(`Lane ${lane.baseUrl} has no MCP build user pool — cannot build via MCP`);
 	}
 
-	const result = await buildWorkflowViaMcp({
-		conversation: conversation ?? [],
-		slug,
-		iteration,
-		mcpConfigPath: lane.mcpConfigPath,
-		settings: mcpBuildSettingsFromArgs(args),
-		logDir,
-		log: (message) => logger.info(message),
+	let mcpApiKey: string;
+	try {
+		mcpApiKey = await provisionCaseBuildUser({
+			pool: lane.mcpUserPool,
+			memberClient: new N8nClient(lane.baseUrl),
+			credentials,
+			onCredentialCreated: (id) => lane.createdCredentialIds.add(id),
+			logger,
+		});
+	} catch (error) {
+		return failure(`MCP build user/credential setup failed: ${extractErrorMessage(error)}`);
+	}
+
+	const mcpConfigPath = stageLaneMcpConfig({
+		serverName: args.mcpServerName,
+		url: `${lane.baseUrl}/mcp-server/http`,
+		apiKey: mcpApiKey,
 	});
+
+	let result: McpBuildResult;
+	try {
+		result = await buildWorkflowViaMcp({
+			conversation: conversation ?? [],
+			slug,
+			iteration,
+			mcpConfigPath,
+			settings: mcpBuildSettingsFromArgs(args),
+			logDir,
+			log: (message) => logger.info(message),
+		});
+	} finally {
+		unlinkStagedMcpConfig(mcpConfigPath);
+	}
 
 	// Record spend whether or not the build produced a workflow — failed builds
 	// cost money too, and this is the run's spend record.
@@ -183,13 +249,7 @@ async function buildWorkflowViaMcpOnLane(config: {
 	}
 
 	if (!result.workflowId) {
-		return {
-			success: false,
-			error: `MCP build produced no workflow (${result.failureReason ?? 'unknown'})`,
-			workflowJsons: [],
-			createdWorkflowIds: [],
-			createdDataTableIds: [],
-		};
+		return failure(`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`);
 	}
 
 	return await fetchPrebuiltBuild(lane.client, result.workflowId, logger);
@@ -311,6 +371,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	const buildDurations = new Map<string, number>();
 
 	function stashTranscript(build: BuildResult): void {
+		scrubLocalSecretsFromBuild(build);
 		if (build.threadId && build.transcript) {
 			transcriptByThreadId.set(build.threadId, build.transcript);
 		}
@@ -326,7 +387,21 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 
 	function stashRunDebug(client: N8nClient, build: BuildResult): void {
 		if (!build.threadId) return;
-		runDebugByThreadId.set(build.threadId, captureThreadRunDebug(client, build.threadId, logger));
+		// Re-read from n8n AFTER the build was scrubbed, so it arrives raw and the
+		// run-debug report would render a local run's real key verbatim.
+		runDebugByThreadId.set(
+			build.threadId,
+			captureThreadRunDebug(client, build.threadId, logger)
+				.then((debug) => redactLocalRunSecrets(debug, build.credentialSetup))
+				// Drop the payload rather than ship it or kill the run: run debug is
+				// diagnostic, and an unscrubable local run must not reach the report.
+				.catch((error: unknown) => {
+					logger.warn(
+						`  Dropped run debug for thread ${build.threadId ?? '?'}: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return [];
+				}),
+		);
 	}
 
 	// Judge author expectations once per build (off the scenario critical path);
@@ -342,8 +417,53 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		build: BuildResult,
 		isPrebuilt: boolean,
 	): void {
+		// `scrubLocalSecrets` (in stashTranscript, which always runs first) has
+		// already redacted a local run's transcript and kept the pre-scrub text
+		// off-build for exactly this check.
+		// Hermetic mode scrubs nothing, so there is no snapshot — but the surfaces
+		// scanned must be the same ones, hence the shared builder.
+		const searchableRunText =
+			(build.credentialSetup && leakHaystackFor(build.credentialSetup)) ??
+			searchableBuildText(build);
 		const testCase = testCaseByFileSlug.get(fileSlug);
 		if (!testCase) return;
+		// Staging never landed, so the case has no premise to be judged against. The row
+		// itself is short-circuited in `case-pipeline`, but expectations are counted
+		// separately and only a verdict's OWN `incomplete` excludes it — the row's flag
+		// does not reach them. A priorRuns case is usually expectation-only, so without
+		// this the single graded unit still lands in the builder's baseline as a red.
+		if (build.priorRunFailed) {
+			buildExpectationsByKey.set(
+				key,
+				Promise.resolve(
+					allFailVerdicts(
+						collectExpectations(testCase),
+						`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+					),
+				),
+			);
+			return;
+		}
+		// Deterministic credential-setup verdicts, started EAGERLY: per-build
+		// cleanup deletes artifacts later, and a credential read that lost that
+		// race would report "not created" for a run that did create one.
+		const injected = build.credentialSetup
+			? runCredentialSetupChecks({
+					client,
+					facts: build.credentialSetup,
+					searchableRunText,
+					logger,
+				}).catch((error: unknown) => {
+					const reason = error instanceof Error ? error.message : String(error);
+					logger.warn(`  Credential-setup checks failed: ${reason}`);
+					// Incomplete, not dropped: an empty array let the case pass on
+					// authored expectations with nothing deterministic behind it.
+					return allFailVerdicts(
+						credentialSetupExpectationTexts(build.credentialSetup?.credentialType),
+						`Credential-setup checks could not run: ${reason}`,
+					);
+				})
+			: undefined;
 		const { expectations, transcript, unjudged } = selectAuthorExpectations({
 			testCase,
 			transcript: build.transcript,
@@ -358,37 +478,51 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		const infraFailed = buildFailedOnInfra(build);
 		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
 			verdicts.map((v) => ({ ...v, attribution: attributionForExpectation(v, infraFailed) }));
+		// The lane's deterministic verdicts ride along on EVERY path, including the
+		// unjudged one: they describe what the run actually did to the provider and
+		// to n8n, which stays true whether or not the author expectations got judged.
+		// Deliberately not passed through `attribute` — that answers "is this the
+		// agent's miss or infra's", and these are measurements, not judgements.
+		const withInjected = async (
+			verdicts: BuildExpectationResult[] | Promise<BuildExpectationResult[]>,
+		): Promise<BuildExpectationResult[]> =>
+			injected ? [...(await verdicts), ...(await injected)] : await verdicts;
 		// Recorded as incomplete rather than dropped, so the case keeps its unit
 		// count and the report says why they weren't graded.
 		if (unjudged.length > 0) {
-			buildExpectationsByKey.set(key, Promise.resolve(attribute(unjudged)));
+			buildExpectationsByKey.set(key, withInjected(attribute(unjudged)));
 			return;
 		}
-		if (expectations.length === 0) return;
+		if (expectations.length === 0) {
+			if (injected) buildExpectationsByKey.set(key, injected);
+			return;
+		}
 		buildExpectationsByKey.set(
 			key,
-			(async () =>
-				await verifyBuildExpectations(expectations, {
-					transcript,
-					workflowJson: build.workflowJsons[0],
-					metrics: build.conversationMetrics,
-					// Rendered non-workflow artifacts (agent AND config-eval), sectioned
-					// with "(no <type> produced)" fallbacks, so outcome expectations can
-					// judge artifact existence, absence and content — parity with the
-					// retired direct loop, which always threaded resolveArtifactContext.
-					artifactContext: await resolveArtifactContext({
-						artifactRefs: build.artifactRefs ?? [],
-						client,
-						logger,
-					}),
-				}))()
-				.catch((error: unknown) =>
-					allFailVerdicts(
-						expectations,
-						`judge error: ${error instanceof Error ? error.message : String(error)}`,
-					),
-				)
-				.then(attribute),
+			withInjected(
+				(async () =>
+					await verifyBuildExpectations(expectations, {
+						transcript,
+						workflowJson: build.workflowJsons[0],
+						metrics: build.conversationMetrics,
+						// Rendered non-workflow artifacts (agent AND config-eval), sectioned
+						// with "(no <type> produced)" fallbacks, so outcome expectations can
+						// judge artifact existence, absence and content — parity with the
+						// retired direct loop, which always threaded resolveArtifactContext.
+						artifactContext: await resolveArtifactContext({
+							artifactRefs: build.artifactRefs ?? [],
+							client,
+							logger,
+						}),
+					}))()
+					.catch((error: unknown) =>
+						allFailVerdicts(
+							expectations,
+							`judge error: ${error instanceof Error ? error.message : String(error)}`,
+						),
+					)
+					.then(attribute),
+			),
 		);
 	}
 
@@ -416,6 +550,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					build = await buildWorkflowViaMcpOnLane({
 						lane: lane.runner,
 						conversation: entry.conversation,
+						credentials: entry.credentials,
 						slug: fileSlug,
 						iteration,
 						args,
@@ -513,7 +648,10 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						seed: entry.seed,
 						executionScenarios: entry.executionScenarios,
 						outcomeExpectations: entry.outcomeExpectations,
+						credentialFixture: entry.credentialFixture,
 						timeoutMs,
+						fileSlug,
+						iteration,
 					});
 				} finally {
 					allocator.release(lane, fileSlug);

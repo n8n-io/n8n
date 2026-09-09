@@ -13,6 +13,7 @@ import {
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
+import { useBuildingArtifactIds } from './composables/useBuildingArtifactIds';
 import type { ThreadRuntime } from './instanceAi.store';
 
 export interface ArtifactTab {
@@ -23,6 +24,8 @@ export interface ArtifactTab {
 	projectId?: string;
 	/** An agent artifact with no agent row behind it yet. */
 	pending?: boolean;
+	/** The AI is actively mutating this artifact right now. */
+	building?: boolean;
 }
 
 const ARTIFACT_ICON_MAP: Record<string, IconName> = {
@@ -42,6 +45,8 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 	const activeTabId = ref<string>();
 	const isPreviewOpen = ref(false);
 
+	const buildingArtifactIds = useBuildingArtifactIds(thread);
+
 	// All previewable artifacts in the current thread, derived from resource registry.
 	const allArtifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
@@ -54,6 +59,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 					icon: ARTIFACT_ICON_MAP[entry.type] ?? 'file',
 					projectId: entry.projectId,
 					pending: entry.pending,
+					building: buildingArtifactIds.value.has(entry.id),
 				});
 			}
 		}

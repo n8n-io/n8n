@@ -58,6 +58,8 @@ type Props = {
 	showDelete?: boolean;
 	onDelete?: () => void;
 	optionsOverrides?: ParameterOptionsOverrides;
+	externalIssues?: string[];
+	disableFromAi?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -70,6 +72,8 @@ const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
 	showDelete: false,
 	onDelete: undefined,
+	externalIssues: () => [],
+	disableFromAi: false,
 });
 const emit = defineEmits<{
 	blur: [];
@@ -107,7 +111,7 @@ const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activ
 
 const canCreateContentOverride = computed(() => {
 	// The resourceLocator handles overrides separately
-	if (!activeNode.value || isResourceLocator.value) return false;
+	if (props.disableFromAi || !activeNode.value || isResourceLocator.value) return false;
 
 	return canBeContentOverride(props, activeNode.value);
 });
@@ -381,6 +385,7 @@ function removeOverride(clearField = false) {
 					:active-drop="activeDrop"
 					:force-show-expression="forceShowExpression"
 					:hide-issues="hideIssues"
+					:external-issues="externalIssues"
 					:label="label"
 					:event-bus="eventBus"
 					input-size="small"
@@ -478,6 +483,7 @@ function removeOverride(clearField = false) {
 				<FromAiOverrideField
 					v-if="fromAIOverride && isContentOverride"
 					:is-read-only="isReadOnly"
+					:issues="externalIssues"
 					@close="removeOverride(!canCreateContentOverride)"
 				/>
 				<div v-else>
@@ -495,6 +501,7 @@ function removeOverride(clearField = false) {
 						:hint="hint"
 						:hide-hint="hideHint"
 						:hide-issues="hideIssues"
+						:external-issues="externalIssues"
 						:label="label"
 						:event-bus="eventBus"
 						:can-be-overridden="canCreateContentOverride"

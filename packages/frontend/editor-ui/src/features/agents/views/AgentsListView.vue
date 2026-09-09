@@ -10,8 +10,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import {
@@ -22,7 +21,7 @@ import {
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentResource } from '../types';
-import { AGENT_BUILDER_VIEW } from '../constants';
+import { AGENT_BUILDER_VIEW, NEW_SESSION_PARAM } from '../constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import AgentCard from '../components/AgentCard.vue';
@@ -110,6 +109,14 @@ function onSelectAgent(agentId: string, agentProjectId: string) {
 	void router.push({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: agentProjectId, agentId },
+	});
+}
+
+function onNewAgentChat(agentId: string, agentProjectId: string) {
+	void router.push({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: agentProjectId, agentId },
+		query: { [NEW_SESSION_PARAM]: 'true' },
 	});
 }
 
@@ -225,6 +232,7 @@ onMounted(async () => {
 				:agent="data"
 				:project-id="data.projectId"
 				@select="onSelectAgent(data.id, data.projectId)"
+				@new-chat="onNewAgentChat"
 				@published="onAgentPublished"
 				@unpublished="onAgentUnpublished"
 				@deleted="onAgentDeleted"

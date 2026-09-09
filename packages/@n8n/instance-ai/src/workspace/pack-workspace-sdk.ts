@@ -11,9 +11,10 @@
  * packages into tarballs on the host so the sandbox can `npm install` them
  * post-creation and override the registry copies.
  *
- * Both `@n8n/workflow-sdk` and its `n8n-workflow` dependency are linked:
- * packing only the SDK still leaves npm's `n8n-workflow` in place, which
- * breaks when master is ahead of the registry (e.g. unreleased exports).
+ * `@n8n/workflow-sdk`, `n8n-workflow`, and `@n8n/utils` are linked together:
+ * packing only the SDK still leaves npm's copies of those deps in place, which
+ * breaks when master is ahead of the registry (e.g. unreleased exports like
+ * `@n8n/utils/sleep`).
  *
  * We use `pnpm pack` (not `npm pack`) because the workspace `package.json`
  * uses pnpm protocols (`workspace:*`, `catalog:`) that npm can't resolve;
@@ -35,7 +36,11 @@ const execFileAsync = promisify(execFile);
 const ENV_FLAG = 'N8N_INSTANCE_AI_SANDBOX_LINK_SDK';
 
 /** Packages installed into the sandbox when workspace linking is enabled. */
-export const SANDBOX_LINKED_WORKSPACE_PACKAGES = ['n8n-workflow', '@n8n/workflow-sdk'] as const;
+export const SANDBOX_LINKED_WORKSPACE_PACKAGES = [
+	'@n8n/utils',
+	'n8n-workflow',
+	'@n8n/workflow-sdk',
+] as const;
 
 export interface WorkspacePackageTarball {
 	/** Raw tarball bytes, ready to upload to the sandbox. */
@@ -130,7 +135,7 @@ export async function packSandboxLinkedWorkspacePackages(
 		const tarball = await packWorkspacePackage(logger, packageName);
 		if (!tarball) {
 			throw new Error(
-				`${ENV_FLAG} is enabled, but ${packageName} could not be packed. Run \`pnpm build\` for packages/workflow and packages/@n8n/workflow-sdk, or unset ${ENV_FLAG}.`,
+				`${ENV_FLAG} is enabled, but ${packageName} could not be packed. Run \`pnpm build\` for packages/@n8n/utils, packages/workflow, and packages/@n8n/workflow-sdk, or unset ${ENV_FLAG}.`,
 			);
 		}
 		packed.push(tarball);
@@ -159,9 +164,18 @@ export async function packWorkspaceSdk(
 
 function resolvePackagePath(name: string): string | null {
 	try {
-		const pkgJsonPath = hostRequire.resolve(`${name}/package.json`);
-		return path.dirname(pkgJsonPath);
+		return path.dirname(hostRequire.resolve(`${name}/package.json`));
 	} catch {
+		// Packages that omit a `package.json` export still live under node_modules.
+		for (const base of hostRequire.resolve.paths(name) ?? []) {
+			const candidate = path.join(base, name, 'package.json');
+			try {
+				hostRequire(candidate);
+				return path.dirname(candidate);
+			} catch {
+				// keep looking
+			}
+		}
 		return null;
 	}
 }

@@ -48,6 +48,7 @@ const setup = (options?: Partial<ExecutorOptions>) => {
 		onDispatch: vi.fn(),
 		onFire: vi.fn(),
 		onRetry: vi.fn(),
+		onLeaseLost: vi.fn(),
 	} satisfies ExecutorHooks;
 	// A see-through tracing hook that records its calls and just runs the fire.
 	// The executor's only obligation is to route every fire through this hook;
@@ -622,6 +623,8 @@ describe('Executor.fire metrics hooks', () => {
 
 		expect(hooks.onDispatch).not.toHaveBeenCalled();
 		expect(hooks.onFire).not.toHaveBeenCalled();
+		// The handler never ran, so a lost pre-dispatch mutex is not a lease loss.
+		expect(hooks.onLeaseLost).not.toHaveBeenCalled();
 	});
 
 	it('calls onFire with success when the handler completes', async () => {
@@ -691,6 +694,53 @@ describe('Executor.fire metrics hooks', () => {
 		const terminalResult = await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 1 }));
 		expect(terminalResult).toEqual({ outcome: 'skipped-not-owned', errorMessage: 'boom' });
 		expect(hooks.onFire).not.toHaveBeenCalled();
+	});
+
+	it('calls onLeaseLost when a handler ran but its terminal write affects no row', async () => {
+		const { store, registry, hooks, executor } = setup();
+		store.beginDispatch.mockResolvedValue(1);
+		registry.resolve.mockReturnValue(succeeds());
+		// Every terminal write resolves 0: the lease was reclaimed while the handler ran.
+		store.completeTask.mockResolvedValue(0);
+		store.failTaskTerminal.mockResolvedValue(0);
+		store.rescheduleTask.mockResolvedValue(0);
+
+		// Success path with a 0-row complete.
+		const task = claimedTask();
+		await executor.fire(HOST, task);
+		expect(hooks.onLeaseLost).toHaveBeenCalledTimes(1);
+
+		// Retry path with a 0-row reschedule.
+		registry.resolve.mockReturnValue({ execute: vi.fn().mockRejectedValue(new Error('boom')) });
+		await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 3 }));
+		expect(hooks.onLeaseLost).toHaveBeenCalledTimes(2);
+
+		// Terminal-failure path with a 0-row failTaskTerminal.
+		await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 1 }));
+		expect(hooks.onLeaseLost).toHaveBeenCalledTimes(3);
+
+		expect(hooks.onLeaseLost).toHaveBeenCalledWith(task.taskType);
+		expect(hooks.onFire).not.toHaveBeenCalled();
+		expect(hooks.onRetry).not.toHaveBeenCalled();
+	});
+
+	it('calls onLeaseLost when a dispatched handler threw on its last attempt and the 0-row complete shows the lease is gone', async () => {
+		const { store, registry, hooks, executor } = setup();
+		store.beginDispatch.mockResolvedValue(1);
+		store.completeTask.mockResolvedValue(0);
+		// The handler hands off its effect, then throws.
+		registry.resolve.mockReturnValue({
+			execute: vi.fn(async (_task: ClaimedTask, report: DispatchReporter) => {
+				await Promise.resolve();
+				report.dispatched();
+				throw new Error('boom');
+			}),
+		});
+
+		const result = await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 1 }));
+
+		expect(result).toEqual({ outcome: 'skipped-not-owned', errorMessage: 'boom' });
+		expect(hooks.onLeaseLost).toHaveBeenCalledTimes(1);
 	});
 
 	it('defaults to no-op hooks and pass-through tracing when neither is supplied', async () => {

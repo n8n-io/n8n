@@ -50,8 +50,10 @@ import { ExternalHooks } from '@/external-hooks';
 import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
+import type { PoolConfigService } from '@/scaling/pool-config.service.ee';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
+import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -77,6 +79,8 @@ function flushResponse(res: { flush?: () => void }) {
 export class WorkflowRunner {
 	private scalingService: ScalingService;
 
+	private poolConfigService: PoolConfigService;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -93,6 +97,7 @@ export class WorkflowRunner {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,
+		private readonly engineV2Dispatcher: EngineV2Dispatcher,
 	) {}
 
 	/** The process did error */
@@ -182,16 +187,13 @@ export class WorkflowRunner {
 		this.activeExecutions.finalizeExecution(executionId);
 	}
 
-	/** Run the workflow
-	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
+	/**
+	 * Returns the masking error, if any, having already emptied the trigger-item stack
+	 * either way.
 	 */
-	async run(
+	async establishContextForPersistence(
 		data: IWorkflowExecutionDataProcess,
-		loadStaticData?: boolean,
-		realtime?: boolean,
-		existingExecution?: ResumableExecution,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): Promise<string> {
+	): Promise<(ExecutionError & { node?: INode }) | undefined> {
 		// Establish the execution context before persisting to the DB.
 		// activeExecutions.add() -> executionPersistence.create() writes
 		// data.executionData to the DB; any header masking or runtimeData
@@ -236,6 +238,27 @@ export class WorkflowRunner {
 			}
 		}
 
+		return establishContextError;
+	}
+
+	/** Run the workflow
+	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
+	 */
+	async run(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+		realtime?: boolean,
+		existingExecution?: ResumableExecution,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<string> {
+		// The engine 2.0 path owns the whole run: it keeps no control-plane
+		// execution row, so everything below here does not apply to it.
+		if (this.engineV2Dispatcher.routesToEngineV2(data, existingExecution)) {
+			return await this.engineV2Dispatcher.start(data);
+		}
+
+		const establishContextError = await this.establishContextForPersistence(data);
+
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, existingExecution);
 
@@ -277,17 +300,29 @@ export class WorkflowRunner {
 				? this.executionsConfig.mode === 'queue'
 				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
-		if (shouldEnqueue) {
-			await this.enqueueExecution(
-				executionId,
-				workflowId,
-				data,
-				loadStaticData,
-				realtime,
-				existingExecution?.executionId,
-			);
-		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, existingExecution?.executionId);
+		try {
+			if (shouldEnqueue) {
+				await this.enqueueExecution(
+					executionId,
+					workflowId,
+					data,
+					loadStaticData,
+					realtime,
+					existingExecution?.executionId,
+				);
+			} else {
+				await this.runMainProcess(
+					executionId,
+					data,
+					loadStaticData,
+					existingExecution?.executionId,
+				);
+			}
+		} catch (error) {
+			// A failed start means the post-execute promise that normally clears the
+			// heartbeat never settles, so clear it here.
+			if (heartbeatInterval) clearInterval(heartbeatInterval);
+			throw error;
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
@@ -508,29 +543,15 @@ export class WorkflowRunner {
 		realtime?: boolean,
 		restartExecutionId?: string,
 	): Promise<void> {
-		const jobData: JobData = {
-			workflowId,
-			executionId,
-			loadStaticData: !!loadStaticData,
-			pushRef: data.pushRef,
-			streamingEnabled: data.streamingEnabled,
-			restartExecutionId,
-			projectId: data.projectId,
-			projectName: data.projectName,
-			// Carry the manual-execution identity for private credential resolution on the worker.
-			encryptedRunnerIdentity: data.encryptedRunnerIdentity,
-			// MCP-specific fields for queue mode support
-			isMcpExecution: data.isMcpExecution,
-			mcpType: data.mcpType,
-			mcpSessionId: data.mcpSessionId,
-			mcpMessageId: data.mcpMessageId,
-			mcpToolCall: data.mcpToolCall,
-		};
-
 		if (!this.scalingService) {
 			const { ScalingService } = await import('@/scaling/scaling.service.js');
 			this.scalingService = Container.get(ScalingService);
 			await this.scalingService.setupQueue();
+		}
+
+		if (!this.poolConfigService) {
+			const { PoolConfigService } = await import('@/scaling/pool-config.service.ee.js');
+			this.poolConfigService = Container.get(PoolConfigService);
 		}
 
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
@@ -538,7 +559,30 @@ export class WorkflowRunner {
 		let job: Job;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
+			const { queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data);
+
+			const jobData: JobData = {
+				workflowId,
+				executionId,
+				loadStaticData: !!loadStaticData,
+				pushRef: data.pushRef,
+				streamingEnabled: data.streamingEnabled,
+				restartExecutionId,
+				projectId: data.projectId,
+				projectName: data.projectName,
+				// Carry the manual-execution identity for private credential resolution on the worker.
+				encryptedRunnerIdentity: data.encryptedRunnerIdentity,
+				poolName,
+				// MCP-specific fields for queue mode support
+				isMcpExecution: data.isMcpExecution,
+				mcpType: data.mcpType,
+				mcpSessionId: data.mcpSessionId,
+				mcpMessageId: data.mcpMessageId,
+				mcpToolCall: data.mcpToolCall,
+				mcpToolInput: data.mcpToolInput,
+			};
+
+			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100, queueName });
 
 			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
 

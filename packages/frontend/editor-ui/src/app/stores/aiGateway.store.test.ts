@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { describe, it, vi, beforeEach, expect } from 'vitest';
 import type { INode } from 'n8n-workflow';
-import { useAiGatewayStore } from './aiGateway.store';
+import { useAiGatewayStore, usesFreeCreditsLabel } from './aiGateway.store';
 
 const mockGetGatewayConfig = vi.fn();
 const mockGetGatewayWallet = vi.fn();
@@ -124,14 +124,19 @@ describe('aiGateway.store', () => {
 	});
 
 	describe('fetchWallet()', () => {
-		it('should update balance and budget', async () => {
-			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
+		it('should update balance, budget, and hasEverToppedUp', async () => {
+			mockGetGatewayWallet.mockResolvedValue({
+				balance: 7,
+				budget: 10,
+				hasEverToppedUp: true,
+			});
 			const store = useAiGatewayStore();
 
 			await store.fetchWallet();
 
 			expect(store.balance).toBe(7);
 			expect(store.budget).toBe(10);
+			expect(store.hasEverToppedUp).toBe(true);
 			expect(store.fetchError).toBeNull();
 		});
 
@@ -156,6 +161,167 @@ describe('aiGateway.store', () => {
 
 			expect(store.fetchError).toBeNull();
 			expect(store.balance).toBe(3);
+		});
+
+		it('shares an in-flight wallet fetch', async () => {
+			let resolveWallet!: (value: {
+				balance: number;
+				budget: number;
+				hasEverToppedUp: boolean;
+			}) => void;
+			mockGetGatewayWallet.mockReturnValue(
+				new Promise((resolve) => {
+					resolveWallet = resolve;
+				}),
+			);
+			const store = useAiGatewayStore();
+
+			const first = store.fetchWallet();
+			const second = store.fetchWallet();
+			resolveWallet({ balance: 1, budget: 2, hasEverToppedUp: false });
+			await Promise.all([first, second]);
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+			expect(store.balance).toBe(1);
+		});
+
+		it('serves a cached balance within the TTL', async () => {
+			mockGetGatewayWallet.mockResolvedValue({ balance: 4, budget: 10, hasEverToppedUp: false });
+			const store = useAiGatewayStore();
+
+			await store.fetchWallet();
+			await store.fetchWallet();
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+			expect(store.balance).toBe(4);
+		});
+
+		it('bypasses the cache when force is set', async () => {
+			mockGetGatewayWallet.mockResolvedValue({ balance: 4, budget: 10, hasEverToppedUp: false });
+			const store = useAiGatewayStore();
+
+			await store.fetchWallet();
+			await store.fetchWallet({ force: true });
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not let a forced fetch reuse an in-flight unforced request', async () => {
+			let resolveFirst!: (value: {
+				balance: number;
+				budget: number;
+				hasEverToppedUp: boolean;
+			}) => void;
+			mockGetGatewayWallet
+				.mockReturnValueOnce(
+					new Promise((resolve) => {
+						resolveFirst = resolve;
+					}),
+				)
+				.mockResolvedValueOnce({ balance: 9, budget: 10, hasEverToppedUp: true });
+			const store = useAiGatewayStore();
+
+			// A passive request is already in flight (e.g. started before a run);
+			// the forced post-run refresh must wait it out and fetch fresh data.
+			const passive = store.fetchWallet();
+			const forced = store.fetchWallet({ force: true });
+			resolveFirst({ balance: 1, budget: 10, hasEverToppedUp: false });
+			await Promise.all([passive, forced]);
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+			expect(store.balance).toBe(9);
+		});
+
+		it('coalesces concurrent forced fetches', async () => {
+			let resolveWallet!: (value: {
+				balance: number;
+				budget: number;
+				hasEverToppedUp: boolean;
+			}) => void;
+			mockGetGatewayWallet.mockReturnValue(
+				new Promise((resolve) => {
+					resolveWallet = resolve;
+				}),
+			);
+			const store = useAiGatewayStore();
+
+			const first = store.fetchWallet({ force: true });
+			const second = store.fetchWallet({ force: true });
+			resolveWallet({ balance: 2, budget: 3, hasEverToppedUp: false });
+			await Promise.all([first, second]);
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+		});
+
+		it('retries within the TTL window after a failed fetch', async () => {
+			mockGetGatewayWallet.mockResolvedValueOnce({
+				balance: 5,
+				budget: 10,
+				hasEverToppedUp: false,
+			});
+			const store = useAiGatewayStore();
+			await store.fetchWallet();
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(1);
+
+			mockGetGatewayWallet.mockRejectedValueOnce(new Error('down'));
+			await store.fetchWallet({ force: true });
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+
+			// A passive read that would normally be cache-served must retry, because the
+			// last (forced) fetch failed.
+			mockGetGatewayWallet.mockResolvedValueOnce({
+				balance: 6,
+				budget: 10,
+				hasEverToppedUp: false,
+			});
+			await store.fetchWallet();
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(3);
+			expect(store.balance).toBe(6);
+		});
+
+		it('re-fetches once the TTL has elapsed', async () => {
+			vi.useFakeTimers();
+			try {
+				mockGetGatewayWallet.mockResolvedValue({ balance: 4, budget: 10, hasEverToppedUp: false });
+				const store = useAiGatewayStore();
+
+				await store.fetchWallet();
+				vi.advanceTimersByTime(61_000);
+				await store.fetchWallet();
+
+				expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	describe('usesFreeCreditsLabel()', () => {
+		it.each([
+			{ hasEverToppedUp: false, balance: 1.26, expected: true },
+			{ hasEverToppedUp: true, balance: 1.26, expected: false },
+			{ hasEverToppedUp: false, balance: 0, expected: false },
+			{ hasEverToppedUp: true, balance: 0, expected: false },
+			{ hasEverToppedUp: undefined, balance: undefined, expected: true },
+		])(
+			'hasEverToppedUp=$hasEverToppedUp balance=$balance → $expected',
+			({ hasEverToppedUp, balance, expected }) => {
+				expect(usesFreeCreditsLabel(hasEverToppedUp, balance)).toBe(expected);
+			},
+		);
+
+		it('drives creditsLabelKey from the fetched wallet', async () => {
+			mockGetGatewayWallet.mockResolvedValue({
+				balance: 5,
+				budget: 10,
+				hasEverToppedUp: true,
+			});
+			const store = useAiGatewayStore();
+			expect(store.creditsLabelKey).toBe('generic.freeCredits');
+
+			await store.fetchWallet();
+
+			expect(store.creditsLabelKey).toBe('generic.n8nCredits');
 		});
 	});
 

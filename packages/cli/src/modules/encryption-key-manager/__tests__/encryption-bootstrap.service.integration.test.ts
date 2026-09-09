@@ -12,6 +12,7 @@ beforeAll(async () => {
 		encryptionKey: INSTANCE_ENCRYPTION_KEY,
 		n8nFolder: '/tmp/n8n-test',
 		instanceType: 'main',
+		canSeedDeploymentState: true,
 	});
 	await testDb.init();
 });
@@ -59,5 +60,68 @@ describe('EncryptionBootstrapService (integration)', () => {
 		const gcmKeys = all.filter((k) => k.algorithm === 'aes-256-gcm' && k.status === 'active');
 		expect(cbcKeys).toHaveLength(1);
 		expect(gcmKeys).toHaveLength(1);
+	});
+
+	it('is race-safe — concurrent bootstraps never create duplicate keys (H7)', async () => {
+		const service = Container.get(EncryptionBootstrapService);
+
+		await Promise.all([...Array(5)].map(async () => await service.run()));
+
+		const all = await Container.get(DeploymentKeyRepository).find({
+			where: { type: 'data_encryption' },
+		});
+		const cbcKeys = all.filter((k) => k.algorithm === 'aes-256-cbc');
+		const gcmKeys = all.filter((k) => k.algorithm === 'aes-256-gcm' && k.status === 'active');
+		expect(cbcKeys).toHaveLength(1);
+		expect(gcmKeys).toHaveLength(1);
+	});
+
+	it('serializes concurrent seed calls in the repository critical section', async () => {
+		// Bypass the service-level fast-path check and hammer the repository
+		// directly: the DbLock critical section must let exactly one insert in.
+		const repository = Container.get(DeploymentKeyRepository);
+
+		await Promise.all(
+			[...Array(5)].map(async (_, i) => await repository.seedLegacyCbcKey(`value-${i}`)),
+		);
+
+		const rows = await repository.find({
+			where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
+		});
+		expect(rows).toHaveLength(1);
+	});
+
+	describe('end-to-end write path (real key store, real cipher)', () => {
+		beforeEach(() => {
+			delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+		});
+
+		it('writes the legacy no-prefix format while rotation is off', async () => {
+			await Container.get(EncryptionBootstrapService).run();
+			const cipher = Container.get(Cipher);
+
+			const encrypted = await cipher.encryptV2('e2e-off');
+
+			expect(encrypted.includes(':')).toBe(false);
+			expect(cipher.decryptWithInstanceKey(encrypted)).toBe('e2e-off');
+			expect(await cipher.decryptV2(encrypted)).toBe('e2e-off');
+		});
+
+		it('writes the keyId-prefixed GCM format while rotation is on, round-tripping through the seeded key', async () => {
+			await Container.get(EncryptionBootstrapService).run();
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
+			try {
+				const cipher = Container.get(Cipher);
+
+				const encrypted = await cipher.encryptV2('e2e-on');
+
+				const active =
+					await Container.get(DeploymentKeyRepository).findActiveByType('data_encryption');
+				expect(encrypted.startsWith(`${active!.id}:`)).toBe(true);
+				expect(await cipher.decryptV2(encrypted)).toBe('e2e-on');
+			} finally {
+				delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			}
+		});
 	});
 });

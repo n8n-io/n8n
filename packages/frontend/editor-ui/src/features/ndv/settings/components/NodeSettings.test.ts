@@ -14,6 +14,7 @@ import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgent
 import type { UseNdvAgentConfigReturn } from '@/features/ndv/agents/composables/useNdvAgentConfig';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
@@ -110,16 +111,26 @@ interface RenderOptions {
 	nodeType?: INodeTypeDescription;
 	provide?: Record<symbol, unknown>;
 	stubs?: Record<string, unknown>;
+	canvasOnly?: boolean;
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
-	const { runData, node = httpNode, nodeType = httpNodeType, provide = {}, stubs = {} } = options;
+	const {
+		runData,
+		node = httpNode,
+		nodeType = httpNodeType,
+		provide = {},
+		stubs = {},
+		canvasOnly = false,
+	} = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
 
 	const workflow = createTestWorkflow({ nodes: [node], connections: {} });
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
+	settingsStore.settings = { ...settingsStore.settings, canvasOnly };
 	workflowsStore.setWorkflowId(workflow.id);
 	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
@@ -228,6 +239,21 @@ describe('NodeSettings', () => {
 		await waitFor(() => {
 			expect(settingsTab.querySelector('.tab')?.className).toContain('activeTab');
 			expect(paramsTab.querySelector('.tab')?.className).not.toContain('activeTab');
+		});
+	});
+
+	describe('feature request link', () => {
+		it('renders the feature request link by default', async () => {
+			const { findByTestId } = renderNodeSettings({});
+
+			expect(await findByTestId('node-feature-request')).toBeInTheDocument();
+		});
+
+		it('hides the feature request link when in canvas-only mode', async () => {
+			const { findByTestId, queryByTestId } = renderNodeSettings({ canvasOnly: true });
+
+			await findByTestId('tab-params');
+			expect(queryByTestId('node-feature-request')).not.toBeInTheDocument();
 		});
 	});
 

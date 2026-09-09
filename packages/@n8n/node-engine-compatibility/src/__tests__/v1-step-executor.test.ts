@@ -1,6 +1,6 @@
 import type { WorkflowGraph } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
-import type { IDataObject } from 'n8n-workflow';
+import type { IConnections, IDataObject } from 'n8n-workflow';
 import { Expression, ExpressionError } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -16,12 +16,20 @@ import { items, stepRequest, testStepExecutor, v1Workflow } from './fixtures';
 
 const converter = new V1WorkflowConverter();
 
+// The converter drops nodes the trigger cannot reach.
+const manualTriggerTo = (name: string): IConnections => ({
+	Manual: { main: [[{ node: name, type: 'main', index: 0 }]] },
+});
+
 const graphWith = (type: string, parameters = {}): WorkflowGraph =>
 	converter.convert(
-		v1Workflow([
-			{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
-			{ id: 'n', name: 'Subject', type, parameters },
-		]),
+		v1Workflow(
+			[
+				{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+				{ id: 'n', name: 'Subject', type, parameters },
+			],
+			manualTriggerTo('Subject'),
+		),
 	);
 
 describe('V1StepExecutor', () => {
@@ -31,6 +39,17 @@ describe('V1StepExecutor', () => {
 			const graph = graphWith('test.echoParam', { message: 'hi' });
 			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', items({})));
 			await expect(execution).rejects.toThrow(VmExpressionEngineRequiredError);
+		} finally {
+			vi.restoreAllMocks();
+		}
+	});
+
+	it('accepts the quickjs expression engine', async () => {
+		vi.spyOn(Expression, 'getActiveImplementation').mockReturnValue('quickjs');
+		try {
+			const graph = graphWith('test.echoParam', { message: 'hi' });
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', items({})));
+			expect(result.outputs).toEqual([[{ json: { message: 'hi' } }]]);
 		} finally {
 			vi.restoreAllMocks();
 		}
@@ -101,10 +120,13 @@ describe('V1StepExecutor', () => {
 	});
 
 	it('passes input through when the node throws and continueOnFail is set', async () => {
-		const workflow = v1Workflow([
-			{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
-			{ id: 'n', name: 'Fails', type: 'test.alwaysFails' },
-		]);
+		const workflow = v1Workflow(
+			[
+				{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+				{ id: 'n', name: 'Fails', type: 'test.alwaysFails' },
+			],
+			manualTriggerTo('Fails'),
+		);
 		(workflow.nodes[1] as { continueOnFail?: boolean }).continueOnFail = true;
 		const graph = converter.convert(workflow);
 
@@ -133,10 +155,13 @@ describe('V1StepExecutor', () => {
 	});
 
 	it('does not let continueOnFail swallow the EngineRequest rejection', async () => {
-		const workflow = v1Workflow([
-			{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
-			{ id: 'n', name: 'Agent', type: 'test.returnsEngineRequest' },
-		]);
+		const workflow = v1Workflow(
+			[
+				{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+				{ id: 'n', name: 'Agent', type: 'test.returnsEngineRequest' },
+			],
+			manualTriggerTo('Agent'),
+		);
 		(workflow.nodes[1] as { continueOnFail?: boolean }).continueOnFail = true;
 		const graph = converter.convert(workflow);
 
@@ -270,10 +295,13 @@ describe('V1StepExecutor', () => {
 	});
 
 	it('honors onError=continueRegularOutput as passthrough', async () => {
-		const workflow = v1Workflow([
-			{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
-			{ id: 'n', name: 'Fails', type: 'test.alwaysFails' },
-		]);
+		const workflow = v1Workflow(
+			[
+				{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+				{ id: 'n', name: 'Fails', type: 'test.alwaysFails' },
+			],
+			manualTriggerTo('Fails'),
+		);
 		(workflow.nodes[1] as { onError?: string }).onError = 'continueRegularOutput';
 		const graph = converter.convert(workflow);
 

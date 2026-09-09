@@ -60,6 +60,9 @@ describe('n8n-packages handler', () => {
 			includeVariableValues?: boolean;
 			includeTags?: boolean;
 			missingWorkflowDependencyPolicy?: string;
+			workflowVersionPolicy?: string;
+			credentialExportPolicy?: string;
+			includeArchivedWorkflows?: boolean;
 		},
 		apiKeyScopes?: string[],
 	) {
@@ -252,6 +255,9 @@ describe('n8n-packages handler', () => {
 				canExportVariableValues: false,
 				includeTags: true,
 				missingWorkflowDependencyPolicy: 'fail',
+				workflowVersionPolicy: 'latest',
+				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			});
 		});
 
@@ -277,6 +283,9 @@ describe('n8n-packages handler', () => {
 				canExportVariableValues: false,
 				includeTags: true,
 				missingWorkflowDependencyPolicy: 'fail',
+				workflowVersionPolicy: 'latest',
+				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			});
 		});
 
@@ -376,6 +385,9 @@ describe('n8n-packages handler', () => {
 				canExportVariableValues: true,
 				includeTags: true,
 				missingWorkflowDependencyPolicy: 'fail',
+				workflowVersionPolicy: 'latest',
+				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			});
 			expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/gzip');
 			expect(res.setHeader).toHaveBeenCalledWith(
@@ -421,7 +433,68 @@ describe('n8n-packages handler', () => {
 				canExportVariableValues: false,
 				includeTags: true,
 				missingWorkflowDependencyPolicy: 'reference-only',
+				workflowVersionPolicy: 'latest',
+				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			});
+		});
+
+		it('forwards a non-default workflow version policy', async () => {
+			const stream = new PassThrough();
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
+			const res = makeResponse();
+
+			const resultPromise = run(
+				makeRequest({ workflowIds: ['wf-1'], workflowVersionPolicy: 'published-strict' }, [
+					'workflow:export',
+				]),
+				res,
+			);
+			stream.end(Buffer.from('package-bytes'));
+			const caught = await resultPromise;
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowVersionPolicy: 'published-strict' }),
+			);
+		});
+
+		it('forwards a non-default credential export policy', async () => {
+			const stream = new PassThrough();
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
+			const res = makeResponse();
+
+			const resultPromise = run(
+				makeRequest({ workflowIds: ['wf-1'], credentialExportPolicy: 'no-values' }, [
+					'workflow:export',
+				]),
+				res,
+			);
+			stream.end(Buffer.from('package-bytes'));
+			const caught = await resultPromise;
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith(
+				expect.objectContaining({ credentialExportPolicy: 'no-values' }),
+			);
+		});
+
+		it('forwards includeArchivedWorkflows', async () => {
+			const stream = new PassThrough();
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
+			const res = makeResponse();
+
+			const resultPromise = run(
+				makeRequest({ workflowIds: ['wf-1'], includeArchivedWorkflows: true }, ['workflow:export']),
+				res,
+			);
+			stream.end(Buffer.from('package-bytes'));
+			const caught = await resultPromise;
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith(
+				expect.objectContaining({ includeArchivedWorkflows: true }),
+			);
 		});
 
 		it('streams the export for a valid project request', async () => {
@@ -446,6 +519,9 @@ describe('n8n-packages handler', () => {
 				canExportVariableValues: true,
 				includeTags: true,
 				missingWorkflowDependencyPolicy: 'fail',
+				workflowVersionPolicy: 'latest',
+				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			});
 		});
 
@@ -471,6 +547,9 @@ describe('n8n-packages handler', () => {
 				canExportVariableValues: true,
 				includeTags: true,
 				missingWorkflowDependencyPolicy: 'fail',
+				workflowVersionPolicy: 'latest',
+				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			});
 		});
 
@@ -496,6 +575,9 @@ describe('n8n-packages handler', () => {
 				canExportVariableValues: false,
 				includeTags: true,
 				missingWorkflowDependencyPolicy: 'fail',
+				workflowVersionPolicy: 'latest',
+				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			});
 		});
 
@@ -521,6 +603,9 @@ describe('n8n-packages handler', () => {
 				canExportVariableValues: false,
 				includeTags: false,
 				missingWorkflowDependencyPolicy: 'fail',
+				workflowVersionPolicy: 'latest',
+				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			});
 		});
 	});

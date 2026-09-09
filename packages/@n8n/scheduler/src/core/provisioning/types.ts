@@ -1,42 +1,14 @@
-import type { RecurringCronUnit } from '@n8n/constants';
+import type { ScheduleDefinition } from '@n8n/constants';
 
-/**
- * When a job runs, minus its identity and clock: the schedule half of a scheduled job.
- * Comparing two of these (plus clock liveness) is what tells provisioning whether a job's schedule changed.
- */
-export type ScheduleDefinition =
-	| CronDefinition
-	| RecurringCronDefinition
-	| IntervalDefinition
-	| OneOffDefinition;
-
-/** A cron expression evaluated in a timezone (`null` means the instance default). */
-export interface CronDefinition {
-	kind: 'cron';
-	cronExpression: string;
-	timezone: string | null;
-}
-
-/** A cron expression gated to fire only every Nth period. */
-export interface RecurringCronDefinition {
-	kind: 'recurring_cron';
-	cronExpression: string;
-	timezone: string | null;
-	recurrenceUnit: RecurringCronUnit;
-	recurrenceSize: number;
-}
-
-/** A fixed elapsed-time cadence; no timezone by design. */
-export interface IntervalDefinition {
-	kind: 'interval';
-	intervalSeconds: number;
-}
-
-/** A single fire at a fixed instant, then never again. */
-export interface OneOffDefinition {
-	kind: 'one_off';
-	fireAt: Date;
-}
+// Re-exported so a caller of the provisioning API needs one import for a job and
+// its schedule.
+export type {
+	ScheduleDefinition,
+	CronDefinition,
+	RecurringCronDefinition,
+	IntervalDefinition,
+	OneOffDefinition,
+} from '@n8n/constants';
 
 /**
  * A job the caller wants persisted in a scope.

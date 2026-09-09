@@ -43,12 +43,46 @@ If this affects the user's request, briefly let them know which server is unavai
 }
 
 /**
- * Finish reasons that indicate the provider rejected or filtered the request
- * when they arrive with zero output. `stop`/`length` with empty output are the
- * model's own (odd but legal) choice; `tool-calls` always carries calls;
- * `error` surfaces through the SDK's thrown error instead.
+ * Finish reasons that indicate the provider rejected, filtered, or truncated
+ * the request when they arrive with zero output. `tool-calls` always carries
+ * calls; `error` surfaces through the SDK's thrown error instead.
  */
-const EMPTY_RESPONSE_ERROR_FINISH_REASONS = new Set(['other', 'unknown', 'content-filter']);
+const EMPTY_RESPONSE_ERROR_FINISH_REASONS = new Set([
+	'length',
+	'other',
+	'unknown',
+	'content-filter',
+]);
+
+/**
+ * Whether a turn carries output the user can see or the loop can act on.
+ * Reasoning is neither: a thinking block the model never turned into an answer
+ * or a tool call leaves the run with nothing to show and nothing to do next.
+ */
+function hasActionableContent(messages: AgentMessage[]): boolean {
+	return messages.some(
+		(m) =>
+			'content' in m &&
+			Array.isArray(m.content) &&
+			m.content.some(
+				(c) =>
+					(c.type === 'text' && c.text.trim().length > 0) ||
+					c.type === 'tool-call' ||
+					c.type === 'file',
+			),
+	);
+}
+
+function hasReasoningContent(messages: AgentMessage[]): boolean {
+	return messages.some(
+		(message) =>
+			'content' in message &&
+			Array.isArray(message.content) &&
+			message.content.some(
+				(content) => content.type === 'reasoning' || content.type === 'reasoning-file',
+			),
+	);
+}
 
 /**
  * Classify a turn that produced no output as a recognized failure, or return
@@ -63,11 +97,24 @@ export function classifyModelTurnError(turn: {
 	newMessages: AgentMessage[];
 	providerError?: RawProviderError;
 }): ModelTurnError | undefined {
-	if (turn.newMessages.length > 0) return undefined;
+	if (hasActionableContent(turn.newMessages)) return undefined;
+	if (turn.aiFinishReason === 'stop' && hasReasoningContent(turn.newMessages)) {
+		return {
+			type: 'no_output',
+			message: 'The model finished without returning an answer. Try again or use another model.',
+		};
+	}
 	if (!EMPTY_RESPONSE_ERROR_FINISH_REASONS.has(turn.aiFinishReason)) return undefined;
 
 	const guidance =
 		'This can be a provider-side false positive — try rephrasing the message, clearing the chat history, or switching models.';
+	if (turn.aiFinishReason === 'length') {
+		return {
+			type: 'no_output',
+			message:
+				'The model reached its output token limit before it returned an answer. Reduce the request scope or use another model.',
+		};
+	}
 	if (turn.providerError) {
 		return {
 			type: turn.providerError.type,
@@ -81,31 +128,34 @@ export function classifyModelTurnError(turn: {
 }
 
 /**
- * True when a turn finished with `stop` but produced no usable output — no
- * non-whitespace text, no tool call, no file. Some providers (observed with
- * Kimi via Together) occasionally emit such a turn mid-task, which would
- * silently end the run with work half-done; callers retry a bounded number
- * of times before accepting it. Reasoning-only turns count as empty: they
- * carry no user-visible output and no action.
+ * True when a turn produced no usable output — no non-whitespace text, no tool
+ * call, no file. Providers emit such a turn mid-task in more than one shape: a
+ * bare `stop` (observed with Kimi via Together), or a stream that dies before
+ * its terminal chunk, leaving the SDK to synthesize a finish from its defaults
+ * (`other`, no usage) around a reasoning-only message. Either way the run would
+ * end silently with work half-done, so callers retry a bounded number of times
+ * before accepting it. Reasoning-only turns count as empty: they carry no
+ * user-visible output and no action. `tool-calls` is the one finish reason that
+ * cannot be empty — the calls are the turn's output.
  */
 export function isEmptyModelTurn(turn: {
 	aiFinishReason: string;
 	newMessages: AgentMessage[];
 	structuredOutput?: unknown;
+	errorReason?: ModelTurnError;
 }): boolean {
-	if (turn.aiFinishReason !== 'stop') return false;
+	if (turn.aiFinishReason === 'tool-calls') return false;
 	if (turn.structuredOutput !== undefined) return false;
-	return !turn.newMessages.some(
-		(m) =>
-			'content' in m &&
-			Array.isArray(m.content) &&
-			m.content.some(
-				(c) =>
-					(c.type === 'text' && c.text.trim().length > 0) ||
-					c.type === 'tool-call' ||
-					c.type === 'file',
-			),
-	);
+	// A reasoning-only stop or a truncated turn cannot recover under the same
+	// conditions. Retrying only consumes more tokens.
+	if (turn.errorReason && (turn.aiFinishReason === 'stop' || turn.aiFinishReason === 'length')) {
+		return false;
+	}
+	// A safety block is the provider's deterministic verdict on this prompt:
+	// re-issuing it earns the same answer and discards the captured reason,
+	// which is the only place the block is explained.
+	if (turn.errorReason?.type === 'prompt_blocked') return false;
+	return !hasActionableContent(turn.newMessages);
 }
 
 /** Extract all settled (resolved or rejected) tool-call blocks from a flat list of agent messages. */

@@ -5,17 +5,22 @@ import './zod-extend';
 // resolvePublicApiRoutes()
 import '../controllers';
 
+import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
 import type { ResponseDtoClass } from '@n8n/decorators';
+import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { ResolvedPublicApiRoute } from '@/public-api/public-api-route-resolver';
 import {
+	isRequestBodyRequired,
 	resolvePublicApiRoutes,
 	scopeRequirementToString,
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
+
+const REQUEST_BODY_COMPONENT = 'RequestBody';
 
 // Query fields backed by shared hand-written parameter files instead of being generated
 const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
@@ -25,13 +30,38 @@ const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
 };
 
 // Status codes an `@ApiErrorResponse` can declare backed by hand-written schemas
-const ERROR_RESPONSE_REFS: Record<number, { $ref: string }> = {
+export const ERROR_RESPONSE_REFS = {
 	400: { $ref: '../../../../shared/spec/responses/badRequest.yml' },
 	401: { $ref: '../../../../shared/spec/responses/unauthorized.yml' },
 	402: { $ref: '../../../../shared/spec/responses/paymentRequired.yml' },
 	403: { $ref: '../../../../shared/spec/responses/forbidden.yml' },
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
+	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
+	422: { $ref: '../../../../shared/spec/responses/unprocessableEntity.yml' },
+	503: { $ref: '../../../../shared/spec/responses/serviceUnavailable.yml' },
+} as const satisfies Record<number, { $ref: string }>;
+
+type DocumentedErrorStatus = keyof typeof ERROR_RESPONSE_REFS;
+
+function isDocumentedErrorStatus(status: number): status is DocumentedErrorStatus {
+	return status in ERROR_RESPONSE_REFS;
+}
+
+/**
+ * The wording each file in `ERROR_RESPONSE_REFS` carries, for the one case that cannot `$ref` it.
+ * `error-response-descriptions.test.ts` asserts the two stay in step.
+ */
+export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> = {
+	400: 'The request is invalid or provides malformed data.',
+	401: 'Unauthorized',
+	402: 'Payment required',
+	403: 'Forbidden',
+	404: 'The specified resource was not found.',
+	409: 'Conflict',
+	415: 'Unsupported media type.',
+	422: 'Unprocessable Entity',
+	503: 'The requested service is temporarily unavailable.',
 };
 
 /** A `ResponseDtoClass` narrowed to the two fields the generator actually reads off it. */
@@ -129,6 +159,7 @@ function buildRequestBody(
 	if (!route.requestBodyDto) return undefined;
 
 	return {
+		...(isRequestBodyRequired(route.requestBodyDto) ? { required: true } : {}),
 		content: {
 			'application/json': {
 				schema: route.requestBodyDto.schema,
@@ -138,13 +169,30 @@ function buildRequestBody(
 }
 
 /**
+ * Converts a route's `@Body` DTO into JSON Schema, using the same conversion the build runs when
+ * it writes the OpenAPI files. zod-to-openapi can only convert a schema that a registry holds, so
+ * this registers one under a throwaway name and then reads the result back out.
+ */
+export function buildRequestBodyJsonSchema(
+	route: ResolvedPublicApiRoute,
+): Record<string, unknown> | undefined {
+	if (!route.requestBodyDto) return undefined;
+
+	const registry = new OpenAPIRegistry();
+	registry.register(REQUEST_BODY_COMPONENT, route.requestBodyDto.schema);
+
+	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
+	const schema = components?.schemas?.[REQUEST_BODY_COMPONENT];
+
+	return isRecord(schema) ? schema : undefined;
+}
+
+/**
  * Response set is derived from what `PublicApiControllerRegistry` actually does at runtime, not
  * invented: the success status is the one `@ApiResponse` declares (and the same one the registry
  * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
  * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
- * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`. Error
- * response *bodies* (schemas) stay hand-written $refs — generating those is out of scope for this
- * pass.
+ * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`.
  */
 function buildResponses(
 	route: ResolvedPublicApiRoute,
@@ -171,21 +219,37 @@ function buildResponses(
 	if (route.requestBodyDto ?? route.requestQueryDto) {
 		responses[400] = ERROR_RESPONSE_REFS[400];
 	}
+	if (route.requestBodyDto) {
+		responses[415] = ERROR_RESPONSE_REFS[415];
+	}
 	responses[401] = ERROR_RESPONSE_REFS[401];
 	if (route.apiKeyScope) {
 		responses[403] = ERROR_RESPONSE_REFS[403];
 	}
 
-	for (const status of route.errorResponses ?? []) {
-		const ref = ERROR_RESPONSE_REFS[status];
-		if (!ref) {
+	for (const { status, dto, description } of route.errorResponses ?? []) {
+		if (!isDocumentedErrorStatus(status)) {
 			throw new UnexpectedError(
 				`@ApiErrorResponse(${status}) on ${route.controllerName}.${route.handlerName} has no ` +
 					'matching shared response file in ERROR_RESPONSE_REFS - add one to shared/spec/responses/ ' +
 					'and register it there.',
 			);
 		}
-		responses[status] = ref;
+
+		const ref = ERROR_RESPONSE_REFS[status];
+
+		// A `$ref` cannot carry siblings, so either extra means writing the description out here
+		// instead of pointing at the shared file that would have supplied it.
+		if (dto && hasNamedSchema(dto)) {
+			responses[status] = {
+				description: description ?? ERROR_RESPONSE_DESCRIPTIONS[status],
+				content: { 'application/json': { schema: dto.schema } },
+			};
+		} else if (description) {
+			responses[status] = { description };
+		} else {
+			responses[status] = ref;
+		}
 	}
 
 	return responses;

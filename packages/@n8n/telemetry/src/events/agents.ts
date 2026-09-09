@@ -533,7 +533,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_STARTED_ADDING_AGENT_TOOL: {
 		name: 'User started adding agent tool',
 		description:
-			'The user clicked Connect on an available row in the tools modal, starting a new tool flow.',
+			'The user started adding an available tool manually by connecting it or creating a workflow.',
 		properties: z.object({
 			tool_type: z.enum(['custom', 'workflow', 'node']),
 			source: z.literal('manual'),

@@ -1,21 +1,24 @@
-import { getProxyAgent } from '@n8n/ai-utilities';
+import { proxyFetch } from '@n8n/ai-utilities';
 import { listOpenAiModels } from '@n8n/ai-utilities/model-discovery';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import { mergeCustomHeaders } from '../../../../utils/helpers';
+import { assertOpenAiCredentialAllowsUrl } from '../../../vendors/OpenAi/helpers/credentials';
 
 export async function searchModels(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('openAiApi');
-	const baseURL =
-		(this.getNodeParameter('options.baseURL', '') as string) ||
-		(credentials.url as string) ||
-		'https://api.openai.com/v1';
+	const baseUrlOverride = this.getNodeParameter('options.baseURL', '') as string;
+	if (baseUrlOverride) {
+		assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, baseUrlOverride);
+	}
+	const baseURL = baseUrlOverride || (credentials.url as string) || 'https://api.openai.com/v1';
 	const { openAiDefaultHeaders } = Container.get(AiConfig);
+	const lookup = this.helpers.getSecureEgressFilter().createSecureLookup();
 	const headers = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
 	// Shared with the agents model catalog: endpoint, auth, chat-model filtering
@@ -24,11 +27,7 @@ export async function searchModels(
 		apiKey: credentials.apiKey as string,
 		baseURL,
 		headers,
-		fetch: async (url, init) =>
-			await fetch(url, {
-				...init,
-				dispatcher: getProxyAgent(baseURL),
-			} as RequestInit),
+		fetch: async (input, init) => await proxyFetch({ input, init, lookup }),
 	});
 
 	return {

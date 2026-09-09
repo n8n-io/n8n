@@ -1,4 +1,5 @@
 import type { FrontendSettings } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import type { CurrentUserResponse } from '@n8n/rest-api-client/api/users';
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -333,6 +334,58 @@ describe('users.store', () => {
 
 			expect(usersStore.currentUser).toBeNull();
 			expect(hook).toHaveBeenCalled();
+		});
+
+		it('should clear the current user and still run logout hooks when the session was already invalid server-side', async () => {
+			const usersStore = useUsersStore();
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+			};
+			usersStore.currentUserId = '1';
+			logout.mockRejectedValueOnce(new ResponseError('Unauthorized', { httpStatusCode: 401 }));
+
+			const hook = vi.fn();
+			usersStore.registerLogoutHook(hook);
+
+			await usersStore.logout();
+
+			expect(usersStore.currentUser).toBeNull();
+			expect(hook).toHaveBeenCalled();
+		});
+
+		it('should propagate a genuine logout failure instead of silently completing', async () => {
+			const usersStore = useUsersStore();
+			logout.mockRejectedValueOnce(new Error('Network Error'));
+
+			await expect(usersStore.logout()).rejects.toThrow('Network Error');
+		});
+
+		it('should propagate a genuine failure from the OIDC fallback logout call', async () => {
+			const usersStore = useUsersStore();
+			oidcLogout.mockRejectedValueOnce(new Error('license expired'));
+			logout.mockRejectedValueOnce(new Error('Network Error'));
+
+			await expect(usersStore.logout({ viaOidc: true })).rejects.toThrow('Network Error');
+		});
+
+		it('should clear the current user when the OIDC fallback logout call fails because the session was already invalid', async () => {
+			const usersStore = useUsersStore();
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+			};
+			usersStore.currentUserId = '1';
+			oidcLogout.mockRejectedValueOnce(new Error('license expired'));
+			logout.mockRejectedValueOnce(new ResponseError('Unauthorized', { httpStatusCode: 401 }));
+
+			await usersStore.logout({ viaOidc: true });
+
+			expect(usersStore.currentUser).toBeNull();
 		});
 	});
 

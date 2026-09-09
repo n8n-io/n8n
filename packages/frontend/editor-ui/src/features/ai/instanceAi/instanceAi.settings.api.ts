@@ -3,6 +3,7 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiModelCatalogResponse,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiProviderConnection,
@@ -48,6 +49,12 @@ export async function fetchInstanceModelCredentials(
 	context: IRestApiContext,
 ): Promise<InstanceAiProviderConnection[]> {
 	return await makeRestApiRequest(context, 'GET', '/instance-ai/settings/model-credentials');
+}
+
+export async function fetchModelCatalog(
+	context: IRestApiContext,
+): Promise<InstanceAiModelCatalogResponse> {
+	return await makeRestApiRequest(context, 'GET', '/instance-ai/settings/models');
 }
 
 export async function verifyModel(

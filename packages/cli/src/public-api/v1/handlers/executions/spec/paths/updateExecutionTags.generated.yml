@@ -1,0 +1,47 @@
+operationId: updateExecutionTags
+tags:
+  - Executions
+summary: Update tags of an execution
+description: Update annotation tags of an execution.
+x-required-scope: executionTags:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: executionId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              example: 2tUt1wbLX592XDdX
+          required:
+            - id
+          additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/executionTagsPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

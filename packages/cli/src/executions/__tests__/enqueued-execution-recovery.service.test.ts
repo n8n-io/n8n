@@ -38,6 +38,9 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			eventService,
 		);
 
+	const mockEnqueued = (executions: IExecutionResponse[], unreadableIds: string[] = []) =>
+		executionService.findAllEnqueuedExecutions.mockResolvedValue({ executions, unreadableIds });
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
@@ -45,7 +48,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	});
 
 	test('refuses to touch anything in queue mode', async () => {
-		executionService.findAllEnqueuedExecutions.mockResolvedValue([enqueuedExecution('1')]);
+		mockEnqueued([enqueuedExecution('1')]);
 
 		await expect(createService('queue').recoverEnqueuedExecutions()).rejects.toThrow(
 			'Enqueued execution recovery must not run in queue mode',
@@ -56,10 +59,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	});
 
 	test('runs each enqueued execution, claiming it while it is still `new`', async () => {
-		executionService.findAllEnqueuedExecutions.mockResolvedValue([
-			enqueuedExecution('1'),
-			enqueuedExecution('2'),
-		]);
+		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
 
 		await createService().recoverEnqueuedExecutions();
 
@@ -77,10 +77,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 	// CAT-3862: previously the rejection landed in a void'd promise and the row stayed `new`.
 	test('marks an execution as crashed when its run rejects', async () => {
-		executionService.findAllEnqueuedExecutions.mockResolvedValue([
-			enqueuedExecution('1'),
-			enqueuedExecution('2'),
-		]);
+		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
 		workflowRunner.run.mockRejectedValueOnce(new Error('cannot start'));
 
 		await createService().recoverEnqueuedExecutions();
@@ -92,7 +89,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	});
 
 	test('does not crash an execution claimed by another runner', async () => {
-		executionService.findAllEnqueuedExecutions.mockResolvedValue([enqueuedExecution('1')]);
+		mockEnqueued([enqueuedExecution('1')]);
 		workflowRunner.run.mockRejectedValueOnce(new ExecutionAlreadyResumingError('1'));
 
 		await createService().recoverEnqueuedExecutions();
@@ -102,12 +99,42 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
+	// CAT-3909: these used to be dropped by the read, so they stayed at `new` forever and were
+	// re-reported on every restart.
+	test('crashes enqueued executions whose data could not be read', async () => {
+		mockEnqueued([enqueuedExecution('1')], ['2', '3']);
+
+		await createService().recoverEnqueuedExecutions();
+
+		expect(executionRepository.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['2', '3']);
+		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith(
+			expect.anything(),
+			undefined,
+			false,
+			{ executionId: '1', expectedStatus: 'new' },
+		);
+	});
+
+	test('crashes unreadable executions even when none are runnable', async () => {
+		mockEnqueued([], ['1']);
+
+		await createService().recoverEnqueuedExecutions();
+
+		expect(executionRepository.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['1']);
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	test('does not crash anything when every execution is readable', async () => {
+		mockEnqueued([enqueuedExecution('1')]);
+
+		await createService().recoverEnqueuedExecutions();
+
+		expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+	});
+
 	// A throw used to abort the whole loop, leaving every remaining execution at `new`.
 	test('keeps going when preparing an execution throws', async () => {
-		executionService.findAllEnqueuedExecutions.mockResolvedValue([
-			enqueuedExecution('1'),
-			enqueuedExecution('2'),
-		]);
+		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
 		ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(
 			new Error('workflow not found'),
 		);

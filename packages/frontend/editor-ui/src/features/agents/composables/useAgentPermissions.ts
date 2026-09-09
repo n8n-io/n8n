@@ -4,15 +4,20 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
-type AgentPermissionKey = 'create' | 'update' | 'delete' | 'publish' | 'unpublish';
+type AgentMutationKey = 'create' | 'update' | 'delete' | 'publish' | 'unpublish';
+type AgentPermissionKey = AgentMutationKey | 'execute';
 
 export type AgentPermissions = Record<`can${Capitalize<AgentPermissionKey>}`, ComputedRef<boolean>>;
 
-// All five permissions gate mutations, so we additionally block them whenever
-// source control puts the instance in a read-only branch. Agents themselves
-// aren't tracked by source control, but `branchReadOnly` doubles as the
-// instance-wide "no writes" signal — matching how other resource views
-// (workflows, credentials, data tables) combine scopes with this flag.
+// The mutating permissions are additionally blocked whenever source control puts
+// the instance in a read-only branch. Agents themselves aren't tracked by source
+// control, but `branchReadOnly` doubles as the instance-wide "no writes" signal —
+// matching how other resource views (workflows, credentials, data tables) combine
+// scopes with this flag.
+//
+// `canExecute` is deliberately outside that: running an agent writes no config, so
+// a read-only branch is no reason to stop it — the same reasoning that puts the
+// eval run route on `agent:execute` while the rest sit on `agent:update`.
 export function useAgentPermissions(
 	projectId: MaybeRefOrGetter<string | undefined>,
 ): AgentPermissions {
@@ -31,10 +36,11 @@ export function useAgentPermissions(
 	);
 	const isReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
 
-	const pick = (key: AgentPermissionKey): ComputedRef<boolean> =>
-		computed(
-			() => !isReadOnly.value && Boolean(globalScopes.value[key] ?? projectScopes.value[key]),
-		);
+	const hasScope = (key: AgentPermissionKey) =>
+		Boolean(globalScopes.value[key] ?? projectScopes.value[key]);
+
+	const pick = (key: AgentMutationKey): ComputedRef<boolean> =>
+		computed(() => !isReadOnly.value && hasScope(key));
 
 	return {
 		canCreate: pick('create'),
@@ -42,5 +48,6 @@ export function useAgentPermissions(
 		canDelete: pick('delete'),
 		canPublish: pick('publish'),
 		canUnpublish: pick('unpublish'),
+		canExecute: computed(() => hasScope('execute')),
 	};
 }

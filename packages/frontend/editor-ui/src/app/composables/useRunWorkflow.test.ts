@@ -17,7 +17,10 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useChat } from '@n8n/chat/composables';
 import type { INodeUi, IStartRunData } from '@/Interface';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type {
+	IExecutionResponse,
+	IExecutionsStopData,
+} from '@/features/execution/executions/executions.types';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -315,10 +318,10 @@ describe('useRunWorkflow({ router })', () => {
 
 	// Production reads run data from the execution-state store (keyed by document
 	// id), not the workflows store, so seed it to drive `activeExecutionRunData`.
-	function seedActiveRunData(runData: IRunData) {
+	function seedActiveRunData(runData: IRunData, executedNodes: INode[] = []) {
 		executionStateStore.setWorkflowExecutionData({
 			id: 'seeded-execution',
-			workflowData: { id: '123', nodes: [], connections: {} },
+			workflowData: { id: '123', nodes: executedNodes, connections: {} },
 			finished: true,
 			mode: 'manual',
 			status: 'success',
@@ -929,6 +932,58 @@ describe('useRunWorkflow({ router })', () => {
 			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
 		});
 
+		describe('run data of replaced nodes', () => {
+			async function runPartialExecutionWith({
+				executedNodeId,
+				currentNodeId,
+			}: {
+				executedNodeId: string;
+				currentNodeId: string;
+			}) {
+				const { runWorkflow } = useRunWorkflow({ router });
+				const runData = { 'Test node': [] };
+
+				vi.mocked(mockDocumentStore.getNodeByName).mockImplementation((name: string) =>
+					name === 'Test node' ? createTestNode({ id: currentNodeId, name: 'Test node' }) : null,
+				);
+				vi.mocked(pushConnectionStore).isConnected = true;
+				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({ executionId: '123' });
+
+				mockDocumentStore.hasNodeValidationIssues = false;
+				mockDocumentStore.serialize.mockReturnValue({
+					id: 'workflowId',
+					nodes: [createTestNode({ id: currentNodeId, name: 'Test node' })],
+					connections: {},
+				});
+
+				seedActiveRunData(runData, [createTestNode({ id: executedNodeId, name: 'Test node' })]);
+
+				await runWorkflow({
+					destinationNode: { nodeName: 'Test node', mode: 'inclusive' },
+				});
+
+				return vi.mocked(workflowsStore).runWorkflow.mock.calls.at(-1)?.[0];
+			}
+
+			it('drops the entry when the name now belongs to a different node', async () => {
+				const startRunData = await runPartialExecutionWith({
+					executedNodeId: 'executed-id',
+					currentNodeId: 'added-after-the-run',
+				});
+
+				expect(startRunData?.runData).toEqual({});
+			});
+
+			it('keeps the entry for the node that recorded it', async () => {
+				const startRunData = await runPartialExecutionWith({
+					executedNodeId: 'same-id',
+					currentNodeId: 'same-id',
+				});
+
+				expect(startRunData?.runData).toEqual({ 'Test node': [] });
+			});
+		});
+
 		it('retains the original run data', async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
@@ -1430,6 +1485,31 @@ describe('useRunWorkflow({ router })', () => {
 	});
 
 	describe('stopCurrentExecution()', () => {
+		it('waits for the pending execution id instead of dropping the stop request', async () => {
+			const runWorkflowComposable = useRunWorkflow({ router });
+			const { useExecutionsStore } = await import(
+				'@/features/execution/executions/executions.store'
+			);
+			const executionsStore = useExecutionsStore();
+			const stopSpy = vi
+				.spyOn(executionsStore, 'stopCurrentExecution')
+				.mockResolvedValue({ mode: 'manual', status: 'canceled' } as IExecutionsStopData);
+			vi.spyOn(workflowsStore, 'getExecution').mockResolvedValue({
+				status: 'canceled',
+			} as IExecutionResponse);
+
+			// Run accepted, backend id not yet known.
+			executionStateStore.setActiveExecutionId(null);
+
+			const stopPromise = runWorkflowComposable.stopCurrentExecution();
+			expect(stopSpy).not.toHaveBeenCalled();
+
+			executionStateStore.setActiveExecutionId('exec-late');
+			await stopPromise;
+
+			expect(stopSpy).toHaveBeenCalledWith('exec-late');
+		});
+
 		it('stamps id and clears activeExecutionId before setWorkflowExecutionData when execution finished before stop', async () => {
 			const runWorkflowComposable = useRunWorkflow({ router });
 			const finishedExecution: IExecutionResponse = {

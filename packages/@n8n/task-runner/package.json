@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "2.34.0",
+  "version": "2.37.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -53,6 +53,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/lodash": "catalog:",

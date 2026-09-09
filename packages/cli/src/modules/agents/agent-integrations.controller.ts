@@ -1,49 +1,35 @@
 import {
+	AgentConnectIntegrationDto,
 	AgentDisconnectIntegrationDto,
-	AgentIntegrationSchema,
-	isDraftIntegration,
+	type AgentDisconnectIntegrationResponse,
+	type AgentIntegrationConnectResponse,
 	type AgentIntegrationStatusResponse,
-	CreateSlackAgentAppDto,
-	type CreateSlackAgentAppResponse,
-	type SlackAgentAppManifestResponse,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
+import { AgentIntegrationManagementService } from './agent-integration-management.service';
+import { AgentChannelStatusReporter } from './integrations/agent-channel-status-reporter';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { buildChannelStatusReport } from './integrations/channel-status-report';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
-import { SlackAppSetupService } from './integrations/slack-app-setup.service';
+import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
 import { AgentRepository } from './repositories/agent.repository';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentIntegrationsController {
 	constructor(
-		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
-		private readonly credentialsService: CredentialsService,
+		private readonly integrationManagementService: AgentIntegrationManagementService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentRepository: AgentRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
-		private readonly slackAppSetupService: SlackAppSetupService,
+		private readonly channelStatusRepository: AgentChannelStatusRepository,
+		private readonly statusReporter: AgentChannelStatusReporter,
 	) {}
-
-	private async validateIntegration(dto: unknown) {
-		const integrationParseResult = await AgentIntegrationSchema.safeParseAsync(dto);
-		if (!integrationParseResult.success) {
-			throw new BadRequestError(integrationParseResult.error.message);
-		}
-		const integration = integrationParseResult.data;
-		if (integration.type === 'telegram' && !integration.settings) {
-			throw new BadRequestError('Telegram integration settings are required');
-		}
-		return integration;
-	}
 
 	@Post('/:agentId/integrations/connect')
 	@ProjectScope('agent:update')
@@ -51,111 +37,22 @@ export class AgentIntegrationsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	) {
-		const integration = await this.validateIntegration(req.body);
-		const { credentialId } = integration;
+		@Body payload: AgentConnectIntegrationDto,
+	): Promise<AgentIntegrationConnectResponse> {
+		await this.integrationManagementService.validateConfig(req.body);
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
-			req.user,
-			{ projectId: agent.projectId },
-		);
-		const credential = usableCredentials.find((c) => c.id === credentialId);
-		if (!credential) throw new NotFoundError(`Credential "${credentialId}" not found`);
-
-		const integrationImpl = this.chatIntegrationRegistry.require(integration.type);
-		if (!integrationImpl.credentialTypes.includes(credential.type)) {
-			throw new BadRequestError(
-				`${integrationImpl.displayLabel} integrations do not support ${credential.type} credentials`,
-			);
-		}
-
-		const savedAgent = await this.agentIntegrationPersistenceService.saveCredentialIntegration(
+		const { savedAgent } = await this.integrationManagementService.connect({
 			agent,
-			integration,
-			{ user: req.user, modifiedBy: 'user', broadcast: false },
-		);
+			user: req.user,
+			integration: req.body,
+			...(payload.replaces
+				? { replaces: { type: payload.type, credentialId: payload.replaces.credentialId } }
+				: {}),
+		});
 		if (savedAgent.activeVersionId === null) return { status: 'configured' };
 
-		await this.chatIntegrationService.connect(agentId, integration, agent.projectId);
-		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
-
 		return { status: 'connected' };
-	}
-
-	@Post('/:agentId/integrations/slack/app')
-	@ProjectScope('agent:update')
-	async createSlackApp(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-		@Body payload: CreateSlackAgentAppDto,
-	): Promise<CreateSlackAgentAppResponse> {
-		return await this.slackAppSetupService.createApp({
-			projectId: req.params.projectId,
-			agentId,
-			appConfigurationToken: payload.appConfigurationToken,
-			user: req.user,
-		});
-	}
-
-	@Get('/:agentId/integrations/slack/manifest')
-	@ProjectScope('agent:read')
-	async getSlackAppManifest(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-	): Promise<SlackAgentAppManifestResponse> {
-		return await this.slackAppSetupService.getManualManifest({
-			projectId: req.params.projectId,
-			agentId,
-		});
-	}
-
-	// Slack OAuth callback: do not add @ProjectScope. Authentication happens via
-	// the one-time setup state generated by the authenticated createSlackApp route.
-	@Get('/:agentId/integrations/slack/oauth/callback', { skipAuth: true, usesTemplates: true })
-	async handleSlackAppOAuthCallback(
-		req: Request<
-			{ projectId: string; agentId: string },
-			unknown,
-			unknown,
-			{ code?: string; state?: string; error?: string; error_description?: string }
-		>,
-		res: Response,
-		@Param('agentId') agentId: string,
-	) {
-		const { code, state, error, error_description: errorDescription } = req.query;
-		if (error) {
-			return res.render('oauth-error-callback', {
-				error: {
-					message: error,
-					...(errorDescription ? { reason: errorDescription } : {}),
-				},
-			});
-		}
-		if (!code || !state) {
-			return res.render('oauth-error-callback', {
-				error: { message: 'Insufficient parameters for Slack app setup callback.' },
-			});
-		}
-
-		try {
-			await this.slackAppSetupService.completeInstall({
-				projectId: req.params.projectId,
-				agentId,
-				code,
-				state,
-			});
-			return res.render('oauth-callback');
-		} catch (callbackError) {
-			const message =
-				callbackError instanceof Error ? callbackError.message : 'Slack app setup failed';
-			return res.render('oauth-error-callback', {
-				error: { message },
-			});
-		}
 	}
 
 	@Post('/:agentId/integrations/disconnect')
@@ -165,30 +62,19 @@ export class AgentIntegrationsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Body payload: AgentDisconnectIntegrationDto,
-	) {
-		const { type, credentialId } = payload;
+	): Promise<AgentDisconnectIntegrationResponse> {
+		const { type, credentialId, deleteExternalResource } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const persistedIntegration = agent.integrations?.find(
-			(integration) => integration.type === type && integration.credentialId === credentialId,
-		);
-		const parsedIntegration = AgentIntegrationSchema.safeParse({ type, credentialId });
-		const integration =
-			persistedIntegration ?? (parsedIntegration.success ? parsedIntegration.data : undefined);
-		if (integration) {
-			await this.chatIntegrationService.disconnectChannel(agentId, integration);
-		} else {
-			await this.chatIntegrationService.disconnect(agentId, { type, credentialId });
-		}
-
-		await this.agentIntegrationPersistenceService.removeCredentialIntegration(
+		const { warning } = await this.integrationManagementService.disconnect({
 			agent,
+			user: req.user,
 			type,
 			credentialId,
-			{ user: req.user, modifiedBy: 'user', broadcast: false },
-		);
+			deleteExternalResource,
+		});
 
-		return { status: 'disconnected' };
+		return { status: 'disconnected', ...(warning ? { warning } : {}) };
 	}
 
 	@Get('/:agentId/integrations/status')
@@ -201,26 +87,12 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		// Draft entries (`credentialId: ''`) written during the initial build so
-		// the panel can show a needs-setup chip aren't a real connection — report
-		// them as disconnected so channel-setup UIs don't render an already-
-		// connected state and hide their own setup form.
-		const chatIntegrations = (agent.integrations ?? [])
-			.filter((i) => !isDraftIntegration(i))
-			.map((i) => ({
-				type: i.type,
-				credentialId: i.credentialId,
-				...('settings' in i ? { settings: i.settings } : {}),
-			}));
-		return {
-			status:
-				chatIntegrations.length === 0
-					? 'disconnected'
-					: agent.activeVersionId === null
-						? 'configured'
-						: 'connected',
-			integrations: chatIntegrations,
-		};
+		const statuses = await this.channelStatusRepository.findByAgentId(agentId);
+		const now = new Date();
+
+		return buildChannelStatusReport(agent.integrations, agent.activeVersionId, statuses, (row) =>
+			this.statusReporter.isLive(row, now),
+		);
 	}
 
 	// Third-party webhook callback: do not add @ProjectScope. Auth happens

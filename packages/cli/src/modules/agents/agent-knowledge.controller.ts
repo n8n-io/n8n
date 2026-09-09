@@ -1,4 +1,3 @@
-import { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
@@ -7,11 +6,10 @@ import multer from 'multer';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { AiService } from '@/services/ai.service';
 
-import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import {
 	AgentUploadMiddleware,
 	cleanupUploadedTempFiles,
@@ -24,14 +22,13 @@ const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 export class AgentKnowledgeController {
 	constructor(
 		private readonly agentKnowledgeService: AgentKnowledgeService,
-		private readonly agentsConfig: AgentsConfig,
+		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly aiService: AiService,
 	) {}
 
-	/** Knowledge base endpoints are gated behind Daytona sandbox env vars or AI Assistant proxy availability. */
+	/** Knowledge base endpoints require an enabled Agent sandbox. */
 	private assertKnowledgeBaseEnabled() {
-		if (!isAgentKnowledgeBaseEnabled(this.agentsConfig, this.aiService.isProxyEnabled())) {
+		if (!this.agentSandboxRuntimeService.isEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}

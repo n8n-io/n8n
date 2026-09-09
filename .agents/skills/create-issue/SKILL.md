@@ -14,6 +14,9 @@ compatibility:
 
 Create a Linear ticket or GitHub issue for: **$ARGUMENTS**
 
+Write all titles and descriptions in ASD-STE100 Simplified Technical English:
+use short sentences, the active voice, and one instruction for each sentence.
+
 ## Determine Target
 
 Decide where the issue should be created based on user input:
@@ -73,17 +76,20 @@ Structure the description using markdown headers. Use the appropriate template:
 **For features / enhancements:**
 
 ```markdown
-## Summary
-[One-paragraph overview of what this adds or changes]
+## Goal
+[What this adds and why: the user problem it solves]
 
-## Problem
-[What limitation or gap exists today]
+## Background
+[Current state and the gap, plus the technical context needed to plan the work: relevant constraints, prior findings, and links to any related investigation.]
 
-## Proposed solution
-[How it should work — technical approach if known]
+## Scope
+[Concrete list of what changes. Name the files or areas to create or modify and any existing pattern to follow.]
+
+## Acceptance criteria
+[Testable outcomes, including automated tests.]
 
 ## Out of scope
-[Explicitly note what this does NOT cover, if helpful]
+[What this explicitly does not cover]
 ```
 
 **For tech debt:**
@@ -109,13 +115,19 @@ Structure the description using markdown headers. Use the appropriate template:
 
 ```markdown
 ## Goal
-[What question are we trying to answer]
+[What question(s) are we trying to answer]
 
 ## Context
 [Why this investigation is needed now]
 
+## Questions
+1. [Specific question to resolve]
+
 ## Expected output
-[What deliverable is expected — RFC, PoC, decision document, etc.]
+[What deliverable is expected: RFC, PoC, decision document, path matrix, etc.]
+
+## Acceptance criteria
+[How we know the spike is done: each question answered, deliverable produced]
 ```
 
 #### Attachments (Screenshots / Videos)
