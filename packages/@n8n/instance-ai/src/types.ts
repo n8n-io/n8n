@@ -1059,6 +1059,11 @@ export interface InstanceAiAppService {
 		appId: string,
 		bindings: AppBinding[],
 	): Promise<{ bindings: DescribedBinding[]; warnings: string[] }>;
+	/** Describes `bindings` as if they were stored, without saving; for the bind approval card. */
+	previewBindings(
+		appId: string,
+		bindings: AppBinding[],
+	): Promise<{ bindings: DescribedBinding[]; warnings: string[] }>;
 	/** `stored` is the saved list as-is; `bindings` describes only the ones whose draft still resolves. */
 	getBindings(
 		appId: string,

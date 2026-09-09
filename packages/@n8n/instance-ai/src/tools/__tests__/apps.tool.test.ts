@@ -87,6 +87,7 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 			.fn()
 			.mockResolvedValue({ versionId: 'v-1', url: 'http://localhost:5678/apps/greeter/' }),
 		setBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [] }),
+		previewBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [] }),
 		getBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [], stored: [] }),
 		getSdkTarball: vi.fn().mockResolvedValue({ filename: 'n8n-app-sdk.tgz', data: SDK_TARBALL }),
 	};
@@ -1047,7 +1048,7 @@ describe('apps tool', () => {
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
 		});
 
-		it('suspends for approval naming every workflow on the first call', async () => {
+		it('suspends with plain text naming every workflow when several are bound at once', async () => {
 			const context = createMockContext();
 			const suspend = vi.fn().mockResolvedValue('suspended');
 
@@ -1062,7 +1063,58 @@ describe('apps tool', () => {
 					'(callable by anyone with the app URL)',
 				severity: 'warning',
 			});
+			expect(appServiceMock(context, 'previewBindings')).not.toHaveBeenCalled();
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('suspends with the structured binding details for a single binding', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'previewBindings').mockResolvedValue({
+				bindings: [SUBMIT_BINDING],
+				warnings: [],
+			});
+			const suspend = vi.fn().mockResolvedValue('suspended');
+			const single = { action: 'bind', bindings: [bindInput.bindings[0]] };
+
+			await runAction(context, single, { resumeData: undefined, suspend });
+
+			expect(appServiceMock(context, 'previewBindings')).toHaveBeenCalledWith('app-1', [
+				bindInput.bindings[0],
+			]);
+			expect(suspend).toHaveBeenCalledWith({
+				requestId: expect.any(String),
+				message:
+					'Connect workflow "Echo" (wf-1) to app "Greeter" as "submit" (callable by anyone with the app URL)',
+				severity: 'warning',
+				appBinding: {
+					appId: 'app-1',
+					appName: 'Greeter',
+					appNamespace: 'greeter',
+					workflowId: 'wf-1',
+					workflowName: 'Echo',
+					key: 'submit',
+					inputSchema: SUBMIT_BINDING.input,
+					outputSchema: SUBMIT_BINDING.output,
+				},
+			});
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('falls back to plain text when the preview cannot describe the workflow', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'previewBindings').mockResolvedValue({
+				bindings: [],
+				warnings: ['gone'],
+			});
+			const suspend = vi.fn().mockResolvedValue('suspended');
+
+			await runAction(
+				context,
+				{ action: 'bind', bindings: [bindInput.bindings[0]] },
+				{ resumeData: undefined, suspend },
+			);
+
+			expect(suspend.mock.calls[0][0]).not.toHaveProperty('appBinding');
 		});
 
 		it('falls back to the workflow id when the workflow cannot be read', async () => {
@@ -1093,6 +1145,7 @@ describe('apps tool', () => {
 			await runAction(context, bindInput, { resumeData: undefined, suspend });
 
 			expect(suspend).not.toHaveBeenCalled();
+			expect(appServiceMock(context, 'previewBindings')).not.toHaveBeenCalled();
 			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalled();
 		});
 	});

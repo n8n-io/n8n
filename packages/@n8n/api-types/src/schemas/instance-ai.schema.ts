@@ -1,3 +1,4 @@
+import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import { appNameSchema, appNamespaceSchema } from './app.schema';
@@ -273,6 +274,24 @@ export const webSearchMetaSchema = z.object({
 	query: z.string(),
 });
 export type WebSearchMeta = z.infer<typeof webSearchMetaSchema>;
+
+/** Passed through as the backend emitted it; the card only formats it. */
+const jsonSchemaSchema = z.custom<JSONSchema7>(
+	(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
+);
+
+/** What the `apps` tool is about to connect, for the bind approval card. */
+export const appBindingMetaSchema = z.object({
+	appId: z.string(),
+	appName: z.string(),
+	appNamespace: z.string(),
+	workflowId: z.string(),
+	workflowName: z.string(),
+	key: z.string(),
+	inputSchema: jsonSchemaSchema,
+	outputSchema: jsonSchemaSchema,
+});
+export type AppBindingMeta = z.infer<typeof appBindingMetaSchema>;
 
 export const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -764,6 +783,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	webSearch: webSearchMetaSchema
 		.optional()
 		.describe('When present, renders web-search approval UI instead of generic confirm'),
+	appBinding: appBindingMetaSchema
+		.optional()
+		.describe('When present, renders the app binding approval UI instead of generic confirm'),
 	credentialFlow: credentialFlowSchema
 		.optional()
 		.describe(
@@ -827,6 +849,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.setupRequests)) return true;
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
+	if (payload.appBinding) return true;
 	if (payload.channelConfig) return true;
 	if (payload.mcpConnectRequest) return true;
 

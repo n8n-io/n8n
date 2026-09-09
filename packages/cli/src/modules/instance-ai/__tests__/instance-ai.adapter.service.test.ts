@@ -5073,6 +5073,28 @@ describe('createContext — app service wiring', () => {
 		});
 	});
 
+	it('previews bindings as if stored, after checking app:read, without saving them', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const described = { bindings: [], warnings: [] };
+		const describeBindings = vi.fn().mockResolvedValue(described);
+		const setBindings = vi.fn();
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			describeBindings,
+			setBindings,
+		});
+		const appService = service.createContext(mockUser).appService;
+		const bindings = [{ key: 'notify', kind: 'workflow' as const, workflowId: 'wf-2' }];
+
+		await expect(appService?.previewBindings('app-1', bindings)).resolves.toEqual(described);
+		expect(describeBindings).toHaveBeenCalledWith({ projectId: 'proj-1', bindings });
+		expect(setBindings).not.toHaveBeenCalled();
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:read'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
 	it('describes bindings after checking app:read on the app project', async () => {
 		mockAppsModule(true);
 		mockedUserHasScopes.mockResolvedValue(true);

@@ -160,7 +160,9 @@ export class AppsService {
 	 * reported as a warning, so the remaining bindings stay usable. The output schema comes
 	 * from the latest successful execution; without one the items stay open, with a warning.
 	 */
-	async describeBindings(app: App): Promise<{ bindings: DescribedBinding[]; warnings: string[] }> {
+	async describeBindings(
+		app: Pick<App, 'projectId' | 'bindings'>,
+	): Promise<{ bindings: DescribedBinding[]; warnings: string[] }> {
 		const bindings: DescribedBinding[] = [];
 		const warnings: string[] = [];
 		for (const binding of app.bindings) {

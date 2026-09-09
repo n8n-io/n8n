@@ -6,9 +6,11 @@
 import { Tool } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
+	appBindingMetaSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	type AppBinding,
+	type AppBindingMeta,
 	type DescribedBinding,
 } from '@n8n/api-types';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
@@ -137,6 +139,7 @@ const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
 	severity: instanceAiConfirmationSeveritySchema,
+	appBinding: appBindingMetaSchema.optional(),
 });
 
 interface ConfirmationToolContext {
@@ -835,7 +838,7 @@ async function resolveWorkflowName(context: InstanceAiContext, workflowId: strin
 async function requireBindAppWorkflowApproval(
 	context: InstanceAiContext,
 	ctx: ConfirmationToolContext,
-	describe: () => string | Promise<string>,
+	describe: () => Promise<{ message: string; appBinding?: AppBindingMeta }>,
 ): Promise<AppActionDenied | null> {
 	if (context.permissions?.bindAppWorkflow === 'blocked') {
 		return { denied: true, reason: 'Action blocked by admin' };
@@ -845,7 +848,7 @@ async function requireBindAppWorkflowApproval(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: await describe(),
+			...(await describe()),
 			severity: 'warning' as const,
 		});
 	}
@@ -871,7 +874,8 @@ async function handleBind(
 			reason: 'Pass at least one binding as { key, kind: "workflow", workflowId }.',
 		};
 	}
-	const app = await requireAppService(context).get(input.appId);
+	const appService = requireAppService(context);
+	const app = await appService.get(input.appId);
 
 	const denied = await requireBindAppWorkflowApproval(context, ctx, async () => {
 		const lines = await Promise.all(
@@ -881,7 +885,27 @@ async function handleBind(
 			),
 		);
 		// One line: the card renders the message as plain HTML text, which folds newlines.
-		return `${lines.join('; ')} (callable by anyone with the app URL)`;
+		const message = `${lines.join('; ')} (callable by anyone with the app URL)`;
+		// The structured card shows one binding. A multi-binding call, or a workflow the
+		// preview cannot resolve (the write refuses it with the reason), gets the plain text.
+		const [described] =
+			input.bindings.length === 1
+				? (await appService.previewBindings(app.id, input.bindings)).bindings
+				: [];
+		if (!described) return { message };
+		return {
+			message,
+			appBinding: {
+				appId: app.id,
+				appName: app.name,
+				appNamespace: app.namespace,
+				workflowId: described.workflowId,
+				workflowName: described.name,
+				key: described.key,
+				inputSchema: described.input,
+				outputSchema: described.output,
+			},
+		};
 	});
 	if (denied) return denied;
 

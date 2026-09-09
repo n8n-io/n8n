@@ -119,6 +119,9 @@ export class AppThemeBuildService {
 			setBindings() {
 				throw new UnexpectedError('setBindings is not supported by the theme rebuild pipeline');
 			},
+			previewBindings() {
+				throw new UnexpectedError('previewBindings is not supported by the theme rebuild pipeline');
+			},
 			async getBindings(appId) {
 				const app = await appsService.getApp(appId);
 				return { ...(await appsService.describeBindings(app)), stored: app.bindings };

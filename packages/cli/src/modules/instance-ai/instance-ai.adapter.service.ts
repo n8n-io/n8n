@@ -3227,6 +3227,11 @@ export class InstanceAiAdapterService {
 				return await appsService.setBindings(app.id, bindings, user);
 			},
 
+			async previewBindings(appId, bindings) {
+				const app = await getAccessibleApp(['app:read'], appId);
+				return await appsService.describeBindings({ projectId: app.projectId, bindings });
+			},
+
 			async getBindings(appId) {
 				const app = await getAccessibleApp(['app:read'], appId);
 				return { ...(await appsService.describeBindings(app)), stored: app.bindings };

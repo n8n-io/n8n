@@ -317,6 +317,42 @@ describe('confirmationRequestPayloadSchema', () => {
 		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
 	});
 
+	it('preserves the app binding details of a bind approval', () => {
+		const payload = makeConfirmation({
+			appBinding: {
+				appId: 'app-1',
+				appName: 'Runner',
+				appNamespace: 'runner',
+				workflowId: 'wf-1',
+				workflowName: 'Echo',
+				key: 'submit',
+				inputSchema: { type: 'object', properties: { message: { type: ['string', 'null'] } } },
+				outputSchema: { type: 'array', items: { type: 'object', additionalProperties: true } },
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('rejects an app binding whose schemas are not objects', () => {
+		const result = confirmationRequestPayloadSchema.safeParse(
+			makeConfirmation({
+				appBinding: {
+					appId: 'app-1',
+					appName: 'Runner',
+					appNamespace: 'runner',
+					workflowId: 'wf-1',
+					workflowName: 'Echo',
+					key: 'submit',
+					inputSchema: 'passthrough',
+					outputSchema: [],
+				},
+			}),
+		);
+
+		expect(result.success).toBe(false);
+	});
+
 	it('requires a credential destination to be an exact HTTP origin', () => {
 		const result = confirmationRequestPayloadSchema.safeParse(
 			makeConfirmation({
