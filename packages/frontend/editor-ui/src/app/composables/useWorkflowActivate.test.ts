@@ -75,10 +75,12 @@ const mockGetWorkflowById = vi.hoisted(() =>
 	vi.fn((_id: string) => ({ activeVersion: null }) as { activeVersion: unknown } | undefined),
 );
 
+const mockFetchWorkflow = vi.hoisted(() => vi.fn());
+
 vi.mock('@/app/stores/workflowsList.store', () => ({
 	useWorkflowsListStore: vi.fn().mockReturnValue({
 		getWorkflowById: mockGetWorkflowById,
-		fetchWorkflow: vi.fn(),
+		fetchWorkflow: mockFetchWorkflow,
 	}),
 }));
 
@@ -166,6 +168,7 @@ describe('useWorkflowActivate', () => {
 		mockDocumentStore.checksum = undefined;
 		otherDocumentStore.hydrated = false;
 		mockGetWorkflowById.mockReturnValue({ activeVersion: null });
+		mockFetchWorkflow.mockResolvedValue(makePublishedWorkflowResponse());
 		mockPushListeners.clear();
 	});
 
@@ -316,12 +319,34 @@ describe('useWorkflowActivate', () => {
 				} as PushMessage);
 
 				expect(await resultPromise).toEqual({ success: true });
-				// The push handler owns the store updates on this path; writing
-				// "publishing" here would regress the status the handler already set.
-				expect(mockSetActiveState).not.toHaveBeenCalled();
+				// The push carries no payload, so the composable refreshes the list
+				// cache and applies the fetched state before reporting success.
+				expect(mockFetchWorkflow).toHaveBeenCalledWith(WORKFLOW_ID);
+				expect(mockSetActiveState).toHaveBeenCalledWith(
+					expect.objectContaining({ activeVersionId: 'av-1' }),
+				);
+				// The push handler already set the terminal publication status;
+				// writing "publishing" here would regress it.
 				expect(mockSetPublicationStatus).not.toHaveBeenCalled();
 			},
 		);
+
+		it('still reports success when the cache refresh after a push confirmation fails', async () => {
+			mockPublishWorkflow.mockReturnValueOnce(new Promise(() => {}));
+			mockFetchWorkflow.mockRejectedValueOnce(new Error('network error'));
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const resultPromise = publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			dispatchPushMessage({
+				type: 'workflowActivated',
+				data: { workflowId: WORKFLOW_ID, activeVersionId: VERSION_ID },
+			});
+
+			expect(await resultPromise).toEqual({ success: true });
+			expect(mockSetActiveState).not.toHaveBeenCalled();
+			expect(mockSetWorkflowInactive).not.toHaveBeenCalled();
+		});
 
 		it('ignores pushes for another workflow or another version', async () => {
 			let resolveRequest!: (value: unknown) => void;

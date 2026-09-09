@@ -141,7 +141,7 @@ export function useWorkflowActivate() {
 			});
 
 			// Race the raw request so a late response cannot change confirmed state.
-			const updatedWorkflow = await Promise.race([
+			const raced = await Promise.race([
 				confirmedByPush,
 				workflowsStore.publishWorkflow(workflowId, {
 					versionId,
@@ -150,8 +150,16 @@ export function useWorkflowActivate() {
 					expectedChecksum,
 				}),
 			]);
+			const confirmedByPushFirst = raced === null;
 
-			if (updatedWorkflow && (!updatedWorkflow.activeVersion || !updatedWorkflow.checksum)) {
+			// The push carries no workflow payload and callers read the list cache as
+			// soon as this resolves, so refresh it before reporting success. Best
+			// effort: the publish is already confirmed.
+			const updatedWorkflow = confirmedByPushFirst
+				? await workflowsListStore.fetchWorkflow(workflowId).catch(() => null)
+				: raced;
+
+			if (!confirmedByPushFirst && (!updatedWorkflow?.activeVersion || !updatedWorkflow.checksum)) {
 				throw new Error('Failed to publish workflow');
 			}
 			if (updatedWorkflow?.activeVersion) {
@@ -161,7 +169,9 @@ export function useWorkflowActivate() {
 					activeVersion: updatedWorkflow.activeVersion,
 				});
 
-				if (useSettingsStore().isWorkflowPublicationServiceEnabled) {
+				// On the push path the publication already completed and the push handler
+				// set its terminal status; writing "publishing" would regress it.
+				if (!confirmedByPushFirst && useSettingsStore().isWorkflowPublicationServiceEnabled) {
 					workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
 				}
 
