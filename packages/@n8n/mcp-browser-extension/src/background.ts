@@ -69,7 +69,14 @@ const RECORDING_TITLE = 'n8n Browser Use — Recording…';
 const RECORDING_BADGE_TEXT = '•';
 const RECORDING_BADGE_COLOR = '#D32F2F';
 
+// Tab lifecycle events call updateBadge() with a fresh tab count throughout a
+// recording (new tab attached, agent tab created, etc.) — this flag makes
+// updateBadge() a no-op while recording so those calls can't stomp the red
+// indicator with the tab-count badge.
+let recordingIndicatorActive = false;
+
 export function updateRecordingIndicator(active: boolean): void {
+	recordingIndicatorActive = active;
 	void chrome.action.setTitle({ title: active ? RECORDING_TITLE : DEFAULT_TITLE });
 	if (active) {
 		void chrome.action.setBadgeText({ text: RECORDING_BADGE_TEXT });
@@ -1232,7 +1239,9 @@ function broadcastStatusChange(): void {
 // Badge
 // ---------------------------------------------------------------------------
 
-function updateBadge(tabCount: number): void {
+export function updateBadge(tabCount: number): void {
+	// The recording indicator takes precedence — don't let a tab-count refresh overwrite it.
+	if (recordingIndicatorActive) return;
 	// A prompt-free connect shows no UI at all, so mark the icon even before any tab attaches.
 	const text = tabCount > 0 ? String(tabCount) : activeConnection ? '•' : '';
 	void chrome.action.setBadgeText({ text });

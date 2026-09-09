@@ -432,6 +432,21 @@ describe('updateRecordingIndicator', () => {
 		expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '' });
 		expect(chromeMock.action.setTitle).toHaveBeenCalledWith({ title: 'n8n Browser Use' });
 	});
+
+	it('ignores a tab-count refresh while recording, so it cannot overwrite the red badge', async () => {
+		const { updateRecordingIndicator, updateBadge } = await import('./background');
+		updateRecordingIndicator(true);
+		vi.clearAllMocks();
+
+		// Simulates a tab attaching/activating mid-recording, which today calls
+		// updateBadge() with the latest tab count.
+		updateBadge(2);
+
+		expect(chromeMock.action.setBadgeText).not.toHaveBeenCalled();
+		expect(chromeMock.action.setBadgeBackgroundColor).not.toHaveBeenCalled();
+
+		updateRecordingIndicator(false); // reset shared module state for later tests
+	});
 });
 
 describe('buildRelayWsUrl', () => {
