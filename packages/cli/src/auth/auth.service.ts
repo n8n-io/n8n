@@ -7,6 +7,7 @@ import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import escapeRegExp from 'lodash/escapeRegExp';
 import type { StringValue as TimeUnitValue } from 'ms';
 
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -37,10 +38,6 @@ interface IssuedJWT extends AuthJwtPayload {
 interface PasswordResetToken {
 	sub: string;
 	hash: string;
-}
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 interface CreateAuthMiddlewareOptions {
@@ -209,6 +206,11 @@ export class AuthService {
 
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
+		// The form page auth cookies (`n8n-form-auth-*`) are NOT cleared here: their
+		// names embed the workflow/execution they were minted for, and this response
+		// can neither read them (they're scoped to the form-waiting path) nor clear a
+		// cookie without naming it exactly. They are httpOnly, expire within an hour,
+		// and a session for a different user overrides them on the form pages.
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {

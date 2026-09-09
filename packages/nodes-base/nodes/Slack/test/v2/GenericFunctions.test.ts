@@ -1397,6 +1397,35 @@ describe('Slack V2 > GenericFunctions', () => {
 				});
 			});
 
+			// A bare Block Kit array (`[ {...} ]`) is what `ensureType: 'object'` yields for a
+			// blocksUi string holding the array without the `{ blocks: [...] }` wrapper. Slack
+			// then gets a body with no `blocks` key and renders nothing, without erroring.
+			it('should drop the blocks when blocksUi is a bare array instead of a blocks object', () => {
+				const mockBlocksUI = [
+					{
+						type: 'section',
+						text: {
+							type: 'mrkdwn',
+							text: 'Hello World',
+						},
+					},
+				];
+
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
+					(param: string, _index: number) => {
+						if (param === 'messageType') return 'block';
+						if (param === 'otherOptions.includeLinkToWorkflow') return false;
+						if (param === 'text') return 'Fallback text';
+						if (param === 'blocksUi') return mockBlocksUI;
+						return undefined;
+					},
+				);
+
+				const result = getMessageContent.call(mockExecuteFunctions, 0, 2.1, 'instance-123');
+
+				expect(result.blocks).toBeUndefined();
+			});
+
 			it('should add text property when text parameter is provided', () => {
 				const mockBlocksUI = {
 					blocks: [],

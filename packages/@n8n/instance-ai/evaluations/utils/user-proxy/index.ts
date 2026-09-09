@@ -1,5 +1,6 @@
 // LLM-backed user simulator for multi-turn workflow evals.
 
+import { credentialSetupHintSchema } from '@n8n/api-types';
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -259,7 +260,7 @@ export class UserProxyLlm {
 			credentialType,
 			undefined,
 			this.createdCredentialNameCounts,
-			{ logger: this.logger },
+			{ logger: this.logger, setupHint: options?.setupHint },
 		);
 		createdCredentialIds?.add(created.id);
 		this.allowlistedCredentialIds = [...this.allowlistedCredentialIds, created.id];
@@ -329,7 +330,14 @@ export class UserProxyLlm {
 			if (!message) return { kind: 'done' };
 			this.messagesSent++;
 			this.actualTranscript.push({ role: 'user', text: message });
-			return { kind: 'followUp', message };
+			// The rename is a side effect the harness performs at this turn boundary,
+			// not something the user says — it stays out of `actualTranscript` so the
+			// judge reads the conversation the agent actually saw.
+			return {
+				kind: 'followUp',
+				message,
+				...(decision.renameWorkflowTo ? { renameWorkflowTo: decision.renameWorkflowTo } : {}),
+			};
 		}
 		if (decision.action !== 'declare_done') {
 			// The user-turn schema offers only the two actions above, so this only
@@ -519,9 +527,17 @@ function extractSetupWizardParseContext(event: CapturedEvent): SetupWizardParseC
 
 		const credentialType = getString(item, 'credentialType');
 		if (credentialType) {
+			// Only httpTemplatedCustomAuth carries a setupHint; every other type's
+			// wire payload simply omits the field, so a failed parse is the norm,
+			// not an error — drop it silently rather than log/throw.
+			const setupHint = credentialSetupHintSchema.safeParse(item.setupHint);
 			existing.credentialRequests = [
 				...existing.credentialRequests,
-				{ credentialType, existingCredentials: extractExistingCredentials(item) },
+				{
+					credentialType,
+					existingCredentials: extractExistingCredentials(item),
+					...(setupHint.success ? { setupHint: setupHint.data } : {}),
+				},
 			];
 		}
 

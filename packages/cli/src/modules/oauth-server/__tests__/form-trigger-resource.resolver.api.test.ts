@@ -82,14 +82,9 @@ const resolveResource = async (webhookPath: string) =>
 	);
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 = 'true'; // gates the form-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
 	formEndpoint = Container.get(GlobalConfig).endpoints.form;
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {
@@ -148,19 +143,6 @@ describe('protected resource metadata for form triggers', () => {
 		const response = await testServer.restlessAgent.get(prmPathFor(randomUUID()));
 
 		expect(response.statusCode).toBe(404);
-	});
-
-	test('should not resolve when the feature flag is disabled', async () => {
-		const webhookPath = randomUUID();
-		await createPublishedFormWorkflow(webhookPath, formTriggerNode());
-
-		delete process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2;
-		try {
-			const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
-			expect(response.statusCode).toBe(404);
-		} finally {
-			process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 = 'true';
-		}
 	});
 
 	test('should not resolve a non-form path even if the webhook exists', async () => {
@@ -333,7 +315,14 @@ describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () =>
 			tokenEndpointAuthMethod: 'none',
 		});
 		const pair = tokenService.generateTokenPair(userId, clientId, resourceUrl, []);
-		await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, userId, []);
+		await tokenService.saveTokenPair(
+			pair.accessToken,
+			pair.refreshToken,
+			clientId,
+			userId,
+			[],
+			pair.audience,
+		);
 		return pair.accessToken;
 	};
 

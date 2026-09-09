@@ -16,12 +16,19 @@ export function pillColors(
 		case 'tool':
 			return { backgroundColor: 'var(--color--green-200)', color: 'var(--color--green-950)' };
 		case 'workflow':
-			return { backgroundColor: 'var(--color--orange-200)', color: 'var(--color--orange-950)' };
+			return { backgroundColor: 'var(--color--pink-200)', color: 'var(--color--pink-950)' };
 		case 'node':
 			return { backgroundColor: 'var(--color--neutral-200)', color: 'var(--color--neutral-950)' };
+		case 'execution-error':
+			return {
+				backgroundColor: 'var(--color--red-150)',
+				color: 'var(--text-color--danger)',
+			};
 		case 'suspension':
 		case 'idle':
 			return { backgroundColor: 'var(--color--yellow-200)', color: 'var(--color--yellow-950)' };
+		case 'hitl-response':
+			return { backgroundColor: 'var(--color--blue-200)', color: 'var(--color--blue-950)' };
 		default:
 			return { backgroundColor: 'var(--color--neutral-200)', color: 'var(--color--neutral-950)' };
 	}

@@ -79,6 +79,7 @@ describe('OAuthConsentService', () => {
 			const client = mock<OAuthClient>({
 				id: 'client-123',
 				name: 'Test Client',
+				isFirstParty: false,
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
@@ -93,12 +94,33 @@ describe('OAuthConsentService', () => {
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
 				previousScopes: undefined,
+				isFirstParty: false,
 			});
 			expect(oauthSessionService.verifySession).toHaveBeenCalledWith(sessionToken);
 			expect(oauthClientRepository.findOne).toHaveBeenCalledWith({
 				where: { id: 'client-123' },
 			});
 			expect(protectedResourceRegistry.getByResourceUrl).not.toHaveBeenCalled();
+		});
+
+		it('should refuse a resource-less request when the default resource is unavailable', async () => {
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: 'state',
+			};
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(mock<OAuthClient>({ id: 'client-123' }));
+			protectedResourceRegistry.getDefaultResource.mockReturnValue({
+				scopes: INSTANCE_SCOPES,
+				authorize: async () => false,
+			} as unknown as ProtectedResource);
+
+			const result = await service.getConsentDetails('token', mock<User>({ id: 'user-1' }));
+
+			expect(result).toEqual({ ok: false, reason: 'forbidden' });
 		});
 
 		it('should return null when client not found', async () => {
@@ -144,6 +166,7 @@ describe('OAuthConsentService', () => {
 			const client = mock<OAuthClient>({
 				id: 'client-123',
 				name: 'Test Client',
+				isFirstParty: false,
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
@@ -158,6 +181,7 @@ describe('OAuthConsentService', () => {
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
 				previousScopes: undefined,
+				isFirstParty: false,
 			});
 		});
 
@@ -176,6 +200,7 @@ describe('OAuthConsentService', () => {
 			oauthClientRepository.findOne.mockResolvedValue(client);
 			protectedResourceRegistry.getDefaultResource.mockReturnValue({
 				scopes: INSTANCE_SCOPES,
+				authorize: async () => true,
 				getScopeTools: () => scopeTools,
 			} as unknown as ProtectedResource);
 
@@ -241,7 +266,11 @@ describe('OAuthConsentService', () => {
 				state: null,
 				resource: 'https://n8n.example.com/mcp/wf-123',
 			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+			const client = mock<OAuthClient>({
+				id: 'client-123',
+				name: 'Test Client',
+				isFirstParty: false,
+			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
@@ -261,6 +290,7 @@ describe('OAuthConsentService', () => {
 				redirectUri: 'https://example.com/callback',
 				scopes: [],
 				previousScopes: undefined,
+				isFirstParty: false,
 			});
 			expect(protectedResourceRegistry.getByResourceUrl).toHaveBeenCalledWith(
 				'https://n8n.example.com/mcp/wf-123',
@@ -276,7 +306,11 @@ describe('OAuthConsentService', () => {
 				state: null,
 				resource: 'https://n8n.example.com/mcp-server/http',
 			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+			const client = mock<OAuthClient>({
+				id: 'client-123',
+				name: 'Test Client',
+				isFirstParty: false,
+			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
@@ -297,7 +331,70 @@ describe('OAuthConsentService', () => {
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
 				previousScopes: undefined,
+				isFirstParty: false,
 			});
+		});
+
+		it('should forward the resource uiHints and a first-party client flag', async () => {
+			const sessionToken = 'valid-session-token';
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: null,
+				resource: 'https://n8n.example.com/form/wf-123',
+			};
+			const client = mock<OAuthClient>({
+				id: 'client-123',
+				name: 'Test Client',
+				isFirstParty: true,
+			});
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				displayName: 'My Form',
+				scopes: [],
+				uiHints: { icon: 'square-pen', consentType: 'form' },
+				authorize: async () => true,
+			} as unknown as ProtectedResource);
+
+			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
+
+			expect(result).toMatchObject({
+				ok: true,
+				isFirstParty: true,
+				uiHints: { icon: 'square-pen', consentType: 'form' },
+			});
+		});
+
+		it('should report a non-first-party client and omit uiHints when the resource has none', async () => {
+			const sessionToken = 'valid-session-token';
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: null,
+				resource: 'https://n8n.example.com/mcp/wf-123',
+			};
+			const client = mock<OAuthClient>({
+				id: 'client-123',
+				name: 'Test Client',
+				isFirstParty: false,
+			});
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				displayName: 'My Workflow',
+				scopes: [],
+				authorize: async () => true,
+			} as unknown as ProtectedResource);
+
+			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
+
+			expect(result).toMatchObject({ ok: true, isFirstParty: false });
+			expect((result as { uiHints?: unknown }).uiHints).toBeUndefined();
 		});
 
 		it('should report resource_unavailable when the resource cannot be resolved', async () => {
@@ -351,6 +448,51 @@ describe('OAuthConsentService', () => {
 				userId: 'user-123',
 			});
 			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+		});
+
+		it('should not mint a code for a resource-less request when the default resource is unavailable', async () => {
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: 'state-xyz',
+			};
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			protectedResourceRegistry.getDefaultResource.mockReturnValue({
+				scopes: INSTANCE_SCOPES,
+				authorize: async () => false,
+				getResourceUrl: () => 'https://n8n.example.com/mcp-server/http',
+			} as unknown as ProtectedResource);
+
+			await expect(
+				service.handleConsentDecision('token', mock<User>({ id: 'user-123' }), true),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+		});
+
+		it('should mint a code for a resource-less request when the default resource is available', async () => {
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: 'state-xyz',
+			};
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			userConsentRepository.upsert.mockResolvedValue(mock());
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue('generated-auth-code');
+
+			const result = await service.handleConsentDecision(
+				'token',
+				mock<User>({ id: 'user-123' }),
+				true,
+				INSTANCE_SCOPES,
+			);
+
+			expect(result.redirectUrl).toContain('code=generated-auth-code');
 		});
 
 		it('should handle user approval and generate authorization code', async () => {
@@ -618,6 +760,100 @@ describe('OAuthConsentService', () => {
 
 			expect(result.redirectUrl).toContain('error=access_denied');
 			expect(result.redirectUrl).not.toContain('state=');
+		});
+	});
+
+	describe('tryReuseConsent', () => {
+		const sessionPayload = {
+			clientId: 'https://n8n.example.com/form/abc',
+			redirectUri: 'https://n8n.example.com/form/abc',
+			codeChallenge: 'challenge-abc',
+			state: 'state-xyz',
+			resource: 'https://n8n.example.com/form/abc',
+		};
+
+		// Form triggers grant `[]` (full delegation), so an existing row is the whole answer.
+		const formResource = {
+			isFirstParty: true,
+			scopes: [],
+			authorize: async () => true,
+		} as unknown as ProtectedResource;
+
+		it('mints a code and redirects when a prior grant covers the request', async () => {
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(formResource);
+			userConsentRepository.findOne.mockResolvedValue({ scope: [] } as unknown as UserConsent);
+			userConsentRepository.upsert.mockResolvedValue(mock());
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue('reused-code');
+
+			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
+
+			expect(result?.redirectUrl).toContain('code=reused-code');
+			expect(result?.redirectUrl).toContain('state=state-xyz');
+			expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
+				sessionPayload.clientId,
+				'user-1',
+				sessionPayload.redirectUri,
+				sessionPayload.codeChallenge,
+				sessionPayload.state,
+				sessionPayload.resource,
+				[],
+			);
+		});
+
+		it('returns null when the user has no prior consent', async () => {
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(formResource);
+			userConsentRepository.findOne.mockResolvedValue(null);
+
+			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
+
+			expect(result).toBeNull();
+			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+		});
+
+		it('returns null when the user is no longer authorized for the resource', async () => {
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				isFirstParty: true,
+				scopes: [],
+				authorize: async () => false,
+			} as unknown as ProtectedResource);
+			userConsentRepository.findOne.mockResolvedValue({ scope: [] } as unknown as UserConsent);
+
+			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
+
+			expect(result).toBeNull();
+			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+		});
+
+		it('returns null for a non-first-party resource without looking up consent', async () => {
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				isFirstParty: false,
+				scopes: [],
+				authorize: async () => true,
+			} as unknown as ProtectedResource);
+
+			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
+
+			expect(result).toBeNull();
+			expect(userConsentRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it('returns null when the request needs a scope the prior grant does not cover', async () => {
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				isFirstParty: true,
+				scopes: ['workflow:read', 'workflow:write'],
+				authorize: async () => true,
+			} as unknown as ProtectedResource);
+			userConsentRepository.findOne.mockResolvedValue({
+				scope: ['workflow:read'],
+			} as unknown as UserConsent);
+
+			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), {
+				...sessionPayload,
+				requestedScopes: ['workflow:write'],
+			});
+
+			expect(result).toBeNull();
+			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
 		});
 	});
 });

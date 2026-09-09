@@ -2,13 +2,24 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
+
+export type ModelCatalogPolicy = 'curated' | 'endpoint-only' | 'managed';
+
+export type LiveModelLookupResult =
+	| {
+			status: 'success';
+			models: Array<{ name: string; value: string }>;
+			policy: ModelCatalogPolicy;
+	  }
+	| { status: 'unavailable'; error: unknown; policy: ModelCatalogPolicy };
 
 /**
  * Fetches a provider's live chat-model list for a credential, via the shared
@@ -23,7 +34,7 @@ import { mapCredentialForProvider } from '../json-config/credential-field-mappin
 export class BuilderModelLiveLookupService {
 	constructor(
 		private readonly credentialsService: CredentialsService,
-		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly credentialsHelper: CredentialsHelper,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
 	) {}
@@ -42,10 +53,20 @@ export class BuilderModelLiveLookupService {
 		credentialType: string,
 		provider: string,
 	): Promise<Array<{ name: string; value: string }>> {
-		// n8n Connect managed slot: there is no stored credential to decrypt —
-		// resolve the synthetic gateway credential instead, then discover as usual.
+		const result = await this.lookup(user, projectId, credentialId, credentialType, provider);
+		if (result.status === 'unavailable') throw result.error;
+		return result.models;
+	}
+
+	async lookup(
+		user: User,
+		projectId: string,
+		credentialId: string,
+		credentialType: string,
+		provider: string,
+	): Promise<LiveModelLookupResult> {
 		if (credentialId === AI_GATEWAY_MANAGED_TAG) {
-			return await this.listAiGatewayManagedModels(projectId, provider, user);
+			return await this.lookupAiGatewayManagedModels(projectId, provider, user);
 		}
 
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
@@ -57,65 +78,142 @@ export class BuilderModelLiveLookupService {
 			throw new Error(`Credential ${credentialId} not found or not accessible`);
 		}
 
-		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
-		if (!credential) {
-			throw new Error(`Credential ${credentialId} not found or not accessible`);
-		}
-		const rawData = await this.credentialsService.decrypt(credential, true);
+		const credentialData = await this.decryptWithExpressions(usable, projectId, user);
 
-		return await this.discoverModels(provider, rawData);
+		return await this.discoverModels(provider, credentialData);
 	}
 
 	/**
-	 * Lists the chat models n8n Connect (AI Gateway) allows for a provider, via
-	 * the synthetic gateway credential — discovery hits the gateway's `/models`,
-	 * already filtered to the allowlist. Throws if the gateway does not serve it.
+	 * Decrypt the way node execution does, so credential defaults are applied and
+	 * expressions resolved. A base URL computed from sibling fields (region,
+	 * workspace) is otherwise absent or still literal expression text.
+	 *
+	 * There is no workflow or execution here, so `additionalData` comes from
+	 * `getBase()` and the mode is `internal` — which skips dynamic-credential
+	 * resolution, leaving a per-user credential on its static stored data. Same
+	 * as `AgentsCredentialProvider`.
 	 */
-	private async listAiGatewayManagedModels(
+	private async decryptWithExpressions(
+		credential: { id: string; name: string; type: string },
+		projectId: string,
+		user: User,
+	): Promise<ICredentialDataDecryptedObject> {
+		// Imported lazily: pulls in the execution stack, and model lookup is not on
+		// every request.
+		const { getBase } = await import('@/workflow-execute-additional-data.js');
+		const additionalData = await getBase({ userId: user.id, projectId });
+
+		return await this.credentialsHelper.getDecrypted(
+			additionalData,
+			{ id: credential.id, name: credential.name },
+			credential.type,
+			'internal',
+		);
+	}
+
+	/**
+	 * Looks up the chat models n8n Connect (AI Gateway) allows for a provider.
+	 * Gateway resolution or discovery failures are returned as managed-policy
+	 * unavailability so `list` can preserve its throwing behavior.
+	 */
+	private async lookupAiGatewayManagedModels(
 		projectId: string,
 		provider: string,
 		user?: User,
-	): Promise<Array<{ name: string; value: string }>> {
-		const credentialType = await this.aiGatewayService.getCredentialTypeForProvider(provider);
-		if (!credentialType) {
-			throw new Error(`n8n credits does not support the "${provider}" model provider`);
+	): Promise<LiveModelLookupResult> {
+		try {
+			const credentialType = await this.aiGatewayService.getCredentialTypeForProvider(provider);
+			if (!credentialType) {
+				throw new Error(`Gateway credits do not support the "${provider}" model provider`);
+			}
+			const raw = await this.aiGatewayService.getSyntheticCredential({
+				credentialType,
+				userId: user?.id,
+				projectId,
+			});
+			return await this.discoverModels(provider, raw, 'managed');
+		} catch (error) {
+			return { status: 'unavailable', error, policy: 'managed' };
 		}
-		const raw = await this.aiGatewayService.getSyntheticCredential({
-			credentialType,
-			userId: user?.id,
-			projectId,
-		});
-		return await this.discoverModels(provider, raw);
 	}
 
 	/**
-	 * Runs provider model discovery against a raw credential record (real or the
-	 * gateway synthetic credential), returning `{ name, value }` pairs.
+	 * Runs provider model discovery against a resolved credential record (a
+	 * decrypted stored credential or the gateway synthetic credential),
+	 * preserving the applicable catalog policy.
 	 */
 	private async discoverModels(
 		provider: string,
 		rawData: object,
-	): Promise<Array<{ name: string; value: string }>> {
-		const { listModelsForProvider } = await import('@n8n/ai-utilities/model-discovery');
-		const mapped = mapCredentialForProvider(provider, { apiKey: '', ...rawData });
+		policyOverride?: ModelCatalogPolicy,
+	): Promise<LiveModelLookupResult> {
+		const { isOpenAiCustomEndpoint, listModelsForProvider } = await import(
+			'@n8n/ai-utilities/model-discovery'
+		);
+		const credentialData: Record<string, unknown> = { apiKey: '', ...rawData };
+		const mapped = mapCredentialForProvider(provider, credentialData);
 		const apiKey = typeof mapped.apiKey === 'string' ? mapped.apiKey : '';
 		const baseURL =
 			typeof mapped.baseURL === 'string' && mapped.baseURL ? mapped.baseURL : undefined;
+		const policy =
+			policyOverride ??
+			(provider === 'openai' && isOpenAiCustomEndpoint(baseURL) ? 'endpoint-only' : 'curated');
+		const headers = this.getOpenAiHeaders(provider, credentialData);
 
-		const models = await listModelsForProvider(provider, {
-			apiKey,
-			baseURL,
-			fetch: createAiProxyFetch(this.outboundHttp) as typeof globalThis.fetch,
-		});
+		try {
+			const models = await listModelsForProvider(provider, {
+				apiKey,
+				baseURL,
+				fetch: createAiProxyFetch(this.outboundHttp) as typeof globalThis.fetch,
+				...(headers ? { headers } : {}),
+			});
 
-		// Every supported chat provider offers models, so an empty list means a
-		// broken request or a drifted response shape, not a zero-model account.
-		// Throw so callers fall back (unverified catalog / lookup-failed) instead
-		// of treating "nothing" as a verified answer and pruning every model.
-		if (models.length === 0) {
-			throw new Error(`Provider ${provider} returned no models`);
+			// Every supported chat provider offers models, so an empty list means a
+			// broken request or a drifted response shape, not a zero-model account.
+			if (models.length === 0) {
+				throw new Error(`Provider ${provider} returned no models`);
+			}
+
+			return {
+				status: 'success',
+				models: models.map((model) => ({ name: model.name, value: model.id })),
+				policy,
+			};
+		} catch (error) {
+			return { status: 'unavailable', error, policy };
+		}
+	}
+
+	private getOpenAiHeaders(
+		provider: string,
+		credentialData: Record<string, unknown>,
+	): Record<string, string> | undefined {
+		if (provider !== 'openai') return undefined;
+
+		const headers: Record<string, string> = {};
+		if (
+			typeof credentialData.organizationId === 'string' &&
+			credentialData.organizationId.length > 0
+		) {
+			headers['OpenAI-Organization'] = credentialData.organizationId;
 		}
 
-		return models.map((model) => ({ name: model.name, value: model.id }));
+		if (
+			credentialData.header === true &&
+			typeof credentialData.headerName === 'string' &&
+			credentialData.headerName.length > 0 &&
+			typeof credentialData.headerValue === 'string'
+		) {
+			const normalizedName = credentialData.headerName.toLowerCase();
+			const headerName =
+				normalizedName === 'authorization'
+					? 'Authorization'
+					: normalizedName === 'openai-organization'
+						? 'OpenAI-Organization'
+						: credentialData.headerName;
+			headers[headerName] = credentialData.headerValue;
+		}
+
+		return Object.keys(headers).length > 0 ? headers : undefined;
 	}
 }

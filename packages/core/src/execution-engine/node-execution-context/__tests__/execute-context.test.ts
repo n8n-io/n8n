@@ -11,7 +11,9 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	ExecuteAgentInvocationContext,
 	WorkflowExpression,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
@@ -21,11 +23,13 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
 import * as validateUtil from '../utils/validate-value-against-schema';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 describe('ExecuteContext', () => {
 	const testCredentialType = 'testCredential';
@@ -447,6 +451,40 @@ describe('ExecuteContext', () => {
 			[closeFn],
 			abortSignal,
 		);
+		const createStreamingAgentContext = (
+			contextRunIndex = runIndex,
+			contextInputData = inputData,
+		) => {
+			const hooks = new ExecutionLifecycleHooks('manual', 'exec-1', mock<IWorkflowBase>());
+			const sendChunkHandler = vi.fn();
+			hooks.addHandler('sendChunk', sendChunkHandler);
+			const executeAgentMock = vi.fn().mockResolvedValue({ response: 'ok' });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				hooks,
+				rootExecutionMode: undefined,
+				streamingEnabled: true,
+			});
+			additionalData.executeAgent =
+				executeAgentMock as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			return {
+				context: new ExecuteContext(
+					agentWorkflow,
+					node,
+					additionalData,
+					'manual',
+					runExecutionData,
+					contextRunIndex,
+					connectionInputData,
+					contextInputData,
+					executeData,
+					[closeFn],
+					abortSignal,
+				),
+				executeAgentMock,
+				sendChunkHandler,
+			};
+		};
 
 		it('passes the workflow context to additionalData.executeAgent', async () => {
 			agentAdditionalData.executeAgent = vi
@@ -464,7 +502,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				agentAdditionalData,
 				'manual',
 				undefined,
@@ -483,7 +521,75 @@ describe('ExecuteContext', () => {
 					],
 					runExecutionData,
 				},
+				{
+					nodeId: node.id,
+					nodeName: node.name,
+					runIndex,
+					itemIndex: 0,
+				},
 			);
+		});
+
+		it('passes a response chunk callback when workflow streaming is available', async () => {
+			const { context, executeAgentMock, sendChunkHandler } = createStreamingAgentContext(2, {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			});
+
+			await context.executeAgent({ agentId: 'agent-1' }, 'hello', 'exec-1', 1);
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+
+			expect(invocationContext).toMatchObject({
+				nodeId: node.id,
+				nodeName: node.name,
+				runIndex: 2,
+				itemIndex: 1,
+				sendResponseChunk: expect.any(Function),
+			});
+
+			await invocationContext.sendResponseChunk?.('item', 'partial');
+
+			expect(sendChunkHandler).toHaveBeenCalledWith({
+				type: 'item',
+				content: 'partial',
+				metadata: {
+					nodeId: node.id,
+					nodeName: node.name,
+					runIndex: 2,
+					itemIndex: 1,
+					timestamp: expect.any(Number),
+				},
+			});
+		});
+
+		it('omits the response chunk callback when structured output is configured', async () => {
+			const { context, executeAgentMock } = createStreamingAgentContext();
+
+			await context.executeAgent(
+				{ agentId: 'agent-1', outputSchema: { type: 'object' } },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
+		});
+
+		it('omits the response chunk callback when agent streaming is disabled', async () => {
+			const { context, executeAgentMock } = createStreamingAgentContext();
+
+			await context.executeAgent(
+				{ agentId: 'agent-1', enableStreaming: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
 		});
 
 		it('passes all input items when inputDataScope is all', async () => {
@@ -502,7 +608,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				agentAdditionalData,
 				'manual',
 				undefined,
@@ -511,6 +617,7 @@ describe('ExecuteContext', () => {
 					inputDataScope: 'all',
 					exposeWorkflowData: true,
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -550,11 +657,12 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-1',
+				expect.stringMatching(UUID_PATTERN),
 				twoItemAdditionalData,
 				'manual',
 				undefined,
 				expect.objectContaining({ inputData: [{ json: { idx: 1 } }], inputDataScope: 'item' }),
+				expect.objectContaining({ itemIndex: 1, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -594,7 +702,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				twoItemAdditionalData,
 				'manual',
 				undefined,
@@ -602,6 +710,7 @@ describe('ExecuteContext', () => {
 					inputData: [{ json: { idx: 0 } }, { json: { idx: 1 } }],
 					inputDataScope: 'all',
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -641,7 +750,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				multiBranchAdditionalData,
 				'manual',
 				undefined,
@@ -649,6 +758,7 @@ describe('ExecuteContext', () => {
 					inputData: [{ json: { branch: 0 } }, { json: { branch: 2 } }],
 					inputDataScope: 'all',
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -688,11 +798,12 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-5',
+				expect.stringMatching(UUID_PATTERN),
 				outOfRangeAdditionalData,
 				'manual',
 				undefined,
 				expect.objectContaining({ inputData: [], inputDataScope: 'item' }),
+				expect.objectContaining({ itemIndex: 5, nodeId: node.id, runIndex }),
 			);
 		});
 	});

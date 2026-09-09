@@ -134,6 +134,7 @@ function toExportableWorkflow(
 	return {
 		id: wf.id,
 		name: wf.name,
+		description: wf.description ?? null,
 		connections: wf.connections,
 		isArchived: wf.isArchived,
 		nodes: wf.nodes,

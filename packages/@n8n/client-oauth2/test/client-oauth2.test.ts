@@ -296,7 +296,7 @@ describe('ClientOAuth2', () => {
 				expect(httpsAgent.options.rejectUnauthorized).toBe(false);
 			});
 
-			it('should route through an https proxy agent with relaxed TLS when HTTPS_PROXY is set', async () => {
+			it('should route through an https proxy agent when HTTPS_PROXY is set', async () => {
 				process.env.HTTPS_PROXY = 'http://fake-proxy.example';
 
 				const axiosSpy = vi.spyOn(axios, 'request').mockResolvedValue({
@@ -313,7 +313,9 @@ describe('ClientOAuth2', () => {
 				const requestConfig = axiosSpy.mock.calls[0][0];
 				const httpsAgent = requestConfig.httpsAgent as HttpsProxyAgent<string>;
 				expect(httpsAgent).toBeInstanceOf(HttpsProxyAgent);
-				expect(httpsAgent.connectOpts.rejectUnauthorized).toBe(false);
+				// 'Ignore SSL issues' relaxes the tunnelled session to the target; the
+				// proxy is a different peer and keeps its certificate verified.
+				expect(httpsAgent.connectOpts.rejectUnauthorized).toBeUndefined();
 				// The ignore-SSL branch must keep axios's own proxy handling disabled
 				// so routing stays with our agent, not double-proxied.
 				expect(requestConfig.proxy).toBe(false);
@@ -342,9 +344,59 @@ describe('ClientOAuth2', () => {
 				expect(httpsAgent).not.toBeInstanceOf(HttpsProxyAgent);
 				expect(httpsAgent.options.rejectUnauthorized).toBe(false);
 			});
+		});
 
-			it('should not set an httpsAgent when ignoreSSLIssues is false, leaving the global proxy agent in place', async () => {
+		describe('env proxy for standard requests', () => {
+			const PROXY_ENV_VARS = ['HTTPS_PROXY', 'https_proxy', 'NO_PROXY', 'no_proxy'] as const;
+			let savedProxyEnv: Record<string, string | undefined>;
+
+			beforeEach(() => {
+				savedProxyEnv = {};
+				for (const key of PROXY_ENV_VARS) {
+					savedProxyEnv[key] = process.env[key];
+					delete process.env[key];
+				}
+			});
+
+			afterEach(() => {
+				for (const key of PROXY_ENV_VARS) {
+					if (savedProxyEnv[key] === undefined) {
+						delete process.env[key];
+					} else {
+						process.env[key] = savedProxyEnv[key];
+					}
+				}
+				vi.restoreAllMocks();
+			});
+
+			it('should route through an https proxy agent when HTTPS_PROXY is set', async () => {
 				process.env.HTTPS_PROXY = 'http://fake-proxy.example';
+
+				const axiosSpy = vi.spyOn(axios, 'request').mockResolvedValue({
+					status: 200,
+					headers: { contentType: 'application/json' },
+					data: JSON.stringify({
+						access_token: config.accessToken,
+						refresh_token: config.refreshToken,
+					}),
+				});
+
+				await makeTokenCall();
+
+				const requestConfig = axiosSpy.mock.calls[0][0];
+				const httpsAgent = requestConfig.httpsAgent as HttpsProxyAgent<string>;
+				expect(httpsAgent).toBeInstanceOf(HttpsProxyAgent);
+				// TLS verification of the target stays on for standard requests.
+				expect(httpsAgent.connectOpts.rejectUnauthorized).toBeUndefined();
+				const httpAgent = requestConfig.httpAgent as { proxy?: URL };
+				expect(httpAgent.proxy?.href).toBe('http://fake-proxy.example/');
+				expect(requestConfig.proxy).toBe(false);
+				expect(requestConfig.timeout).toBe(300_000);
+			});
+
+			it('should honor NO_PROXY and leave agents unset for excluded targets', async () => {
+				process.env.HTTPS_PROXY = 'http://fake-proxy.example';
+				process.env.NO_PROXY = new URL(config.baseUrl).hostname;
 
 				mockTokenResponse({
 					status: 200,
@@ -357,20 +409,30 @@ describe('ClientOAuth2', () => {
 
 				const axiosSpy = vi.spyOn(axios, 'request');
 
-				await client.accessTokenRequest({
-					url: config.accessTokenUri,
-					method: 'POST',
-					headers: {
-						authorization: authHeader,
-						accept: 'application/json',
-						contentType: 'application/x-www-form-urlencoded',
-					},
-					body: { refresh_token: 'test', grant_type: 'refresh_token' },
-					ignoreSSLIssues: false,
-				});
+				await makeTokenCall();
 
 				const requestConfig = axiosSpy.mock.calls[0][0];
 				expect(requestConfig.httpsAgent).toBeUndefined();
+				expect(requestConfig.httpAgent).toBeUndefined();
+			});
+
+			it('should leave agents unset when no proxy is configured', async () => {
+				mockTokenResponse({
+					status: 200,
+					headers: { contentType: 'application/json' },
+					body: JSON.stringify({
+						access_token: config.accessToken,
+						refresh_token: config.refreshToken,
+					}),
+				});
+
+				const axiosSpy = vi.spyOn(axios, 'request');
+
+				await makeTokenCall();
+
+				const requestConfig = axiosSpy.mock.calls[0][0];
+				expect(requestConfig.httpsAgent).toBeUndefined();
+				expect(requestConfig.httpAgent).toBeUndefined();
 				expect(requestConfig.proxy).toBe(false);
 			});
 		});
@@ -511,14 +573,14 @@ describe('ClientOAuth2', () => {
 					// The lookup would resolve the proxy, not the target, so the target policy
 					// must not be applied to it — the proxy reaches the target on our behalf.
 					expect(ssrfBridge.createSecureLookup).not.toHaveBeenCalled();
-					const requestConfig = axiosSpy.mock.calls[0][0];
-					expect(requestConfig.httpAgent).toBeUndefined();
-					expect(requestConfig.httpsAgent).toBeUndefined();
+					const httpsAgent = axiosSpy.mock.calls[0][0].httpsAgent as HttpsProxyAgent<string>;
+					expect(httpsAgent).toBeInstanceOf(HttpsProxyAgent);
+					expect(httpsAgent.connectOpts.lookup).toBeUndefined();
 					// The pre-flight check on the target still runs.
 					expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL(config.accessTokenUri));
 				});
 
-				it('should relax TLS through the proxy agent without a lookup when ignoreSSLIssues is set', async () => {
+				it('should route through the proxy agent without a lookup when ignoreSSLIssues is set', async () => {
 					process.env.HTTPS_PROXY = 'http://fake-proxy.example';
 					const ssrfBridge = makeSsrfBridge();
 					const axiosSpy = proxiedTokenResponse();
@@ -527,7 +589,7 @@ describe('ClientOAuth2', () => {
 
 					const httpsAgent = axiosSpy.mock.calls[0][0].httpsAgent as HttpsProxyAgent<string>;
 					expect(httpsAgent).toBeInstanceOf(HttpsProxyAgent);
-					expect(httpsAgent.connectOpts.rejectUnauthorized).toBe(false);
+					expect(httpsAgent.connectOpts.rejectUnauthorized).toBeUndefined();
 					expect(httpsAgent.connectOpts.lookup).toBeUndefined();
 				});
 

@@ -30,7 +30,7 @@ get:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 post:
   x-eov-operation-id: addUsersToProject
-  x-required-scope: project:update
+  x-required-scope: project:manageMembers
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
     - Projects

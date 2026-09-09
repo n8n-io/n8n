@@ -1,3 +1,4 @@
+import { DynamicStructuredTool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository, Project } from '@n8n/db';
@@ -8,7 +9,7 @@ import type {
 	BinaryDataService,
 	InstanceSettings,
 } from 'n8n-core';
-import { ExternalSecretsProxy } from 'n8n-core';
+import { ExternalSecretsProxy, StructuredToolkit } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
 import {
 	type IPinData,
@@ -16,6 +17,7 @@ import {
 	type ISupplyDataFunctions,
 	type ITaskData,
 	type IDataObject,
+	type INodeExecutionData,
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
 	NodeConnectionTypes,
@@ -28,6 +30,7 @@ import {
 } from 'n8n-workflow';
 import type { Mock, MockedClass, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -215,6 +218,45 @@ describe('JobProcessor', () => {
 			);
 		},
 	);
+
+	it('should remove the running job entry when the workflow run rejects', async () => {
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				mode: 'manual',
+				workflowData: { nodes: [], staticData: {} },
+				data: mock<IRunExecutionData>({
+					executionData: undefined,
+				}),
+			}),
+		);
+
+		const manualExecutionService = mock<ManualExecutionService>();
+		manualExecutionService.runManually.mockReturnValue(
+			Promise.reject(new Error('workflow run rejected')) as ReturnType<
+				ManualExecutionService['runManually']
+			>,
+		);
+
+		const jobProcessor = new JobProcessor(
+			logger,
+			mock<ExecutionRepository>(),
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		const job = mock<Job>({ id: 'job-1' });
+
+		await expect(jobProcessor.processJob(job)).rejects.toThrow('workflow run rejected');
+
+		expect(jobProcessor.getRunningJobIds()).toEqual([]);
+	});
 
 	it('should send job-finished with success=false when execution has errors', async () => {
 		const executionRepository = mock<ExecutionRepository>();
@@ -1264,6 +1306,284 @@ describe('JobProcessor', () => {
 				response: unknown;
 			};
 			expect(lastResponse.response).toBe('supply data tool result');
+		});
+
+		describe('MCP toolkit execution on the worker', () => {
+			const toolNode = {
+				name: 'Remote Tools',
+				type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+				typeVersion: 1.4,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+
+			const setupToolkitJob = (toolName: string) => {
+				const firstCall = vi.fn().mockResolvedValue('first result');
+				const secondCall = vi.fn().mockResolvedValue('second result');
+				const closeFunction = vi.fn().mockResolvedValue(undefined);
+				const toolkit = new StructuredToolkit(
+					[firstCall, secondCall].map(
+						(func, index) =>
+							new DynamicStructuredTool({
+								name: `Remote_Tools_${index === 0 ? 'first' : 'second'}`,
+								description: 'Search remote data',
+								schema: z.object({ query: z.string() }),
+								func,
+							}),
+					),
+				);
+
+				const executionPersistence = mock<ExecutionPersistence>();
+				executionPersistence.findSingleExecution.mockResolvedValue(
+					mock<IExecutionResponse>({
+						mode: 'trigger',
+						status: 'success',
+						workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+						data: mock<IRunExecutionData>({ executionData: undefined }),
+					}),
+				);
+
+				const nodeTypes = mock<NodeTypes>();
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						name: 'mcpClientTool',
+						outputs: [NodeConnectionTypes.AiTool],
+						properties: [],
+					},
+					supplyData: vi.fn().mockResolvedValue({ response: toolkit, closeFunction }),
+				} as never);
+
+				const jobProcessor = new JobProcessor(
+					logger,
+					mock(),
+					executionPersistence,
+					mock(),
+					nodeTypes,
+					mock<InstanceSettings>({ hostId: 'worker-host-123' }),
+					createManualExecutionServiceMock(),
+					executionsConfig,
+					mock(),
+					mock(),
+				);
+
+				const job = mock<Job>();
+				job.data = {
+					workflowId: 'wf-1',
+					executionId: 'exec-mcp-toolkit',
+					loadStaticData: false,
+					isMcpExecution: true,
+					mcpType: 'trigger',
+					mcpSessionId: 'session-toolkit',
+					mcpMessageId: 'msg-toolkit',
+					mcpToolCall: {
+						toolName,
+						arguments: { query: 'test' },
+						sourceNodeName: toolNode.name,
+					},
+				};
+
+				return { jobProcessor, job, firstCall, secondCall, closeFunction };
+			};
+
+			it('should invoke only the requested toolkit member and close the connection', async () => {
+				const { jobProcessor, job, firstCall, secondCall, closeFunction } =
+					setupToolkitJob('Remote_Tools_second');
+
+				await jobProcessor.processJob(job);
+
+				expect(firstCall).not.toHaveBeenCalled();
+				expect(secondCall).toHaveBeenCalledTimes(1);
+				expect(secondCall.mock.calls[0][0]).toEqual({ query: 'test' });
+				expect(job.progress).toHaveBeenCalledWith(
+					expect.objectContaining({ kind: 'mcp-response', response: 'second result' }),
+				);
+				expect(closeFunction).toHaveBeenCalledTimes(1);
+			});
+
+			it('should report an unknown member and close the connection without invoking a tool', async () => {
+				const { jobProcessor, job, firstCall, secondCall, closeFunction } =
+					setupToolkitJob('Remote_Tools_missing');
+
+				await jobProcessor.processJob(job);
+
+				expect(firstCall).not.toHaveBeenCalled();
+				expect(secondCall).not.toHaveBeenCalled();
+				expect(job.progress).toHaveBeenCalledWith(
+					expect.objectContaining({
+						kind: 'mcp-response',
+						response: {
+							error: expect.objectContaining({
+								message:
+									'Tool "Remote_Tools_missing" not found in toolkit from node "Remote Tools"',
+							}),
+						},
+					}),
+				);
+				expect(closeFunction).toHaveBeenCalledTimes(1);
+			});
+
+			it('should return the tool error and close the connection when invocation fails', async () => {
+				const { jobProcessor, job, firstCall, secondCall, closeFunction } =
+					setupToolkitJob('Remote_Tools_second');
+				secondCall.mockRejectedValue(new Error('Remote tool failed'));
+
+				await jobProcessor.processJob(job);
+
+				expect(firstCall).not.toHaveBeenCalled();
+				expect(secondCall).toHaveBeenCalledTimes(1);
+				expect(job.progress).toHaveBeenCalledWith(
+					expect.objectContaining({
+						kind: 'mcp-response',
+						response: { error: { message: 'Remote tool failed', name: 'Error' } },
+					}),
+				);
+				expect(closeFunction).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		describe('MCP request context on the worker', () => {
+			const toolNode = {
+				name: 'Calculator',
+				type: '@n8n/n8n-nodes-langchain.toolCalculator',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+
+			const mcpToolInput = { method: 'tools/call', headers: { 'x-user-id': 'user-1' } };
+
+			/** `triggerNames` is in connection order; only `triggerThatRan` gets run data. */
+			const runToolCall = async ({
+				triggerNames,
+				triggerThatRan,
+				toolInput,
+			}: {
+				triggerNames: string[];
+				triggerThatRan: string;
+				toolInput?: IDataObject;
+			}) => {
+				const workflowData = {
+					id: 'wf-1',
+					nodes: [
+						...triggerNames.map((name) => ({
+							name,
+							type: '@n8n/n8n-nodes-langchain.mcpTrigger',
+							typeVersion: 2,
+							parameters: {},
+							position: [0, 0] as [number, number],
+						})),
+						toolNode,
+					],
+					connections: {
+						[toolNode.name]: {
+							[NodeConnectionTypes.AiTool]: [
+								triggerNames.map((node) => ({ node, type: NodeConnectionTypes.AiTool, index: 0 })),
+							],
+						},
+					},
+					staticData: {},
+				};
+
+				const executionPersistence = mock<ExecutionPersistence>();
+				executionPersistence.findSingleExecution.mockResolvedValueOnce(
+					mock<IExecutionResponse>({
+						mode: 'trigger',
+						workflowData,
+						data: mock<IRunExecutionData>({ executionData: undefined }),
+					}),
+				);
+				executionPersistence.findSingleExecution.mockResolvedValueOnce(
+					mock<IExecutionResponse>({ status: 'success', workflowData }),
+				);
+
+				// Real (mutable) run-execution-data, not a mock, so the tool node's own run
+				// lands in `resultData.runData` next to the trigger's.
+				const run: IRun = {
+					mode: 'trigger',
+					status: 'success',
+					finished: true,
+					startedAt: new Date(),
+					stoppedAt: new Date(),
+					storedAt: 'db',
+					data: createRunExecutionData({
+						resultData: { runData: { [triggerThatRan]: [mock<ITaskData>()] } },
+					}),
+				};
+
+				let toolNodeInput: INodeExecutionData[] | undefined;
+				const nodeTypes = mock<NodeTypes>();
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						name: 'toolCalculator',
+						outputs: [NodeConnectionTypes.AiTool],
+						properties: [],
+					},
+					execute: vi.fn().mockImplementation(function (this: ISupplyDataFunctions) {
+						toolNodeInput = this.getInputData(0, NodeConnectionTypes.Main);
+						return [[{ json: { response: 42 } }]];
+					}),
+				} as never);
+
+				const jobProcessor = new JobProcessor(
+					logger,
+					mock(), // executionRepository
+					executionPersistence,
+					mock(), // workflowRepository
+					nodeTypes,
+					{ hostId: 'worker-host-123' } as unknown as InstanceSettings,
+					createManualExecutionServiceMock(run),
+					executionsConfig,
+					mock(), // eventService
+					mock(), // webhookResponseRelay
+				);
+
+				const job = mock<Job>();
+				job.data = {
+					workflowId: 'wf-1',
+					executionId: 'exec-mcp-input',
+					loadStaticData: false,
+					isMcpExecution: true,
+					mcpType: 'trigger',
+					mcpSessionId: 'session-input',
+					mcpMessageId: 'msg-1',
+					mcpToolCall: {
+						toolName: toolNode.name,
+						arguments: { input: '2 + 2' },
+						sourceNodeName: toolNode.name,
+					},
+					mcpToolInput: toolInput,
+				};
+
+				await jobProcessor.processJob(job);
+
+				return { toolNodeInput, toolRun: run.data.resultData.runData[toolNode.name]?.[0] };
+			};
+
+			it.each([
+				{ toolInput: mcpToolInput, expected: mcpToolInput },
+				{ toolInput: undefined, expected: {} },
+			])('should give the tool node $toolInput as input data', async ({ toolInput, expected }) => {
+				const { toolNodeInput } = await runToolCall({
+					triggerNames: ['MCP Server Trigger'],
+					triggerThatRan: 'MCP Server Trigger',
+					toolInput,
+				});
+
+				expect(toolNodeInput).toEqual([{ json: expected }]);
+			});
+
+			it.each(['MCP Trigger A', 'MCP Trigger B'])(
+				'should record the tool run against the trigger that ran (%s)',
+				async (triggerThatRan) => {
+					const { toolRun } = await runToolCall({
+						triggerNames: ['MCP Trigger A', 'MCP Trigger B'],
+						triggerThatRan,
+						toolInput: mcpToolInput,
+					});
+
+					expect(toolRun?.source?.[0]?.previousNode).toBe(triggerThatRan);
+				},
+			);
 		});
 
 		it('should expose the established execution context to the tool node', async () => {

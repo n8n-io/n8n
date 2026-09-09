@@ -117,7 +117,16 @@ export class CredentialsTester {
 
 		const supportedNodes = this.credentialTypes.getSupportedNodes(credentialType);
 		for (const nodeName of supportedNodes) {
-			const node = this.nodeTypes.getByName(nodeName);
+			// Tool generation appends synthetic `…Tool` variants to `supportedNodes`, but
+			// `getByName` only resolves nodes that exist on disk. Skip what it can't load:
+			// a variant declares no test of its own, and the base node it was derived from
+			// is in this same list.
+			let node: INodeType | IVersionedNodeType;
+			try {
+				node = this.nodeTypes.getByName(nodeName);
+			} catch {
+				continue;
+			}
 
 			// Always set to an array even if node is not versioned to not having
 			// to duplicate the logic
@@ -248,7 +257,7 @@ export class CredentialsTester {
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 		targetUrl: string,
-		options: { acceptedStatusCodes?: number[] } = {},
+		options: { acceptedStatusCodes?: number[]; allowedDomains?: string } = {},
 	): Promise<CredentialAuthProbeResult> {
 		try {
 			await this.prepareCredentialsForTest(userId, credentialType, credentialsDecrypted);
@@ -265,7 +274,15 @@ export class CredentialsTester {
 			userId,
 			credentialType,
 			credentialsDecrypted,
-			{ testRequest: { request: { url: targetUrl, method: 'GET' } } },
+			{
+				testRequest: {
+					request: {
+						url: targetUrl,
+						method: 'GET',
+						...(options.allowedDomains ? { allowedDomains: options.allowedDomains } : {}),
+					},
+				},
+			},
 			'authProbe',
 			options.acceptedStatusCodes,
 		);

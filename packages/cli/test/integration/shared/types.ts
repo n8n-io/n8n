@@ -8,6 +8,7 @@ import type TestAgent from 'supertest/lib/agent';
 import type { LicenseMocker } from './license';
 
 type EndpointGroup =
+	| 'activeWorkflows'
 	| 'health'
 	| 'me'
 	| 'users'
@@ -56,7 +57,8 @@ type EndpointGroup =
 	| 'workflowDependencies'
 	| 'encryption-keys'
 	| 'workflow-reviews'
-	| 'test-webhooks';
+	| 'test-webhooks'
+	| 'type-availability-policies';
 
 type ModuleName =
 	| 'insights'
@@ -70,8 +72,11 @@ type ModuleName =
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
+	| 'promotions'
 	| 'token-exchange'
-	| 'workflow-reviews';
+	| 'policy-infrastructure'
+	| 'workflow-reviews'
+	| 'type-availability-policies';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
@@ -91,6 +96,7 @@ export interface TestServer {
 	publicApiAgentFor: (user: User) => TestAgent;
 	publicApiAgentWithApiKey: (apiKey: string) => TestAgent;
 	publicApiAgentWithoutApiKey: () => TestAgent;
+	publicApiAgentWithCookie: (user: User) => TestAgent;
 	authlessAgent: TestAgent;
 	restlessAgent: TestAgent;
 	license: LicenseMocker;

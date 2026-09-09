@@ -1,5 +1,34 @@
+import isEqual from 'lodash/isEqual';
+import pick from 'lodash/pick';
 import type { INode } from 'n8n-workflow';
 import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
+
+// Only these properties affect how a trigger is registered. Comparing more
+// (notes, error-handling settings, ...) would deregister and re-register live
+// triggers on edits that don't change how they run.
+const registrationProps = ['name', 'type', 'typeVersion', 'webhookId', 'credentials', 'parameters'];
+
+function registrationEqual(base: INode | undefined, target: INode | undefined): boolean {
+	return isEqual(pick(base, registrationProps), pick(target, registrationProps));
+}
+
+// Before the workflow publication service, we re-registered every trigger on
+// publication. With the new flow, we only re-register triggers that have been
+// modified. However, some triggers relied on the old behaviour, so we force it
+// for those triggers.
+const ALWAYS_REREGISTER_TRIGGER_TYPES: ReadonlySet<string> = new Set([
+	'n8n-nodes-base.n8nTrigger',
+	'n8n-nodes-base.workflowTrigger',
+	// Workaround, not a contract: an IMAP connection can go silently half-open
+	// without a close or error event, so the node never asks to be reactivated.
+	// Republishing used to reconnect it. Remove once the node detects this itself.
+	'n8n-nodes-base.emailReadImap',
+]);
+
+export interface TriggerDiffOptions {
+	/** Whether the publish moves to a version other than the one currently running. */
+	versionChanged?: boolean;
+}
 
 /**
  * The trigger nodes that need to be deregistered (`toRemove`) and registered
@@ -21,13 +50,14 @@ export interface TriggerDiff {
 export function computeTriggerDiff(
 	oldTriggerNodes: INode[],
 	newTriggerNodes: INode[],
+	{ versionChanged = false }: TriggerDiffOptions = {},
 ): TriggerDiff {
-	const diff = compareWorkflowsNodes(oldTriggerNodes, newTriggerNodes);
+	const diff = compareWorkflowsNodes(oldTriggerNodes, newTriggerNodes, registrationEqual);
 
 	const toAdd: Set<INode['id']> = new Set();
 	const toRemove: Set<INode['id']> = new Set();
 
-	for (const [nodeId, { status }] of diff) {
+	for (const [nodeId, { status, node }] of diff) {
 		switch (status) {
 			case NodeDiffStatus.Added:
 				toAdd.add(nodeId);
@@ -40,6 +70,10 @@ export function computeTriggerDiff(
 				toAdd.add(nodeId);
 				break;
 			case NodeDiffStatus.Eq:
+				if (versionChanged && ALWAYS_REREGISTER_TRIGGER_TYPES.has(node.type)) {
+					toRemove.add(nodeId);
+					toAdd.add(nodeId);
+				}
 				break;
 		}
 	}

@@ -28,6 +28,7 @@ import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
+import ProjectWorkerPoolsSection from '../components/ProjectWorkerPoolsSection.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -64,6 +65,11 @@ const canUpdateProject = computed(
 	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.update,
 );
 
+/** Changing the membership list is gated separately from editing project details. */
+const canManageMembers = computed(
+	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.manageMembers,
+);
+
 const showSaveError = (error: Error) => {
 	toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
 };
@@ -86,12 +92,14 @@ const resourceCounts = ref<ResourceCounts>({
 const formData = ref<
 	Pick<Project, 'name' | 'description' | 'relations'> & {
 		customTelemetryTags: NonNullable<Project['customTelemetryTags']>;
+		defaultPool: string | null;
 	}
 >({
 	name: '',
 	description: '',
 	relations: [],
 	customTelemetryTags: [],
+	defaultPool: null,
 });
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
@@ -116,7 +124,7 @@ const userSearchResults = ref<typeof usersStore.allUsers>([]);
 const isLoadingUsers = ref(false);
 
 const shouldFetchAllUsers = computed(
-	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canUpdateProject.value,
+	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canManageMembers.value,
 );
 
 const usersList = computed(() =>
@@ -132,7 +140,9 @@ const firstLicensedRole = computed(
 );
 
 const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => {
-	if (rolesManaged.value) {
+	// Removing a member is part of managing the membership list, so it needs the
+	// same scope as adding one — otherwise the action 403s from the API.
+	if (rolesManaged.value || !canManageMembers.value) {
 		return [];
 	}
 	return [
@@ -283,6 +293,14 @@ const resetFormData = () => {
 		? deepCopy(projectsStore.currentProject.customTelemetryTags)
 		: [];
 	telemetryTagsRef.value?.resetTouched();
+	formData.value.defaultPool = projectsStore.currentProjectPoolSettings?.defaultPool ?? null;
+};
+
+const hasWorkerPoolsChanges = (): boolean => {
+	const stored = projectsStore.currentProjectPoolSettings?.defaultPool || null;
+	// Treat empty string and null as equivalent (both mean "default queue")
+	const current = formData.value.defaultPool || null;
+	return current !== stored;
 };
 
 const onCancel = () => {
@@ -357,13 +375,28 @@ const updateProject = async () => {
 		return;
 	}
 	try {
-		await projectsStore.updateProject(projectsStore.currentProject.id, {
-			name: formData.value.name ?? '',
-			description: formData.value.description ?? '',
-			...(settingsStore.isOtelCustomSpanAttributesEnabled
-				? { customTelemetryTags: formData.value.customTelemetryTags }
-				: {}),
-		});
+		const projectId = projectsStore.currentProject.id;
+		const tasks: Array<Promise<void>> = [];
+
+		tasks.push(
+			projectsStore.updateProject(projectId, {
+				name: formData.value.name ?? '',
+				description: formData.value.description ?? '',
+				...(settingsStore.isOtelCustomSpanAttributesEnabled
+					? { customTelemetryTags: formData.value.customTelemetryTags }
+					: {}),
+			}),
+		);
+
+		if (isWorkerPoolsEnabled.value && hasWorkerPoolsChanges()) {
+			tasks.push(
+				projectsStore.updateCurrentProjectPoolSettings(projectId, {
+					defaultPool: formData.value.defaultPool ?? '',
+				}),
+			);
+		}
+
+		await Promise.all(tasks);
 		isDirty.value = false;
 	} catch (error) {
 		showSaveError(error);
@@ -440,7 +473,15 @@ const onIconUpdated = async () => {
 	}
 };
 
-// Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits
+const isWorkerPoolsEnabled = computed(() => settingsStore.isWorkerPoolsEnabled);
+
+const resetPoolSettingsFormData = () => {
+	formData.value.defaultPool = projectsStore.currentProjectPoolSettings?.defaultPool ?? null;
+};
+
+// Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits.
+// Also the single hook reacting to the project becoming available (it loads asynchronously on a
+// direct page load), so project-scoped data like the pool settings is fetched here too.
 watch(
 	() => projectsStore.currentProject,
 	async () => {
@@ -453,6 +494,16 @@ watch(
 		selectProjectNameIfMatchesDefault();
 		if (projectsStore.currentProject?.icon && isIconOrEmoji(projectsStore.currentProject.icon)) {
 			projectIcon.value = projectsStore.currentProject.icon;
+		}
+
+		const projectId = projectsStore.currentProjectId;
+		if (canUpdateProject.value && projectId && isWorkerPoolsEnabled.value) {
+			await projectsStore
+				.fetchProjectPoolSettings(projectId)
+				.catch(() => {
+					// Non-fatal; store has been cleared, fall back to defaults below.
+				})
+				.finally(resetPoolSettingsFormData);
 		}
 	},
 	{ immediate: true },
@@ -559,7 +610,7 @@ const searchUsers = async (query: string) => {
 const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 onBeforeMount(async () => {
-	if (!canUpdateProject.value) return;
+	if (!canManageMembers.value) return;
 	await searchUsers('');
 });
 
@@ -568,7 +619,7 @@ const rolesManaged = computed(() => projectsStore.currentProject?.rolesManaged ?
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 
-	if (!canUpdateProject.value) return;
+	if (!canUpdateProject.value && !canManageMembers.value) return;
 
 	selectProjectNameIfMatchesDefault();
 	await rolesStore.fetchRoles();
@@ -653,7 +704,7 @@ onMounted(async () => {
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
 
-			<template v-if="canUpdateProject">
+			<template v-if="canUpdateProject || canManageMembers">
 				<fieldset id="projectMembers">
 					<h3>
 						<label for="projectMembers">{{
@@ -672,7 +723,7 @@ onMounted(async () => {
 							remote
 							:remote-method="debouncedUserSearch"
 							:loading="isLoadingUsers"
-							:disabled="rolesManaged"
+							:disabled="rolesManaged || !canManageMembers"
 							@update:model-value="onAddMember"
 						>
 							<template #prefix>
@@ -707,7 +758,7 @@ onMounted(async () => {
 							:current-user-id="usersStore.currentUser?.id"
 							:project-roles="rolesStore.processedProjectRoles"
 							:actions="projectMembersActions"
-							:can-edit-role="!rolesManaged"
+							:can-edit-role="!rolesManaged && canManageMembers"
 							@update:options="onUpdateMembersTableOptions"
 							@update:role="onUpdateMemberRole"
 							@show-role-upgrade-dialog="upgradeDialogVisible = true"
@@ -715,6 +766,9 @@ onMounted(async () => {
 						/>
 					</div>
 				</fieldset>
+			</template>
+
+			<template v-if="canUpdateProject">
 				<fieldset v-if="settingsStore.isOtelCustomSpanAttributesEnabled">
 					<h3>
 						<label>{{ i18n.baseText('projects.settings.customSpanAttributes.label') }}</label>
@@ -726,6 +780,18 @@ onMounted(async () => {
 						@validate="isTelemetryTagsValid = $event"
 					/>
 				</fieldset>
+				<ProjectWorkerPoolsSection
+					v-if="isWorkerPoolsEnabled"
+					:default-pool="formData.defaultPool"
+					:available-pools="projectsStore.currentProjectPoolSettings?.availablePools ?? []"
+					@update:default-pool="
+						(v) => {
+							formData.defaultPool = v;
+							onTextInput();
+						}
+					"
+				/>
+
 				<fieldset>
 					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
 					<small :class="$style.danger">{{

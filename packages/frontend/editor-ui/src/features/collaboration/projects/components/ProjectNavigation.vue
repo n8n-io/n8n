@@ -129,7 +129,6 @@ const workflowReviews = computed<IMenuItem>(() => ({
 	icon: 'message-square-text',
 	label: locale.baseText('workflowReviews.menu.title'),
 	route: { to: { name: WORKFLOW_REVIEW_REQUESTS_VIEW } },
-	preview: true,
 }));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',

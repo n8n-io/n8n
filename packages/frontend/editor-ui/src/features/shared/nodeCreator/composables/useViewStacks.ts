@@ -149,13 +149,22 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					popularity: nodePopularityMap,
 				}),
 			);
+			const pinnedMcpClient =
+				stack.subcategory === AI_CATEGORY_MCP_NODES
+					? stack.baselineItems?.find((item) => item.key === AI_MCP_TOOL_NODE_TYPE)
+					: undefined;
+			const filteredSearchResults = pinnedMcpClient
+				? searchResults.filter((item) => item.key !== AI_MCP_TOOL_NODE_TYPE)
+				: searchResults;
 
-			const groupedNodes = groupIfAiNodes(searchResults, stack, false) ?? searchResults;
+			const groupedNodes =
+				groupIfAiNodes(filteredSearchResults, stack, false) ?? filteredSearchResults;
+			const visibleNodes = pinnedMcpClient ? [pinnedMcpClient, ...groupedNodes] : groupedNodes;
 			// Set the active index to the second item if there's a section
 			// as the first item is collapsable
-			stack.activeIndex = groupedNodes.some((node) => node.type === 'section') ? 1 : 0;
+			stack.activeIndex = visibleNodes.some((node) => node.type === 'section') ? 1 : 0;
 
-			return groupedNodes;
+			return visibleNodes;
 		}
 
 		// Surface n8n Connect-powered nodes in a dedicated section at the top,

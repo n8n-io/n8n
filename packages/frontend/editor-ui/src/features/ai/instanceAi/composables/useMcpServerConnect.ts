@@ -1,4 +1,6 @@
 import { effectScope } from 'vue';
+import { camelCase } from 'change-case';
+import type { INode } from 'n8n-workflow';
 import { i18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
@@ -8,11 +10,13 @@ import {
 } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import type { ToolConnectionCredentialAdapter } from '@/features/shared/toolsConnection/types';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 
 export interface McpConnectTarget {
 	slug: string;
 	credentialType: string;
+	credentialTypes?: readonly string[];
 }
 
 const inFlightConnectsByServerSlug = new Map<string, Promise<string | null>>();
@@ -79,11 +83,23 @@ export function useMcpServerConnect() {
 	}
 
 	async function startConnect(server: McpConnectTarget): Promise<string | null> {
-		if (canOAuthCredentialQuickConnect(server.credentialType)) {
+		const hasOneOption = (server.credentialTypes?.length ?? 0) <= 1;
+		if (hasOneOption && canOAuthCredentialQuickConnect(server.credentialType)) {
 			const credential = await createAndAuthorize(server.credentialType);
 			return credential ? await connectWithCredential(server.slug, credential.id) : null;
 		}
 		return await connectViaCredentialModal(server);
+	}
+
+	function registryContextNode(server: McpConnectTarget): INode {
+		return {
+			id: server.slug,
+			name: server.slug,
+			type: `@n8n/mcp-registry.${camelCase(server.slug)}`,
+			typeVersion: 1.1,
+			position: [0, 0],
+			parameters: {},
+		};
 	}
 
 	/**
@@ -94,6 +110,7 @@ export function useMcpServerConnect() {
 	async function connectViaCredentialModal(server: McpConnectTarget): Promise<string | null> {
 		return await new Promise<string | null>((settle) => {
 			let createdCredentialId: string | null = null;
+			const credentialTypes = server.credentialTypes ?? [server.credentialType];
 
 			// Detached because pinia disposes subscriptions with the effect scope they
 			// were created in, and an attempt outlives the surface that started it
@@ -102,8 +119,7 @@ export function useMcpServerConnect() {
 				listenForCredentialChanges({
 					store: credentialsStore,
 					onCredentialCreated: (credential) => {
-						// Credential types are per server, so this only ever matches ours
-						if (credential.type === server.credentialType) createdCredentialId = credential.id;
+						if (credentialTypes.includes(credential.type)) createdCredentialId = credential.id;
 					},
 				});
 
@@ -126,7 +142,20 @@ export function useMcpServerConnect() {
 			});
 
 			try {
-				uiStore.openNewCredential(server.credentialType);
+				if (credentialTypes.length > 1) {
+					const contextNode = registryContextNode(server);
+					uiStore.openNewCredential(
+						server.credentialType,
+						true,
+						false,
+						undefined,
+						undefined,
+						contextNode.name,
+						contextNode,
+					);
+				} else {
+					uiStore.openNewCredential(server.credentialType);
+				}
 			} catch (error) {
 				listeners.stop();
 				throw error;
@@ -134,5 +163,57 @@ export function useMcpServerConnect() {
 		});
 	}
 
-	return { connectServer, connectWithCredential };
+	/**
+	 * The adapter `ToolCredentialPicker` injects. Only the "create a new
+	 * credential" leg differs per surface, so callers pass just that.
+	 */
+	function openExistingCredential(credentialId: string): void {
+		const hasConnections = mcpStore.connections.some(
+			(connection) => connection.credentialId === credentialId,
+		);
+		if (!hasConnections) {
+			uiStore.openExistingCredential(credentialId);
+			return;
+		}
+
+		const listeners = effectScope(true);
+		listeners.run(() => {
+			listenForModalChanges({
+				store: uiStore,
+				onModalClosed: (modalName) => {
+					if (modalName !== CREDENTIAL_EDIT_MODAL_KEY) return;
+					listeners.stop();
+					for (const connection of mcpStore.connections) {
+						if (connection.credentialId === credentialId) {
+							void mcpStore.fetchConnectionTools(connection.id);
+						}
+					}
+				},
+			});
+		});
+
+		try {
+			uiStore.openExistingCredential(credentialId);
+		} catch (error) {
+			listeners.stop();
+			throw error;
+		}
+	}
+
+	function createCredentialAdapter(
+		openNewCredential: ToolConnectionCredentialAdapter['openNewCredential'],
+	): ToolConnectionCredentialAdapter {
+		return {
+			getCredentialsByType: (authType) =>
+				credentialsStore.getCredentialsByType(authType).map((credential) => ({
+					id: credential.id,
+					name: credential.name,
+					type: credential.type,
+				})),
+			openNewCredential,
+			openExistingCredential,
+		};
+	}
+
+	return { connectServer, connectWithCredential, createCredentialAdapter };
 }

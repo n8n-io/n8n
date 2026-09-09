@@ -4,14 +4,16 @@ import type { RatingFeedback } from '@n8n/design-system';
 import {
 	N8nButton,
 	N8nCallout,
+	N8nChatActions,
 	N8nChatMessage,
 	N8nIcon,
 	N8nIconButton,
-	N8nMessageRating,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
@@ -24,6 +26,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+const settingsStore = useSettingsStore();
 const thread = useThread();
 const showDebugInfo = ref(false);
 
@@ -47,6 +50,16 @@ const hasProviderError = computed(() => !!errorDetails.value?.provider);
 
 /** The run failed because the user ran out of AI credits — show a tailored state. */
 const isQuotaExhausted = computed(() => errorDetails.value?.code === 'quota_exhausted');
+
+/**
+ * The activation-capped trial cohort is never shown a credit balance, so telling them they've
+ * "run out of AI credits" would be the first they'd hear of any credits at all.
+ */
+const outOfCreditsTitleKey = computed(() =>
+	settingsStore.moduleSettings?.['instance-ai']?.activationCapped
+		? 'instanceAi.error.outOfCredits.trialTitle'
+		: 'instanceAi.error.outOfCredits.title',
+);
 
 const { goToUpgrade } = usePageRedirectionHelper();
 
@@ -106,9 +119,24 @@ const isRateable = computed(
 		!(responseId.value in thread.feedbackByResponseId),
 );
 
-const hasSubmittedFeedback = computed(
-	() => !isUser.value && responseId.value in thread.feedbackByResponseId,
-);
+const hasSettledText = computed(function hasSettledAssistantText() {
+	return !isUser.value && !isStreaming.value && props.message.content.trim().length > 0;
+});
+
+const hasMessageActions = computed(function hasAvailableMessageActions() {
+	return hasSettledText.value || isRateable.value || (store.debugMode && !isUser.value);
+});
+const debugActionLabel = computed(function getDebugActionLabel() {
+	return i18n.baseText(
+		showDebugInfo.value
+			? 'instanceAi.message.actions.hideDebugInfo'
+			: 'instanceAi.message.actions.showDebugInfo',
+	);
+});
+
+function toggleDebugInfo() {
+	showDebugInfo.value = !showDebugInfo.value;
+}
 
 function onFeedback(payload: RatingFeedback) {
 	thread.submitFeedback(responseId.value, payload);
@@ -148,7 +176,7 @@ function formatJson(value: unknown): string {
 
 			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
 			<N8nCallout v-if="isQuotaExhausted" theme="warning" data-test-id="instance-ai-out-of-credits">
-				{{ i18n.baseText('instanceAi.error.outOfCredits.title') }}
+				{{ i18n.baseText(outOfCreditsTitleKey) }}
 				<template #trailingContent>
 					<N8nButton
 						variant="outline"
@@ -206,31 +234,32 @@ function formatJson(value: unknown): string {
 				<span>{{ cancelledLabel }}</span>
 			</div>
 
-			<!-- Response feedback -->
-			<N8nMessageRating
-				v-if="isRateable"
-				minimal
-				data-test-id="instance-ai-message-rating"
-				@feedback="onFeedback"
-			/>
-			<p
-				v-else-if="hasSubmittedFeedback"
-				:class="$style.feedbackSuccess"
-				data-test-id="instance-ai-feedback-success"
-			>
-				{{ i18n.baseText('instanceAi.feedback.success') }}
-			</p>
-
 			<pre v-if="showDebugInfo" :class="$style.debugJson">{{ formatJson(props.message) }}</pre>
 		</template>
 
-		<template v-if="store.debugMode && !isUser" #actions>
-			<N8nIconButton
-				icon="code"
-				variant="ghost"
-				size="xsmall"
-				@click="showDebugInfo = !showDebugInfo"
-			/>
+		<template v-if="hasMessageActions" #actions>
+			<N8nChatActions
+				:content="props.message.content"
+				:show-copy="hasSettledText"
+				copy-test-id="instance-ai-message-copy"
+				:show-rating="isRateable"
+				:on-rating="onFeedback"
+				:show-read-aloud="hasSettledText"
+				read-aloud-test-id="instance-ai-message-read-aloud"
+			>
+				<N8nTooltip v-if="store.debugMode" placement="bottom" :content="debugActionLabel">
+					<N8nIconButton
+						icon="code"
+						variant="ghost"
+						size="small"
+						icon-size="medium"
+						data-test-id="instance-ai-message-debug"
+						:aria-label="debugActionLabel"
+						:aria-pressed="showDebugInfo"
+						@click="toggleDebugInfo"
+					/>
+				</N8nTooltip>
+			</N8nChatActions>
 		</template>
 	</N8nChatMessage>
 </template>
@@ -328,12 +357,6 @@ function formatJson(value: unknown): string {
 	&:hover {
 		opacity: 1;
 	}
-}
-
-.feedbackSuccess {
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	margin: var(--spacing--2xs) 0 0;
 }
 
 .debugJson {

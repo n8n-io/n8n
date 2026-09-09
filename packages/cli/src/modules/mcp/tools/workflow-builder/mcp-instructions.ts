@@ -18,7 +18,7 @@ import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
 } from './constants';
-import { LIST_N8N_CONNECT_SERVICES_TOOL_NAME } from '../../mcp.constants';
+import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME } from '../../mcp.constants';
 
 export type McpInstructionsOptions = {
 	/**
@@ -64,7 +64,7 @@ Node groups: when a workflow has several distinct stages, organise it into named
 	const N8N_CONNECT_HINT = isN8nConnectAvailable
 		? `
 
-   Explore nodes covered by n8n credits when the user has not specified a particular integration. n8n credits let users consume LLMs and third-party services directly through n8n with usage-based billing, so they can skip credential setup. Discovery tools (${CODE_BUILDER_SEARCH_NODES_TOOL.toolName}, ${CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName}) and list_credentials return an optional \`n8nConnect.nodes\` array when the instance has n8n credits available. Nodes in that array can attach a managed credential automatically — the workflow runs without the user configuring keys. If the user asked for a specific integration or none of the covered nodes fit, use the requested integration with regular credentials. Call ${LIST_N8N_CONNECT_SERVICES_TOOL_NAME} if you need details (per-node supported resource+operation combos, min type versions, hidden properties).`
+   Explore nodes covered by Gateway credits when the user has not specified a particular integration. Gateway credits let users consume LLMs and third-party services directly through n8n with usage-based billing, so they can skip credential setup. Discovery tools (${CODE_BUILDER_SEARCH_NODES_TOOL.toolName}, ${CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName}) and list_credentials return an optional \`gatewayCredits.nodes\` array when the instance has Gateway credits available. Nodes in that array can attach a managed credential automatically — the workflow runs without the user configuring keys. If the user asked for a specific integration or none of the covered nodes fit, use the requested integration with regular credentials. Call ${LIST_N8N_GATEWAY_SERVICES_TOOL_NAME} if you need details (per-node supported resource+operation combos, min type versions, hidden properties).`
 		: '';
 
 	const ARTIFACT_ROUTING_INSTRUCTIONS = `Choose the artifact before choosing build tools. Treat an explicit artifact request as a routing instruction: if the user asks to build or create an "agent" or "assistant", default to a first-class n8n Agent; if they explicitly ask for a workflow or an AI Agent node, use the workflow tools.

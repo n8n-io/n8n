@@ -301,4 +301,17 @@ describe('useNpsSurvey', () => {
 		expect(openModal).not.toHaveBeenCalled();
 		expect(updateNpsSurveyState).not.toHaveBeenCalled();
 	});
+
+	it('if canvas only mode is enabled, does not show nps survey', async () => {
+		useSettingsStore().settings.canvasOnly = true;
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
+			userActivated: true,
+			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS - 10000,
+		});
+
+		await npsSurveyStore.showNpsSurveyIfPossible();
+
+		expect(openModal).not.toHaveBeenCalled();
+		expect(updateNpsSurveyState).not.toHaveBeenCalled();
+	});
 });

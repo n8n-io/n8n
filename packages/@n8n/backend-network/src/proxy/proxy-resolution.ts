@@ -1,8 +1,8 @@
 import http from 'http';
-import { HttpProxyAgent } from 'http-proxy-agent';
 import https from 'https';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
+
+import { createProxiedHttpAgent, createProxiedHttpsAgent } from './proxied-agents';
 
 /**
  * Resolves the proxy URL configured via environment variables
@@ -40,7 +40,7 @@ export function createHttpProxyAgent(
 	const proxyUrl = customProxyUrl ?? getProxyForUrl(targetUrl);
 
 	if (proxyUrl) {
-		return new HttpProxyAgent(proxyUrl, options);
+		return createProxiedHttpAgent(proxyUrl, options);
 	}
 
 	return new http.Agent(options);
@@ -62,7 +62,7 @@ export function createHttpsProxyAgent(
 	const proxyUrl = customProxyUrl ?? getProxyForUrl(targetUrl);
 
 	if (proxyUrl) {
-		return new HttpsProxyAgent(proxyUrl, options);
+		return createProxiedHttpsAgent(proxyUrl, options);
 	}
 
 	return new https.Agent(options);

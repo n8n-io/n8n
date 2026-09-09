@@ -11,12 +11,10 @@ import { createToolRegistry } from '../../tool-registry';
 import { createAskUserTool } from '../../tools/shared/ask-user.tool';
 import {
 	buildAgentTraceInputs,
-	createDetachedSubAgentTraceContext,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
-	mergeTraceRunInputs,
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
 	shutdownProductTelemetryProviders,
@@ -439,6 +437,7 @@ describe('createInstanceAiTraceContext', () => {
 			userId: 'user-1',
 			input: { message: 'What workflows do I have?' },
 			metadata: { n8n_version: '2.19.0' },
+			browserExtension: { connectionState: 'connected', version: '0.0.7' },
 		});
 
 		expect(tracing?.getTelemetry).toBeDefined();
@@ -466,6 +465,8 @@ describe('createInstanceAiTraceContext', () => {
 				user_id: 'user-1',
 				agent_role: 'orchestrator',
 				n8n_version: '2.19.0',
+				browser_extension_version: '0.0.7',
+				browser_connection_state: 'connected',
 				execution_mode: 'foreground',
 				trace_kind: 'message_turn',
 				langsmith_trace_id: tracing?.rootRun.traceId,
@@ -478,6 +479,36 @@ describe('createInstanceAiTraceContext', () => {
 		expect(typeof telemetry.metadata?.workflow_sdk_version).toBe('string');
 
 		await telemetry.provider?.shutdown();
+	});
+
+	it('records a connected extension that reports no version distinctly from no extension', async () => {
+		const connected = await createInstanceAiTraceContext({
+			threadId: 'thread-old-ext',
+			messageId: 'message-old-ext',
+			runId: 'run-old-ext',
+			userId: 'user-1',
+			input: { message: 'What workflows do I have?' },
+			browserExtension: { connectionState: 'connected' },
+		});
+
+		expect(connected?.rootRun.metadata).toEqual(
+			expect.objectContaining({ browser_connection_state: 'connected' }),
+		);
+		expect(connected?.rootRun.metadata).not.toHaveProperty('browser_extension_version');
+
+		const absent = await createInstanceAiTraceContext({
+			threadId: 'thread-no-ext',
+			messageId: 'message-no-ext',
+			runId: 'run-no-ext',
+			userId: 'user-1',
+			input: { message: 'What workflows do I have?' },
+			browserExtension: { connectionState: 'disconnected' },
+		});
+
+		expect(absent?.rootRun.metadata).toEqual(
+			expect.objectContaining({ browser_connection_state: 'disconnected' }),
+		);
+		expect(absent?.rootRun.metadata).not.toHaveProperty('browser_extension_version');
 	});
 
 	it('does not mutate LangSmith tracing environment flags while creating a context', async () => {
@@ -1431,196 +1462,6 @@ describe('createInstanceAiTraceContext', () => {
 		);
 	});
 
-	it('creates detached sub-agent traces as separate root traces', async () => {
-		const tracing = await createDetachedSubAgentTraceContext({
-			threadId: 'thread-1',
-			conversationId: 'thread-1',
-			messageGroupId: 'group-1',
-			messageId: 'message-1',
-			runId: 'run-1',
-			userId: 'user-1',
-			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
-			kind: 'builder',
-			taskId: 'build-1',
-			spawnedByTraceId: 'trace-parent-1',
-			spawnedBySpanId: 'span-parent-1',
-			spawnedByRunId: 'run-parent-1',
-			spawnedByAgentId: 'agent-001',
-			spawnedByAgentRole: 'orchestrator',
-			spawnedByToolCallId: 'toolu-1',
-			input: { task: 'Build a workflow' },
-			metadata: { n8n_version: '2.19.0' },
-		});
-
-		expect(tracing).toBeDefined();
-		expect(tracing?.traceKind).toBe('background_subagent');
-		expect(tracing?.rootRun.id).not.toBe(tracing?.actorRun.id);
-		expect(tracing?.rootRun.parentRunId).toBeUndefined();
-		expect(tracing?.rootRun.name).toBe('background task: workflow-builder');
-		expect(tracing?.actorRun.name).toBe('agent: workflow-builder');
-		expect(tracing?.actorRun.parentRunId).toBe(tracing?.rootRun.id);
-		expect(tracing?.rootRun.metadata).toEqual(
-			expect.objectContaining({
-				thread_id: 'thread-1',
-				message_group_id: 'group-1',
-				task_id: 'build-1',
-				task_kind: 'builder',
-				agent_id: 'agent-builder-1',
-				n8n_version: '2.19.0',
-				trace_kind: 'background_subagent',
-				execution_mode: 'background_subagent',
-				spawned_by_trace_id: 'trace-parent-1',
-				spawned_by_span_id: 'span-parent-1',
-				spawned_by_run_id: 'run-parent-1',
-				spawned_by_agent_id: 'agent-001',
-				spawned_by_agent_role: 'orchestrator',
-				spawned_by_tool_call_id: 'toolu-1',
-				'instance_ai.canonical_name': 'instance-ai.background_subagent',
-			}),
-		);
-		expect(typeof tracing?.rootRun.metadata?.agents_version).toBe('string');
-		expect(typeof tracing?.rootRun.metadata?.workflow_sdk_version).toBe('string');
-		expect(tracing?.actorRun.metadata).toEqual(
-			expect.objectContaining({
-				'instance_ai.canonical_name': 'instance-ai.agent.workflow-builder',
-			}),
-		);
-
-		const telemetryOrBuilder = tracing!.getTelemetry!({
-			agentRole: 'workflow-builder',
-			functionId: 'instance-ai.subagent.workflow-builder',
-			executionMode: 'background_subagent',
-		});
-		const telemetry =
-			'build' in telemetryOrBuilder ? await telemetryOrBuilder.build() : telemetryOrBuilder;
-
-		expect(telemetry.runtimeRootSpanEnabled).toBe(false);
-	});
-
-	it('attaches compact root agent config without duplicating tool schemas into agent spans', async () => {
-		const tracing = await createDetachedSubAgentTraceContext({
-			threadId: 'thread-1',
-			conversationId: 'thread-1',
-			messageGroupId: 'group-1',
-			messageId: 'message-1',
-			runId: 'run-1',
-			userId: 'user-1',
-			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
-			kind: 'builder',
-			taskId: 'build-1',
-			input: { task: 'Build a workflow' },
-		});
-
-		expect(tracing).toBeDefined();
-
-		mergeTraceRunInputs(
-			tracing?.actorRun,
-			buildAgentTraceInputs({
-				systemPrompt: ['line 1', 'line 2', 'line 3', 'line 4'].join('\n').repeat(700),
-				tools: createToolRegistry([
-					[
-						'build-workflow',
-						{
-							description: 'Build or patch a workflow from SDK code.',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									task: { type: 'string' },
-								},
-								required: ['task'],
-							},
-						} as never,
-					],
-				]),
-				runtimeTools: createToolRegistry([
-					[
-						'workspace_read_file',
-						{
-							name: 'workspace_read_file',
-							description: 'Read a file from the workspace.',
-						} as never,
-					],
-				]),
-				modelId: 'anthropic/claude-sonnet-4-6',
-			}),
-		);
-
-		const actorInputs = tracing?.actorRun.inputs as Record<string, unknown>;
-		const systemPrompt = actorInputs.system_prompt as Record<string, unknown>;
-
-		expect(actorInputs.task).toBe('Build a workflow');
-		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
-		expect(actorInputs.assigned_tool_count).toBe(1);
-		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow']);
-		expect(actorInputs.assigned_tool_schema_hash).toEqual(expect.any(String));
-		expect(actorInputs.runtime_tool_count).toBe(1);
-		expect(actorInputs.runtime_tool_names).toEqual(['workspace_read_file']);
-		expect(actorInputs.runtime_tool_schema_hash).toEqual(expect.any(String));
-		expect(actorInputs.loaded_tool_count).toBeUndefined();
-		expect(actorInputs.loaded_tool_names).toBeUndefined();
-		expect(actorInputs.loaded_tool_schema_hash).toBeUndefined();
-		expect(actorInputs.loaded_tool_manifest).toBeUndefined();
-		expect(actorInputs.loaded_tools).toBeUndefined();
-		expect(actorInputs.loaded_tool_catalog).toBeUndefined();
-		const actorSpan = agentsMock
-			.getSpans()
-			.find((span) => span.id === tracing?.actorRun.otelSpanId);
-		const spanInputs = jsonParse<Record<string, unknown>>(
-			actorSpan?.attributes['gen_ai.prompt'] as string,
-		);
-		expect(spanInputs.assigned_tool_names).toEqual(['build-workflow']);
-		expect(spanInputs.runtime_tool_names).toEqual(['workspace_read_file']);
-		expect(spanInputs.loaded_tool_manifest).toBeUndefined();
-		expect(spanInputs.loaded_tools).toBeUndefined();
-		expect(systemPrompt.part_01).toEqual(expect.any(String));
-		expect(systemPrompt.part_02).toEqual(expect.any(String));
-	});
-
-	it('persists merged actor inputs while the actor run is active', async () => {
-		const tracing = await createDetachedSubAgentTraceContext({
-			threadId: 'thread-1',
-			conversationId: 'thread-1',
-			messageGroupId: 'group-1',
-			messageId: 'message-1',
-			runId: 'run-1',
-			userId: 'user-1',
-			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
-			kind: 'builder',
-			taskId: 'build-1',
-			input: { task: 'Build a workflow' },
-		});
-
-		expect(tracing).toBeDefined();
-
-		await tracing?.withActiveSpan(tracing.actorRun, async () => {
-			mergeTraceRunInputs(
-				tracing?.actorRun,
-				buildAgentTraceInputs({
-					systemPrompt: 'system prompt',
-					tools: createToolRegistry([
-						[
-							'build-workflow',
-							{
-								description: 'Build or patch a workflow from SDK code.',
-							} as never,
-						],
-					]),
-					modelId: 'anthropic/claude-sonnet-4-6',
-				}),
-			);
-			await Promise.resolve();
-		});
-
-		const actorInputs = tracing?.actorRun.inputs as Record<string, unknown>;
-		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
-		expect(actorInputs.system_prompt).toBe('system prompt');
-		expect(actorInputs.assigned_tool_count).toBe(1);
-		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow']);
-	});
-
 	it('redacts model secrets from agent trace inputs', () => {
 		const inputs = buildAgentTraceInputs({
 			systemPrompt: 'You are a helpful agent.',
@@ -1699,6 +1540,56 @@ describe('createInstanceAiTraceContext', () => {
 			}),
 		);
 		expect(JSON.stringify(tracing?.orchestratorRun.metadata)).not.toContain('sk-ant-secret');
+	});
+
+	it('records a model id for a pre-built AI SDK model instead of dumping the instance', async () => {
+		// What the proxy routes hand over: `modelId` + `config.provider`, no `id`.
+		// `provider` is a prototype getter on the real SDK model, hence the class.
+		class FakeChatLanguageModel {
+			readonly specificationVersion = 'v4';
+
+			readonly modelId = 'kimi-k3';
+
+			readonly config = {
+				provider: 'moonshotai.chat',
+				url: () => 'https://proxy.example.com/kimi/v1',
+				headers: function getHeaders() {
+					return {};
+				},
+				includeUsage: true,
+			};
+
+			readonly chunkSchema = { '~standard': { vendor: 'zod', version: 1 } };
+
+			get provider() {
+				return this.config.provider;
+			}
+		}
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			modelId: new FakeChatLanguageModel(),
+			input: { message: 'What workflows do I have?' },
+		});
+
+		expect(tracing?.messageRun.metadata).toEqual(
+			expect.objectContaining({ model_id: 'moonshotai/kimi-k3' }),
+		);
+
+		await tracing?.finishRun(tracing.orchestratorRun, {
+			outputs: { result: 'done' },
+			metadata: { model_id: new FakeChatLanguageModel() },
+		});
+
+		expect(tracing?.orchestratorRun.metadata).toEqual(
+			expect.objectContaining({ model_id: 'moonshotai/kimi-k3' }),
+		);
+		const serialized = JSON.stringify(tracing?.orchestratorRun.metadata);
+		expect(serialized).not.toContain('chunkSchema');
+		expect(serialized).not.toContain('[function');
 	});
 
 	it('traces suspendable tools and HITL suspension spans', async () => {

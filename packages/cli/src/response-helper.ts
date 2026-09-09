@@ -10,8 +10,8 @@ import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
 import { classifyHttpError, isResponseError } from './errors/http-error-classifier';
+import { applyFormSandboxCSP } from './webhooks/webhook-response-headers';
 import { serializeInternalRestError } from './errors/http-error-serializers';
-import { ResponseError } from './errors/response-errors/abstract/response.error';
 
 export function sendSuccessResponse(
 	res: Response,
@@ -62,6 +62,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 			if (isFormTrigger || isLegacyFormTrigger) {
 				const isTestWebhook = basePath.includes('test');
 				res.status(404);
+				applyFormSandboxCSP(res);
 				return res.render('form-trigger-404', { isTestWebhook });
 			}
 		}
@@ -69,6 +70,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 		if (error.errorCode === 409 && originalUrl && originalUrl.includes('form-waiting')) {
 			//codes other than 200  breaks redirection to form-waiting page from form trigger
 			//render form page instead of json
+			applyFormSandboxCSP(res);
 			return res.render('form-trigger-409', {
 				message: error.message,
 			});
@@ -97,7 +99,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 export { isUniqueConstraintError };
 
 export function reportError(error: Error, options?: ReportingOptions) {
-	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
+	if (!isResponseError(error) || error.httpStatusCode > 404) {
 		Container.get(ErrorReporter).error(error, options);
 	}
 }

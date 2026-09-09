@@ -5,6 +5,7 @@ import { RoleRepository, ScopeRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { RoleCacheService } from '@/services/role-cache.service';
 import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
 import { RoleService } from '@/services/role.service';
@@ -16,6 +17,7 @@ describe('RoleService.getRoleAssignments and getRoleProjectMembers', () => {
 	const roleCacheService = mockInstance(RoleCacheService);
 	const logger = mockInstance(Logger);
 	const roleDeletionCheckProxy = mockInstance(RoleDeletionCheckProxy);
+	const eventService = mockInstance(EventService);
 
 	const roleService = new RoleService(
 		licenseState,
@@ -24,6 +26,7 @@ describe('RoleService.getRoleAssignments and getRoleProjectMembers', () => {
 		roleCacheService,
 		logger,
 		roleDeletionCheckProxy,
+		eventService,
 	);
 
 	beforeEach(() => {

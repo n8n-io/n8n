@@ -1,5 +1,5 @@
 import { OutboundHttp } from '@n8n/backend-network';
-import type { HttpRequestClient, SsrfBridge } from '@n8n/backend-network';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type {
 	INode,
@@ -15,12 +15,12 @@ type OnFetchedCallbacks = { onFetched?: () => Promise<void> | void };
 
 /**
  * `proxyRequestToAxios` is a thin adapter over {@link OutboundHttp}: it
- * normalises the call arguments, derives the SSRF policy from the execution's
- * `ssrfBridge`, and wires the `nodeFetchedData` hook to the client's `onFetched`
- * callback. The actual request behaviour (SSRF enforcement, redirects, error
- * shapes, domain allowlist) lives with `executeLegacyRequest` and is covered in
- * `@n8n/backend-network`'s `legacy-request.test.ts`. These tests only assert the
- * adapter's wiring contract, so the facade is mocked.
+ * normalises the call arguments, requests the default (safe) client, and wires
+ * the `nodeFetchedData` hook to the client's `onFetched` callback. The actual
+ * request behaviour (SSRF enforcement, redirects, error shapes, domain
+ * allowlist) lives with `executeLegacyRequest` and is covered in
+ * `@n8n/backend-network`'s `legacy-request.test.ts`. These tests only assert
+ * the adapter's wiring contract, so the facade is mocked.
  */
 describe('proxyRequestToAxios', () => {
 	const workflow = mock<Workflow>({ id: 'workflow-id' });
@@ -38,27 +38,18 @@ describe('proxyRequestToAxios', () => {
 	});
 
 	describe('SSRF policy mapping', () => {
-		it('disables SSRF when the execution provides no bridge', async () => {
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge: undefined });
+		it('always requests the default safe client', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
 			await proxyRequestToAxios(workflow, additionalData, node, 'https://example.test');
 
-			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(requests).toHaveBeenCalledWith();
 		});
 
-		it('forwards the execution SSRF bridge when present', async () => {
-			const ssrfBridge = mock<SsrfBridge>();
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge });
-
-			await proxyRequestToAxios(workflow, additionalData, node, 'https://example.test');
-
-			expect(requests).toHaveBeenCalledWith({ ssrf: ssrfBridge });
-		});
-
-		it('disables SSRF when there is no additionalData at all', async () => {
+		it('requests the default safe client when there is no additionalData at all', async () => {
 			await proxyRequestToAxios(workflow, undefined, node, 'https://example.test');
 
-			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(requests).toHaveBeenCalledWith();
 		});
 	});
 

@@ -9,8 +9,8 @@
  *     `5678`/`5679`. Pin a port with `N8N_BASE_URL=http://localhost:5680 …`
  *     when you need a stable URL for browser inspection.
  *   - **Throwaway `N8N_USER_FOLDER`** under the OS temp dir (cleaned up on
- *     exit). Its `database.sqlite` is fully isolated from your local
- *     `~/.n8n` install.
+ *     exit). n8n creates `.n8n/` (sqlite DB, encryption key) inside it, fully
+ *     isolated from your local `~/.n8n` install.
  *   - **Self-managed n8n process** with a real readiness check against
  *     `/rest/e2e/reset` (Playwright's default `webServer` favicon check is
  *     racy with slower module startups). Sets `PLAYWRIGHT_SKIP_WEBSERVER=true`
@@ -76,8 +76,8 @@ if (process.env.N8N_BASE_URL) {
 	backendUrl = `http://localhost:${port}`;
 }
 
-// Throwaway `~/.n8n`-equivalent. SQLite lives at `${userFolder}/database.sqlite`,
-// so this also isolates the DB from any local n8n install.
+// Throwaway home-dir stand-in. n8n creates `.n8n/` (sqlite DB, encryption
+// key) inside it, so this also isolates the DB from any local n8n install.
 const userFolder = mkdtempSync(path.join(os.tmpdir(), 'n8n-test-isolated-'));
 
 // Caller-supplied n8n env (same convention as `pnpm test:local`).

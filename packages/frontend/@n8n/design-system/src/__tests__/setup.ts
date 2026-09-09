@@ -1,6 +1,6 @@
 import '@n8n/vitest-config/setup/frontend';
 import { config } from '@vue/test-utils';
-import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
 import { N8nPlugin } from '../plugin';
 
@@ -57,3 +57,12 @@ beforeEach(() => {
 	vi.stubGlobal('PointerEvent', PatchedPointerEvent);
 });
 afterEach(() => vi.unstubAllGlobals());
+
+// Reka UI's FocusScope restores focus from a `setTimeout(…, 0)` scheduled while the
+// scope unmounts, and nothing cancels it (reka-ui 2.5.0, FocusScope.js). When the
+// last test of a file unmounts an open overlay, that timer is still pending when
+// vitest tears jsdom down, and it throws `document is not defined` as an uncaught
+// exception — a non-zero exit code on a run where every test passed.
+afterAll(async () => {
+	await new Promise((resolve) => setTimeout(resolve, 0));
+});

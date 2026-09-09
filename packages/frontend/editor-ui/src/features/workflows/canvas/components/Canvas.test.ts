@@ -39,6 +39,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
+import { mockedStore } from '@/__tests__/utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -802,6 +805,14 @@ describe('Canvas', () => {
 
 			expect(rendered.queryByTestId('canvas-node-group-extract')).toBeNull();
 		});
+
+		it('hides the convert button when executeWorkflow is excluded', async () => {
+			vi.spyOn(useSettingsStore(), 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+
+			const rendered = await setupExpandedGroupWithLooseNodes();
+
+			expect(rendered.queryByTestId('canvas-node-group-extract')).toBeNull();
+		});
 	});
 
 	describe('expanded group selection', () => {
@@ -1008,6 +1019,46 @@ describe('Canvas', () => {
 		expect(emitted()['copy:nodes']).toEqual([[['node-1', 'node-2']]]);
 	});
 
+	describe('shortcuts disabled in canvas-only mode', () => {
+		const shortcuts = [
+			{ name: 'save:workflow', event: { key: 's', ctrlKey: true, metaKey: true } },
+			{
+				name: 'create:workflow',
+				event: { key: 'n', ctrlKey: true, metaKey: true, altKey: true },
+			},
+		];
+
+		const setCanvasOnly = (canvasOnly: boolean) => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings = { ...defaultSettings, canvasOnly };
+		};
+
+		it.each(shortcuts)('emits `$name` when canvas-only mode is off', async ({ name, event }) => {
+			setCanvasOnly(false);
+
+			const { container, emitted } = renderComponent();
+			await waitFor(() => expect(container.querySelector('.vue-flow')).toBeInTheDocument());
+
+			await fireEvent.keyDown(document, event);
+
+			expect(emitted()[name]).toEqual([[]]);
+		});
+
+		it.each(shortcuts)(
+			'does not emit `$name` when canvas-only mode is on',
+			async ({ name, event }) => {
+				setCanvasOnly(true);
+
+				const { container, emitted } = renderComponent();
+				await waitFor(() => expect(container.querySelector('.vue-flow')).toBeInTheDocument());
+
+				await fireEvent.keyDown(document, event);
+
+				expect(emitted()[name]).toBeUndefined();
+			},
+		);
+	});
+
 	it('should emit `update:nodes:position` event', async () => {
 		const nodes = [createCanvasNodeElement()];
 		const { container, emitted } = renderComponent({
@@ -1044,89 +1095,7 @@ describe('Canvas', () => {
 		]);
 	});
 
-	it('snaps an agent drag by its measured center', async () => {
-		const agent = createTestNode({
-			id: 'agent',
-			name: 'Agent',
-			position: [100, 100],
-			type: MESSAGE_AN_AGENT_NODE_TYPE,
-			typeVersion: 2,
-		});
-		workflowDocumentStore.addNode(agent);
-		const canvasNode = createCanvasNodeElement({
-			id: agent.id,
-			position: { x: 100, y: 100 },
-			data: { type: agent.type, typeVersion: agent.typeVersion },
-		});
-		const { container, emitted } = renderComponent({ props: { nodes: [canvasNode] } });
-
-		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
-		const graphNode = useVueFlow({ id: canvasId }).findNode(agent.id)!;
-		graphNode.dimensions = { width: 320, height: 206 };
-
-		const node = container.querySelector(`[data-id="${agent.id}"]`) as Element;
-		await fireEvent.mouseDown(node, { view: window });
-		await fireEvent.mouseMove(node, { view: window, clientX: 20, clientY: 20 });
-		await fireEvent.mouseMove(node, { view: window, clientX: 40, clientY: 40 });
-		await fireEvent.mouseUp(node, { view: window });
-
-		expect(emitted()['update:nodes:position']).toEqual([
-			[
-				[
-					{
-						id: agent.id,
-						position: { x: 112, y: 105 },
-					},
-				],
-			],
-		]);
-	});
-
-	it('snaps a selected agent by its measured center when dragging a regular node', async () => {
-		const agent = createTestNode({
-			id: 'agent',
-			name: 'Agent',
-			position: [100, 100],
-			type: MESSAGE_AN_AGENT_NODE_TYPE,
-			typeVersion: 2,
-		});
-		workflowDocumentStore.addNode(agent);
-		const agentCanvasNode = createCanvasNodeElement({
-			id: agent.id,
-			position: { x: 100, y: 100 },
-			data: { type: agent.type, typeVersion: agent.typeVersion },
-		});
-		const regularCanvasNode = createCanvasNodeElement({
-			id: 'regular',
-			position: { x: 100, y: 100 },
-		});
-		const { container, emitted } = renderComponent({
-			props: { nodes: [agentCanvasNode, regularCanvasNode] },
-		});
-
-		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
-		const vueFlow = useVueFlow({ id: canvasId });
-		const agentGraphNode = vueFlow.findNode(agent.id)!;
-		agentGraphNode.dimensions = { width: 320, height: 206 };
-		vueFlow.addSelectedNodes([agentGraphNode, vueFlow.findNode(regularCanvasNode.id)!]);
-
-		const regularNode = container.querySelector(`[data-id="${regularCanvasNode.id}"]`) as Element;
-		await fireEvent.mouseDown(regularNode, { view: window });
-		await fireEvent.mouseMove(regularNode, { view: window, clientX: 20, clientY: 20 });
-		await fireEvent.mouseMove(regularNode, { view: window, clientX: 40, clientY: 40 });
-		await fireEvent.mouseUp(regularNode, { view: window });
-
-		expect(emitted()['update:nodes:position']).toEqual([
-			[
-				[
-					{ id: agent.id, position: { x: 112, y: 105 } },
-					{ id: regularCanvasNode.id, position: { x: 112, y: 105 } },
-				],
-			],
-		]);
-	});
-
-	it('centers a newly added agent when its rendered height is first measured', async () => {
+	it('places a newly added agent by its handle when its rendered height is first measured', async () => {
 		const agent = createTestNode({
 			id: 'agent',
 			name: 'Agent',
@@ -1135,7 +1104,10 @@ describe('Canvas', () => {
 			typeVersion: 2,
 		});
 		workflowDocumentStore.addNode(agent);
-		useAgentNodeCanvasGeometryStore().setPendingCenterY(canvasId, agent.id, 176);
+		const geometryStore = useAgentNodeCanvasGeometryStore();
+		geometryStore.setPendingCenterY(canvasId, agent.id, 176);
+		// The card reports its content once loaded; only then does its size count.
+		geometryStore.setNodeContentKey(canvasId, agent.id, 'summary');
 
 		const { container } = renderComponent({
 			props: {
@@ -1918,6 +1890,96 @@ describe('Canvas', () => {
 			expect(useTelemetry().track).toHaveBeenCalledWith(
 				'User collapsed group',
 				expect.objectContaining({ group_id: group.id, source: 'group-header' }),
+			);
+		});
+	});
+
+	describe('multi-selection telemetry', () => {
+		const MULTI_SELECT_DEBOUNCE = 500;
+
+		it('tracks the settled multi-selection once the debounce elapses', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1' }),
+				createCanvasNodeElement({ id: 'node-2' }),
+			];
+			const { container } = renderComponent({ props: { nodes } });
+
+			await waitFor(() =>
+				expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(nodes.length),
+			);
+
+			const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+			addSelectedNodes(graphNodes.value);
+
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			expect(trackSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'User selected multiple nodes' }),
+				expect.objectContaining({
+					workflow_id: 'wf-test',
+					node_count: 2,
+					push_ref: expect.any(String),
+				}),
+			);
+		});
+
+		it('excludes groups from the reported node count', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1' }),
+				createCanvasNodeElement({ id: 'node-2' }),
+				createCanvasGroupNode({ id: 'g1', nodeIds: ['node-1'] }),
+			];
+			const { container } = renderComponent({ props: { nodes } });
+
+			await waitFor(() =>
+				expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(nodes.length),
+			);
+
+			const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+			addSelectedNodes(graphNodes.value);
+
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			// Two nodes plus the group are selected, but the group must not count.
+			expect(trackSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'User selected multiple nodes' }),
+				expect.objectContaining({ node_count: 2 }),
+			);
+		});
+
+		it('reports again when one settled multi-selection is replaced with another of the same size', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1' }),
+				createCanvasNodeElement({ id: 'node-2' }),
+				createCanvasNodeElement({ id: 'node-3' }),
+			];
+			const { container } = renderComponent({ props: { nodes } });
+
+			await waitFor(() =>
+				expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(nodes.length),
+			);
+
+			const { addSelectedNodes, removeSelectedElements, findNode } = useVueFlow({ id: canvasId });
+
+			addSelectedNodes([findNode('node-1')!, findNode('node-2')!]);
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			trackSpy.mockClear();
+
+			// Swap to a different two-node selection — same count, different ids.
+			removeSelectedElements();
+			addSelectedNodes([findNode('node-2')!, findNode('node-3')!]);
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			expect(trackSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'User selected multiple nodes' }),
+				expect.objectContaining({ node_count: 2 }),
 			);
 		});
 	});

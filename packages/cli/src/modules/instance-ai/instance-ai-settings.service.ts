@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	deriveInstanceAiSetupState,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
 } from '@n8n/api-types';
@@ -15,6 +16,7 @@ import type {
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiSandboxProvider,
+	InstanceAiSetupState,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -22,7 +24,11 @@ import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { DbLock, DbLockService, SettingsRepository, UserRepository } from '@n8n/db';
 import type { CredentialsEntity, ICredentialsDb, OperationContext, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import type { ModelConfig } from '@n8n/instance-ai';
+import {
+	resolveCustomModelExperimentDefaultsFromEnv,
+	type ModelConfig,
+	type VertexAnthropicModelConfig,
+} from '@n8n/instance-ai';
 import { hasGlobalScope } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
@@ -40,7 +46,14 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
+import {
+	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+	INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+	SandboxSettingsService,
+} from '@/services/sandbox-settings.service';
 import { UserService } from '@/services/user.service';
+
+export { INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY };
 
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
@@ -48,7 +61,6 @@ import {
 } from './sandbox-provider';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
-const N8N_SANDBOX_HEADER_NAME = 'x-api-key';
 
 const MODEL_PROVIDER_API_KEY_ENV: ReadonlyMap<string, string> = new Map([
 	['anthropic', 'ANTHROPIC_API_KEY'],
@@ -72,7 +84,7 @@ export interface InstanceAiSandboxStatus {
 }
 
 /** Credential types we support and their model provider mapping. */
-const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
+export const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	openAiApi: 'openai',
 	anthropicApi: 'anthropic',
 	googlePalmApi: 'google',
@@ -156,31 +168,23 @@ function modelCredentialHeaders(
 	return Object.keys(headers).length ? headers : undefined;
 }
 
-function validateSandboxServiceCredential({
-	type,
-	data,
-}: {
-	type: string;
-	data: ICredentialDataDecryptedObject;
-}): void {
-	const headerName = requireConnectionValue(type, data, 'name').toLowerCase();
-	if (headerName !== N8N_SANDBOX_HEADER_NAME) {
-		throw new UnprocessableRequestError(
-			`The credential's header name must be "${N8N_SANDBOX_HEADER_NAME}" but is "${headerName}"`,
-		);
-	}
-	requireConnectionValue(type, data, 'value');
+function isVertexAnthropicModelId(
+	id: `${string}/${string}`,
+): id is `google-vertex-anthropic/${string}` {
+	return id.startsWith('google-vertex-anthropic/');
 }
 
-function validateDaytonaCredential({
-	type,
-	data,
-}: {
-	type: string;
-	data: ICredentialDataDecryptedObject;
-}): void {
-	requireHttpUrl(type, data, 'apiUrl');
-	requireConnectionValue(type, data, 'apiKey');
+/** `project_id` from a GCP service-account JSON blob, if present and parseable. */
+function projectIdFromServiceAccountJson(json: string | undefined): string {
+	if (!json?.trim()) return '';
+	try {
+		const parsed: unknown = JSON.parse(json);
+		if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return '';
+		const projectId = (parsed as Record<string, unknown>).project_id;
+		return typeof projectId === 'string' ? projectId.trim() : '';
+	} catch {
+		return '';
+	}
 }
 
 function validateSearchCredential({
@@ -200,18 +204,6 @@ export const INSTANCE_AI_MODEL_CREDENTIAL_POLICY: InstanceCredentialUse = {
 	validate: validateModelCredential,
 };
 
-export const INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY: InstanceCredentialUse = {
-	id: 'instance-ai:sandbox:daytona',
-	credentialTypes: ['daytonaApi'],
-	validate: validateDaytonaCredential,
-};
-
-export const INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY: InstanceCredentialUse = {
-	id: 'instance-ai:sandbox:n8n',
-	credentialTypes: ['httpHeaderAuth'],
-	validate: validateSandboxServiceCredential,
-};
-
 export const INSTANCE_AI_SEARCH_CREDENTIAL_POLICY: InstanceCredentialUse = {
 	id: 'instance-ai:search',
 	credentialTypes: INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
@@ -225,9 +217,9 @@ function validateInstanceAiCredential(
 	if (policy === INSTANCE_AI_MODEL_CREDENTIAL_POLICY) {
 		validateModelCredential(credential);
 	} else if (policy === INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY) {
-		validateDaytonaCredential(credential);
+		INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.validate?.(credential);
 	} else if (policy === INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY) {
-		validateSandboxServiceCredential(credential);
+		INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.validate?.(credential);
 	} else if (policy === INSTANCE_AI_SEARCH_CREDENTIAL_POLICY) {
 		validateSearchCredential(credential);
 	} else {
@@ -271,12 +263,12 @@ interface PreparedConnection {
 	encryptedData?: ICredentialsDb;
 }
 
-interface AdminModelSelection {
+export interface AdminModelSelection {
 	modelCredentialId: string | null;
 	modelName: string | null;
 }
 
-interface AdminCredentialSelection extends AdminModelSelection {
+export interface AdminCredentialSelection extends AdminModelSelection {
 	daytonaCredentialId: string | null;
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
@@ -319,13 +311,13 @@ export class InstanceAiSettingsService {
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
+		private readonly sandboxSettingsService: SandboxSettingsService,
 		private readonly eventService: EventService,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
-		this.environmentSandboxProvider = normalizeSandboxProvider(this.config.sandboxProvider);
+		this.environmentSandboxProvider = this.sandboxSettingsService.getProvider();
 		this.environmentN8nSandboxServiceUrl = this.config.n8nSandboxServiceUrl;
-		this.config.sandboxProvider = this.environmentSandboxProvider;
 	}
 
 	/** Whether this instance is running on the cloud platform. */
@@ -340,10 +332,9 @@ export class InstanceAiSettingsService {
 
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
 	async loadFromDb(): Promise<void> {
-		this.config.sandboxProvider = normalizeSandboxProvider(this.config.sandboxProvider);
 		const envSnapshot = {
 			sandboxEnabled: this.config.sandboxEnabled,
-			sandboxProvider: this.config.sandboxProvider,
+			sandboxProvider: this.environmentSandboxProvider,
 		};
 
 		await this.reloadFromDb();
@@ -414,14 +405,20 @@ export class InstanceAiSettingsService {
 		credentialSelection: AdminCredentialSelection,
 	): InstanceAiAdminSettingsResponse {
 		const c = this.config;
-		const modelProviderApiKeyEnv = MODEL_PROVIDER_API_KEY_ENV.get(c.model.split('/', 1)[0] ?? '');
+		const modelProvider = c.model.split('/', 1)[0] ?? '';
+		const modelProviderApiKeyEnv = MODEL_PROVIDER_API_KEY_ENV.get(modelProvider);
 		const isProxyEnabled = this.aiService.isProxyEnabled();
 		const isManaged = this.isCloud || isProxyEnabled;
 		const providerModelApiKeyConfigured = Boolean(
 			modelProviderApiKeyEnv && process.env[modelProviderApiKeyEnv]?.trim(),
 		);
+		const vertexModelEnvConfigured =
+			modelProvider === 'google-vertex-anthropic' && Boolean(this.resolveVertexProjectId());
 		const modelConnectionEnvConfigured = Boolean(
-			c.modelApiKey.trim() || c.modelUrl.trim() || providerModelApiKeyConfigured,
+			c.modelApiKey.trim() ||
+				c.modelUrl.trim() ||
+				providerModelApiKeyConfigured ||
+				vertexModelEnvConfigured,
 		);
 		const sandboxEnvConfigured = this.hasEnvironmentSandboxConnection();
 		const searchEnvConfigured = this.hasEnvironmentSearchConnection();
@@ -605,9 +602,8 @@ export class InstanceAiSettingsService {
 						: settingsUpdate.sandboxProvider,
 		);
 		await this.runConnectionHooks([modelPrepared, searchPrepared, sandboxPrepared]);
-		const { previous, next, credentialSelection } = await this.dbLockService.withLockContext(
-			DbLock.INSTANCE_AI_SETTINGS,
-			async (ctx) => {
+		const { previous, next, credentialSelection, previousSelection } =
+			await this.dbLockService.withLockContext(DbLock.INSTANCE_AI_SETTINGS, async (ctx) => {
 				if (user && modelConnection !== undefined) {
 					modelCredentialId = await this.upsertConnection(
 						user,
@@ -772,11 +768,25 @@ export class InstanceAiSettingsService {
 						n8nSandboxCredentialId: nextN8nCredentialId,
 						searchCredentialId: nextSearchCredentialId,
 					} satisfies AdminCredentialSelection,
+					previousSelection: {
+						modelCredentialId: currentModelCredentialId,
+						modelName: current.modelName ?? null,
+						daytonaCredentialId: currentDaytonaCredentialId,
+						n8nSandboxCredentialId: currentN8nCredentialId,
+						searchCredentialId: currentSearchCredentialId,
+					} satisfies AdminCredentialSelection,
 				};
-			},
-		);
+			});
 		this.applyAdminSettings(next);
-		this.emitSettingsUpdated(previous, next);
+		this.emitSettingsUpdated(previous, next, {
+			previous: previousSelection,
+			next: credentialSelection,
+			connectionsUpdated: {
+				model: modelConnection !== undefined && modelConnection !== null,
+				sandbox: sandboxConnection !== undefined && sandboxConnection !== null,
+				search: searchConnection !== undefined && searchConnection !== null,
+			},
+		});
 
 		return this.buildAdminSettingsResponse(credentialSelection);
 	}
@@ -1148,70 +1158,29 @@ export class InstanceAiSettingsService {
 			apiKey: daytonaApiKey || undefined,
 		};
 		if (
-			this.isDirectSelfManaged() &&
-			this.environmentSandboxProvider === 'daytona' &&
-			this.hasEnvironmentSandboxConnection()
+			this.aiService.isProxyEnabled() ||
+			(this.isDirectSelfManaged() &&
+				this.environmentSandboxProvider === 'daytona' &&
+				this.hasEnvironmentSandboxConnection())
 		) {
 			return envConfig;
 		}
-		const resolved = await this.resolveServiceCredential(
-			INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
-			'Daytona sandbox',
-		);
-		if (!resolved) return envConfig;
-		const { data } = resolved;
-		const apiUrl = typeof data.apiUrl === 'string' ? data.apiUrl : undefined;
-		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : undefined;
-		if (!apiUrl || !apiKey) {
-			this.warnCredentialFallback(
-				'Daytona sandbox',
-				INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id,
-				'Credential data is incomplete',
-			);
-			return envConfig;
-		}
-		return { apiUrl, apiKey };
+		return await this.sandboxSettingsService.resolveDaytonaConfig();
 	}
 
 	async resolveN8nSandboxConfig(): Promise<{ serviceUrl?: string; apiKey?: string }> {
-		const { n8nSandboxServiceUrl, n8nSandboxServiceApiKey } = this.config;
-		const envConfig = {
-			serviceUrl: n8nSandboxServiceUrl || undefined,
-			apiKey: n8nSandboxServiceApiKey || undefined,
-		};
 		if (
 			this.isDirectSelfManaged() &&
 			this.environmentSandboxProvider === 'n8n-sandbox' &&
 			this.hasEnvironmentSandboxConnection()
 		) {
-			return envConfig;
+			const { n8nSandboxServiceUrl, n8nSandboxServiceApiKey } = this.config;
+			return {
+				serviceUrl: n8nSandboxServiceUrl || undefined,
+				apiKey: n8nSandboxServiceApiKey || undefined,
+			};
 		}
-		const resolved = await this.resolveServiceCredential(
-			INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
-			'n8n Sandbox',
-		);
-		if (!resolved) return envConfig;
-
-		const { data } = resolved;
-		const headerName = typeof data.name === 'string' ? data.name.trim().toLowerCase() : '';
-		const apiKey = typeof data.value === 'string' ? data.value : undefined;
-		if (headerName !== N8N_SANDBOX_HEADER_NAME) {
-			this.warnCredentialFallback(
-				'n8n Sandbox',
-				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id,
-				`Credential header must be "${N8N_SANDBOX_HEADER_NAME}" but is "${headerName || '(empty)'}"`,
-			);
-			return envConfig;
-		}
-		if (!apiKey) {
-			this.warnCredentialFallback(
-				'n8n Sandbox',
-				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id,
-				'Credential data is incomplete',
-			);
-			return envConfig;
-		}
-		return { serviceUrl: n8nSandboxServiceUrl || undefined, apiKey };
+		return await this.sandboxSettingsService.resolveN8nSandboxConfig();
 	}
 
 	async resolveSearchConfig(): Promise<{ braveApiKey?: string; searxngUrl?: string }> {
@@ -1255,12 +1224,7 @@ export class InstanceAiSettingsService {
 		service: string,
 		ctx?: OperationContext,
 	): Promise<ResolvedInstanceCredential | null> {
-		if (
-			this.isCloud ||
-			(this.aiService.isProxyEnabled() &&
-				policy.id !== INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id)
-		)
-			return null;
+		if (this.isCloud || this.aiService.isProxyEnabled()) return null;
 		const resolved = ctx
 			? this.instanceCredentialBroker.resolveForUse(policy, ctx)
 			: this.instanceCredentialBroker.resolveForUse(policy);
@@ -1312,9 +1276,24 @@ export class InstanceAiSettingsService {
 		return this.config.browserUseEnabled;
 	}
 
+	/** Whether the non-blocking setup panel replaces the suspending setup wizard. */
+	isInstanceAiSetupPanelEnabled(): boolean {
+		return this.config.instanceAiSetupPanelEnabled;
+	}
+
+	/** Whether this instance is in the activation-capped trial cohort. */
+	isActivationCapped(): boolean {
+		return this.config.activationCapped;
+	}
+
+	/** How many assistant messages must precede the activation lock. `0` means activation alone. */
+	getActivationLockMessageThreshold(): number {
+		return this.config.activationLockMessageThreshold;
+	}
+
 	/** Whether workflow building can use the required sandbox workspace. */
 	getSandboxStatus(): InstanceAiSandboxStatus {
-		const provider = normalizeSandboxProvider(this.config.sandboxProvider);
+		const provider = this.sandboxSettingsService.getProvider();
 		const unavailableReason = this.getSandboxUnavailableReason(
 			this.config.sandboxEnabled,
 			provider,
@@ -1335,8 +1314,22 @@ export class InstanceAiSettingsService {
 
 	/** Public, detail-free setup state used to gate member-facing entry points. */
 	async isSetupCompleted(): Promise<boolean> {
-		if (this.isCloud || this.aiService.isProxyEnabled()) return true;
+		if (!this.isDirectSelfManaged()) return true;
+		return (await this.resolveSetupState()).setupCompleted;
+	}
 
+	/**
+	 * Whether a model is available to answer a run. Narrower than
+	 * `isSetupCompleted` on purpose: sandbox and web search are optional for a
+	 * conversation, a model is not, so this is what the chat endpoint enforces.
+	 */
+	async isModelConfigured(): Promise<boolean> {
+		if (!this.isDirectSelfManaged()) return true;
+		return (await this.resolveSetupState()).modelSource !== 'none';
+	}
+
+	/** Setup state of a direct self-managed instance, from the shared derivation. */
+	private async resolveSetupState(): Promise<InstanceAiSetupState> {
 		const [modelSelection, daytonaCredentialId, n8nSandboxCredentialId, searchCredentialId] =
 			await Promise.all([
 				this.readAdminModelSelection(),
@@ -1354,21 +1347,11 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId,
 			searchCredentialId,
 		});
-		const modelConfigured = Boolean(
-			response.modelEnvConfigured || (response.modelCredentialId && response.modelName),
-		);
-		const sandboxCredentialId =
-			response.sandboxProvider === 'daytona'
-				? response.daytonaCredentialId
-				: response.n8nSandboxCredentialId;
-		const sandboxConfigured = Boolean(
-			response.sandboxEnabled && (response.sandboxEnvConfigured || sandboxCredentialId),
-		);
-		const searchDecided = Boolean(
-			response.searchEnvConfigured || response.searchCredentialId || response.searchDisabled,
-		);
+		return deriveInstanceAiSetupState(response);
+	}
 
-		return modelConfigured && sandboxConfigured && searchDecided;
+	getConfiguredModelId(): string {
+		return this.config.model.trim();
 	}
 
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
@@ -1421,11 +1404,12 @@ export class InstanceAiSettingsService {
 			const provider = config.includes('/') ? config.slice(0, config.indexOf('/')) : 'custom';
 			return `${provider}/${modelName}`;
 		}
-		if ('id' in config && typeof config.id === 'string') {
+		if ('id' in config && typeof config.id === 'string' && 'url' in config) {
 			const provider = config.id.includes('/')
 				? config.id.slice(0, config.id.indexOf('/'))
 				: 'custom';
-			return { ...config, id: `${provider}/${modelName}` };
+			const id: `${string}/${string}` = `${provider}/${modelName}`;
+			return { ...config, id };
 		}
 		return config;
 	}
@@ -1641,6 +1625,9 @@ export class InstanceAiSettingsService {
 
 	private hasEnvironmentModelConnection(): boolean {
 		const provider = this.config.model.split('/', 1)[0] ?? '';
+		if (provider === 'google-vertex-anthropic') {
+			return Boolean(this.resolveVertexProjectId());
+		}
 		const providerApiKeyEnv = MODEL_PROVIDER_API_KEY_ENV.get(provider);
 		return Boolean(
 			this.config.modelApiKey.trim() ||
@@ -1674,16 +1661,69 @@ export class InstanceAiSettingsService {
 		const id: `${string}/${string}` = model.includes('/')
 			? (model as `${string}/${string}`)
 			: `custom/${model}`;
+		const customOptions = this.customModelOptionsFor(id);
+
+		const vertexConfig = this.vertexAnthropicModelConfig(id);
+		if (vertexConfig) return vertexConfig;
 
 		if (modelUrl) {
-			return { id, url: modelUrl, ...(modelApiKey ? { apiKey: modelApiKey } : {}) };
+			return {
+				id,
+				url: modelUrl,
+				...(modelApiKey ? { apiKey: modelApiKey } : {}),
+				...customOptions,
+			};
 		}
 
 		if (modelApiKey) {
-			return { id, url: '', apiKey: modelApiKey };
+			return {
+				id,
+				url: '',
+				apiKey: modelApiKey,
+				...customOptions,
+			};
 		}
 
 		return model;
+	}
+
+	private resolveVertexProjectId(): string {
+		return (
+			this.config.vertexProjectId?.trim() ||
+			process.env.GOOGLE_VERTEX_PROJECT?.trim() ||
+			projectIdFromServiceAccountJson(this.config.vertexServiceAccountJson) ||
+			''
+		);
+	}
+
+	private resolveVertexLocation(): string {
+		return (
+			this.config.vertexLocation?.trim() || process.env.GOOGLE_VERTEX_LOCATION?.trim() || 'global'
+		);
+	}
+
+	/**
+	 * Build a typed Vertex Anthropic model config from Instance AI env vars.
+	 * Returns null when the model id is not `google-vertex-anthropic/*`.
+	 */
+	private vertexAnthropicModelConfig(id: `${string}/${string}`): VertexAnthropicModelConfig | null {
+		if (!isVertexAnthropicModelId(id)) return null;
+
+		const googleCredentials = this.config.vertexServiceAccountJson?.trim() || undefined;
+
+		return {
+			id,
+			project: this.resolveVertexProjectId(),
+			location: this.resolveVertexLocation(),
+			...(googleCredentials ? { googleCredentials } : {}),
+		};
+	}
+
+	/** Optional custom/* knobs from env override → known-model map → omit. */
+	private customModelOptionsFor(modelId: string): { supportsStructuredOutputs?: boolean } {
+		if (!modelId.startsWith('custom/')) return {};
+		const { supportsStructuredOutputs } = resolveCustomModelExperimentDefaultsFromEnv(modelId);
+		return supportsStructuredOutputs !== undefined ? { supportsStructuredOutputs } : {};
 	}
 
 	private extractModelName(model: string): string {
@@ -1810,12 +1850,18 @@ export class InstanceAiSettingsService {
 	private emitSettingsUpdated(
 		previous: PersistedAdminSettings,
 		current: PersistedAdminSettings,
+		credentialSelections?: {
+			previous: AdminCredentialSelection;
+			next: AdminCredentialSelection;
+			connectionsUpdated: { model: boolean; sandbox: boolean; search: boolean };
+		},
 	): void {
 		try {
 			this.eventService.emit('instance-ai-settings-updated', {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
 					current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+				credentialSelections,
 			});
 		} catch (error) {
 			Container.get(Logger)

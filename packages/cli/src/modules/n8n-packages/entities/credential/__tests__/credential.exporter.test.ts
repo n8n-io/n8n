@@ -1,5 +1,6 @@
 import type { CredentialsEntity, User } from '@n8n/db';
-import { jsonParse } from 'n8n-workflow';
+import { CredentialDataError, Credentials } from 'n8n-core';
+import { jsonParse, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -11,12 +12,24 @@ import type { WorkflowCredentialRequirement } from '../credential.types';
 
 const user = mock<User>({ id: 'user-1' });
 
+async function encryptedData(data: ICredentialDataDecryptedObject): Promise<string> {
+	const credentials = new Credentials({ id: 'fixture', name: 'fixture' }, 'httpHeaderAuth');
+	await credentials.setData(data);
+	return credentials.getDataToSave().data!;
+}
+
+let literalOnlyCiphertext: string;
+
+beforeAll(async () => {
+	literalOnlyCiphertext = await encryptedData({ apiKey: 'literal-secret' });
+});
+
 function makeCredential(overrides: Partial<CredentialsEntity> = {}): CredentialsEntity {
 	return {
 		id: 'cred-1',
 		name: 'My Credential',
 		type: 'httpHeaderAuth',
-		data: '',
+		data: literalOnlyCiphertext,
 		isManaged: false,
 		isGlobal: false,
 		isResolvable: false,
@@ -51,7 +64,12 @@ describe('CredentialExporter', () => {
 			const { exporter, finder } = makeExporter();
 			const writer = new CapturingWriter();
 
-			const result = await exporter.export({ user, requirements: [], writer });
+			const result = await exporter.export({
+				user,
+				requirements: [],
+				writer,
+				credentialExportPolicy: 'expression-values-only',
+			});
 
 			expect(result).toEqual({ entries: [], requirements: [] });
 			expect(writer.files).toEqual([]);
@@ -70,6 +88,7 @@ describe('CredentialExporter', () => {
 				user,
 				requirements: [makeRequirement()],
 				writer,
+				credentialExportPolicy: 'expression-values-only',
 			});
 
 			expect(finder.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
@@ -77,7 +96,7 @@ describe('CredentialExporter', () => {
 			]);
 
 			expect(result.entries).toEqual([
-				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential' },
+				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential-cred-1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
@@ -88,9 +107,9 @@ describe('CredentialExporter', () => {
 				},
 			]);
 
-			expect(writer.directories).toEqual(['credentials/my-credential']);
+			expect(writer.directories).toEqual(['credentials/my-credential-cred-1']);
 			expect(writer.files).toHaveLength(1);
-			expect(writer.files[0].path).toBe('credentials/my-credential/credential.json');
+			expect(writer.files[0].path).toBe('credentials/my-credential-cred-1/credential.json');
 
 			const parsed = jsonParse<Record<string, unknown>>(writer.files[0].content);
 			expect(parsed).toEqual({
@@ -112,11 +131,12 @@ describe('CredentialExporter', () => {
 					makeRequirement({ workflowId: 'wf-b' }),
 				],
 				writer,
+				credentialExportPolicy: 'expression-values-only',
 			});
 
 			expect(finder.findCredentialForUser).toHaveBeenCalledTimes(1);
 			expect(result.entries).toEqual([
-				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential' },
+				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential-cred-1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
@@ -143,14 +163,15 @@ describe('CredentialExporter', () => {
 					makeRequirement({ credentialId: 'cred-b', credentialName: 'Same Name' }),
 				],
 				writer,
+				credentialExportPolicy: 'expression-values-only',
 			});
 
 			const targets = result.entries.map((e) => e.target);
-			expect(targets).toEqual(['credentials/same-name', 'credentials/same-name-2']);
+			expect(targets).toEqual(['credentials/same-name-cred-a', 'credentials/same-name-cred-b']);
 
 			const writtenPaths = writer.files.map((f) => f.path);
-			expect(writtenPaths).toContain('credentials/same-name/credential.json');
-			expect(writtenPaths).toContain('credentials/same-name-2/credential.json');
+			expect(writtenPaths).toContain('credentials/same-name-cred-a/credential.json');
+			expect(writtenPaths).toContain('credentials/same-name-cred-b/credential.json');
 		});
 
 		it('emits a requirements-only entry when the credential is unfindable for the caller', async () => {
@@ -174,6 +195,7 @@ describe('CredentialExporter', () => {
 					}),
 				],
 				writer,
+				credentialExportPolicy: 'expression-values-only',
 			});
 
 			expect(finder.findCredentialForUser).toHaveBeenCalledWith('cred-unavailable', user, [
@@ -213,10 +235,11 @@ describe('CredentialExporter', () => {
 					}),
 				],
 				writer,
+				credentialExportPolicy: 'expression-values-only',
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential' },
+				{ id: 'cred-1', name: 'My Credential', target: 'credentials/my-credential-cred-1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
@@ -233,6 +256,66 @@ describe('CredentialExporter', () => {
 				},
 			]);
 			expect(writer.files).toHaveLength(1);
+		});
+	});
+
+	describe('credential data policy', () => {
+		it('bundles only expression values under expression-values-only', async () => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(
+				makeCredential({
+					data: await encryptedData({
+						name: 'X-Api-Key',
+						value: '={{ $secrets.api.key }}',
+					}),
+				}),
+			);
+			const writer = new CapturingWriter();
+
+			await exporter.export({
+				user,
+				requirements: [makeRequirement()],
+				writer,
+				credentialExportPolicy: 'expression-values-only',
+			});
+
+			const parsed = jsonParse<Record<string, unknown>>(writer.files[0].content);
+			expect(parsed.data).toEqual({ value: '={{ $secrets.api.key }}' });
+			expect(writer.files[0].content).not.toContain('X-Api-Key');
+		});
+
+		it('writes no data and never decrypts under no-values', async () => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(makeCredential({ data: 'not-ciphertext' }));
+			const writer = new CapturingWriter();
+
+			await exporter.export({
+				user,
+				requirements: [makeRequirement()],
+				writer,
+				credentialExportPolicy: 'no-values',
+			});
+
+			expect(jsonParse<Record<string, unknown>>(writer.files[0].content)).toEqual({
+				id: 'cred-1',
+				name: 'My Credential',
+				type: 'httpHeaderAuth',
+			});
+		});
+
+		it('fails the export when credential data cannot be decrypted', async () => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(makeCredential({ data: 'not-ciphertext' }));
+			const writer = new CapturingWriter();
+
+			await expect(
+				exporter.export({
+					user,
+					requirements: [makeRequirement()],
+					writer,
+					credentialExportPolicy: 'expression-values-only',
+				}),
+			).rejects.toThrow(CredentialDataError);
 		});
 	});
 });

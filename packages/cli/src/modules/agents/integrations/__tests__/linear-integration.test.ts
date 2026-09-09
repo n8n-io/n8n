@@ -43,6 +43,7 @@ describe('LinearIntegration', () => {
 	const ctx = (credential: Record<string, unknown>): AgentChatIntegrationContext => ({
 		agentId: 'agent-1',
 		projectId: 'project-1',
+		integration: { type: 'linear', credentialId: 'credential-1' },
 		credentialId: 'credential-1',
 		credential,
 		ingressEnabled: true,
@@ -99,7 +100,7 @@ describe('LinearIntegration', () => {
 			webhookSecret: 'sec',
 			userName: 'AgentName',
 		});
-		expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(outboundHttp.requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 		expect(requestMock.mock.calls[0][0]).toMatchObject({
 			url: 'https://api.linear.app/graphql',
 			headers: { Authorization: 'Bearer oauth_token' },

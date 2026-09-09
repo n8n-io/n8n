@@ -22,7 +22,7 @@ export class FirecrawlHandler implements IQuickConnectHandler {
 
 	constructor(outboundHttp: OutboundHttp) {
 		this.http = outboundHttp.requests({
-			ssrf: 'disabled', // Fixed third-party vendor host
+			useDefaultSsrfPolicy: 'unsafe', // Fixed third-party vendor host
 			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}

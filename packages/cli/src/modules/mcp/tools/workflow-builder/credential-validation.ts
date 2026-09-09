@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 import type { INode, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
-import { isExpression, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -217,48 +217,21 @@ function describeCredentialProblem(
 }
 
 /**
- * Determine which credential types a node actively uses, mirroring the runtime
- * `CredentialsPermissionChecker.getActiveCredentialTypes`. Returns `null` when
- * the node type can't be resolved, signalling that every credential reference
- * should be checked as a safe fallback.
+ * Determine which credential types a node actively uses, sharing the runtime
+ * permission checker's rule (`NodeHelpers.getActiveCredentialTypes`). Returns
+ * `null` when the active set can't be determined statically (unresolvable node
+ * type, expression-valued credential-type parameter, or evaluation throwing),
+ * signalling that every credential reference should be checked as a safe
+ * fallback.
  */
 function computeActiveCredentialTypes(node: INode, nodeTypes: NodeTypes): Set<string> | null {
-	let description: INodeTypeDescription;
+	let description: INodeTypeDescription | null = null;
 	try {
 		description = nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
 	} catch {
-		return null;
+		// Unresolvable node type — fall back to checking all credential references
 	}
-
-	const activeTypes = new Set<string>();
-
-	for (const credDef of description.credentials ?? []) {
-		if (NodeHelpers.displayParameter(node.parameters, credDef, node, description)) {
-			activeTypes.add(credDef.name);
-		}
-	}
-
-	// Nodes using a predefined credential type (e.g. HTTP Request) declare the
-	// active credential via the nodeCredentialType parameter rather than the
-	// static credentials array.
-	const { nodeCredentialType } = node.parameters;
-	if (typeof nodeCredentialType === 'string' && nodeCredentialType) {
-		// An expression only resolves to its real type at execution time, so the
-		// static filter can't know which credential it activates. Check all
-		// referenced credentials rather than trust the unresolved literal.
-		if (isExpression(nodeCredentialType)) return null;
-		activeTypes.add(nodeCredentialType);
-	}
-
-	// Generic credential types (e.g. HTTP Request with
-	// authentication=genericCredentialType) live in genericAuthType.
-	const { genericAuthType } = node.parameters;
-	if (typeof genericAuthType === 'string' && genericAuthType) {
-		if (isExpression(genericAuthType)) return null;
-		activeTypes.add(genericAuthType);
-	}
-
-	return activeTypes;
+	return NodeHelpers.getActiveCredentialTypes(node, description);
 }
 
 /**

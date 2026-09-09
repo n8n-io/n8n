@@ -9,8 +9,11 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
+import { CANVAS_NODE_CONTEXT_FLAG } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
@@ -52,7 +55,8 @@ export type ContextMenuAction =
 	| 'hide_all_group_descriptions'
 	| 'show_group_description'
 	| 'hide_group_description'
-	| 'focus_ai_on_selected';
+	| 'focus_ai_on_selected'
+	| 'add_nodes_to_chat';
 
 /**
  * Actions that, once selected, hand off to another floating layer or input
@@ -66,6 +70,9 @@ const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>([
 	'change_color',
 	'rename_group',
 	'group_nodes',
+	// Staging hands focus to the Instance AI composer; a focus restore here would
+	// steal it straight back to the canvas.
+	'add_nodes_to_chat',
 ]);
 
 export function isFocusHandoffAction(action: ContextMenuAction): boolean {
@@ -81,10 +88,12 @@ export function useContextMenuItems(
 ): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 	const focusedNodesStore = useFocusedNodesStore();
+	const posthog = usePostHog();
 	const { resolveGroupableNodeIds } = useSelectionValidation();
 	const groupView = injectContextMenuGroupView();
 	const i18n = useI18n();
@@ -262,7 +271,10 @@ export function useContextMenuItems(
 		}
 
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
-		const canExtract = nodes.some(isExecutable) && !nodes.every(isAiSubNode);
+		const canExtract =
+			!settingsStore.isSubworkflowConversionDisabled &&
+			nodes.some(isExecutable) &&
+			!nodes.every(isAiSubNode);
 
 		const i18nOptions = isGroupTarget
 			? {
@@ -332,6 +344,23 @@ export function useContextMenuItems(
 					disabled: isReadOnly.value,
 				},
 		].filter(Boolean) as Item[];
+
+		const addToChatAction: Item | null =
+			!onlyStickies &&
+			nodes.length >= 1 &&
+			posthog.isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG) &&
+			instanceAi.value
+				? {
+						id: 'add_nodes_to_chat',
+						icon: 'sparkles',
+						label: i18n.baseText('contextMenu.addNodesToChat', {
+							adjustToNumber: nodes.length,
+							interpolate: { count: nodes.length },
+						}),
+						shortcut: { altKey: true, keys: ['I'] },
+						disabled: false, // It only adds chat context, so it stays enabled in read-only mode.
+					}
+				: null;
 
 		const layoutActions: Item[] = [
 			{
@@ -556,6 +585,13 @@ export function useContextMenuItems(
 				}
 				// Add actions only available for a single node
 				menuActions.unshift(...singleNodeActions);
+			}
+
+			// The AI "add to chat" action sits at the very top of the menu, set off
+			// from the rest by a divider on the item that follows it.
+			if (addToChatAction) {
+				if (menuActions[0]) menuActions[0] = { ...menuActions[0], divided: true };
+				menuActions.unshift(addToChatAction);
 			}
 
 			return menuActions;

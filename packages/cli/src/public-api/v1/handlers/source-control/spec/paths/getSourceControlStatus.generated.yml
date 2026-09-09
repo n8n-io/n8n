@@ -1,0 +1,181 @@
+operationId: getSourceControlStatus
+tags:
+  - SourceControl
+summary: Preview pending source control changes
+description: Previews the pending changes between the instance and the connected Git repository in either the `push` or `pull` direction.
+x-required-scope: sourceControl:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      enum:
+        - push
+        - pull
+    required: true
+    name: direction
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  file:
+                    type: string
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  type:
+                    type: string
+                    enum:
+                      - credential
+                      - workflow
+                      - tags
+                      - variables
+                      - file
+                      - folders
+                      - project
+                      - datatable
+                  status:
+                    type: string
+                    enum:
+                      - new
+                      - modified
+                      - deleted
+                      - created
+                      - renamed
+                      - conflicted
+                      - ignored
+                      - staged
+                      - unknown
+                  location:
+                    type: string
+                    enum:
+                      - local
+                      - remote
+                  conflict:
+                    type: boolean
+                  updatedAt:
+                    type: string
+                  pushed:
+                    type: boolean
+                  isLocalPublished:
+                    type: boolean
+                  isRemoteArchived:
+                    type: boolean
+                  parentFolderId:
+                    type: string
+                    nullable: true
+                  folderPath:
+                    type: array
+                    items:
+                      type: string
+                  remoteFolderPath:
+                    type: array
+                    items:
+                      type: string
+                  owner:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - personal
+                          - team
+                      projectId:
+                        type: string
+                      projectName:
+                        type: string
+                    required:
+                      - type
+                      - projectId
+                      - projectName
+                  publishingError:
+                    type: string
+                  publishingErrorDetails:
+                    type: object
+                    properties:
+                      reason:
+                        type: string
+                        enum:
+                          - review_pending
+                          - changes_requested
+                          - insufficient_api_key_scope
+                          - insufficient_permissions
+                      workflowReviewRequestId:
+                        type: string
+                        minLength: 1
+                      versionId:
+                        type: string
+                        minLength: 1
+                    required:
+                      - reason
+                    additionalProperties: false
+                  contentImportPolicy:
+                    type: object
+                    properties:
+                      violations:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            kind:
+                              type: string
+                            checkId:
+                              type: string
+                            message:
+                              type: string
+                            subject:
+                              type: string
+                            subjectType:
+                              type: string
+                            scope:
+                              type: string
+                            matchedRuleId:
+                              type: string
+                          required:
+                            - kind
+                            - checkId
+                            - message
+                      checkErrors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            checkId:
+                              type: string
+                            correlationId:
+                              type: string
+                          required:
+                            - checkId
+                            - correlationId
+                    required:
+                      - violations
+                      - checkErrors
+                required:
+                  - file
+                  - id
+                  - name
+                  - type
+                  - status
+                  - location
+                  - conflict
+                  - updatedAt
+          required:
+            - data
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

@@ -1,16 +1,20 @@
+import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
+import { derivePublishedState } from '../entities/workflow/workflow-published-state';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
+import { entityFilePath, workflowLifecycleFilePath } from '../io/manifest-entry';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
@@ -22,6 +26,10 @@ import {
 	serializedVariableSchema,
 	type SerializedVariable,
 } from '../spec/serialized/variable.schema';
+import {
+	serializedWorkflowLifecycleSchema,
+	type SerializedWorkflowLifecycle,
+} from '../spec/serialized/workflow-lifecycle.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
@@ -32,7 +40,11 @@ import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
  */
 @Service()
 export class N8nPackageParser {
-	constructor(private readonly workflowSerializer: WorkflowSerializer) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly nodeTypes: NodeTypes,
+		private readonly workflowSerializer: WorkflowSerializer,
+	) {}
 
 	async getManifest(reader: PackageReader): Promise<PackageManifest> {
 		try {
@@ -106,13 +118,15 @@ export class N8nPackageParser {
 		entry: ManifestEntry,
 		parentFolderId: string | null,
 	): Promise<PreparedWorkflow> {
-		const path = `${entry.target}/workflow.json`;
+		const path = entityFilePath('workflows', entry.target);
 		const wire = await this.readJson<SerializedWorkflow>(reader, path, 'workflow');
+		const lifecycle = await this.readWorkflowLifecycle(reader, entry);
+		const sourceArchived = lifecycle.isArchived;
 
 		let entity: WorkflowEntity;
 		try {
 			const partial = this.workflowSerializer.deserialize(wire);
-			entity = Object.assign(new WorkflowEntity(), partial);
+			entity = Object.assign(new WorkflowEntity(), partial, { isArchived: sourceArchived });
 		} catch (cause) {
 			if (cause instanceof ZodError) {
 				throw new UserError(`Package workflow file at ${path} failed schema validation.`, {
@@ -123,18 +137,63 @@ export class N8nPackageParser {
 		}
 
 		WorkflowHelpers.validateWorkflowStructure(entity);
+		this.normalizeNodeGroups(entity, path);
+
+		// Read from `wire` only past `deserialize`, which is what validates it.
+		const sourcePublished = derivePublishedState(lifecycle, wire.versionId);
 
 		return {
 			entity,
 			sourceWorkflowId: entry.id,
-			sourcePublished: wire.isPublished,
 			parentFolderId,
+			sourceArchived,
+			...(sourcePublished !== undefined ? { sourcePublished } : {}),
 			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
 		};
 	}
 
+	private async readWorkflowLifecycle(
+		reader: PackageReader,
+		entry: ManifestEntry,
+	): Promise<SerializedWorkflowLifecycle> {
+		const path = workflowLifecycleFilePath(entry.target);
+		const wire = await this.readJson(
+			reader,
+			path,
+			'workflow lifecycle',
+			`Package workflow lifecycle file is missing at ${path}. Export the package again from an instance that runs this version.`,
+		);
+
+		try {
+			return serializedWorkflowLifecycleSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(
+					`Package workflow lifecycle file at ${path} failed schema validation.`,
+					{ cause },
+				);
+			}
+			throw cause;
+		}
+	}
+
+	/** Drops groups that wouldn't survive the save path, so they can't fail the whole import. */
+	private normalizeNodeGroups(entity: WorkflowEntity, path: string): void {
+		const dropped = WorkflowHelpers.dropInvalidWorkflowGroups(
+			entity,
+			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+		);
+		for (const { groupName, message } of dropped) {
+			this.logger.warn(`Package workflow file at ${path} dropped group "${groupName}": ${message}`);
+		}
+
+		for (const warning of WorkflowHelpers.sanitizeNodeGroupDescriptions(entity)) {
+			this.logger.warn(`Package workflow file at ${path}: ${warning}`);
+		}
+	}
+
 	private async readFolder(reader: PackageReader, entry: ManifestEntry): Promise<PreparedFolder> {
-		const path = `${entry.target}/folder.json`;
+		const path = entityFilePath('folders', entry.target);
 		const wire = await this.readJson(reader, path, 'folder');
 
 		let folder: SerializedFolder;
@@ -166,7 +225,7 @@ export class N8nPackageParser {
 		reader: PackageReader,
 		entry: ManifestEntry,
 	): Promise<SerializedDataTable> {
-		const path = `${entry.target}/data-table.json`;
+		const path = entityFilePath('dataTables', entry.target);
 		const wire = await this.readJson(reader, path, 'data table');
 
 		let dataTable: SerializedDataTable;
@@ -194,7 +253,7 @@ export class N8nPackageParser {
 	}
 
 	private async readProject(reader: PackageReader, entry: ManifestEntry): Promise<PreparedProject> {
-		const path = `${entry.target}/project.json`;
+		const path = entityFilePath('projects', entry.target);
 		const wire = await this.readJson(reader, path, 'project');
 
 		let project: SerializedProject;
@@ -230,7 +289,7 @@ export class N8nPackageParser {
 		reader: PackageReader,
 		entry: ManifestEntry,
 	): Promise<SerializedVariable> {
-		const path = `${entry.target}/variable.json`;
+		const path = entityFilePath('variables', entry.target);
 		const wire = await this.readJson(reader, path, 'variable');
 
 		let variable: SerializedVariable;
@@ -258,14 +317,16 @@ export class N8nPackageParser {
 		reader: PackageReader,
 		path: string,
 		label: string,
+		missingFileMessage?: string,
 	): Promise<T> {
 		let content: Buffer;
 		try {
 			content = await reader.readFile(path);
 		} catch (cause) {
-			throw new UserError(`Package manifest references a missing ${label} file at ${path}.`, {
-				cause,
-			});
+			throw new UserError(
+				missingFileMessage ?? `Package manifest references a missing ${label} file at ${path}.`,
+				{ cause },
+			);
 		}
 
 		return jsonParse<T>(content.toString('utf-8'), {

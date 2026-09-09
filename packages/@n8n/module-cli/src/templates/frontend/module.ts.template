@@ -1,0 +1,29 @@
+import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+
+/**
+ * Keep this file import-light: types and the SDK only. Views load lazily
+ * (`const View = async () => await import('./views/X.vue')`), and stores are
+ * referenced inside route guards or handlers, never at module scope — a
+ * top-level store import pulls the whole module in even when it is disabled.
+ */
+export const {{PascalName}}Module: FrontendModuleDescription = {
+	// Must match the backend module id: both gate off `/rest/module-settings`.
+	id: '{{name}}',
+	name: '{{TitleName}}',
+	description: 'TODO: describe what this module does',
+	icon: 'box',
+
+	// The shell reads the fields below. Uncomment what this module contributes.
+	//
+	// routes: [ /* RouteRecordRaw[]; components must be lazy */ ],
+	// projectTabs: { overview: [], project: [], shared: [] },
+	// resources: [ /* ResourceMetadata[]; feeds ResourcesListLayout */ ],
+	// modals: [ /* ModalDefinition[]; rendered by DynamicModalLoader */ ],
+	// adHocModalKeyPrefixes: [ /* prefixes for modal keys minted at runtime */ ],
+	// settingsPages: [ /* IMenuItem[]; feeds SettingsSidebar */ ],
+	// pushHandlers: { /* keyed by push message type */ },
+	// commands: [ /* CommandBarEntry[] */ ],
+
+	// The SDK types the fields below, but no host in the shell reads them yet.
+	// A value here does nothing at runtime: locales, shortcuts, banners, setup.
+};

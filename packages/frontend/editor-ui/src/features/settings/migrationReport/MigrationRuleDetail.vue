@@ -4,7 +4,7 @@ import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropd
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME, MIGRATE_WORKFLOW_MODAL_KEY, VIEWS } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import type { BreakingChangeWorkflowIssue, BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	N8nButton,
@@ -67,7 +67,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.name'),
 			key: 'name',
-			width: 200,
+			width: 240,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.status'),
@@ -76,26 +76,27 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 				row.active
 					? i18n.baseText('settings.migrationReport.detail.table.active')
 					: i18n.baseText('settings.migrationReport.detail.table.deactivated'),
-			width: 40,
+			width: 120,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
 			key: 'issues',
+			width: 240,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.numberOfExecutions'),
 			key: 'numberOfExecutions',
-			width: 40,
+			width: 160,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.lastExecuted'),
 			key: 'lastExecutedAt',
-			width: 40,
+			width: 120,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.lastUpdated'),
 			key: 'lastUpdatedAt',
-			width: 40,
+			width: 120,
 		},
 	];
 
@@ -111,6 +112,10 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 
 	return headers;
 });
+
+/** Only node-anchored issues can link into the canvas; workflow-level issues carry no node. */
+const nodeIssues = (issues: BreakingChangeWorkflowIssue[]) =>
+	issues.filter((issue) => issue.nodeId !== undefined);
 
 // Workflows successfully migrated this session (the row shows a "Migrated" state).
 const migratedWorkflowIds = ref<Set<string>>(new Set());
@@ -345,7 +350,9 @@ const sortedWorkflows = computed(() => {
 		>
 			<template #[`item.issues`]="{ item }">
 				<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
-					<template v-for="(issue, index) in item.issues" :key="issue.nodeId">
+					<!-- Workflow-level issues carry no node, so there is nothing to link to. -->
+					<template v-for="(issue, index) in nodeIssues(item.issues)" :key="issue.nodeId">
+						<template v-if="index > 0">, </template>
 						<N8nLink
 							theme="text"
 							:to="`/workflow/${item.id}/${issue.nodeId}`"
@@ -354,7 +361,6 @@ const sortedWorkflows = computed(() => {
 						>
 							{{ issue.nodeName }}
 						</N8nLink>
-						<template v-if="index < item.issues.length - 1">, </template>
 					</template>
 				</div>
 			</template>

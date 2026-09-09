@@ -16,6 +16,7 @@ describe('TestRunner', () => {
 	const newTestRunner = (opts: Partial<TaskRunnerOpts> = {}) =>
 		new TestRunner({
 			taskType: 'test-task',
+			runnerId: '',
 			maxConcurrency: 5,
 			idleTimeout: 60,
 			grantToken: 'test-token',
@@ -80,6 +81,29 @@ describe('TestRunner', () => {
 					taskBrokerUri: 'not-a-valid-uri',
 				}),
 			).toThrowError(/Invalid URL/);
+		});
+
+		it('should identify as the runner ID it was assigned', () => {
+			runner = newTestRunner({ runnerId: 'assigned-by-n8n' });
+
+			expect(runner.id).toBe('assigned-by-n8n');
+			expect(WebSocket).toHaveBeenCalledWith(
+				'ws://localhost:8080/runners/_ws?id=assigned-by-n8n',
+				expect.anything(),
+			);
+		});
+
+		it('should self-assign a unique runner ID when assigned none', () => {
+			// `afterEach` only clears `runner`, so these two must start no idle timer
+			const first = newTestRunner({ runnerId: '', idleTimeout: 0 });
+			const second = newTestRunner({ runnerId: '', idleTimeout: 0 });
+
+			expect(first.id).not.toBe('');
+			expect(second.id).not.toBe(first.id);
+			expect(WebSocket).toHaveBeenCalledWith(
+				`ws://localhost:8080/runners/_ws?id=${first.id}`,
+				expect.anything(),
+			);
 		});
 	});
 

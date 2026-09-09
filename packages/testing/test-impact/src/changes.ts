@@ -64,12 +64,20 @@ export function filterImpactfulChanges(files: string[]): string[] {
  * attributably to a spec and the runtime coverage map never records them. Absent
  * from the map, a credential change would be declared uncovered and skip its
  * covering specs, so we force broad instead.
+ *
+ * The module registry is the same boot-time class, but worse: it IS in the map,
+ * so a scoped result looks correct. Boot code is attributed only to specs that
+ * start their own container — i.e. the specs that already enable the module via
+ * `N8N_ENABLED_MODULES` and so can't observe a default flip. The specs that
+ * break assert the off-branch, and no hit-coverage map reaches a branch that
+ * stopped executing. Churn is low, so broad is cheap here too.
  */
 const FORCES_BROAD: Array<(f: string) => boolean> = [
 	(f) => f.startsWith('docker/'),
 	(f) => /(^|\/)Dockerfile(\.|$)|\.Dockerfile$/.test(f),
 	(f) => f.startsWith('packages/testing/containers/'),
 	(f) => f.startsWith('packages/nodes-base/credentials/'),
+	(f) => /^packages\/@n8n\/backend-common\/src\/modules\/[^/]+\.ts$/.test(f),
 ];
 
 /** True if a changed file defines the E2E runtime → the whole suite must run. */
@@ -235,6 +243,12 @@ const TSCONFIG_RESOLUTION_KEYS = [
 	'customConditions',
 ] as const;
 
+/** Remove block and line comments. A comment-only edit must not look like a
+ *  change. The `[^:]` guard keeps `http://` intact. */
+function stripComments(raw: string): string {
+	return raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+
 /** Tolerant parse for tsconfig (allows comments + trailing commas). Null when
  *  unparseable, which the caller treats as "force broad". */
 function parseTsconfig(raw: string): Record<string, unknown> | null {
@@ -243,10 +257,7 @@ function parseTsconfig(raw: string): Record<string, unknown> | null {
 		return JSON.parse(raw) as Record<string, unknown>;
 	} catch {
 		try {
-			const stripped = raw
-				.replace(/\/\*[\s\S]*?\*\//g, '')
-				.replace(/(^|[^:])\/\/.*$/gm, '$1')
-				.replace(/,(\s*[}\]])/g, '$1');
+			const stripped = stripComments(raw).replace(/,(\s*[}\]])/g, '$1');
 			return JSON.parse(stripped) as Record<string, unknown>;
 		} catch {
 			return null;
@@ -269,6 +280,38 @@ export function tsconfigForcesBroad(before: string, after: string): boolean {
 	const bco = (b.compilerOptions ?? {}) as Record<string, unknown>;
 	const aco = (a.compilerOptions ?? {}) as Record<string, unknown>;
 	return TSCONFIG_RESOLUTION_KEYS.some((k) => JSON.stringify(bco[k]) !== JSON.stringify(aco[k]));
+}
+
+export const isBackendConfig = (f: string): boolean =>
+	/^packages\/@n8n\/config\/src\/configs\/[^/]+\.ts$/.test(f);
+
+/** Every field default (`name=initializer`, empty when the field has none) and
+ *  every `@Env` binding — the two inputs that decide a config's runtime value. */
+function configDefaults(source: string): Set<string> {
+	const src = stripComments(source);
+	const defaults = new Set<string>();
+	for (const [, env] of src.matchAll(/@Env\(\s*['"]([^'"]+)['"]/g)) {
+		defaults.add(`env:${env}`);
+	}
+	for (const [, field, init] of src.matchAll(
+		/^\s*(?:readonly\s+)?([\w$]+)[?!]?\s*:\s*[^=;\n]+?(?:=\s*([^;\n]+))?;/gm,
+	)) {
+		defaults.add(`${field}=${(init ?? '').trim().replace(/\s+/g, ' ')}`);
+	}
+	return defaults;
+}
+
+/**
+ * True when a config change alters an EXISTING default — a field's fallback
+ * value, or the env var it reads. Config classes are built once with the DI
+ * container, so their defaults are unattributable (1 of ~57 files is in the
+ * map) and a changed default moves behaviour in specs that never touch the
+ * file. A purely additive change can't: the code reading the new field is in
+ * the same PR and IS mapped. That split matters at ~130 commits/90d.
+ */
+export function configForcesBroad(before: string, after: string): boolean {
+	const next = configDefaults(after);
+	return [...configDefaults(before)].some((d) => !next.has(d));
 }
 
 /** Remove the lockfile + every package.json from a changed-file set. */

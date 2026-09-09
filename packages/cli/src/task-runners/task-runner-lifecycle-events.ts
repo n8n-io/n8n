@@ -1,7 +1,7 @@
 import { TypedEmitter } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-type RunnerIdentity = { runnerId: string; taskTypes: string[] };
+type RunnerIdentity = { runnerId: string };
 
 export type TaskRunnerLifecycleEventMap = {
 	'runner:failed-heartbeat-check': RunnerIdentity;

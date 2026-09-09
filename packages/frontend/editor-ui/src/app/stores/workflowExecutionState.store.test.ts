@@ -6,7 +6,8 @@
  * executions filter+dedupe, last-successful-execution via id reference,
  * dispose lifecycle.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { AgentNodeProgress } from '@n8n/api-types';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
 import { defineComponent, provide, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -51,6 +52,24 @@ function makeExecutionSummary(overrides: Partial<ExecutionSummary> = {}): Execut
 		startedAt: new Date(),
 		...overrides,
 	} as ExecutionSummary;
+}
+
+function makeAgentProgress(overrides: Partial<AgentNodeProgress['data']> = {}): AgentNodeProgress {
+	return {
+		type: 'agentNodeProgress',
+		data: {
+			executionId: 'exec-1',
+			nodeId: 'node-1',
+			nodeName: 'Message an Agent',
+			runIndex: 0,
+			itemIndex: 0,
+			sequenceNumber: 0,
+			toolCallId: 'tc-1',
+			capability: { kind: 'tool', name: 'lookup' },
+			status: 'running',
+			...overrides,
+		},
+	};
 }
 
 describe('workflowExecutionState.store', () => {
@@ -1555,6 +1574,115 @@ describe('workflowExecutionState.store', () => {
 
 			// resetExecutionState must complete without error and produce no surprising side effects.
 			expect(() => executionStateStore.resetExecutionState()).not.toThrow();
+		});
+	});
+
+	describe('agent capability progress', () => {
+		let store: ReturnType<typeof useWorkflowExecutionStateStore>;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			store = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-agent-progress'));
+			store.setActiveExecutionId('exec-1');
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('ignores events for another execution and stale sequence numbers', () => {
+			store.handleAgentNodeProgress(makeAgentProgress({ executionId: 'exec-other' }));
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+
+			store.handleAgentNodeProgress(makeAgentProgress({ sequenceNumber: 1 }));
+			store.handleAgentNodeProgress(makeAgentProgress({ sequenceNumber: 2, status: 'succeeded' }));
+			store.handleAgentNodeProgress(makeAgentProgress({ sequenceNumber: 1, status: 'running' }));
+			vi.advanceTimersByTime(300);
+
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+		});
+
+		it('keeps fast calls visible for at least 300 ms', () => {
+			store.handleAgentNodeProgress(makeAgentProgress());
+			vi.advanceTimersByTime(100);
+			store.handleAgentNodeProgress(makeAgentProgress({ sequenceNumber: 1, status: 'succeeded' }));
+
+			vi.advanceTimersByTime(199);
+			expect(store.activeAgentCapabilityKeysByNodeId.get('node-1')).toEqual(
+				new Set(['tool:lookup']),
+			);
+
+			vi.advanceTimersByTime(1);
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+		});
+
+		it('keeps a tool active until every concurrent call finishes', () => {
+			store.handleAgentNodeProgress(makeAgentProgress({ toolCallId: 'tc-1' }));
+			store.handleAgentNodeProgress(makeAgentProgress({ toolCallId: 'tc-2', sequenceNumber: 1 }));
+			store.handleAgentNodeProgress(
+				makeAgentProgress({ toolCallId: 'tc-1', sequenceNumber: 2, status: 'succeeded' }),
+			);
+			vi.advanceTimersByTime(300);
+
+			expect(store.activeAgentCapabilityKeysByNodeId.get('node-1')).toEqual(
+				new Set(['tool:lookup']),
+			);
+
+			store.handleAgentNodeProgress(
+				makeAgentProgress({ toolCallId: 'tc-2', sequenceNumber: 3, status: 'failed' }),
+			);
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+		});
+
+		it('accepts reordered terminal events for different concurrent calls', () => {
+			store.handleAgentNodeProgress(makeAgentProgress({ toolCallId: 'tc-1' }));
+			store.handleAgentNodeProgress(makeAgentProgress({ toolCallId: 'tc-2', sequenceNumber: 1 }));
+			store.handleAgentNodeProgress(
+				makeAgentProgress({ toolCallId: 'tc-2', sequenceNumber: 3, status: 'succeeded' }),
+			);
+			store.handleAgentNodeProgress(
+				makeAgentProgress({ toolCallId: 'tc-1', sequenceNumber: 2, status: 'succeeded' }),
+			);
+
+			vi.advanceTimersByTime(300);
+
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+		});
+
+		it('prefers skill id and falls back to skill name', () => {
+			store.handleAgentNodeProgress(
+				makeAgentProgress({
+					toolCallId: 'tc-id',
+					capability: { kind: 'skill', id: 'skill-1', name: 'Research' },
+				}),
+			);
+			store.handleAgentNodeProgress(
+				makeAgentProgress({
+					toolCallId: 'tc-name',
+					sequenceNumber: 1,
+					capability: { kind: 'skill', name: 'Writing' },
+				}),
+			);
+
+			expect(store.activeAgentCapabilityKeysByNodeId.get('node-1')).toEqual(
+				new Set(['skill:id:skill-1', 'skill:name:Writing']),
+			);
+		});
+
+		it('clears progress immediately for node and execution lifecycle cleanup', () => {
+			store.handleAgentNodeProgress(makeAgentProgress());
+			store.clearAgentNodeProgress('Message an Agent');
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+
+			store.handleAgentNodeProgress(makeAgentProgress({ sequenceNumber: 1 }));
+			store.resetExecutionState();
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+
+			store.setActiveExecutionId('exec-1');
+			store.handleAgentNodeProgress(makeAgentProgress());
+			store.markExecutionAsStopped();
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
 		});
 	});
 

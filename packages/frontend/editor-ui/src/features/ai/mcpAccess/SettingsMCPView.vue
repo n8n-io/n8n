@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { ElSwitch } from 'element-plus';
 import {
 	N8nButton,
 	N8nDialog,
@@ -19,6 +20,7 @@ import {
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
+import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from '@/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.vue';
 import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnectClientDialog.vue';
@@ -34,6 +36,8 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
+import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
+
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
@@ -43,21 +47,39 @@ const router = useRouter();
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 const { offerToExposeAllWorkflows } = useExposeAllWorkflowsToMcpOffer();
+const exposeAllWorkflowsToMcpStore = useExposeAllWorkflowsToMcpStore();
 
 const agentsModuleActive = computed(() => settingsStore.isModuleActive('agents'));
 
 const mcpStatusLoading = ref(false);
 const showDisableDialog = ref(false);
+const isLoadingClients = ref(true);
 
 const canManageMcpInstance = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'mcp:manage' } }),
 );
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
 
-const exposedWorkflowsCount = ref(0);
-
+const exposedWorkflowsCount = ref<number | null>(null);
+const autoExposeSaving = ref(false);
 const showCallbackUrlsDialog = ref(false);
 const savingCallbackUrls = ref(false);
+
+const onAutoExposeSwitchUpdate = (value: string | number | boolean) => {
+	void onToggleAutoExpose(value === true);
+};
+
+const onToggleAutoExpose = async (value: boolean) => {
+	autoExposeSaving.value = true;
+	try {
+		const updated = await mcpStore.setAutoExposeNewWorkflows(value);
+		mcp.trackAutoExposeToggled({ enabled: updated, source: 'settings' });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.autoExpose.error.title'));
+	} finally {
+		autoExposeSaving.value = false;
+	}
+};
 
 const showInstanceCapacityNotice = computed(
 	() => canManageMcpInstance.value && mcpStore.instanceClientStats?.atCapacity === true,
@@ -72,19 +94,23 @@ const instanceCapacityNoticeContent = computed(() => {
 });
 
 const workflowsExposedValue = computed(() =>
-	i18n.baseText('settings.mcp.workflowsExposed.count', {
-		adjustToNumber: exposedWorkflowsCount.value,
-		interpolate: { count: String(exposedWorkflowsCount.value) },
-	}),
+	exposedWorkflowsCount.value === null
+		? UNKNOWN_COUNT_VALUE
+		: i18n.baseText('settings.mcp.workflowsExposed.count', {
+				adjustToNumber: exposedWorkflowsCount.value,
+				interpolate: { count: String(exposedWorkflowsCount.value) },
+			}),
 );
 
-const exposedAgentsCount = ref(0);
+const exposedAgentsCount = ref<number | null>(null);
 
 const agentsExposedValue = computed(() =>
-	i18n.baseText('settings.mcp.agentsExposed.count', {
-		adjustToNumber: exposedAgentsCount.value,
-		interpolate: { count: String(exposedAgentsCount.value) },
-	}),
+	exposedAgentsCount.value === null
+		? UNKNOWN_COUNT_VALUE
+		: i18n.baseText('settings.mcp.agentsExposed.count', {
+				adjustToNumber: exposedAgentsCount.value,
+				interpolate: { count: String(exposedAgentsCount.value) },
+			}),
 );
 
 const callbackUrlsValue = computed(() =>
@@ -148,8 +174,10 @@ const onConfirmDisable = async () => {
 
 /** Populates the store's client totals so the "N clients have access" count renders. */
 const fetchoAuthCLients = async () => {
+	isLoadingClients.value = true;
 	try {
 		await mcpStore.getAllOAuthClients();
+		isLoadingClients.value = false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	}
@@ -159,6 +187,11 @@ const fetchoAuthCLients = async () => {
 const connectedClientsTotal = computed(
 	() => mcpStore.oauthClientTotals.all ?? mcpStore.oauthClientTotals.mine,
 );
+
+const onConnectClient = () => {
+	mcp.trackConnectClientClicked('settings');
+	mcpStore.openConnectPopover();
+};
 
 const openClientsView = () => {
 	void router.push({ name: MCP_CLIENTS_VIEW });
@@ -268,7 +301,7 @@ onMounted(async () => {
 								icon="mcp"
 								:label="i18n.baseText('settings.mcp.yourClient.connect')"
 								data-test-id="mcp-connect-client-button"
-								@click="mcpStore.openConnectPopover()"
+								@click="onConnectClient"
 							/>
 						</template>
 					</N8nSettingsRow>
@@ -289,7 +322,23 @@ onMounted(async () => {
 						</template>
 					</N8nSettingsRow>
 					<N8nSettingsRow
-						v-if="agentsModuleActive"
+						v-if="canManageMcpInstance && exposeAllWorkflowsToMcpStore.isEnabled"
+						:title="i18n.baseText('settings.mcp.autoExpose.title')"
+						:description="i18n.baseText('settings.mcp.autoExpose.description')"
+					>
+						<template #action>
+							<ElSwitch
+								data-test-id="mcp-auto-expose-toggle"
+								:model-value="mcpStore.autoExposeNewWorkflows"
+								:disabled="mcpStore.mcpManagedByEnv"
+								:loading="autoExposeSaving"
+								@update:model-value="onAutoExposeSwitchUpdate"
+							/>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="agentsModuleActive">
+					<N8nSettingsRow
 						:title="i18n.baseText('settings.mcp.agentsExposed.title')"
 						:description="i18n.baseText('settings.mcp.agentsExposed.description')"
 						clickable
@@ -321,10 +370,12 @@ onMounted(async () => {
 					<N8nSettingsRow
 						:title="i18n.baseText('settings.mcp.connectedClients.viewAll.title')"
 						:description="
-							i18n.baseText('settings.mcp.connectedClients.viewAll.description', {
-								adjustToNumber: connectedClientsTotal,
-								interpolate: { count: String(connectedClientsTotal) },
-							})
+							isLoadingClients
+								? UNKNOWN_COUNT_VALUE
+								: i18n.baseText('settings.mcp.connectedClients.viewAll.description', {
+										adjustToNumber: connectedClientsTotal,
+										interpolate: { count: String(connectedClientsTotal) },
+									})
 						"
 						clickable
 						data-test-id="mcp-clients-view-all-row"

@@ -4,6 +4,7 @@ import type {
 	Arg,
 	Controller,
 	DeprecationInfo,
+	ErrorResponse,
 	HandlerName,
 	Method,
 	ResponseDtoClass,
@@ -13,6 +14,7 @@ import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
+import type { ZodTypeAny } from 'zod';
 
 export const HTTP_METHODS = [
 	'get',
@@ -27,10 +29,10 @@ export const HTTP_METHODS = [
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
 export type ResolvedRouteArg =
-	| { type: 'param'; key: string }
+	| { type: 'param'; key: string; schema?: ZodTypeAny }
 	| { type: 'body' | 'query'; dto: ZodClass };
 
-function isDtoArg(
+export function isDtoArg(
 	arg: ResolvedRouteArg,
 	type: 'body' | 'query',
 ): arg is Extract<ResolvedRouteArg, { type: 'body' | 'query' }> {
@@ -54,7 +56,7 @@ export interface ResolvedPublicApiRoute {
 	summary?: string;
 	description?: string;
 	tags?: string[];
-	errorResponses?: number[];
+	errorResponses?: ErrorResponse[];
 	deprecated?: DeprecationInfo;
 }
 
@@ -113,6 +115,14 @@ export function resolveRouteArgs(
 	}
 
 	return resolved;
+}
+
+/**
+ * Whether a caller must send a body: an empty object being invalid means one is needed. Mirrors
+ * `requestBody.required` in the hand-written specs, without a second place to declare it.
+ */
+export function isRequestBodyRequired(dto: ZodClass): boolean {
+	return !dto.safeParse({}).success;
 }
 
 /** Every decorator route must state its success status via `@ApiResponse`. */

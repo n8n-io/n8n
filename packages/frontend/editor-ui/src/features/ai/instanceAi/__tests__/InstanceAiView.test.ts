@@ -7,6 +7,7 @@ import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { INSTANCE_AI_VIEW } from '../constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 const TEST_INSTANCE_ID = 'test-instance-id';
 
@@ -74,6 +75,20 @@ describe('InstanceAiView', () => {
 		routerHistoryState.back = null;
 		routeState.name = INSTANCE_AI_VIEW;
 		sessionStorage.clear();
+	});
+
+	it('keeps the tab title off the workflow previewed inside a thread', () => {
+		const { unmount } = renderView({ pinia });
+		const { set, setDocumentTitle } = useDocumentTitle();
+		set('My conversation');
+
+		setDocumentTitle('Previewed workflow', 'IDLE');
+		expect(document.title).toBe('My conversation - n8n');
+
+		// Leaving the feature hands the tab title back to the workflow editor
+		unmount();
+		setDocumentTitle('Previewed workflow', 'IDLE');
+		expect(document.title).toBe('▶️ Previewed workflow - n8n');
 	});
 
 	it('opens a new thread with Ctrl/Cmd+Shift+O', () => {

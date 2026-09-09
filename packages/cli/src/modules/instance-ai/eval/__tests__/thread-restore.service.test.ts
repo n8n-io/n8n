@@ -1,12 +1,16 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AgentsService } from '@/modules/agents/agents.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 import { EvalThreadRestoreService } from '../thread-restore.service';
 
@@ -26,11 +30,24 @@ describe('EvalThreadRestoreService', () => {
 	const workflowRepo = mock<WorkflowRepository>();
 	const sharedWorkflowRepo = mock<SharedWorkflowRepository>();
 	const dataTableService = mock<DataTableService>();
-	const service = new EvalThreadRestoreService(workflowRepo, sharedWorkflowRepo, dataTableService);
+	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const service = new EvalThreadRestoreService(
+		workflowRepo,
+		sharedWorkflowRepo,
+		dataTableService,
+		policyEnforcementService,
+	);
+	const transactionManager = mock<EntityManager>();
+	const cleared = mock<PolicyCleared<'workflowSave'>>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		workflowRepo.create.mockImplementation((entity) => entity as never);
+		workflowRepo.runInTransaction.mockImplementation(
+			async (ctx, fn) => await fn(transactionManager, ctx),
+		);
+		workflowRepo.findByIds.mockResolvedValue([]);
+		policyEnforcementService.enforceWorkflowSave.mockResolvedValue(cleared);
 		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue(undefined);
 	});
 
@@ -40,7 +57,7 @@ describe('EvalThreadRestoreService', () => {
 			'project-1',
 		);
 
-		expect(workflowRepo.save).toHaveBeenCalledTimes(1);
+		expect(workflowRepo.createContent).toHaveBeenCalledTimes(1);
 		const saved = workflowRepo.create.mock.calls[0][0];
 		expect(saved).toMatchObject({
 			id: 'wf-original',
@@ -48,7 +65,34 @@ describe('EvalThreadRestoreService', () => {
 			active: false,
 		});
 		expect(saved.versionId).toEqual(expect.any(String));
-		expect(sharedWorkflowRepo.makeOwner).toHaveBeenCalledWith(['wf-original'], 'project-1');
+		expect(sharedWorkflowRepo.makeOwner).toHaveBeenCalledWith(
+			['wf-original'],
+			'project-1',
+			transactionManager,
+		);
+	});
+
+	it('checks the seed content against the thread project and threads the clearance into the sealed write', async () => {
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'Daily digest', nodes: [makeNode()], connections: {} }],
+			'project-1',
+		);
+
+		const saved = workflowRepo.create.mock.calls[0][0];
+		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
+			workflow: { id: null, name: 'Daily digest', nodes: saved.nodes },
+			storedWorkflow: null,
+			projectId: 'project-1',
+		});
+		expect(workflowRepo.runInTransaction).toHaveBeenCalledExactlyOnceWith(
+			{ policyCleared: cleared },
+			expect.any(Function),
+		);
+		expect(workflowRepo.createContent).toHaveBeenCalledExactlyOnceWith(
+			saved,
+			expect.objectContaining({ policyCleared: cleared }),
+		);
+		expect(workflowRepo.save).not.toHaveBeenCalled();
 	});
 
 	it('strips pre-attached node credentials so they cannot bypass the credential pin', async () => {
@@ -69,13 +113,30 @@ describe('EvalThreadRestoreService', () => {
 
 	it('does not re-grant ownership when the workflow already exists in this project', async () => {
 		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue({ id: 'project-1' } as Project);
+		const storedNodes = [makeNode({ id: 'old-node', name: 'Old' })];
+		workflowRepo.findByIds.mockResolvedValue([
+			{ id: 'wf-1', name: 'Old name', nodes: storedNodes },
+		] as never);
 
 		const created = await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
 			'project-1',
 		);
 
-		expect(workflowRepo.save).toHaveBeenCalledTimes(1);
+		expect(workflowRepo.findByIds).toHaveBeenCalledWith(['wf-1'], {
+			fields: ['id', 'name', 'nodes'],
+		});
+		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
+			workflow: { id: 'wf-1', name: 'wf', nodes: expect.any(Array) },
+			storedWorkflow: { id: 'wf-1', name: 'Old name', nodes: storedNodes },
+			projectId: 'project-1',
+		});
+		expect(workflowRepo.updateContent).toHaveBeenCalledExactlyOnceWith(
+			'wf-1',
+			expect.objectContaining({ name: 'wf', active: false, versionId: expect.any(String) }),
+			expect.objectContaining({ policyCleared: cleared }),
+		);
+		expect(workflowRepo.createContent).not.toHaveBeenCalled();
 		expect(sharedWorkflowRepo.makeOwner).not.toHaveBeenCalled();
 		expect(created).toEqual([]); // not newly created
 	});
@@ -91,7 +152,8 @@ describe('EvalThreadRestoreService', () => {
 				'project-1',
 			),
 		).rejects.toThrow(BadRequestError);
-		expect(workflowRepo.save).not.toHaveBeenCalled();
+		expect(policyEnforcementService.enforceWorkflowSave).not.toHaveBeenCalled();
+		expect(workflowRepo.createContent).not.toHaveBeenCalled();
 	});
 
 	it('rejects a structurally invalid node without writing anything', async () => {
@@ -101,7 +163,56 @@ describe('EvalThreadRestoreService', () => {
 				'project-1',
 			),
 		).rejects.toThrow(BadRequestError);
-		expect(workflowRepo.save).not.toHaveBeenCalled();
+		expect(policyEnforcementService.enforceWorkflowSave).not.toHaveBeenCalled();
+		expect(workflowRepo.createContent).not.toHaveBeenCalled();
+	});
+
+	describe('policy refusal', () => {
+		const violation: PolicyViolation = {
+			kind: 'test-denial',
+			checkId: 'test-check',
+			message: 'Denied by the test policy check',
+			subject: 'n8n-nodes-base.slack',
+			subjectType: 'nodeType',
+		};
+
+		it('fails the restore, names the refused seed and rolls back the workflows already created', async () => {
+			policyEnforcementService.enforceWorkflowSave
+				.mockResolvedValueOnce(cleared)
+				.mockRejectedValueOnce(new PolicyViolationError([violation]));
+
+			const restore = service.restoreWorkflows(
+				[
+					{ id: 'wf-ok', name: 'Allowed', nodes: [makeNode()], connections: {} },
+					{ id: 'wf-blocked', name: 'Blocked', nodes: [makeNode()], connections: {} },
+				],
+				'project-1',
+			);
+
+			await expect(restore).rejects.toThrow(PolicyViolationError);
+			await expect(restore).rejects.toThrow(
+				'Seed workflow wf-blocked ("Blocked") was refused by policy: Denied by the test policy check',
+			);
+			await expect(restore).rejects.toMatchObject({
+				httpStatusCode: 403,
+				violations: [violation],
+			});
+			expect(workflowRepo.createContent).toHaveBeenCalledTimes(1);
+			expect(workflowRepo.delete).toHaveBeenCalledExactlyOnceWith({ id: 'wf-ok' });
+		});
+
+		it('passes a check that breaks through unchanged', async () => {
+			const failure = new Error('check crashed');
+			policyEnforcementService.enforceWorkflowSave.mockRejectedValue(failure);
+
+			await expect(
+				service.restoreWorkflows(
+					[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
+					'project-1',
+				),
+			).rejects.toBe(failure);
+			expect(workflowRepo.createContent).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('data tables', () => {

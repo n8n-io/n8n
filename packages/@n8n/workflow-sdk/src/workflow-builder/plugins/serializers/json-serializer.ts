@@ -16,7 +16,12 @@ import type {
 	GraphNode,
 } from '../../../types/base';
 import { START_X, DEFAULT_Y } from '../../constants';
-import { calculateNodePositions, calculateNodePositionsDagre } from '../../layout-utils';
+import {
+	calculateNodePositions,
+	calculateNodePositionsDagre,
+	resolveStickyGeometry,
+	type StickyGeometry,
+} from '../../layout-utils';
 import {
 	normalizeResourceLocators,
 	escapeNewlinesInExpressionStrings,
@@ -42,6 +47,7 @@ function serializeNode(
 	mapKey: string,
 	graphNode: GraphNode,
 	nodePositions: Map<string, [number, number]>,
+	stickyGeometry: Map<string, StickyGeometry>,
 ): NodeJSON | undefined {
 	const instance = graphNode.instance;
 
@@ -51,7 +57,11 @@ function serializeNode(
 	}
 
 	const config = instance.config ?? {};
-	const position = config.position ?? nodePositions.get(mapKey) ?? [START_X, DEFAULT_Y];
+	// Sticky notes are placed and sized after layout, from the nodes they wrap.
+	const sticky = stickyGeometry.get(mapKey);
+	const position = sticky?.position ??
+		config.position ??
+		nodePositions.get(mapKey) ?? [START_X, DEFAULT_Y];
 
 	// Determine node name:
 	// - If config has _originalName, use that (preserves undefined for sticky notes from fromJSON)
@@ -84,6 +94,11 @@ function serializeNode(
 	} else {
 		const normalized = normalizeResourceLocators(parsedParams);
 		serializedParams = escapeNewlinesInExpressionStrings(normalized) as IDataObject;
+	}
+
+	if (sticky?.size) {
+		serializedParams.width = sticky.size.width;
+		serializedParams.height = sticky.size.height;
 	}
 
 	const n8nNode: NodeJSON = {
@@ -229,10 +244,13 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 			? calculateNodePositionsDagre(ctx.nodes)
 			: calculateNodePositions(ctx.nodes);
 
+		// Sticky notes are placed last: their box depends on where their anchors landed
+		const stickyGeometry = resolveStickyGeometry(ctx.nodes, nodePositions);
+
 		// Convert nodes and connections
 		for (const [mapKey, graphNode] of ctx.nodes) {
 			// Serialize node
-			const serializedNode = serializeNode(mapKey, graphNode, nodePositions);
+			const serializedNode = serializeNode(mapKey, graphNode, nodePositions, stickyGeometry);
 			if (!serializedNode) continue;
 
 			nodes.push(serializedNode);

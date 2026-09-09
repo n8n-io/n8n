@@ -105,6 +105,8 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	const showValidationWarning = ref(false);
 	const isResolvable = ref(false);
 	const connectedByMe = ref(false);
+	/** The provider account my own connection authenticates as, when the provider tells us. */
+	const connectedAccountIdentifier = ref<string | undefined>(undefined);
 	const useCustomOAuth = ref(false);
 
 	// --- type resolution ---------------------------------------------------
@@ -171,10 +173,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 
 	const parentTypes = computed(() =>
 		credentialTypeName.value ? getParentTypes(credentialTypeName.value) : [],
-	);
-
-	const nodesWithAccess = computed(() =>
-		credentialTypeName.value ? credentialsStore.getNodesWithAccess(credentialTypeName.value) : [],
 	);
 
 	// --- OAuth / managed derivations ---------------------------------------
@@ -314,12 +312,9 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		});
 		if (hasUntestableExpressions) return false;
 
-		const nodesThatCanTest = nodesWithAccess.value.filter((node) =>
-			node.credentials?.some(
-				(credential) => credential.name === credentialTypeName.value && credential.testedBy,
-			),
-		);
-		return !!nodesThatCanTest.length || (!!credentialType.value && !!credentialType.value.test);
+		if (!credentialTypeName.value) return false;
+
+		return credentialsStore.isCredentialTypeTestable(credentialTypeName.value);
 	});
 
 	const credentialPermissions = computed(
@@ -357,10 +352,11 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 
 	function displayCredentialParameter(parameter: INodeProperties): boolean {
 		if (parameter.type === 'hidden') return false;
-
+		const isManagedCredential = isEditingManagedCredential.value || isManagedOAuthMode.value;
 		if (
 			MANAGED_CREDENTIAL_HIDDEN_PROPERTIES.has(parameter.name) &&
-			(isEditingManagedCredential.value || isManagedOAuthMode.value)
+			isManagedCredential &&
+			!credentialType.value?.__showManagedOAuthScopes
 		) {
 			return false;
 		}
@@ -479,6 +475,11 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			'connectedByMe' in loaded && typeof loaded.connectedByMe === 'boolean'
 				? loaded.connectedByMe
 				: false;
+		connectedAccountIdentifier.value =
+			'connectedAccountIdentifier' in loaded &&
+			typeof loaded.connectedAccountIdentifier === 'string'
+				? loaded.connectedAccountIdentifier
+				: undefined;
 	}
 
 	// An existing credential whose managed clientId/secret were overridden was
@@ -507,6 +508,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 				? { acceptedStatusCodes: JSON.stringify(setupHint.acceptedStatusCodes) }
 				: {}),
 			...(setupHint.serviceHost ? { serviceHost: setupHint.serviceHost } : {}),
+			...(setupHint.serviceOrigin ? { serviceOrigin: setupHint.serviceOrigin } : {}),
 		};
 	}
 
@@ -642,6 +644,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		showValidationWarning,
 		isResolvable,
 		connectedByMe,
+		connectedAccountIdentifier,
 		useCustomOAuth,
 		// derived
 		activeNodeType,
@@ -650,7 +653,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		credentialType,
 		mergedProperties,
 		parentTypes,
-		nodesWithAccess,
 		isOAuthType,
 		isOAuthConnected,
 		isManagedOAuthMode,

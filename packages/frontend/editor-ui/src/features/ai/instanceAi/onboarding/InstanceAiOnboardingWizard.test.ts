@@ -3,6 +3,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
@@ -74,12 +75,129 @@ function setupStore(overrides: Record<string, unknown> = {}) {
 	vi.mocked(store.save).mockResolvedValue(true);
 	vi.mocked(store.refreshCredentials).mockResolvedValue(undefined);
 	vi.mocked(store.refreshInstanceModelCredentials).mockResolvedValue(undefined);
+	vi.mocked(store.loadModelCatalog).mockResolvedValue(undefined);
 	return { pinia, store, credentialsStore: useCredentialsStore() };
 }
 
 describe('InstanceAiOnboardingWizard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(hasPermission).mockReturnValue(true);
+	});
+
+	it('does not auto-focus or auto-open the model dropdown when the wizard opens', async () => {
+		const { pinia } = setupStore({
+			modelName: 'claude-opus-5',
+			modelEnvConfigured: true,
+			envManaged: {
+				model: { provider: true, apiKey: true, baseUrl: false, model: false },
+				sandbox: { provider: false, serviceUrl: false, apiKey: false },
+				search: { provider: false, apiKey: false, url: false },
+			},
+		});
+		const { findByRole, findByTestId } = renderWizard({ pinia });
+
+		const modelField = inputFor(await findByTestId('assistant-model-name'));
+
+		expect(modelField).not.toHaveFocus();
+		expect(modelField).toHaveAttribute('aria-expanded', 'false');
+		// Focus still has to land inside the dialog so Tab and Escape work.
+		expect(document.activeElement).toBe(await findByRole('dialog'));
+	});
+
+	it('disables the model field when the user cannot manage instance credentials', async () => {
+		vi.mocked(hasPermission).mockImplementation(
+			(_types, options) => options?.rbac?.scope !== 'credential:manageInstance',
+		);
+		const { pinia } = setupStore();
+		const { findByTestId } = renderWizard({ pinia });
+
+		const modelField = inputFor(await findByTestId('assistant-model-name'));
+
+		expect(modelField).toBeDisabled();
+	});
+
+	it('loads and merges the model catalog without changing the selected model', async () => {
+		const { pinia, store } = setupStore();
+		const { findByTestId, findByText } = renderWizard({ pinia });
+
+		await waitFor(() => expect(store.loadModelCatalog).toHaveBeenCalledOnce());
+		await fireEvent.click(inputFor(await findByTestId('assistant-model-name')));
+		expect(await findByText('claude-opus-5 · instanceAi.onboarding.recommended')).toBeVisible();
+
+		store.$patch({
+			modelCatalog: {
+				anthropic: [
+					{ id: 'claude-opus-5', name: 'Claude Opus 5' },
+					{ id: 'claude-haiku-5', name: 'Claude Haiku 5' },
+				],
+				openai: [],
+				openrouter: [],
+			},
+		});
+
+		expect(await findByText('Claude Opus 5 · instanceAi.onboarding.recommended')).toBeVisible();
+		expect(await findByText('Claude Haiku 5')).toBeVisible();
+
+		await fireEvent.update(inputFor(await findByTestId('assistant-model-api-key')), 'model-key');
+		vi.mocked(store.verifyModel).mockResolvedValue({ ok: true });
+		await fireEvent.click(await findByTestId('wizard-primary'));
+		await waitFor(() =>
+			expect(store.verifyModel).toHaveBeenCalledWith(
+				expect.objectContaining({ modelName: 'claude-opus-5' }),
+			),
+		);
+	});
+
+	it('keeps a user-selected model when catalog data arrives after a provider switch', async () => {
+		const { pinia, store } = setupStore();
+		vi.mocked(store.verifyModel).mockResolvedValue({ ok: true });
+		const { findByTestId, findByText } = renderWizard({ pinia });
+
+		await fireEvent.click(inputFor(await findByTestId('assistant-model-provider')));
+		await fireEvent.click(await findByText('OpenAI'));
+		await fireEvent.click(inputFor(await findByTestId('assistant-model-name')));
+		await fireEvent.click(await findByText('gpt-5.6-terra'));
+
+		store.$patch({
+			modelCatalog: {
+				anthropic: [],
+				openai: [
+					{ id: 'gpt-5.6-terra', name: 'GPT 5.6 Terra' },
+					{ id: 'gpt-dynamic', name: 'GPT Dynamic' },
+				],
+				openrouter: [],
+			},
+		});
+		await fireEvent.update(inputFor(await findByTestId('assistant-model-api-key')), 'model-key');
+		await fireEvent.click(await findByTestId('wizard-primary'));
+
+		await waitFor(() =>
+			expect(store.verifyModel).toHaveBeenCalledWith(
+				expect.objectContaining({ modelName: 'gpt-5.6-terra' }),
+			),
+		);
+	});
+
+	it('does not load the catalog for a saved custom endpoint', async () => {
+		const { pinia, store, credentialsStore } = setupStore({
+			modelCredentialId: 'custom-model-credential',
+			modelName: 'qwen3-coder',
+		});
+		store.$patch({
+			instanceModelCredentials: [
+				{ id: 'custom-model-credential', name: 'Custom model', type: 'openAiApi' },
+			],
+		});
+		vi.mocked(credentialsStore.getCredentialData).mockResolvedValue({
+			data: { url: 'http://ollama.internal:11434/v1' },
+		} as never);
+
+		const { findByTestId } = renderWizard({ pinia });
+		expect(inputFor(await findByTestId('assistant-model-base-url')).value).toBe(
+			'http://ollama.internal:11434/v1',
+		);
+		expect(store.loadModelCatalog).not.toHaveBeenCalled();
 	});
 
 	it('verifies and saves a model connection before advancing', async () => {
@@ -112,18 +230,24 @@ describe('InstanceAiOnboardingWizard', () => {
 
 	it('keeps the model step open on verification failure and clears the error after editing', async () => {
 		const { pinia, store } = setupStore();
-		vi.mocked(store.verifyModel).mockResolvedValue({ ok: false, failure: 'unauthorized' });
+		vi.mocked(store.verifyModel).mockResolvedValue({
+			ok: false,
+			failure: 'unauthorized',
+			error: 'Incorrect API key provided',
+		});
 		const { emitted, findByTestId, getByTestId, queryByTestId } = renderWizard({ pinia });
 		const apiKey = inputFor(await findByTestId('assistant-model-api-key'));
 
 		await fireEvent.update(apiKey, 'wrong-key');
 		await fireEvent.click(getByTestId('wizard-primary'));
 		await waitFor(() => expect(getByTestId('assistant-verification-error')).toBeVisible());
+		expect(getByTestId('assistant-verification-error-details')).toBeVisible();
 		expect(store.save).not.toHaveBeenCalled();
 		expect(emitted().advance).toBeUndefined();
 
 		await fireEvent.update(apiKey, 'new-key');
 		await waitFor(() => expect(queryByTestId('assistant-verification-error')).toBeNull());
+		expect(queryByTestId('assistant-verification-error-details')).toBeNull();
 	});
 
 	it('verifies an environment-managed model without sending a connection', async () => {
@@ -149,6 +273,33 @@ describe('InstanceAiOnboardingWizard', () => {
 		expect(store.setField).toHaveBeenCalledWith('modelName', 'claude-opus-5');
 		expect(store.setField).toHaveBeenCalledWith('sandboxEnabled', true);
 		await waitFor(() => expect(emitted().advance).toEqual([[]]), { timeout: 2500 });
+	});
+
+	it('offers models from every provider when the environment-managed provider is masked', async () => {
+		const { pinia, store } = setupStore({
+			modelName: 'saved-env-model',
+			modelEnvConfigured: true,
+			envManaged: {
+				model: { provider: true, apiKey: true, baseUrl: false, model: false },
+				sandbox: { provider: false, serviceUrl: false, apiKey: false },
+				search: { provider: false, apiKey: false, url: false },
+			},
+		});
+		store.$patch({
+			modelCatalog: {
+				anthropic: [{ id: 'claude-dynamic', name: 'Claude Dynamic' }],
+				openai: [{ id: 'gpt-dynamic', name: 'GPT Dynamic' }],
+				openrouter: [{ id: 'openrouter/dynamic', name: 'OpenRouter Dynamic' }],
+			},
+		});
+		const { findByTestId, findByText } = renderWizard({ pinia });
+
+		await fireEvent.click(inputFor(await findByTestId('assistant-model-name')));
+
+		expect(await findByText('Claude Dynamic')).toBeVisible();
+		expect(await findByText('GPT Dynamic')).toBeVisible();
+		expect(await findByText('OpenRouter Dynamic')).toBeVisible();
+		expect(await findByText('saved-env-model')).toBeVisible();
 	});
 
 	it('supports a custom OpenAI-compatible model without an API key', async () => {
@@ -507,6 +658,17 @@ describe('InstanceAiOnboardingWizard', () => {
 		await fireEvent.click(await findByTestId('wizard-back'));
 
 		expect(emitted().back).toEqual([[]]);
+	});
+
+	it('hides the step indicator when there is only one setup step', async () => {
+		const { pinia } = setupStore();
+		const { findByTestId, queryByTestId } = renderWizard({
+			pinia,
+			props: { sequence: ['model', 'done'] },
+		});
+
+		expect(await findByTestId('wizard-primary')).toBeVisible();
+		expect(queryByTestId('wizard-progress')).toBeNull();
 	});
 
 	it('uses cancel and save without progress controls in direct edit mode', async () => {

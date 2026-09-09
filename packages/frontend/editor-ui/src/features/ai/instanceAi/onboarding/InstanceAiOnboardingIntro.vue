@@ -14,6 +14,7 @@ import { useI18n } from '@n8n/i18n';
 defineProps<{
 	incomplete: boolean;
 	connectModelOnly: boolean;
+	returnVisit: boolean;
 	modelValue: string;
 	sandboxValue: string;
 	searchValue: string;
@@ -21,12 +22,12 @@ defineProps<{
 
 const emit = defineEmits<{
 	setup: [];
+	setupLater: [];
 	openStep: [step: 'model' | 'sandbox' | 'search'];
 	turnOff: [];
 }>();
 
 const i18n = useI18n();
-const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assistant';
 </script>
 
 <template>
@@ -110,16 +111,16 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 					@click="emit('setup')"
 				/>
 				<N8nButton
+					v-if="!returnVisit"
 					variant="ghost"
 					size="medium"
-					:href="DOCS_URL"
-					target="_blank"
-					:label="i18n.baseText('instanceAi.onboarding.learnMore')"
-					data-test-id="assistant-learn-more"
+					:label="i18n.baseText('instanceAi.onboarding.setUpLater')"
+					data-test-id="assistant-set-up-later"
+					@click="emit('setupLater')"
 				/>
 			</div>
 
-			<div :class="$style.turnOff">
+			<div v-if="returnVisit" :class="$style.turnOff">
 				<N8nButton
 					variant="ghost"
 					size="small"

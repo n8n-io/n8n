@@ -95,6 +95,7 @@ describe('SettingsMCPAgentsView', () => {
 			mcp: {
 				mcpAccessEnabled: true,
 				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
 			},
 		};
 		settingsStore.isModuleActive.mockReturnValue(true);
@@ -111,6 +112,7 @@ describe('SettingsMCPAgentsView', () => {
 			mcp: {
 				mcpAccessEnabled: false,
 				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
 			},
 		};
 

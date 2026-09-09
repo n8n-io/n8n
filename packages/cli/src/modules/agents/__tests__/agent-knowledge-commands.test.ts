@@ -1,7 +1,6 @@
 import {
 	buildMirrorFinalizeCommand,
 	buildReadKnowledgeCommand,
-	buildReadMirrorManifestCommand,
 	buildSearchKnowledgeCommand,
 	getSearchContextWindow,
 	MIRROR_SYNC_TIMEOUT_SECONDS,
@@ -9,7 +8,7 @@ import {
 	parseRipgrepCountOutput,
 	parseRipgrepOutput,
 } from '../agent-knowledge-commands';
-import { KNOWLEDGE_MIRROR_FILES_DIR, KNOWLEDGE_MIRROR_MANIFEST } from '../agent-knowledge-storage';
+import { getAgentKnowledgePaths } from '../agent-knowledge-storage';
 import {
 	searchKnowledgeInputSchema,
 	type AgentKnowledgeFileReference,
@@ -28,6 +27,7 @@ const mobyDickFile: AgentKnowledgeFileReference = {
 
 const filesByPath = new Map([[mobyDickFile.file, mobyDickFile]]);
 const bearerSecret = 'Authorization: Bearer abc.def-ghi_jkl/mno=012345678901234567890123456789';
+const knowledgePaths = getAgentKnowledgePaths('daytona');
 
 function rgEvent(
 	type: 'match' | 'context',
@@ -198,42 +198,55 @@ describe('agent knowledge commands', () => {
 		});
 	});
 
-	describe('buildReadMirrorManifestCommand', () => {
-		it('reads the manifest and tolerates a missing file', () => {
-			const command = buildReadMirrorManifestCommand();
-
-			expect(command).toBe(`cat ${KNOWLEDGE_MIRROR_MANIFEST} 2>/dev/null || true`);
-		});
-	});
-
 	describe('buildMirrorFinalizeCommand', () => {
-		it('moves already-uploaded .tmp- names into place atomically', () => {
-			const command = buildMirrorFinalizeCommand(['doc1.txt'], [], ['doc1.txt']);
+		it('moves per-sync staged files and manifest into place atomically', () => {
+			const command = buildMirrorFinalizeCommand(
+				['doc1.txt'],
+				[],
+				[{ file: 'doc1.txt', fileId: 'file-1' }],
+				knowledgePaths,
+				'sync-1',
+			);
 
-			expect(command).toContain(`mkdir -p ${KNOWLEDGE_MIRROR_FILES_DIR}`);
-			expect(command).toContain(`${KNOWLEDGE_MIRROR_FILES_DIR}/.tmp-doc1.txt`);
-			expect(command).toContain(`${KNOWLEDGE_MIRROR_FILES_DIR}/doc1.txt`);
-			expect(command).toMatch(/mv\s+.*\.tmp-doc1\.txt.*doc1\.txt/);
+			expect(command).toContain(`mkdir -p ${knowledgePaths.filesDir}`);
+			expect(command).toContain(`${knowledgePaths.stagingDir}/sync-1/doc1.txt`);
+			expect(command).not.toContain(`${knowledgePaths.filesDir}/.tmp-`);
+			expect(command).toContain(`${knowledgePaths.filesDir}/doc1.txt`);
+			expect(command).toMatch(/mv\s+.*\.staging\/sync-1\/doc1\.txt.*doc1\.txt/);
+			expect(command).toContain(`> ${knowledgePaths.manifest}.sync-1.tmp`);
+			expect(command).toContain(
+				`mv ${knowledgePaths.manifest}.sync-1.tmp ${knowledgePaths.manifest}`,
+			);
+			expect(command).toContain('file-1\tdoc1.txt');
 			expect(command).toContain(`timeout ${MIRROR_SYNC_TIMEOUT_SECONDS}`);
 		});
 
 		it('removes deleted names with rm -f', () => {
-			const command = buildMirrorFinalizeCommand([], ['stale.txt'], []);
+			const command = buildMirrorFinalizeCommand([], ['stale.txt'], [], knowledgePaths, 'sync-1');
 
 			expect(command).toContain('rm -f');
-			expect(command).toContain(`${KNOWLEDGE_MIRROR_FILES_DIR}/stale.txt`);
-		});
-
-		it('writes the full manifest via a temp file and mv', () => {
-			const command = buildMirrorFinalizeCommand([], [], ['a.txt', 'b.txt']);
-
-			expect(command).toContain(`> ${KNOWLEDGE_MIRROR_MANIFEST}.tmp`);
-			expect(command).toContain(`mv ${KNOWLEDGE_MIRROR_MANIFEST}.tmp ${KNOWLEDGE_MIRROR_MANIFEST}`);
+			expect(command).toContain(`${knowledgePaths.filesDir}/stale.txt`);
 		});
 
 		it('rejects names that look like path traversal', () => {
-			expect(() => buildMirrorFinalizeCommand(['../secret'], [], ['../secret'])).toThrow();
-			expect(() => buildMirrorFinalizeCommand([], [], ['nested/name.txt'])).toThrow();
+			expect(() =>
+				buildMirrorFinalizeCommand(
+					['../secret'],
+					[],
+					[{ file: '../secret', fileId: 'file-1' }],
+					knowledgePaths,
+					'sync-1',
+				),
+			).toThrow();
+			expect(() =>
+				buildMirrorFinalizeCommand(
+					[],
+					[],
+					[{ file: 'nested/name.txt', fileId: 'file-1' }],
+					knowledgePaths,
+					'sync-1',
+				),
+			).toThrow();
 		});
 	});
 

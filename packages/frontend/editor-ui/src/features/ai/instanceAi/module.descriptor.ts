@@ -1,10 +1,7 @@
 import { i18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
-import {
-	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
-	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-} from '@/app/constants/modals';
 import { VIEWS } from '@/app/constants';
+import { INSTANCE_AI_MODALS } from './modals';
 import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
@@ -15,17 +12,42 @@ import {
 	ensurePersonalProjectId,
 	provisionLaunchedThread,
 } from './composables/useInstanceAiHandoff';
-import { useInstanceAiAvailable } from './composables/useInstanceAiAvailability';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { launchWorkflowThread } from '@/experiments/openWorkflowInAssistant/launchWorkflowThread';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+import {
+	useInstanceAiAvailable,
+	useInstanceAiReady,
+} from './composables/useInstanceAiAvailability';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { canManageInstanceAi } from './instanceAiPermissions';
+
+/**
+ * The settings page renders its sections only for a viewer who can manage
+ * Instance AI. Everybody else gets a page with nothing but its header. The one
+ * exception is the default editor row, which the openWorkflowInAssistant
+ * experiment adds for members in its treatment group. The sidebar entry and the
+ * route use the same gate, so n8n does not offer or serve an empty page.
+ *
+ * Experiment cleanup: drop the treatment term with openWorkflowInAssistant.
+ */
+function hasInstanceAiSettingsContent(): boolean {
+	if (canManageInstanceAi()) return true;
+
+	// The view drops the default editor row while the assistant is off — it shows
+	// the empty state instead — so the row is the member's only reason to visit.
+	// A member never loads the admin settings, so `enabled` on the module
+	// settings is the flag the view falls back to for them.
+	const isAssistantEnabled = useSettingsStore().moduleSettings['instance-ai']?.enabled === true;
+
+	return isAssistantEnabled && useOpenWorkflowInAssistantStore().isTreatment;
+}
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
-const ComputerUseSetupModal = async () =>
-	await import('./components/modals/ComputerUseSetupModal.vue');
-const BrowserUseSetupModal = async () =>
-	await import('./components/modals/BrowserUseSetupModal.vue');
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
@@ -47,6 +69,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 					path: 'new',
 					component: InstanceAiEmptyView,
 					beforeEnter: async (to) => {
+						// Experiment cleanup: remove with openWorkflowInAssistant.
+						const workflowRedirect = await launchWorkflowThread(to.query);
+						if (workflowRedirect) return workflowRedirect;
+
 						// Numeric ids only, so a crafted URL can't inject prompt text.
 						const raw = to.query.templateId;
 						if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
@@ -56,8 +82,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 
 						// Same canonical gate as the button and website beacon, so the guard
 						// never refuses an entry point they advertise. Whoever can't use
-						// the assistant still gets the template.
-						if (!useInstanceAiAvailable().value) {
+						// the assistant — including an admin who hasn't finished setup, since
+						// the launched thread sends its kickoff on arrival — still gets the
+						// template.
+						if (!useInstanceAiReady().value) {
 							return { name: VIEWS.TEMPLATE_SETUP, params: { id: templateId } };
 						}
 
@@ -117,10 +145,14 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			path: 'assistant',
 			name: INSTANCE_AI_SETTINGS_VIEW,
 			component: SettingsInstanceAiView,
+			beforeEnter: () => (hasInstanceAiSettingsContent() ? true : { name: VIEWS.HOMEPAGE }),
 			meta: {
 				layout: 'settings',
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: {
+					// `beforeEnter` is the gate that matters. Keep `instanceAi:message`
+					// here, because a member in the openWorkflowInAssistant treatment
+					// must also pass this check to reach their default editor row.
 					rbac: {
 						scope: ['instanceAi:message', 'instanceAi:manage'],
 					},
@@ -156,10 +188,20 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		project: [],
 	},
 	resources: [],
-	modals: [
-		{ key: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY, component: ComputerUseSetupModal },
-		{ key: INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY, component: BrowserUseSetupModal },
-	],
+	modals: INSTANCE_AI_MODALS,
+	pushHandlers: {
+		// Credits are instance-level state, so the module owns this push type through
+		// the SDK registry instead of a view-scoped store listener. The store is
+		// imported lazily so it stays out of the startup bundle.
+		updateInstanceAiCredits: async (event) => {
+			const { useInstanceAiStore } = await import('./instanceAi.store');
+			useInstanceAiStore().handleCreditsPush(event.data);
+		},
+		instanceAiMcpToolCallFailed: async (event) => {
+			const { useInstanceAiMcpStore } = await import('./instanceAiMcp.store');
+			useInstanceAiMcpStore().handleToolCallFailed(event.data.connectionId);
+		},
+	},
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',
@@ -169,9 +211,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			preview: true,
 			get available() {
-				return hasPermission(['rbac'], {
-					rbac: { scope: ['instanceAi:message', 'instanceAi:manage'] },
-				});
+				return hasInstanceAiSettingsContent();
 			},
 		},
 	],

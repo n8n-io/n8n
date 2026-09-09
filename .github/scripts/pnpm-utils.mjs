@@ -1,7 +1,7 @@
 import child_process from 'child_process';
 import { promisify } from 'node:util';
 
-const exec = promisify(child_process.exec);
+const execFile = promisify(child_process.execFile);
 
 /**
  * @typedef PnpmPackage
@@ -15,11 +15,28 @@ const exec = promisify(child_process.exec);
  * @returns { Promise<PnpmPackage[]> }
  * */
 export async function getMonorepoProjects() {
-	return JSON.parse(
-		(
-			await exec(
-				`pnpm ls -r --only-projects --json | jq -r '[.[] | { name: .name, version: .version, path: .path,  private: .private}]'`,
-			)
-		).stdout,
-	);
+	let stdout;
+
+	// No shell and no `| jq`: a pipeline hides pnpm's exit code (jq exits 0 on
+	// empty input), which turns a failing pnpm into an empty package list.
+	try {
+		({ stdout } = await execFile('pnpm', ['ls', '-r', '--only-projects', '--json'], {
+			// Unprojected output is ~600KB and grows with the workspace.
+			maxBuffer: 64 * 1024 * 1024,
+		}));
+	} catch (error) {
+		const details = error.stderr?.trim() || error.message;
+		throw new Error(`\`pnpm ls -r --only-projects --json\` failed: ${details}`);
+	}
+
+	if (!stdout.trim()) {
+		throw new Error('`pnpm ls -r --only-projects --json` produced no output');
+	}
+
+	return JSON.parse(stdout).map(({ name, version, path, private: isPrivate }) => ({
+		name,
+		version,
+		path,
+		private: Boolean(isPrivate),
+	}));
 }

@@ -23,6 +23,30 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 	'updatedAt:desc',
 ] as const;
 
+export const AGENT_SESSION_STATUSES = [
+	'running',
+	'succeeded',
+	'error',
+	'cancelled',
+	'interrupted',
+] as const;
+
+export const AGENT_SESSION_ORIGINS = [
+	'preview',
+	'instance-ai',
+	'mcp',
+	'sub-agent',
+	'schedule',
+	'workflow',
+	'slack',
+	'telegram',
+	'linear',
+	'discord',
+] as const;
+
+export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];
+export type AgentSessionOrigin = (typeof AGENT_SESSION_ORIGINS)[number];
+
 const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
@@ -63,6 +87,20 @@ export class ListAgentsQueryDto extends Z.class({
 	sortBy: z.enum(AGENTS_LIST_SORT_OPTIONS).optional(),
 }) {}
 
+export class ListAgentSessionsQueryDto extends Z.class({
+	cursor: z.string().optional(),
+	limit: z.string().optional(),
+	status: z.enum(AGENT_SESSION_STATUSES).optional(),
+	origin: z.enum(AGENT_SESSION_ORIGINS).optional(),
+	updatedAfter: z.coerce.date().optional(),
+	updatedBefore: z.coerce.date().optional(),
+}) {}
+
+export type AgentSessionQueryFilters = Pick<
+	ListAgentSessionsQueryDto,
+	'status' | 'origin' | 'updatedAfter' | 'updatedBefore'
+>;
+
 export class AgentProviderModelsQueryDto extends Z.class({
 	credentialId: z.string().min(1).max(64).optional(),
 }) {}
@@ -79,27 +117,29 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
 	allAgents: z.literal(true).optional(),
 }) {}
 
+/**
+ * Client-minted agent id, so a surface can reference the agent (an artifact tab,
+ * a thread binding) before it decides to persist it. Matches the nanoid shape the
+ * entity would otherwise generate.
+ */
+export const clientMintedAgentIdSchema = z.string().regex(/^[0-9A-Za-z]{16}$/);
+
 export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),
-	/**
-	 * Client-minted agent id, so a surface can reference the agent (an artifact
-	 * tab, a thread binding) before it decides to persist it. Must match the
-	 * nanoid shape the entity would otherwise generate.
-	 */
-	id: z
-		.string()
-		.regex(/^[0-9A-Za-z]{16}$/)
-		.optional(),
+	id: clientMintedAgentIdSchema.optional(),
 }) {}
 
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
+	/** Hash of the config the edit was made against (`null` when the agent had none). */
+	baseConfigHash: z.string().nullable(),
 }) {}
 
 export class CreateAgentTaskDto extends Z.class({
 	name: agentTaskSchema.shape.name,
 	objective: agentTaskSchema.shape.objective,
 	cronExpression: agentTaskSchema.shape.cronExpression,
+	timezone: agentTaskSchema.shape.timezone,
 	// Seeds the config ref's enabled flag; the task body itself has no enabled.
 	enabled: z.boolean().optional().default(true),
 }) {}
@@ -108,6 +148,8 @@ export class UpdateAgentTaskDto extends Z.class({
 	name: agentTaskSchema.shape.name.optional(),
 	objective: agentTaskSchema.shape.objective.optional(),
 	cronExpression: agentTaskSchema.shape.cronExpression.optional(),
+	// `null` explicitly resets the task to the instance timezone.
+	timezone: agentTaskSchema.shape.timezone,
 }) {}
 
 const updateAgentSkillShape = {
@@ -116,6 +158,7 @@ const updateAgentSkillShape = {
 	instructions: agentSkillShape.instructions.optional(),
 	allowedTools: agentSkillShape.allowedTools.optional(),
 	references: agentSkillShape.references.optional(),
+	baseSkillHash: z.string().optional(),
 };
 
 const updateAgentSkillSchema = z.object(updateAgentSkillShape).strict();
@@ -217,10 +260,25 @@ export class AgentChatResumeDto extends Z.class({
 	resumeData: z.unknown(),
 }) {}
 
+/**
+ * Envelope check for the connect body. The channel itself is validated against
+ * the per-platform integration schema, which is where `settings` is checked.
+ */
+export class AgentConnectIntegrationDto extends Z.class({
+	type: z.string().min(1),
+	credentialId: z.string().min(1),
+	/**
+	 * Credential of the same type this channel takes over from. Swapping in one
+	 * request keeps the agent from ever holding two live channels or none.
+	 */
+	replaces: z.object({ credentialId: z.string().min(1) }).optional(),
+}) {}
+
 export class AgentDisconnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
 	// Empty string targets a draft integration entry (`credentialId: ''`).
 	credentialId: z.string(),
+	deleteExternalResource: z.boolean().optional(),
 }) {}
 
 export class PublishAgentDto extends Z.class({
@@ -229,10 +287,6 @@ export class PublishAgentDto extends Z.class({
 
 export class RevertAgentToVersionDto extends Z.class({
 	versionId: z.string().min(1),
-}) {}
-
-export class CreateSlackAgentAppDto extends Z.class({
-	appConfigurationToken: z.string().min(1),
 }) {}
 
 export class TestAgentVectorStoreDto extends Z.class({

@@ -14,6 +14,7 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from './sub-agent.schema';
+import { jsonValueSchema } from '../schemas/json-value.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
@@ -217,6 +218,8 @@ export const McpAuthenticationSchemaTypes = z.enum([
 	'mcpOAuth2Api',
 ]);
 
+export const McpOAuth2CredentialTypeSchema = z.string().regex(/^(?:oAuth2Api|.*OAuth2(?:Api)?)$/);
+
 /**
  * Configuration for a single MCP (Model Context Protocol) server attached to
  * an agent. Tool entries from MCP servers are sourced separately from the
@@ -237,11 +240,12 @@ export const McpServerConfigSchema = z
 			.enum(['sse', 'streamableHttp'])
 			.default('streamableHttp')
 			.describe('Transport protocol'),
+		// todo: make McpOAuth2CredentialTypeSchema an object?
 		authentication: z
-			.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+			.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
 			.default('none')
 			.describe(
-				'Auth method. Named variants or any string ending in McpOAuth2Api for registry credential types',
+				'Auth method. Named variants or an OAuth2 credential type returned by the registry',
 			),
 		credential: z
 			.string()
@@ -379,6 +383,22 @@ const CustomToolJsonConfigSchema = z.object({
 	requireApproval: z.boolean().optional(),
 });
 
+/**
+ * Per-field binding for a workflow tool's Execute Workflow Trigger inputs.
+ * - `ai`: field is advertised to the LLM and must be supplied at call time.
+ * - `fixed`: field is omitted from the LLM schema and injected at invoke time.
+ */
+export const WorkflowToolInputFieldSchema = z.discriminatedUnion('mode', [
+	z.object({ mode: z.literal('ai') }).strict(),
+	z
+		.object({
+			mode: z.literal('fixed'),
+			// Reject missing/undefined — fixed bindings must pin a concrete value.
+			value: jsonValueSchema,
+		})
+		.strict(),
+]);
+
 export const WorkflowToolJsonConfigSchema = z
 	.object({
 		type: z.literal('workflow'),
@@ -391,6 +411,12 @@ export const WorkflowToolJsonConfigSchema = z
 			.boolean()
 			.optional()
 			.describe('Whether to return all node outputs instead of just the last node'),
+		inputs: z
+			.record(z.string(), WorkflowToolInputFieldSchema)
+			.optional()
+			.describe(
+				'Optional per-field bindings for Execute Workflow Trigger inputs. Missing keys default to AI-determined.',
+			),
 	})
 	.strict();
 
@@ -420,6 +446,15 @@ export const AgentJsonConfigBaseSchema = z.object({
 	name: z.string().min(1).max(128),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
+	/**
+	 * Azure OpenAI classic deployments are user-named in Azure and surfaced in
+	 * the deployment-based URL path. The catalog model id (e.g. `gpt-4o`) is not
+	 * the deployment id, so the agent flow must capture the user's deployment
+	 * name separately. Only meaningful for the `azure-openai` provider with a
+	 * classic endpoint; ignored by Foundry and other providers. An empty
+	 * string is a deliberate clear of a previously stored value.
+	 */
+	modelDeploymentName: z.string().trim().optional(),
 	instructions: z.string(),
 	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),
@@ -515,6 +550,9 @@ export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
+export type AgentJsonWorkflowToolInputField = NonNullable<
+	AgentJsonWorkflowToolConfig['inputs']
+>[string];
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
 export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'custom' }>;
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;

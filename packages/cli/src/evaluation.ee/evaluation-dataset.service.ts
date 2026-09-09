@@ -8,7 +8,12 @@ import type { EvaluationConfig, User } from '@n8n/db';
 import { EvaluationConfigRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { getParentNodes, jsonStringify, mapConnectionsByDestination } from 'n8n-workflow';
+import {
+	EVALUATION_TRIGGER_NODE_TYPE,
+	getParentNodes,
+	jsonStringify,
+	mapConnectionsByDestination,
+} from 'n8n-workflow';
 import type {
 	DataTableColumnJsType,
 	DataTableRow,
@@ -24,8 +29,8 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 /** First-item `json` of a node's last run output, keyed by field name. */
 type FieldMap = IDataObject;
@@ -36,7 +41,7 @@ export class EvaluationDatasetService {
 		private readonly configRepository: EvaluationConfigRepository,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly dataTableService: DataTableService,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
 	/**
@@ -125,8 +130,7 @@ export class EvaluationDatasetService {
 	 * (protected) mode, matching the canonical data table routes.
 	 */
 	private assertInstanceWriteAccess(): void {
-		const { branchReadOnly } = this.sourceControlPreferencesService.getPreferences();
-		if (branchReadOnly) {
+		if (this.instanceWriteAccess.isReadOnly()) {
 			throw new ForbiddenError(
 				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
 			);
@@ -222,6 +226,12 @@ export class EvaluationDatasetService {
 	 * The inputs to the evaluated slice are the data that flowed into the start
 	 * node — i.e. its single upstream parent's output. If the start node has no
 	 * parent (it is itself the entry/trigger), fall back to its own output.
+	 *
+	 * A pre-existing Evaluation Trigger can converge on the start node alongside
+	 * the workflow's real trigger (added to enable evaluation without disturbing
+	 * production) — ignore it when resolving "the" upstream node, the same as the
+	 * config validator and compiler do, so this still reads the real trigger's
+	 * output instead of falling back to the start node's own.
 	 */
 	private extractInputFields(
 		workflow: IWorkflowBase,
@@ -230,8 +240,20 @@ export class EvaluationDatasetService {
 	): FieldMap {
 		const byDestination = mapConnectionsByDestination(workflow.connections);
 		const parents = getParentNodes(byDestination, startNodeName, 'main', 1);
+		const nonEvalParents = parents.filter(
+			(name) => workflow.nodes.find((n) => n.name === name)?.type !== EVALUATION_TRIGGER_NODE_TYPE,
+		);
 
-		const sourceNode = parents.length === 1 ? parents[0] : startNodeName;
+		// Prefer the sole real parent; fall back to the Evaluation Trigger's own
+		// output when it's the only parent (a workflow built entirely around
+		// evaluation, TRUST-407); otherwise (no parent, or genuine ambiguity
+		// between two real parents) fall back to the start node's own output.
+		let sourceNode = startNodeName;
+		if (nonEvalParents.length === 1) {
+			sourceNode = nonEvalParents[0];
+		} else if (nonEvalParents.length === 0 && parents.length === 1) {
+			sourceNode = parents[0];
+		}
 		return getNodeOutputJson(runData, sourceNode);
 	}
 

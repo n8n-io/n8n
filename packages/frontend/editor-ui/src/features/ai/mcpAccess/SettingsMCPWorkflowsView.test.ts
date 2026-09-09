@@ -72,6 +72,7 @@ describe('SettingsMCPWorkflowsView', () => {
 			mcp: {
 				mcpAccessEnabled: true,
 				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
 			},
 		};
 
@@ -90,6 +91,7 @@ describe('SettingsMCPWorkflowsView', () => {
 			mcp: {
 				mcpAccessEnabled: false,
 				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
 			},
 		};
 

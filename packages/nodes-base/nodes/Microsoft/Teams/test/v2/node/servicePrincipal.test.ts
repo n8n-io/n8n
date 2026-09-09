@@ -72,6 +72,53 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
 	});
 
+	it.each(['add', 'getAll'])(
+		'chatMember:%s throws a static error and issues no request under SP',
+		async (operation) => {
+			selectSp({
+				resource: 'chatMember',
+				operation,
+				chatId: 'chatID',
+				userId: 'e76f456f-5c3f-4f1e-9d5e-4d8f0f6ab111',
+				returnAll: true,
+				options: {},
+			});
+
+			await expect(node.execute.call(ctx)).rejects.toThrow(
+				'Chat members are not available with the Service Principal credential',
+			);
+			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
+			// the guard reads only the `authentication` parameter, never the credential itself
+			expect(ctx.getCredentials).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([
+		['create', { subject: 'Sync', startDateTime: '2026-09-01T10:00:00Z' }],
+		['get', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
+		['createOrGet', { externalId: 'order-4711', options: {} }],
+		['deleteMeeting', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
+		[
+			'update',
+			{
+				meetingId: { __rl: true, mode: 'id', value: 'meeting-id' },
+				updateFields: { subject: 'Renamed' },
+			},
+		],
+	])(
+		'onlineMeeting:%s throws a static error and issues no request under SP',
+		async (op, params) => {
+			selectSp({ resource: 'onlineMeeting', operation: op, ...params });
+
+			await expect(node.execute.call(ctx)).rejects.toThrow(
+				'Online meetings are not available with the Service Principal credential',
+			);
+			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
+		},
+	);
+
 	it('chatMessage:sendAndWait throws under SP and NEVER calls putExecutionToWait', async () => {
 		selectSp({
 			resource: 'chatMessage',
@@ -96,6 +143,24 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			operation: 'create',
 			teamId: 'teamID',
 			channelId: 'channelID',
+			contentType: 'text',
+			message: 'hi',
+			options: {},
+		});
+
+		await expect(node.execute.call(ctx)).rejects.toThrow(
+			'Sending channel messages is not available with the Service Principal credential',
+		);
+		expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+	});
+
+	it('channelMessage:reply throws a static error and issues no request under SP', async () => {
+		selectSp({
+			resource: 'channelMessage',
+			operation: 'reply',
+			teamId: 'teamID',
+			channelId: 'channelID',
+			messageId: 'messageID',
 			contentType: 'text',
 			message: 'hi',
 			options: {},

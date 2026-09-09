@@ -115,6 +115,8 @@ describe('buildFailedOnInfra', () => {
 		expect(buildFailedOnInfra(build({ seedingFailed: true }))).toBe(true);
 		expect(buildFailedOnInfra(build({ transportFailure: true }))).toBe(true);
 		expect(buildFailedOnInfra(build({ providerOutage: 'provider HTTP 529' }))).toBe(true);
+		// A credential-setup lane that never booted is the runner's problem too.
+		expect(buildFailedOnInfra(build({ laneBootFailed: true }))).toBe(true);
 	});
 });
 

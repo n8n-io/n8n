@@ -175,6 +175,9 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({
 	router,
+	// This is the canvas, so this instance drives autosave — and a preview host
+	// wrapping it can scope it read-only, which no other consumer can see.
+	ownsAutoSave: true,
 	onSaved: (isFirstSave) => {
 		canvasEventBus.emit('saved:workflow', { isFirstSave });
 	},
@@ -324,6 +327,8 @@ const groupExpansionMode = computed<GroupExpansionMode | undefined>(() => {
 });
 
 const canExecuteOnCanvas = computed(() => {
+	// A protected instance blocks every manual run, even a demo canvas that requests ?canExecute=true.
+	if (isReadOnlyEnvironment.value) return false;
 	if (isDemoRoute.value) {
 		return route.query.canExecute === 'true';
 	}
@@ -672,7 +677,7 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 		return;
 	}
 
-	toggleNodesPinned(ids, source);
+	void toggleNodesPinned(ids, source);
 }
 
 function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
@@ -827,7 +832,7 @@ async function loadCredentials() {
 		options = { projectId };
 	}
 
-	await credentialsStore.fetchAllCredentialsForWorkflow(options);
+	await credentialsStore.fetchUsableCredentials(options);
 }
 
 /**
@@ -2162,6 +2167,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
 @use '@n8n/design-system/css/common/var';
 
 .wrapper {
@@ -2180,7 +2186,7 @@ onBeforeUnmount(() => {
 	bottom: var(--spacing--sm);
 	width: auto;
 
-	@include mixins.breakpoint('sm-only') {
+	@include breakpoints.breakpoint('sm-only') {
 		left: auto;
 		right: var(--spacing--sm);
 		transform: none;

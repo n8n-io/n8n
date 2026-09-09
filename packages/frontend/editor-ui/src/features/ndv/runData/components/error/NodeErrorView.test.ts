@@ -2,7 +2,7 @@ import { reactive, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import userEvent from '@testing-library/user-event';
-import type { NodeError } from 'n8n-workflow';
+import type { IDataObject, NodeError } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -181,6 +181,38 @@ describe('NodeErrorView.vue', () => {
 			props: { error, showDetails: true },
 		});
 		expect(getByText('Test stack trace')).toBeTruthy();
+	});
+
+	describe('circular error payloads', () => {
+		// Streamed request bodies (e.g. a binary file upload) reach the UI with a
+		// circular object graph; interpolating one used to throw and blank the panel.
+		function circular() {
+			const value: IDataObject = { method: 'POST', nested: {} };
+			(value.nested as IDataObject).self = value;
+			return value;
+		}
+
+		// `httpCode` is load-bearing: the enclosing <details> is gated on it.
+		function renderWith(extra: IDataObject) {
+			return renderComponent({
+				props: {
+					error: { ...error, httpCode: '400', ...extra } as unknown as NodeError,
+					showDetails: true,
+				},
+			});
+		}
+
+		it.each([
+			['context.request', { context: { request: circular() } }],
+			['context.data', { context: { data: circular() } }],
+			['context.causeDetailed', { context: { causeDetailed: circular() } }],
+			['extra', { extra: circular() }],
+			['cause', { cause: circular() }],
+		])('renders %s', (_name, extra) => {
+			const { getByText } = renderWith(extra);
+
+			expect(getByText(/\[Circular Reference\]/)).toBeTruthy();
+		});
 	});
 
 	it('renders open node button when the error is in sub node', () => {

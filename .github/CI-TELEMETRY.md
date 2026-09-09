@@ -49,6 +49,7 @@ return 'blacksmith';
 | Telemetry | Source | Metrics |
 |-----------|--------|---------|
 | Playwright perf/benchmark | `packages/testing/playwright/reporters/metrics-reporter.ts` | Any metric attached via `attachMetric()` |
+| Accessibility buckets | `packages/testing/playwright/reporters/a11y-reporter.ts` | Per-bucket axe score, violated rules, violating elements |
 | Build stats | `.github/scripts/send-build-stats.mjs` | Per-package build duration, cache hit/miss, run total |
 | Docker stats | `.github/scripts/send-docker-stats.mjs` | Image size per platform, docker build duration |
 | Container stack | `packages/testing/containers/telemetry.ts` | E2E stack startup times per service |

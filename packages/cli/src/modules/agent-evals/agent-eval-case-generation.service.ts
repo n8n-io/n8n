@@ -15,7 +15,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { AgentConfigService } from '../agents/agent-config.service';
@@ -82,7 +82,7 @@ export class AgentEvalCaseGenerationService {
 		private readonly dataTableService: DataTableService,
 		private readonly datasetRepository: AgentEvalDatasetRepository,
 		private readonly flagGate: AgentEvalsFlagGate,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
 	/**
@@ -148,7 +148,7 @@ export class AgentEvalCaseGenerationService {
 	 * so it must mirror the controller's guard.
 	 */
 	private assertInstanceWriteAccess(): void {
-		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {
+		if (this.instanceWriteAccess.isReadOnly()) {
 			throw new ForbiddenError(
 				'Cannot generate eval cases on a protected instance. This instance is in read-only mode.',
 			);

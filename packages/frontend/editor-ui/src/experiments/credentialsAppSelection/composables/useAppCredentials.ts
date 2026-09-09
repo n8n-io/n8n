@@ -164,15 +164,21 @@ export function useAppCredentials() {
 	// Ensure community node previews are fetched
 	void nodeTypesStore.fetchCommunityNodePreviews();
 
-	const isOAuthCredentialType = (credType: ICredentialType): boolean => {
+	const isOAuth2CredentialType = (credType: ICredentialType): boolean => {
 		if (!credType.extends) return false;
 		return (
 			credType.extends.includes('oAuth2Api') ||
-			credType.extends.includes('oAuth1Api') ||
 			credType.extends.includes('googleOAuth2Api') ||
-			credType.extends.includes('microsoftOAuth2Api')
+			credType.extends.includes('microsoftOAuth2Api') ||
+			credType.extends.includes('atlassianOAuth2Api')
 		);
 	};
+
+	const isOAuth1CredentialType = (credType: ICredentialType): boolean =>
+		credType.extends?.includes('oAuth1Api') ?? false;
+
+	const isOAuthCredentialType = (credType: ICredentialType): boolean =>
+		isOAuth2CredentialType(credType) || isOAuth1CredentialType(credType);
 
 	const isGoogleOAuthType = (credType: ICredentialType): boolean => {
 		if (!credType.extends) return false;
@@ -211,8 +217,8 @@ export function useAppCredentials() {
 	const getCredentialPriority = (credType: ICredentialType): number => {
 		const isGoogle = isGoogleOAuthType(credType);
 		const isMicrosoft = isMicrosoftOAuthType(credType);
-		const isOAuth2 = credType.extends?.includes('oAuth2Api');
-		const isOAuth1 = credType.extends?.includes('oAuth1Api');
+		const isOAuth2 = isOAuth2CredentialType(credType);
+		const isOAuth1 = isOAuth1CredentialType(credType);
 		const hasInstant = hasInstantOAuth(credType);
 
 		// Google/Microsoft OAuth with native sign-in buttons are highest priority

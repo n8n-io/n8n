@@ -105,6 +105,92 @@ describe('schema-validator', () => {
 			expect(result.errors).toEqual([]);
 		});
 
+		describe('missingDiscriminator flag', () => {
+			// Hand-authored union with NO default resolution, so these tests stay
+			// deterministic against generator changes (real node schemas resolve
+			// defaulted discriminators since #35952 and never reach this path).
+			let tmpRoot: string;
+
+			beforeAll(() => {
+				tmpRoot = mkdtempSync(path.join(tmpdir(), 'sdk-schema-discriminator-'));
+				const nodeDir = path.join(tmpRoot, 'nodes', 'custom-pkg', 'messenger');
+				mkdirSync(nodeDir, { recursive: true });
+				writeFileSync(
+					path.join(nodeDir, 'v1.schema.js'),
+					`module.exports = function ({ z }) {
+	const sendVariant = z.object({
+		parameters: z.object({
+			resource: z.literal('message'),
+			operation: z.literal('send'),
+			channel: z.string(),
+			recipient: z.string(),
+		}),
+	});
+	const listVariant = z.object({
+		parameters: z.object({
+			resource: z.literal('channel'),
+			operation: z.literal('list'),
+			channel: z.string(),
+		}),
+	});
+	return z.union([sendVariant, listVariant]);
+};
+`,
+				);
+				setSchemaBaseDirs([tmpRoot]);
+			});
+
+			afterAll(() => {
+				rmSync(tmpRoot, { recursive: true, force: true });
+				setSchemaBaseDirs(originalBaseDirs);
+			});
+
+			it('flags an omitted discriminator when the rest of the config is sound', () => {
+				const result = validateNodeConfig('custom-pkg.messenger', 1, {
+					parameters: { channel: '#general', recipient: 'bob' },
+				});
+				expect(result.valid).toBe(false);
+				expect(result.errors.length).toBeGreaterThan(0);
+				expect(result.errors[0].message).toContain('Missing discriminator');
+				expect(result.errors[0].missingDiscriminator).toBe(true);
+			});
+
+			it('flags when only a later variant is satisfied apart from the discriminators', () => {
+				// `recipient` is missing, so the FIRST variant (send) also fails on a
+				// non-discriminator field; only the second variant (list) is satisfied
+				// apart from the omitted discriminators. The flag must not depend on
+				// which variant best-path selection happens to rank first.
+				const result = validateNodeConfig('custom-pkg.messenger', 1, {
+					parameters: { channel: '#general' },
+				});
+				expect(result.valid).toBe(false);
+				expect(result.errors[0].message).toContain('Missing discriminator');
+				expect(result.errors[0].missingDiscriminator).toBe(true);
+			});
+
+			it('does not flag when the union also fails on other fields', () => {
+				// Discriminators are omitted AND `channel` has the wrong type in
+				// every variant — a genuinely misconfigured node must stay blocking.
+				const result = validateNodeConfig('custom-pkg.messenger', 1, {
+					parameters: { channel: 123 },
+				});
+				expect(result.valid).toBe(false);
+				expect(result.errors[0].message).toContain('Missing discriminator');
+				expect(result.errors[0].missingDiscriminator).toBeUndefined();
+			});
+		});
+
+		it('does not flag a wrong discriminator value as missingDiscriminator', () => {
+			const result = validateNodeConfig('n8n-nodes-base.set', 3, {
+				parameters: {
+					mode: 'invalid-mode',
+					assignments: { assignments: [] },
+				},
+			});
+			expect(result.valid).toBe(false);
+			expect(result.errors[0].missingDiscriminator).toBeUndefined();
+		});
+
 		it('returns clear error when discriminator has wrong value', () => {
 			// Set v3 mode must be 'manual' or 'raw'
 			const result = validateNodeConfig('n8n-nodes-base.set', 3, {

@@ -44,6 +44,7 @@ import type {
 } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type {
+	AgentPersistenceOptions,
 	ExecutionOptions,
 	ModelConfig,
 	PersistedExecutionOptions,
@@ -54,11 +55,13 @@ import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
+import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
+import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
-import type { FetchFn } from '../model/model-factory';
+import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
@@ -80,6 +83,14 @@ import {
 	type ToolCallBatchResult,
 } from '../tools/tool-call-executor';
 
+export interface VolatileInstructionsContext {
+	persistence?: AgentPersistenceOptions;
+}
+
+export type VolatileInstructionsProvider = (
+	context: VolatileInstructionsContext,
+) => Promise<string | undefined>;
+
 export interface AgentRuntimeConfig {
 	name: string;
 	model: ModelConfig;
@@ -93,6 +104,7 @@ export interface AgentRuntimeConfig {
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
+	workspaceFilesystem?: WorkspaceFilesystem;
 	toolSearch?: {
 		topK?: number;
 	};
@@ -135,12 +147,15 @@ export interface AgentRuntimeConfig {
 	 * aborting the run.
 	 */
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
+	/** The runtime loads these host instructions before each model call but does not save them. */
+	volatileInstructionsProvider?: VolatileInstructionsProvider;
 }
 
 const MAX_LOOP_ITERATIONS = 30;
 
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
 const MAX_EMPTY_TURN_RETRIES = 2;
+const logger = createFilteredLogger();
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -167,7 +182,7 @@ interface LoopContext {
  *
  * Memory strategy:
  * - `filterLlmMessages` strips custom messages before sending to the LLM.
- * - Memory stores ALL AgentMessages (including custom) unchanged.
+ * - Memory stores all messages, but expires run-scoped offload locators.
  * - New messages for each turn are tracked via AgentMessageList.turnDelta(),
  *   which uses Set-based source tracking to identify turn-only messages.
  *   The list serializes with id-based sets so it can survive process restarts.
@@ -221,6 +236,7 @@ export class AgentRuntime {
 			concurrency: config.toolCallConcurrency ?? 1,
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
 			tokenCounter,
+			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -289,7 +305,6 @@ export class AgentRuntime {
 			list = builtList;
 			return this.finalizeGenerate(rawResult, list);
 		} catch (error) {
-			await this.telemetry.flush(options);
 			const isAbort = abortScope.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (isAbort) {
@@ -299,6 +314,8 @@ export class AgentRuntime {
 			} else {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
+			await this.cleanupRun();
+			await this.telemetry.flush(options);
 			return {
 				runId: this.runId,
 				messages: list?.responseDelta() ?? [],
@@ -378,6 +395,7 @@ export class AgentRuntime {
 
 		let resumeData: unknown = data;
 		let abortScope: AgentAbortScope | undefined;
+		let resumeClaimed = false;
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
 		if (!isCancellation(resumeData) && resumeSchema) {
@@ -425,6 +443,7 @@ export class AgentRuntime {
 			if (!claimed) {
 				throw new StaleResumeError(`Run ${this.runId} is not suspended. Cannot resume.`);
 			}
+			resumeClaimed = true;
 			await options.onResumeClaimed?.();
 
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
@@ -439,6 +458,10 @@ export class AgentRuntime {
 			await this.ensureModelCost();
 
 			await this.memory.setListObservationLogMemory(list, state.persistence);
+			// The mask boundary is runtime-only state: re-derive it from the
+			// persisted cursor so a run that compacted mid-run before suspending
+			// does not resume with the full pre-compaction window.
+			await this.memory.applyObservationMask(list, state.persistence);
 
 			if (method === 'generate') {
 				const sink = new GenerateSink(this.createRunServices());
@@ -483,6 +506,7 @@ export class AgentRuntime {
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
+			if (resumeClaimed) await this.cleanupRun();
 			if (method === 'generate') {
 				return {
 					runId: this.runId,
@@ -564,6 +588,7 @@ export class AgentRuntime {
 
 			await this.ensureModelCost();
 			await this.memory.setListObservationLogMemory(list, state.persistence);
+			await this.memory.applyObservationMask(list, state.persistence);
 
 			return {
 				runId: this.runId,
@@ -835,6 +860,9 @@ export class AgentRuntime {
 			});
 			const finalized = await finishToolBatch(batch, pendingLoopContext.toolMap, iterationCount);
 			if (finalized.suspended) return finalized.result;
+			// The resumed batch is a clean boundary too: its tool results are new
+			// content no earlier boundary saw, so check before the next model call.
+			await this.memory.maybeObserveMidRun(list, options);
 		}
 
 		for (; iterationCount < maxIterations; iterationCount++) {
@@ -854,10 +882,16 @@ export class AgentRuntime {
 				options?.persistence,
 				options?.executionCounter,
 			);
+			const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
+			const combinedVolatileInstructions = [volatileInstructions, hostVolatileInstructions]
+				.map((value) => value?.trim())
+				.filter((value): value is string => Boolean(value))
+				.join('\n\n');
 			const { system, messages } = list.forLlm(
 				effectiveInstructions,
 				instructionProviderOptions,
-				volatileInstructions,
+				combinedVolatileInstructions || undefined,
+				supportsSplitSystemMessages(this.config.model),
 			);
 			// Runtime breakpoints (conversation history, static tools) are per-call
 			// only — never persisted back to the message list or tool set.
@@ -880,6 +914,7 @@ export class AgentRuntime {
 				reasoning: staticLoopContext.reasoning,
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
+				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
 			};
 			let turn = await sink.callModel(modelCallContext);
@@ -937,6 +972,10 @@ export class AgentRuntime {
 			// Emit TurnEnd after all tool calls in this iteration are processed
 			this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(list.responseDelta()));
 
+			// Clean loop boundary: all tool calls settled. Mid-run observation
+			// may compact the LLM window here before the next call.
+			await this.memory.maybeObserveMidRun(list, options);
+
 			// Step boundary reached with nothing pending: durably checkpoint so a
 			// crash before the next model call loses only the in-flight step.
 			if (options?.stepCheckpoints) {
@@ -961,6 +1000,17 @@ export class AgentRuntime {
 			usage: totalUsage,
 			structuredOutput,
 		});
+	}
+
+	private async resolveVolatileInstructions(
+		persistence: AgentPersistenceOptions | undefined,
+	): Promise<string | undefined> {
+		try {
+			return await this.config.volatileInstructionsProvider?.({ persistence });
+		} catch (error) {
+			logger.warn('Failed to resolve volatile agent instructions', { runId: this.runId, error });
+			return undefined;
+		}
 	}
 
 	/**
@@ -1057,6 +1107,21 @@ export class AgentRuntime {
 		const executionOptions: PersistedExecutionOptions | undefined =
 			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
 
+		// Record what confirmation each suspended call showed the user, so an
+		// abandoned suspension can be settled with that context on a later
+		// history load instead of vanishing from the transcript.
+		for (const pending of Object.values(pendingToolCalls)) {
+			if (!pending.suspended) continue;
+			const payload =
+				typeof pending.suspendPayload === 'object' && pending.suspendPayload !== null
+					? (pending.suspendPayload as { message?: unknown; requestId?: unknown })
+					: undefined;
+			list.markToolCallSuspended(pending.toolCallId, {
+				...(typeof payload?.message === 'string' ? { message: payload.message } : {}),
+				...(typeof payload?.requestId === 'string' ? { requestId: payload.requestId } : {}),
+			});
+		}
+
 		const state: SerializableAgentState = {
 			persistence: options?.persistence,
 			status: 'suspended',
@@ -1105,7 +1170,24 @@ export class AgentRuntime {
 
 	/** Clean up stored state for a run when it finishes without re-suspending. */
 	private async cleanupRun(): Promise<void> {
-		await this.runState.complete(this.runId);
+		try {
+			await this.runState.complete(this.runId);
+		} catch (error) {
+			logger.warn('Failed to clean up agent run checkpoint', { runId: this.runId, error });
+			return;
+		}
+
+		// Gated on this runtime instance having offloaded something: with lazy sandbox
+		// acquisition an unconditional cleanup would boot the sandbox just to find nothing.
+		// Runs resumed in a fresh process skip this (flag is per-instance); their orphaned
+		// run dirs are swept by reconcileToolResultRuns on a later acquisition.
+		if (this.config.workspaceFilesystem && this.toolExecutor.hasOffloadedToolResults) {
+			try {
+				await removeToolResultRun(this.config.workspaceFilesystem, this.runId);
+			} catch (error) {
+				logger.warn('Failed to clean up agent run tool results', { runId: this.runId, error });
+			}
+		}
 	}
 
 	/** Emit a TurnEnd event when an assistant message is present in `newMessages`. */

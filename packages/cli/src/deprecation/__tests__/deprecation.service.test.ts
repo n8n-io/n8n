@@ -69,6 +69,20 @@ describe('DeprecationService', () => {
 		['N8N_DEFAULT_BINARY_DATA_MODE', 'filesystem', false],
 		['N8N_EXPRESSION_ENGINE', 'legacy', true],
 		['N8N_EXPRESSION_ENGINE', 'vm', false],
+		['N8N_WORKFLOW_TAGS_DISABLED', 'true', true],
+		['N8N_WORKFLOW_TAGS_DISABLED', '1', true],
+		['N8N_WORKFLOW_TAGS_DISABLED', 'false', false],
+		['N8N_WORKFLOW_TAGS_DISABLED', undefined, false],
+		['N8N_OUTBOUND_PROXY_MODE', 'main-only', true],
+		['N8N_OUTBOUND_PROXY_MODE', 'all', false],
+		['N8N_OUTBOUND_PROXY_MODE', undefined, false],
+		['N8N_RUNNERS_MODE', 'internal', true],
+		['N8N_RUNNERS_MODE', 'external', false],
+		['N8N_RUNNERS_MODE', undefined, false],
+		['N8N_SSRF_PROTECTION_ENABLED', 'true', true],
+		['N8N_SSRF_PROTECTION_ENABLED', '1', true],
+		['N8N_SSRF_PROTECTION_ENABLED', 'false', false],
+		['N8N_SSRF_PROTECTION_ENABLED', undefined, false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});
@@ -189,6 +203,28 @@ describe('DeprecationService', () => {
 			process.env[envVar] = value;
 			deprecationService.warn();
 			expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
+		});
+	});
+
+	describe('N8N_SSRF_PROTECTION_ENABLED', () => {
+		beforeEach(() => {
+			process.env.N8N_SSRF_PROTECTION_ENABLED = 'true';
+		});
+
+		test.each([undefined, 'default', 'DEFAULT , 100.64.0.0/10'])(
+			'should warn when N8N_SSRF_BLOCKED_IP_RANGES is `%s`',
+			(ranges) => {
+				if (ranges === undefined) delete process.env.N8N_SSRF_BLOCKED_IP_RANGES;
+				else process.env.N8N_SSRF_BLOCKED_IP_RANGES = ranges;
+				deprecationService.warn();
+				expect(logger.warn.mock.lastCall?.[0] ?? '').toContain('N8N_SSRF_PROTECTION_ENABLED');
+			},
+		);
+
+		test('should not warn when N8N_SSRF_BLOCKED_IP_RANGES lists literal ranges only', () => {
+			process.env.N8N_SSRF_BLOCKED_IP_RANGES = '10.0.0.0/8,192.168.0.0/16';
+			deprecationService.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain('N8N_SSRF_PROTECTION_ENABLED');
 		});
 	});
 

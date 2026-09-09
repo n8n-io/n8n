@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, useTemplateRef } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
-import type { AgentJsonConfig, AgentResource } from '../types';
+import type {
+	AgentContinueLoadedEvent,
+	AgentFixWithAssistantEvent,
+	AgentJsonConfig,
+	AgentResource,
+} from '../types';
 import AgentChatPanel from './AgentChatPanel.vue';
 
 defineProps<{
@@ -15,23 +20,32 @@ defineProps<{
 	effectiveSessionId?: string;
 	initialPrompt?: string;
 	canSendToAssistant?: boolean;
+	beforeSend?: () => Promise<void> | void;
 }>();
 
 const emit = defineEmits<{
-	'continue-loaded': [count: number];
+	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
-	'send-to-assistant': [executionId?: string];
+	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
 }>();
 
 const inputDraft = ref('');
+const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
+
+function focusInput(options?: FocusOptions) {
+	chatPanel.value?.focusInput(options);
+}
+
+defineExpose({ focusInput });
 </script>
 
 <template>
-	<main :class="$style.previewPage" data-testid="agent-preview-chat-page">
+	<div :class="$style.previewPage" data-testid="agent-preview-chat-page">
 		<div :class="$style.chatFrame">
 			<AgentChatPanel
 				v-if="initialized && effectiveSessionId"
 				:key="`preview-${effectiveSessionId}`"
+				ref="chatPanel"
 				v-model:input-draft="inputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
@@ -41,12 +55,13 @@ const inputDraft = ref('');
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
 				:can-send-to-assistant="canSendToAssistant"
+				:before-send="beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 			/>
 		</div>
-	</main>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -55,13 +70,12 @@ const inputDraft = ref('');
 	min-height: 0;
 	display: flex;
 	justify-content: center;
-	background-color: var(--background--surface);
+	background-color: transparent;
 	overflow: hidden;
 }
 
 .chatFrame {
 	width: 100%;
-	max-width: 45rem;
 	min-height: 0;
 	display: flex;
 }

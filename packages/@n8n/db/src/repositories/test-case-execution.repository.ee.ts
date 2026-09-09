@@ -46,13 +46,13 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 	 */
 	async getManyByTestRunId(
 		testRunId: string,
-		{ skip, take }: { skip?: number; take?: number } = {},
+		{ offset, limit }: { offset: number; limit: number },
 	) {
 		return await this.find({
 			where: { testRun: { id: testRunId } },
 			order: { runIndex: 'ASC', id: 'ASC' },
-			skip,
-			take,
+			skip: offset,
+			take: limit,
 		});
 	}
 

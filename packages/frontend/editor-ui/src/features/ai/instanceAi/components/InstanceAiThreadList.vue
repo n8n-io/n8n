@@ -14,6 +14,7 @@ import { computed, nextTick, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
 
 const emit = defineEmits<{ collapse: [] }>();
 
@@ -79,6 +80,7 @@ async function handleDeleteThread(threadId: string) {
 	const wasActive = threadId === activeThreadId.value;
 	const deleted = await store.deleteThread(threadId);
 	if (!deleted) return;
+	clearPendingThreadHandoff(threadId);
 
 	if (wasActive) {
 		if (store.threads.length > 0) {

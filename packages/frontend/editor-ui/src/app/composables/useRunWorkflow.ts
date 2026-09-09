@@ -22,6 +22,7 @@ import {
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
+import { until } from '@vueuse/core';
 import { computed, getCurrentInstance, type Ref } from 'vue';
 
 import { useToast } from '@n8n/composables/useToast';
@@ -561,8 +562,17 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	async function stopCurrentExecution() {
-		const executionId = workflowExecutionState.value.activeExecutionId;
+		let executionId = workflowExecutionState.value.activeExecutionId;
 		let stopData: IExecutionsStopData | undefined;
+
+		// null means the run started but the backend id is not yet known.
+		// Wait for it instead of dropping the click.
+		if (executionId === null) {
+			executionId = await until(() => workflowExecutionState.value.activeExecutionId).toMatch(
+				(id) => id !== null,
+				{ timeout: 10_000 },
+			);
+		}
 
 		if (!executionId) {
 			return;

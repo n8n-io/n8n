@@ -14,6 +14,13 @@ export {
 } from './execution-cancelled.error';
 export { NodeApiError } from './node-api.error';
 export { NodeOperationError } from './node-operation.error';
+export {
+	TIMED_CAUSES,
+	ACTIONABLE_CAUSES,
+	type Failure,
+	type TimedCause,
+	type ActionableCause,
+} from './failure';
 export { WorkflowConfigurationError } from './workflow-configuration.error';
 export { NodeSslError } from './node-ssl.error';
 export { WebhookPathTakenError } from './webhook-taken.error';

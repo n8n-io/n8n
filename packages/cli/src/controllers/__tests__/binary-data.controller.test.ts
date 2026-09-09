@@ -1,22 +1,27 @@
 import type { BinaryDataQueryDto, BinaryDataSignedQueryDto } from '@n8n/api-types';
-import type { Request, Response } from 'express';
+import type { AuthenticatedRequest } from '@n8n/db';
+import type { Response } from 'express';
 import { JsonWebTokenError } from 'jsonwebtoken';
 import type { BinaryDataService } from 'n8n-core';
 import { FileNotFoundError } from 'n8n-core';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
+import type { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
+
 import { BinaryDataController } from '../binary-data.controller';
 
 describe('BinaryDataController', () => {
-	const request = mock<Request>();
+	const request = mock<AuthenticatedRequest>();
 	const response = mock<Response>();
 	const binaryDataService = mock<BinaryDataService>();
-	const controller = new BinaryDataController(binaryDataService);
+	const binaryDataAccessService = mock<BinaryDataAccessService>();
+	const controller = new BinaryDataController(binaryDataService, binaryDataAccessService);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
 		response.status.mockReturnThis();
+		binaryDataAccessService.hasReadAccess.mockResolvedValue(true);
 	});
 
 	describe('get', () => {
@@ -153,6 +158,24 @@ describe('BinaryDataController', () => {
 			expect(binaryDataService.getAsStream).toHaveBeenCalledWith('filesystem:123');
 		});
 
+		it('should return 404 when the user cannot access the binary', async () => {
+			const query = {
+				id: 'filesystem:123',
+				action: 'view',
+				mimeType: 'image/jpeg',
+			} as BinaryDataQueryDto;
+			binaryDataAccessService.hasReadAccess.mockResolvedValue(false);
+
+			await controller.get(request, response, query);
+
+			expect(binaryDataAccessService.hasReadAccess).toHaveBeenCalledWith(
+				request.user,
+				'filesystem:123',
+			);
+			expect(response.status).toHaveBeenCalledWith(404);
+			expect(binaryDataService.getAsStream).not.toHaveBeenCalled();
+		});
+
 		describe('with malicious binary data IDs', () => {
 			it.each([
 				['filesystem:'],
@@ -161,6 +184,11 @@ describe('BinaryDataController', () => {
 				['filesystem-v2:/'],
 				['filesystem://'],
 				['filesystem-v2://'],
+				['filesystem:workflows/a/executions/b/binary_data/../../../../etc/passwd'],
+				['filesystem:workflows/a/executions/b/binary_data/../../c/executions/d/binary_data/uuid'],
+				['filesystem-v2:workflows/a/executions/b/binary_data/../../../secret'],
+				['filesystem:workflows/a/executions/b/binary_data/..\\..\\..\\..\\etc\\passwd'],
+				['filesystem-v2:workflows\\a\\executions\\b\\binary_data\\..\\..\\..\\secret'],
 			])('should return 400 for ID "%s"', async (maliciousId) => {
 				const query = { id: maliciousId, action: 'download' } as BinaryDataQueryDto;
 
@@ -168,6 +196,8 @@ describe('BinaryDataController', () => {
 
 				expect(response.status).toHaveBeenCalledWith(400);
 				expect(response.end).toHaveBeenCalledWith('Malformed binary data ID');
+				expect(binaryDataAccessService.hasReadAccess).not.toHaveBeenCalled();
+				expect(binaryDataService.getAsStream).not.toHaveBeenCalled();
 			});
 		});
 	});

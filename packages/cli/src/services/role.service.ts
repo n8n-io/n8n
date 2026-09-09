@@ -3,7 +3,7 @@ import type {
 	RoleMembersResponse,
 	RoleProjectMembersResponse,
 } from '@n8n/api-types';
-import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import { CreateRoleDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	CredentialsEntity,
@@ -42,6 +42,7 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { isUniqueConstraintError } from '@/response-helper';
 
 import { RoleCacheService } from './role-cache.service';
@@ -56,6 +57,7 @@ export class RoleService {
 		private readonly roleCacheService: RoleCacheService,
 		private readonly logger: Logger,
 		private readonly roleDeletionCheckProxy: RoleDeletionCheckProxy,
+		private readonly eventService: EventService,
 	) {}
 
 	private dbRoleToRoleDTO(role: Role, usedByUsers?: number, usedByProjects?: number): RoleDTO {
@@ -139,7 +141,15 @@ export class RoleService {
 		return { members };
 	}
 
-	async removeCustomRole(slug: string, reassignRoleSlug?: string) {
+	async removeCustomRole({
+		slug,
+		reassignRoleSlug,
+		userId,
+	}: {
+		slug: string;
+		reassignRoleSlug?: string;
+		userId: string;
+	}) {
 		const role = await this.roleRepository.findBySlug(slug);
 		if (!role) {
 			throw new NotFoundError('Role not found');
@@ -170,7 +180,14 @@ export class RoleService {
 		// Invalidate cache after role deletion
 		await this.roleCacheService.invalidateCache();
 
-		return this.dbRoleToRoleDTO(role);
+		const result = this.dbRoleToRoleDTO(role);
+
+		this.eventService.emit('custom-role-deleted', {
+			userId,
+			roleSlug: result.slug,
+		});
+
+		return result;
 	}
 
 	private async reassignUsersAndRemoveRole(role: Role, reassignRoleSlug: string) {
@@ -221,8 +238,17 @@ export class RoleService {
 		return scopes;
 	}
 
-	async updateCustomRole(slug: string, newData: UpdateRoleDto) {
-		const { displayName, description, scopes: scopeSlugs } = newData;
+	async updateCustomRole({
+		slug,
+		newRole,
+		userId,
+	}: {
+		slug: string;
+		// Optional fields keep this compatible with both the internal PATCH and public PUT endpoints.
+		newRole: { displayName?: string; description?: string | null; scopes?: string[] };
+		userId: string;
+	}) {
+		const { displayName, description, scopes: scopeSlugs } = newRole;
 
 		const roleType = slug.startsWith('project:') ? 'project' : 'global';
 
@@ -236,7 +262,15 @@ export class RoleService {
 			// Invalidate cache after role update
 			await this.roleCacheService.invalidateCache();
 
-			return this.dbRoleToRoleDTO(updatedRole);
+			const result = this.dbRoleToRoleDTO(updatedRole);
+
+			this.eventService.emit('custom-role-updated', {
+				userId,
+				roleSlug: result.slug,
+				scopes: result.scopes,
+			});
+
+			return result;
 		} catch (error) {
 			if (error instanceof UserError && error.message === 'Role not found') {
 				throw new NotFoundError('Role not found');
@@ -360,13 +394,21 @@ export class RoleService {
 		const entityType = isWorkflow ? 'workflow' : 'credential';
 		entity.scopes = this.combineResourceScopes(entityType, user, shared, userProjectRelations);
 
-		if (
-			entityType === 'credential' &&
-			'isGlobal' in entity &&
-			entity.isGlobal &&
-			!entity.scopes.includes('credential:read')
-		) {
-			entity.scopes.push('credential:read');
+		if (entityType === 'credential' && 'isGlobal' in entity && entity.isGlobal) {
+			if (!entity.scopes.includes('credential:read')) {
+				entity.scopes.push('credential:read');
+			}
+
+			// End-user credentials require the recipient to connect their own
+			// account, so a global share must also grant `credential:connect`.
+			// Static credentials stay read-only.
+			if (!('isResolvable' in entity)) {
+				throw new UnexpectedError('isResolvable must be selected whenever isGlobal is');
+			}
+
+			if (entity.isResolvable && !entity.scopes.includes('credential:connect')) {
+				entity.scopes.push('credential:connect');
+			}
 		}
 
 		return entity;

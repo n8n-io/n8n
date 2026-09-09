@@ -1,4 +1,5 @@
 @use 'mixins/mixins';
+@use 'mixins/motion';
 @use './common/var';
 
 @include mixins.b(loading-parent) {
@@ -21,6 +22,8 @@
 	bottom: 0;
 	left: 0;
 	transition: opacity 0.3s;
+
+	@include motion.reduced-motion;
 
 	@include mixins.when(fullscreen) {
 		position: fixed;
@@ -55,14 +58,19 @@
 	}
 
 	.circular {
+		--animation--spin--duration: 2s;
+
 		max-height: 100%;
 		height: var.$loading-spinner-size;
 		width: var.$loading-spinner-size;
-		animation: loading-rotate 2s linear infinite;
+
+		@include motion.spin;
 	}
 
 	.path {
 		animation: loading-dash 1.5s ease-in-out infinite;
+
+		@include motion.reduced-motion;
 		stroke-dasharray: 90, 150;
 		stroke-dashoffset: 0;
 		stroke-width: 2;
@@ -78,12 +86,6 @@
 .el-loading-fade-enter-from,
 .el-loading-fade-leave-active {
 	opacity: 0;
-}
-
-@keyframes loading-rotate {
-	100% {
-		transform: rotate(360deg);
-	}
 }
 
 @keyframes loading-dash {

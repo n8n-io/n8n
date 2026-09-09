@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, toRaw } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@n8n/composables/useClipboard';
@@ -20,7 +20,7 @@ import type {
 	NodeError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { isCommunityPackageName } from 'n8n-workflow';
+import { isCommunityPackageName, replaceCircularReferences } from 'n8n-workflow';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/app/constants';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -63,8 +63,16 @@ const uiStore = useUIStore();
 
 const executionId = computed(() => workflowExecutionStateStore.value.activeExecution?.id);
 
+// Error payloads can carry live request/response objects, whose graphs are
+// circular. Vue interpolates via `JSON.stringify`, which throws on those — and
+// the render error blanks the whole panel — so interpolate sanitized copies.
+// `toRaw` keeps the copy off the reactive proxy, which is far cheaper to walk.
+const safeContext = computed(() => replaceCircularReferences(toRaw(props.error.context)));
+const safeExtra = computed(() => replaceCircularReferences(toRaw(props.error.extra)));
+const safeCause = computed(() => replaceCircularReferences(toRaw(props.error.cause)));
+
 const displayCause = computed(() => {
-	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
+	return JSON.stringify(safeCause.value ?? '').length < MAX_DISPLAY_DATA_SIZE;
 });
 
 const node = computed(() => {
@@ -321,7 +329,7 @@ function getParameterName(
 }
 
 function copyErrorDetails() {
-	const error = props.error;
+	const error = toRaw(props.error);
 
 	const errorInfo: IDataObject = {
 		errorMessage: getErrorMessage(),
@@ -401,7 +409,7 @@ function copyErrorDetails() {
 
 	errorInfo.n8nDetails = n8nDetails;
 
-	void clipboard.copy(JSON.stringify(errorInfo, null, 2));
+	void clipboard.copy(JSON.stringify(replaceCircularReferences(errorInfo), null, 2));
 	copySuccess();
 }
 
@@ -582,7 +590,7 @@ async function onInstanceAiHandoffClick() {
 								{{ i18n.baseText('nodeErrorView.details.errorData') }}
 							</p>
 							<div class="node-error-view__details-value">
-								<pre><code>{{ error.context.data }}</code></pre>
+								<pre><code>{{ safeContext?.data }}</code></pre>
 							</div>
 						</div>
 						<div v-if="error.extra" class="node-error-view__details-row">
@@ -590,15 +598,15 @@ async function onInstanceAiHandoffClick() {
 								{{ i18n.baseText('nodeErrorView.details.errorExtra') }}
 							</p>
 							<div class="node-error-view__details-value">
-								<pre><code>{{ error.extra }}</code></pre>
+								<pre><code>{{ safeExtra }}</code></pre>
 							</div>
 						</div>
-						<div v-if="error.context && error.context.request" class="node-error-view__details-row">
+						<div v-if="error.context?.request" class="node-error-view__details-row">
 							<p class="node-error-view__details-label">
 								{{ i18n.baseText('nodeErrorView.details.request') }}
 							</p>
 							<div class="node-error-view__details-value">
-								<pre><code>{{ error.context.request }}</code></pre>
+								<pre><code>{{ safeContext?.request }}</code></pre>
 							</div>
 						</div>
 					</div>
@@ -690,20 +698,17 @@ async function onInstanceAiHandoffClick() {
 								{{ i18n.baseText('nodeErrorView.details.errorCause') }}
 							</p>
 
-							<pre class="node-error-view__details-value"><code>{{ error.cause }}</code></pre>
+							<pre class="node-error-view__details-value"><code>{{ safeCause }}</code></pre>
 						</div>
 
-						<div
-							v-if="error.context && error.context.causeDetailed"
-							class="node-error-view__details-row"
-						>
+						<div v-if="error.context?.causeDetailed" class="node-error-view__details-row">
 							<p class="node-error-view__details-label">
 								{{ i18n.baseText('nodeErrorView.details.causeDetailed') }}
 							</p>
 
 							<pre
 								class="node-error-view__details-value"
-							><code>{{ error.context.causeDetailed }}</code></pre>
+							><code>{{ safeContext?.causeDetailed }}</code></pre>
 						</div>
 
 						<div v-if="error.stack" class="node-error-view__details-row">

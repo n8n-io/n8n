@@ -1,5 +1,5 @@
 import { Tool } from '@n8n/agents';
-import { taskListSchema } from '@n8n/api-types';
+import { instanceAiApprovalResumeSchema, taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -8,7 +8,11 @@ import { PLANNED_TASK_KINDS, type OrchestrationContext, type PlannedTask } from 
 
 const plannedTaskSchema = z.object({
 	id: z.string().describe('Stable task identifier used by dependency edges'),
-	title: z.string().describe('Short user-facing task title'),
+	title: z
+		.string()
+		.trim()
+		.min(1, 'Task title must not be empty — it is the label the user sees')
+		.describe('Short user-facing task title'),
 	kind: z.enum(PLANNED_TASK_KINDS),
 	spec: z.string().describe('Detailed executor briefing for this task'),
 	deps: z
@@ -59,9 +63,7 @@ const planOutputSchema = z.object({
 	taskCount: z.number(),
 });
 
-export const planResumeSchema = z.object({
-	approved: z.boolean(),
-	userInput: z.string().optional(),
+export const planResumeSchema = instanceAiApprovalResumeSchema.extend({
 	denied: z.boolean().optional(),
 });
 

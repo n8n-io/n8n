@@ -27,6 +27,10 @@ export function definePatternBenchmarks(
 	smallData: INodeExecutionData[],
 	mediumData: INodeExecutionData[],
 	largeData: INodeExecutionData[],
+	// The 10k-item map is ~5-6x slower on QuickJS (WASM); under CodSpeed's
+	// instruction-counting instrumentation it exceeds the bridge timeout. Opt
+	// out for that engine — the 100-item array cases still cover the pattern.
+	{ includeLargeArray = true }: { includeLargeArray?: boolean } = {},
 ) {
 	// Simple Property
 	bench(
@@ -112,13 +116,15 @@ export function definePatternBenchmarks(
 		BENCH_OPTIONS,
 	);
 
-	bench(
-		`${engine}: Array Iteration - map 10k items`,
-		() => {
-			evalFn(workflow, ARRAY_ITERATION[0], largeData);
-		},
-		BENCH_OPTIONS,
-	);
+	if (includeLargeArray) {
+		bench(
+			`${engine}: Array Iteration - map 10k items`,
+			() => {
+				evalFn(workflow, ARRAY_ITERATION[0], largeData);
+			},
+			BENCH_OPTIONS,
+		);
+	}
 
 	// Conditional
 	bench(

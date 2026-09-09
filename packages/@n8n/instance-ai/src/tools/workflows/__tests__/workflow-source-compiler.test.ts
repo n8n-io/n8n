@@ -402,3 +402,58 @@ describe('compileWorkflowSource credential resolution', () => {
 		expect(warnings).toHaveLength(0);
 	});
 });
+
+describe('compileWorkflowSource > Slack Block Kit shape', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	async function compileSlack(blocksUi: unknown) {
+		const workflow = {
+			name: 'Slack workflow',
+			nodes: [
+				{
+					id: 'slack-1',
+					name: 'Post Lunch Train',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.3,
+					position: [0, 0] as [number, number],
+					parameters: { resource: 'message', operation: 'post', messageType: 'block', blocksUi },
+				},
+			],
+			connections: {},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/slack.workflow.json',
+			JSON.stringify(workflow),
+		);
+		if (!result.success) throw new Error('expected compile success');
+		return result.warnings;
+	}
+
+	it('surfaces a warning for a bare Block Kit array', async () => {
+		const warnings = await compileSlack(
+			JSON.stringify([{ type: 'section', text: { type: 'mrkdwn', text: 'Departs 12:30' } }]),
+		);
+
+		expect(warnings).toEqual([
+			expect.objectContaining({
+				code: 'SLACK_BLOCKS_SHAPE_INVALID',
+				nodeName: 'Post Lunch Train',
+			}),
+		]);
+	});
+
+	it('stays quiet for a wrapped Block Kit payload', async () => {
+		const warnings = await compileSlack(
+			JSON.stringify({
+				blocks: [{ type: 'section', text: { type: 'mrkdwn', text: 'Departs 12:30' } }],
+			}),
+		);
+
+		expect(warnings).toEqual([]);
+	});
+});

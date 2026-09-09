@@ -44,12 +44,17 @@ function getWorkflowId() {
 	return contentRef.value?.getWorkflowId();
 }
 
+function getInputs() {
+	return contentRef.value?.getInputs();
+}
+
 defineExpose({
 	getName,
 	getDescription,
 	getAllOutputs,
 	getWorkflow,
 	getWorkflowId,
+	getInputs,
 	handleChangeName,
 });
 </script>

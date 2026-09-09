@@ -11,37 +11,52 @@
 // stubbed — when the orchestrator loads a runtime skill or reaches for a
 // Computer Use browser tool, the tool-call event fires before any downstream
 // failure, so the discovery check still sees the dispatch intent. The wall-clock
-// timeout bounds the loop so an erroring tool can't drive API spend; scenarios
-// or --max-steps can additionally opt into an iteration cap.
+// timeout bounds the trial, not the run: at the budget the trial stops and fails,
+// and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
+// can additionally opt into an iteration cap.
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import { runExpectedToolsInvokedCheck } from './expected-tools-invoked';
+import {
+	buildConfirmationPolicy,
+	resolveConfirmation,
+	unmatchedConfirmations,
+	type ApprovalResponder,
+} from './confirmation-policy';
+import { credentialAutoSetupResponder } from './credential-approval';
+import { evaluateDiscoveryTrial } from './expected-tools-invoked';
+import { resolveStreamStatus } from './stream-status';
 import { createStubLocalMcpServer } from './stub-local-mcp';
-import type { DiscoveryCheckResult, DiscoveryTestCase } from './types';
+import {
+	createMcpConnectResponder,
+	createStubMcpRegistry,
+	createStubMcpToolRegistry,
+	StubMcpClientManager,
+	stubMcpServerConfigs,
+	type StubMcpRegistry,
+} from './stub-mcp-registry';
+import type { DiscoveryCheckResult, DiscoveryStreamStatus, DiscoveryTestCase } from './types';
 import { createInstanceAgent } from '../../src/agent/instance-agent';
 import type { InstanceAiEventBus } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
-import { McpClientManager } from '../../src/mcp/mcp-client-manager';
 import {
 	executeResumableStream,
 	normalizeStreamSource,
 } from '../../src/runtime/resumable-stream-executor';
 import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
-import { createAllTools } from '../../src/tools';
 import type {
 	InstanceAiContext,
-	InstanceAiToolRegistry,
 	LocalGatewayStatus,
 	ModelConfig,
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
-import { asResumable } from '../../src/utils/stream-helpers';
+import { asResumable, type SuspensionInfo } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
+import { createStubWorkspace, stubWorkspaceRoot } from '../harness/stub-workspace';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, EventOutcome } from '../types';
 
@@ -54,7 +69,7 @@ export interface DiscoveryRunOptions {
 	modelId: ModelConfig;
 	/** Defaults to `defaultNodesJsonPath()`. */
 	nodesJsonPath?: string;
-	/** Hard cap on agent steps. Discovery scenarios are single-turn — 5 is plenty. */
+	/** Hard cap on agent steps. Unset leaves the SDK's own 30-iteration ceiling in place. */
 	maxSteps?: number;
 	/** Per-trial timeout in ms. */
 	timeoutMs?: number;
@@ -67,7 +82,7 @@ export interface DiscoveryRunResult {
 	outcome: EventOutcome;
 	durationMs: number;
 	/** Final agent status — useful for diagnosing why noop / unexpected loops happened. */
-	streamStatus: 'completed' | 'errored' | 'cancelled' | 'suspended';
+	streamStatus: DiscoveryStreamStatus;
 	/** Populated when the run errored before reaching the check. */
 	runError?: string;
 }
@@ -76,11 +91,11 @@ export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
 	const started = Date.now();
-	// Uncapped by default, matching live behavior: today's orchestrator legitimately
-	// explores past any small fixed cap (data-table-workflow needs >8 iterations), and
-	// the wall-clock timeout below bounds runaway runs. Scenarios/CLI opt in to a cap.
+	// Unset by default: the orchestrator legitimately explores past any small fixed cap
+	// (data-table-workflow needs >8 iterations). Unset still lands on the SDK's own
+	// 30-iteration ceiling, which reports `step-exhausted`.
 	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
-	const timeoutMs = options.timeoutMs ?? 60_000;
+	const timeoutMs = options.scenario?.timeoutMs ?? options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
 
 	const events: CapturedEvent[] = [];
@@ -88,34 +103,45 @@ export async function runDiscoveryScenario(
 	let streamStatus: DiscoveryRunResult['streamStatus'] = 'completed';
 	let runError: string | undefined;
 
+	const confirmationPolicy = buildConfirmationPolicy(options.scenario);
+	const suspensions = new Map<string, SuspensionInfo>();
+
 	const abortController = new AbortController();
-	const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
+	let mcpManager: StubMcpClientManager | undefined;
+	let timeoutHandle: NodeJS.Timeout | undefined;
+	const budgetExpired = new Promise<'timed-out'>((resolve) => {
+		timeoutHandle = setTimeout(() => {
+			abortController.abort();
+			resolve('timed-out');
+		}, timeoutMs);
+	});
 
 	try {
 		const services = await createStubServices({ nodesJsonPath });
-		const context = applyInstanceState(services.context, options.scenario);
+		const mcpState = options.scenario.instanceState?.mcp;
+		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
+		const context: InstanceAiContext = {
+			...applyInstanceState(services.context, options.scenario, mcpRegistry),
+			workspace: createStubWorkspace(),
+			workspaceRoot: stubWorkspaceRoot,
+		};
 
-		const mcpManager = new McpClientManager();
+		mcpManager = new StubMcpClientManager(createStubMcpToolRegistry(mcpState ?? {}));
 		const threadId = 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
 
-		// Track outstanding confirmation requests so the auto-approve can simulate the
-		// production "user clicks Auto-setup with browser" path for credential setup
-		// suspensions. Without this, `credentials(action="setup")` returns the
-		// "user picked existing credentials" branch and the orchestrator never sees
-		// `needsBrowserSetup=true` — which is what wires it to the Computer Use
-		// credential setup skill per the system prompt.
-		const pendingConfirmations = new Map<string, { credentialType?: string }>();
+		const approvalResponders: ApprovalResponder[] = [
+			credentialAutoSetupResponder,
+			...(mcpRegistry ? [createMcpConnectResponder(mcpRegistry)] : []),
+		];
 
 		const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
 			events.push(toCapturedEvent(event));
-			recordConfirmationRequest(event, pendingConfirmations);
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `create-tasks`, `eval-setup-with-agent`, and runtime skills. We provide stubs
-		// for the heavy fields: discovery scenarios measure first-step tool-call
-		// decisions, not background execution.
+		// `create-tasks` and runtime skills. Discovery scenarios measure first-step
+		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
 			modelId: options.modelId,
@@ -129,12 +155,10 @@ export async function runDiscoveryScenario(
 			modelId: options.modelId,
 			context,
 			orchestrationContext,
+			mcpServers: stubMcpServerConfigs(mcpState ?? {}),
 			mcpManager,
 			// No memory: discovery measures stateless first-step tool dispatch.
 			memoryConfig: {},
-			// Eager tool loading — discovery measures dispatch given the full toolset,
-			// not whether the orchestrator can find a tool through search.
-			disableDeferredTools: true,
 			thinkingEnabled: false,
 		});
 
@@ -148,7 +172,7 @@ export async function runDiscoveryScenario(
 			}),
 		);
 
-		const result = await executeResumableStream({
+		const run = executeResumableStream({
 			agent: asResumable(agent),
 			stream: streamSource,
 			context: {
@@ -161,44 +185,39 @@ export async function runDiscoveryScenario(
 			},
 			control: {
 				mode: 'auto',
-				// Auto-approve every confirmation/HITL suspension so the run drives to
-				// completion. For credentials(action="setup") suspensions, pretend the user
-				// chose "Auto-setup with browser" — that's what unlocks the production
-				// `needsBrowserSetup=true` → Computer Use credential skill path.
-				// eslint-disable-next-line @typescript-eslint/require-await
-				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> => {
-					const pending = pendingConfirmations.get(requestId);
-					if (pending?.credentialType) {
-						return { approved: true, autoSetup: { credentialType: pending.credentialType } };
-					}
-					return { approved: true };
-				},
+				onSuspension: (suspension) => suspensions.set(suspension.requestId, suspension),
+				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> =>
+					await Promise.resolve(
+						resolveConfirmation(suspensions.get(requestId), confirmationPolicy, approvalResponders),
+					),
 			},
 		});
+		void run.catch(() => {});
+		const result = await Promise.race([run, budgetExpired]);
 
-		if (abortController.signal.aborted || result.status === 'cancelled') {
-			streamStatus = 'cancelled';
-		} else if (result.status === 'errored') {
-			streamStatus = 'errored';
-		} else if (result.status === 'suspended') {
-			streamStatus = 'suspended';
-		}
-
-		await mcpManager.disconnect();
+		streamStatus = resolveStreamStatus(result, abortController.signal.aborted);
 	} catch (error) {
 		runError = error instanceof Error ? error.message : String(error);
-		streamStatus = 'errored';
+		streamStatus = abortController.signal.aborted ? 'timed-out' : 'errored';
 	} finally {
 		clearTimeout(timeoutHandle);
+		await mcpManager?.disconnect();
 	}
 
-	const outcome = extractOutcomeFromEvents(events);
-	const check = runExpectedToolsInvokedCheck(options.scenario, outcome);
+	const observedEvents = [...events];
+	const outcome = extractOutcomeFromEvents(observedEvents);
+	const check = evaluateDiscoveryTrial(options.scenario, outcome, {
+		streamStatus,
+		timeoutMs,
+		...(runError ? { runError } : {}),
+		unmatchedConfirmations: unmatchedConfirmations(confirmationPolicy, suspensions.values()),
+	});
 
 	return {
 		scenario: options.scenario,
 		check,
-		events,
+		// An abandoned stream can still publish, so hand back what the verdict saw.
+		events: [...events],
 		outcome,
 		durationMs: Date.now() - started,
 		streamStatus,
@@ -213,6 +232,7 @@ export async function runDiscoveryScenario(
 function applyInstanceState(
 	base: InstanceAiContext,
 	scenario: DiscoveryTestCase,
+	mcpRegistry: StubMcpRegistry | undefined,
 ): InstanceAiContext {
 	const state = scenario.instanceState;
 	if (!state) return base;
@@ -234,6 +254,10 @@ function applyInstanceState(
 		...base,
 		...(localGateway ? { localGatewayStatus: localGateway } : {}),
 		...(localMcpServer ? { localMcpServer } : {}),
+		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
+		...(state.folderExploration !== undefined
+			? { folderExplorationEnabled: state.folderExploration }
+			: {}),
 	};
 }
 
@@ -253,13 +277,6 @@ interface StubOrchestrationContextOptions {
 function createStubOrchestrationContext(
 	opts: StubOrchestrationContextOptions,
 ): OrchestrationContext {
-	// Domain tools are passed to background agents such as eval-setup.
-	// Discovery scenarios measure the orchestrator's first-step dispatch decision;
-	// background execution is out of scope. We still populate domainTools faithfully
-	// so any background agent that does spawn has a coherent toolset (avoids hitting
-	// "no tools" errors that would confuse the diagnostic comment).
-	const domainTools: InstanceAiToolRegistry = createAllTools(opts.context);
-
 	const taskStorage: TaskStorage = {
 		// eslint-disable-next-line @typescript-eslint/require-await
 		get: async (): Promise<TaskList | null> => null,
@@ -275,44 +292,19 @@ function createStubOrchestrationContext(
 		modelId: opts.modelId,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
-		domainTools,
 		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
-		// Discovery evals assert first-dispatch intent only. Production starts a
-		// detached background task here; the harness accepts the spawn so the tool
-		// can publish its `agent-spawned` event without executing the background agent.
-		spawnBackgroundTask: ({ taskId, agentId }) => ({ status: 'started', taskId, agentId }),
 		// Surface the localMcpServer so Computer Use browser tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
+		// Registers the `workspace_*` file tools for build-workflow
+		...(opts.context.workspace ? { workspace: opts.context.workspace } : {}),
+		...(opts.context.workspaceRoot ? { workspaceRoot: opts.context.workspaceRoot } : {}),
 		// Used for the orchestrator's untrusted-content doctrine and other domain references.
 		// Provide the same context the orchestrator sees.
 		domainContext: opts.context,
 	};
-}
-
-/**
- * Capture credentialType from `confirmation-request` events whose payload includes
- * a credentialRequests array. The first request's credentialType is what the
- * `autoSetup` resume payload needs — the production credentials tool only
- * exposes one credential at a time when needsBrowserSetup is involved.
- */
-function recordConfirmationRequest(
-	event: InstanceAiEvent,
-	pending: Map<string, { credentialType?: string }>,
-): void {
-	if (event.type !== 'confirmation-request') return;
-	const payload = event.payload as
-		| {
-				requestId?: string;
-				credentialRequests?: Array<{ credentialType?: string }>;
-		  }
-		| undefined;
-	const requestId = payload?.requestId;
-	if (typeof requestId !== 'string' || requestId.length === 0) return;
-	const credentialType = payload?.credentialRequests?.[0]?.credentialType;
-	pending.set(requestId, credentialType ? { credentialType } : {});
 }
 
 function toCapturedEvent(event: InstanceAiEvent): CapturedEvent {

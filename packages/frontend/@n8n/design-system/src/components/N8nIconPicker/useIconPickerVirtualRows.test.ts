@@ -13,12 +13,12 @@ function iconMeta(): LucideIconMeta {
 }
 
 describe('useIconPickerVirtualRows', () => {
-	it('builds browse rows with headers and 10-icon chunks', () => {
+	it('builds browse rows with headers and 12-icon chunks', () => {
 		const rows = buildIconBrowseRows([
 			{
 				key: 'design',
 				labelKey: 'iconPicker.iconSection.design',
-				icons: Array.from({ length: 12 }, (_, index) => [`icon-${index + 1}`, iconMeta()]),
+				icons: Array.from({ length: 16 }, (_, index) => [`icon-${index + 1}`, iconMeta()]),
 			},
 		]);
 
@@ -40,17 +40,19 @@ describe('useIconPickerVirtualRows', () => {
 				'icon-8',
 				'icon-9',
 				'icon-10',
+				'icon-11',
+				'icon-12',
 			],
 		});
 		expect(rows[2]).toMatchObject({
 			type: 'icon-row',
-			iconNames: ['icon-11', 'icon-12'],
+			iconNames: ['icon-13', 'icon-14', 'icon-15', 'icon-16'],
 		});
 	});
 
 	it('builds search rows without headers', () => {
 		const rows = buildIconSearchRows(
-			Array.from({ length: 11 }, (_, index) => [`search-icon-${index + 1}`, iconMeta()]),
+			Array.from({ length: 15 }, (_, index) => [`search-icon-${index + 1}`, iconMeta()]),
 		);
 
 		expect(rows).toHaveLength(2);
@@ -67,11 +69,13 @@ describe('useIconPickerVirtualRows', () => {
 				'search-icon-8',
 				'search-icon-9',
 				'search-icon-10',
+				'search-icon-11',
+				'search-icon-12',
 			],
 		});
 		expect(rows[1]).toMatchObject({
 			type: 'icon-row',
-			iconNames: ['search-icon-11'],
+			iconNames: ['search-icon-13', 'search-icon-14', 'search-icon-15'],
 		});
 	});
 
@@ -80,7 +84,7 @@ describe('useIconPickerVirtualRows', () => {
 			{
 				key: 'people',
 				labelKey: 'iconPicker.emojiSection.people',
-				emojis: Array.from({ length: 11 }, (_, index) => ({
+				emojis: Array.from({ length: 15 }, (_, index) => ({
 					u: `😀${index}`,
 					l: `Emoji ${index + 1}`,
 					k: [],

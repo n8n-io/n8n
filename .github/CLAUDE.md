@@ -13,7 +13,7 @@ This folder contains n8n's GitHub Actions infrastructure.
 | `workflows/` | GitHub Actions workflows |
 | `actions/` | Reusable composite actions |
 | `scripts/` | Release & Docker automation |
-| `CODEOWNERS` | Team review ownership |
+| `scripts/owners/` | Team review ownership scripts; the OWNERS file is at the repo root (`required` entries gate merges) |
 
 ### Workflow Naming
 

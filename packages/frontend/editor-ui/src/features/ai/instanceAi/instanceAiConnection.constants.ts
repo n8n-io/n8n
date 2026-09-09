@@ -9,46 +9,48 @@ import { SANDBOX_PROVIDER_LABELS } from './constants';
 export type InstanceAiModelProvider = 'anthropic' | 'openai' | 'openrouter' | 'custom';
 export type InstanceAiSearchProvider = 'searxng' | 'brave' | 'disabled';
 
+export const INSTANCE_AI_CURATED_MODELS = {
+	anthropic: ['claude-opus-5', 'claude-sonnet-5'],
+	openai: ['gpt-5.6-sol', 'gpt-5.6-terra'],
+	openrouter: [
+		'anthropic/claude-opus-5',
+		'anthropic/claude-sonnet-5',
+		'openai/gpt-5.6-sol',
+		'openai/gpt-5.6-terra',
+		'moonshotai/kimi-k3',
+	],
+	custom: [],
+} as const satisfies Record<InstanceAiModelProvider, readonly string[]>;
+
 export const INSTANCE_AI_MODEL_PROVIDERS = [
 	{
 		id: 'anthropic',
 		credentialType: 'anthropicApi',
 		label: 'Anthropic',
-		models: ['claude-opus-5', 'claude-sonnet-5'],
 		placeholder: 'sk-ant-…',
 	},
 	{
 		id: 'openai',
 		credentialType: 'openAiApi',
 		label: 'OpenAI',
-		models: ['gpt-5.6-sol', 'gpt-5.6-terra'],
 		placeholder: 'sk-…',
 	},
 	{
 		id: 'openrouter',
 		credentialType: 'openRouterApi',
 		label: 'OpenRouter',
-		models: [
-			'anthropic/claude-opus-5',
-			'anthropic/claude-sonnet-5',
-			'openai/gpt-5.6-sol',
-			'openai/gpt-5.6-terra',
-			'moonshotai/kimi-k3',
-		],
 		placeholder: 'sk-or-…',
 	},
 	{
 		id: 'custom',
 		credentialType: 'openAiApi',
 		label: null,
-		models: [],
 		placeholder: 'Leave empty for Ollama',
 	},
 ] as const satisfies ReadonlyArray<{
 	id: InstanceAiModelProvider;
 	credentialType: (typeof INSTANCE_AI_MODEL_CREDENTIAL_TYPES)[number];
 	label: string | null;
-	models: readonly string[];
 	placeholder: string;
 }>;
 

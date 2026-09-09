@@ -59,6 +59,7 @@ function isSupported(name: string): boolean {
 
 	const checkedCredType = credentialsStore.getCredentialTypeByName(name);
 	if (!checkedCredType) return false;
+	if (checkedCredType.hidden) return false;
 
 	// Exclude credentials that opt into node-restriction when the current
 	// node is not in their supportedNodes list. Mirrors the server-side

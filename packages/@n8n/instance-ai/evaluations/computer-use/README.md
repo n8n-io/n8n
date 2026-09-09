@@ -204,8 +204,9 @@ pnpm --filter @n8n/computer-use build
 ```
 
 Get a pairing token from your n8n instance — open n8n in the browser,
-go to the Instance AI assistant, click "Connect local files", and copy
-the token out of the displayed `npx` command.
+go to the Instance AI assistant, select the + button beside the chat input,
+select "Connect local computer", and copy the token out of the displayed
+`npx` command.
 
 Start the local daemon in another terminal with the eval-friendly flags:
 

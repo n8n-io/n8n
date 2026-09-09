@@ -1,5 +1,6 @@
 import { onBeforeUnmount, shallowRef, watch } from 'vue';
 import type { IPinData } from 'n8n-workflow';
+import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
@@ -45,6 +46,7 @@ export function useInstanceAiWorkflowPreviewExecution(
 	const pushStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
 	const logsStore = useLogsStore();
+	const aiSimulatedExecutionsStore = useAiSimulatedExecutionsStore();
 	// Thread runtime owns the user-run memory so it survives the preview unmounting
 	// on a tab switch and is reachable here without prop-drilling (INS-611).
 	const thread = useThread();
@@ -96,6 +98,14 @@ export function useInstanceAiWorkflowPreviewExecution(
 
 	async function showExecutionResult(executionResult: ExecutionResult | undefined) {
 		if (!executionResult) return;
+		// Record which node outputs of this agent execution are fabricated
+		// fixtures, so the NDV can label them and guard the pin affordance.
+		if (executionResult.simulatedNodeNames?.length) {
+			aiSimulatedExecutionsStore.markSimulatedNodes(
+				executionResult.executionId,
+				executionResult.simulatedNodeNames,
+			);
+		}
 		if (hasManualExecution()) return;
 		if (supersededAgentExecutionId.value === executionResult.executionId) return;
 

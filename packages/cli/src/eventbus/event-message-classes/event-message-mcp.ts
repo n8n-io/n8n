@@ -1,6 +1,8 @@
 import type { JsonObject } from 'n8n-workflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
 
+import type { McpResolvedAuthType } from '@/services/oauth-token-verifier-proxy.service';
+
 import type { EventNamesMcpType } from '.';
 import { AbstractEventMessage, isEventMessageOptionsWithType } from './abstract-event-message';
 import type { AbstractEventMessageOptions } from './abstract-event-message-options';
@@ -21,6 +23,7 @@ export interface EventPayloadMcp extends AbstractEventPayload {
 	workflowId?: string;
 	status?: 'success' | 'error';
 	errorMessage?: string;
+	authType?: McpResolvedAuthType;
 	clientId?: string;
 	clientName?: string;
 	enabled?: boolean;

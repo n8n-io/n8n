@@ -16,7 +16,7 @@ function createMockContext(
 		userId: 'user-1',
 		workflowService: {
 			get: vi.fn().mockResolvedValue({ id: 'wf-1', name: 'Fetched Name' }),
-			list: vi.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue({ workflows: [], total: 0, totalInScope: 0 }),
 		} as unknown as InstanceAiContext['workflowService'],
 		executionService: {
 			list: vi.fn(),
@@ -293,6 +293,30 @@ describe('executions tool', () => {
 			});
 		});
 
+		it('forwards the requested trigger node so a multi-trigger workflow runs the right branch', async () => {
+			const context = createMockContext({
+				permissions: { runWorkflow: 'always_allow' },
+				aiCreatedWorkflowIds: new Set(['wf-1']),
+			});
+			(context.executionService.run as Mock).mockResolvedValue({
+				executionId: 'exec-1',
+				status: 'success',
+			});
+
+			const tool = createExecutionsTool(context);
+			await executeTool(
+				tool,
+				{ action: 'run' as const, workflowId: 'wf-1', triggerNodeName: 'Weekly 5pm' },
+				createAgentCtx() as never,
+			);
+
+			expect(context.executionService.run).toHaveBeenCalledWith(
+				'wf-1',
+				undefined,
+				expect.objectContaining({ triggerNodeName: 'Weekly 5pm' }),
+			);
+		});
+
 		describe('session grant (always allow)', () => {
 			it('runs without HITL when the workflow has a session grant', async () => {
 				const context = createMockContext({
@@ -534,9 +558,11 @@ describe('executions tool', () => {
 						allowedRunWorkflowNames: new Set(['Replay Created WF']),
 					});
 					(context.workflowService.get as Mock).mockRejectedValue(new Error('not found'));
-					(context.workflowService.list as Mock).mockResolvedValue([
-						{ id: 'wf-current', name: 'Replay Created WF' },
-					]);
+					(context.workflowService.list as Mock).mockResolvedValue({
+						workflows: [{ id: 'wf-current', name: 'Replay Created WF' }],
+						total: 1,
+						totalInScope: 1,
+					});
 					(context.executionService.run as Mock).mockResolvedValue({
 						executionId: 'exec-1',
 						status: 'success',

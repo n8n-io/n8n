@@ -61,6 +61,12 @@ async function provisionGatedWorkflow(
 		'',
 	);
 
+	// End-user credentials can only live in team projects
+	await api.enableFeature('projectRole:admin');
+	await api.enableFeature('projectRole:editor');
+	await api.setMaxTeamProjectsQuota(-1);
+	const project = await api.projects.createProject('Dynamic Credentials');
+
 	// A resolvable OAuth2 credential — resolved per-user by the seeded `system-n8n`
 	// resolver. The caller has NOT connected it, so the gate reports it missing and
 	// hands back the Keycloak authorization URL to connect it.
@@ -77,11 +83,13 @@ async function provisionGatedWorkflow(
 			ignoreSSLIssues: true,
 		},
 		isResolvable: true,
+		projectId: project.id,
 	});
 
 	const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 		'mcp-trigger/mcp-trigger-n8n-oauth2-private-cred.json',
 		{
+			projectId: project.id,
 			transform: (wf) => {
 				// Attach the resolvable credential to the Private API node so the
 				// workflow carries an unconnected private credential.

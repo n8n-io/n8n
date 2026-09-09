@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import type { AgentDefaultModelResolverService } from '../agent-default-model-resolver.service';
 import type { AgentPublishService } from '../agent-publish.service';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentsService } from '../agents.service';
@@ -25,6 +26,7 @@ function makeController({
 	agentPublishService = mock<AgentPublishService>(),
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
+	agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>(),
 }: {
 	agentsService?: Mocked<
 		Pick<
@@ -35,6 +37,7 @@ function makeController({
 	agentPublishService?: Mocked<AgentPublishService>;
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
+	agentDefaultModelResolverService?: Mocked<AgentDefaultModelResolverService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
@@ -46,6 +49,7 @@ function makeController({
 		controller: new AgentsController(
 			agentsService as unknown as AgentsService,
 			agentRunnableStateService,
+			agentDefaultModelResolverService,
 		),
 		agentsService,
 		agentPublishService,
@@ -75,7 +79,9 @@ describe('AgentsController create', () => {
 		const agentPublishService = mock<AgentPublishService>();
 		const agentValidationService = mock<AgentValidationService>();
 		const agentsService = mock<Pick<AgentsService, 'create'>>();
+		const agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>();
 		agentsService.create.mockResolvedValue({ id: createdId, projectId: 'project-1' } as never);
+		agentDefaultModelResolverService.resolve.mockResolvedValue(null);
 		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'valid',
 			issues: [],
@@ -86,8 +92,9 @@ describe('AgentsController create', () => {
 			agentsService: agentsService as never,
 			agentPublishService,
 			agentValidationService,
+			agentDefaultModelResolverService,
 		});
-		return { controller, agentsService };
+		return { controller, agentsService, agentDefaultModelResolverService };
 	}
 
 	it('creates the agent under the id the client minted', async () => {
@@ -110,6 +117,22 @@ describe('AgentsController create', () => {
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
 			id: undefined,
+		});
+	});
+
+	it('passes a resolved default model to the service', async () => {
+		const { controller, agentsService, agentDefaultModelResolverService } =
+			makeCreateController('server-minted');
+		agentDefaultModelResolverService.resolve.mockResolvedValue({
+			model: 'openai/gpt-5-mini',
+			credential: 'managed',
+		});
+
+		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
+
+		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			id: undefined,
+			defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' },
 		});
 	});
 });
@@ -168,6 +191,13 @@ describe('AgentsController agent resource', () => {
 		agentsService.findById.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
+			skills: {
+				triage: {
+					name: 'Triage',
+					description: 'Triage requests',
+					instructions: 'Route each request.',
+				},
+			},
 		} as never);
 		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'valid',
@@ -196,6 +226,7 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
+		expect(result.skillHashes.triage).toMatch(/^[a-f0-9]{64}$/);
 		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'agent-1' }),
 			'project-1',

@@ -207,7 +207,9 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		TEMPLATE_CATEGORY_AI,
 	);
 
-	const callouts: NodeViewItem[] = [getAiTemplatesCallout(aiTemplatesURL)];
+	const callouts: NodeViewItem[] = settingsStore.isCanvasOnly
+		? []
+		: [getAiTemplatesCallout(aiTemplatesURL)];
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,

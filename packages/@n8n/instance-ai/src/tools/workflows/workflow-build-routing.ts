@@ -10,15 +10,25 @@ type WorkflowBuildRoutingInput = Omit<
 	'verificationReadiness' | 'setupRequirement'
 > & {
 	workflowNeedsSetup?: boolean;
+	/** True when everything still needing setup belongs to a credential the user already
+	 *  skipped in this thread. Routing setup then would re-open the card they dismissed. */
+	onlySkippedSetupRemains?: boolean;
 };
 
 function hasSetupCredentials(
-	outcome: Pick<WorkflowBuildOutcome, 'mockedCredentialTypes' | 'mockedCredentialsByNode'>,
+	outcome: Pick<
+		WorkflowBuildOutcome,
+		'mockedCredentialTypes' | 'mockedCredentialsByNode' | 'changedNodeNames'
+	>,
 ): boolean {
-	return (
-		(outcome.mockedCredentialTypes?.length ?? 0) > 0 ||
-		Object.keys(outcome.mockedCredentialsByNode ?? {}).length > 0
-	);
+	const mockedNodeNames = Object.keys(outcome.mockedCredentialsByNode ?? {});
+	// Scope to nodes this build changed: a pre-existing node with a broken or
+	// missing credential must not route an unrelated edit into setup.
+	if (mockedNodeNames.length > 0) {
+		const scope = outcome.changedNodeNames;
+		return mockedNodeNames.some((nodeName) => !scope || scope.includes(nodeName));
+	}
+	return (outcome.mockedCredentialTypes?.length ?? 0) > 0;
 }
 
 function determineVerificationReadiness(
@@ -52,6 +62,11 @@ function determineVerificationReadiness(
 		};
 	}
 
+	// One-off intent does NOT get its own readiness status: readiness is
+	// persisted inside the build outcome, and previously deployed readers
+	// hard-fail on unknown union variants (which would wipe the whole per-thread
+	// loop map on rollback). The obligation derivation reads
+	// `outcome.executionIntent` instead — see verification-obligation.ts.
 	return { status: 'ready' };
 }
 
@@ -64,10 +79,24 @@ function determineSetupRequirement(
 		| 'mockedCredentialsByNode'
 		| 'hasUnresolvedPlaceholders'
 		| 'workflowNeedsSetup'
+		| 'onlySkippedSetupRemains'
+		| 'changedNodeNames'
 	>,
 ): WorkflowSetupRequirement {
 	if (!outcome.submitted || !outcome.workflowId) {
 		return { status: 'not_required' };
+	}
+
+	// Checked before the reason-specific branches: a mocked credential or an unresolved
+	// placeholder on a node the user skipped is still a skipped node. The setup follow-up
+	// re-arms on every build, so without this gate any later edit re-opens the card.
+	if (outcome.onlySkippedSetupRemains) {
+		return {
+			status: 'not_required',
+			reason: 'skipped-by-user',
+			guidance:
+				'The only remaining setup is for credentials the user skipped earlier in this conversation. Do not open the setup card: say what stays unconfigured and what that means at runtime, and offer to set it up when they want.',
+		};
 	}
 
 	if (outcome.hasUnresolvedPlaceholders) {
@@ -98,7 +127,7 @@ function determineSetupRequirement(
 }
 
 export function withDeterministicRouting(outcome: WorkflowBuildRoutingInput): WorkflowBuildOutcome {
-	const { workflowNeedsSetup, ...buildOutcome } = outcome;
+	const { workflowNeedsSetup, onlySkippedSetupRemains, ...buildOutcome } = outcome;
 	return {
 		...buildOutcome,
 		verificationReadiness: determineVerificationReadiness(outcome),

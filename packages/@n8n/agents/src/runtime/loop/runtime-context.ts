@@ -1,4 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from './agent-runtime';
@@ -21,7 +22,7 @@ import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prom
 import {
 	getProviderQuirks,
 	PROVIDER_QUIRKS,
-	providerIdFromModelId,
+	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
@@ -38,6 +39,7 @@ export interface StaticLoopContext {
 	reasoning: AgentRuntimeConfig['reasoning'];
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
+	maxOutputTokens?: number;
 }
 
 /**
@@ -87,6 +89,7 @@ export class RuntimeContextBuilder {
 			reasoning: this.config.reasoning,
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
+			maxOutputTokens: execOptions?.maxOutputTokens ?? resolveDefaultMaxOutputTokens(this.modelId),
 		};
 	}
 
@@ -261,7 +264,7 @@ export class RuntimeContextBuilder {
 	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
 		if (!this.config.thinking) return undefined;
 
-		const quirks = getProviderQuirks(providerIdFromModelId(this.modelId));
+		const quirks = getProviderQuirks(getProviderPrefix(this.modelId));
 		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
 	}
 

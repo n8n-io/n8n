@@ -31,7 +31,7 @@ describe('describeMulterError', () => {
 	it('explains the file size limit', () => {
 		const error = new multer.MulterError('LIMIT_FILE_SIZE', 'files');
 
-		expect(describeMulterError(error)).toBe('Files must be 50 MB or smaller');
+		expect(describeMulterError(error)).toBe('Files must be 10 MB or smaller');
 	});
 
 	it('falls back to the multer message for other error codes', () => {

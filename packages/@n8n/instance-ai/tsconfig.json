@@ -13,5 +13,5 @@
 		},
 		"types": ["node", "vitest/globals", "vite/client"]
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts", "src/**/*.json"]
 }

@@ -6,13 +6,7 @@ import { UnexpectedError, UserError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
-import {
-	DollarSignValidator,
-	PrototypeSanitizer,
-	ThisSanitizer,
-	sanitizer,
-	sanitizerName,
-} from './expression-sandboxing';
+import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
@@ -224,7 +218,7 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 };
 
 export class Expression {
-	private static expressionEngine: 'legacy' | 'vm' = 'legacy';
+	private static expressionEngine: 'legacy' | 'vm' | 'quickjs' = 'legacy';
 
 	private static vmEvaluator?: IExpressionEvaluator;
 
@@ -235,7 +229,11 @@ export class Expression {
 	 * @private
 	 */
 	private static shouldUseVm(): boolean {
-		return this.expressionEngine === 'vm' && !IS_FRONTEND && !!this.vmEvaluator;
+		return (
+			(this.expressionEngine === 'vm' || this.expressionEngine === 'quickjs') &&
+			!IS_FRONTEND &&
+			!!this.vmEvaluator
+		);
 	}
 
 	/**
@@ -244,7 +242,7 @@ export class Expression {
 	 * Only available in Node.js environments (not in browser).
 	 */
 	static async initExpressionEngine(options: {
-		engine: 'legacy' | 'vm';
+		engine: 'legacy' | 'vm' | 'quickjs';
 		bridgeTimeout: number;
 		bridgeMemoryLimit: number;
 		poolSize: number;
@@ -252,26 +250,32 @@ export class Expression {
 		observability?: ObservabilityProvider;
 		idleTimeoutMs?: number;
 	}): Promise<void> {
-		if (options.engine !== 'vm' || IS_FRONTEND) return;
+		if ((options.engine !== 'vm' && options.engine !== 'quickjs') || IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
 
 		if (!this.vmEvaluator) {
 			// Dynamic import to avoid loading expression-runtime in browser environments
-			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
-			this.vmEvaluator = new ExpressionEvaluator({
-				createBridge: () =>
-					new IsolatedVmBridge({
-						timeout: options.bridgeTimeout,
-						memoryLimit: options.bridgeMemoryLimit,
-						logger: LoggerProxy,
-					}),
+			const runtime = await import('@n8n/expression-runtime');
+			const createBridge =
+				options.engine === 'quickjs'
+					? () =>
+							new runtime.QuickJsBridge({
+								timeout: options.bridgeTimeout,
+								memoryLimit: options.bridgeMemoryLimit,
+								logger: LoggerProxy,
+							})
+					: () =>
+							new runtime.IsolatedVmBridge({
+								timeout: options.bridgeTimeout,
+								memoryLimit: options.bridgeMemoryLimit,
+								logger: LoggerProxy,
+							});
+			this.vmEvaluator = new runtime.ExpressionEvaluator({
+				createBridge,
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
 				idleTimeoutMs: options.idleTimeoutMs,
-				hooks: {
-					before: [ThisSanitizer],
-					after: [PrototypeSanitizer, DollarSignValidator],
-				},
+				hooks: expressionSandboxHooks,
 				logger: LoggerProxy,
 				observability: options.observability,
 			});
@@ -319,9 +323,9 @@ export class Expression {
 	 * Get the active expression evaluation implementation.
 	 * Used for testing and verification.
 	 */
-	static getActiveImplementation(): 'legacy' | 'vm' {
-		if (this.shouldUseVm()) return 'vm';
-		return 'legacy';
+	static getActiveImplementation(): 'legacy' | 'vm' | 'quickjs' {
+		if (!this.shouldUseVm()) return 'legacy';
+		return this.expressionEngine === 'quickjs' ? 'quickjs' : 'vm';
 	}
 
 	/**
@@ -329,10 +333,11 @@ export class Expression {
 	 *
 	 * WARNING: This is a global setting — switching engines mid-execution could
 	 * cause a workflow to evaluate some expressions with one engine and some with
-	 * another. Only use this in benchmarks and tests, never in production code.
-	 * In production, set `N8N_EXPRESSION_ENGINE` before process startup instead.
+	 * another. Only call this during process startup (or in benchmarks and tests),
+	 * never mid-execution. In production, set `N8N_EXPRESSION_ENGINE` before
+	 * process startup instead.
 	 */
-	static setExpressionEngine(engine: 'legacy' | 'vm'): void {
+	static setExpressionEngine(engine: 'legacy' | 'vm' | 'quickjs'): void {
 		this.expressionEngine = engine;
 	}
 
@@ -641,11 +646,15 @@ export class Expression {
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
-		// Use VM evaluator if engine is set to 'vm' and we're not in the browser
-		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
+		// The VM engines (isolated-vm, quickjs) are Node-only; the browser always
+		// uses the legacy path below.
+		if (
+			(Expression.expressionEngine === 'vm' || Expression.expressionEngine === 'quickjs') &&
+			!IS_FRONTEND
+		) {
 			if (!Expression.vmEvaluator) {
 				throw new UnexpectedError(
-					'The VM expression engine has not been initialized. Call Expression.initExpressionEngine() during application startup.',
+					`The ${Expression.expressionEngine} expression engine has not been initialized. Call Expression.initExpressionEngine() during application startup.`,
 				);
 			}
 

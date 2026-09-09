@@ -17,6 +17,8 @@ SCRIPT="$(cd "$(dirname "$0")" && pwd)/get-n8n.sh"
 # on master — the harness must test this branch's compose file.
 COMPOSE_SRC="$(cd "$(dirname "$0")" && pwd)/get-n8n-compose.yml"
 export N8N_COMPOSE_URL="$COMPOSE_SRC"
+# Failure-path tests must not prompt for (or send) a failure report.
+export DO_NOT_TRACK=1
 E2E=0
 [ "${1:-}" = "--e2e" ] && E2E=1
 
@@ -61,6 +63,8 @@ sh "$SCRIPT" --version | grep -q '^get-n8n.sh v' && pass "--version prints scrip
 	fail "--version prints script version"
 sh "$SCRIPT" --help | grep -q 'Usage:' && pass "--help prints usage" ||
 	fail "--help prints usage"
+sh "$SCRIPT" --help | grep -q 'DO_NOT_TRACK' && pass "--help documents DO_NOT_TRACK" ||
+	fail "--help documents DO_NOT_TRACK"
 check_not "unknown flag fails" sh "$SCRIPT" --bogus
 
 # fresh --no-start install
@@ -103,6 +107,8 @@ rerun_out="$(env N8N_DIR="$WORK/a" sh "$SCRIPT" 2>&1)" && pass "re-run on existi
 	fail "re-run leaves files untouched"
 echo "$rerun_out" | grep -q 'http://localhost:5678' && pass "re-run tells the user where n8n runs" ||
 	fail "re-run tells the user where n8n runs"
+echo "$rerun_out" | grep -q 'To uninstall: docker compose' && pass "re-run shows the uninstall command" ||
+	fail "re-run shows the uninstall command"
 
 # stack definition versioning
 [ -n "$(sed -n 's/^# compose-version: *//p' "$WORK/a/compose.yml")" ] &&
@@ -156,7 +162,7 @@ case "$1 ${2:-}" in
 "compose version") echo "2.99.0" ;;
 "compose -f")
 	case "$*" in
-	*" up "* | *" pull "*)
+	*" up "* | *" pull"*)
 		echo "Error response from daemon: toomanyrequests: You have reached your pull rate limit." >&2
 		exit 1
 		;;
@@ -170,6 +176,52 @@ ratelimit_out="$(env PATH="$WORK/shim:$PATH" N8N_DIR="$WORK/ratelimit" sh "$SCRI
 	fail "rate-limited run fails" || pass "rate-limited run fails"
 echo "$ratelimit_out" | grep -q 'pull rate limit reached' && pass "rate-limit failure prints recovery advice" ||
 	fail "rate-limit failure prints recovery advice"
+
+# failure-report consent: a reportable failure on a terminal must prompt, send
+# the failed step only on an explicit yes, and send nothing on the default No.
+# Needs a pty, so run the script under script(1); its syntax differs between
+# util-linux and BSD/macOS, and Git Bash has neither. The curl shim records
+# telemetry calls and fails everything else the way an offline curl would.
+if [ "$WINDOWS" -eq 0 ] && command -v script >/dev/null 2>&1; then
+	cat >"$WORK/shim/curl" <<EOF
+#!/bin/sh
+case "\$*" in
+*rudderstack*) echo "\$*" >>"$WORK/consent.log" ;;
+esac
+exit 6
+EOF
+	chmod +x "$WORK/shim/curl"
+	run_with_tty() { # run_with_tty <answer> <cmd...>
+		answer="$1"
+		shift
+		if script --version 2>/dev/null | grep -q util-linux; then
+			{
+				sleep 1
+				printf '%s\n' "$answer"
+				sleep 4
+			} | script -qec "$*" /dev/null
+		else
+			{
+				sleep 1
+				printf '%s\n' "$answer"
+				sleep 4
+			} | script -q /dev/null "$@"
+		fi
+	}
+	rm -f "$WORK/consent.log"
+	run_with_tty y env "PATH=$WORK/shim:$PATH" DO_NOT_TRACK= N8N_DIR="$WORK/ratelimit" \
+		sh "$SCRIPT" --upgrade --version 2.32.0 >/dev/null 2>&1
+	grep -q '"event":"install_failed".*"step":"docker-hub-rate-limit"' "$WORK/consent.log" 2>/dev/null &&
+		pass "consented failure report carries the failed step" ||
+		fail "consented failure report carries the failed step"
+	rm -f "$WORK/consent.log"
+	run_with_tty '' env "PATH=$WORK/shim:$PATH" DO_NOT_TRACK= N8N_DIR="$WORK/ratelimit" \
+		sh "$SCRIPT" --upgrade --version 2.32.0 >/dev/null 2>&1
+	[ ! -s "$WORK/consent.log" ] && pass "declined failure report sends nothing" ||
+		fail "declined failure report sends nothing"
+else
+	skip "failure-report consent tests (need script(1) for a pty)"
+fi
 
 # truncated download must execute nothing
 mkdir -p "$WORK/trunc" && cd "$WORK/trunc" || exit 1

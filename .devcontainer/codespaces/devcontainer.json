@@ -2,24 +2,63 @@
 	"name": "n8n (Codespaces agent sessions)",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "n8n",
-	"workspaceFolder": "/workspaces",
+	// Codespaces clones the repo into /workspaces/<repo>, unlike the laptop config
+	"workspaceFolder": "/workspaces/n8n",
 	"hostRequirements": {
-		"cpus": 8,
-		"memory": "32gb",
-		"storage": "64gb"
+		"cpus": 2,
+		"memory": "8gb",
+		"storage": "32gb"
 	},
 	"features": {
-		"ghcr.io/devcontainers/features/github-cli:1": {}
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		// gh codespace ssh needs an SSH server inside the container
+		"ghcr.io/devcontainers/features/sshd:1": {},
+		// Docker for testcontainers and `pnpm --filter n8n-containers services`;
+		// needs `privileged: true` on the n8n service (compose-based config)
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
 	},
 	"forwardPorts": [8080, 5678],
+	// Grant the codespace's own GitHub token read access to the private skills
+	// marketplace (same org), so Claude can install it with the codespace's normal
+	// git auth — no extra PAT. Each user authorizes this once at codespace creation.
+	"customizations": {
+		"codespaces": {
+			"repositories": {
+				"n8n-io/n8n-agent-skills": { "permissions": { "contents": "read" } }
+			}
+		}
+	},
 	// Runs in prebuilds, so a fresh codespace starts with deps installed and the build warm
 	"onCreateCommand": "corepack install && pnpm install && (pnpm build > /tmp/build.log 2>&1 || tail -n 50 /tmp/build.log) && pnpm --filter=n8n-playwright exec playwright install chromium",
+	// On each container start: install the private skills marketplace into Claude
+	// (best-effort) and start the poll worker. `bash -lc` loads the secrets shim,
+	// so the worker gets its token. Logs: /tmp/post-start.log, /tmp/agent-worker.log.
+	"postStartCommand": "bash -lc 'node /workspaces/n8n/.devcontainer/codespaces/post-start.mjs >> /tmp/post-start.log 2>&1' || true",
 	"secrets": {
 		"ANTHROPIC_API_KEY": {
 			"description": "Anthropic API key for Claude Code / OpenCode sessions"
 		},
+		"OPENROUTER_API_KEY": {
+			"description": "OpenRouter API key for Flaky's OpenCode sessions"
+		},
+		"AGENT_WORKER_TOKEN": {
+			"description": "The shared bearer token. The poll worker sends it to n8n on each dequeue. See .devcontainer/codespaces/agent-worker.mjs."
+		},
+		"N8N_DEQUEUE_URL": {
+			"description": "n8n webhook the poll worker calls to claim a pending turn"
+		},
+		"SLACK_BOT_TOKEN": {
+			"description": "Slack bot token for agent progress messages. It needs the chat:write scope."
+		},
 		"CLAUDE_CODE_OAUTH_TOKEN": {
 			"description": "Alternative to an API key: token from `claude setup-token` (Max subscription)"
+		},
+		// Both set at the repository level — team members get them automatically
+		"FLAKY_MCP_TOKEN": {
+			"description": "Bearer token for the Flaky (QA assistant) MCP endpoint"
+		},
+		"FLAKY_MCP_URL": {
+			"description": "URL of the Flaky MCP endpoint on the internal n8n instance"
 		}
 	}
 }

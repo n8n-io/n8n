@@ -26,6 +26,52 @@ process.env.TZ = 'UTC';
 configure({ testIdAttribute: 'data-test-id' });
 
 /**
+ * Node >= 26 predefines `localStorage` and `sessionStorage` on globalThis
+ * (Node's own web storage, undefined unless node runs with
+ * --localstorage-file), and vitest's jsdom environment does not override
+ * globals that already exist, so jsdom's storage never reaches tests
+ * (`window` is the same global object here). Install a plain in-memory
+ * Storage where the global is missing.
+ */
+class MemoryStorage implements Storage {
+	private store = new Map<string, string>();
+
+	get length() {
+		return this.store.size;
+	}
+
+	clear() {
+		this.store.clear();
+	}
+
+	getItem(key: string) {
+		return this.store.get(key) ?? null;
+	}
+
+	key(index: number) {
+		return [...this.store.keys()][index] ?? null;
+	}
+
+	removeItem(key: string) {
+		this.store.delete(key);
+	}
+
+	setItem(key: string, value: string) {
+		this.store.set(key, String(value));
+	}
+}
+
+for (const key of ['localStorage', 'sessionStorage'] as const) {
+	if ((globalThis as Record<string, unknown>)[key] === undefined) {
+		Object.defineProperty(globalThis, key, {
+			value: new MemoryStorage(),
+			configurable: true,
+			writable: true,
+		});
+	}
+}
+
+/**
  * PointerEvent polyfill for JSDOM
  * Required for Reka UI tooltip hover to work (checks event.pointerType)
  */

@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import fs from 'fs';
+import { z } from 'zod';
 
 import { Config, Env } from '../src/decorators';
 
@@ -30,6 +31,66 @@ describe('decorators', () => {
 		}).toThrowError(
 			'Invalid decorator metadata on key "value" on InvalidConfig\n Please use explicit typing on all config fields',
 		);
+	});
+
+	it('should treat a set-but-blank number env value as unset', () => {
+		process.env.NUMBER_VALUE = '';
+		process.env.OPTIONAL_NUMBER_VALUE = '   ';
+		// A coercing schema turns '' into 0 too, so the guard must run before it.
+		process.env.SCHEMA_NUMBER_VALUE = '';
+		// A blank often arrives quoted (e.g. from a compose env_file), and
+		// stripping the quotes can leave inner padding behind.
+		process.env.QUOTED_BLANK_NUMBER_VALUE = '""';
+		process.env.QUOTED_BLANK_SCHEMA_VALUE = "'  '";
+
+		@Config
+		class TestConfig {
+			@Env('NUMBER_VALUE')
+			value: number = 42;
+
+			@Env('OPTIONAL_NUMBER_VALUE')
+			optionalValue?: number;
+
+			@Env('SCHEMA_NUMBER_VALUE', z.coerce.number().int().gte(0))
+			schemaValue: number = 30_000;
+
+			@Env('QUOTED_BLANK_NUMBER_VALUE')
+			quotedValue: number = 7;
+
+			@Env('QUOTED_BLANK_SCHEMA_VALUE', z.coerce.number().int().gte(0))
+			quotedSchemaValue: number = 5_000;
+		}
+
+		const config = Container.get(TestConfig);
+		expect(config.value).toBe(42);
+		expect(config.optionalValue).toBeUndefined();
+		expect(config.schemaValue).toBe(30_000);
+		expect(config.quotedValue).toBe(7);
+		expect(config.quotedSchemaValue).toBe(5_000);
+	});
+
+	it('should still parse a quoted number env value', () => {
+		process.env.QUOTED_NUMBER_VALUE = '"30"';
+
+		@Config
+		class TestConfig {
+			@Env('QUOTED_NUMBER_VALUE', z.coerce.number())
+			value: number = 1;
+		}
+
+		expect(Container.get(TestConfig).value).toBe(30);
+	});
+
+	it('should still parse a blank env value for a non-numeric schema field', () => {
+		process.env.STRING_SCHEMA_VALUE = '';
+
+		@Config
+		class TestConfig {
+			@Env('STRING_SCHEMA_VALUE', z.string())
+			value: string = 'default';
+		}
+
+		expect(Container.get(TestConfig).value).toBe('');
 	});
 
 	it('should read value from _FILE env variable', () => {
@@ -63,7 +124,7 @@ describe('decorators', () => {
 		const config = Container.get(TestConfig);
 		expect(config.value).toBe('secret-value');
 		expect(consoleWarnSpy).toHaveBeenCalledWith(
-			expect.stringContaining('TEST_VALUE_FILE contains leading or trailing whitespace'),
+			expect.stringContaining('TEST_VALUE_FILE contained leading or trailing whitespace'),
 		);
 		consoleWarnSpy.mockRestore();
 	});
@@ -82,5 +143,47 @@ describe('decorators', () => {
 		const config = Container.get(TestConfig);
 		expect(config.value).toBe('direct-value');
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
+	});
+
+	it('should trim whitespace from a direct env value before parsing it with a zod schema', () => {
+		process.env.TEST_VALUE = 'legacy ';
+
+		@Config
+		class TestConfig {
+			@Env('TEST_VALUE', z.enum(['legacy', 'vm']))
+			value: string = 'vm';
+		}
+
+		expect(Container.get(TestConfig).value).toBe('legacy');
+	});
+
+	it('should strip surrounding quotes from an env value before parsing it with a zod schema', () => {
+		process.env.TEST_VALUE = "'legacy'";
+
+		@Config
+		class TestConfig {
+			@Env('TEST_VALUE', z.enum(['legacy', 'vm']))
+			value: string = 'vm';
+		}
+
+		expect(Container.get(TestConfig).value).toBe('legacy');
+	});
+
+	it('should trim trailing newline from _FILE value before parsing it with a zod schema', () => {
+		const filePath = '/path/to/secret';
+		process.env.TEST_VALUE_FILE = filePath;
+		mockFs.readFileSync.mockReturnValueOnce('legacy\n');
+		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		@Config
+		class TestConfig {
+			@Env('TEST_VALUE', z.enum(['legacy', 'vm']))
+			value: string = 'vm';
+		}
+
+		const config = Container.get(TestConfig);
+		expect(config.value).toBe('legacy');
+		expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('the value was trimmed'));
+		consoleWarnSpy.mockRestore();
 	});
 });

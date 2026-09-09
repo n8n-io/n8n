@@ -1,6 +1,7 @@
-import type { FolderRepository, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import z from 'zod';
 
+import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { Telemetry } from '@/telemetry';
 
@@ -26,22 +27,31 @@ const outputSchema = {
 					.string()
 					.nullable()
 					.describe('The ID of the parent folder, or null if at project root'),
+				path: z
+					.array(z.string())
+					.describe(
+						"The folder's full name path from the project root, ending with the folder's own name. Use it to tell same-named folders apart and to present folders to the user by name.",
+					),
 			}),
 		)
 		.describe('List of folders matching the query'),
 	count: z.number().int().min(0).describe('Total number of matching folders'),
+	error: z
+		.string()
+		.optional()
+		.describe('Error message explaining why the search failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
 export const createSearchFoldersTool = (
 	user: User,
-	folderRepository: FolderRepository,
+	folderService: FolderService,
 	projectService: ProjectService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'search_folders',
 	config: {
 		description:
-			'Search for folders within a project. Use this to find a folder ID before creating a workflow in a specific folder. Requires a projectId — use search_projects first if needed.',
+			"Search for folders within a project. Use this to resolve a folder name to an ID before searching workflows inside a folder, creating a workflow in a folder, creating or updating a folder, or moving workflows into a folder. Each result includes the folder's full name path — when multiple folders match a name, use the paths to ask the user which one they meant. Requires a projectId — use search_projects first if needed.",
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -82,18 +92,19 @@ export const createSearchFoldersTool = (
 
 			const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
 
-			const [folders, count] = await folderRepository.getManyAndCount({
-				filter: {
-					projectId,
-					...(query ? { name: query } : {}),
-				},
+			const [folders, count] = await folderService.getManyAndCount(projectId, {
+				filter: query ? { name: query } : {},
+				// updatedAt backs the repository's default ORDER BY; with `take`,
+				// TypeORM's distinct wrapper can only sort on selected columns.
+				select: { name: true, parentFolder: true, path: true, updatedAt: true },
 				take: safeLimit,
 			});
 
 			const data = folders.map((folder) => ({
 				id: folder.id,
 				name: folder.name,
-				parentFolderId: folder.parentFolderId ?? null,
+				parentFolderId: folder.parentFolder?.id ?? null,
+				path: folder.path ?? [folder.name],
 			}));
 
 			telemetryPayload.results = {

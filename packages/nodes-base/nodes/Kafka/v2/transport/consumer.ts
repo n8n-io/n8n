@@ -38,6 +38,11 @@ export interface KafkaConsumerOptions {
 	maxInFlightRequests?: number;
 	/** Start at the earliest offset. Per-consumer here, unlike kafkajs's per-subscribe. */
 	fromBeginning?: boolean;
+	/**
+	 * How often read progress is saved, in ms. librdkafka takes 0..86400000, where
+	 * 0 turns interval commits off. Overrides {@link CONSUMER_DEFAULTS}.
+	 */
+	autoCommitInterval?: number;
 }
 
 /** Wiring for the library's own log output, kept apart from its config keys. */

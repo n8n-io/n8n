@@ -1,12 +1,8 @@
 @use './common/var';
 
-@font-face {
-	font-family: InterVariable;
-	font-style: normal;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('../../assets/fonts/InterVariable.woff2') format('woff2');
-}
+// Emits the upright InterVariable face, which surfaces that need only that one
+// can also pull on its own. Keep this first so the declaration order is unchanged.
+@use './fonts/inter';
 
 @font-face {
 	font-family: InterVariable;

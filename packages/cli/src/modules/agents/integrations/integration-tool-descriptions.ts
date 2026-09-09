@@ -26,6 +26,7 @@ export function buildActionToolDescription(
 		...descriptor.actionToolDefinitions.map((definition) => `- ${definition.description}`),
 		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include cards that wait for a user response.`,
 		'respond uses the latest message context for this integration connection.',
+		'Never state that an action has been performed before its tool call returns. Before calling an action, describe what you intend to do, not a completed outcome. Only report an action as done after the tool returns ok. If a tool fails, report the failure honestly.',
 		'If this turn was triggered by an inbound chat message, your final reply text is posted to that conversation automatically — do not duplicate it with a text-only respond. Call respond only with message.card, or after switching to a different target.',
 		...(descriptor.actions.includes('do_not_respond')
 			? [

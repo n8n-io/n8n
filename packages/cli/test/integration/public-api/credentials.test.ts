@@ -1,9 +1,11 @@
+import { MAX_ITEMS_PER_PAGE } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialPayload } from '@n8n/backend-test-utils';
 import { createTeamProject, linkUserToProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Snowflake } from 'n8n-nodes-base/credentials/Snowflake.credentials';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	type ICredentialDataDecryptedObject,
@@ -12,11 +14,13 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
 	affixRoleToSaveCredential,
 	createCredentials,
+	createManyCredentials,
 	getCredentialSharings,
 } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
@@ -48,6 +52,14 @@ beforeAll(async () => {
 	saveCredential = affixRoleToSaveCredential('credential:owner');
 
 	await utils.initCredentialsTypes();
+
+	// `snowflake` carries a conditionally-required field (`privateKey` under
+	// `authentication: keyPair`), which none of the shared test credential types
+	// do; the partial-update tests below need that schema shape.
+	Container.get(LoadNodesAndCredentials).loaded.credentials.snowflake = {
+		type: new Snowflake(),
+		sourcePath: '',
+	};
 });
 
 beforeEach(async () => {
@@ -191,6 +203,8 @@ describe('POST /credentials', () => {
 	});
 
 	test('should create credential with isResolvable set to true', async () => {
+		// End-user credentials are only available in team projects
+		const project = await createTeamProject();
 		const payload = {
 			name: 'test credential',
 			type: 'githubApi',
@@ -200,6 +214,7 @@ describe('POST /credentials', () => {
 				server: 'testServer',
 			},
 			isResolvable: true,
+			projectId: project.id,
 		};
 
 		const response = await authOwnerAgent.post('/credentials').send(payload);
@@ -211,6 +226,24 @@ describe('POST /credentials', () => {
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 		expect(credential.isResolvable).toBe(true);
+	});
+
+	test('should not allow creating an end-user credential in a personal project', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+			isResolvable: true,
+			// no projectId — the credential would land in the owner's personal project
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(403);
 	});
 
 	test('should create credential with isResolvable set to false', async () => {
@@ -343,6 +376,25 @@ describe('GET /credentials', () => {
 		);
 	});
 
+	test('should return correct shared info for a credential in a team project with multiple members', async () => {
+		const teamProject = await createTeamProject('multi-member-project', owner);
+		await linkUserToProject(member, teamProject, 'project:editor');
+		const saved = await saveCredential(dbCredential(), { project: teamProject });
+
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		const item = response.body.data.find((c: { id: string }) => c.id === saved.id);
+		expect(item).toBeDefined();
+		expect(item.shared).toEqual([
+			expect.objectContaining({
+				id: teamProject.id,
+				name: teamProject.name,
+				role: 'credential:owner',
+			}),
+		]);
+	});
+
 	test('should return empty list when no credentials exist', async () => {
 		const response = await authOwnerAgent.get('/credentials');
 
@@ -370,6 +422,18 @@ describe('GET /credentials', () => {
 		expect(response.body.nextCursor).not.toBeNull();
 	});
 
+	test('should cap the limit at the maximum page size even when a higher limit is requested', async () => {
+		await createManyCredentials(MAX_ITEMS_PER_PAGE + 1);
+
+		const response = await authOwnerAgent
+			.get('/credentials')
+			.query({ limit: MAX_ITEMS_PER_PAGE + 50 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(MAX_ITEMS_PER_PAGE);
+		expect(response.body.nextCursor).not.toBeNull();
+	});
+
 	test('should paginate with cursor', async () => {
 		await saveCredential(dbCredential(), { user: owner });
 		await saveCredential(dbCredential(), { user: owner });
@@ -385,6 +449,33 @@ describe('GET /credentials', () => {
 			.query({ cursor: first.body.nextCursor });
 		expect(second.statusCode).toBe(200);
 		expect(second.body.data.length).toBe(1);
+		expect(second.body.nextCursor).toBeNull();
+	});
+
+	test('should reject an invalid cursor', async () => {
+		const response = await authOwnerAgent.get('/credentials').query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message', 'An invalid cursor was provided');
+	});
+
+	test('should reject a non-numeric limit', async () => {
+		const response = await authOwnerAgent.get('/credentials').query({ limit: 'abc' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should not include credential data or secrets in the response', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const decryptedData = await getDecryptedCredentialData(savedCredential.id);
+
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		for (const item of response.body.data) {
+			expect(item).not.toHaveProperty('data');
+		}
+		expect(JSON.stringify(response.body)).not.toContain(decryptedData.accessToken);
 	});
 });
 
@@ -431,6 +522,15 @@ describe('GET /credentials/:id', () => {
 
 	test('should return 404 if credential does not exist', async () => {
 		const response = await authOwnerAgent.get('/credentials/123');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 404 for member without global scope requesting a nonexistent credential', async () => {
+		const memberWithReadScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
+		const authMemberWithReadScopeAgent = testServer.publicApiAgentFor(memberWithReadScope);
+
+		const response = await authMemberWithReadScopeAgent.get('/credentials/123');
 
 		expect(response.statusCode).toBe(404);
 	});
@@ -904,7 +1004,9 @@ describe('PATCH /credentials/:id', () => {
 	});
 
 	test('should update isResolvable field', async () => {
-		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		// End-user credentials are only available in team projects
+		const project = await createTeamProject();
+		const savedCredential = await saveCredential(dbCredential(), { project });
 
 		const updatePayload = {
 			isResolvable: true,
@@ -935,8 +1037,9 @@ describe('PATCH /credentials/:id', () => {
 		expect(response.statusCode).toBe(403);
 	});
 
-	test('should allow the owner to switch a credential to end-user via the public API', async () => {
-		const credential = await saveCredential(dbCredential(), { user: owner });
+	test('should allow the owner to switch a team credential to end-user via the public API', async () => {
+		const project = await createTeamProject();
+		const credential = await saveCredential(dbCredential(), { project });
 
 		const response = await authOwnerAgent
 			.patch(`/credentials/${credential.id}`)
@@ -944,6 +1047,30 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.isResolvable).toBe(true);
+	});
+
+	test('should not allow switching a personal credential to end-user via the public API', async () => {
+		const credential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${credential.id}`)
+			.send({ isResolvable: true });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should allow switching a personal end-user credential back to fixed via the public API', async () => {
+		const credential = await saveCredential(
+			{ ...dbCredential(), isResolvable: true },
+			{ user: owner },
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${credential.id}`)
+			.send({ isResolvable: false });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isResolvable).toBe(false);
 	});
 
 	test('should not allow a project editor to switch an end-user credential to fixed via the public API', async () => {
@@ -1266,6 +1393,85 @@ describe('PATCH /credentials/:id', () => {
 		expect(updatedData.accessToken).toBe(originalAccessToken); // Should keep original, not blanking value
 		expect(updatedData.user).toBe('newUserValue'); // Should be updated
 		expect(updatedData.server).toBe(originalServer); // Should be preserved
+	});
+
+	test('should not require omitted fields when isPartialData is true', async () => {
+		// `ftp` marks `host` and `port` as unconditionally required in its schema
+		const savedCredential = await saveCredential(
+			{
+				name: randomName(),
+				type: 'ftp',
+				data: { host: 'ftp.example.com', port: 21, username: 'user', password: 'oldPassword' },
+			},
+			{ user: owner },
+		);
+
+		// A partial payload omits required keys by design: it is validated per key
+		// and merged with the stored data, so it must not fail key-presence checks.
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ data: { password: 'newPassword' }, isPartialData: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.password).toBe('newPassword');
+		expect(updatedData.host).toBe('ftp.example.com');
+		expect(updatedData.port).toBe(21);
+	});
+
+	test('should keep requiring fields on a full-replace update', async () => {
+		const savedCredential = await saveCredential(
+			{
+				name: randomName(),
+				type: 'ftp',
+				data: { host: 'ftp.example.com', port: 21, username: 'user', password: 'oldPassword' },
+			},
+			{ user: owner },
+		);
+
+		// Without isPartialData the payload replaces the whole data object, so
+		// required keys must still be present.
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ data: { password: 'newPassword' } });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should not require conditionally-required fields when isPartialData is true', async () => {
+		// `snowflake` requires `privateKey` only while `authentication` is `keyPair`,
+		// a conditional `allOf` block in the schema (unlike ftp's flat `required`).
+		const savedCredential = await saveCredential(
+			{
+				name: randomName(),
+				type: 'snowflake',
+				data: {
+					account: 'acme',
+					database: 'db',
+					warehouse: 'wh',
+					authentication: 'password',
+					username: 'user',
+					password: 'oldPassword',
+				},
+			},
+			{ user: owner },
+		);
+
+		// Pins the partial-update semantics: the payload is validated per key only,
+		// so flipping a mode field without its conditionally-required dependents is
+		// accepted and merged; the merged result is not re-validated against the
+		// full schema.
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ data: { authentication: 'keyPair' }, isPartialData: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.authentication).toBe('keyPair');
+		expect(updatedData.privateKey).toBeUndefined();
+		expect(updatedData.password).toBe('oldPassword');
 	});
 });
 

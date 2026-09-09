@@ -1,4 +1,10 @@
-import { type ASTAfterHook, type ASTBeforeHook, astBuilders as b, astVisit } from '@n8n/tournament';
+import {
+	type ASTAfterHook,
+	type ASTBeforeHook,
+	type TournamentHooks,
+	astBuilders as b,
+	astVisit,
+} from '@n8n/tournament';
 
 import {
 	ExpressionClassExtensionError,
@@ -21,6 +27,9 @@ type AstNode = { type: string } & Record<string, unknown>;
 
 const isAstNode = (value: unknown): value is AstNode =>
 	typeof value === 'object' && value !== null && 'type' in value && typeof value.type === 'string';
+
+// `Array.isArray` widens an `unknown` to `any[]`, which loses type safety on the elements
+const isNodeList = (value: unknown): value is unknown[] => Array.isArray(value);
 
 const getBoundIdentifiers = (node: unknown, acc: string[] = []): string[] => {
 	if (!isAstNode(node)) return acc;
@@ -72,6 +81,38 @@ const getBoundIdentifiers = (node: unknown, acc: string[] = []): string[] => {
 
 const getReservedIdentifier = (node: unknown): string | undefined =>
 	getBoundIdentifiers(node).find((name) => RESERVED_VARIABLE_NAMES.has(name));
+
+const getStaticTemplateValue = (node: AstNode): string | undefined => {
+	const { expressions, quasis } = node;
+	if (!isNodeList(expressions) || expressions.length !== 0) return undefined;
+	if (!isNodeList(quasis) || quasis.length !== 1) return undefined;
+
+	const quasi = quasis[0];
+	if (!isAstNode(quasi)) return undefined;
+	const { value } = quasi;
+	if (typeof value !== 'object' || value === null || !('cooked' in value)) return undefined;
+	const { cooked } = value;
+	return typeof cooked === 'string' ? cooked : undefined;
+};
+
+const getReservedMemberKey = (key: unknown): string | undefined => {
+	if (!isAstNode(key)) return undefined;
+
+	let keyName: string | undefined;
+	if (key.type === 'Identifier' && typeof key.name === 'string') {
+		keyName = key.name;
+	} else if (
+		(key.type === 'StringLiteral' || key.type === 'Literal') &&
+		typeof key.value === 'string'
+	) {
+		keyName = key.value;
+	} else if (key.type === 'TemplateLiteral') {
+		// A template literal with no substitutions names the member statically
+		keyName = getStaticTemplateValue(key);
+	}
+
+	return keyName !== undefined && RESERVED_VARIABLE_NAMES.has(keyName) ? keyName : undefined;
+};
 
 export const DOLLAR_SIGN_ERROR = 'Cannot access "$" without calling it as a function';
 
@@ -129,7 +170,51 @@ const isValidDollarPropertyAccess = (expr: unknown): boolean => {
 
 const GLOBAL_IDENTIFIERS = new Set(['globalThis']);
 
-const BLOCKED_SPREAD_GLOBALS = new Set(['process', 'global', 'globalThis', 'Buffer']);
+/**
+ * Backstop, not the containment: the polyfill already resolves a free base class
+ * identifier through the data context. Listed here because a subclass inherits
+ * the static side of its base, so these are the costliest to ever let through.
+ */
+const blockedBaseClasses = new Set([
+	'Function',
+	'GeneratorFunction',
+	'AsyncFunction',
+	'AsyncGeneratorFunction',
+	'Buffer',
+]);
+
+/**
+ * Rejects `class X extends <expr>` unless the base class is a plain identifier
+ * that is not one of {@link blockedBaseClasses}.
+ *
+ * Must stay a before hook: the polyfill rewrites a free base class identifier
+ * into a data-context lookup, after which the two cases are indistinguishable.
+ */
+export const ClassExtensionValidator: ASTBeforeHook = (ast, _dataNode) => {
+	const validate = (superClass: unknown) => {
+		if (isAstNode(superClass)) {
+			if (superClass.type !== 'Identifier') {
+				throw new ExpressionError('Cannot use dynamic class extension due to security concerns');
+			}
+
+			if (typeof superClass.name === 'string' && blockedBaseClasses.has(superClass.name)) {
+				throw new ExpressionClassExtensionError(superClass.name);
+			}
+		}
+	};
+
+	astVisit(ast, {
+		visitClassDeclaration(path) {
+			this.traverse(path);
+			validate(path.node.superClass);
+		},
+
+		visitClassExpression(path) {
+			this.traverse(path);
+			validate(path.node.superClass);
+		},
+	});
+};
 
 /**
  * Prevents regular functions from binding their `this` to the Node.js global.
@@ -301,58 +386,6 @@ export const DollarSignValidator: ASTAfterHook = (ast, _dataNode) => {
 	});
 };
 
-const blockedBaseClasses = new Set([
-	'Function',
-	'GeneratorFunction',
-	'AsyncFunction',
-	'AsyncGeneratorFunction',
-]);
-
-/**
- * Builds an AST node that safely resolves a spread argument like `...process`.
- *
- * Tournament's VariablePolyfill rewrites plain identifiers (e.g. `process`)
- * to look them up from the data context, but it does NOT handle identifiers
- * inside SpreadElement / SpreadProperty nodes. Without this fix, `{...process}`
- * would resolve to the real Node.js `process` object.
- *
- * The generated code checks the data context first, falling back to a throw:
- *
- *   ("process" in data) ? data.process : (() => { throw new Error("...") })()
- *
- * - If the workflow has a variable called "process" → spread that (safe, user-defined)
- * - Otherwise → throw at runtime, blocking access to the real global
- */
-const buildSafeSpreadArg = (name: string, dataNode: Parameters<ASTAfterHook>[1]) => {
-	// "process" in ___n8n_data
-	const isInDataContext = b.binaryExpression('in', b.literal(name), dataNode);
-
-	// ___n8n_data.process
-	const readFromDataContext = b.memberExpression(dataNode, b.identifier(name));
-
-	// (() => { throw new Error('Cannot spread "process" ...') })()
-	//
-	// This is an IIFE because `throw` is a statement, not an expression,
-	// so it cannot appear directly inside a ternary's falsy branch.
-	const throwSecurityError = b.callExpression(
-		b.arrowFunctionExpression(
-			[],
-			b.blockStatement([
-				b.throwStatement(
-					b.newExpression(b.identifier('Error'), [
-						b.literal(`Cannot spread "${name}" due to security concerns`),
-					]),
-				),
-			]),
-		),
-		[],
-	);
-
-	// Full result:
-	//   ("process" in ___n8n_data) ? ___n8n_data.process : (() => { throw ... })()
-	return b.conditionalExpression(isInDataContext, readFromDataContext, throwSecurityError);
-};
-
 export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 	astVisit(ast, {
 		visitVariableDeclarator(path) {
@@ -392,40 +425,35 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 
 		visitClassDeclaration(path) {
 			this.traverse(path);
-			const node = path.node;
 
-			const className = getReservedIdentifier(node.id);
-			if (className !== undefined) {
-				throw new ExpressionReservedVariableError(className);
-			}
-
-			if (node.superClass) {
-				if (node.superClass.type === 'Identifier') {
-					if (blockedBaseClasses.has(node.superClass.name)) {
-						throw new ExpressionClassExtensionError(node.superClass.name);
-					}
-				} else {
-					throw new ExpressionError('Cannot use dynamic class extension due to security concerns');
-				}
-			}
+			const className = getReservedIdentifier(path.node.id);
+			if (className === undefined) return;
+			throw new ExpressionReservedVariableError(className);
 		},
 
 		visitClassExpression(path) {
 			this.traverse(path);
-			const node = path.node;
 
-			const className = getReservedIdentifier(node.id);
+			const className = getReservedIdentifier(path.node.id);
 			if (className !== undefined) {
 				throw new ExpressionReservedVariableError(className);
 			}
+		},
 
-			if (node.superClass) {
-				if (node.superClass.type === 'Identifier') {
-					if (blockedBaseClasses.has(node.superClass.name)) {
-						throw new ExpressionClassExtensionError(node.superClass.name);
-					}
-				} else {
-					throw new ExpressionError('Cannot use dynamic class extension due to security concerns');
+		visitClassBody(path) {
+			this.traverse(path);
+
+			const members = path.node.body;
+			if (!Array.isArray(members)) return;
+
+			for (const member of members) {
+				if (!isAstNode(member)) continue;
+				// A computed identifier key is a variable reference, not a name we can resolve
+				// statically; a computed string literal still names the member, so check it.
+				if (member.computed && isAstNode(member.key) && member.key.type === 'Identifier') continue;
+				const memberKey = getReservedMemberKey(member.key);
+				if (memberKey !== undefined) {
+					throw new ExpressionReservedVariableError(memberKey);
 				}
 			}
 		},
@@ -530,28 +558,20 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 			}
 		},
 
-		visitSpreadElement(path) {
-			this.traverse(path);
-			const { argument } = path.node;
-			if (argument.type === 'Identifier' && BLOCKED_SPREAD_GLOBALS.has(argument.name)) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-				(path.node as any).argument = buildSafeSpreadArg(argument.name, dataNode);
-			}
-		},
-
-		visitSpreadProperty(path) {
-			this.traverse(path);
-			const { argument } = path.node;
-			if (argument.type === 'Identifier' && BLOCKED_SPREAD_GLOBALS.has(argument.name)) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-				(path.node as any).argument = buildSafeSpreadArg(argument.name, dataNode);
-			}
-		},
-
 		visitWithStatement() {
 			throw new ExpressionWithStatementError();
 		},
 	});
+};
+
+/**
+ * The complete set of AST hooks an expression evaluator must run. Evaluators take
+ * this object rather than assembling their own, so a hook added here cannot be
+ * missed by one of them.
+ */
+export const expressionSandboxHooks: TournamentHooks = {
+	before: [ClassExtensionValidator, ThisSanitizer],
+	after: [PrototypeSanitizer, DollarSignValidator],
 };
 
 export const sanitizer = (value: unknown): unknown => {

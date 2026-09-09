@@ -28,6 +28,7 @@ import {
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
+import { useAiSimulatedDataGuard } from '@/app/composables/useAiSimulatedDataGuard';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { type PinDataSource, usePinnedData } from '@/app/composables/usePinnedData';
@@ -94,7 +95,6 @@ import {
 import * as NodeViewUtils from '@/app/utils/nodeViewUtils';
 import {
 	GRID_SIZE,
-	AGENT_NODE_SIZE,
 	CONFIGURABLE_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
@@ -106,7 +106,11 @@ import {
 	NODE_X_SPACING,
 	doRectsOverlap,
 } from '@/app/utils/nodeViewUtils';
-import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
+import {
+	AGENT_NODE_SIZE,
+	getAgentNodeHandleOffset,
+	isAgentNodeV2,
+} from '@/features/agents/utils/agentNode';
 import type { Connection } from '@vue-flow/core';
 import type {
 	IConnection,
@@ -255,6 +259,7 @@ export function useCanvasOperations() {
 	const toast = useToast();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
+	const aiSimulatedDataGuard = useAiSimulatedDataGuard();
 	const {
 		requireNodeTypeDescription,
 		resolveNodeParameters,
@@ -923,15 +928,11 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function toggleNodesPinned(
+	async function toggleNodesPinned(
 		ids: string[],
 		source: PinDataSource,
 		{ trackHistory = true, trackBulk = true } = {},
 	) {
-		if (trackHistory && trackBulk) {
-			historyStore.startRecordingUndo();
-		}
-
 		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
 
 		// Filter to only pinnable nodes
@@ -942,6 +943,27 @@ export function useCanvasOperations() {
 		const nextStatePinned = pinnableNodesWithPinnedData.some(
 			({ pinnedData }) => !pinnedData.hasData.value,
 		);
+
+		// Pinning copies the displayed output; when that output was simulated by
+		// the AI Assistant during verification it is fabricated sample data, so
+		// adopting it needs the same explicit opt-in as the NDV pin button.
+		if (nextStatePinned) {
+			const displayedExecutionId = useWorkflowExecutionStateStore(
+				workflowDocumentStore.value.documentId,
+			).activeExecution?.id;
+			const adoptsSimulatedData = pinnableNodesWithPinnedData.some(
+				({ node, pinnedData }) =>
+					!pinnedData.hasData.value &&
+					aiSimulatedDataGuard.isSimulatedNodeOutput(displayedExecutionId, node.name),
+			);
+			if (adoptsSimulatedData && !(await aiSimulatedDataGuard.confirmAdoption())) {
+				return;
+			}
+		}
+
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
 
 		for (const { node, pinnedData: pinnedDataForNode } of pinnableNodesWithPinnedData) {
 			if (nextStatePinned) {
@@ -1710,20 +1732,20 @@ export function useCanvasOperations() {
 						// If the node has scoped inputs, push it down a bit more
 						pushOffset += 140;
 					}
-					const measuredSourceHeight = isAgentNodeV2(lastInteractedWithNodeObject)
-						? agentNodeCanvasGeometryStore.getNodeHeight(
-								workflowDocumentStore.value.workflowId,
-								lastInteractedWithNodeObject.id,
+					// Line up the main handles of the two nodes
+					const sourceHandleY = isAgentNodeV2(lastInteractedWithNodeObject)
+						? getAgentNodeHandleOffset(
+								agentNodeCanvasGeometryStore.getNodeHeight(
+									workflowDocumentStore.value.workflowId,
+									lastInteractedWithNodeObject.id,
+								) ?? AGENT_NODE_SIZE[1],
 							)
-						: undefined;
-					const sourceNodeHeight =
-						measuredSourceHeight ??
-						(isAgentNodeV2(lastInteractedWithNodeObject)
-							? AGENT_NODE_SIZE[1]
-							: DEFAULT_NODE_SIZE[1]);
-					const targetNodeHeight = isAgentNodeV2(node) ? AGENT_NODE_SIZE[1] : nodeSize[1];
+						: DEFAULT_NODE_SIZE[1] / 2;
+					const targetHandleY = isAgentNodeV2(node)
+						? getAgentNodeHandleOffset(AGENT_NODE_SIZE[1])
+						: nodeSize[1] / 2;
 					const centeredY =
-						lastInteractedWithNode.value.position[1] + (sourceNodeHeight - targetNodeHeight) / 2;
+						lastInteractedWithNode.value.position[1] + sourceHandleY - targetHandleY;
 
 					// If a node is active then add the new node directly after the current one
 					position = [lastInteractedWithNode.value.position[0] + pushOffset, centeredY + yOffset];
@@ -2693,6 +2715,7 @@ export function useCanvasOperations() {
 
 		initializedDocumentStore.setNodes(nodes);
 		initializedDocumentStore.setConnections(connections);
+		initializedDocumentStore.setHydrated(true);
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -3338,10 +3361,9 @@ export function useCanvasOperations() {
 	): INodeCredentials {
 		return Object.fromEntries(
 			Object.entries(credentials).filter(([, credential]) => {
-				return (
-					credential.id &&
-					(!usedCredentials[credential.id] || usedCredentials[credential.id]?.currentUserHasAccess)
-				);
+				if (!credential.id) return Boolean(credential.__aiGatewayManaged);
+				const used = usedCredentials[credential.id];
+				return !used || used.currentUserHasAccess;
 			}),
 		);
 	}
@@ -3511,6 +3533,7 @@ export function useCanvasOperations() {
 			projectsStore.currentProjectId,
 		);
 		workflowDocumentStore.value.setName(workflowData.name);
+		workflowDocumentStore.value.setHydrated(true);
 	}
 
 	async function tryToOpenSubworkflowInNewTab(nodeId: string): Promise<boolean> {

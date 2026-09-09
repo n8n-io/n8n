@@ -33,11 +33,17 @@ import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { safeRegex } from './safe-regex';
 import { isResourceLocatorValue } from './type-guards';
-import { containsUnsafeObjectPropertyToken, deepCopy, isObjectEmpty } from './utils';
+import {
+	containsUnsafeObjectPropertyToken,
+	deepCopy,
+	isObjectEmpty,
+	isSafeObjectProperty,
+} from './utils';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
 import { getPinDataIfManualExecution } from './workflow-data-proxy-helpers';
+import { PairedItemMemo } from './workflow-data-proxy-paired-item-memo';
 
 const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	const node = workflow.getNode(nodeName);
@@ -61,6 +67,14 @@ type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_MET
  * This is a process-wide invariant, so we probe once and cache the result.
  */
 let codeGenerationAllowed: boolean | undefined;
+// Reads a key from a placeholder source only when it is the source's own
+// property, so a lookup can never resolve to a value reached through the
+// prototype chain (e.g. `constructor` / `__proto__`).
+const readOwnKey = (source: unknown, key: string): unknown => {
+	if (source === null || typeof source !== 'object') return undefined;
+	return Object.hasOwn(source, key) ? (source as Record<string, unknown>)[key] : undefined;
+};
+
 const isCodeGenerationAllowed = (): boolean => {
 	if (codeGenerationAllowed === undefined) {
 		try {
@@ -1021,7 +1035,26 @@ export class WorkflowDataProxy {
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
-			nodeBeforeLast?: string,
+		): INodeExecutionData =>
+			resolvePairedItem(
+				destinationNodeName,
+				incomingSourceData,
+				initialPairedItem,
+				usedMethodName,
+				undefined,
+				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
+				// Aggregate output pairing to all its inputs), so without memoization
+				// the walk revisits the same item exponentially often.
+				new PairedItemMemo(),
+			);
+
+		const resolvePairedItem = (
+			destinationNodeName: string,
+			incomingSourceData: ISourceData | null,
+			initialPairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod,
+			nodeBeforeLast: string | undefined,
+			memo: PairedItemMemo,
 		): INodeExecutionData => {
 			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
@@ -1030,6 +1063,26 @@ export class WorkflowDataProxy {
 				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
+			return memo.resolve(sourceData, pairedItem, () =>
+				resolvePairedItemUncached(
+					destinationNodeName,
+					sourceData,
+					pairedItem,
+					usedMethodName,
+					nodeBeforeLast,
+					memo,
+				),
+			);
+		};
+
+		const resolvePairedItemUncached = (
+			destinationNodeName: string,
+			sourceData: ISourceData,
+			pairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod,
+			nodeBeforeLast: string | undefined,
+			memo: PairedItemMemo,
+		): INodeExecutionData => {
 			const taskData = getTaskData(sourceData);
 			const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
 			const item = outputData[pairedItem.item];
@@ -1061,12 +1114,13 @@ export class WorkflowDataProxy {
 
 				try {
 					return createResultOk(
-						getPairedItem(
+						resolvePairedItem(
 							destinationNodeName,
 							nextSource,
 							{ ...nextPairedItem, input: inputIndex },
 							usedMethodName,
 							sourceData.previousNode,
+							memo,
 						),
 					);
 				} catch (error) {
@@ -1116,6 +1170,15 @@ export class WorkflowDataProxy {
 					},
 				);
 			}
+			// Reserved keys resolve to inherited members (e.g. the object's
+			// constructor or prototype) rather than a placeholder value, so they
+			// are never valid placeholder names.
+			if (!isSafeObjectProperty(name)) {
+				throw new ExpressionError('Invalid parameter key', {
+					runIndex,
+					itemIndex,
+				});
+			}
 
 			const resultData =
 				that.runExecutionData?.resultData?.runData?.[that.activeNodeName]?.[runIndex];
@@ -1138,10 +1201,12 @@ export class WorkflowDataProxy {
 					type: 'no_execution_data',
 				});
 			}
+			// Resolve only own placeholder keys, never values reached through the
+			// prototype chain of the input data — including the `query` container
+			// itself, which is read as an own key for the same reason.
 			return (
-				// TS does not know that the key exists, we need to address this in refactor
-				(placeholdersDataInputData?.query as Record<string, unknown>)?.[name] ??
-				placeholdersDataInputData?.[name] ??
+				readOwnKey(readOwnKey(placeholdersDataInputData, 'query'), name) ??
+				readOwnKey(placeholdersDataInputData, name) ??
 				defaultValue
 			);
 		};

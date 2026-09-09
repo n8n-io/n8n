@@ -141,7 +141,7 @@ export class JwksResolverService {
 			options?.fetcher ??
 			this.outboundHttp
 				.transport({
-					ssrf: 'disabled', // JWKS sources are admin-configured trusted-key endpoints
+					useDefaultSsrfPolicy: 'unsafe', // JWKS sources are admin-configured trusted-key endpoints
 				})
 				.asCustomFetch();
 		const defaultTtl = options?.defaultTtlSeconds ?? DEFAULT_TTL_SECONDS;

@@ -1,9 +1,11 @@
 import type { CredentialProvider, ResolvedCredential, CredentialListItem } from '@n8n/agents';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { AiGatewayModelCredentialResolver } from '../json-config/model-config';
@@ -43,7 +45,7 @@ export class AgentsCredentialProvider
 		const aiGatewayService = Container.get(AiGatewayService);
 		const credentialType = await aiGatewayService.getCredentialTypeForProvider(provider);
 		if (!credentialType) {
-			throw new UserError(`n8n credits does not support the "${provider}" model provider.`);
+			throw new UserError(`Gateway credits do not support the "${provider}" model provider.`);
 		}
 		return await aiGatewayService.getSyntheticCredential({
 			credentialType,
@@ -53,7 +55,7 @@ export class AgentsCredentialProvider
 	}
 
 	/**
-	 * Resolve a credential by ID, then decrypt and return the raw data.
+	 * Resolve a credential by ID, then decrypt and return the usable data.
 	 *
 	 * Only credentials visible to this provider's scope are considered — the
 	 * same user-scoped intersection as `list()` when a request user is set, so
@@ -66,8 +68,42 @@ export class AgentsCredentialProvider
 			throw new Error(`Credential "${credentialId}" not found or not accessible`);
 		}
 
-		const data = await this.credentialsService.decrypt(credential, true);
+		const data = await this.decryptWithExpressions(credential);
 		return toResolvedCredential(data);
+	}
+
+	/**
+	 * Decrypt through `CredentialsHelper.getDecrypted` — the path node execution
+	 * takes — so expressions in credential fields are evaluated instead of
+	 * reaching the caller as raw `={{ ... }}` strings. An external-secret-backed
+	 * field would otherwise be sent verbatim and fail auth.
+	 *
+	 * Agents have no workflow or execution, so `additionalData` comes from
+	 * `getBase()`, which supplies the secrets proxy and the project's variables.
+	 *
+	 * `internal` mode skips dynamic-credential resolution, which needs an
+	 * execution context agents don't have. A per-user resolvable credential
+	 * therefore falls back to its static stored data rather than failing — the
+	 * same behaviour as before this path existed.
+	 */
+	private async decryptWithExpressions(
+		credential: CredentialsEntity,
+	): Promise<ICredentialDataDecryptedObject> {
+		// Imported lazily: `workflow-execute-additional-data` reaches back into
+		// this module to run agents from workflows.
+		// eslint-disable-next-line import-x/no-cycle
+		const { getBase } = await import('@/workflow-execute-additional-data.js');
+		const additionalData = await getBase({
+			userId: this.user?.id,
+			projectId: this.projectId,
+		});
+
+		return await Container.get(CredentialsHelper).getDecrypted(
+			additionalData,
+			{ id: credential.id, name: credential.name },
+			credential.type,
+			'internal',
+		);
 	}
 
 	/**
@@ -120,7 +156,9 @@ export class AgentsCredentialProvider
 		const projectCredentials = await this.credentialsService.findAllCredentialIdsForProject(
 			this.projectId,
 		);
-		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds(true);
+		// No `includeData` — only id/name/type are read here, and `getDecrypted`
+		// re-reads the row it decrypts.
+		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds();
 		const allCredsSet = new Set();
 		const allCreds: CredentialsEntity[] = [];
 
