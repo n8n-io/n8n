@@ -1,3 +1,4 @@
+import { TypedEmitter } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import { UnexpectedError } from 'n8n-workflow';
@@ -18,8 +19,17 @@ import { CipherAlgorithm } from './interface';
  */
 const KEY_ID_PATTERN = /^[A-Za-z0-9_-]{1,36}$/;
 
+/** Latency signals emitted by the read path for observability. */
+export type CipherMetricsEventMap = {
+	decrypt: { algorithm: CipherAlgorithm; durationMs: number };
+	'key-lookup': { source: 'prefixed' | 'legacy'; durationMs: number };
+};
+
 @Service()
 export class Cipher {
+	/** Latency events for the decrypt path. A cli-side collector turns these into metrics. */
+	readonly events = new TypedEmitter<CipherMetricsEventMap>();
+
 	/**
 	 * No-prefix descriptors whose key material was already verified to unwrap
 	 * to the instance key. The module memoizes its descriptor, so verifying
@@ -101,6 +111,9 @@ export class Cipher {
 			return this.decryptWithKey(data, customEncryptionKey, 'aes-256-cbc');
 		}
 
+		// Decrypt latency covers the whole read: key lookup, DEK unwrap, and the AES step.
+		const start = performance.now();
+
 		let keyInfo: KeyInfo | null = null;
 		let ciphertext = data;
 
@@ -109,17 +122,37 @@ export class Cipher {
 			const keyId = data.slice(0, colonIdx);
 			if (KEY_ID_PATTERN.test(keyId)) {
 				ciphertext = data.slice(colonIdx + 1);
-				keyInfo = await this.encryptionKeyProxy.getKeyById(keyId);
+				keyInfo = await this.lookupKey(
+					'prefixed',
+					async () => await this.encryptionKeyProxy.getKeyById(keyId),
+				);
 				if (!keyInfo) throw new UnexpectedError(`Encryption key not found: ${keyId}`);
 			}
 		} else {
-			keyInfo = await this.encryptionKeyProxy.getLegacyKey();
+			keyInfo = await this.lookupKey(
+				'legacy',
+				async () => await this.encryptionKeyProxy.getLegacyKey(),
+			);
 		}
 
 		if (!keyInfo) throw new UnexpectedError('Encryption key not found!');
 
+		const algorithm = keyInfo.algorithm as CipherAlgorithm;
 		const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
-		return this.decryptWithKey(ciphertext, plaintextKey, keyInfo.algorithm as CipherAlgorithm);
+		const plaintext = this.decryptWithKey(ciphertext, plaintextKey, algorithm);
+		this.events.emit('decrypt', { algorithm, durationMs: performance.now() - start });
+		return plaintext;
+	}
+
+	/** Times a key lookup and emits its latency before returning the descriptor. */
+	private async lookupKey(
+		source: 'prefixed' | 'legacy',
+		lookup: () => Promise<KeyInfo | null>,
+	): Promise<KeyInfo | null> {
+		const start = performance.now();
+		const keyInfo = await lookup();
+		this.events.emit('key-lookup', { source, durationMs: performance.now() - start });
+		return keyInfo;
 	}
 
 	/**
