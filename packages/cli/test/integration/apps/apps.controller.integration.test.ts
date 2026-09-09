@@ -178,7 +178,7 @@ describe('GET /projects/:projectId/apps/:appId/bindings', () => {
 		]);
 		expect(response.body.data.warnings).toHaveLength(2);
 		expect(response.body.data.warnings[0]).toContain('not published');
-		expect(response.body.data.warnings[1]).toContain('Output of "submit" is untyped');
+		expect(response.body.data.warnings[1]).toContain("Binding 'submit': output is untyped");
 	});
 
 	test('types the output from the latest successful execution', async () => {
