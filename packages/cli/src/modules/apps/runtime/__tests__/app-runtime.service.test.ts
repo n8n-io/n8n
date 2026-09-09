@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
@@ -11,6 +12,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
 import type { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
@@ -55,6 +57,20 @@ const app = {
 	bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' }],
 } as unknown as App;
 
+const failedRun = (lastNodeExecuted: string, message: string): IRun =>
+	({
+		status: 'error',
+		data: {
+			resultData: {
+				runData: {
+					[triggerNode.name]: [{ data: { main: [[{ json: { message: 'hi' } }]] } }],
+				},
+				lastNodeExecuted,
+				error: { message },
+			},
+		},
+	}) as unknown as IRun;
+
 const finishedRun = (lastNodeItems: unknown[]): IRun =>
 	({
 		status: 'success',
@@ -86,6 +102,8 @@ describe('AppRuntimeService', () => {
 	let workflowRunner: ReturnType<typeof mock<WorkflowRunner>>;
 	let activeExecutions: ReturnType<typeof mock<ActiveExecutions>>;
 	let relay: ReturnType<typeof mock<WebhookResponseRelay>>;
+	let executionPersistence: ReturnType<typeof mock<ExecutionPersistence>>;
+	let logger: ReturnType<typeof mock<Logger>>;
 	let service: AppRuntimeService;
 
 	beforeEach(() => {
@@ -95,6 +113,8 @@ describe('AppRuntimeService', () => {
 		workflowRunner = mock<WorkflowRunner>();
 		activeExecutions = mock<ActiveExecutions>();
 		relay = mock<WebhookResponseRelay>();
+		executionPersistence = mock<ExecutionPersistence>();
+		logger = mock<Logger>();
 		service = new AppRuntimeService(
 			appRepository,
 			workflowLoader,
@@ -102,6 +122,8 @@ describe('AppRuntimeService', () => {
 			workflowRunner,
 			activeExecutions,
 			relay,
+			executionPersistence,
+			logger,
 		);
 
 		appRepository.findByNamespace.mockResolvedValue(app);
@@ -303,15 +325,75 @@ describe('AppRuntimeService', () => {
 			expect(result).toMatchObject({ status: 'success', output: null, outputTruncated: true });
 		});
 
-		it('returns the error message of a failed execution', async () => {
-			activeExecutions.getPostExecutePromise.mockResolvedValue({
-				status: 'error',
-				data: { resultData: { runData: {}, error: { message: 'boom' } } },
-			} as unknown as IRun);
+		it('replaces the error of a failed node with a generic message and logs the original', async () => {
+			workflowLoader.loadWorkflow.mockResolvedValue(
+				workflow({
+					nodes: [triggerNode, { ...triggerNode, name: 'Set', type: 'n8n-nodes-base.set' }],
+				}),
+			);
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
+				failedRun('Set', 'connect ECONNREFUSED 10.1.2.3:5432'),
+			);
 
 			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
 
-			expect(result).toMatchObject({ status: 'error', error: 'boom', output: [] });
+			expect(result).toEqual({
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'The workflow failed.',
+				output: [],
+				principal: null,
+			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					appId: 'app-1',
+					namespace: 'runner',
+					key: 'submit',
+					executionId: 'exec-1',
+					error: 'connect ECONNREFUSED 10.1.2.3:5432',
+				}),
+			);
+		});
+
+		it('keeps the message of a Stop and Error node', async () => {
+			workflowLoader.loadWorkflow.mockResolvedValue(
+				workflow({
+					nodes: [
+						triggerNode,
+						{ ...triggerNode, name: 'Stop', type: 'n8n-nodes-base.stopAndError' },
+					],
+				}),
+			);
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
+				failedRun('Stop', 'Amount must be positive'),
+			);
+
+			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+
+			expect(result).toMatchObject({
+				status: 'error',
+				error: 'Amount must be positive',
+				output: [],
+			});
+		});
+
+		it('reads a run that already left the active set from the database', async () => {
+			activeExecutions.has.mockReturnValue(false);
+			executionPersistence.findSingleExecution.mockResolvedValue(undefined);
+
+			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+
+			expect(executionPersistence.findSingleExecution).toHaveBeenCalledWith('exec-1', {
+				includeData: true,
+				unflattenData: true,
+			});
+			expect(result).toEqual({
+				executionId: 'exec-1',
+				status: 'unknown',
+				output: [],
+				principal: null,
+			});
 		});
 
 		it('answers running after 60 s and leaves the execution alone', async () => {

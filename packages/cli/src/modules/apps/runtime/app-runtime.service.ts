@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -14,10 +15,10 @@ import { createRunExecutionData } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import {
 	detectTriggerNode,
-	extractResult,
 	formatResult,
 	inferInputSchema,
 	isWorkflowToolResponse,
@@ -38,6 +39,10 @@ import { AppRuntimeError } from './app-runtime.error';
  */
 const SYNC_WAIT_MS = 60_000;
 
+/** The only node whose error text is written for the app's users, so it may reach them. */
+const STOP_AND_ERROR_NODE_TYPE = 'n8n-nodes-base.stopAndError';
+const GENERIC_FAILURE_MESSAGE = 'The workflow failed.';
+
 export type AppRuntimeRunResult =
 	| { executionId: string; status: 'running'; principal: null }
 	| {
@@ -55,6 +60,13 @@ function isDataObject(value: unknown): value is IDataObject {
 	return isRecord(value);
 }
 
+/** Which app binding started a run; goes into logs, never into the response. */
+interface RunOrigin {
+	appId: string;
+	namespace: string;
+	key: string;
+}
+
 @Service()
 export class AppRuntimeService {
 	constructor(
@@ -64,6 +76,8 @@ export class AppRuntimeService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly webhookResponseRelay: WebhookResponseRelay,
+		private readonly executionPersistence: ExecutionPersistence,
+		private readonly logger: Logger,
 	) {}
 
 	/**
@@ -126,7 +140,11 @@ export class AppRuntimeService {
 			);
 		}
 
-		return await this.execute(workflow, trigger.node, parsed.data);
+		return await this.execute(workflow, trigger.node, parsed.data, {
+			appId: app.id,
+			namespace: app.namespace,
+			key,
+		});
 	}
 
 	private async loadPublishedWorkflow(projectId: string, workflowId: string) {
@@ -161,6 +179,7 @@ export class AppRuntimeService {
 		workflow: WorkflowEntity,
 		triggerNode: INode,
 		input: IDataObject,
+		origin: RunOrigin,
 	): Promise<AppRuntimeRunResult> {
 		const pinData: IPinData = { [triggerNode.name]: [{ json: input }] };
 		const runData: IWorkflowExecutionDataProcess = {
@@ -206,10 +225,35 @@ export class AppRuntimeService {
 		const run = await this.waitForRun(executionId);
 		if (run === 'running') return { executionId, status: 'running', principal: null };
 
-		const result = run
-			? formatResult(executionId, run.status, run.data, false)
-			: await extractResult(executionId, false);
-		const base = { executionId, status: result.status, error: result.error, principal: null };
+		// Same lookup as `extractResult`, kept apart because the failing node is needed below.
+		const execution =
+			run ??
+			(await this.executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			}));
+		if (!execution) return { executionId, status: 'unknown', output: [], principal: null };
+
+		const result = formatResult(executionId, execution.status, execution.data, false);
+		if (result.status !== 'success') {
+			// The raw message names hosts, tables and credentials of a private workflow, so only
+			// the operator's log gets it.
+			this.logger.warn('Bound workflow run did not succeed', {
+				...origin,
+				executionId,
+				status: result.status,
+				error: result.error,
+			});
+			const failedNode = workflow.nodes.find(
+				(node) => node.name === execution.data.resultData.lastNodeExecuted,
+			);
+			const error =
+				failedNode?.type === STOP_AND_ERROR_NODE_TYPE && result.error
+					? result.error
+					: GENERIC_FAILURE_MESSAGE;
+			return { executionId, status: result.status, output: [], error, principal: null };
+		}
+		const base = { executionId, status: result.status, principal: null };
 
 		if (isWorkflowToolResponse(webhookResponse)) {
 			const { body } = await this.webhookResponseRelay.restoreOffloadedBody(webhookResponse, {

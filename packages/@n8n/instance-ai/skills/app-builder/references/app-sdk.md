@@ -69,7 +69,7 @@ interface RunResult<T> {
   executionId: string;
   status: 'success' | 'error' | 'waiting' | 'canceled' | 'running';
   output?: T;      // last node items (json[]) or the "Respond to Webhook" body
-  error?: string;  // set when status is 'error'
+  error?: string;  // set when status is not 'success'; generic unless a "Stop and Error" node failed
   principal: null; // reserved for visitor identity
 }
 ```
@@ -77,7 +77,11 @@ interface RunResult<T> {
 - `status: 'success'` with `output`: the workflow finished. Without a "Respond
   to Webhook" node, `output` is the array of items the last node produced,
   e.g. `[{ reply: 'got hi x3' }]`. With one, `output` is its body.
-- `status: 'error'`: the workflow failed; show `error`.
+- `status: 'error'`: the workflow failed; `output` is `[]` and `error` is the
+  generic "The workflow failed." unless the failing node is "Stop and Error": then
+  `error` is that node's message, written by the workflow's author for the app's
+  users. Use "Stop and Error" in the workflow for every failure the app should
+  explain. n8n logs the original error on the server.
 - `status: 'running'` (HTTP 202): the workflow ran longer than 60 s and keeps
   running in n8n. The app cannot poll it in v1; tell the user it continues.
 - `outputTruncated: true` with `output: null`: the "Respond to Webhook" node

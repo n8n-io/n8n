@@ -137,7 +137,8 @@ bound first. Bind before you write the code that calls it.
      // result.status: 'success' | 'error' | 'waiting' | 'canceled' | 'running'
      // result.output: the workflow's last node items (json[]), or the body of
      //   its "Respond to Webhook" node when it has one
-     // result.error: message when status is 'error'
+     // result.error: when status is 'error'. Generic ("The workflow failed.") unless
+     //   the workflow failed in a "Stop and Error" node: then it is that node's message
    } catch (error) {
      if (error instanceof N8nAppError) {
        // error.code, e.g. 'workflow_not_published', 'invalid_input'
