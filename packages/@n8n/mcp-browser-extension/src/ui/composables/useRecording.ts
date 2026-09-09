@@ -56,7 +56,7 @@ export function useRecording() {
 		}
 	}
 
-	async function submit(destinationOrigin: string, destinationTabId?: number): Promise<void> {
+	async function submit(destinationOrigin?: string, destinationTabId?: number): Promise<void> {
 		await send({ type: 'submitRecording', destinationOrigin, destinationTabId });
 	}
 

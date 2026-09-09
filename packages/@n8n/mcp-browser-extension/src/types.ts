@@ -75,7 +75,7 @@ export interface GetRecordingMessage {
 
 export interface SubmitRecordingMessage {
 	type: 'submitRecording';
-	destinationOrigin: string;
+	destinationOrigin?: string;
 	destinationTabId?: number;
 }
 

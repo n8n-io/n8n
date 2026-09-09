@@ -85,6 +85,10 @@ async function disconnectFromInstance() {
 }
 
 async function prepareSubmission() {
+	if (isConnected.value) {
+		await submitRecording();
+		return;
+	}
 	await loadDestinations();
 	if (destinations.value.length === 1) {
 		const destination = destinations.value[0];

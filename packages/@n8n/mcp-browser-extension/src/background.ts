@@ -485,12 +485,14 @@ function getRecordingData(current: BrowserRecording) {
 }
 
 async function submitRecording(
-	destinationOrigin: string,
+	destinationOrigin?: string,
 	destinationTabId?: number,
 ): Promise<{ success: boolean; error?: string }> {
 	if (!recording || recording.status !== 'review' || recording.actions.length === 0) {
 		return { success: false, error: 'Record at least one action before sending.' };
 	}
+	if (activeConnection) return submitRecordingThroughRelay();
+	if (!destinationOrigin) return { success: false, error: 'Select an n8n instance.' };
 	let origin: string;
 	try {
 		origin = new URL(destinationOrigin).origin;
@@ -551,18 +553,15 @@ async function submitRecording(
 	return { success: true };
 }
 
-/** Stop and submit in one step, for a recording n8n itself asked to start — skips the
- *  manual review screen, since Instance AI reviews the recording in chat instead. */
-async function stopAndSubmitRecordingNow(): Promise<{ success: boolean; error?: string }> {
-	await stopRecording();
+function submitRecordingThroughRelay(): { success: boolean; error?: string } {
 	if (!recording || recording.status !== 'review' || recording.actions.length === 0) {
 		return { success: false, error: 'Record at least one action before sending.' };
 	}
 	if (!activeConnection) return { success: false, error: 'Reconnect before sending.' };
+
 	recording.status = 'submitting';
 	broadcastRecordingChange();
-	const sent = activeConnection.relay.sendRecording(getRecordingData(recording));
-	if (!sent) {
+	if (!activeConnection.relay.sendRecording(getRecordingData(recording))) {
 		recording.status = 'review';
 		broadcastRecordingChange('The recording could not be sent. Try again.');
 		return { success: false, error: 'The recording could not be sent. Try again.' };
@@ -573,6 +572,13 @@ async function stopAndSubmitRecordingNow(): Promise<{ success: boolean; error?: 
 		broadcastRecordingChange('n8n did not confirm the recording. Try again.');
 	}, RECORDING_SUBMIT_TIMEOUT_MS);
 	return { success: true };
+}
+
+/** Stop and submit in one step, for a recording n8n itself asked to start — skips the
+ *  manual review screen, since Instance AI reviews the recording in chat instead. */
+async function stopAndSubmitRecordingNow(): Promise<{ success: boolean; error?: string }> {
+	await stopRecording();
+	return submitRecordingThroughRelay();
 }
 
 async function discardRecording(): Promise<{ success: boolean }> {
@@ -1349,7 +1355,9 @@ async function connectToRelay(
 			if (recording?.id !== recordingId || recording.status !== 'submitting') return;
 			if (recordingSubmitTimer) clearTimeout(recordingSubmitTimer);
 			recordingSubmitTimer = undefined;
-			recording.status = accepted ? 'submitted' : 'review';
+			recording = accepted
+				? { ...recording, status: 'submitted', actions: [], screenshots: [], networkRequests: [] }
+				: { ...recording, status: 'review' };
 			if (accepted && threadUrl) void openRecordingThread(threadUrl);
 			broadcastRecordingChange(
 				accepted ? undefined : 'The recording could not be processed. Try again.',
