@@ -61,23 +61,26 @@ export class AppPageAuthService {
 
 		const isCallback = typeof code === 'string' && typeof state === 'string';
 		if (isCallback) {
-			// `complete` verifies the token against the app resource, whose gate is the
-			// visitor's `app:read` on the project; a refused user gets no token here.
+			// `complete` verifies the token against the resource the flow was begun for
+			// (gate: the visitor's `app:read` on that project), not against this app, so
+			// the flow must also have been begun for this app.
 			const result = await this.oauth2FlowProxy.complete(code, state);
-			if (result.valid) {
+			if (result.valid && result.metadata?.appId === app.id) {
 				this.issuePageToken(req, res, app, { userId: result.user.id });
 				// `code` and `state` must not reach the page: land on the URL the visitor asked for.
-				const returnTo = result.metadata?.returnTo;
+				const returnTo = result.metadata.returnTo;
 				res.redirect(302, returnTo?.startsWith(appRootPath(app)) ? returnTo : appRootPath(app));
 				return null;
 			}
-			this.logger.warn('App OAuth2 flow failed, restarting', { reason: result.reason });
+			this.logger.warn('App OAuth2 flow failed, restarting', {
+				reason: result.valid ? 'app_mismatch' : result.reason,
+			});
 		}
 
 		// A failed callback carries no usable return URL; the restart lands on the app root.
 		const authorizationUrl = await this.oauth2FlowProxy.begin(
 			this.appResourceResolver.resourceUrlFor(app),
-			isCallback ? undefined : { returnTo: req.originalUrl },
+			{ appId: app.id, ...(isCallback ? {} : { returnTo: req.originalUrl }) },
 		);
 		res.redirect(302, authorizationUrl);
 		return null;

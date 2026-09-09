@@ -56,7 +56,8 @@ afterEach(async () => {
 	await Container.get(CacheService).reset();
 });
 
-const createApp = async () => await appRepository.createApp(ownerProject.id, 'Acme Portal', 'acme');
+const createApp = async (namespace = 'acme') =>
+	await appRepository.createApp(ownerProject.id, 'Acme Portal', namespace);
 
 const tgz = (files: Record<string, string>) => {
 	const blocks = Object.entries(files).map(([path, text]) => {
@@ -74,8 +75,8 @@ const INDEX_HTML = '<!doctype html><html><head><title>Acme</title></head><body>a
 const APP_JS = 'console.log("app")';
 
 /** An app with a served version, in the given auth mode. */
-const createBuiltApp = async (authMode: 'public' | 'n8n') => {
-	const created = await createApp();
+const createBuiltApp = async (authMode: 'public' | 'n8n', namespace = 'acme') => {
+	const created = await createApp(namespace);
 	const app = await appRepository.updateApp(created, { authMode });
 	await Container.get(AppVersionService).create(
 		app.id,
@@ -226,6 +227,20 @@ describe('GET /apps/:namespace/ with an active version', () => {
 		const response = await visitor.get(`/apps/acme/?code=${code}&state=${state}`).expect(302);
 
 		expect(new URL(response.headers.location).pathname).toBe('/oauth/authorize');
+		expect(response.headers['set-cookie']).toBeUndefined();
+	});
+
+	test('does not admit a callback of a flow that was begun for another app', async () => {
+		await createBuiltApp('n8n');
+		await createBuiltApp('n8n', 'other');
+		const started = await visitor.get('/apps/other/').expect(302);
+		const { code, state } = await completeAuthorizeLeg(started.headers.location, owner.id);
+
+		const response = await visitor.get(`/apps/acme/?code=${code}&state=${state}`).expect(302);
+
+		const location = new URL(response.headers.location);
+		expect(location.pathname).toBe('/oauth/authorize');
+		expect(location.searchParams.get('client_id')).toMatch(/\/apps\/acme\/$/);
 		expect(response.headers['set-cookie']).toBeUndefined();
 	});
 
