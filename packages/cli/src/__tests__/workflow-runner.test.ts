@@ -3,6 +3,8 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	type User,
 	type ExecutionEntity,
+	type IExecutionBase,
+	type IExecutionResponse,
 	GLOBAL_OWNER_ROLE,
 	Project,
 	ExecutionRepository,
@@ -39,6 +41,7 @@ import { mock } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	CredentialsPermissionChecker,
 	WorkflowPreExecute,
@@ -128,6 +131,50 @@ describe('processError', () => {
 			execution.id,
 			hooks,
 		);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+	});
+
+	test('processError settles the post-execute promise with the stored run when the execution already succeeded in queue mode', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+
+		const successData = createRunExecutionData({
+			resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
+		});
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'webhook',
+				data: successData,
+			}),
+		);
+
+		globalConfig.executions.mode = 'queue';
+
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		await expect(postExecutePromise).resolves.toEqual(
+			expect.objectContaining({ status: 'success', finished: true, data: successData }),
+		);
+		expect(activeExecutions.has(execution.id)).toBe(false);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
 
