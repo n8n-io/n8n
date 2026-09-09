@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, inject, reactive, ref, type PropType, type Ref } from 'vue';
+import { defineComponent, h, inject, reactive, ref, type PropType, type Ref, nextTick } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
@@ -32,6 +32,7 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
+import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 } as Ref<number>,
@@ -282,11 +283,20 @@ let workflowPreviewEmit:
 
 const InstanceAiWorkflowPreviewStub = defineComponent({
 	name: 'InstanceAiWorkflowPreviewStub',
-	emits: ['workflow-failures'],
-	setup(_, { emit, expose }) {
+	props: {
+		workflowId: { type: String, required: true },
+		initialNodeId: { type: String, required: false },
+	},
+	emits: ['initial-node-id-consumed', 'workflow-failures'],
+	setup(props, { emit, expose }) {
 		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
 		expose({ requestFitView: vi.fn() });
-		return () => h('div', { 'data-test-id': 'instance-ai-workflow-preview-stub' });
+		return () =>
+			h('div', {
+				'data-test-id': 'instance-ai-workflow-preview-stub',
+				'data-workflow-id': props.workflowId,
+				'data-initial-node-id': props.initialNodeId,
+			});
 	},
 });
 
@@ -296,9 +306,14 @@ const InstanceAiAgentPreviewStub = defineComponent({
 		agentId: { type: String, required: true },
 		projectId: { type: String, required: true },
 		previewSessionId: { type: String, required: false },
+		previewOpen: { type: Boolean, required: true },
 	},
 	emits: ['preview-open-change', 'assistant-handoff'],
 	setup(props, { emit }) {
+		const openAgentChatPreview = inject<
+			((agentId: string, projectId: string) => boolean) | undefined
+		>('openAgentChatPreview', undefined);
+
 		return () =>
 			h(
 				'div',
@@ -307,6 +322,7 @@ const InstanceAiAgentPreviewStub = defineComponent({
 					'data-agent-id': props.agentId,
 					'data-project-id': props.projectId,
 					'data-preview-session-id': props.previewSessionId,
+					'data-preview-open': String(props.previewOpen),
 				},
 				[
 					h(
@@ -339,6 +355,22 @@ const InstanceAiAgentPreviewStub = defineComponent({
 								}),
 						},
 						'Fix with Assistant',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-preview-link',
+							onClick: () => openAgentChatPreview?.(props.agentId, props.projectId),
+						},
+						'Preview',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-external-preview-link',
+							onClick: () => openAgentChatPreview?.('agent-2', 'proj-2'),
+						},
+						'External preview',
 					),
 				],
 			);
@@ -383,7 +415,6 @@ const InstanceAiArtifactsPanelStub = defineComponent({
 			'dismissPendingComposerContext',
 			undefined,
 		);
-
 		return () =>
 			h(
 				'button',
@@ -406,6 +437,15 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 			[SidebarStateKey as symbol]: { collapsed: mockSidebarCollapsed, toggle: vi.fn() },
 		},
 		stubs: {
+			InstanceAiSetupPanel: defineComponent({
+				props: { workflowId: String, projectId: String },
+				setup: (props) => () =>
+					h('div', {
+						'data-test-id': 'setup-panel',
+						'data-workflow-id': props.workflowId,
+						'data-project-id': props.projectId,
+					}),
+			}),
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
 			InstanceAiAgentPreview: InstanceAiAgentPreviewStub,
@@ -570,6 +610,7 @@ describe('InstanceAiThreadView', () => {
 		inputState.initialDraft = '';
 		inputState.hasAttachments = false;
 		mockSidebarCollapsed.value = false;
+		history.replaceState({}, '');
 		testAgentOfferState.evalsFlagEnabled = false;
 		testAgentOfferState.capabilitySummary = null;
 	});
@@ -621,6 +662,84 @@ describe('InstanceAiThreadView', () => {
 	it('does not pass suggestions to its composer', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
+	});
+
+	describe('setup panel', () => {
+		function seedSetupArtifacts(enabled = true) {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': { ...defaultModuleSettings, instanceAiSetupPanelEnabled: enabled },
+			};
+			thread.hasMessages = true;
+			thread.messages = [
+				{
+					id: 'setup-message',
+					role: 'user',
+					content: 'Configure these workflows',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-04-01T00:00:00.000Z',
+				},
+			];
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'First workflow', projectId: 'project-1' }],
+				['wf-2', { type: 'workflow', id: 'wf-2', name: 'Second workflow', projectId: 'project-2' }],
+				['agent-1', { type: 'agent', id: 'agent-1', name: 'Agent', projectId: 'project-3' }],
+				['table-1', { type: 'data-table', id: 'table-1', name: 'Table', projectId: 'project-4' }],
+			]);
+		}
+
+		it('uses the latest workflow and its project when no tab is selected', async () => {
+			seedSetupArtifacts();
+			const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-workflow-id', 'wf-2');
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-project-id', 'project-2');
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				undefined,
+				expect.any(String),
+				undefined,
+			);
+		});
+
+		it('follows the selected workflow and project when tabs change', async () => {
+			seedSetupArtifacts();
+			thread.messages[0].attachments = [{ type: 'workflow', id: 'wf-1', name: 'First workflow' }];
+			const { getByTestId, container } = renderView({ props: { threadId: 'thread-1' } });
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-workflow-id', 'wf-1');
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-project-id', 'project-1');
+
+			const secondTab = container.querySelector<HTMLElement>('[data-tab-id="wf-2"]');
+			expect(secondTab).not.toBeNull();
+			await userEvent.click(secondTab!);
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-workflow-id', 'wf-2');
+			expect(getByTestId('setup-panel')).toHaveAttribute('data-project-id', 'project-2');
+		});
+
+		it.each(['agent-1', 'table-1'])(
+			'hides the panel when the %s tab is selected',
+			async (tabId) => {
+				seedSetupArtifacts();
+				thread.messages[0].attachments = [{ type: 'workflow', id: 'wf-1', name: 'First workflow' }];
+				const { getByTestId, queryByTestId, container } = renderView({
+					props: { threadId: 'thread-1' },
+				});
+				expect(getByTestId('setup-panel')).toBeInTheDocument();
+				const tab = container.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);
+				expect(tab).not.toBeNull();
+				await userEvent.click(tab!);
+				expect(queryByTestId('setup-panel')).not.toBeInTheDocument();
+				expect(getByTestId('instance-ai-input-submit')).toBeEnabled();
+			},
+		);
+
+		it('does not mount the panel when the flag is off', () => {
+			seedSetupArtifacts(false);
+			const { queryByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			expect(queryByTestId('setup-panel')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-input-submit')).toBeEnabled();
+		});
 	});
 
 	it('restores the canonical agent preview session when view metadata is unavailable', async () => {
@@ -1722,6 +1841,29 @@ describe('InstanceAiThreadView', () => {
 		expect(routerPushSpy).not.toHaveBeenCalled();
 	});
 
+	it('opens the embedded agent chat when an Instance AI preview link is selected', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		const preview = getByTestId('instance-ai-agent-preview-stub');
+
+		expect(preview).toHaveAttribute('data-preview-open', 'false');
+
+		await user.click(getByTestId('instance-ai-agent-preview-link'));
+
+		expect(preview).toHaveAttribute('data-preview-open', 'true');
+		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
+	});
+
+	it('opens a linked agent that is not a produced artifact', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+
+		await user.click(getByTestId('instance-ai-agent-external-preview-link'));
+
+		const preview = getByTestId('instance-ai-agent-preview-stub');
+		expect(preview).toHaveAttribute('data-agent-id', 'agent-2');
+		expect(preview).toHaveAttribute('data-project-id', 'proj-2');
+		expect(preview).toHaveAttribute('data-preview-open', 'true');
+	});
+
 	it('restores the default or preferred preview width when available space grows', async () => {
 		const { getByTestId } = await renderAgentArtifact({ threadAreaWidth: 1200 });
 		const previewPanel = getByTestId('instance-ai-preview-panel');
@@ -1792,6 +1934,58 @@ describe('InstanceAiThreadView', () => {
 
 		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
 		expect(getByTestId('instance-ai-thread-area')).not.toHaveClass('agentPreviewDockOpen');
+	});
+
+	it('keeps the tab the user clicked while the agent is working', async () => {
+		thread.producedArtifacts = new Map([
+			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'First' }],
+			['workflow-2', { type: 'workflow', id: 'workflow-2', name: 'Second' }],
+		]) as typeof thread.producedArtifacts;
+		thread.isStreaming = true;
+		const pushBuildResult = (toolCallId: string, workflowId: string) => {
+			thread.messages.push({
+				id: `msg-${toolCallId}`,
+				role: 'assistant',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-1',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					timeline: [],
+					children: [],
+					toolCalls: [
+						{
+							toolCallId,
+							toolName: 'build-workflow',
+							args: {},
+							isLoading: false,
+							result: { success: true, workflowId },
+						},
+					],
+				},
+			} as never);
+		};
+		const user = userEvent.setup();
+		const { container } = renderView({ props: { threadId: 'thread-1' } });
+
+		pushBuildResult('tc-1', 'workflow-1');
+		const secondTab = await vi.waitFor(() => {
+			const tab = container.querySelector<HTMLElement>('[data-tab-id="workflow-2"]');
+			expect(tab).not.toBeNull();
+			return tab!;
+		});
+		await user.click(secondTab);
+		expect(secondTab).toHaveAttribute('data-state', 'active');
+
+		pushBuildResult('tc-2', 'workflow-1');
+		await nextTick();
+
+		expect(secondTab).toHaveAttribute('data-state', 'active');
 	});
 
 	it('clears the agent dock layout when switching artifacts', async () => {
@@ -1976,6 +2170,41 @@ describe('InstanceAiThreadView', () => {
 		expect(refreshedRender.queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
 		expect(await refreshedRender.findByTestId('instance-ai-preview-panel')).not.toBeVisible();
 		expect(refreshedRender.getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+	});
+
+	it('restores the workflow artifact selected before opening an agent', async () => {
+		thread.producedArtifacts = new Map([
+			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'First workflow' }],
+			['workflow-2', { type: 'workflow', id: 'workflow-2', name: 'Selected workflow' }],
+		]) as typeof thread.producedArtifacts;
+		thread.messages = [
+			{
+				id: 'msg-workflow',
+				role: 'user',
+				content: 'Update this workflow',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				attachments: [{ type: 'workflow', id: 'workflow-1', name: 'First workflow' }],
+			},
+		] as typeof thread.messages;
+		const returnContextStore = mockedStore(useAgentReturnContextStore);
+		returnContextStore.consumePendingArtifactReturn.mockReturnValueOnce({
+			workflowId: 'workflow-2',
+			nodeId: 'node-2',
+		});
+
+		const { findByTestId, unmount } = renderView({ props: { threadId: 'thread-1' } });
+		const workflowPreview = await findByTestId('instance-ai-workflow-preview-stub');
+
+		expect(workflowPreview).toHaveAttribute('data-workflow-id', 'workflow-2');
+		expect(workflowPreview).toHaveAttribute('data-initial-node-id', 'node-2');
+
+		unmount();
+		const reopenedView = renderView({ props: { threadId: 'thread-1' } });
+		const reopenedPreview = await reopenedView.findByTestId('instance-ai-workflow-preview-stub');
+
+		expect(reopenedPreview).toHaveAttribute('data-workflow-id', 'workflow-1');
+		expect(reopenedPreview).not.toHaveAttribute('data-initial-node-id');
 	});
 
 	describe('Fix with AI card', () => {

@@ -60,7 +60,7 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	},
 	'nodeTypePolicy:manage': {
 		displayName: 'Manage Node Type Policies',
-		description: 'Allows managing which node types are available on the instance.',
+		description: 'Allows managing which node types are available, on the instance or in a project.',
 	},
 	'encryptionKey:manage': {
 		displayName: 'Manage Encryption Keys',

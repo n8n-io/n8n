@@ -19,6 +19,24 @@ const accessibleResources = [
 
 const siteByUrl = (url: string) => ({ __rl: true, mode: 'url', value: url });
 
+// The OAuth2 credential is OAuth2-parented, so its expired-token retry happens inside
+// core's requestOAuth2 (via this option), not in this file — see oauth.test.ts.
+const OAUTH2_TOKEN_EXPIRED_STATUS_CODES = {
+	oauth2: { tokenExpiredStatusCode: [401, 403, 404], skipRefreshWhileTokenIsFresh: true },
+};
+
+// Simulates a genuinely (not-expiry-related) failing gateway call: accessible-resources
+// keeps succeeding (so a forced refresh is a no-op) while every actual gateway
+// request rejects with `error`, on both the first attempt and the retry.
+function alwaysFailGatewayCalls(mock: Mock, error: unknown): void {
+	mock.mockImplementation(async (_credentialType: string, options: { url: string }) => {
+		if (options.url === 'https://api.atlassian.com/oauth/token/accessible-resources') {
+			return accessibleResources;
+		}
+		throw error;
+	});
+}
+
 const pageNotFoundResponse = {
 	message: 'Request failed with status code 404',
 	response: {
@@ -98,6 +116,7 @@ describe('confluenceApiRequest', () => {
 			expect.objectContaining({
 				url: 'https://api.atlassian.com/ex/confluence/cloud-1/wiki/api/v2/pages',
 			}),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
 	});
 
@@ -124,6 +143,7 @@ describe('confluenceApiRequest', () => {
 			2,
 			'confluenceCloudOAuth2Api',
 			expect.objectContaining({ method: 'POST', body, qs, json: true }),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
 	});
 
@@ -136,6 +156,7 @@ describe('confluenceApiRequest', () => {
 			2,
 			'confluenceCloudOAuth2Api',
 			expect.objectContaining({ body: [{ prefix: 'global', name: 'a' }] }),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
 	});
 
@@ -146,27 +167,46 @@ describe('confluenceApiRequest', () => {
 			2,
 			'confluenceCloudOAuth2Api',
 			expect.objectContaining({ body: {}, qs: {}, json: true }),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
 	});
 
 	it('wraps request failures in NodeApiError, keeping status and message', async () => {
-		failNextRequest({ message: 'boom', response: { status: 403 } });
+		// 500 (not 404/403) so this test exercises plain wrapping, not the expired-token retry
+		failNextRequest({ message: 'boom', response: { status: 500 } });
 
 		const error = await captureRejection('/wiki/api/v2/pages');
 
 		expect(error).toBeInstanceOf(NodeApiError);
-		expect(error?.httpCode).toBe('403');
+		expect(error?.httpCode).toBe('500');
 		expect(error?.messages).toContain('boom');
 	});
 
 	it("surfaces Atlassian's v2 error envelope instead of the generic status message", async () => {
-		failNextRequest(pageNotFoundResponse);
+		// A page that's genuinely gone still 404s after the forced-refresh retry
+		alwaysFailGatewayCalls(mockHttpRequestWithAuthentication, pageNotFoundResponse);
 
 		const error = await captureRejection('/wiki/api/v2/pages/1');
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.message).toBe('Page not found');
 		expect(error?.description).toBe('No page with this ID exists');
+	});
+
+	// The OAuth2 credential's expired-token retry (forcing a refresh on the gateway's
+	// 404/403-instead-of-401 quirk, ENT-408) happens inside core's requestOAuth2 once this
+	// option reaches it — exercised end-to-end in oauth.test.ts's
+	// "requestOAuth2 - tokenExpiredStatusCode" suite. This only pins that the option is
+	// actually passed through from this call site.
+	it('passes tokenExpiredStatusCode: [401, 403, 404] so core retries the gateway 404/403 quirk', async () => {
+		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+
+		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+			2,
+			'confluenceCloudOAuth2Api',
+			expect.anything(),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
+		);
 	});
 
 	it('falls back to the generic wrap when the envelope carries no usable title', async () => {
@@ -210,12 +250,15 @@ describe('confluenceApiRequest', () => {
 	});
 
 	it("surfaces Atlassian's v2 envelope from a wrapped NodeApiError", async () => {
-		const wrapped = failNextRequestWrapped(pageNotFoundResponse as JsonObject);
+		// Same not-actually-expired case as above, but pinning the pre-wrapped-NodeApiError path
+		alwaysFailGatewayCalls(
+			mockHttpRequestWithAuthentication,
+			new NodeApiError(mockNode, pageNotFoundResponse as JsonObject),
+		);
 
 		const error = await captureRejection('/wiki/api/v2/pages/1');
 
 		expect(error).toBeInstanceOf(NodeApiError);
-		expect(error).not.toBe(wrapped);
 		expect(error?.message).toBe('Page not found');
 		expect(error?.description).toBe('No page with this ID exists');
 		expect(error?.httpCode).toBe('404');
@@ -249,6 +292,7 @@ describe('confluenceApiRequest', () => {
 			expect.objectContaining({
 				url: 'https://api.atlassian.com/ex/confluence/cloud-2/wiki/api/v2/pages',
 			}),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
 	});
 
@@ -266,6 +310,7 @@ describe('confluenceApiRequest', () => {
 			expect.objectContaining({
 				url: 'https://api.atlassian.com/ex/confluence/cloud-1/wiki/api/v2/pages',
 			}),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
 	});
 
@@ -296,6 +341,7 @@ describe('confluenceApiRequest', () => {
 			expect.objectContaining({
 				url: 'https://api.atlassian.com/ex/confluence/cloud-2/wiki/api/v2/spaces',
 			}),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
 	});
 });
@@ -339,6 +385,7 @@ describe('confluenceApiRequestBinary', () => {
 				encoding: 'arraybuffer',
 				sendCredentialsOnCrossOriginRedirect: false,
 			}),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
 		expect(data).toBe(bytes);
 	});
@@ -376,9 +423,10 @@ describe('confluenceApiRequestBinary', () => {
 	});
 
 	it('wraps request failures in NodeApiError, keeping the status', async () => {
+		// 500 (not 404/403) so this test exercises plain wrapping, not the expired-token retry
 		mockHttpRequestWithAuthentication
 			.mockResolvedValueOnce(accessibleResources)
-			.mockRejectedValueOnce({ message: 'boom', response: { status: 404 } });
+			.mockRejectedValueOnce({ message: 'boom', response: { status: 500 } });
 
 		const error = await confluenceApiRequestBinary
 			.call(ctx, '/wiki/download/attachments/9/a.txt')
@@ -386,28 +434,27 @@ describe('confluenceApiRequestBinary', () => {
 			.catch((thrown: NodeApiError) => thrown);
 
 		expect(error).toBeInstanceOf(NodeApiError);
-		expect(error?.httpCode).toBe('404');
+		expect(error?.httpCode).toBe('500');
 	});
 
 	it("surfaces Atlassian's v2 error envelope on download failures", async () => {
-		mockHttpRequestWithAuthentication
-			.mockResolvedValueOnce(accessibleResources)
-			.mockRejectedValueOnce({
-				message: 'Request failed with status code 404',
-				response: {
-					status: 404,
-					data: {
-						errors: [
-							{
-								status: 404,
-								code: 'NOT_FOUND',
-								title: 'Attachment not found',
-								detail: 'No attachment with this ID exists',
-							},
-						],
-					},
+		// A genuinely missing attachment still 404s after the forced-refresh retry
+		alwaysFailGatewayCalls(mockHttpRequestWithAuthentication, {
+			message: 'Request failed with status code 404',
+			response: {
+				status: 404,
+				data: {
+					errors: [
+						{
+							status: 404,
+							code: 'NOT_FOUND',
+							title: 'Attachment not found',
+							detail: 'No attachment with this ID exists',
+						},
+					],
 				},
-			});
+			},
+		});
 
 		const error = await confluenceApiRequestBinary
 			.call(ctx, '/wiki/download/attachments/9/a.txt')
@@ -418,6 +465,24 @@ describe('confluenceApiRequestBinary', () => {
 		expect(error?.message).toBe('Attachment not found');
 		expect(error?.description).toBe('No attachment with this ID exists');
 		expect(error?.httpCode).toBe('404');
+	});
+
+	// Same as confluenceApiRequest: the OAuth2 credential's expired-token retry now
+	// happens inside core (oauth.test.ts covers it); this only pins the option is passed.
+	it('passes tokenExpiredStatusCode: [401, 403, 404] so core retries the gateway 404/403 quirk', async () => {
+		const bytes = Buffer.from('file-bytes');
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockResolvedValueOnce(bytes);
+
+		await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/a.txt');
+
+		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+			2,
+			'confluenceCloudOAuth2Api',
+			expect.anything(),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
+		);
 	});
 });
 
@@ -467,6 +532,7 @@ describe('confluenceApiRequestUpload', () => {
 				body: formData,
 				headers: { 'X-Atlassian-Token': 'nocheck' },
 			}),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
 		expect(mockHttpRequestWithAuthentication.mock.calls[1][1]).not.toHaveProperty('json');
 		expect(data).toEqual({ results: [{ id: 'att1' }] });
@@ -484,6 +550,30 @@ describe('confluenceApiRequestUpload', () => {
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.httpCode).toBe('403');
+	});
+
+	// Uploads opt into the retry options like every other request, so an expired token is
+	// refreshed and the next run works. Core will not resend this body: it is a consumed
+	// stream, and `hasSingleUseBody` surfaces the original error instead (see
+	// authentication.test.ts, "refreshes but does NOT resend a drained form-data body").
+	it('passes tokenExpiredStatusCode: [401, 403, 404] so an expired token still refreshes', async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockRejectedValueOnce({ message: 'boom', response: { status: 404 } });
+
+		const error = await confluenceApiRequestUpload
+			.call(ctx, '/wiki/rest/api/content/9/child/attachment', new FormData())
+			.then(() => null)
+			.catch((thrown: NodeApiError) => thrown);
+
+		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error?.httpCode).toBe('404');
+		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+			2,
+			'confluenceCloudOAuth2Api',
+			expect.anything(),
+			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
+		);
 	});
 
 	it('surfaces the v1 scope-trap message instead of the generic status text', async () => {
@@ -561,6 +651,23 @@ describe('credential routing (authentication selector)', () => {
 		for (const call of mockHttpRequestWithAuthentication.mock.calls) {
 			expect(call[0]).toBe('atlassianServiceAccountApi');
 		}
+	});
+
+	// The Service Account credential isn't OAuth2-parented, so it can't opt into
+	// tokenExpiredStatusCode — it goes through the generic preAuthentication retry
+	// instead, which by default only fires on 401. This option (core's
+	// httpRequestWithAuthentication, tested in authentication.test.ts) opts it into
+	// the gateway's 403/404-instead-of-401 quirk too (ENT-408).
+	it('passes preAuthenticationRetryStatusCode: [401, 403, 404] for the Service Account credential', async () => {
+		setup('serviceAccount');
+
+		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+
+		expect(mockHttpRequestWithAuthentication).toHaveBeenLastCalledWith(
+			'atlassianServiceAccountApi',
+			expect.anything(),
+			{ preAuthenticationRetryStatusCode: [401, 403, 404] },
+		);
 	});
 
 	it('uploads through the Service Account credential when selected', async () => {

@@ -117,6 +117,20 @@ describe('computeTriggerDiff', () => {
 			expect(diff).toEqual({ toAdd: new Set(['legacy']), toRemove: new Set(['legacy']) });
 		});
 
+		test('re-registers an unchanged Email Trigger (IMAP) so a republish reconnects it', () => {
+			const imapTrigger = makeNode('imap', {
+				type: 'n8n-nodes-base.emailReadImap',
+				typeVersion: 2.1,
+				parameters: { mailbox: 'INBOX' },
+			});
+
+			const diff = computeTriggerDiff([imapTrigger], [{ ...imapTrigger }], {
+				versionChanged: true,
+			});
+
+			expect(diff).toEqual({ toAdd: new Set(['imap']), toRemove: new Set(['imap']) });
+		});
+
 		test('does not force other unchanged trigger types when the published version changed', () => {
 			const schedule = makeNode('a');
 

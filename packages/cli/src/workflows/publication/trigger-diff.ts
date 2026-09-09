@@ -19,6 +19,10 @@ function registrationEqual(base: INode | undefined, target: INode | undefined): 
 const ALWAYS_REREGISTER_TRIGGER_TYPES: ReadonlySet<string> = new Set([
 	'n8n-nodes-base.n8nTrigger',
 	'n8n-nodes-base.workflowTrigger',
+	// Workaround, not a contract: an IMAP connection can go silently half-open
+	// without a close or error event, so the node never asks to be reactivated.
+	// Republishing used to reconnect it. Remove once the node detects this itself.
+	'n8n-nodes-base.emailReadImap',
 ]);
 
 export interface TriggerDiffOptions {
