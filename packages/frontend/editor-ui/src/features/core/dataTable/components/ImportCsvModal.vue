@@ -64,6 +64,13 @@ const canImport = computed(() => {
 	);
 });
 
+const clearUploadMetadata = () => {
+	uploadedFileId.value = null;
+	csvRowCount.value = 0;
+	matchedColumns.value = [];
+	unrecognizedColumns.value = [];
+};
+
 const handleFileChange = (uploadFile: UploadFile) => {
 	if (uploadFile.raw) {
 		selectedFile.value = uploadFile.raw;
@@ -77,10 +84,7 @@ const processUpload = async () => {
 
 	const isCurrent = nextUpload();
 	isUploading.value = true;
-	uploadedFileId.value = null;
-	csvRowCount.value = 0;
-	matchedColumns.value = [];
-	unrecognizedColumns.value = [];
+	clearUploadMetadata();
 
 	try {
 		const response = await dataTableStore.uploadCsvFile(file, true);
@@ -104,6 +108,7 @@ const processUpload = async () => {
 		toast.showError(error, i18n.baseText('dataTable.upload.error'));
 		reset();
 	} finally {
+		// On a current failure, reset() advances the generation and clears isUploading.
 		if (isCurrent()) isUploading.value = false;
 	}
 };
@@ -147,10 +152,7 @@ const reset = () => {
 	nextUpload();
 	isUploading.value = false;
 	selectedFile.value = null;
-	uploadedFileId.value = null;
-	csvRowCount.value = 0;
-	matchedColumns.value = [];
-	unrecognizedColumns.value = [];
+	clearUploadMetadata();
 };
 
 const isModalOpen = computed(() => uiStore.modalsById[props.modalName]?.open);
