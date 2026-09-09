@@ -153,8 +153,8 @@ function reportsWorkingRoute(data: unknown): boolean {
 /**
  * The marker {@link guardOpenAiRoutes} puts on the error it raises for a
  * reverse-proxy catch-all page. Only that guard sets it, and only after it has
- * read the body: an HTML content type on its own is not evidence, because a
- * gateway can label a real JSON or SSE answer that way, and re-sending the
+ * read the body: an unexpected content type on its own is not evidence, because
+ * a gateway can label a real JSON or SSE answer anything, and re-sending the
  * prompt would run that generation a second time.
  */
 const HTML_CATCH_ALL = 'n8n.htmlCatchAll';
@@ -235,7 +235,7 @@ function servedChatCompletionsPayload(error: unknown): boolean {
 /** A `fetch`-compatible function, matching {@link import('./model-factory').FetchFn}. */
 type FetchFn = typeof globalThis.fetch;
 
-/** How much of a blank opening is read before the body counts as undecidable. */
+/** How many bytes of a blank opening are read before the body counts as undecidable. */
 const HEAD_LIMIT = 1024;
 
 /**
@@ -247,6 +247,10 @@ const HEAD_LIMIT = 1024;
  * is never awaited — awaiting it deadlocks against the branch the SDK reads. It
  * still takes effect at once, which is what stops the clone from buffering the
  * whole answer behind us.
+ *
+ * The budget counts input bytes, not decoded characters: one chunk can carry a
+ * whole megabyte-sized page, and the prefix is retained in the error this guard
+ * raises.
  */
 async function readHead(response: Response): Promise<{ head: string; ended: boolean }> {
 	const probe = response.clone().body;
@@ -254,15 +258,17 @@ async function readHead(response: Response): Promise<{ head: string; ended: bool
 	const reader = probe.getReader();
 	const decoder = new TextDecoder();
 	let head = '';
+	let budget = HEAD_LIMIT;
 	let ended = false;
 	try {
-		while (head.trim() === '' && head.length < HEAD_LIMIT) {
+		while (head.trim() === '' && budget > 0) {
 			const { done, value } = await reader.read();
 			if (done) {
 				ended = true;
 				break;
 			}
-			head += decoder.decode(value, { stream: true });
+			head += decoder.decode(value.subarray(0, budget), { stream: true });
+			budget -= value.length;
 		}
 	} finally {
 		void reader.cancel().catch(() => {});
@@ -288,17 +294,23 @@ function isNotAnAnswer(head: string, ended: boolean): boolean {
 }
 
 /**
- * Raises {@link servesNoResponsesApi}'s catch-all error when a body mislabelled
- * `text/html` is {@link isNotAnAnswer}, and lets everything else through
- * untouched.
+ * The media types an answer on either route carries: a generation is JSON, and
+ * a stream is server-sent events. Compared against the type token alone, so a
+ * charset or any other parameter still takes the fast path.
+ */
+const ANSWER_CONTENT_TYPES = new Set(['application/json', 'text/event-stream']);
+
+/**
+ * Raises {@link servesNoResponsesApi}'s catch-all error when a body is
+ * {@link isNotAnAnswer}, and lets everything else through untouched.
  *
  * `createEventSourceResponseHandler` in the installed SDK accepts any 2xx body
  * as a stream with no content-type check, so a reverse proxy's catch-all page
  * reaches the caller as a silent empty stream on either route. The content type
  * alone cannot decide, because a gateway can label a real JSON or SSE answer
- * `text/html` and running that generation again would bill it twice — so only
- * the body does, and only its first non-blank bytes, which keeps a mislabelled
- * stream incremental.
+ * anything at all and running that generation again would bill it twice — so
+ * only the body does, and only its first non-blank bytes, which keeps a
+ * mislabelled stream incremental.
  */
 async function rejectCatchAllPage(response: Response, url: string): Promise<void> {
 	const { head, ended } = await readHead(response);
@@ -329,9 +341,16 @@ export function guardOpenAiRoutes(fetch: FetchFn): FetchFn {
 	return async (input, init) => {
 		const url = input instanceof Request ? input.url : String(input);
 		const response = await fetch(input, init);
-		const mislabelled =
-			response.status === 200 && (response.headers.get('content-type') ?? '').includes('text/html');
-		if (mislabelled) await rejectCatchAllPage(response, url);
+		// An answer on either route is JSON or SSE, so the body is read whenever the
+		// content type is absent or names anything else: a catch-all page served as
+		// `text/plain`, as `application/octet-stream` or with no type at all reaches
+		// the SDK's stream handler exactly as an HTML one does.
+		const unexpectedType =
+			response.status === 200 &&
+			!ANSWER_CONTENT_TYPES.has(
+				(response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase(),
+			);
+		if (unexpectedType) await rejectCatchAllPage(response, url);
 		// The chat adapter shares this transport, and only /responses reports the
 		// route. The provider appends the path to the base URL literally, so a
 		// query-routed gateway spells it `…&path=/responses`.
@@ -398,38 +417,90 @@ type Probe = {
 	settle: (style: ApiStyle | undefined) => void;
 	/** When another call can replace this probe. */
 	staleAt: number;
-	/** A successor or cache eviction revoked this generation's writes. */
-	superseded?: boolean;
+	/** Where this probe sits in the endpoint's probe order: higher started later. */
+	seq: number;
+	/**
+	 * The newest evidence about this endpoint. One object shared by every probe
+	 * of the endpoint that is live at the same time, so a predecessor neither map
+	 * holds any more still sees evidence that arrived after it started, and no
+	 * per-endpoint list of predecessors is kept.
+	 */
+	newest: Lineage;
 };
+
+/**
+ * The newest evidence about one endpoint, as the {@link Probe.seq} that produced
+ * it, and how many calls still share it.
+ */
+type Lineage = { seq: number; live: number };
+
+/** Probe order. A later probe asked the endpoint about a later state of it. */
+let probeSeq = 0;
 
 /** The first call to an unknown endpoint, so parallel first calls probe one time. */
 const runningProbes = new Map<string, Probe>();
+
+/**
+ * The evidence marker each endpoint's live calls share, kept only while one of
+ * them is running: a probe that fails leaves both maps empty, and without this
+ * its predecessor would start over with no knowledge of what it found out. The
+ * last call of an endpoint drops the entry, so nothing outlives the calls.
+ */
+const lineages = new Map<string, Lineage>();
 
 /** Carries the owning probe through the SDK without changing its request. */
 const requestProbe = new AsyncLocalStorage<{ endpoint: string; probe: Probe | undefined }>();
 
 /** Test hook: decisions otherwise live for the whole process. */
 export function forgetEndpointApiStyles(): void {
-	for (const entry of endpointApiStyles.values()) entry.owner.superseded = true;
+	// The marker is shared, so revoking it revokes every probe of that endpoint,
+	// including a predecessor that neither map holds any more.
+	for (const entry of endpointApiStyles.values()) entry.owner.newest.seq = Infinity;
 	endpointApiStyles.clear();
-	for (const probe of runningProbes.values()) {
-		probe.superseded = true;
-		probe.settle(undefined);
-	}
+	for (const lineage of lineages.values()) lineage.seq = Infinity;
+	lineages.clear();
+	for (const probe of runningProbes.values()) probe.settle(undefined);
 	runningProbes.clear();
 }
 
 function startProbe(endpoint: string): Probe {
-	for (const previous of [runningProbes.get(endpoint), endpointApiStyles.get(endpoint)?.owner]) {
-		if (previous) previous.superseded = true;
-	}
+	// Starting is not evidence: a generation that runs longer than PROBE_WAIT_MS
+	// must still write its own answer, or an endpoint whose calls overlap — slow
+	// generations, one call every few seconds — never decides and every turn pays
+	// for a /responses request that is known to fail. Only the evidence itself
+	// revokes an older generation ({@link ownsDecision}), so this generation
+	// takes over the endpoint's marker instead of superseding what came before.
+	const shared = lineages.get(endpoint) ?? endpointApiStyles.get(endpoint)?.owner.newest;
+	const newest = shared ?? { seq: 0, live: 0 };
+	newest.live++;
+	lineages.set(endpoint, newest);
 	let settle!: (style: ApiStyle | undefined) => void;
 	const answer = new Promise<ApiStyle | undefined>((resolve) => {
 		settle = resolve;
 	});
-	const probe = { answer, settle, staleAt: Date.now() + PROBE_WAIT_MS };
+	const probe = { answer, settle, staleAt: Date.now() + PROBE_WAIT_MS, seq: ++probeSeq, newest };
 	runningProbes.set(endpoint, probe);
 	return probe;
+}
+
+/** Marks this probe's generation as the newest evidence about its endpoint. */
+function recordEvidence(probe: Probe): void {
+	if (probe.seq > probe.newest.seq) probe.newest.seq = probe.seq;
+}
+
+/**
+ * Whether this owner may still write the endpoint's decision.
+ *
+ * A generation that started before the newest evidence must not write over it,
+ * even while that evidence's own body is still arriving. The marker is read
+ * from the owner and from whoever holds the endpoint now, because a probe that
+ * starts when no call is live and nothing is remembered starts a marker of its
+ * own, and an owner can still write after its own probe ended (a stream reports
+ * a mismatch late).
+ */
+function ownsDecision(endpoint: string, owner: Probe): boolean {
+	const holders = [owner, runningProbes.get(endpoint), endpointApiStyles.get(endpoint)?.owner];
+	return !holders.some((holder) => holder !== undefined && holder.newest.seq > owner.seq);
 }
 
 /**
@@ -453,26 +524,32 @@ function liveProbe(endpoint: string): Probe | undefined {
 function endProbe(endpoint: string, probe: Probe): void {
 	probe.settle(undefined);
 	if (runningProbes.get(endpoint) === probe) runningProbes.delete(endpoint);
+	// The marker outlives this probe while another call of the endpoint still
+	// holds it, and goes with the last of them.
+	probe.newest.live--;
+	if (probe.newest.live <= 0 && lineages.get(endpoint) === probe.newest) lineages.delete(endpoint);
 }
 
-/** Drops expired entries first, and only then the least recently used live one. */
+/**
+ * Drops expired entries first, and only then the least recently used live one.
+ *
+ * A dropped entry keeps its owner's evidence: the marker outlives the entry, so
+ * an older generation still cannot write over what a newer one found out.
+ */
 function makeRoom(): void {
 	const now = Date.now();
 	for (const [key, entry] of endpointApiStyles) {
-		if (entry.expiresAt <= now) {
-			entry.owner.superseded = true;
-			endpointApiStyles.delete(key);
-		}
+		if (entry.expiresAt <= now) endpointApiStyles.delete(key);
 	}
 	if (endpointApiStyles.size < MAX_REMEMBERED_ENDPOINTS) return;
 	const oldest = endpointApiStyles.entries().next().value;
-	if (oldest !== undefined) {
-		oldest[1].owner.superseded = true;
-		endpointApiStyles.delete(oldest[0]);
-	}
+	if (oldest !== undefined) endpointApiStyles.delete(oldest[0]);
 }
 
 function rememberApiStyle(endpoint: string, style: ApiStyle, owner: Probe): void {
+	// A written decision is evidence too, so an older generation that answers
+	// later does not replace it.
+	recordEvidence(owner);
 	// A Map iterates in insertion order and `set` on an existing key does not
 	// move it, so delete first: a refreshed entry is the most recently used one.
 	endpointApiStyles.delete(endpoint);
@@ -491,6 +568,9 @@ function rememberApiStyle(endpoint: string, style: ApiStyle, owner: Probe): void
 function publishResponsesRoute(): void {
 	const context = requestProbe.getStore();
 	if (context?.probe && runningProbes.get(context.endpoint) === context.probe) {
+		// The route answered: that is evidence, and it revokes an older
+		// generation's writes while this answer's body is still arriving.
+		recordEvidence(context.probe);
 		context.probe.settle('responses');
 	}
 }
@@ -710,7 +790,8 @@ export function withChatCompletionsFallback(
 		const probe = decided === undefined && !liveProbe(endpoint) ? startProbe(endpoint) : undefined;
 		const owner = probe ?? running ?? seen?.owner;
 		const remember = (style: ApiStyle) => {
-			if (!owner || owner.superseded || endpointApiStyles.get(endpoint) !== seen) return;
+			if (!owner || !ownsDecision(endpoint, owner) || endpointApiStyles.get(endpoint) !== seen)
+				return;
 			rememberApiStyle(endpoint, style, owner);
 			// A stream can report a mismatch after doStream releases its probe.
 			// Keep this call's own write, but reject evidence from a successor.

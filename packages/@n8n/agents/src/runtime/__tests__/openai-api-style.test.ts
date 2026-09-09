@@ -160,6 +160,27 @@ function heldBody(body: string | undefined, head = '') {
 }
 
 /**
+ * A body sent as a stream. `new Response(string)` synthesizes
+ * `text/plain;charset=UTF-8`, so a route that serves no content type at all has
+ * to send one of these, or the header the fixture leaves out still arrives.
+ */
+const untypedBody = (body: string) =>
+	new ReadableStream<Uint8Array>({
+		start(controller) {
+			controller.enqueue(new TextEncoder().encode(body));
+			controller.close();
+		},
+	});
+
+/** Sends the headers, then loses the body: a connection that dies mid-answer. */
+const brokenBody = () =>
+	new ReadableStream<Uint8Array>({
+		start(controller) {
+			controller.error(new Error('connection reset'));
+		},
+	});
+
+/**
  * Runs event-loop ticks until `check` passes, optionally doing `tick` on each
  * one. `setImmediate` is never faked here, so this also works while the timers a
  * test drives by hand are.
@@ -211,10 +232,13 @@ function fakeEndpoint(routes: Record<string, Route> | ((call: Call, url: URL) =>
 		if (route.wait) await Promise.race([route.wait, untilAborted(init?.signal)]);
 		if (init?.signal?.aborted) throw abortError();
 		if (route.throws) throw route.throws;
-		return new Response(route.bodyStream ?? route.body ?? '', {
-			status: route.status ?? 404,
-			headers: route.contentType ? { 'content-type': route.contentType } : undefined,
-		});
+		return new Response(
+			route.bodyStream ?? (route.contentType ? (route.body ?? '') : untypedBody(route.body ?? '')),
+			{
+				status: route.status ?? 404,
+				headers: route.contentType ? { 'content-type': route.contentType } : undefined,
+			},
+		);
 	}) as unknown as typeof globalThis.fetch;
 	return { fetchFn, calls };
 }
@@ -781,6 +805,141 @@ describe('openai api-style selection (real SDK)', () => {
 
 		await expect(model.doStream({ prompt: PROMPT })).rejects.toThrow('Invalid JSON response');
 		expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
+	});
+
+	it('serves a route with no content type without the header', async () => {
+		// Guards the cases below: `new Response(string)` synthesizes
+		// `text/plain;charset=UTF-8`, which would make each of them a second
+		// `text/plain` case instead of the absent header they are named for.
+		const { fetchFn } = fakeEndpoint({ '/v1/responses': { status: 200, body: 'hi' } });
+
+		const response = await fetchFn(`${PROXY}/responses`);
+
+		expect(response.headers.get('content-type')).toBeNull();
+	});
+
+	/** Content types a catch-all page arrives with when the proxy does not say `text/html`. */
+	const UNEXPECTED_PAGE_TYPES: Array<[string, string | undefined]> = [
+		['no content type', undefined],
+		['text/plain', 'text/plain; charset=utf-8'],
+		['application/octet-stream', 'application/octet-stream'],
+	];
+
+	it.each(UNEXPECTED_PAGE_TYPES)(
+		'falls back to chat on a page answered with %s',
+		async (_label, contentType) => {
+			// The installed SDK's stream response handler reads no content type at
+			// all, so a page labelled anything other than JSON or SSE reaches the
+			// caller as a silent empty stream exactly as an HTML one does.
+			const { fetchFn, calls } = fakeEndpoint({
+				'/v1/responses': { status: 200, body: '<!doctype html><title>n8n</title>', contentType },
+				'/v1/chat/completions': CHAT_STREAM_OK,
+			});
+			const model = build({ url: PROXY }, fetchFn) as unknown as EndpointModel;
+
+			const parts = await readStream((await model.doStream({ prompt: PROMPT })).stream);
+
+			expect(parts).toContainEqual(
+				expect.objectContaining({ type: 'text-delta', delta: 'from chat' }),
+			);
+			expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
+		},
+	);
+
+	it('fails explicitly when both routes answer a page with no content type', async () => {
+		// The chat side must not succeed silently either.
+		const page: Route = { status: 200, body: '<!doctype html><title>n8n</title>' };
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': page,
+			'/v1/chat/completions': page,
+		});
+		const model = build({ url: PROXY }, fetchFn) as unknown as EndpointModel;
+
+		await expect(model.doStream({ prompt: PROMPT })).rejects.toThrow('Invalid JSON response');
+		expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
+	});
+
+	it('keeps only the opening bytes of a page that arrives as one huge chunk', async () => {
+		// A catch-all page is a whole document, and a reverse proxy sends a small one
+		// in a single chunk. The guard reads a bounded prefix, so neither the read nor
+		// the error it raises holds the megabyte the caller never asked for.
+		const page = '<!doctype html><title>n8n</title>' + '<p>proxied</p>'.repeat(80_000);
+		// A fresh stream for each call: one route object's body is read one time.
+		const { fetchFn, calls } = fakeEndpoint(() => ({
+			status: 200,
+			bodyStream: untypedBody(page),
+			contentType: 'text/plain; charset=utf-8',
+		}));
+
+		const error = (await generateText({
+			model: build({ url: PROXY }, fetchFn),
+			prompt: 'hi',
+			maxRetries: 0,
+		}).catch((e: unknown) => e)) as Error & {
+			responseBody?: string;
+			cause?: { responseBody?: string };
+		};
+
+		expect(page.length).toBeGreaterThan(1024 * 1024);
+		expect(error.message).toContain('Invalid JSON response');
+		// HEAD_LIMIT, and the prefix still says what the body is.
+		expect(error.responseBody?.length).toBeLessThanOrEqual(1024);
+		expect(error.responseBody?.startsWith('<!doctype html>')).toBe(true);
+		expect(error.cause?.responseBody?.length).toBeLessThanOrEqual(1024);
+		// The page still reads as "not an answer" on both routes, and the /responses
+		// refusal is the only reason the chat request ran.
+		expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
+	});
+
+	it('falls back to chat when an answer with no content type ends empty', async () => {
+		// Nothing in the body and no type to read it by: no generation was lost, and
+		// the caller would otherwise get a silent empty answer.
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': { status: 200, body: '' },
+			'/v1/chat/completions': CHAT_OK,
+		});
+
+		const { text } = await generateText({
+			model: build({ url: PROXY }, fetchFn),
+			prompt: 'hi',
+			maxRetries: 0,
+		});
+
+		expect(text).toBe('from chat');
+		expect(paths(calls)).toEqual(['/v1/responses', '/v1/chat/completions']);
+	});
+
+	it('delivers an answer that carries no content type, one time', async () => {
+		// A missing content type is not evidence of a page: this generation ran, so
+		// re-sending the prompt would bill the user twice.
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': { ...RESPONSES_OK, contentType: undefined },
+			'/v1/chat/completions': CHAT_OK,
+		});
+		const model = build({ url: PROXY }, fetchFn);
+
+		expect((await generateText({ model, prompt: 'hi', maxRetries: 0 })).text).toBe(
+			'from responses',
+		);
+		expect((await generateText({ model, prompt: 'hi', maxRetries: 0 })).text).toBe(
+			'from responses',
+		);
+		expect(paths(calls)).toEqual(['/v1/responses', '/v1/responses']);
+	});
+
+	it('delivers an SSE stream that a gateway labelled text/plain', async () => {
+		const { fetchFn, calls } = fakeEndpoint({
+			'/v1/responses': { ...RESPONSES_STREAM_OK, contentType: 'text/plain' },
+			'/v1/chat/completions': CHAT_STREAM_OK,
+		});
+		const model = build({ url: PROXY }, fetchFn) as unknown as EndpointModel;
+
+		const parts = await readStream((await model.doStream({ prompt: PROMPT })).stream);
+
+		expect(parts).toContainEqual(
+			expect.objectContaining({ type: 'text-delta', delta: 'from responses' }),
+		);
+		expect(paths(calls)).toEqual(['/v1/responses']);
 	});
 
 	it('delivers a JSON answer that a gateway labelled text/html, one time', async () => {
@@ -1918,6 +2077,158 @@ describe('openai api-style selection (real SDK)', () => {
 				expect(paths(next.calls)).toEqual(['/v1/chat/completions']);
 			} finally {
 				body.release();
+				vi.useRealTimers();
+			}
+		});
+
+		it('caches a completed generation that a later call overlapped', async () => {
+			// A chat-only server with generations longer than the probe wait, and one
+			// call every few seconds: the call that starts second must not take the
+			// decision away from the one that answers first, or the endpoint never
+			// decides and every turn pays for a /responses request that fails.
+			vi.useFakeTimers({ toFake: ['Date'] });
+			const firstBody = heldBody(CHAT_OK.body);
+			const secondBody = heldBody(CHAT_OK.body);
+			try {
+				const routes: Record<string, Route> = {
+					'/v1/chat/completions': { ...CHAT_OK, bodyStream: firstBody.stream },
+				};
+				const { fetchFn, calls } = fakeEndpoint(routes);
+				const model = build({ url: CHAT_ONLY }, fetchFn);
+				const generate = async () => await generateText({ model, prompt: 'hi', maxRetries: 0 });
+
+				const slow = generate();
+				await until(() => calls.length === 2);
+				// Past the probe wait, so the next call probes on its own.
+				vi.setSystemTime(Date.now() + 11_000);
+				routes['/v1/chat/completions'] = { ...CHAT_OK, bodyStream: secondBody.stream };
+				const overlapping = generate();
+				await until(() => calls.length === 4);
+
+				firstBody.release();
+				expect((await slow).text).toBe('from chat');
+				// Both probes have stopped taking waiters, so this call reads the
+				// decision the finished generation wrote or asks the endpoint itself.
+				vi.setSystemTime(Date.now() + 11_000);
+				routes['/v1/chat/completions'] = CHAT_OK;
+				expect((await generate()).text).toBe('from chat');
+
+				expect(paths(calls)).toEqual([
+					'/v1/responses',
+					'/v1/chat/completions',
+					'/v1/responses',
+					'/v1/chat/completions',
+					'/v1/chat/completions',
+				]);
+				secondBody.release();
+				expect((await overlapping).text).toBe('from chat');
+			} finally {
+				firstBody.release();
+				secondBody.release();
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps the newest Responses headers when an older generation finishes late', async () => {
+			// Three generations, and the middle one fails, so neither map holds the
+			// oldest call any more when the newest one reports the route. Its chat
+			// answer still must not decide the endpoint over the newer evidence.
+			vi.useFakeTimers({ toFake: ['Date'] });
+			const slowChat = heldBody(CHAT_OK.body);
+			const newAnswer = heldBody(RESPONSES_OK.body);
+			try {
+				const routes: Record<string, Route> = {
+					'/v1/chat/completions': { ...CHAT_OK, bodyStream: slowChat.stream },
+				};
+				const { fetchFn, calls } = fakeEndpoint(routes);
+				const model = build({ url: PROXY }, fetchFn);
+				const generate = async () => await generateText({ model, prompt: 'hi', maxRetries: 0 });
+
+				const old = generate();
+				await until(() => calls.length === 2);
+				vi.setSystemTime(Date.now() + 11_000);
+
+				// A 500 says nothing about the route, so this call decides nothing.
+				routes['/v1/responses'] = {
+					status: 500,
+					body: '{"error":{"message":"boom","type":"server_error"}}',
+					contentType: 'application/json',
+				};
+				await expect(generate()).rejects.toThrow('boom');
+
+				// The newest call reports the route with its headers, body still open.
+				routes['/v1/responses'] = { ...RESPONSES_OK, bodyStream: newAnswer.stream };
+				const successor = generate();
+				await until(() => calls.length === 4);
+
+				slowChat.release();
+				expect((await old).text).toBe('from chat');
+				newAnswer.release();
+				expect((await successor).text).toBe('from responses');
+
+				routes['/v1/responses'] = RESPONSES_OK;
+				expect((await generate()).text).toBe('from responses');
+				expect(paths(calls)).toEqual([
+					'/v1/responses',
+					'/v1/chat/completions',
+					'/v1/responses',
+					'/v1/responses',
+					'/v1/responses',
+				]);
+			} finally {
+				slowChat.release();
+				newAnswer.release();
+				vi.useRealTimers();
+			}
+		});
+
+		it('re-probes when the newest answer lost its body after the headers', async () => {
+			// Same three generations, but the newest one dies too: it reports the route
+			// with its headers and then loses the body, so by the time the oldest call
+			// finishes, no map holds any probe at all. The oldest call must still see
+			// that the route answered while it was running, or it caches chat over it
+			// and every later turn skips /responses.
+			vi.useFakeTimers({ toFake: ['Date'] });
+			const slowChat = heldBody(CHAT_OK.body);
+			try {
+				const routes: Record<string, Route> = {
+					'/v1/chat/completions': { ...CHAT_OK, bodyStream: slowChat.stream },
+				};
+				const { fetchFn, calls } = fakeEndpoint(routes);
+				const model = build({ url: PROXY }, fetchFn);
+				const generate = async () => await generateText({ model, prompt: 'hi', maxRetries: 0 });
+
+				const old = generate();
+				await until(() => calls.length === 2);
+				vi.setSystemTime(Date.now() + 11_000);
+
+				// A 500 says nothing about the route, and its probe leaves both maps empty.
+				routes['/v1/responses'] = {
+					status: 500,
+					body: '{"error":{"message":"boom","type":"server_error"}}',
+					contentType: 'application/json',
+				};
+				await expect(generate()).rejects.toThrow('boom');
+
+				// The newest call gets the route's headers and then loses the body, so it
+				// leaves both maps empty as well.
+				routes['/v1/responses'] = { ...RESPONSES_OK, bodyStream: brokenBody() };
+				await expect(generate()).rejects.toThrow();
+
+				slowChat.release();
+				expect((await old).text).toBe('from chat');
+
+				routes['/v1/responses'] = RESPONSES_OK;
+				expect((await generate()).text).toBe('from responses');
+				expect(paths(calls)).toEqual([
+					'/v1/responses',
+					'/v1/chat/completions',
+					'/v1/responses',
+					'/v1/responses',
+					'/v1/responses',
+				]);
+			} finally {
+				slowChat.release();
 				vi.useRealTimers();
 			}
 		});
