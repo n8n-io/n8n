@@ -59,6 +59,9 @@ responses:
                         type: string
                       type:
                         type: string
+                        enum:
+                          - personal
+                          - team
                         readOnly: true
                     required:
                       - id

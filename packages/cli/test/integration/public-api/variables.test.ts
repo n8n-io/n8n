@@ -103,6 +103,56 @@ describe('Variables in Public API', () => {
 			);
 		});
 
+		it('if licensed, should return only global variables for a "null" projectId', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+			const globalVariable = await createVariable();
+			await createProjectVariable('projectKey', 'projectValue', project);
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/variables')
+				.query({ projectId: 'null' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0]).toEqual(
+				expect.objectContaining({ id: globalVariable.id, key: globalVariable.key, project: null }),
+			);
+		});
+
+		// A limit above the documented maximum is clamped, not rejected. The eov request validator
+		// answered 400 here, and it no longer runs for a decorator-routed request.
+		it('if licensed, should clamp a limit above the maximum instead of rejecting it', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+			await createVariable();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/variables')
+				.query({ limit: 1000 });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			expect(response.body.data).toHaveLength(1);
+		});
+
 		it('if licensed, should only return the documented variable fields', async () => {
 			/**
 			 * Arrange
