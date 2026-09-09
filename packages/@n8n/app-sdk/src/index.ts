@@ -13,8 +13,10 @@ type WorkflowKey = Extract<keyof Workflows, string>;
 
 export interface RunResult<T> {
 	executionId: string;
-	status: 'success' | 'error' | 'waiting' | 'canceled' | 'running';
+	status: 'success' | 'error' | 'waiting' | 'canceled' | 'running' | 'unknown';
 	output?: T;
+	/** Set when the response was binary data, which v1 does not return; `output` is then `null`. */
+	outputTruncated?: true;
 	error?: string;
 	principal: null;
 }
@@ -62,31 +64,38 @@ async function readJson(response: Response): Promise<unknown> {
 // A dev preview serves the app under another prefix and injects VITE_N8N_API_BASE to
 // still reach `/apps/<ns>/api`. Otherwise Vite sets BASE_URL to the app's base path
 // ('/apps/<ns>/'). Without a bundler, the served page lives at /apps/<ns>/..., so the
-// namespace is the second path segment.
+// namespace is the second path segment. Resolved per call, not at import: the default
+// client is created at import time, also under Jest or a prerender without `location`.
 function defaultBaseUrl(): string {
 	const apiBase = import.meta.env?.VITE_N8N_API_BASE;
 	if (apiBase !== undefined) return apiBase;
 	const viteBase = import.meta.env?.BASE_URL;
 	if (viteBase !== undefined) return `${viteBase}api`;
+	if (typeof location === 'undefined') {
+		throw new N8nAppError(
+			0,
+			'no_base_url',
+			'No base URL: pass baseUrl to createClient outside a browser or Vite build.',
+		);
+	}
 	const [root, namespace] = location.pathname.split('/').filter(Boolean);
 	return `/${root}/${namespace}/api`;
 }
 
 export function createClient(opts: { baseUrl?: string } = {}): N8nAppClient {
-	const baseUrl = (opts.baseUrl ?? defaultBaseUrl()).replace(/\/+$/, '');
-
 	return {
 		workflows: {
-			async run(key, input, opts) {
+			async run(key, input, runOpts) {
+				const baseUrl = (opts.baseUrl ?? defaultBaseUrl()).replace(/\/+$/, '');
 				const response = await fetch(`${baseUrl}/workflows/${encodeURIComponent(key)}`, {
 					method: 'POST',
 					headers: [['Content-Type', 'application/json']],
 					body: JSON.stringify(input ?? {}),
-					signal: opts?.signal,
+					signal: runOpts?.signal,
 				}).catch((error: unknown) => {
 					// A 429 from the rate limiter carries no CORS headers, so the browser reports it
 					// as a network error. The caller's own abort stays an AbortError.
-					if (opts?.signal?.aborted) throw error;
+					if (runOpts?.signal?.aborted) throw error;
 					throw new N8nAppError(
 						0,
 						'request_failed',

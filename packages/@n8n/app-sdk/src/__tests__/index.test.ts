@@ -1,4 +1,4 @@
-import { createClient, N8nAppError } from '../index.js';
+import { createClient, N8nAppError, type RunResult } from '../index.js';
 
 const jsonResponse = (status: number, body: unknown) =>
 	new Response(JSON.stringify(body), { status });
@@ -66,6 +66,19 @@ describe('createClient', () => {
 		expect(fetchMock.mock.calls[0][0]).toBe('/apps/runner/api/workflows/submit');
 	});
 
+	it('resolves the base URL at run time, so createClient works without env and location', async () => {
+		vi.stubEnv('BASE_URL', undefined);
+		vi.stubGlobal('location', undefined);
+
+		const client = createClient();
+
+		await expect(client.workflows.run('submit')).rejects.toMatchObject({
+			status: 0,
+			code: 'no_base_url',
+		});
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
 	it('returns the 200 body', async () => {
 		const body = {
 			executionId: '1',
@@ -76,6 +89,24 @@ describe('createClient', () => {
 		fetchMock.mockResolvedValue(jsonResponse(200, body));
 
 		await expect(createClient({ baseUrl: '/x' }).workflows.run('submit')).resolves.toEqual(body);
+	});
+
+	it('types outputTruncated and status unknown as they come from the server', async () => {
+		const body = {
+			executionId: '1',
+			status: 'unknown',
+			output: null,
+			outputTruncated: true,
+			principal: null,
+		};
+		fetchMock.mockResolvedValue(jsonResponse(200, body));
+
+		const result: RunResult<unknown> = await createClient({ baseUrl: '/x' }).workflows.run(
+			'submit',
+		);
+
+		expect(result.outputTruncated).toBe(true);
+		expect(result.status).toBe('unknown');
 	});
 
 	it('returns the 202 body while the execution is still running', async () => {

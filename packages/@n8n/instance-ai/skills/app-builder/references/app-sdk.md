@@ -68,8 +68,9 @@ body on 200 or 202:
 ```ts
 interface RunResult<T> {
   executionId: string;
-  status: 'success' | 'error' | 'waiting' | 'canceled' | 'running';
+  status: 'success' | 'error' | 'waiting' | 'canceled' | 'running' | 'unknown';
   output?: T;      // the items of the last node that ran (json[])
+  outputTruncated?: true; // binary response, not returned in v1; output is null
   error?: string;  // set when status is not 'success'; generic unless a "Stop and Error" node failed
   principal: null; // reserved for visitor identity
 }
@@ -114,6 +115,7 @@ class N8nAppError extends Error {
 | `too_many_requests`      | 429  | The instance already holds its maximum of concurrent app runs (default 10). Retry after a moment. |
 | `execution_failed`       | 500  | n8n could not start the run. Retry later; the message is safe to show.                      |
 | `request_failed`         | 0/any | No readable response: network error, or a 429 from the rate limiter (the browser hides it, `status` is 0). Retry later. |
+| `no_base_url`            | 0    | `run` was called outside a browser or Vite build without `createClient({ baseUrl })`.        |
 
 Show `error.message` to the user; it is written for people.
 
