@@ -80,6 +80,4 @@ export class ListProjectsQueryPublicDto extends Z.class({
 	cursor: z.string().optional(),
 }) {}
 
-// The legacy validator answered 400 for any query parameter on DELETE. An empty strict DTO keeps
-// that, so `?transferId=` cannot silently delete a project without migrating its contents.
 export class DeleteProjectQueryPublicDto extends Z.class({}, { strict: true }) {}

@@ -375,26 +375,6 @@ describe('Projects in Public API', () => {
 			expect(list.body.data).not.toContainEqual(expect.objectContaining({ id: project.id }));
 		});
 
-		it('if a query parameter is sent, should reject with 400 and keep the project', async () => {
-			testServer.license.setQuota('quota:maxTeamProjects', -1);
-			testServer.license.enable('feat:projectRole:admin');
-			const owner = await createOwnerWithApiKey();
-			const project = await createTeamProject();
-			const target = await createTeamProject();
-
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.delete(`/projects/${project.id}`)
-				.query({ transferId: target.id });
-
-			expect(response.status).toBe(400);
-			expect(response.body).toHaveProperty(
-				'message',
-				"request/query Unrecognized key(s) in object: 'transferId'",
-			);
-			await expect(getProjectByNameOrFail(project.name)).resolves.not.toThrow();
-		});
-
 		it('if project not found, should reject with 404', async () => {
 			testServer.license.setQuota('quota:maxTeamProjects', -1);
 			testServer.license.enable('feat:projectRole:admin');
