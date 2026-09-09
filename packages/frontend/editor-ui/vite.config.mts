@@ -93,6 +93,10 @@ const plugins: UserConfig['plugins'] = [
 		? [
 				legacy({
 					modernTargets: browsers,
+					// Every browser in `.browserslistrc` supports ESM and dynamic import, so the
+					// SystemJS/ES5 support is not needed. Enabling this would cause a >400% increase in build times
+					// for this package.
+					renderLegacyChunks: false,
 				}),
 			]
 		: []),
@@ -109,10 +113,6 @@ const plugins: UserConfig['plugins'] = [
 				: html;
 		},
 	},
-	// For sanitize-html
-	// nodePolyfills({
-	// 	include: ['fs', 'path', 'url', 'util', 'timers'],
-	// }),
 	{
 		name: 'i18n-locales-hmr',
 		configureServer(server) {
