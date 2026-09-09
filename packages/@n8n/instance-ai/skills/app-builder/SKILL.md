@@ -127,14 +127,23 @@ bound first. Bind before you write the code that calls it.
    workflow you are about to connect and why; `{ denied, reason: "User denied
    the action" }` means they said no, so do not retry without asking. The
    result lists every binding with its
-   `input` fields (`[{ name, type }]` or `"passthrough"`) and `published`,
+   `input` fields (`[{ name, type }]` or `"passthrough"`), its `output` fields
+   (`[{ name, type, nullable, optional }]` or `"unknown"`) with `outputSource`,
+   and `published`,
    plus `warnings` (for example an unpublished workflow: binding works, calls
    fail with `workflow_not_published` until it is published; or a passthrough
    trigger: the input is untyped and unchecked, see below). It also
    rewrites `src/n8n-bindings.d.ts`, so `n8n.workflows.run` is typed for that
-   key. The types come from the published version, the one the runtime runs;
+   key. The input types come from the published version, the one the runtime runs;
    only an unpublished workflow is typed from its draft (a warning says so).
-   After the user publishes a changed trigger, re-bind to refresh the types. `{ denied, reason }` means the workflow is in another project, lacks
+   After the user publishes a changed trigger, re-bind to refresh the types.
+   The output type comes from the latest successful execution of the workflow.
+   If `outputSource.kind` is `"unknown"` (the warning says "is untyped"), run
+   the workflow once with sample input (`executions(action="run", workflowId,
+   inputData)`), then call
+   `apps(action="bindings", appId)` to regenerate the typed output. The shape
+   reflects that one run: a key another run adds is missing from the type, so
+   re-run `bindings` after changing the workflow. `{ denied, reason }` means the workflow is in another project, lacks
    the trigger, or the key is invalid: read `reason`. Every write re-checks
    all bindings, so a `reason` that names another key means that binding's
    workflow was deleted or broken: `unbind` that key first.
