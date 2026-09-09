@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DescribedBinding } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nCallout,
@@ -207,8 +208,8 @@ const onDeletePage = async (pageId: string) => {
 	);
 };
 
-const onDeleteBinding = async (key: string) => {
-	await confirmAndDeleteBinding(props.projectId, props.appId, key);
+const onDeleteBinding = async (binding: DescribedBinding) => {
+	await confirmAndDeleteBinding(props.projectId, props.appId, binding);
 };
 
 const onDeviceChange = (value: unknown) => {
@@ -476,9 +477,6 @@ watch(versionId, (next, previous) => {
 						>
 							{{ binding.name }}
 						</N8nLink>
-						<N8nText color="text-light" size="small" data-test-id="app-connection-key">
-							{{ binding.key }}
-						</N8nText>
 						<N8nTooltip
 							v-if="bindingWarnings(binding.key).length > 0"
 							:content="bindingWarnings(binding.key).join(' ')"
@@ -490,14 +488,14 @@ watch(versionId, (next, previous) => {
 								data-test-id="app-connection-warning"
 							/>
 						</N8nTooltip>
-						<N8nTooltip :content="i18n.baseText('apps.connections.delete.tooltip')">
+						<N8nTooltip :content="i18n.baseText('generic.disconnect')">
 							<N8nIconButton
 								icon="trash-2"
 								variant="ghost"
 								size="small"
-								:aria-label="i18n.baseText('generic.delete')"
+								:aria-label="i18n.baseText('generic.disconnect')"
 								data-test-id="app-connection-delete"
-								@click="onDeleteBinding(binding.key)"
+								@click="onDeleteBinding(binding)"
 							/>
 						</N8nTooltip>
 					</div>

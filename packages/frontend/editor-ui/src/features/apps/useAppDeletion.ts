@@ -1,3 +1,4 @@
+import type { DescribedBinding } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
@@ -39,22 +40,22 @@ export function useAppDeletion() {
 	const confirmAndDeleteBinding = async (
 		projectId: string,
 		appId: string,
-		key: string,
+		binding: DescribedBinding,
 	): Promise<boolean> => {
 		const response = await message.confirm(
 			i18n.baseText('apps.connections.delete.confirm.message', {
-				interpolate: { key: escapeHtml(key) },
+				interpolate: { name: escapeHtml(binding.name) },
 			}),
 			i18n.baseText('apps.connections.delete.confirm.title'),
 			{
-				confirmButtonText: i18n.baseText('generic.delete'),
+				confirmButtonText: i18n.baseText('generic.disconnect'),
 				cancelButtonText: i18n.baseText('generic.cancel'),
 			},
 		);
 		if (response !== MODAL_CONFIRM) return false;
 
 		try {
-			await appsStore.deleteBinding(projectId, appId, key);
+			await appsStore.deleteBinding(projectId, appId, binding.key);
 			return true;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('apps.connections.delete.error'));

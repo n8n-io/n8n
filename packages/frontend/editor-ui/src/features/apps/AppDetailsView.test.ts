@@ -328,7 +328,7 @@ describe('AppDetailsView', () => {
 			},
 		];
 
-		it('lists the connected workflows with a link, key and per-binding warning', async () => {
+		it('lists the connected workflows with a link and per-binding warning', async () => {
 			appsStore.bindings = bindings;
 			appsStore.bindingWarnings = [
 				'Binding \'notify\': workflow "Notify" is not published.',
@@ -345,7 +345,6 @@ describe('AppDetailsView', () => {
 			expect(links[0]).toHaveAttribute('href', '/workflow/wf-1');
 			expect(links[0]).toHaveAttribute('target', '_blank');
 			expect(links[0]).toHaveTextContent('Echo');
-			expect(getAllByTestId('app-connection-key')[0]).toHaveTextContent('submit');
 			expect(rows[0].querySelector('[data-test-id="app-connection-warning"]')).toBeNull();
 			expect(rows[1].querySelector('[data-test-id="app-connection-warning"]')).not.toBeNull();
 			expect(getAllByTestId('app-connection-delete')).toHaveLength(2);
@@ -361,7 +360,11 @@ describe('AppDetailsView', () => {
 			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 			await userEvent.click(getAllByTestId('app-connection-delete')[1]);
 
-			expect(confirm).toHaveBeenCalledTimes(1);
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining('disconnect the "Notify" workflow'),
+				'Disconnect workflow',
+				expect.objectContaining({ confirmButtonText: 'Disconnect' }),
+			);
 			expect(appsStore.deleteBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'notify');
 		});
 
