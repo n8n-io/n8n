@@ -19,7 +19,11 @@ export class AppPreviewController {
 		private readonly memoryService: InstanceAiMemoryService,
 	) {}
 
-	/** Starts (or confirms) the app's dev server in the thread's sandbox and returns its preview URL. */
+	/**
+	 * Starts (or confirms) the app's dev server in the thread's sandbox and returns
+	 * its preview URL. A thread that has not held the app yet gets its sandbox
+	 * created and the app's newest stored source restored into it first.
+	 */
 	@Post('/:appId/preview')
 	@ProjectScope('app:read')
 	async ensure(
@@ -44,6 +48,9 @@ export class AppPreviewController {
 			namespace: app.namespace,
 			userId: req.user.id,
 			sandbox,
+			getWorkspace: async () =>
+				await this.instanceAiService.getOrCreateWorkspace(dto.threadId, req.user),
+			getSourceTarball: async () => await this.appsService.getSourceTarball(app.id),
 		});
 	}
 }

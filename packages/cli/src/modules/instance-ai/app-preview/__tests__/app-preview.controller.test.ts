@@ -1,3 +1,4 @@
+import type { Workspace } from '@n8n/agents';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -66,7 +67,23 @@ describe('AppPreviewController', () => {
 			namespace: 'greeter',
 			userId: 'user-1',
 			sandbox,
+			getWorkspace: expect.any(Function),
+			getSourceTarball: expect.any(Function),
 		});
+	});
+
+	it('hands the preview service the thread workspace and the newest source of the app', async () => {
+		const workspace = mock<Workspace>();
+		const tarball = { versionId: 'v-1', data: Buffer.from('gzip') };
+		instanceAiService.getOrCreateWorkspace.mockResolvedValue(workspace);
+		appsService.getSourceTarball.mockResolvedValue(tarball);
+		await controller.ensure(req, res, 'app-1', { threadId: 'thread-1' });
+		const input = appPreviewService.ensure.mock.calls[0][0];
+
+		await expect(input.getWorkspace()).resolves.toBe(workspace);
+		expect(instanceAiService.getOrCreateWorkspace).toHaveBeenCalledWith('thread-1', user);
+		await expect(input.getSourceTarball()).resolves.toBe(tarball);
+		expect(appsService.getSourceTarball).toHaveBeenCalledWith('app-1');
 	});
 
 	it('answers 404 when the app belongs to another project', async () => {

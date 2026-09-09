@@ -10,6 +10,8 @@ import {
 	AppPreviewService,
 	buildDevServerStartScript,
 	buildDevServerStopScript,
+	buildOccupiedCheckScript,
+	buildRestoreScript,
 	type EnsureAppPreviewInput,
 } from '../app-preview.service';
 
@@ -17,6 +19,7 @@ const sandboxClient = {
 	getSandbox: vi.fn<(id: string) => Promise<SandboxRecord>>(),
 	stat: vi.fn<(id: string, path: string) => Promise<unknown>>(),
 	exec: vi.fn<(id: string, request: ExecRequest) => Promise<ExecResult>>(),
+	writeFile: vi.fn<(id: string, path: string, content: Buffer) => Promise<void>>(),
 };
 
 vi.mock('@n8n/sandbox-client', () => ({
@@ -24,6 +27,7 @@ vi.mock('@n8n/sandbox-client', () => ({
 		getSandbox = sandboxClient.getSandbox;
 		stat = sandboxClient.stat;
 		exec = sandboxClient.exec;
+		writeFile = sandboxClient.writeFile;
 	},
 	SandboxServiceError: class extends Error {
 		constructor(
@@ -48,6 +52,10 @@ const execOk: ExecResult = {
 	success: true,
 };
 
+const getWorkspace = vi.fn<EnsureAppPreviewInput['getWorkspace']>();
+const getSourceTarball = vi.fn<EnsureAppPreviewInput['getSourceTarball']>();
+const tarball = { data: Buffer.from('gzip') };
+
 const input: EnsureAppPreviewInput = {
 	threadId: 'thread-1',
 	appId: 'app-1',
@@ -55,7 +63,19 @@ const input: EnsureAppPreviewInput = {
 	namespace: 'greeter',
 	userId: 'user-1',
 	sandbox: { url: 'http://sandbox.test', apiKey: 'sandbox-key' },
+	getWorkspace,
+	getSourceTarball,
 };
+
+const APP_DIR = '/home/user/workspace/apps/greeter';
+const notFound = () => new SandboxServiceError('not found', 404);
+/** The sandbox exists, `apps/greeter` is missing (no package.json) and empty. */
+function givenAppDirMissing() {
+	sandboxClient.stat.mockRejectedValue(notFound());
+	sandboxClient.exec.mockImplementation(async (_id, request) =>
+		request.command === buildOccupiedCheckScript(APP_DIR) ? { ...execOk, exitCode: 1 } : execOk,
+	);
+}
 
 const httpResponse = (status: number, headers: Record<string, string> = {}) =>
 	new Response(null, { status, headers });
@@ -73,6 +93,9 @@ describe('AppPreviewService', () => {
 		sandboxClient.getSandbox.mockResolvedValue(mock<SandboxRecord>());
 		sandboxClient.stat.mockResolvedValue({});
 		sandboxClient.exec.mockResolvedValue(execOk);
+		sandboxClient.writeFile.mockResolvedValue(undefined);
+		getWorkspace.mockResolvedValue(mock());
+		getSourceTarball.mockResolvedValue(tarball);
 		fetchMock.mockResolvedValue(httpResponse(200));
 		service = new AppPreviewService(jwtService, mockLogger());
 	});
@@ -90,8 +113,10 @@ describe('AppPreviewService', () => {
 			expect(result.url).toMatch(/^\/apps-preview\/[\w.-]+\/$/);
 			expect(sandboxClient.stat).toHaveBeenCalledWith(
 				expect.any(String),
-				'/home/user/workspace/apps/greeter/node_modules/.bin/vite',
+				`${APP_DIR}/package.json`,
 			);
+			expect(getWorkspace).not.toHaveBeenCalled();
+			expect(getSourceTarball).not.toHaveBeenCalled();
 			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
 			const startCommand = sandboxClient.exec.mock.calls[0][1].command;
 			expect(startCommand).toBe(
@@ -114,20 +139,142 @@ describe('AppPreviewService', () => {
 			);
 		});
 
-		it('returns no-source without installing when the app has no vite binary in the sandbox', async () => {
-			sandboxClient.stat.mockRejectedValue(new SandboxServiceError('not found', 404));
+		describe('restore', () => {
+			const commandsRun = () => sandboxClient.exec.mock.calls.map(([, request]) => request.command);
+			const RESTORE_SCRIPT =
+				/^tar -xzf (\/home\/user\/workspace\/\.app-builds\/greeter-\d+-preview-restore\.tgz) -C \/home\/user\/workspace\/apps\/greeter; rc=\$\?; rm -f \1; \[ "\$rc" -eq 0 \] && cd \/home\/user\/workspace\/apps\/greeter && \(ulimit -c 0; npm install --ignore-scripts --no-audit --no-fund --prefer-offline\)$/;
 
-			await expect(service.ensure(input)).resolves.toEqual({ status: 'no-source' });
-			expect(sandboxClient.exec).not.toHaveBeenCalled();
+			it('creates the sandbox, restores the stored source, installs and starts when the thread has no sandbox', async () => {
+				vi.useFakeTimers();
+				sandboxClient.getSandbox.mockRejectedValueOnce(notFound());
+				sandboxClient.stat.mockRejectedValue(notFound());
+				let finishRestore: (result: ExecResult) => void = () => {};
+				sandboxClient.exec.mockImplementation(async (_id, request) => {
+					if (request.command === buildOccupiedCheckScript(APP_DIR))
+						return { ...execOk, exitCode: 1 };
+					if (request.command.startsWith('tar -xzf')) {
+						return await new Promise<ExecResult>((resolve) => (finishRestore = resolve));
+					}
+					return execOk;
+				});
+
+				const first = service.ensure(input);
+				await vi.advanceTimersByTimeAsync(2_000);
+				await expect(first).resolves.toEqual({ status: 'starting' });
+				await expect(service.ensure(input)).resolves.toEqual({ status: 'starting' });
+				expect(commandsRun()).toHaveLength(3);
+
+				finishRestore(execOk);
+				await vi.advanceTimersByTimeAsync(0);
+				await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
+
+				expect(getSourceTarball).toHaveBeenCalledTimes(1);
+				expect(getWorkspace).toHaveBeenCalledTimes(1);
+				expect(commandsRun()).toEqual([
+					`[ -d ${APP_DIR} ] && [ -n "$(ls -A ${APP_DIR})" ]`,
+					`mkdir -p /home/user/workspace/.app-builds ${APP_DIR}`,
+					expect.stringMatching(RESTORE_SCRIPT),
+					expect.stringContaining('exec node_modules/.bin/vite'),
+				]);
+				const restoreRequest = sandboxClient.exec.mock.calls[2][1];
+				expect(restoreRequest).toMatchObject({ env: { CI: 'true' }, timeoutMs: 600_000 });
+				expect(sandboxClient.writeFile).toHaveBeenCalledTimes(1);
+				const [, tarballPath, content] = sandboxClient.writeFile.mock.calls[0];
+				expect(content).toBe(tarball.data);
+				expect(restoreRequest.command).toBe(buildRestoreScript({ appDir: APP_DIR, tarballPath }));
+				const writeOrder = sandboxClient.writeFile.mock.invocationCallOrder[0];
+				expect(writeOrder).toBeGreaterThan(sandboxClient.exec.mock.invocationCallOrder[1]);
+				expect(writeOrder).toBeLessThan(sandboxClient.exec.mock.invocationCallOrder[2]);
+			});
+
+			it('restores when the sandbox exists but the app directory has no package.json', async () => {
+				givenAppDirMissing();
+
+				await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
+				expect(getWorkspace).toHaveBeenCalledTimes(1);
+				expect(commandsRun()).toEqual([
+					buildOccupiedCheckScript(APP_DIR),
+					expect.stringContaining('mkdir -p'),
+					expect.stringMatching(RESTORE_SCRIPT),
+					expect.stringContaining('exec node_modules/.bin/vite'),
+				]);
+			});
+
+			it('returns no-source without creating a sandbox when the app has no stored source', async () => {
+				sandboxClient.getSandbox.mockRejectedValue(notFound());
+				getSourceTarball.mockResolvedValue(null);
+
+				await expect(service.ensure(input)).resolves.toEqual({ status: 'no-source' });
+				expect(getWorkspace).not.toHaveBeenCalled();
+				expect(sandboxClient.exec).not.toHaveBeenCalled();
+				expect(sandboxClient.writeFile).not.toHaveBeenCalled();
+			});
+
+			it('starts without restoring into an app directory that already has files', async () => {
+				sandboxClient.stat.mockRejectedValue(notFound());
+
+				await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
+				expect(commandsRun()).toEqual([
+					buildOccupiedCheckScript(APP_DIR),
+					expect.stringContaining('exec node_modules/.bin/vite'),
+				]);
+				expect(sandboxClient.writeFile).not.toHaveBeenCalled();
+			});
+
+			it('returns unavailable/sandbox when the sandbox is disabled for the thread', async () => {
+				sandboxClient.getSandbox.mockRejectedValue(notFound());
+				getWorkspace.mockResolvedValue(undefined);
+
+				await expect(service.ensure(input)).resolves.toEqual({
+					status: 'unavailable',
+					reason: 'sandbox',
+				});
+				expect(sandboxClient.exec).not.toHaveBeenCalled();
+			});
+
+			it('returns unavailable/sandbox when creating the sandbox fails', async () => {
+				sandboxClient.getSandbox.mockRejectedValue(notFound());
+				getWorkspace.mockRejectedValue(new Error('sandbox service unreachable'));
+
+				await expect(service.ensure(input)).resolves.toEqual({
+					status: 'unavailable',
+					reason: 'sandbox',
+				});
+			});
+
+			it('reports a failed restore once as start-failed with the log tail, then tries again', async () => {
+				sandboxClient.stat.mockRejectedValue(notFound());
+				sandboxClient.exec.mockImplementation(async (_id, request) => {
+					if (request.command === buildOccupiedCheckScript(APP_DIR))
+						return { ...execOk, exitCode: 1 };
+					if (request.command.startsWith('tar -xzf')) {
+						return { ...execOk, exitCode: 1, success: false, stderr: 'npm ERR! 404 Not Found' };
+					}
+					return execOk;
+				});
+
+				await expect(service.ensure(input)).resolves.toEqual({
+					status: 'unavailable',
+					reason: 'start-failed',
+					log: 'npm ERR! 404 Not Found',
+				});
+				expect(commandsRun()).not.toContainEqual(
+					expect.stringContaining('exec node_modules/.bin/vite'),
+				);
+
+				sandboxClient.exec.mockResolvedValue(execOk);
+				await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
+			});
 		});
 
-		it('returns unavailable/sandbox when the sandbox does not exist', async () => {
-			sandboxClient.getSandbox.mockRejectedValue(new SandboxServiceError('not found', 404));
+		it('returns unavailable/sandbox when the sandbox service fails to look the sandbox up', async () => {
+			sandboxClient.getSandbox.mockRejectedValue(new SandboxServiceError('upstream', 502));
 
 			await expect(service.ensure(input)).resolves.toEqual({
 				status: 'unavailable',
 				reason: 'sandbox',
 			});
+			expect(getSourceTarball).not.toHaveBeenCalled();
 		});
 
 		it('returns unavailable/start-failed with the log tail when the start script exits non-zero', async () => {

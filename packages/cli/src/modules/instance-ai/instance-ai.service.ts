@@ -1989,6 +1989,16 @@ export class InstanceAiService {
 		}
 	}
 
+	/**
+	 * The thread's runtime workspace, created together with its sandbox when the
+	 * thread has none yet; undefined when the sandbox is disabled. Skills are not
+	 * materialised here, the next run does that on the same entry.
+	 */
+	async getOrCreateWorkspace(threadId: string, user: User): Promise<Workspace | undefined> {
+		const entry = await this.sandboxService.getOrCreateWorkspaceEntry(threadId, user);
+		return entry?.workspace;
+	}
+
 	/** Builder sub-agent sessions (`ia-builder:<threadId>:*`) live in the agents
 	 *  module's memory tables; instance-AI storage cleanup does not cover them.
 	 *  Best-effort: a failure here must never block thread deletion. */
