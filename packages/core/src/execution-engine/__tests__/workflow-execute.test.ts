@@ -1923,6 +1923,48 @@ describe('WorkflowExecute', () => {
 				{ json: {}, error: { message: 'Test error' } as NodeApiError },
 			]);
 		});
+
+		test('should route error items to error output when $getPairedItem throws because paired item is missing', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json: { error: 'Error occurred' },
+						pairedItem: { item: 99, input: 0 },
+					},
+				],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{
+					json: { error: 'Error occurred' },
+					pairedItem: { item: 99, input: 0 },
+				},
+			]);
+		});
+
+		test('should route error items to error output when sourceData for pairedItem input index is missing', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json: { error: 'Error occurred' },
+						pairedItem: { item: 0, input: 10 },
+					},
+				],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{
+					json: { error: 'Error occurred' },
+					pairedItem: { item: 0, input: 10 },
+				},
+			]);
+		});
 	});
 
 	describe('AI tool continue-on-fail default', () => {

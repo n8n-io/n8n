@@ -2785,24 +2785,34 @@ export class WorkflowExecute {
 					} else {
 						const pairedItemInputIndex = pairedItemData.input || 0;
 
-						const sourceData = executionData.source[NodeConnectionTypes.Main][pairedItemInputIndex];
+						const sourceData =
+							executionData.source[NodeConnectionTypes.Main]?.[pairedItemInputIndex];
 
-						const constPairedItem = dataProxy.$getPairedItem(
-							sourceData!.previousNode,
-							sourceData,
-							pairedItemData,
-						);
-
-						if (constPairedItem === null) {
+						if (!sourceData) {
 							errorItems.push(item);
 						} else {
-							errorItems.push({
-								...item,
-								json: {
-									...constPairedItem.json,
-									...item.json,
-								},
-							});
+							let constPairedItem: INodeExecutionData | null = null;
+							try {
+								constPairedItem = dataProxy.$getPairedItem(
+									sourceData.previousNode,
+									sourceData,
+									pairedItemData,
+								);
+							} catch {
+								constPairedItem = null;
+							}
+
+							if (constPairedItem === null) {
+								errorItems.push(item);
+							} else {
+								errorItems.push({
+									...item,
+									json: {
+										...constPairedItem.json,
+										...item.json,
+									},
+								});
+							}
 						}
 					}
 				} else {
