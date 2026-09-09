@@ -340,7 +340,6 @@ describe('AppDetailsView', () => {
 
 			const iframe = getByTestId('instance-ai-app-preview-iframe');
 			expect(iframe).toHaveAttribute('src', '/apps-preview/tok/');
-			expect(getByTestId('app-preview-live-badge')).toHaveTextContent('Live');
 			expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
 
 			await rerender({ ...liveProps, artifactVersionId: 'v-8' });
@@ -401,7 +400,6 @@ describe('AppDetailsView', () => {
 			});
 
 			expect(getByTestId('app-preview-live-banner')).toHaveTextContent(text);
-			expect(queryByTestId('app-preview-live-badge')).not.toBeInTheDocument();
 			expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
 				'src',
 				'/apps/greeter/?v=v-7',

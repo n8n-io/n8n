@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { AppPreviewStatus, InstanceAiAppPreviewDiagnostic } from '@n8n/api-types';
 import {
-	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nIconButton,
@@ -380,9 +379,6 @@ watch(showPreviewPane, (next, previous) => {
 						</template>
 					</N8nToggleGroup>
 					<div :class="$style.previewBarEnd">
-						<N8nBadge v-if="props.liveUrl" theme="success" data-test-id="app-preview-live-badge">
-							{{ i18n.baseText('apps.builder.live.badge') }}
-						</N8nBadge>
 						<N8nTooltip :content="i18n.baseText('apps.builder.inspect')">
 							<N8nIconButton
 								icon="mouse-pointer"

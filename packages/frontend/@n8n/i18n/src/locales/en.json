@@ -5182,7 +5182,6 @@
 	"apps.builder.empty.title": "Nothing to preview yet",
 	"apps.builder.empty.description": "Ask the AI Assistant to build this app. Each build shows here as soon as it's done.",
 	"apps.builder.empty.descriptionNoAssistant": "Build this app to see it here.",
-	"apps.builder.live.badge": "Live",
 	"apps.builder.live.starting": "Starting live preview…",
 	"apps.builder.live.noSource": "Live preview isn't available in this chat yet. This is the last build.",
 	"apps.builder.live.noSourceNoBuild": "Live preview isn't available yet.",

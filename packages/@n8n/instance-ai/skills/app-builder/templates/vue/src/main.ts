@@ -1,13 +1,12 @@
-import './style.css';
-import './theme-overrides.css';
 import { createApp } from 'vue';
 
 import App from './App.vue';
 import { router } from './router';
 import { THEME_MODE } from './theme-mode';
 
-// theme-overrides.css imports after style.css so its :root block wins by
-// cascade order regardless of which base palette (light or dark) is active.
+// Stylesheets are <link>ed from index.html (theme-overrides.css after style.css so
+// its :root block wins by cascade order) so the dev server ships them before the
+// first paint instead of injecting them from JS.
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 if (THEME_MODE === 'dark' || (THEME_MODE === 'system' && prefersDark)) {
 	document.documentElement.classList.add('dark');
