@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nSegmentControl, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -9,6 +9,7 @@ import CopyInput from '@/app/components/CopyInput.vue';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
+import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { useAppPageAssistant } from '@/features/apps/useAppPageAssistant';
 import { APP_DETAILS, APP_PAGE_DETAILS } from '@/features/apps/apps.constants';
@@ -38,9 +39,19 @@ const { requestPageChange } = useAppPageAssistant();
 
 const appsStore = useAppsStore();
 
+type BuilderMode = 'build' | 'preview';
+
 const app = ref<App | null>(null);
 const route = ref('');
 const loading = ref(false);
+const mode = ref<BuilderMode>('build');
+
+const versionId = computed(() => app.value?.activeVersionId ?? undefined);
+
+const modeOptions = computed(() => [
+	{ label: i18n.baseText('apps.builder.build'), value: 'build' as const },
+	{ label: i18n.baseText('apps.builder.preview'), value: 'preview' as const },
+]);
 
 const ancestorPages = computed(() => getAncestorPages(appsStore.pages, props.pageId));
 
@@ -85,6 +96,7 @@ const initialize = async () => {
 			return;
 		}
 		route.value = page.route;
+		mode.value = versionId.value ? 'preview' : 'build';
 		documentTitle.set(formatRoutePath(route.value, i18n.baseText('apps.page.index')));
 	} catch (error) {
 		await showErrorAndGoBack(error);
@@ -156,6 +168,13 @@ watch(() => props.pageId, initialize);
 					:app-name="app.name"
 					:current-page-id="pageId"
 				/>
+				<N8nSegmentControl
+					v-if="app"
+					v-model="mode"
+					:options="modeOptions"
+					size="small"
+					data-test-id="page-builder-mode"
+				/>
 				<div v-if="app" :class="$style.headerActions">
 					<N8nTooltip :content="i18n.baseText('apps.page.edit')">
 						<N8nButton
@@ -188,34 +207,74 @@ watch(() => props.pageId, initialize);
 				/>
 			</div>
 
-			<div :class="$style.content" data-test-id="page-content-placeholder">
+			<AppPreviewFrame
+				v-if="mode === 'preview' && app && versionId"
+				:namespace="app.namespace"
+				:version-id="versionId"
+				:path="fullPath"
+				:class="$style.preview"
+			/>
+			<div
+				v-else-if="mode === 'preview' && !loading"
+				:class="$style.emptyState"
+				data-test-id="page-preview-empty"
+			>
+				<N8nText tag="h2" size="medium" bold>{{
+					i18n.baseText('apps.builder.empty.title')
+				}}</N8nText>
 				<N8nText color="text-light">{{ i18n.baseText('apps.page.content.placeholder') }}</N8nText>
-			</div>
-
-			<div :class="$style.header">
-				<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.page.subPages') }}</N8nText>
-				<N8nButton v-if="route" size="small" data-test-id="page-add-child" @click="onAddChildPage">
-					{{ i18n.baseText('apps.page.new') }}
+				<N8nButton
+					size="small"
+					icon="sparkles"
+					data-test-id="page-preview-empty-edit"
+					@click="onEdit"
+				>
+					{{ i18n.baseText('apps.builder.openInAssistant') }}
 				</N8nButton>
 			</div>
 
-			<N8nText v-if="pageRows.length === 0" color="text-light">
-				{{ i18n.baseText('apps.pages.empty') }}
-			</N8nText>
+			<template v-else-if="mode === 'build'">
+				<div :class="$style.content" data-test-id="page-content-placeholder">
+					<N8nButton
+						variant="subtle"
+						icon="sparkles"
+						data-test-id="page-content-edit"
+						@click="onEdit"
+					>
+						{{ i18n.baseText('apps.page.content.placeholder') }}
+					</N8nButton>
+				</div>
 
-			<div :class="$style.pageGrid">
-				<PageCard
-					v-for="row in pageRows"
-					:key="row.page.id"
-					:page="row.page"
-					:indent="row.indent"
-					:child-count="childCounts.get(row.page.id) ?? 0"
-					@open="openPage"
-					@add-child="onAddChildUnder"
-					@edit="onEditDescendantPage"
-					@delete="onDeleteDescendantPage"
-				/>
-			</div>
+				<div :class="$style.header">
+					<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.page.subPages') }}</N8nText>
+					<N8nButton
+						v-if="route"
+						size="small"
+						data-test-id="page-add-child"
+						@click="onAddChildPage"
+					>
+						{{ i18n.baseText('apps.page.new') }}
+					</N8nButton>
+				</div>
+
+				<N8nText v-if="pageRows.length === 0" color="text-light">
+					{{ i18n.baseText('apps.pages.empty') }}
+				</N8nText>
+
+				<div :class="$style.pageGrid">
+					<PageCard
+						v-for="row in pageRows"
+						:key="row.page.id"
+						:page="row.page"
+						:indent="row.indent"
+						:child-count="childCounts.get(row.page.id) ?? 0"
+						@open="openPage"
+						@add-child="onAddChildUnder"
+						@edit="onEditDescendantPage"
+						@delete="onDeleteDescendantPage"
+					/>
+				</div>
+			</template>
 		</div>
 	</PageViewLayout>
 </template>
@@ -264,6 +323,27 @@ watch(() => props.pageId, initialize);
 	align-items: center;
 	justify-content: space-between;
 	margin-bottom: var(--spacing--xs);
+}
+
+.preview {
+	flex: 1;
+	min-height: 400px;
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	overflow: hidden;
+	background: var(--background--surface);
+}
+
+.emptyState {
+	flex: 1;
+	min-height: 400px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--lg);
+	text-align: center;
 }
 
 .pageGrid {

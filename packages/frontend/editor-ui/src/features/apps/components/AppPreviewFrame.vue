@@ -7,10 +7,12 @@ const props = withDefaults(
 		namespace: string;
 		/** Built version to show. The parent renders its own empty state when there is none. */
 		versionId: string;
+		/** A specific page's path within the app (e.g. "clients/:id"); the app root when omitted. */
+		path?: string;
 		/** CSS width of the document; `390px` mimics a phone. */
 		width?: string;
 	}>(),
-	{ width: '100%' },
+	{ path: '', width: '100%' },
 );
 
 const i18n = useI18n();
@@ -28,7 +30,8 @@ watch(
 
 // `v` busts the browser cache on every new build; `r` on every manual refresh.
 const iframeSrc = computed(() => {
-	const base = `/apps/${props.namespace}/?v=${props.versionId}`;
+	const pathSegments = props.path.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+	const base = `/apps/${props.namespace}/${pathSegments}?v=${props.versionId}`;
 	return refreshCount.value > 0 ? `${base}&r=${refreshCount.value}` : base;
 });
 
