@@ -899,7 +899,7 @@ function openAiUsageSettings() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
-	padding: 0 0 var(--spacing--2xs) var(--spacing--sm);
+	padding: 0 var(--spacing--sm) var(--spacing--2xs);
 }
 
 .permissionRow {
