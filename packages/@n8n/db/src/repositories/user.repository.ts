@@ -10,6 +10,7 @@ import type {
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 @Service()
 export class UserRepository extends Repository<User> {
@@ -92,11 +93,16 @@ export class UserRepository extends Repository<User> {
 	}
 
 	/**
-	 * Change a user's email only if it still equals `oldEmail`. Returns false
-	 * when the email changed concurrently, so the caller can reject the request.
+	 * Change a user's email only if it still equals `oldEmail`. Returns `'stale'`
+	 * when the email changed concurrently and `'email-taken'` when another user
+	 * already owns `newEmail`, so the caller can reject the request.
 	 * Uses `save` (not `update`) so the personal-project rename subscriber fires.
 	 */
-	async changeEmail(userId: string, oldEmail: string, newEmail: string): Promise<boolean> {
+	async changeEmail(
+		userId: string,
+		oldEmail: string,
+		newEmail: string,
+	): Promise<'changed' | 'stale' | 'email-taken'> {
 		return await this.manager.transaction(async (trx) => {
 			const user = await trx.findOne(User, {
 				where: { id: userId },
@@ -105,10 +111,16 @@ export class UserRepository extends Repository<User> {
 					? { lock: { mode: 'pessimistic_write' as const } }
 					: {}),
 			});
-			if (!user || user.email !== oldEmail) return false;
+			if (!user || user.email !== oldEmail) return 'stale';
 			user.email = newEmail;
-			await trx.save(User, user);
-			return true;
+			try {
+				await trx.save(User, user);
+			} catch (error) {
+				// Another user took `newEmail` between the caller's check and this save.
+				if (isUniqueConstraintError(error)) return 'email-taken';
+				throw error;
+			}
+			return 'changed';
 		});
 	}
 
