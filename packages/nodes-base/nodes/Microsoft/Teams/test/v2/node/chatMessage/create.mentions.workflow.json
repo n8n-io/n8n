@@ -77,17 +77,17 @@
           "locale": "en-us",
           "body": {
             "contentType": "html",
-            "content": "<at id=\"0\">Ada Byron</at> Hello!<br>\n<br>\n<em> Powered by <a href=\"http://localhost:5678/workflow/i3NYGF0LXV4qDFV9?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.microsoftTeams\">this n8n workflow</a> </em>"
+            "content": "<at id=\"0\">Ada &amp; Byron</at> Hello!<br>\n<br>\n<em> Powered by <a href=\"http://localhost:5678/workflow/i3NYGF0LXV4qDFV9?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.microsoftTeams\">this n8n workflow</a> </em>"
           },
           "attachments": [],
           "mentions": [
             {
               "id": 0,
-              "mentionText": "Ada Byron",
+              "mentionText": "Ada &amp; Byron",
               "mentioned": {
                 "user": {
                   "id": "33333333-3333-3333-3333-333333333333",
-                  "displayName": "Ada Byron",
+                  "displayName": "Ada &amp; Byron",
                   "userIdentityType": "aadUser",
                   "tenantId": "23786ca6-7ff2-4672-87d0-5c649ee0a337"
                 }

@@ -23,14 +23,15 @@ export type Mention = {
 };
 
 /**
- * Escapes the `<at>` inner text. A B2B guest's display name is third-party input, and an
- * unescaped angle bracket breaks the token. NOT `escapeHtml` from `utils/utilities.ts`: that
- * one decodes. Graph validates this text against `mentions[].mentionText` and compares the two
- * decoded, so escaping only one side is safe and the two cannot be decoupled.
+ * Escapes the marker text. A B2B guest's display name is third-party input, and an unescaped
+ * angle bracket breaks the token. NOT `escapeHtml` from `utils/utilities.ts`: that one decodes.
  *
- * Known Teams defect: a display name containing `&` renders a stray `/at>` after the chip. The
- * mention still resolves and notifies, and no encoding of `&` avoids it, so it is not fixable
- * from here.
+ * Apply this to the `<at>` inner text AND to `mentions[].mentionText`, so the two are the same
+ * string. Graph matches the marker leniently (either form is accepted) but then uses
+ * `mentionText.length` to find where the token ends. Feeding it the raw name while the body
+ * holds the escaped one makes it resume that many characters early and duplicate the tail of
+ * `</at>` into the message, which renders as a stray `/at>` after the chip. Same length on both
+ * sides, no drift.
  */
 function escapeMentionText(text: string): string {
 	return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -216,7 +217,12 @@ export function prepareMessage(
 	// `id` comes from the same index as the token above. Graph 400s on any mismatch between the
 	// two, which is the invariant this function exists to hold.
 	if (mentions.length) {
-		body.mentions = mentions.map((mention, index) => ({ ...mention, id: index }));
+		body.mentions = mentions.map((mention, index) => ({
+			...mention,
+			id: index,
+			// Must be byte-identical to the token's inner text; see `escapeMentionText`.
+			mentionText: escapeMentionText(mention.mentionText),
+		}));
 	}
 
 	return body;

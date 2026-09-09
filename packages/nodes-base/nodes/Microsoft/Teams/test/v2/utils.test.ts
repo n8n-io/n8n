@@ -161,16 +161,20 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 		expect((body.body as { contentType: string }).contentType).toBe('html');
 	});
 
-	it('escapes the display name inside the token but leaves the mention data raw', () => {
+	it('escapes the marker text identically in the token and in mentionText', () => {
 		const body = prepareMessage.call(ctx, 'hi', 'html', false, undefined, [
 			mention('guid-1', 'A & B <Ops>'),
 		]);
 
-		expect((body.body as { content: string }).content).toBe(
-			'<at id="0">A &amp; B &lt;Ops&gt;</at> hi',
-		);
+		const content = (body.body as { content: string }).content;
+		expect(content).toBe('<at id="0">A &amp; B &lt;Ops&gt;</at> hi');
 		const emitted = body.mentions as Mention[];
-		expect(emitted[0].mentionText).toBe('A & B <Ops>');
+		// Graph finds the marker leniently but measures it with `mentionText.length`, so a raw
+		// name here against an escaped token makes it duplicate `</at>`'s tail into the message.
+		// The two must be the same string.
+		expect(emitted[0].mentionText).toBe('A &amp; B &lt;Ops&gt;');
+		expect(content).toContain(`<at id="0">${emitted[0].mentionText}</at>`);
+		// Metadata, not markup: Graph does not measure this one.
 		expect(emitted[0].mentioned.user.displayName).toBe('A & B <Ops>');
 	});
 });
@@ -261,8 +265,8 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 
 		const [resolved] = await resolveMentions.call(ctx, 0);
 
-		// Only the `<at>` inner text is escaped, downstream in `prepareMessage`. Escaping here
-		// too renders `A &amp;amp; B`.
+		// `Mention.mentionText` stays the raw name; `prepareMessage` escapes it for both the
+		// token and the payload. Escaping here too renders `A &amp;amp; B`.
 		expect(resolved.mentionText).toBe('A & B <Ops>');
 		expect(resolved.mentioned.user.displayName).toBe('A & B <Ops>');
 	});
