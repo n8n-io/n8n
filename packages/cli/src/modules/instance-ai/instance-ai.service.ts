@@ -28,6 +28,7 @@ import {
 	type InstanceAiThreadStatusResponse,
 	type InstanceContextInjection,
 	type InstanceContextReach,
+	INSTANCE_CONTEXT_SURFACE_DEPTH,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
@@ -108,6 +109,7 @@ import {
 	type WorkflowVerificationObligation,
 	type WorkSummary,
 	deriveInstanceContextReach,
+	mergeInstanceContextReach,
 	type RunTokenUsage,
 	type RunDebugRecord,
 	WorkflowTaskCoordinator,
@@ -705,6 +707,9 @@ export class InstanceAiService {
 
 	private readonly instanceAiConfig: InstanceAiConfig;
 
+	/** Whether the activity record accrues on this instance — the read's master switch. */
+	private readonly activityLogEnabled: boolean;
+
 	private readonly oauth2CallbackUrl: string;
 
 	private readonly webhookBaseUrl: string;
@@ -851,6 +856,7 @@ export class InstanceAiService {
 			this.workflowObligations,
 		);
 		this.instanceAiConfig = globalConfig.instanceAi;
+		this.activityLogEnabled = globalConfig.activityLog.enabled;
 		this.backgroundTasks = new BackgroundTaskManager(
 			MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
 			this.instanceAiConfig.maxConcurrentSubAgents,
@@ -4187,14 +4193,15 @@ export class InstanceAiService {
 				});
 				// A turn that suspended to ask something is a finished turn for this event's
 				// purposes — the question is the outcome being measured, not an interruption of it.
-				this.emitInstanceContextTurn({
+				const suspendedReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
+				this.emitInstanceContextTurnIfInPlay({
 					userId: user.id,
 					threadId,
 					runId,
 					segment: 'suspended',
 					status: 'suspended',
 					injection: contextInjection,
-					reach: deriveInstanceContextReach(result.workSummary?.toolCalls ?? []),
+					reach: suspendedReach,
 					workSummary: result.workSummary,
 					instanceContextEnabled,
 					nodeUsageEnabled,
@@ -4227,6 +4234,7 @@ export class InstanceAiService {
 							injection: contextInjection,
 							instanceContextEnabled,
 							nodeUsageEnabled,
+							reachSoFar: suspendedReach,
 						},
 					});
 					void this.suspendedThreads.persistPendingConfirmation({
@@ -4402,7 +4410,7 @@ export class InstanceAiService {
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
 			const contextReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
-			this.emitInstanceContextTurn({
+			this.emitInstanceContextTurnIfInPlay({
 				userId: user.id,
 				threadId,
 				runId,
@@ -5351,11 +5359,7 @@ export class InstanceAiService {
 			resumeTracing?: InstanceAiTraceContext;
 			unregisteredResumeTracing?: InstanceAiTraceContext;
 			/** This turn's instance context, carried across the suspension. */
-			instanceContext?: {
-				injection: InstanceContextInjection;
-				instanceContextEnabled: boolean;
-				nodeUsageEnabled: boolean;
-			};
+			instanceContext?: NonNullable<SuspendedRunState<User>['instanceContext']>;
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -5469,6 +5473,26 @@ export class InstanceAiService {
 					workSummary: result.workSummary,
 					usage: result.usage,
 				});
+				// A turn can stop to ask more than once, so the running total has to survive each
+				// stop. Dropping it here would lose every read before the last question.
+				const resumedSuspendedReach = mergeInstanceContextReach(
+					opts.instanceContext?.reachSoFar,
+					deriveInstanceContextReach(result.workSummary?.toolCalls ?? []),
+				);
+				if (opts.instanceContext) {
+					this.emitInstanceContextTurnIfInPlay({
+						userId: opts.user.id,
+						threadId: opts.threadId,
+						runId: opts.runId,
+						segment: 'suspended',
+						status: 'suspended',
+						injection: opts.instanceContext.injection,
+						reach: resumedSuspendedReach,
+						workSummary: result.workSummary,
+						instanceContextEnabled: opts.instanceContext.instanceContextEnabled,
+						nodeUsageEnabled: opts.instanceContext.nodeUsageEnabled,
+					});
+				}
 				if (result.suspension) {
 					const resumeMessageGroupId = this.tracing.getMessageGroupId(opts.runId);
 					this.runState.suspendRun(opts.threadId, {
@@ -5492,6 +5516,9 @@ export class InstanceAiService {
 						checkpoint: opts.checkpoint,
 						plannedBuild: opts.plannedBuild,
 						runHandoff: runControl.state,
+						...(opts.instanceContext
+							? { instanceContext: { ...opts.instanceContext, reachSoFar: resumedSuspendedReach } }
+							: {}),
 					});
 					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
@@ -5666,12 +5693,16 @@ export class InstanceAiService {
 				undefined,
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
-			// This segment's own reads. The reducer merges them into the entry the first
-			// segment opened rather than replacing it, so neither segment erases the other —
-			// and the deepest reads are often the ones that follow an approval.
-			const resumedContextReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
+			// Accumulated across the suspension, not just this segment. The resumed stream gets
+			// a fresh work summary holding only post-approval calls, and a suspension publishes
+			// no `run-finish`, so without this the reads taken before the question would never
+			// reach the trace at all.
+			const resumedContextReach = mergeInstanceContextReach(
+				opts.instanceContext?.reachSoFar,
+				deriveInstanceContextReach(result.workSummary?.toolCalls ?? []),
+			);
 			if (opts.instanceContext) {
-				this.emitInstanceContextTurn({
+				this.emitInstanceContextTurnIfInPlay({
 					userId: opts.user.id,
 					threadId: opts.threadId,
 					runId: opts.runId,
@@ -6441,6 +6472,29 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Characters per token for the block-size estimate.
+	 *
+	 * Deliberately not `estimateTokensByCharCount` from `@n8n/ai-utilities`, which has a
+	 * per-model ratio table: that module imports `js-tiktoken` at load time, and this runs
+	 * on every turn. A ratio is not worth pulling a tokenizer onto that path.
+	 */
+	private static readonly BLOCK_CHARS_PER_TOKEN = 4;
+
+	/**
+	 * Reports a turn only where the feature is in play on this instance.
+	 *
+	 * The off arm is the denominator the read-out needs, but only within the rollout. An
+	 * instance that never turned the record on can never enter it, so reporting its turns
+	 * would add a row per turn per instance forever and say nothing.
+	 */
+	private emitInstanceContextTurnIfInPlay(
+		input: Parameters<InstanceAiService['emitInstanceContextTurn']>[0],
+	): void {
+		if (!this.activityLogEnabled && !input.instanceContextEnabled) return;
+		this.emitInstanceContextTurn(input);
+	}
+
+	/**
 	 * One event per turn that could have carried instance context.
 	 *
 	 * Emitted in both arms, including turns that got no block, because the read-out is a
@@ -6482,12 +6536,19 @@ export class InstanceAiService {
 						block_event_rows: injection.legs.events,
 						block_run_rows: injection.legs.runs,
 						block_chars: injection.chars,
-						// The block is concatenated into the turn before anything tokenises it, so
-						// there is no exact figure to report here — only this estimate and the
-						// exact character count beside it.
-						block_tokens_estimated: Math.ceil(injection.chars / 4),
+						// An estimate, not a measurement: the block is concatenated into the turn
+						// before anything tokenises it, so no exact figure exists for the block
+						// alone. The exact character count sits beside it.
+						block_tokens_estimated: Math.ceil(
+							injection.chars / InstanceAiService.BLOCK_CHARS_PER_TOKEN,
+						),
 					}),
-			context_depth: input.reach.depth,
+			// Derived here rather than shipped: the depth is a function of the surfaces, and
+			// the map that defines it is in scope at the only place that needs a number.
+			context_depth: input.reach.surfaces.reduce(
+				(deepest, surface) => Math.max(deepest, INSTANCE_CONTEXT_SURFACE_DEPTH[surface]),
+				0,
+			),
 			context_surfaces: input.reach.surfaces,
 			asked_clarifying_question: input.workSummary?.askedClarifyingQuestion ?? false,
 			tool_calls: input.workSummary?.totalToolCalls ?? 0,

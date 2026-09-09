@@ -368,7 +368,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	INSTANCE_CONTEXT_TURN: {
 		name: 'Instance AI instance-context turn',
 		description:
-			'One event per assistant turn segment that could have carried instance context, in both arms of the rollout so a turn without a block has a denominator. Pairs what the turn was handed with how far it then went and whether it still had to ask the user something — the read-out the rollout is judged on is clarifying questions falling while build success holds. A turn that stops for a confirmation emits two rows sharing a `run_id`: count turns by distinct `run_id`, not by rows.',
+			'One turn segment that could have carried instance context. Emitted in both arms of the rollout, so a turn without a block has a denominator. A turn that stops for a confirmation emits a row per segment, all sharing a `run_id` — count turns by distinct `run_id`, not by rows.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string().optional(),
@@ -416,6 +416,8 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Deepest context surface the turn reached: 0 block only, 1 activity list, 2 activity expand or node-usage, 3 full workflow read. This is the "does it go deep?" measure',
 				),
+			// Mirrors `instanceContextSurfaceSchema` in `@n8n/api-types`, which this package
+			// cannot import. Keep the two lists equal.
 			context_surfaces: z
 				.array(z.enum(['activity-list', 'activity-expand', 'node-usage', 'workflow-read']))
 				.describe(

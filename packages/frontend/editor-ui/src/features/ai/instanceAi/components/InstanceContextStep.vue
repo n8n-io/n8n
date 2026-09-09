@@ -73,7 +73,14 @@ const label = computed<string>(() => {
 	return [head, legSummary.value, reachSummary.value].filter(Boolean).join(' — ');
 });
 
-const blockText = computed<string | undefined>(() => props.entry.block);
+/**
+ * Gated on the state, not just on presence. The block rides beside the injection rather
+ * than inside it, so an absent entry carrying a block is representable — and rendering it
+ * would put the block under a "nothing to read" label.
+ */
+const blockText = computed<string | undefined>(() =>
+	injection.value.state === 'injected' ? props.entry.block : undefined,
+);
 </script>
 
 <template>

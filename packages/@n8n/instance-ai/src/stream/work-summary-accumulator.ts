@@ -1,6 +1,8 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { z } from 'zod';
 
+import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
+
 // ── Schema (source of truth) ────────────────────────────────────────────────
 
 export const toolCallSummarySchema = z.object({
@@ -19,6 +21,10 @@ export const toolCallSummarySchema = z.object({
 	 *
 	 * A flag rather than the args themselves: this summary is persisted, and the node types
 	 * a user asked about are not worth keeping to answer a yes/no question.
+	 *
+	 * Set only for the `workflows` tool. Other tools take a required `nodeTypes` argument
+	 * that means something else, and recording it for them would make this field's name
+	 * describe the wrong thing on its most frequent caller.
 	 */
 	filteredByNodeTypes: z.literal(true).optional(),
 	succeeded: z.boolean(),
@@ -74,7 +80,10 @@ export class WorkSummaryAccumulator {
 				const { toolCallId, toolName, args } = event.payload;
 				if (!toolCallId) break;
 				const action = typeof args?.action === 'string' ? args.action : undefined;
-				const filteredByNodeTypes = Array.isArray(args?.nodeTypes) && args.nodeTypes.length > 0;
+				const filteredByNodeTypes =
+					toolName === DOMAIN_TOOL_IDS.WORKFLOWS &&
+					Array.isArray(args?.nodeTypes) &&
+					args.nodeTypes.length > 0;
 				this.calls.set(toolCallId, {
 					toolCallId,
 					toolName,

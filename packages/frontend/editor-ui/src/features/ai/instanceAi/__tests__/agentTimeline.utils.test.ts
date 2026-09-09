@@ -819,10 +819,7 @@ describe('buildTimelineBlocks — instance context', () => {
 		block: '<instance-context>x</instance-context>',
 	};
 
-	/**
-	 * It belongs inside the collapsible trace, not beside it: the criterion is that
-	 * expanding the trace reveals it, and standalone it would read as its own message.
-	 */
+	/** Inside the collapsible trace, not beside it — standalone it reads as its own message. */
 	test('puts the entry inside a thinking block rather than standing it alone', () => {
 		const blocks = buildTimelineBlocks([contextEntry], {}, {}, 'completed');
 

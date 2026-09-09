@@ -23,7 +23,11 @@ vi.mock('@n8n/instance-ai', async () => {
 		// Wiring-only stub, as above: the derivation has its own unit tests
 		// (instance-ai/src/stream/__tests__/instance-context-reach.test.ts). These tests pin
 		// that a resumed segment still reaches its terminal, not what it derived.
-		deriveInstanceContextReach: vi.fn(() => ({ depth: 0, surfaces: [] })),
+		deriveInstanceContextReach: vi.fn(() => ({ surfaces: [] })),
+		mergeInstanceContextReach: vi.fn(
+			(earlier?: { surfaces: string[] }, later?: { surfaces: string[] }) =>
+				later ?? earlier ?? { surfaces: [] },
+		),
 		isSetupPanelEnabled: (context: { setupItemsEmitter?: unknown }) =>
 			context.setupItemsEmitter !== undefined,
 		createSetupItemsEmitter: vi.fn(() => ({

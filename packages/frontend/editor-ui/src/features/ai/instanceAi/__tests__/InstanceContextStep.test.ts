@@ -67,10 +67,7 @@ describe('InstanceContextStep', () => {
 		).toContain('Read new instance activity');
 	});
 
-	/**
-	 * Collapsed by default and revealed on expand — the acceptance criterion is that
-	 * expanding the trace is what shows it, not that it sits open in the transcript.
-	 */
+	/** Collapsed by default: expanding is what shows it, not the transcript. */
 	it('shows the block once expanded, which is the record the chat transcript strips', async () => {
 		const { getByRole, queryByText, getByText } = renderComponent({
 			props: { entry: injected() },
@@ -100,9 +97,9 @@ describe('InstanceContextStep', () => {
 		expect(text).not.toContain('Read instance context');
 	});
 
-	it('names the surfaces the turn reached for, rather than a depth number', () => {
+	it('names each surface the turn used', () => {
 		const entry = injected({
-			reach: { depth: 3, surfaces: ['activity-list', 'workflow-read'] },
+			reach: { surfaces: ['activity-list', 'workflow-read'] },
 		});
 
 		const label = renderComponent({ props: { entry } }).getByTestId(
@@ -111,11 +108,10 @@ describe('InstanceContextStep', () => {
 
 		expect(label).toContain('listed more activity');
 		expect(label).toContain('read a workflow in full');
-		expect(label).not.toContain('depth');
 	});
 
 	it('says nothing about reach on a turn that only used the block', () => {
-		const entry = injected({ reach: { depth: 0, surfaces: [] } });
+		const entry = injected({ reach: { surfaces: [] } });
 
 		const label = renderComponent({ props: { entry } }).getByTestId(
 			'instance-ai-context-step',

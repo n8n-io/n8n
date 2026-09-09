@@ -2,6 +2,7 @@ import type {
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiThreadStatusResponse,
 	InstanceContextInjection,
+	InstanceContextReach,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -69,6 +70,14 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 		injection: InstanceContextInjection;
 		instanceContextEnabled: boolean;
 		nodeUsageEnabled: boolean;
+		/**
+		 * Surfaces this turn had already used when it stopped to ask.
+		 *
+		 * Carried because a suspension publishes no `run-finish`, and the resumed segment
+		 * gets a fresh work summary holding only post-approval calls. Without this the
+		 * reads taken before the question would never reach the trace.
+		 */
+		reachSoFar: InstanceContextReach;
 	};
 }
 

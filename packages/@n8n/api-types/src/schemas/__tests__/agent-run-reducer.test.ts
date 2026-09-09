@@ -286,81 +286,39 @@ describe('agent-run-reducer', () => {
 				agentId: 'root',
 				payload: {
 					status: 'completed',
-					contextReach: { depth: 2, surfaces: ['activity-expand'] },
+					contextReach: { surfaces: ['activity-expand'] },
 				},
 			});
 
 			const entry = state.agentsById.root.timeline[0];
 			expect(entry.type).toBe('instance-context');
 			if (entry.type !== 'instance-context') throw new Error('unreachable');
-			expect(entry.reach).toEqual({ depth: 2, surfaces: ['activity-expand'] });
+			expect(entry.reach).toEqual({ surfaces: ['activity-expand'] });
 		});
 
 		/**
-		 * A turn that stops for a confirmation finishes in two segments, each reporting only
-		 * its own reads. Replacing would let the second erase the first — and the reads after
-		 * an approval are often the deepest.
+		 * A suspension emits no `run-finish`, so this arrives once per turn with every
+		 * segment's surfaces already accumulated. Accumulation is tested where it happens:
+		 * `mergeInstanceContextReach` in instance-ai.
 		 */
-		it('merges the reach of a turn that finished in two segments', () => {
+		it('completes the entry with the surfaces the turn used, on run-finish', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
 
-			const finishWith = (reach: { depth: 0 | 1 | 2 | 3; surfaces: string[] }) =>
-				reduceEvent(state, {
-					type: 'run-finish',
-					runId: 'run-1',
-					agentId: 'root',
-					payload: { status: 'completed', contextReach: reach },
-				} as Parameters<typeof reduceEvent>[1]);
-
-			finishWith({ depth: 1, surfaces: ['activity-list'] });
-			finishWith({ depth: 3, surfaces: ['workflow-read'] });
-
-			const entry = state.agentsById.root.timeline[0];
-			if (entry.type !== 'instance-context') throw new Error('unreachable');
-			expect(entry.reach).toEqual({ depth: 3, surfaces: ['activity-list', 'workflow-read'] });
-		});
-
-		it('reads the same however the two segments arrive, since replay can reorder them', () => {
-			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
-
-			const finishWith = (reach: { depth: 0 | 1 | 2 | 3; surfaces: string[] }) =>
-				reduceEvent(state, {
-					type: 'run-finish',
-					runId: 'run-1',
-					agentId: 'root',
-					payload: { status: 'completed', contextReach: reach },
-				} as Parameters<typeof reduceEvent>[1]);
-
-			finishWith({ depth: 3, surfaces: ['workflow-read'] });
-			finishWith({ depth: 1, surfaces: ['activity-list'] });
+			reduceEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					status: 'completed',
+					contextReach: { surfaces: ['activity-list', 'workflow-read'] },
+				},
+			});
 
 			const entry = state.agentsById.root.timeline[0];
+			expect(entry.type).toBe('instance-context');
 			if (entry.type !== 'instance-context') throw new Error('unreachable');
-			expect(entry.reach?.depth).toBe(3);
-			expect([...(entry.reach?.surfaces ?? [])].sort()).toEqual(['activity-list', 'workflow-read']);
-		});
-
-		it('does not repeat a surface both segments used', () => {
-			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
-
-			for (let i = 0; i < 2; i++) {
-				reduceEvent(state, {
-					type: 'run-finish',
-					runId: 'run-1',
-					agentId: 'root',
-					payload: {
-						status: 'completed',
-						contextReach: { depth: 2, surfaces: ['activity-expand'] },
-					},
-				} as Parameters<typeof reduceEvent>[1]);
-			}
-
-			const entry = state.agentsById.root.timeline[0];
-			if (entry.type !== 'instance-context') throw new Error('unreachable');
-			expect(entry.reach).toEqual({ depth: 2, surfaces: ['activity-expand'] });
+			expect(entry.reach).toEqual({ surfaces: ['activity-list', 'workflow-read'] });
 		});
 
 		it('leaves the reach unset when the run reported none', () => {

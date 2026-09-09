@@ -255,11 +255,13 @@ export class PostHogClient {
 			overrides[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] = true;
 		}
 
-		// One flag over both sides of instance-activity context, so the env var that turns
-		// the record on is also the one that turns reading it back on. They are coupled
-		// deliberately — see the flag's own note — and a single override keeps the operator
-		// from being able to put them in a state the feature does not support.
-		if (this.globalConfig.activityLog.enabled) {
+		// One flag over both sides of instance-activity context, so the env var that turns the
+		// record on is also the one that turns reading it back on.
+		//
+		// Yields to an explicit override. Without the guard, setting this flag to `false`
+		// through `N8N_FEATURE_FLAG_OVERRIDES` would be silently ignored on any instance with
+		// the record on, which takes away the operator's only way to stop the read.
+		if (this.globalConfig.activityLog.enabled && !(INSTANCE_ACTIVITY_CONTEXT_FLAG in overrides)) {
 			overrides[INSTANCE_ACTIVITY_CONTEXT_FLAG] = true;
 		}
 

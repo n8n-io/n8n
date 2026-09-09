@@ -285,25 +285,6 @@ export function isSafeObjectKey(key: string): boolean {
 // Instance context: what a turn was handed, and how far it then went
 // ---------------------------------------------------------------------------
 
-/**
- * A context surface the agent can call, mapped to how deep a read it is.
- *
- * Depth is what makes "does it go deep?" answerable as one number, and the two
- * surfaces sharing depth 2 genuinely tie: opening one entry's own history and
- * summarising which node types a project uses are different questions asked at the
- * same remove from the block. Ranking them against each other would invent an order
- * the feature does not have, so a turn reports its deepest depth AND which surfaces
- * it used, rather than one name standing in for both.
- */
-export const INSTANCE_CONTEXT_SURFACE_DEPTH = {
-	'activity-list': 1,
-	'activity-expand': 2,
-	'node-usage': 2,
-	'workflow-read': 3,
-} as const;
-
-export type InstanceContextSurface = keyof typeof INSTANCE_CONTEXT_SURFACE_DEPTH;
-
 export const instanceContextSurfaceSchema = z.enum([
 	'activity-list',
 	'activity-expand',
@@ -311,16 +292,35 @@ export const instanceContextSurfaceSchema = z.enum([
 	'workflow-read',
 ]);
 
+export type InstanceContextSurface = z.infer<typeof instanceContextSurfaceSchema>;
+
+/**
+ * How deep a read each surface is. Typed against the schema above, so adding a surface
+ * to one and not the other fails to compile rather than silently going uncounted.
+ *
+ * The two surfaces at 2 genuinely tie. Opening one entry's history and summarising a
+ * project's node types are different questions asked at the same remove from the block,
+ * so a turn reports which surfaces it used and the depth is derived from them.
+ */
+export const INSTANCE_CONTEXT_SURFACE_DEPTH: Record<InstanceContextSurface, 0 | 1 | 2 | 3> = {
+	'activity-list': 1,
+	'activity-expand': 2,
+	'node-usage': 2,
+	'workflow-read': 3,
+};
+
 export const instanceContextReachSchema = z.object({
-	depth: z
-		.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)])
-		.describe('Deepest surface reached. 0 means the block was all the turn used.'),
 	surfaces: z
 		.array(instanceContextSurfaceSchema)
-		.describe('Surfaces called this turn, de-duplicated, in first-call order. Empty at depth 0.'),
+		.describe('Surfaces called this turn, de-duplicated, in first-call order. Empty if none.'),
 });
 
-/** How far a turn went for instance context, beyond the block it was handed. */
+/**
+ * How far a turn went for instance context, beyond the block it was handed.
+ *
+ * Surfaces only. A depth is `max(INSTANCE_CONTEXT_SURFACE_DEPTH)` over them, so carrying
+ * it here would ship derived data next to its source and let the two disagree.
+ */
 export type InstanceContextReach = z.infer<typeof instanceContextReachSchema>;
 
 export const instanceContextLegsSchema = z.object({
@@ -2426,10 +2426,14 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
  * `<instance-context>` block, the `activity` tool, and the skill that explains them.
  *
  * One flag over the whole feature rather than one per side. `N8N_ACTIVITY_LOG_ENABLED`
- * is the single operator control: it decides whether the record accrues at all, and it
- * force-enables this flag, so an instance cannot be left reading a log nothing writes.
- * The read is useless without the write — the edit leg would be permanently empty — and
- * the write is pointless without a reader.
+ * is the single operator control: it decides whether the record accrues, and it
+ * force-enables this flag unless an explicit override says otherwise. The read is
+ * useless without the write — the edit leg would be permanently empty — and the write is
+ * pointless without a reader.
+ *
+ * The coupling runs one way. Turning the record on turns the read on, but PostHog can
+ * still enable the read where the record is off, which renders the workflow and run legs
+ * with a permanently empty edit leg. Those two legs do not come from the log.
  *
  * Within an instance that has the record on, this flag stages the read per user, which
  * is what the rollout ramps and what a token regression rolls back. The write side stays
@@ -2437,21 +2441,10 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
  * `createdAt` for PostHog to evaluate against, so gating it per user would cost a user
  * lookup on every recorded event to buy nothing the env var does not already give.
  *
- * ## When to roll this back
- *
- * Agreed before the rollout rather than argued during one. Roll back if either holds:
- *
- * 1. An agent starts treating *recent* as *relevant* — answering about the last thing
- *    that happened rather than what was asked. That is worse than no block at all,
- *    because a reader cannot tell it from the agent simply being wrong.
- * 2. Median turn tokens rise past the measured control-arm cost of +9% with no matching
- *    fall in clarifying questions. Paying for context that changes no behaviour is the
- *    whole failure mode; the pair is what makes it visible.
- *
- * The win condition is the pair, not either half: **clarifying questions fall and build
- * success does not.** Fewer questions with worse builds is a regression wearing a win's
- * clothes, so neither number is read alone. `INSTANCE_CONTEXT_TURN` telemetry carries
- * both sides — block presence against `asked_clarifying_question`, per turn.
+ * Roll the read back if the agent starts answering about the most recent thing rather
+ * than the question, or if turn tokens rise with no matching fall in clarifying
+ * questions. Watch both numbers together: fewer questions with worse builds is a
+ * regression, not a win. `INSTANCE_CONTEXT_TURN` carries both sides per turn.
  */
 export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '111_instance_activity_context';
 
