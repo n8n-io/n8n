@@ -6,8 +6,10 @@ import type {
 } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
+import { Container } from '@n8n/di';
+import { OperationalError, UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -25,9 +27,17 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../agent-sandbox-principal';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
+import { AgentWakeService } from '../background/agent-wake.service';
+import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
+import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { ToolRegistry } from '../tool-registry';
+
+const aiConfigMock = mock<AiConfig>({
+	modelStreamIdleTimeoutMs: 90_000,
+	modelStreamFirstOutputTimeoutMs: 180_000,
+});
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -128,6 +138,19 @@ function makeService(sandboxEnabled = false) {
 		isEnabled: () => sandboxEnabled,
 	});
 	const agentRepository = mock<AgentRepository>();
+	const chatIntegrationService = mock<ChatIntegrationService>();
+	const bridge = mock<AgentChatBridge>();
+	Container.set(ChatIntegrationService, chatIntegrationService);
+	chatIntegrationService.getBridge.mockReturnValue(bridge);
+	integrationMessageContextService.getLatest.mockResolvedValue({
+		integrationConnectionId: 'slack:credential-1',
+		platform: 'slack',
+		target: { type: 'thread', threadId: 'slack:other-channel:2' },
+		replyTarget: { type: 'thread', threadId: 'slack:channel-1:1' },
+		updatedAt: new Date().toISOString(),
+	});
+	const wakeService = mock<AgentWakeService>();
+	Container.set(AgentWakeService, wakeService);
 
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
@@ -144,6 +167,7 @@ function makeService(sandboxEnabled = false) {
 		externalHooks,
 		agentSandboxRuntimeService,
 		agentRepository,
+		aiConfigMock,
 	);
 
 	return {
@@ -157,6 +181,9 @@ function makeService(sandboxEnabled = false) {
 		externalHooks,
 		agentSandboxRuntimeService,
 		agentRepository,
+		wakeService,
+		chatIntegrationService,
+		bridge,
 	};
 }
 
@@ -200,6 +227,10 @@ function delegatedPending(
 describe('AgentExecutionOrchestratorService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	afterEach(() => {
+		Container.reset();
 	});
 
 	it('starts durable recording before consuming timeline events and finalizes the same row', async () => {
@@ -294,6 +325,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				},
 				executionCounter: expect.any(Object),
 				abortSignal: abortController.signal,
+				modelStreamIdleTimeoutMs: 90_000,
+				modelStreamFirstOutputTimeoutMs: 180_000,
 			}),
 		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
@@ -703,6 +736,223 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('requests pending job results after a chat turn and ignores request errors', async () => {
+		const first = makeService();
+		first.runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+
+		await collect(
+			first.service.executeForChat({
+				agentId,
+				projectId,
+				message: 'hello',
+				user,
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+			}),
+		);
+
+		expect(first.wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
+
+		const failing = makeService();
+		failing.runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+		failing.wakeService.onParentTurnFinished.mockRejectedValue(
+			new Error('wake service unavailable'),
+		);
+
+		await expect(
+			collect(
+				failing.service.executeForChat({
+					agentId,
+					projectId,
+					message: 'hello',
+					user,
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				}),
+			),
+		).resolves.toEqual(expect.any(Array));
+	});
+
+	it('runs a draft wake without a chat client and hides its input from execution history', async () => {
+		const { service, runtimeCacheService, executionService, externalHooks, wakeService, bridge } =
+			makeService();
+		const runtime = makeRuntime([
+			{ type: 'text-start', id: 'text-1' },
+			{ type: 'text-delta', id: 'text-1', delta: 'Handled the background result.' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const abortSignal = new AbortController().signal;
+
+		await service.executeForWake({
+			agentId,
+			projectId,
+			message: '<background-jobs-settled>[]</background-jobs-settled>',
+			memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+			identity: { type: 'draft', user, principalHash: userPrincipalHash },
+			abortSignal,
+		});
+
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+			agentId,
+			projectId,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			usePublishedVersion: false,
+			user,
+			sandboxPrincipalHash: userPrincipalHash,
+		});
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			'<background-jobs-settled>[]</background-jobs-settled>',
+			expect.objectContaining({ abortSignal }),
+		);
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({ userMessage: null }),
+			expect.any(Date),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({
+				userMessage: null,
+				record: expect.objectContaining({
+					assistantResponse: 'Handled the background result.',
+				}),
+			}),
+		);
+		expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
+		// Draft wakes skip the quota hook and do not trigger another wake.
+		expect(externalHooks.run).not.toHaveBeenCalled();
+		expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
+	});
+
+	it.each(['draft', 'published'] as const)(
+		'records a failed %s wake without delivering its output',
+		async (type) => {
+			const { service, runtimeCacheService, executionService, wakeService, bridge } = makeService();
+			const cause = new Error('provider unavailable');
+			runtimeCacheService.getRuntime.mockResolvedValue(
+				makeRuntime([
+					{ type: 'error', error: cause },
+					{ type: 'finish', finishReason: 'error' },
+				]),
+			);
+
+			await expect(
+				service.executeForWake({
+					agentId,
+					projectId,
+					message: '<background-jobs-settled>[]</background-jobs-settled>',
+					memory: {
+						threadId: 'thread-1',
+						resourceId: type === 'draft' ? 'draft-chat:user-1' : 'integration:slack:user-1',
+					},
+					identity:
+						type === 'draft'
+							? { type, user, principalHash: userPrincipalHash }
+							: { type, integrationType: 'slack', principalHash: integrationPrincipalHash },
+					abortSignal: new AbortController().signal,
+				}),
+			).rejects.toBeInstanceOf(OperationalError);
+
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({ userMessage: null }),
+			);
+			expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
+			expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
+		},
+	);
+
+	it('delivers a published wake through the stored connection and reply thread', async () => {
+		const { service, runtimeCacheService, externalHooks, chatIntegrationService, bridge } =
+			makeService();
+		const chunks: StreamChunk[] = [
+			{ type: 'text-delta', id: 'text-1', delta: 'The job is done.' },
+			{ type: 'finish', finishReason: 'stop' },
+		];
+		const runtime = makeRuntime(chunks);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await service.executeForWake({
+			agentId,
+			projectId,
+			message: '<background-jobs-settled>[]</background-jobs-settled>',
+			memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+			identity: {
+				type: 'published',
+				integrationType: 'slack',
+				principalHash: integrationPrincipalHash,
+			},
+			abortSignal: new AbortController().signal,
+		});
+
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+			agentId,
+			projectId,
+			integrationType: 'slack',
+			usePublishedVersion: true,
+			sandboxPrincipalHash: integrationPrincipalHash,
+		});
+		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
+		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(agentId, 'slack', 'credential-1');
+		expect(bridge.deliverWakeResponse).toHaveBeenCalledWith('slack:channel-1:1', chunks);
+	});
+
+	it('rejects a wake when chat delivery fails and releases the runtime', async () => {
+		const { service, runtimeCacheService, bridge } = makeService();
+		const runtime = makeRuntime();
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const error = new Error('Slack is unavailable');
+		bridge.deliverWakeResponse.mockRejectedValue(error);
+
+		await expect(
+			service.executeForWake({
+				agentId,
+				projectId,
+				message: '<background-jobs-settled>[]</background-jobs-settled>',
+				memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+				identity: {
+					type: 'published',
+					integrationType: 'slack',
+					principalHash: integrationPrincipalHash,
+				},
+				abortSignal: new AbortController().signal,
+			}),
+		).rejects.toBe(error);
+
+		expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledWith(runtime.agent);
+	});
+
+	it.each(['context', 'connection'] as const)(
+		'does not start a wake when its reply %s is missing',
+		async (missing) => {
+			const {
+				service,
+				runtimeCacheService,
+				integrationMessageContextService,
+				chatIntegrationService,
+				bridge,
+			} = makeService();
+			if (missing === 'context') integrationMessageContextService.getLatest.mockResolvedValue(null);
+			else chatIntegrationService.getBridge.mockReturnValue(undefined);
+
+			await expect(
+				service.executeForWake({
+					agentId,
+					projectId,
+					message: '<background-jobs-settled>[]</background-jobs-settled>',
+					memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+					identity: {
+						type: 'published',
+						integrationType: 'slack',
+						principalHash: integrationPrincipalHash,
+					},
+					abortSignal: new AbortController().signal,
+				}),
+			).rejects.toBeInstanceOf(OperationalError);
+
+			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+			expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
+		},
+	);
+
 	it('adds the max-iterations assistant text before the finish chunk and persists it', async () => {
 		const { service, executionService } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'max-iterations' }]);
@@ -847,8 +1097,14 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('rejects expired checkpoints and resumes active checkpoints without passing resourceId', async () => {
-		const { service, checkpointStorage, runtimeCacheService, executionService, externalHooks } =
-			makeService();
+		const {
+			service,
+			checkpointStorage,
+			runtimeCacheService,
+			executionService,
+			externalHooks,
+			wakeService,
+		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
 		checkpointStorage.getStatus.mockResolvedValueOnce({ status: 'expired' });
@@ -895,6 +1151,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 		expect(externalHooks.run).not.toHaveBeenCalled();
+		// After the resumed turn, request any job results that arrived during the approval wait.
+		expect(wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',

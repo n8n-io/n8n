@@ -971,6 +971,15 @@ export class AgentRuntimeReconstructionService {
 					instrumentation,
 					...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				});
+
+				agent.volatileInstructionsProvider(async ({ persistence }) => {
+					if (!persistence?.threadId) return undefined;
+					const { AgentWakeService } = await import('./background/agent-wake.service.js');
+					return await Container.get(AgentWakeService).getBackgroundUpdates(
+						persistence.threadId,
+						persistence.resourceId,
+					);
+				});
 			}
 		}
 

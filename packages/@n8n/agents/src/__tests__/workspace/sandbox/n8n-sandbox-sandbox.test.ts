@@ -118,8 +118,15 @@ describe('start()', () => {
 			await sandbox.start();
 
 			expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
-			expect(mockCreateSandbox.mock.calls[0]).toEqual([]);
+			expect(mockCreateSandbox).toHaveBeenCalledWith({});
 			expect(sandbox.id).toBe('sb-123');
+		});
+
+		it('passes ephemeral through to createSandbox', async () => {
+			const sandbox = new N8nSandboxServiceSandbox({ ...makeDefaultOptions(), ephemeral: true });
+			await sandbox.start();
+
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ ephemeral: true });
 		});
 
 		it('times out stalled creation and removes a sandbox created after the timeout', async () => {
@@ -156,6 +163,20 @@ describe('start()', () => {
 			expect(mockCreateSandbox).toHaveBeenCalledWith({ id });
 			expect(mockGetSandbox).not.toHaveBeenCalled();
 			expect(sandbox.id).toBe(id);
+		});
+
+		it('passes ephemeral alongside the configured id', async () => {
+			const id = '33333333-3333-4333-8333-333333333333';
+			mockCreateSandbox.mockResolvedValue(makeSandboxRecord({ id }));
+
+			const sandbox = new N8nSandboxServiceSandbox({
+				...makeDefaultOptions(),
+				id,
+				ephemeral: true,
+			});
+			await sandbox.start();
+
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ id, ephemeral: true });
 		});
 
 		it('does not delete a deterministic sandbox when creation times out', async () => {

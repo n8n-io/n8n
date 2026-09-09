@@ -1068,6 +1068,8 @@ watch(
 </template>
 
 <style lang="scss">
+@use '@/app/css/variables' as *;
+
 .parameter-input-list-wrapper {
 	--input--color--background--disabled: var(--color--background);
 	.icon-button {

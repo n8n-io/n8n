@@ -28,8 +28,8 @@
     "watch": "tsc --watch --project tsconfig.build.json"
   },
   "dependencies": {
-    "@typescript-eslint/typescript-estree": "^8.35.0",
-    "@typescript-eslint/utils": "^8.35.0",
+    "@typescript-eslint/typescript-estree": "catalog:",
+    "@typescript-eslint/utils": "catalog:",
     "fastest-levenshtein": "catalog:"
   },
   "devDependencies": {
@@ -37,7 +37,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "n8n-workflow": "workspace:*",
-    "@typescript-eslint/rule-tester": "^8.35.0",
+    "@typescript-eslint/rule-tester": "catalog:",
     "eslint-doc-generator": "^2.2.2",
     "eslint-plugin-eslint-plugin": "^7.0.0",
     "rimraf": "catalog:",

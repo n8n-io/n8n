@@ -10,6 +10,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
+import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import { z } from 'zod';
 
@@ -75,10 +76,6 @@ const submitStepSchema = z.object({
 		.optional()
 		.describe('Required for kind="final": a short final answer string.'),
 });
-
-function isUnknownArray(value: unknown): value is unknown[] {
-	return Array.isArray(value);
-}
 
 function asString(value: unknown): string | undefined {
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
