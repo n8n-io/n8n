@@ -1,6 +1,11 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
-import { CredentialsRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import type { PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -43,6 +48,7 @@ describe('EvalThreadRestoreService.restoreDataTables (seed rows)', () => {
 			Container.get(WorkflowRepository),
 			Container.get(SharedWorkflowRepository),
 			Container.get(CredentialsRepository),
+			Container.get(WorkflowPublishedVersionRepository),
 			dataTableService,
 			Container.get(PolicyEnforcementService),
 			mock<WorkflowHistoryService>(),
@@ -125,6 +131,7 @@ describe('EvalThreadRestoreService.reseedDataTableRows', () => {
 			Container.get(WorkflowRepository),
 			Container.get(SharedWorkflowRepository),
 			Container.get(CredentialsRepository),
+			Container.get(WorkflowPublishedVersionRepository),
 			dataTableService,
 			Container.get(PolicyEnforcementService),
 			mock<WorkflowHistoryService>(),
@@ -220,6 +227,7 @@ describe('EvalThreadRestoreService.restoreWorkflows (policy seal)', () => {
 			workflowRepository,
 			Container.get(SharedWorkflowRepository),
 			Container.get(CredentialsRepository),
+			Container.get(WorkflowPublishedVersionRepository),
 			Container.get(DataTableService),
 			Container.get(PolicyEnforcementService),
 			mock<WorkflowHistoryService>(),

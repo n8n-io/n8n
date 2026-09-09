@@ -7,6 +7,7 @@ import type {
 	SharedWorkflowRepository,
 	User,
 	WorkflowEntity,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
@@ -40,6 +41,7 @@ describe('EvalThreadRestoreService', () => {
 	const workflowRepo = mock<WorkflowRepository>();
 	const sharedWorkflowRepo = mock<SharedWorkflowRepository>();
 	const credentialsRepo = mock<CredentialsRepository>();
+	const workflowPublishedVersionRepo = mock<WorkflowPublishedVersionRepository>();
 	const dataTableService = mock<DataTableService>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
@@ -48,6 +50,7 @@ describe('EvalThreadRestoreService', () => {
 		workflowRepo,
 		sharedWorkflowRepo,
 		credentialsRepo,
+		workflowPublishedVersionRepo,
 		dataTableService,
 		policyEnforcementService,
 		workflowHistoryService,
@@ -206,7 +209,7 @@ describe('EvalThreadRestoreService', () => {
 		expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(user, 'wf-live');
 	});
 
-	it('unpublishes the seeds it already published when a later activation is refused', async () => {
+	it('unpublishes every seed it attempted when an activation fails, the failed one included', async () => {
 		const user = mock<User>();
 		workflowService.activateWorkflow
 			.mockResolvedValueOnce(mock<WorkflowEntity>())
@@ -222,7 +225,22 @@ describe('EvalThreadRestoreService', () => {
 			),
 		).rejects.toThrow('Workflow has no trigger');
 
-		expect(workflowService.deactivateWorkflowAsSystem).toHaveBeenCalledExactlyOnceWith('wf-first');
+		// The failed seed too: activation can throw after its triggers are registered.
+		expect(workflowService.deactivateWorkflowAsSystem.mock.calls).toEqual([
+			['wf-first'],
+			['wf-second'],
+		]);
+	});
+
+	it("waits for a published seed's publication teardown before the rollback deletes it", async () => {
+		workflowPublishedVersionRepo.getPublishedVersionId
+			.mockResolvedValueOnce('version-live')
+			.mockResolvedValueOnce(null);
+
+		await service.deleteWorkflows(['wf-live']);
+
+		expect(workflowPublishedVersionRepo.getPublishedVersionId).toHaveBeenCalledTimes(2);
+		expect(workflowRepo.delete).toHaveBeenCalledExactlyOnceWith({ id: 'wf-live' });
 	});
 
 	it('does not re-grant ownership when the workflow already exists in this project', async () => {

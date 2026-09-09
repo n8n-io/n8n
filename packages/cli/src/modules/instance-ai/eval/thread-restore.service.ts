@@ -8,6 +8,7 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	CredentialsRepository,
 	SharedWorkflowRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	type User,
 	type WorkflowEntity,
@@ -69,6 +70,7 @@ export class EvalThreadRestoreService {
 		private readonly workflowRepo: WorkflowRepository,
 		private readonly sharedWorkflowRepo: SharedWorkflowRepository,
 		private readonly credentialsRepo: CredentialsRepository,
+		private readonly workflowPublishedVersionRepo: WorkflowPublishedVersionRepository,
 		private readonly dataTableService: DataTableService,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
@@ -262,19 +264,21 @@ export class EvalThreadRestoreService {
 
 	/** Publish the seeds flagged `published` on the product's own activation path,
 	 *  so the workflow is live the way the user's publish left it. Run last: a
-	 *  refusal (unresolved credential, no trigger) fails the whole restore. Seeds
-	 *  published before the refusal are unpublished again, because the rollback
-	 *  only deletes rows and would leave their triggers registered. */
+	 *  refusal (unresolved credential, no trigger) fails the whole restore. Every
+	 *  seed attempted is unpublished again on failure, because the rollback only
+	 *  deletes rows and would leave registered triggers behind; a seed refused
+	 *  before activation has no live version, so its unpublish is a no-op. */
 	async publishSeedWorkflows(workflows: InstanceAiEvalSeedWorkflow[], user: User): Promise<void> {
-		const activated: string[] = [];
+		const attempted: string[] = [];
 		try {
 			for (const workflow of workflows) {
 				if (!workflow.published) continue;
+				// Before the await: activation can throw after its triggers are registered.
+				attempted.push(workflow.id);
 				await this.workflowService.activateWorkflow(user, workflow.id);
-				activated.push(workflow.id);
 			}
 		} catch (error) {
-			for (const id of activated) {
+			for (const id of attempted) {
 				try {
 					await this.workflowService.deactivateWorkflowAsSystem(id);
 				} catch {
@@ -289,10 +293,24 @@ export class EvalThreadRestoreService {
 	async deleteWorkflows(workflowIds: string[]): Promise<void> {
 		for (const id of workflowIds) {
 			try {
+				await this.awaitPublicationTeardown(id);
 				await this.workflowRepo.delete({ id });
 			} catch {
 				// best-effort
 			}
+		}
+	}
+
+	/** On the publication service an unpublish only enqueues the teardown: the
+	 *  published-version mapping goes once the consumer has torn the triggers
+	 *  down, and its RESTRICT FK blocks the delete until then. Wait for it,
+	 *  bounded, so a slow consumer costs seconds rather than a leaked seed. Off
+	 *  the service no mapping is ever written, so this returns at once. */
+	private async awaitPublicationTeardown(workflowId: string): Promise<void> {
+		const deadline = Date.now() + 10_000;
+		while (await this.workflowPublishedVersionRepo.getPublishedVersionId(workflowId)) {
+			if (Date.now() >= deadline) return;
+			await new Promise((resolve) => setTimeout(resolve, 200));
 		}
 	}
 
