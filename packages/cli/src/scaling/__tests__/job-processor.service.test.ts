@@ -2765,6 +2765,242 @@ describe('JobProcessor', () => {
 			await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
 			expect(cancel).not.toHaveBeenCalled();
 		});
+		it('reports a timeout when the engine cancels the run itself past the deadline', async () => {
+			vi.useFakeTimers();
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: {
+						id: 'workflow-id',
+						nodes: [],
+						staticData: {},
+						settings: { executionTimeout: 5 },
+					},
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const cancel = vi.fn();
+			let resolveRun!: (run: IRun) => void;
+			const runPromise = new Promise<IRun>((resolve) => {
+				resolveRun = resolve;
+			});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const eventService = mock<EventService>();
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				eventService,
+				mock(),
+			);
+
+			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+			const processing = jobProcessor.processJob(job);
+			const assertion = expect(processing).rejects.toThrow(TimeoutExecutionCancelledError);
+
+			await vi.advanceTimersByTimeAsync(0);
+
+			// The engine's own between-node check cancels first: move the clock past the deadline
+			// without letting the watchdog's timer run.
+			vi.setSystemTime(Date.now() + 6_000);
+			resolveRun(mock<IRun>({ status: 'canceled' }));
+
+			await assertion;
+
+			expect(cancel).not.toHaveBeenCalled();
+		});
+
+		it('reports a timeout when a run ignores the watchdog and reaches completion', async () => {
+			vi.useFakeTimers();
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: {
+						id: 'workflow-id',
+						nodes: [],
+						staticData: {},
+						settings: { executionTimeout: 5 },
+					},
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			// A node that never observes its cancel signal keeps running to completion.
+			const cancel = vi.fn();
+			let resolveRun!: (run: IRun) => void;
+			const runPromise = new Promise<IRun>((resolve) => {
+				resolveRun = resolve;
+			});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const eventService = mock<EventService>();
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				eventService,
+				mock(),
+			);
+
+			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+			const processing = jobProcessor.processJob(job);
+			const assertion = expect(processing).rejects.toThrow(TimeoutExecutionCancelledError);
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(cancel).toHaveBeenCalled();
+
+			resolveRun(mock<IRun>({ status: 'success' }));
+
+			await assertion;
+		});
+
+		it('reports a manual cancellation when a stopped run reaches completion', async () => {
+			vi.useFakeTimers();
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: {
+						id: 'workflow-id',
+						nodes: [],
+						staticData: {},
+						settings: { executionTimeout: 5 },
+					},
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const cancel = vi.fn();
+			let resolveRun!: (run: IRun) => void;
+			const runPromise = new Promise<IRun>((resolve) => {
+				resolveRun = resolve;
+			});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const eventService = mock<EventService>();
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				eventService,
+				mock(),
+			);
+
+			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+			const processing = jobProcessor.processJob(job);
+			const assertion = expect(processing).rejects.toThrow(ManualExecutionCancelledError);
+
+			await vi.advanceTimersByTimeAsync(0);
+			jobProcessor.stopJob(job.id);
+
+			resolveRun(mock<IRun>({ status: 'success' }));
+
+			await assertion;
+		});
+
+		it('unrefs the watchdog timer so it cannot hold the process open', async () => {
+			vi.useFakeTimers();
+
+			// Spy on each handle as it is handed out, before `scheduleAt` unrefs it.
+			const unrefSpies: Array<MockInstance<() => NodeJS.Timeout>> = [];
+			const schedule = globalThis.setTimeout;
+			const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+				fn: () => void,
+				delay?: number,
+			) => {
+				const handle = schedule(fn, delay);
+				unrefSpies.push(vi.spyOn(handle, 'unref'));
+				return handle;
+			}) as unknown as typeof setTimeout);
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: {
+						id: 'workflow-id',
+						nodes: [],
+						staticData: {},
+						settings: { executionTimeout: 5 },
+					},
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const cancel = vi.fn();
+			const runPromise = new Promise<IRun>(() => {
+				// never resolves within this test
+			});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+			void jobProcessor.processJob(job);
+
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(unrefSpies).not.toHaveLength(0);
+			unrefSpies.forEach((unref) => expect(unref).toHaveBeenCalled());
+
+			setTimeoutSpy.mockRestore();
+		});
 	});
 
 	describe('project info in log metadata', () => {

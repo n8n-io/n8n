@@ -86,6 +86,7 @@ function scheduleAt(timestamp: number, fn: () => void): () => void {
 			delay > MAX_INTEGER_32BITS_SIGNED
 				? setTimeout(schedule, MAX_INTEGER_32BITS_SIGNED)
 				: setTimeout(fn, delay);
+		timer.unref(); // A pending tick must not hold the process open on its own.
 	};
 	schedule();
 
@@ -98,6 +99,9 @@ function scheduleAt(timestamp: number, fn: () => void): () => void {
 @Service()
 export class JobProcessor {
 	private readonly runningJobs: Record<JobId, RunningJob> = {};
+
+	/** Cause of the cancellation of each job cancelled so far, kept until its run settles. */
+	private readonly cancellationReasons: Record<JobId, CancellationReason> = {};
 
 	constructor(
 		private readonly logger: Logger,
@@ -366,27 +370,36 @@ export class JobProcessor {
 		// interrupt a node stuck mid-execution (e.g. a hanging HTTP call). This watchdog cancels
 		// the job for abort-aware operations, mirroring the regular-process timeout in
 		// `WorkflowRunner.runMainProcess`.
-		let timedOut = false;
 		const clearTimeoutWatchdog =
 			executionTimeoutTimestamp !== undefined
-				? scheduleAt(executionTimeoutTimestamp, () => {
-						// A stop that already cancelled the job keeps its own cause.
-						timedOut = this.cancelJob(job.id, 'timeout');
-					})
+				? scheduleAt(executionTimeoutTimestamp, () => this.cancelJob(job.id, 'timeout'))
 				: undefined;
 
 		let run: IRun;
+		let cancellationReason: CancellationReason | undefined;
 		try {
 			run = await workflowRun;
 		} finally {
 			// A pending watchdog would cancel the job belatedly.
 			clearTimeoutWatchdog?.();
+			cancellationReason = this.cancellationReasons[job.id];
+			delete this.cancellationReasons[job.id];
 			// An entry left behind on rejection keeps the count of running jobs
 			// above zero forever, which prevents shutdown from ever completing.
 			delete this.runningJobs[job.id];
 		}
 
-		if (run?.status === 'canceled') {
+		// A cancel this worker performed names its own cause. The engine cancels itself when its
+		// between-node check finds the deadline passed, and records no reason, so read the
+		// deadline the same way the engine does.
+		const timedOut =
+			cancellationReason === undefined
+				? executionTimeoutTimestamp !== undefined && Date.now() >= executionTimeoutTimestamp
+				: cancellationReason === 'timeout';
+
+		// A cancelled job is already reported as cancelled through `execution-cancelled`, even
+		// when the run itself ignored the cancel and ran to completion.
+		if (run?.status === 'canceled' || cancellationReason !== undefined) {
 			throw timedOut
 				? new TimeoutExecutionCancelledError(executionId)
 				: new ManualExecutionCancelledError(executionId);
@@ -546,10 +559,9 @@ export class JobProcessor {
 		this.cancelJob(jobId, 'manual'); // Job stops via scaling service are always user-initiated
 	}
 
-	/** Cancels a running job, returning whether this call was the one that cancelled it. */
-	private cancelJob(jobId: JobId, reason: CancellationReason): boolean {
+	private cancelJob(jobId: JobId, reason: CancellationReason) {
 		const runningJob = this.runningJobs[jobId];
-		if (!runningJob) return false;
+		if (!runningJob) return;
 
 		const { executionId, workflowId, workflowName } = runningJob;
 		this.eventService.emit('execution-cancelled', {
@@ -561,8 +573,7 @@ export class JobProcessor {
 
 		runningJob.run.cancel();
 		delete this.runningJobs[jobId];
-
-		return true;
+		this.cancellationReasons[jobId] = reason;
 	}
 
 	getRunningJobIds(): JobId[] {
