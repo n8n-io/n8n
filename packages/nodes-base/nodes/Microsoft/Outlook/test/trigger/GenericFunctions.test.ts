@@ -118,7 +118,22 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
 						$top: 1,
 						$orderby: 'receivedDateTime desc',
-						$filter: `receivedDateTime ge 1900-01-01T00:00:00Z and ${customFilter}`,
+						$filter: `receivedDateTime ge 1900-01-01T00:00:00Z and (${customFilter})`,
+					});
+				});
+
+				it('should wrap user filters in parentheses so or does not mix with the date clause', async () => {
+					const customFilter = "isRead eq false or from/emailAddress/address eq 'test@example.com'";
+					(prepareFilterString as Mock).mockReturnValue(customFilter);
+
+					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
+						$select:
+							'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
+						$top: 1,
+						$orderby: 'receivedDateTime desc',
+						$filter: `receivedDateTime ge 1900-01-01T00:00:00Z and (${customFilter})`,
 					});
 				});
 
