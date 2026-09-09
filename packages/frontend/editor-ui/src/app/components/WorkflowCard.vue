@@ -19,7 +19,10 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
-import { useI18n } from '@n8n/i18n';
+import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import type { WorkflowListPublicationStatus } from '@n8n/api-types';
+import type { StatusDotVariant } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
@@ -324,6 +327,39 @@ const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
 
+// Keyed by the full status union so a new backend status is a compile error
+// here instead of silently rendering as the green 'Published' dot.
+const publicationIndicators: Record<
+	WorkflowListPublicationStatus,
+	{ variant: StatusDotVariant; labelKey: BaseTextKey; tooltipKey?: BaseTextKey }
+> = {
+	published: { variant: 'success', labelKey: 'workflows.published' },
+	partial: {
+		variant: 'warning',
+		labelKey: 'workflows.publicationStatus.partial',
+		tooltipKey: 'workflows.publicationStatus.partial.tooltip',
+	},
+	failed: {
+		variant: 'danger',
+		labelKey: 'workflows.publicationStatus.failed',
+		tooltipKey: 'workflows.publicationStatus.failed.tooltip',
+	},
+};
+
+// The server-derived status is authoritative when present; workflows with no
+// settled trigger rows omit it and fall back to the legacy activeVersionId indicator.
+const publicationIndicator = computed(() => {
+	const state = props.data.publicationStatus ?? (isWorkflowPublished.value ? 'published' : null);
+	if (state === null) return null;
+	const { variant, labelKey, tooltipKey } = publicationIndicators[state];
+	return {
+		state,
+		variant,
+		label: locale.baseText(labelKey),
+		tooltip: tooltipKey ? locale.baseText(tooltipKey) : null,
+	};
+});
+
 const hasDynamicCredentials = computed(() => {
 	return isPrivateCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
@@ -450,6 +486,7 @@ async function unpublishWorkflow() {
 	uiStore.openModalWithData({
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
+			workflowId: props.data.id,
 			versionName: props.data.name,
 			eventBus: unpublishEventBus,
 		},
@@ -722,16 +759,14 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<div
-					v-else-if="isWorkflowPublished"
-					:class="$style.publishIndicator"
+				<PublicationIndicator
+					v-else-if="publicationIndicator"
+					:variant="publicationIndicator.variant"
+					:label="publicationIndicator.label"
+					:tooltip="publicationIndicator.tooltip"
+					:data-state="publicationIndicator.state"
 					data-test-id="workflow-card-publish-indicator"
-				>
-					<span :class="$style.publishIndicatorDot" />
-					<N8nText size="small" color="text-base">{{
-						locale.baseText('workflows.published')
-					}}</N8nText>
-				</div>
+				/>
 				<WorkflowCardMcpToggle
 					v-if="props.isWorkflowCardMcpToggleEnabled"
 					:workflow-id="data.id"
@@ -756,6 +791,8 @@ const tags = computed(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -843,28 +880,7 @@ const tags = computed(
 	color: var(--color--text);
 }
 
-.publishIndicator {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--spacing--4xs);
-	border: var(--border);
-
-	* {
-		// This is needed to line height up with ownership badge
-		line-height: calc(var(--font-size--sm) + 1px);
-	}
-}
-
-.publishIndicatorDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	background-color: var(--color--mint-600);
-}
-
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;
@@ -884,7 +900,7 @@ const tags = computed(
 	}
 }
 
-@include mixins.breakpoint('xs-only') {
+@include breakpoints.breakpoint('xs-only') {
 	.breadcrumbs > div {
 		flex-direction: column;
 	}

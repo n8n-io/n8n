@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import {
-	zodToJsonSchema,
 	type CredentialProvider,
 	type SerializableAgentState,
 	type StreamChunk,
@@ -11,6 +10,7 @@ import {
 	APPROVAL_SUSPEND_SCHEMA,
 	type ApprovalSuspendPayload,
 } from '@n8n/agents/tool';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';

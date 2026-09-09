@@ -227,14 +227,27 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		});
 	}
 
-	async function deleteThread(threadId: string): Promise<boolean> {
+	/**
+	 * Delete a thread. Returns false if the backend refused, in which case the thread is
+	 * left in the list because it genuinely still exists.
+	 *
+	 * `silent` suppresses the failure toast, for callers cleaning up after some other
+	 * failure they have already reported -- a second, unrelated "delete failed" on top of
+	 * the real error only confuses. Those callers should handle `false` themselves.
+	 */
+	async function deleteThread(
+		threadId: string,
+		options: { silent?: boolean } = {},
+	): Promise<boolean> {
 		// Only call API for threads that have been persisted to the backend
 		if (persistedThreadIds.has(threadId)) {
 			try {
 				await deleteThreadApi(rootStore.restApiContext, threadId);
 				persistedThreadIds.delete(threadId);
 			} catch {
-				toast.showError(new Error('Failed to delete thread. Try again.'), 'Delete failed');
+				if (!options.silent) {
+					toast.showError(new Error('Failed to delete thread. Try again.'), 'Delete failed');
+				}
 				return false;
 			}
 		}
@@ -266,6 +279,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	function threadCreditsUsed(threadId: string): number | undefined {
 		const used = threads.value.find((t) => t.id === threadId)?.metadata?.creditsUsed;
 		return typeof used === 'number' ? used : undefined;
+	}
+
+	/**
+	 * Replace a thread's metadata with an authoritative server copy — used after a
+	 * write the server itself made (e.g. persisting a pending agent binds it),
+	 * where a merge would keep locally-known keys the server just removed.
+	 */
+	function setThreadMetadata(threadId: string, metadata: Record<string, unknown> | undefined) {
+		const thread = threads.value.find((t) => t.id === threadId);
+		if (thread) thread.metadata = metadata;
 	}
 
 	async function updateThreadMetadata(
@@ -338,6 +361,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getThreadMetadata,
 		threadCreditsUsed,
 		updateThreadMetadata,
+		setThreadMetadata,
 		loadThreads,
 		fetchCredits,
 		handleCreditsPush,

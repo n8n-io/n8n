@@ -54,6 +54,12 @@ export interface GenerateWorkflowCodeOptions {
 	 * edited and built back into the same saved workflow.
 	 */
 	includeNodeIds?: boolean;
+	/**
+	 * Emit each node's saved `position`. On by default. Surfaces that hand the code
+	 * to an editor and restore the saved layout on save can turn it off, so nothing
+	 * in the file invites a layout edit.
+	 */
+	includePositions?: boolean;
 }
 
 // Re-export individual functions for testing and extension
@@ -63,6 +69,7 @@ export { buildCompositeTree } from './composite-builder';
 export { generateCode } from './code-generator';
 export {
 	emitInstanceAi,
+	buildImports,
 	SDK_IMPORTABLE_FUNCTIONS,
 	type EmitInstanceAiOptions,
 } from './emit-instance-ai';
@@ -114,6 +121,7 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 		valuesExcluded,
 		pinnedNodes,
 		includeNodeIds,
+		includePositions,
 	} = isOptionsObject(input)
 		? input
 		: {
@@ -124,6 +132,7 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 				valuesExcluded: undefined,
 				pinnedNodes: undefined,
 				includeNodeIds: undefined,
+				includePositions: undefined,
 			};
 
 	// Phase 1: Build semantic graph
@@ -159,5 +168,6 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 		valuesExcluded,
 		pinnedNodes: pinnedNodes ? new Set(pinnedNodes) : undefined,
 		includeNodeIds,
+		includePositions,
 	});
 }

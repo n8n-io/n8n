@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import type { ZodTypeAny } from 'zod';
 
 import { ControllerRegistryMetadata } from './controller-registry-metadata';
 import type { Arg, Controller } from './types';
@@ -19,5 +20,10 @@ export const Body = ArgDecorator({ type: 'body' });
 /** Injects the request query into the handler */
 export const Query = ArgDecorator({ type: 'query' });
 
-/** Injects a request parameter into the handler */
-export const Param = (key: string) => ArgDecorator({ type: 'param', key });
+/**
+ * Injects a request parameter into the handler.
+ *
+ * `schema` only takes effect on public API routes; internal routes ignore it.
+ */
+export const Param = (key: string, schema?: ZodTypeAny) =>
+	ArgDecorator({ type: 'param', key, ...(schema && { schema }) });

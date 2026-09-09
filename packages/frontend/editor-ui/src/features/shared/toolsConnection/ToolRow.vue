@@ -143,6 +143,16 @@ function handleConnect() {
 					<N8nIcon icon="workflow" :size="20" />
 				</span>
 				<N8nText :class="$style.workflowTitle" tag="span" bold>{{ item.title }}</N8nText>
+				<N8nText
+					v-if="item.warning"
+					:class="$style.workflowWarning"
+					tag="span"
+					size="small"
+					color="warning"
+					data-test-id="tools-connection-row-warning"
+				>
+					{{ item.warning }}
+				</N8nText>
 			</template>
 
 			<template v-else>
@@ -360,6 +370,10 @@ function handleConnect() {
 	flex: 1 1 0;
 	min-width: 0;
 	font-weight: var(--font-weight--medium);
+}
+
+.workflowWarning {
+	flex-shrink: 0;
 }
 
 .titleRow {

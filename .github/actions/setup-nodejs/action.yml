@@ -23,11 +23,11 @@ inputs:
     required: false
     default: 'pnpm build'
   install-command:
-    description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
+    description: 'Command to install project dependencies. The action trusts the committed lockfile because SafeChain enforces the CI supply-chain policy. Leave empty to skip the install step.'
     required: false
     default: 'pnpm install --frozen-lockfile'
   cache-dependency-path:
-    description: 'Path(s) to the lockfile(s) used to compute the pnpm-store cache key. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset, to avoid restoring the full workspace store.'
+    description: 'Path(s) to the lockfile(s) used to compute the pnpm store and metadata cache keys. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset.'
     required: false
     default: 'pnpm-lock.yaml'
 
@@ -43,12 +43,66 @@ runs:
         echo "::error::enable-docker-cache is true but docker-cache-key is empty"
         exit 1
 
+    # Use one pin for setup, cache lookup and verification.
+    - name: Resolve pnpm version
+      id: pnpm-version
+      shell: bash
+      run: node .github/scripts/resolve-pnpm-version.mjs
+
+    # Windows cannot activate a POSIX home path from the restored cache.
+    - name: Restore pnpm executable
+      if: runner.os != 'Windows'
+      id: cache-pnpm-exe
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/setup-pnpm
+        key: ${{ steps.pnpm-version.outputs.cache-key }}
+
     - name: Setup pnpm
-      uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      id: setup-pnpm
+      if: steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
       with:
         install: false
-        version: 11.22.0
-        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+        version: ${{ steps.pnpm-version.outputs.version }}
+
+    - name: Retry pnpm setup
+      if: steps.setup-pnpm.outcome == 'failure'
+      uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+      with:
+        install: false
+        version: ${{ steps.pnpm-version.outputs.version }}
+
+    # Cache hits restore files but not the per-job environment.
+    - name: Activate cached pnpm executable
+      if: steps.cache-pnpm-exe.outputs.cache-hit == 'true'
+      shell: bash
+      run: | # zizmor: ignore[github-env] Fixed paths contain no external input.
+        PNPM_DEST="$HOME/setup-pnpm"
+        echo "PNPM_HOME=$PNPM_DEST" >> "$GITHUB_ENV"
+        echo "$PNPM_DEST" >> "$GITHUB_PATH"
+        echo "$PNPM_DEST/bin" >> "$GITHUB_PATH"
+
+    # A stale or truncated cache entry must fail here, not later in the install.
+    - name: Verify pnpm Version
+      shell: bash
+      env:
+        EXPECTED_PNPM_VERSION: ${{ steps.pnpm-version.outputs.version }}
+      run: |
+        ACTUAL_PNPM_VERSION="$(pnpm --version)"
+        if [ "$ACTUAL_PNPM_VERSION" != "$EXPECTED_PNPM_VERSION" ]; then
+          echo "::error::pnpm ${EXPECTED_PNPM_VERSION} is not active (got ${ACTUAL_PNPM_VERSION})"
+          exit 1
+        fi
+
+    # Save before later job failures can prevent cache creation.
+    - name: Save pnpm executable
+      if: runner.os != 'Windows' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/setup-pnpm
+        key: ${{ steps.pnpm-version.outputs.cache-key }}
 
     # Cache the Node toolcache so setup-node skips the ~33s nodejs.org download
     # on every subsequent job. First fresh runner pays the download; later jobs
@@ -64,7 +118,7 @@ runs:
     # alongside the toolchain. Key bumped to v2 to invalidate stale entries.
     - name: Restore Node.js Toolcache
       if: runner.os == 'Linux' && runner.arch == 'X64'
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: /opt/hostedtoolcache/node/${{ inputs.node-version }}
         key: node-toolcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}
@@ -104,6 +158,24 @@ runs:
             mkdir -p "$PNPM_STORE_PATH"
         fi
 
+    # pnpm keeps registry metadata and its lockfile verification log outside the package store.
+    - name: Resolve pnpm metadata cache directory
+      if: ${{ inputs.install-command != '' }}
+      id: pnpm-metadata-cache
+      shell: bash
+      run: |
+        PNPM_CACHE_PATH="$(pnpm cache path --silent)"
+        mkdir -p "$PNPM_CACHE_PATH"
+        echo "path=$PNPM_CACHE_PATH" >> "$GITHUB_OUTPUT"
+        echo "version=$(pnpm --version)" >> "$GITHUB_OUTPUT"
+
+    - name: Restore pnpm metadata cache
+      if: ${{ inputs.install-command != '' }}
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ${{ steps.pnpm-metadata-cache.outputs.path }}
+        key: pnpm-metadata-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-metadata-cache.outputs.version }}-${{ hashFiles(inputs.cache-dependency-path) }}
+
     - name: Configure SafeChain
       shell: bash
       run: |
@@ -119,7 +191,7 @@ runs:
     # CDN must be hit. Keep the version in sync with the download step below.
     - name: Restore Aikido SafeChain Binary
       id: cache-safe-chain
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.safe-chain/bin
         key: safe-chain-1.5.7-${{ runner.os }}-${{ runner.arch }}
@@ -212,6 +284,7 @@ runs:
 
         set +o pipefail
         timeout --kill-after=30s 600s $INSTALL_COMMAND \
+          --trust-lockfile \
           --config.logs-dir="$PNPM_DIAG_DIR/pnpm-logs" \
           --reporter=append-only --config.loglevel=info 2>&1 | tee "$INSTALL_LOG"
         rc=${PIPESTATUS[0]}

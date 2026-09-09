@@ -13,7 +13,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
-import type { InstanceAiContext } from '../types';
+import type { InstanceAiContext, SetupItemsEmitter } from '../types';
 import {
 	buildChatModelProviderHint,
 	isChatModelProviderCredentialType,
@@ -23,6 +23,12 @@ import {
 	GENERIC_AUTH_CREDENTIAL_TYPES,
 	N8N_CONNECT_DISPLAY_NAME,
 } from './workflows/credential-utils';
+import {
+	buildSetupItemsFromCredentialRequests,
+	buildSetupItemsFromAnnouncement,
+	isSetupPanelEnabled,
+} from './workflows/setup-items';
+import { analyzeWorkflow } from './workflows/setup-workflow.service';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -402,6 +408,12 @@ const setupAction = z.object({
 			}),
 		)
 		.describe('List of credentials to set up'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'The workflow these credentials are for, when one exists (e.g. the id returned by build-workflow). Lets the setup panel list them against that workflow.',
+		),
 	requireUserSelection: z
 		.boolean()
 		.optional()
@@ -717,6 +729,85 @@ async function handleSearchTypes(
 	return { results };
 }
 
+/**
+ * The workflow a setup announcement belongs to: the one the agent named, else
+ * the workflow this run last saved — the latest artifact, which is the one the
+ * panel follows. Undefined outside any workflow context, where the card remains
+ * the right surface.
+ */
+function resolveSetupPanelWorkflowId(
+	context: InstanceAiContext & { setupItemsEmitter: SetupItemsEmitter },
+	input: Extract<Input, { action: 'setup' }>,
+): string | undefined {
+	return input.workflowId ?? context.setupItemsEmitter.lastWorkflowId();
+}
+
+async function announceSetupItems(
+	context: InstanceAiContext & { setupItemsEmitter: SetupItemsEmitter },
+	input: Extract<Input, { action: 'setup' }>,
+	workflowId: string,
+) {
+	const credentials = input.credentials ?? [];
+	// Best-effort, like the build's emission: the panel is a side channel.
+	try {
+		// Announce against the saved workflow's analysis so generic auth types
+		// land on their per-node rows and the snapshot stays whole. A merge, not
+		// a replace: earlier announcements may list types no saved node uses yet.
+		const analyzed = await analyzeWorkflow(context, workflowId, undefined, {
+			includeSettled: true,
+		});
+		context.setupItemsEmitter.merge(
+			workflowId,
+			buildSetupItemsFromAnnouncement(workflowId, credentials, analyzed),
+		);
+	} catch (error) {
+		context.logger.warn('Failed to announce setup-items, falling back to node-less rows', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		// Generic auth types have no node-less row, so this list can be empty;
+		// an empty merge would publish an empty snapshot over the durable one.
+		const fallback = buildSetupItemsFromCredentialRequests(workflowId, credentials);
+		if (fallback.length > 0) {
+			try {
+				context.setupItemsEmitter.merge(workflowId, fallback);
+			} catch {
+				// The panel is a side channel: never fail the tool over it.
+			}
+		}
+	}
+
+	const existingByType = await Promise.all(
+		credentials.map(async (req: { credentialType: string }) => {
+			const existing =
+				req.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+					? []
+					: await context.credentialService.list({
+							type: req.credentialType,
+							...(context.projectId ? { projectId: context.projectId } : {}),
+						});
+			return {
+				credentialType: req.credentialType,
+				existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
+			};
+		}),
+	);
+	const typeNames = credentials.map((c: { credentialType: string }) => c.credentialType).join(', ');
+
+	return {
+		success: true,
+		announced: true,
+		workflowId,
+		credentials: existingByType,
+		message:
+			`Listed ${typeNames} in the setup panel next to the chat. No card is open and nothing is waiting on ` +
+			'you: continue the build. The user can connect these at any time while you work — the build ' +
+			'attaches a matching stored credential automatically and the panel tracks what remains. Do not ' +
+			'ask the user to connect them now, do not describe a card, and do not call setup again for these ' +
+			'types unless the services the workflow needs change.',
+	};
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
@@ -772,6 +863,23 @@ async function handleSetup(
 				message: INVALID_SETUP_HINT_MESSAGE,
 				problems: hintProblems,
 			};
+		}
+
+		// Setup panel v2: a workflow's credential needs are announced to the
+		// persistent panel and the turn continues — no card, no suspension. The
+		// finalize stage, standalone setup (no workflow), and an explicit user
+		// choice — the picker (`requireUserSelection`) or a fresh credential
+		// (`preferNew`) — keep the card: the panel has no way to express "replace
+		// the bound one", so the next save would silently re-attach it.
+		const keepsCard =
+			isFinalize ||
+			input.requireUserSelection === true ||
+			input.credentials.some((req: { preferNew?: boolean }) => req.preferNew === true);
+		if (isSetupPanelEnabled(context) && !keepsCard) {
+			const panelWorkflowId = resolveSetupPanelWorkflowId(context, input);
+			if (panelWorkflowId !== undefined) {
+				return await announceSetupItems(context, input, panelWorkflowId);
+			}
 		}
 
 		const credentialRequests = await Promise.all(

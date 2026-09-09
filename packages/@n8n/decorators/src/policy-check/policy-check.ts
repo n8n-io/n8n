@@ -86,9 +86,19 @@ export type CredentialDecryptContext = {
 	readonly projectId: string | null;
 };
 
+/**
+ * How the content reached the instance.
+ *
+ * A check needs this to hold an unattended sync to a different standard than a hand-run
+ * import, and the host reads it to pick its fail posture — a batch sync reports, a direct
+ * import refuses before writing.
+ */
+export type ContentImportTransport = 'cli' | 'source-control' | 'package' | 'git-connection';
+
 export type ContentImportContext = {
 	readonly workflow: PolicedWorkflow;
 	readonly projectId: string | null;
+	readonly transport: ContentImportTransport;
 };
 
 /** A policy version a check read, recorded on the audit log. */

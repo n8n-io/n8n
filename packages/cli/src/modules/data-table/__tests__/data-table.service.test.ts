@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
 import { In } from '@n8n/typeorm';
-import type { DataTableInfoById } from 'n8n-workflow';
+import type { DataTableInfoById, DataTablesSizeData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import type { DataTableColumn } from '../data-table-column.entity';
@@ -482,6 +482,70 @@ describe('DataTableService', () => {
 				regularUser.id,
 				mockRoles,
 			);
+		});
+	});
+
+	describe('getCachedSizeBytesByIds', () => {
+		const cachedSizeData: DataTablesSizeData = {
+			totalBytes: 3072,
+			dataTables: {
+				'dt-1': {
+					id: 'dt-1',
+					name: 'Table 1',
+					projectId: 'project-1',
+					projectName: 'Project 1',
+					sizeBytes: 1024,
+				},
+				'dt-2': {
+					id: 'dt-2',
+					name: 'Table 2',
+					projectId: 'project-2',
+					projectName: 'Project 2',
+					sizeBytes: 2048,
+				},
+			},
+		};
+
+		beforeEach(() => {
+			mockDataTableSizeValidator.getCachedSizeData.mockImplementation(async (fn) => {
+				await fn();
+				return cachedSizeData;
+			});
+		});
+
+		it('should return the cached size for a known data table', async () => {
+			// Act
+			const result = await dataTableService.getCachedSizeBytesByIds(['dt-1', 'dt-2']);
+
+			// Assert
+			expect(result.get('dt-1')).toBe(1024);
+			expect(result.get('dt-2')).toBe(2048);
+		});
+
+		it('should return 0 for a table created within the cache window', async () => {
+			// Act
+			const result = await dataTableService.getCachedSizeBytesByIds(['dt-brand-new']);
+
+			// Assert
+			expect(result.get('dt-brand-new')).toBe(0);
+		});
+
+		it('should return an empty map without reading the cache for no ids', async () => {
+			// Act
+			const result = await dataTableService.getCachedSizeBytesByIds([]);
+
+			// Assert
+			expect(result.size).toBe(0);
+			expect(mockDataTableSizeValidator.getCachedSizeData).not.toHaveBeenCalled();
+		});
+
+		it('should return only the requested ids, never other tables on the instance', async () => {
+			// The cache holds every table on the instance, so the filter is the leak guard.
+			// Act
+			const result = await dataTableService.getCachedSizeBytesByIds(['dt-1']);
+
+			// Assert
+			expect([...result.keys()]).toEqual(['dt-1']);
 		});
 	});
 

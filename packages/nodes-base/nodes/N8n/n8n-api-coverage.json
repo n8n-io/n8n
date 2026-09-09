@@ -1,27 +1,6 @@
 {
 	"$comment": "Coverage manifest: n8n node vs n8n public API. When a new endpoint is added to the OpenAPI spec, add it here with status covered/gap/excluded. See test/N8n.api-coverage.test.ts.",
 	"endpoints": {
-		"GET /git-connections": {
-			"status": "gap"
-		},
-		"POST /git-connections": {
-			"status": "gap"
-		},
-		"GET /git-connections/{id}": {
-			"status": "gap"
-		},
-		"PUT /git-connections/{id}": {
-			"status": "gap"
-		},
-		"DELETE /git-connections/{id}": {
-			"status": "gap"
-		},
-		"POST /git-connections/{id}/clone": {
-			"status": "gap"
-		},
-		"POST /git-connections/{id}/disconnect": {
-			"status": "gap"
-		},
 		"POST /audit": {
 			"status": "covered",
 			"nodeOperation": "audit:generate"
@@ -65,7 +44,7 @@
 		"GET /credentials": {
 			"status": "gap"
 		},
-		"GET /credentials/{id}": {
+		"GET /credentials/{credentialId}": {
 			"status": "gap"
 		},
 		"POST /credentials": {
@@ -119,19 +98,19 @@
 			"status": "covered",
 			"nodeOperation": "execution:delete"
 		},
-		"POST /executions/{id}/retry": {
+		"POST /executions/{executionId}/retry": {
 			"status": "gap"
 		},
-		"POST /executions/{id}/stop": {
+		"POST /executions/{executionId}/stop": {
 			"status": "gap"
 		},
 		"POST /executions/stop": {
 			"status": "gap"
 		},
-		"GET /executions/{id}/tags": {
+		"GET /executions/{executionId}/tags": {
 			"status": "gap"
 		},
-		"PUT /executions/{id}/tags": {
+		"PUT /executions/{executionId}/tags": {
 			"status": "gap"
 		},
 		"GET /insights/summary": {
@@ -244,10 +223,70 @@
 		"POST /source-control/pull": {
 			"status": "gap"
 		},
-		"POST /git-connections/{id}/push": {
+		"GET /source-control/status": {
 			"status": "gap"
 		},
-		"POST /git-connections/{id}/pull": {
+		"POST /source-control/push": {
+			"status": "gap"
+		},
+		"GET /promotions/providers": {
+			"status": "gap"
+		},
+		"POST /promotions/providers": {
+			"status": "gap"
+		},
+		"GET /promotions/providers/{id}": {
+			"status": "gap"
+		},
+		"PUT /promotions/providers/{id}": {
+			"status": "gap"
+		},
+		"DELETE /promotions/providers/{id}": {
+			"status": "gap"
+		},
+		"GET /promotions/connections": {
+			"status": "gap"
+		},
+		"POST /promotions/connections": {
+			"status": "gap"
+		},
+		"GET /promotions/connections/{id}": {
+			"status": "gap"
+		},
+		"PUT /promotions/connections/{id}": {
+			"status": "gap"
+		},
+		"DELETE /promotions/connections/{id}": {
+			"status": "gap"
+		},
+		"PUT /promotions/connections/{id}/configs/apply": {
+			"status": "gap"
+		},
+		"PUT /promotions/connections/{id}/configs/promote": {
+			"status": "gap"
+		},
+		"DELETE /promotions/connections/{id}/configs/{direction}": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{id}/{direction}/clone": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{id}/{direction}/disconnect": {
+			"status": "gap"
+		},
+		"GET /promotions/connections/{id}/projects": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{id}/projects/{projectId}": {
+			"status": "gap"
+		},
+		"DELETE /promotions/connections/{id}/projects/{projectId}": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{id}/promote": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{id}/apply": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

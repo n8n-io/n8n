@@ -1,7 +1,11 @@
 import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
-import { getAllowedDomains, updadeQueryParameterConfig } from '../GenericFunctions';
+import {
+	getAllowedDomains,
+	getOAuth2AdditionalParameters,
+	updadeQueryParameterConfig,
+} from '../GenericFunctions';
 
 describe('updadeQueryParameterConfig', () => {
 	describe('version < 4.3 (legacy behavior)', () => {
@@ -117,5 +121,12 @@ describe('getAllowedDomains', () => {
 		});
 
 		expect(result).toBe('example.com, *.api.io');
+	});
+});
+
+describe('getOAuth2AdditionalParameters', () => {
+	it('should return undefined for microsoftDynamicsOAuth2Api so the stored access token is used', () => {
+		const result = getOAuth2AdditionalParameters('microsoftDynamicsOAuth2Api');
+		expect(result).toBeUndefined();
 	});
 });

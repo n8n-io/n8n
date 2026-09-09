@@ -1,54 +1,21 @@
-const STORAGE_KEY = 'sb-addon-themes-3';
+export type N8nTheme = 'light' | 'dark';
 
-function storedThemeIsDark(value: unknown): boolean {
-	if (typeof value !== 'object' || value === null || !('current' in value)) {
-		return false;
-	}
-
-	return value.current === 'dark';
+export function resolveN8nTheme(theme: unknown): N8nTheme {
+	return theme === 'dark' ? 'dark' : 'light';
 }
 
-export function isDarkModeStored(): boolean {
-	try {
-		const raw = window.localStorage.getItem(STORAGE_KEY);
-		if (!raw) {
-			return false;
-		}
-
-		return storedThemeIsDark(JSON.parse(raw));
-	} catch {
-		return document.documentElement.classList.contains('dark');
-	}
-}
-
-function resolveIsDark(isDark: unknown): boolean {
-	if (typeof isDark === 'boolean') {
-		return isDark;
-	}
-
-	if (isDark === 'dark') {
-		return true;
-	}
-
-	if (typeof isDark === 'object' && isDark !== null && 'current' in isDark) {
-		return storedThemeIsDark(isDark);
-	}
-
-	return isDarkModeStored();
-}
-
-/** n8n tokens follow `data-theme` on html/body; the dark-mode addon only toggles classes. */
-export function applyN8nTheme(isDark: unknown): void {
-	const theme = resolveIsDark(isDark) ? 'dark' : 'light';
+/** n8n tokens follow `data-theme` on html/body, including `body:not([data-theme])` fallbacks. */
+export function applyN8nTheme(theme: unknown): void {
+	const resolved = resolveN8nTheme(theme);
 
 	for (const el of [document.documentElement, document.body]) {
 		if (!el) {
 			continue;
 		}
 
-		el.dataset.theme = theme;
-		el.style.colorScheme = theme;
+		el.dataset.theme = resolved;
+		el.style.colorScheme = resolved;
 		el.classList.remove('light', 'dark');
-		el.classList.add(theme);
+		el.classList.add(resolved);
 	}
 }

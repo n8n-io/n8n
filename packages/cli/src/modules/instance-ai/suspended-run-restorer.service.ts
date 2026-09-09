@@ -7,15 +7,12 @@ import {
 	type RunStateRegistry,
 	type SuspendedRunState,
 } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { UserError } from 'n8n-workflow';
 
 import type { InstanceAiPendingConfirmation } from './entities/instance-ai-pending-confirmation.entity';
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 /** A claimed pending-confirmation row, regardless of whether it can be resumed. */
 type ClaimedOrphan = InstanceAiPendingConfirmation;

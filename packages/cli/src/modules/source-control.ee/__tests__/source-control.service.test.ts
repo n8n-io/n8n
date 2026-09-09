@@ -340,12 +340,6 @@ describe('SourceControlService', () => {
 					{
 						id: 'authorized-wf',
 						type: 'workflow',
-						status: 'deleted',
-						file: 'workflows/other-project-wf.json',
-						name: 'anything',
-						location: 'local',
-						conflict: false,
-						updatedAt: now,
 					},
 				],
 				commitMessage: 'chore: tidy up',
@@ -382,18 +376,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [
-						{
-							id: 'out-of-scope-wf',
-							type: 'workflow',
-							status: 'deleted',
-							file: 'workflows/out-of-scope-wf.json',
-							name: 'out-of-scope',
-							location: 'local',
-							conflict: false,
-							updatedAt: new Date().toISOString(),
-						},
-					],
+					fileNames: [{ id: 'out-of-scope-wf', type: 'workflow' }],
 				}),
 			).rejects.toThrow('You are not allowed to push these changes');
 
@@ -424,18 +407,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [
-						{
-							id: 'authorized-wf',
-							type: 'workflow',
-							status: 'modified',
-							file: 'workflows/authorized-wf.json',
-							name: 'authorized',
-							location: 'local',
-							conflict: false,
-							updatedAt: new Date().toISOString(),
-						},
-					],
+					fileNames: [{ id: 'authorized-wf', type: 'workflow' }],
 				}),
 			).rejects.toThrow('File path /outside-git/authorized-wf.json is invalid');
 
@@ -476,18 +448,7 @@ describe('SourceControlService', () => {
 
 			// ACT
 			const result = await sourceControlService.pushWorkfolder(user, {
-				fileNames: [
-					{
-						id: 'wf-1',
-						type: 'workflow',
-						status: 'modified',
-						file: 'workflows/wf-1.json',
-						name: 'Workflow 1',
-						location: 'local',
-						conflict: false,
-						updatedAt: now,
-					},
-				],
+				fileNames: [{ id: 'wf-1', type: 'workflow' }],
 			});
 
 			// ASSERT
@@ -720,7 +681,7 @@ describe('SourceControlService', () => {
 			});
 		});
 
-		it('adds content-import policy violations to the pull result', async () => {
+		it('adds the reason a skipped workflow was blocked to the pull result', async () => {
 			const user = mock<User>({ id: 'user-1' });
 			const workflowStatus = mock<SourceControlledFile>({
 				id: 'workflow-1',
@@ -759,42 +720,7 @@ describe('SourceControlService', () => {
 			});
 		});
 
-		it('adds a failed content-import policy check to the pull result', async () => {
-			const user = mock<User>({ id: 'user-1' });
-			const workflowStatus = mock<SourceControlledFile>({
-				id: 'workflow-1',
-				type: 'workflow',
-				status: 'modified',
-				location: 'remote',
-				conflict: false,
-			});
-			mockStatusService.getStatus.mockResolvedValueOnce([workflowStatus]);
-			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([
-				{
-					id: 'workflow-1',
-					name: 'workflow-1.json',
-					publishingError: undefined,
-					contentImportPolicy: {
-						violations: [],
-						checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
-					},
-				},
-			]);
-
-			const result = await sourceControlService.pullWorkfolder(user, {
-				force: true,
-				autoPublish: 'none',
-			});
-
-			expect(result.statusResult[0]).toMatchObject({
-				contentImportPolicy: {
-					violations: [],
-					checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
-				},
-			});
-		});
-
-		it('logs violations, check errors and publishing errors for a workflow with no matching status entry, without throwing', async () => {
+		it('logs violations and publishing errors for a workflow with no matching status entry, without throwing', async () => {
 			const user = mock<User>({ id: 'user-1' });
 			// No matching SourceControlledFile for 'workflow-missing' in the status result.
 			mockStatusService.getStatus.mockResolvedValueOnce([]);
@@ -811,7 +737,7 @@ describe('SourceControlService', () => {
 						violations: [
 							{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
 						],
-						checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
+						checkErrors: [],
 					},
 				},
 			]);

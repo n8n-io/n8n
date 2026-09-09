@@ -62,10 +62,10 @@ describe('createScopedWorkspace ensureRootExists', () => {
 		const { filesystem, scoped } = makeScopedWorkspace({ ensureRootExists: true });
 
 		await expect(scoped.filesystem!.readFile('../outside.md')).rejects.toThrow(
-			'Path escapes workspace root',
+			'is outside the workspace root',
 		);
 		await expect(scoped.sandbox!.executeCommand!('ls', [], { cwd: '../../etc' })).rejects.toThrow(
-			'Path escapes workspace root',
+			'is outside the workspace root',
 		);
 
 		expect(filesystem.mkdir).not.toHaveBeenCalled();

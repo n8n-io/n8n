@@ -10,6 +10,7 @@ import {
 	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
+	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiVerifyModelRequest,
@@ -68,6 +69,7 @@ import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.ser
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
+import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
@@ -95,6 +97,7 @@ export class InstanceAiController {
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
+		private readonly pendingAgentService: InstanceAiPendingAgentService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly modelCatalogService: InstanceAiModelCatalogService,
 		private readonly evalExecutionService: EvalExecutionService,
@@ -870,6 +873,25 @@ export class InstanceAiController {
 			metadata: payload.metadata,
 		});
 		return { thread };
+	}
+
+	/**
+	 * Persist the pending new-agent artifact this thread has open, and bind it to
+	 * the thread in the same request. Idempotent under a concurrent writer on the
+	 * same client-minted id (the chat's build-agent tool), unlike the strict
+	 * project-scoped agent create.
+	 */
+	@Post('/threads/:threadId/agent')
+	@GlobalScope('instanceAi:message')
+	async persistPendingAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiPersistPendingAgentRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.pendingAgentService.persistAndBind(req.user, threadId, payload);
 	}
 
 	@Get('/threads/:threadId/messages')

@@ -197,6 +197,10 @@ export interface FrontendSettings {
 		enabled: boolean;
 		setup: boolean;
 	};
+	/**
+	 * @deprecated Gates the AI Transform node's code generation. No longer gates
+	 * the Code node's "Ask AI" tab, which is hidden. Removed in v3.
+	 */
 	askAi: {
 		enabled: boolean;
 	};
@@ -227,6 +231,9 @@ export interface FrontendSettings {
 	};
 	workflowReviews?: WorkflowReviewsPolicy;
 	folders: {
+		enabled: boolean;
+	};
+	workerPools: {
 		enabled: boolean;
 	};
 	collaboration: {
@@ -327,6 +334,14 @@ export type FrontendModuleSettings = {
 		serverUrl?: string;
 		/** Whether newly created workflows are auto-exposed to MCP. */
 		autoExposeNewWorkflows: boolean;
+	};
+
+	/**
+	 * Client settings for the encryption-key-manager module.
+	 */
+	'encryption-key-manager'?: {
+		/** Whether encryption-key rotation (and its management UI) is enabled. */
+		rotationEnabled: boolean;
 	};
 
 	/**

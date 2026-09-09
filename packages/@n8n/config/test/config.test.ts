@@ -198,6 +198,11 @@ describe('GlobalConfig', () => {
 		featureFlags: {
 			override: {},
 		},
+		activityLog: {
+			enabled: false,
+			retentionDays: 0,
+			maxEntries: 1_000,
+		},
 		nodes: {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
@@ -368,8 +373,14 @@ describe('GlobalConfig', () => {
 			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
 			instanceAiSetupPanelEnabled: false,
+			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
+			maxConcurrentRuns: -1,
+			maxConcurrentRunsPerUser: -1,
+			maxConcurrentSubAgents: -1,
+			instanceContextEnabled: false,
 		},
 		queue: {
 			health: {
@@ -407,6 +418,10 @@ describe('GlobalConfig', () => {
 					lockRenewTime: 10_000,
 					stalledInterval: 30_000,
 				},
+			},
+			workerPool: {
+				enabled: false,
+				name: '',
 			},
 		},
 		taskRunners: {
@@ -484,6 +499,13 @@ describe('GlobalConfig', () => {
 			misfireGraceSeconds: 60,
 			durableCursorsEnabled: false,
 			enabledForSystemTasks: false,
+			enabledForAgentTasks: false,
+			ownerReconciliationEnabled: true,
+			ownerReconciliationIntervalSeconds: 900,
+			ownerReconciliationTimeoutSeconds: 300,
+			ownerReconciliationBatchSize: 500,
+			ownerQuarantineGraceSeconds: 86400,
+			ownerSettleSeconds: 300,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -556,6 +578,7 @@ describe('GlobalConfig', () => {
 			maxDisplaySize: 100 * 1024 * 1024,
 			webhookResponseRelaySizeMaxMiB: 64,
 			webhookResponseRelayOffloadEnabled: false,
+			preExecuteErrorCreatesExecution: false,
 		},
 		diagnostics: {
 			enabled: true,

@@ -34,7 +34,7 @@ import {
 	isMergeType,
 	generateDefaultNodeName,
 } from './node-type-utils';
-import { escapeString, escapeRegexChars } from './string-utils';
+import { escapeString, escapeRegexChars, formatStringLiteral } from './string-utils';
 import { formatValue, formatCredentials } from './subnode-generator';
 import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 import { getVarName, getUniqueVarName } from './variable-names';
@@ -68,6 +68,8 @@ export interface GenerateCodeOptions extends ExecutionContextOptions {
 	 * surfaces that round-trip code back into a saved workflow should opt in.
 	 */
 	includeNodeIds?: boolean;
+	/** Emit saved node positions. On by default; see `GenerateWorkflowCodeOptions`. */
+	includePositions?: boolean;
 }
 
 /**
@@ -90,6 +92,8 @@ interface GenerationContext {
 	pinnedNodes?: Set<string>;
 	/** Graph node names allowed to emit their id; absent when id emission is off */
 	nodesWithEmittableId?: ReadonlySet<string>;
+	/** Leave `position` out of every node, subnode, and sticky note. */
+	omitPositions?: boolean;
 }
 
 /**
@@ -165,7 +169,7 @@ function generateSubnodeCall(
 	}
 
 	const pos = subnodeNode.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 	appendNodeConfigOptions(configParts, subnodeNode);
@@ -357,7 +361,7 @@ function generateSubnodeCallWithVarRefs(
 	}
 
 	const pos = subnodeNode.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 	appendNodeConfigOptions(configParts, subnodeNode);
@@ -478,7 +482,11 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 	}
 
 	if (node.json.parameters && Object.keys(node.json.parameters).length > 0) {
-		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
+		// Parameters sit two levels inside the node call (call → config → parameters), so a
+		// multi-line value lays out relative to the config block, not the file margin.
+		configParts.push(
+			`parameters: ${formatValue(node.json.parameters, { ...ctx, indent: ctx.indent + 2 })}`,
+		);
 	}
 
 	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {
@@ -487,7 +495,7 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 
 	// Include position if non-zero
 	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 	appendNodeConfigOptions(configParts, node);
@@ -615,7 +623,7 @@ function getNodesInsideSticky(stickyNode: SemanticNode, ctx: GenerationContext):
  * New signature: sticky(content, nodes, config?)
  */
 function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string {
-	const content = escapeString((node.json.parameters?.content as string) ?? '');
+	const content = formatStringLiteral((node.json.parameters?.content as string) ?? '');
 
 	// Get nodes inside this sticky's bounds
 	const nodesInside = getNodesInsideSticky(node, ctx);
@@ -647,12 +655,12 @@ function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string 
 	}
 
 	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		options.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 
 	const optionsStr = options.length > 0 ? `, { ${options.join(', ')} }` : '';
-	return `sticky('${content}', ${nodesStr}${optionsStr})`;
+	return `sticky(${content}, ${nodesStr}${optionsStr})`;
 }
 
 /**
@@ -677,7 +685,11 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 	}
 
 	if (node.json.parameters && Object.keys(node.json.parameters).length > 0) {
-		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
+		// Parameters sit two levels inside the node call (call → config → parameters), so a
+		// multi-line value lays out relative to the config block, not the file margin.
+		configParts.push(
+			`parameters: ${formatValue(node.json.parameters, { ...ctx, indent: ctx.indent + 2 })}`,
+		);
 	}
 
 	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {
@@ -686,7 +698,7 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 
 	// Include position if non-zero
 	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 	appendNodeConfigOptions(configParts, node);
@@ -1407,6 +1419,7 @@ export function generateCode(
 		nodesWithEmittableId: executionContext?.includeNodeIds
 			? collectNodesWithEmittableId(graph)
 			: undefined,
+		omitPositions: executionContext?.includePositions === false,
 	};
 
 	// Pre-register all node variable names to detect and resolve collisions.

@@ -106,13 +106,34 @@ export default meta;
 // Icon's name union is too large for StoryObj<typeof meta> in Storybook 10.5.
 type Story = StoryObj<typeof N8nIcon>;
 
+const renderIcon: Story['render'] = (args) => ({
+	components: { N8nIcon },
+	setup() {
+		return { args };
+	},
+	template: '<N8nIcon v-bind="args" />',
+});
+
 export const Default: Story = {
 	render: (args) => ({
 		components: { N8nIcon },
 		setup() {
 			return { args };
 		},
-		template: '<N8nIcon v-bind="args" />',
+		template: `
+			<div
+				style="
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					width: 14px;
+					height: 14px;
+					outline: var(--border-width) dashed var(--border-color);
+				"
+			>
+				<N8nIcon v-bind="args" />
+			</div>
+		`,
 	}),
 	args: {
 		icon: 'check',
@@ -259,7 +280,7 @@ export const WithColor: Story = {
 		icon: 'check',
 		color: 'success',
 	},
-	render: Default.render,
+	render: renderIcon,
 };
 
 export const WithCustomSize: Story = {
@@ -267,7 +288,7 @@ export const WithCustomSize: Story = {
 		icon: 'info',
 		size: 32,
 	},
-	render: Default.render,
+	render: renderIcon,
 };
 
 export const WithSpin: Story = {
@@ -275,7 +296,7 @@ export const WithSpin: Story = {
 		icon: 'spinner',
 		spin: true,
 	},
-	render: Default.render,
+	render: renderIcon,
 };
 
 export const WithStrokeWidth: Story = {
@@ -283,7 +304,7 @@ export const WithStrokeWidth: Story = {
 		icon: 'circle',
 		strokeWidth: 3,
 	},
-	render: Default.render,
+	render: renderIcon,
 };
 
 export const Sizes: Story = {

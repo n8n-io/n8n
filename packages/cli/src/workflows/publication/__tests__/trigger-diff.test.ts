@@ -85,4 +85,58 @@ describe('computeTriggerDiff', () => {
 	test('returns empty diff for two empty trigger sets', () => {
 		expect(computeTriggerDiff([], [])).toEqual({ toAdd: new Set(), toRemove: new Set() });
 	});
+
+	describe('triggers that observe the publication itself', () => {
+		const n8nTrigger = makeNode('n8n', {
+			type: 'n8n-nodes-base.n8nTrigger',
+			parameters: { events: ['update'] },
+		});
+
+		test('re-registers an unchanged n8n Trigger when the published version changed', () => {
+			const diff = computeTriggerDiff([n8nTrigger], [{ ...n8nTrigger }], { versionChanged: true });
+
+			expect(diff).toEqual({ toAdd: new Set(['n8n']), toRemove: new Set(['n8n']) });
+		});
+
+		test('leaves an unchanged n8n Trigger running when the published version is the same', () => {
+			const diff = computeTriggerDiff([n8nTrigger], [{ ...n8nTrigger }], { versionChanged: false });
+
+			expect(diff).toEqual({ toAdd: new Set(), toRemove: new Set() });
+		});
+
+		test('re-registers the deprecated Workflow Trigger the same way', () => {
+			const workflowTrigger = makeNode('legacy', {
+				type: 'n8n-nodes-base.workflowTrigger',
+				parameters: { events: ['update'] },
+			});
+
+			const diff = computeTriggerDiff([workflowTrigger], [{ ...workflowTrigger }], {
+				versionChanged: true,
+			});
+
+			expect(diff).toEqual({ toAdd: new Set(['legacy']), toRemove: new Set(['legacy']) });
+		});
+
+		test('re-registers an unchanged Email Trigger (IMAP) so a republish reconnects it', () => {
+			const imapTrigger = makeNode('imap', {
+				type: 'n8n-nodes-base.emailReadImap',
+				typeVersion: 2.1,
+				parameters: { mailbox: 'INBOX' },
+			});
+
+			const diff = computeTriggerDiff([imapTrigger], [{ ...imapTrigger }], {
+				versionChanged: true,
+			});
+
+			expect(diff).toEqual({ toAdd: new Set(['imap']), toRemove: new Set(['imap']) });
+		});
+
+		test('does not force other unchanged trigger types when the published version changed', () => {
+			const schedule = makeNode('a');
+
+			const diff = computeTriggerDiff([schedule], [{ ...schedule }], { versionChanged: true });
+
+			expect(diff).toEqual({ toAdd: new Set(), toRemove: new Set() });
+		});
+	});
 });

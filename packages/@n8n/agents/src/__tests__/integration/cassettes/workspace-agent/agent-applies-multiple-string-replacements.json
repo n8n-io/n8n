@@ -32,7 +32,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to read"
+								"description": "Path to the file to read, relative to the workspace root (absolute paths must be under it)"
 							},
 							"encoding": {
 								"type": "string",
@@ -95,7 +95,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to edit"
+								"description": "Path to the file to edit, relative to the workspace root (absolute paths must be under it)"
 							},
 							"replacements": {
 								"type": "array",
@@ -131,7 +131,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to write"
+								"description": "Path to the file to write, relative to the workspace root (absolute paths must be under it)"
 							},
 							"content": {
 								"type": "string",
@@ -375,30 +375,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCwR5XZhp5jvX2s1Rjm\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01XhVqxxnCeQAd5i2ZdhvYKQ\",\"name\":\"workspace_str_replace_file\",\"input\":{\"path\":\"/project/config.ts\",\"replacements\":[{\"old_str\":\"OLD_REGION\",\"new_str\":\"EU_CENTRAL\"},{\"old_str\":\"OLD_OWNER\",\"new_str\":\"API_TEAM\"},{\"old_str\":\"OLD_STATUS\",\"new_str\":\"READY\"}]},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2890,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":152,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011Ceii6FydDkrEpi6D9DN6Q\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_017moK7GRdnadwXaUezWNucw\",\"name\":\"workspace_str_replace_file\",\"input\":{\"path\":\"/project/config.ts\",\"replacements\":[{\"old_str\":\"OLD_REGION\",\"new_str\":\"EU_CENTRAL\"},{\"old_str\":\"OLD_OWNER\",\"new_str\":\"API_TEAM\"},{\"old_str\":\"OLD_STATUS\",\"new_str\":\"READY\"}]},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2929,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":152,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:56Z",
+			"anthropic-ratelimit-input-tokens-remaining": "9998000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-04T16:24:11Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:56Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-04T16:24:11Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:55Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-04T16:24:10Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:56Z",
+			"anthropic-ratelimit-tokens-remaining": "11998000",
+			"anthropic-ratelimit-tokens-reset": "2026-09-04T16:24:11Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a2a55d686bea5ac3-VIE",
+			"cf-ray": "a35e57c73ed7c2fa-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Thu, 13 Aug 2026 05:36:56 GMT",
-			"request-id": "req_011CdzCwQb1nPWokfQ8pNrEc",
+			"date": "Fri, 04 Sep 2026 16:24:11 GMT",
+			"request-id": "req_011Ceii6FKgYfW4zfX4wUbSF",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-4baa4ce303d012f7e4a4c3b7b2183c8e-ff660adcd132d02b-01",
+			"traceresponse": "00-3931c57d4a2b5659296e1f7e46d2efb8-5576840e2cac7fe8-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -432,7 +432,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01XhVqxxnCeQAd5i2ZdhvYKQ",
+							"id": "toolu_017moK7GRdnadwXaUezWNucw",
 							"name": "workspace_str_replace_file",
 							"input": {
 								"path": "/project/config.ts",
@@ -462,7 +462,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01XhVqxxnCeQAd5i2ZdhvYKQ",
+							"tool_use_id": "toolu_017moK7GRdnadwXaUezWNucw",
 							"content": "{\"success\":true,\"result\":\"All 3 replacements applied successfully.\"}"
 						}
 					]
@@ -477,7 +477,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to read"
+								"description": "Path to the file to read, relative to the workspace root (absolute paths must be under it)"
 							},
 							"encoding": {
 								"type": "string",
@@ -540,7 +540,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to edit"
+								"description": "Path to the file to edit, relative to the workspace root (absolute paths must be under it)"
 							},
 							"replacements": {
 								"type": "array",
@@ -576,7 +576,7 @@
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to write"
+								"description": "Path to the file to write, relative to the workspace root (absolute paths must be under it)"
 							},
 							"content": {
 								"type": "string",
@@ -820,30 +820,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCwXAPkhyP5MqiH9wDC\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"done.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3065,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":5,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011Ceii6MRJ6GppiYC6ucBVS\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"done.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3104,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":5,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:57Z",
+			"anthropic-ratelimit-input-tokens-remaining": "9998000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-09-04T16:24:11Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:57Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-09-04T16:24:11Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:56Z",
+			"anthropic-ratelimit-requests-reset": "2026-09-04T16:24:11Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:57Z",
+			"anthropic-ratelimit-tokens-remaining": "11998000",
+			"anthropic-ratelimit-tokens-reset": "2026-09-04T16:24:11Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a2a55d7159665ac3-VIE",
+			"cf-ray": "a35e57cf7e04c2fa-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Thu, 13 Aug 2026 05:36:57 GMT",
-			"request-id": "req_011CdzCwWi7SxsgDhiTHBtRX",
+			"date": "Fri, 04 Sep 2026 16:24:12 GMT",
+			"request-id": "req_011Ceii6LxmNNLEo6XwsFWi9",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-05a73aaa082b6fbdddaaa27d7239940d-ac9f8ff46ec3d68d-01",
+			"traceresponse": "00-f699558f3ad1b817ebcaaae0ad49ffd6-dc7ea6aed06c01e3-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
