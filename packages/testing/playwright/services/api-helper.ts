@@ -343,6 +343,23 @@ export class ApiHelpers {
 		return await response.json();
 	}
 
+	/**
+	 * The backend modules this instance started with. A module the license did not
+	 * cover at boot is missing here, and `enableFeature` cannot add it later.
+	 */
+	async getActiveModules(): Promise<string[]> {
+		const response = await this.request.get('/rest/settings');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const { data } = await response.json();
+		return data.activeModules ?? [];
+	}
+
 	// ===== CONVENIENCE METHODS =====
 
 	async enableFeature(feature: string): Promise<void> {

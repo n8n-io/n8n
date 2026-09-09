@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "1.37.0",
+  "version": "1.39.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -81,7 +81,6 @@
     "picocolors": "catalog:",
     "p-limit": "catalog:",
     "turndown": "catalog:",
-    "undici": "catalog:undici-v6",
     "uuid": "catalog:",
     "zod": "catalog:"
   },

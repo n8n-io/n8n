@@ -17,6 +17,8 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentConfigService } from './agent-config.service';
+import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
+import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
@@ -96,6 +98,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly agentThreadRepository: AgentThreadRepository,
 		private readonly agentConfig: AgentConfigService,
 		private readonly agentSkills: AgentSkillsService,
+		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
@@ -127,20 +130,27 @@ export class InstanceAiBuilderDelegateAdapterService {
 		// routes. The delegate calls the builder service directly, bypassing the
 		// controller middleware, so a user reaching agent-building via Instance AI
 		// must still hold the corresponding project scope before any agent mutation.
-		const assertProjectScope = async (scope: Scope): Promise<void> => {
-			if (!(await userHasScopes(user, [scope], false, { projectId }))) {
+		const assertProjectScope = async (...scopes: Scope[]): Promise<void> => {
+			if (!(await userHasScopes(user, scopes, false, { projectId }))) {
 				throw new ForbiddenError('You do not have permission to access agents in this project.');
 			}
 		};
 
 		return {
-			createAgent: async (name, id) => {
-				await assertProjectScope('agent:create');
-				const agent = await this.agentsService.create(projectId, name, {
-					id,
-					adoptUnconfiguredOnCollision: true,
-				});
-				return { agentId: agent.id, projectId };
+			createAgent: async (name, options) => {
+				// Adopting also needs `agent:update` — see the port's `adoptOnCollision` docs.
+				await assertProjectScope(
+					...(options?.adoptOnCollision
+						? (['agent:create', 'agent:update'] as const)
+						: (['agent:create'] as const)),
+				);
+				const { agent, adopted } = await this.agentsService.createOrAdopt(
+					projectId,
+					name,
+					options ?? {},
+				);
+				// An adopted row keeps the winner's name, so report the persisted one.
+				return { agentId: agent.id, projectId, name: agent.name, adopted };
 			},
 
 			streamBuild: async (agentId, message, session) => {
@@ -205,6 +215,21 @@ export class InstanceAiBuilderDelegateAdapterService {
 					published: agent.activeVersionId !== null,
 					updatedAt: agent.updatedAt.toISOString(),
 				}));
+			},
+
+			listAgentCapabilities: async () => {
+				await assertProjectScope('agent:read');
+				// Channels come from the registry (same source the builder's
+				// `list_integration_types` projects); agent-level capabilities and
+				// limitations come from this module's constants, so the registry
+				// and the agent config schema stay the single sources of truth as
+				// channels, tools, or limits are added or removed.
+				const channels = this.agentIntegrationPersistenceService.listChatIntegrations();
+				return {
+					channels,
+					agentCapabilities: [...AGENT_CAPABILITIES],
+					limitations: [...AGENT_LIMITATIONS],
+				};
 			},
 
 			resolveAgentName: async (agentId) => {

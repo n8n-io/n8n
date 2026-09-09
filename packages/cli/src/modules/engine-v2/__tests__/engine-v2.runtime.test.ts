@@ -43,7 +43,11 @@ const mocks = vi.hoisted(() => {
 	const stepDataLoader = vi.fn();
 
 	type V1StepExecutorDeps = {
-		additionalDataFactory: (executionId: string) => Promise<{ executionId?: string }>;
+		additionalDataFactory: (context: {
+			executionId: string;
+			workflowId: string;
+			mode: string;
+		}) => Promise<{ executionId?: string }>;
 	};
 
 	return {
@@ -176,7 +180,9 @@ describe('EngineV2Runtime', () => {
 
 			const { additionalDataFactory } = mocks.V1StepExecutor.mock.calls[0][0];
 
-			await expect(additionalDataFactory('exec-1')).resolves.toEqual({ executionId: 'exec-1' });
+			await expect(
+				additionalDataFactory({ executionId: 'exec-1', workflowId: 'wf-1', mode: 'manual' }),
+			).resolves.toEqual({ executionId: 'exec-1' });
 		});
 
 		it('serves the engine API on the configured address', async () => {

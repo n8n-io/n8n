@@ -5,10 +5,14 @@ import {
 	GitConnectionProjectListPublicDto,
 	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
+	GitConnectionPullResultDto,
 	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
 	MAX_ITEMS_PER_PAGE,
+	PushGitConnectionDto,
 	UpdateGitConnectionDto,
+	gitConnectionIdParamSchema,
+	projectIdParamSchema,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -59,9 +63,12 @@ export class GitConnectionsPublicController {
 	@ApiKeyScope('gitConnection:create')
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a Git connection')
-	@ApiDescription('Creates a Git connection and its authentication material.')
+	@ApiDescription(
+		'Creates a Git connection and its authentication material. Only one Git connection can exist.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(201, GitConnectionPublicDto)
+	@ApiErrorResponse(409)
 	async createGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -120,7 +127,7 @@ export class GitConnectionsPublicController {
 	async getGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 	): Promise<GitConnectionPublicDto> {
 		return await (await this.gitConnectionsService()).findOne(id);
 	}
@@ -137,7 +144,7 @@ export class GitConnectionsPublicController {
 	async updateGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 		@Body input: UpdateGitConnectionDto,
 	): Promise<GitConnectionPublicDto> {
 		return await (await this.gitConnectionsService()).update(id, input);
@@ -155,7 +162,7 @@ export class GitConnectionsPublicController {
 	async cloneGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 		@Body input: CloneGitConnectionDto,
 	): Promise<GitConnectionPublicDto> {
 		return await (await this.gitConnectionsService()).clone(id, input.branchName);
@@ -175,7 +182,7 @@ export class GitConnectionsPublicController {
 	async disconnectGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 	): Promise<GitConnectionPublicDto> {
 		return await (await this.gitConnectionsService()).disconnect(id);
 	}
@@ -192,7 +199,7 @@ export class GitConnectionsPublicController {
 	async deleteGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 	): Promise<void> {
 		await (await this.gitConnectionsService()).delete(id);
 	}
@@ -201,9 +208,9 @@ export class GitConnectionsPublicController {
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:push')
 	@GlobalScope('gitConnection:push')
-	@ApiSummary('Push all projects linked to a Git connection')
+	@ApiSummary('Push all team projects to a Git connection')
 	@ApiDescription(
-		'Work in progress. Exports all linked projects to the local repository working copy. It does not commit or push changes to the selected branch yet.',
+		'Exports all team projects, commits them, and pushes to the configured branch. Personal projects are ignored. Requires the repository to be cloned first.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionPushResultDto)
@@ -213,9 +220,10 @@ export class GitConnectionsPublicController {
 	async pushGitConnectionProjects(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
+		@Body input: PushGitConnectionDto,
 	): Promise<GitConnectionPushResultDto> {
-		return await (await this.gitConnectionsService()).push(id, req.user);
+		return await (await this.gitConnectionsService()).push(id, req.user, input);
 	}
 
 	@Get('/:id/projects')
@@ -229,7 +237,7 @@ export class GitConnectionsPublicController {
 	async getGitConnectionProjects(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 	): Promise<GitConnectionProjectListPublicDto> {
 		return await (await this.gitConnectionsService()).listProjects(id);
 	}
@@ -251,8 +259,8 @@ export class GitConnectionsPublicController {
 	async addProjectToGitConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
-		@Param('projectId') projectId: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
 	): Promise<GitConnectionProjectPublicDto> {
 		return await (await this.gitConnectionsService()).addProject({
 			user: req.user,
@@ -274,13 +282,36 @@ export class GitConnectionsPublicController {
 	async removeProjectFromGitConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
-		@Param('projectId') projectId: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
 	): Promise<void> {
 		await (await this.gitConnectionsService()).removeProject({
 			user: req.user,
 			connectionId: id,
 			projectId,
 		});
+	}
+
+	@Post('/:id/pull')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:pull')
+	@GlobalScope('gitConnection:pull')
+	@ApiSummary('Pull projects from a Git connection')
+	@ApiDescription(
+		'Resets the local clone to the configured branch tip and imports projects into the instance, overwriting to match. Requires the repository to be cloned first.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, GitConnectionPullResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
+	@ApiErrorResponse(503)
+	async pullGitConnectionProjects(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id', gitConnectionIdParamSchema) id: string,
+	): Promise<GitConnectionPullResultDto> {
+		return await (await this.gitConnectionsService()).pull(id, req.user);
 	}
 }

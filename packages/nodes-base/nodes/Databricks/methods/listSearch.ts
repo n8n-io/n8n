@@ -5,6 +5,7 @@ import type {
 } from 'n8n-workflow';
 
 import {
+	databricksApiRequest,
 	extractResourceLocatorValue,
 	getActiveCredentialType,
 	getHost,
@@ -20,11 +21,7 @@ async function listRequest<T>(
 	options: IHttpRequestOptions,
 ): Promise<T> {
 	try {
-		return (await context.helpers.httpRequestWithAuthentication.call(
-			context,
-			credentialType,
-			options,
-		)) as T;
+		return (await databricksApiRequest(context, credentialType, options)) as T;
 	} catch (error) {
 		makePermissionErrorLegible(error);
 		throw error;

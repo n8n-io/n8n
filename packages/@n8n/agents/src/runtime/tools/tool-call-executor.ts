@@ -1,4 +1,5 @@
-import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
+import type { JSONSchema7 } from 'json-schema';
 
 import {
 	getInlineDelegateSubAgentToolOptions,
@@ -61,7 +62,7 @@ type ToolCallOutcome =
 	| {
 			outcome: 'suspended';
 			payload: unknown;
-			resumeSchema: JsonSchema7Type;
+			resumeSchema: JSONSchema7;
 			continuation?: JSONValue;
 	  }
 	| {
@@ -92,7 +93,7 @@ export interface ToolCallSuspension {
 	input: JSONValue;
 	payload: unknown;
 	/** JSON Schema describing the shape of resume data, derived from the tool's resumeSchema. */
-	resumeSchema: JsonSchema7Type;
+	resumeSchema: JSONSchema7;
 }
 
 /** Info about a tool call that failed — carries enough data for stream chunks. */
@@ -171,10 +172,10 @@ function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boo
 function getToolResumeJsonSchema(
 	tool: BuiltTool,
 	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
-): JsonSchema7Type | undefined {
+): JSONSchema7 | undefined {
 	const resolvedSchema = resumeSchemaOverride ?? tool.resumeSchema;
 	if (!resolvedSchema) return undefined;
-	return isZodSchema(resolvedSchema) ? zodToJsonSchema(resolvedSchema) : resolvedSchema;
+	return isZodSchema(resolvedSchema) ? zodSchemaToJsonSchema(resolvedSchema) : resolvedSchema;
 }
 
 export interface ToolCallExecutorDeps {
@@ -196,7 +197,14 @@ export interface ToolCallExecutorDeps {
  * emission are owned by the caller.
  */
 export class ToolCallExecutor {
+	private offloadedToolResults = false;
+
 	constructor(private readonly deps: ToolCallExecutorDeps) {}
+
+	/** Whether any tool result was offloaded to the workspace filesystem during this runtime's lifetime. */
+	get hasOffloadedToolResults(): boolean {
+		return this.offloadedToolResults;
+	}
 
 	private get telemetry(): RuntimeTelemetry {
 		return this.deps.telemetry;
@@ -1089,6 +1097,9 @@ export class ToolCallExecutor {
 			filesystem,
 			runId: params.runId,
 			toolCallId: params.toolCallId,
+			onOffloaded: () => {
+				this.offloadedToolResults = true;
+			},
 			...(params.abortSignal ? { abortSignal: params.abortSignal } : {}),
 		};
 	}

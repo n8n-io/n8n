@@ -25,18 +25,18 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@typescript-eslint/utils": "^8.35.0"
+    "@typescript-eslint/utils": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/eslint": "^9.6.1",
     "@types/node": "catalog:",
-    "@typescript-eslint/rule-tester": "^8.35.0",
+    "@typescript-eslint/rule-tester": "catalog:",
     "@typescript/native": "catalog:typescript-tooling",
     "rimraf": "catalog:",
     "typescript": "catalog:typescript-tooling",
-    "typescript-eslint": "^8.35.0",
+    "typescript-eslint": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vue-eslint-parser": "^10.1.3"

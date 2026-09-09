@@ -263,28 +263,19 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
-	it('includes the execution outcome on assistant messages', () => {
+	it('maps an execution error without model output into an assistant message', () => {
 		const result = executionToMessagesDto(
 			execution({
 				status: 'error',
-				timeline: [
-					{
-						type: 'tool-call',
-						kind: 'tool',
-						name: 'slow_tool',
-						toolCallId: 'call-1',
-						input: {},
-						output: undefined,
-						startTime: 100,
-						endTime: 0,
-						success: false,
-					},
-				],
+				error: 'Model request failed',
 			}),
 		);
 
-		expect(result[1]).toMatchObject({
+		expect(result[1]).toEqual({
+			id: 'execution-1:assistant',
 			role: 'assistant',
+			content: [{ type: 'text', text: 'Model request failed' }],
+			executionId: 'execution-1',
 			executionStatus: 'error',
 		});
 	});

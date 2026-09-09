@@ -4,7 +4,8 @@ import type { MockedFunction } from 'vitest';
 vi.mock('../classify-node-destructiveness.service', () => ({
 	classifyNodesForSimulation: vi.fn(),
 }));
-vi.mock('../generate-simulation-fixtures.service', () => ({
+vi.mock('../generate-simulation-fixtures.service', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	generateSimulationFixtures: vi.fn(),
 }));
 
@@ -296,7 +297,13 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 		expect(nodeSimulationPlan?.find((v) => v.nodeName === 'Draft Reply')).toMatchObject({
 			verdict: 'simulate',
 		});
-		expect(simulationFixtures).toEqual({ 'Send Reply': [{ id: 'declared' }] });
+		// Generation is unreachable here, so the injected nodes still get one
+		// placeholder item each rather than a branch-stopping empty list.
+		expect(simulationFixtures).toEqual({
+			'Send Reply': [{ id: 'declared' }],
+			'On New Email': [{}],
+			'Draft Reply': [{ output: 'sample' }],
+		});
 	});
 
 	it('keeps declared-output fixtures authoritative over the trigger injection', async () => {
@@ -426,6 +433,141 @@ describe('planVerificationSimulation — wait-gate halt verdicts', () => {
 		expect(
 			nodeSimulationPlan?.find((v) => v.nodeName === 'Email Approval')?.haltBranch,
 		).toBeUndefined();
+	});
+});
+
+describe('planVerificationSimulation — fixture floor', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockGenerateFixtures.mockResolvedValue({});
+	});
+
+	const simulateVerdict = (nodeName: string): NodeSimulationVerdict => ({
+		nodeName,
+		verdict: 'simulate',
+		reason: 'Sends a message',
+		confidence: 'high',
+		source: 'deterministic',
+	});
+
+	it('gives every simulated node an item when generation returns nothing', async () => {
+		mockClassify.mockResolvedValue([simulateVerdict('Send Slack'), executeVerdict('Read Rows')]);
+
+		const { simulationFixtures } = await planVerificationSimulation({
+			workflow: wf([
+				{ name: 'Send Slack', type: 'n8n-nodes-base.slack' },
+				{ name: 'Read Rows', type: 'n8n-nodes-base.dataTable' },
+			]),
+			workflowId: 'wf-1',
+			outputSchemaLookup: () => ({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+		});
+
+		expect(simulationFixtures).toEqual({ 'Send Slack': [{ ok: true }] });
+	});
+
+	it('does not floor a halted wait gate — a pinned gate cannot pause', async () => {
+		mockClassify.mockResolvedValue([simulateVerdict('Email Approval')]);
+
+		const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
+			workflow: {
+				name: 'approval loop',
+				nodes: [
+					{
+						id: 'id-0',
+						name: 'Email Approval',
+						type: 'n8n-nodes-base.gmail',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: { operation: 'sendAndWait' },
+					},
+					{
+						id: 'id-1',
+						name: 'Revise Post',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Email Approval': { main: [[{ node: 'Revise Post', type: 'main', index: 0 }]] },
+					'Revise Post': { main: [[{ node: 'Email Approval', type: 'main', index: 0 }]] },
+				},
+			} as unknown as WorkflowJSON,
+			workflowId: 'wf-1',
+			outputSchemaLookup: () => ({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+		});
+
+		expect(nodeSimulationPlan?.find((v) => v.nodeName === 'Email Approval')).toMatchObject({
+			haltBranch: true,
+		});
+		expect(simulationFixtures).toBeUndefined();
+	});
+
+	it('rebuilds a pass-through node from a DECLARED upstream fixture', async () => {
+		// Regression: declared fixtures never reach the generator, so the floor
+		// has to run after they are merged. It used to give the Wait the Slack
+		// node's schema placeholder — a blob of 'sample' — while the real
+		// declared items sat one layer up.
+		mockClassify.mockResolvedValue([simulateVerdict('Wait 2 Days')]);
+		mockGenerateFixtures.mockResolvedValue({ 'Wait 2 Days': [{ channel: 'invented' }] });
+
+		const workflow = wf(
+			[
+				{ name: 'Post to #alerts', type: 'n8n-nodes-base.slack' },
+				{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
+			],
+			{ 'Post to #alerts': { main: [[{ node: 'Wait 2 Days', type: 'main', index: 0 }]] } },
+		);
+
+		const { simulationFixtures } = await planVerificationSimulation({
+			workflow,
+			declaredOutputFixtures: {
+				'Post to #alerts': [{ ok: true, channel: 'C01234567', ts: '1756828800.000100' }],
+			},
+			workflowId: 'wf-1',
+			outputSchemaLookup: () => ({ type: 'object', properties: { channel: { type: 'string' } } }),
+		});
+
+		expect(simulationFixtures?.['Wait 2 Days']).toEqual([
+			{ ok: true, channel: 'C01234567', ts: '1756828800.000100' },
+		]);
+	});
+
+	it('keeps a declared fixture on a pass-through node through the floor', async () => {
+		mockClassify.mockResolvedValue([]);
+
+		const workflow = wf(
+			[
+				{ name: 'Post to #alerts', type: 'n8n-nodes-base.slack' },
+				{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
+			],
+			{ 'Post to #alerts': { main: [[{ node: 'Wait 2 Days', type: 'main', index: 0 }]] } },
+		);
+
+		const { simulationFixtures } = await planVerificationSimulation({
+			workflow,
+			declaredOutputFixtures: {
+				'Post to #alerts': [{ ok: true, channel: 'C01234567' }],
+				'Wait 2 Days': [{ approved: true }],
+			},
+			workflowId: 'wf-1',
+		});
+
+		expect(simulationFixtures?.['Wait 2 Days']).toEqual([{ approved: true }]);
+	});
+
+	it('leaves a generated fixture alone', async () => {
+		mockClassify.mockResolvedValue([simulateVerdict('Send Slack')]);
+		mockGenerateFixtures.mockResolvedValue({ 'Send Slack': [{ ts: 'real' }] });
+
+		const { simulationFixtures } = await planVerificationSimulation({
+			workflow: wf([{ name: 'Send Slack', type: 'n8n-nodes-base.slack' }]),
+			workflowId: 'wf-1',
+			outputSchemaLookup: () => ({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+		});
+
+		expect(simulationFixtures).toEqual({ 'Send Slack': [{ ts: 'real' }] });
 	});
 });
 

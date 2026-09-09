@@ -1,4 +1,4 @@
-import { AzureChatOpenAI } from '@langchain/openai';
+import { AzureChatOpenAI, ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 import {
 	NodeOperationError,
@@ -101,6 +101,41 @@ export class LmChatAzureOpenAi implements INodeType {
 			this.logger.info(`Instantiating AzureChatOpenAI model with deployment: ${modelName}`);
 
 			const timeout = options.timeout;
+
+			if (modelConfig.azureFoundryBaseURL) {
+				const foundryURL = modelConfig.azureFoundryBaseURL;
+				const configuration: ClientOptions = {
+					baseURL: foundryURL,
+					fetchOptions: {
+						dispatcher: getProxyAgent(foundryURL, {
+							headersTimeout: timeout,
+							bodyTimeout: timeout,
+						}),
+					},
+				};
+				if (modelConfig.azureADTokenProvider) {
+					configuration.apiKey = modelConfig.azureADTokenProvider;
+				}
+				const model = new ChatOpenAI({
+					model: modelName,
+					...(modelConfig.azureOpenAIApiKey ? { apiKey: modelConfig.azureOpenAIApiKey } : {}),
+					...options,
+					timeout,
+					maxRetries: options.maxRetries ?? 2,
+					configuration,
+					callbacks: [new N8nLlmTracing(this)],
+					modelKwargs: options.responseFormat
+						? {
+								response_format: { type: options.responseFormat },
+							}
+						: undefined,
+					onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+				});
+
+				this.logger.info(`Azure OpenAI (Foundry) client initialized for model: ${modelName}`);
+				return { response: model };
+			}
+
 			const model = new AzureChatOpenAI({
 				// Force completions API — Azure's SDK doesn't rewrite the /responses path,
 				// so the Responses API hits an invalid endpoint and causes a connection error.
@@ -117,10 +152,16 @@ export class LmChatAzureOpenAi implements INodeType {
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
 					fetchOptions: {
-						dispatcher: getProxyAgent(undefined, {
-							headersTimeout: timeout,
-							bodyTimeout: timeout,
-						}),
+						// Resolve the proxy against the host LangChain dials so NO_PROXY applies to it.
+						// `||` rather than `??`: the Entra handler yields '' for a missing endpoint.
+						dispatcher: getProxyAgent(
+							modelConfig.azureOpenAIEndpoint ||
+								`https://${modelConfig.azureOpenAIApiInstanceName}.openai.azure.com`,
+							{
+								headersTimeout: timeout,
+								bodyTimeout: timeout,
+							},
+						),
 					},
 				},
 				modelKwargs: options.responseFormat

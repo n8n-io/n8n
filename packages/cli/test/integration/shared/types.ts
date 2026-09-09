@@ -8,6 +8,7 @@ import type TestAgent from 'supertest/lib/agent';
 import type { LicenseMocker } from './license';
 
 type EndpointGroup =
+	| 'activeWorkflows'
 	| 'health'
 	| 'me'
 	| 'users'
@@ -56,7 +57,8 @@ type EndpointGroup =
 	| 'workflowDependencies'
 	| 'encryption-keys'
 	| 'workflow-reviews'
-	| 'test-webhooks';
+	| 'test-webhooks'
+	| 'type-availability-policies';
 
 type ModuleName =
 	| 'insights'
@@ -73,7 +75,8 @@ type ModuleName =
 	| 'git-connections'
 	| 'token-exchange'
 	| 'policy-infrastructure'
-	| 'workflow-reviews';
+	| 'workflow-reviews'
+	| 'type-availability-policies';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
