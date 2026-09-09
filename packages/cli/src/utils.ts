@@ -1,3 +1,4 @@
+import { stripToolSuffix as sharedStripToolSuffix } from '@n8n/api-types';
 import { CliWorkflowOperationError, isHitlToolType, SubworkflowOperationError } from 'n8n-workflow';
 import type { INode, INodeType, Workflow } from 'n8n-workflow';
 
@@ -13,11 +14,11 @@ export function isWorkflowIdValid(id: string | null | undefined): boolean {
 
 /**
  * Strips the "Tool"/"HitlTool" suffix from a tool-variant node type (e.g. `openAiTool`
- * → `openAi`), yielding the base node type. Kept in sync with the editor-ui
- * `stripToolSuffix` so backend and frontend agree on the lookup fallback.
+ * → `openAi`), yielding the base node type. Delegates to the shared `@n8n/api-types`
+ * implementation so backend and frontend agree on the lookup fallback.
  */
 export function stripToolSuffix(nodeType: string): string {
-	return nodeType.replace(/HitlTool$/, '').replace(/Tool$/, '');
+	return sharedStripToolSuffix(nodeType);
 }
 
 /**

@@ -744,6 +744,13 @@ export {
 } from './schemas/eval-insights.schema';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
+export {
+	checkAiGatewayEligibility,
+	stripToolSuffix,
+	HTTP_NODE_TYPES,
+	type AiGatewayEligibility,
+	type AiGatewayEligibilityReason,
+} from './utils/ai-gateway-eligibility';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {

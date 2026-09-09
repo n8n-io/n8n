@@ -66,6 +66,7 @@ import { useWorkflowSaving } from './useWorkflowSaving';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useEditorContext } from './useEditorContext';
 import { useChat } from '@n8n/chat/composables';
+import { maybeShowGatewayOpportunityNudge } from '@/features/ai/gateway/composables/useGatewayOpportunityNudge';
 import type { WorkflowObjectAccessors } from '../types';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
@@ -676,6 +677,20 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 		void runWorkflow({
 			triggerNode: resolvedTriggerNode,
+		}).then(async (response) => {
+			// Best-effort nudge, must never break or delay the run. It waits for the
+			// run to actually start: runWorkflow() resolves undefined when it aborts,
+			// for example when a run is already active, the user cancels the
+			// save-before-run prompt, or that save fails.
+			if (!response) return;
+			try {
+				await maybeShowGatewayOpportunityNudge(
+					workflowData.nodes,
+					workflowDocumentStore.value.workflowId,
+				);
+			} catch (error) {
+				console.error(error);
+			}
 		});
 	}
 
