@@ -1,0 +1,83 @@
+packages/cli/src/user-management/email/interfaces.ts
+  h_435b1d7d3e52c0 23-35
+packages/cli/src/user-management/email/user-management-mailer.ts
+  h_435b1d7d3e52c0 14-15,18,58-59,110-126
+  h_435b1d7d3e52c0 13,16-17,19,57,127-129
+packages/@n8n/api-types/src/dto/user/resolve-change-email-token-query.dto.ts
+  h_435b1d7d3e52c0 1-6
+packages/@n8n/api-types/src/index.ts
+  s_c62e9f5501d56c::t_c732624cadd8a6 207-210
+  s_c62e9f5501d56c::t_0d44c886f9beb0 206
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_c62e9f5501d56c::t_b43eabd4f2f133 849
+  s_c62e9f5501d56c::t_9bd2847929f49c 947-998
+  s_c62e9f5501d56c::t_b685da9ace2b2d 999-1000
+packages/cli/src/controllers/me.controller.ts
+  s_c62e9f5501d56c::t_86984fea51a988 92-97
+  s_c62e9f5501d56c::t_780d5b91c304cf 24
+  s_c62e9f5501d56c::t_579a1b65fd0e52 43
+packages/cli/src/controllers/change-email.controller.ts
+  s_c62e9f5501d56c::t_ad85912a4e530d 153
+  s_c62e9f5501d56c::t_6626480fb12fdc 1-20,22-85,105-106,112-152,154-188
+  s_c62e9f5501d56c::t_6c74671fac9779 21
+  s_c62e9f5501d56c::t_78b30a0be4abe9 86-104,107-111
+  s_c62e9f5501d56c::t_9f529ea1925cfb 189-191
+  h_435b1d7d3e52c0 192
+packages/cli/src/server.ts
+  s_c62e9f5501d56c::t_a1f1000893e362 38
+packages/cli/src/user-management/email/templates/email-change-completed.mjml
+  h_435b1d7d3e52c0 1-17
+packages/cli/src/services/__tests__/email-change.service.test.ts
+  s_c62e9f5501d56c::t_dc4e6f6f7fd48c 1-143
+  s_c62e9f5501d56c::t_aaaf62149c7093 144-146
+  h_435b1d7d3e52c0 147
+packages/@n8n/api-types/src/dto/user/change-email-request.dto.ts
+  h_435b1d7d3e52c0 1-5,8-9
+  s_c62e9f5501d56c::t_01075df93abf29 6-7
+packages/cli/src/user-management/email/templates/email-change-requested.mjml
+  h_435b1d7d3e52c0 1-23
+packages/cli/test/integration/change-email.api.test.ts
+  s_c62e9f5501d56c::t_ddc15e40c07e51 1-184
+packages/cli/test/integration/shared/types.ts
+  s_c62e9f5501d56c::t_faafa0877d9ab1 20
+packages/cli/src/events/maps/relay.event-map.ts
+  s_c62e9f5501d56c::t_590b6ef2c3ebeb 442-443
+  s_c62e9f5501d56c::t_b6f5d0f6a109cf 396-397
+packages/cli/src/auth/auth.service.ts
+  h_435b1d7d3e52c0 60-65,427-456,461,477-479
+  h_435b1d7d3e52c0 457-458
+packages/@n8n/api-types/src/schemas/change-email-response.ts
+  h_435b1d7d3e52c0 1-18
+packages/cli/src/services/email-change.service.ts
+  s_c62e9f5501d56c::t_411d9541fa40b2 1-116
+packages/@n8n/api-types/src/dto/index.ts
+  s_c62e9f5501d56c::t_d2ea7bcb1a80a1 92-94
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_c62e9f5501d56c::t_65fe02fcf1f901 311-314
+packages/@n8n/api-types/src/dto/user/confirm-email-change-request.dto.ts
+  h_435b1d7d3e52c0 1-6
+packages/@n8n/config/src/configs/user-management.config.ts
+  h_435b1d7d3e52c0 88-89,92-95
+  s_c62e9f5501d56c::t_907da5c38042a3 90-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5e61407ffdc3a98d0e2bd6fce75eecd9cd9f0e8b",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c62e9f5501d56c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1ab8b96-bd72-4fd5-837e-625144e4ae0b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

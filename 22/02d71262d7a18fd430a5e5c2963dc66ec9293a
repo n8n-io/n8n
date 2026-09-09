@@ -1,0 +1,30 @@
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  s_5ddf40544fde37::t_aca03d285163ed 146-147
+  s_5ddf40544fde37::t_dcbf7d9c99c47f 76-78
+  s_5ddf40544fde37::t_1a21193a7a7089 215
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5ddf40544fde37::t_56a2231b093297 521-522,524,526-531
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_5ddf40544fde37::t_391660166225a9 323
+  s_5ddf40544fde37::t_0b062c617c3d5d 362
+  s_5ddf40544fde37::t_67e0ca3a157575 339
+  s_5ddf40544fde37::t_fe2f99a4386d67 321-322
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_5ddf40544fde37::t_48816f20e91aec 428-430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2202d71262d7a18fd430a5e5c2963dc66ec9293a",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
