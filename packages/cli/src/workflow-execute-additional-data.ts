@@ -59,7 +59,9 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { EventService } from '@/events/event.service';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
+import type { SubExecutionHooksOptions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { isLiveSubExecutionsEnabled } from '@/execution-lifecycle/live-sub-executions-flag';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
@@ -539,6 +541,32 @@ export function buildSubWorkflowOutput(
 	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
 }
 
+/**
+ * Streams a sub-execution to the push session watching its parent run. Empty
+ * unless the feature is on and a session is watching, which leaves the
+ * sub-execution with no push hooks.
+ */
+function subExecutionPushOptions(
+	additionalData: IWorkflowExecuteAdditionalData,
+	options: ExecuteWorkflowOptions,
+): Pick<SubExecutionHooksOptions, 'pushRef' | 'subExecutionParent'> {
+	if (!isLiveSubExecutionsEnabled() || !additionalData.pushRef) return {};
+
+	// The editor needs the calling node run to bind the sub-execution to it.
+	const parentExecutionId = additionalData.executionId;
+	return {
+		pushRef: additionalData.pushRef,
+		subExecutionParent:
+			parentExecutionId && options.node
+				? {
+						executionId: parentExecutionId,
+						nodeName: options.node.name,
+						runIndex: options.nodeRunIndex ?? 0,
+					}
+				: undefined,
+	};
+}
+
 async function startExecution(
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: ExecuteWorkflowOptions,
@@ -604,26 +632,15 @@ async function startExecution(
 			workflowId: workflowData.id,
 			workflowSettings,
 		});
-		// Editor-started runs stream their sub-executions to the same push session.
-		// The editor needs the calling execution to tell whether a sub-execution
-		// belongs to the run it is watching.
-		const parentExecutionId = additionalData.executionId;
-		additionalDataIntegrated.pushRef = additionalData.pushRef;
+		const push = subExecutionPushOptions(additionalData, options);
+		additionalDataIntegrated.pushRef = push.pushRef;
 		additionalDataIntegrated.hooks = getLifecycleHooksForSubExecutions({
 			mode: runData.executionMode,
 			executionId,
 			workflowData,
 			userId: additionalData.userId,
 			parentExecution: options.parentExecution,
-			pushRef: additionalData.pushRef,
-			subExecutionParent:
-				parentExecutionId && options.node
-					? {
-							executionId: parentExecutionId,
-							nodeName: options.node.name,
-							runIndex: options.nodeRunIndex ?? 0,
-						}
-					: undefined,
+			...push,
 		});
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;

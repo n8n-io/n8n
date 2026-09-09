@@ -48,6 +48,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';
+import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import {
 	executeAgent,
 	executeWorkflow,
@@ -104,6 +105,15 @@ const getCancelablePromise = async (run: IRun) =>
 	});
 
 const processRunExecutionData = vi.fn();
+
+vi.mock('@/execution-lifecycle/execution-lifecycle-hooks', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('@/execution-lifecycle/execution-lifecycle-hooks')>();
+	return {
+		...actual,
+		getLifecycleHooksForSubExecutions: vi.fn(actual.getLifecycleHooksForSubExecutions),
+	};
+});
 
 vi.mock('n8n-core', async () => ({
 	__esModule: true,
@@ -216,6 +226,55 @@ describe('WorkflowExecuteAdditionalData', () => {
 			).rejects.toThrow('blocked');
 
 			expect(activeExecutions.add).not.toHaveBeenCalled();
+		});
+
+		describe('live sub-execution push gate', () => {
+			const CALLING_NODE = 'Execute Sub-workflow';
+
+			async function runSubWorkflow() {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>({ pushRef: 'push-1', executionId: 'e-parent' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: undefined,
+						doNotWaitToFinish: false,
+						node: mock<INode>({ name: CALLING_NODE }),
+						nodeRunIndex: 2,
+					}),
+				);
+
+				return vi.mocked(getLifecycleHooksForSubExecutions).mock.calls.at(-1)?.[0];
+			}
+
+			it('passes the push session and calling node run when enabled', async () => {
+				vi.stubEnv('N8N_ENV_FEAT_LIVE_SUB_EXECUTIONS', 'true');
+
+				const options = await runSubWorkflow();
+
+				expect(options?.pushRef).toBe('push-1');
+				expect(options?.subExecutionParent).toEqual({
+					executionId: 'e-parent',
+					nodeName: CALLING_NODE,
+					runIndex: 2,
+				});
+			});
+
+			it('withholds both when disabled, so no push hooks install', async () => {
+				vi.stubEnv('N8N_ENV_FEAT_LIVE_SUB_EXECUTIONS', 'false');
+
+				const options = await runSubWorkflow();
+
+				expect(options?.pushRef).toBeUndefined();
+				expect(options?.subExecutionParent).toBeUndefined();
+			});
+
+			it('is off when the flag is unset', async () => {
+				vi.stubEnv('N8N_ENV_FEAT_LIVE_SUB_EXECUTIONS', undefined);
+
+				const options = await runSubWorkflow();
+
+				expect(options?.pushRef).toBeUndefined();
+			});
 		});
 
 		it('should execute workflow, return data and execution id', async () => {
