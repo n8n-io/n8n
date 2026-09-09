@@ -19,7 +19,8 @@ export type ExecutionListItem = Without<ExecutionSnapshot, 'graph' | 'workflow' 
 
 export interface SearchExecutionsResponse {
 	items: ExecutionListItem[];
-	hasMore: boolean;
+	/** The `before` cursor for the next page, or `null` on the last page. */
+	nextCursor: { createdAt: string; id: string } | null;
 	total?: number;
 }
 
