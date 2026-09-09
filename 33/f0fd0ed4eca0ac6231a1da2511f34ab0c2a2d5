@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_ccb9b0a9bbef89::t_d256e56487e197 161
+  s_ccb9b0a9bbef89::t_ae2e3ee8b42c07 154-155,158
+packages/cli/src/services/protected-resource.registry.ts
+  s_ccb9b0a9bbef89::t_ae2e3ee8b42c07 23
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_ccb9b0a9bbef89::t_85e397ca5ffca8 190-206,221-222,242-246
+  s_ccb9b0a9bbef89::t_67580f4f8170bc 207-220,247
+  s_ccb9b0a9bbef89::t_b412116fad03bb 248
+packages/@n8n/api-types/src/consent.ts
+  s_ccb9b0a9bbef89::t_ae2e3ee8b42c07 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "33f0fd0ed4eca0ac6231a1da2511f34ab0c2a2d5",
+  "prompts": {},
+  "sessions": {
+    "s_ccb9b0a9bbef89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae5c9b9c-c8a4-401d-8415-3fd62545d682",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

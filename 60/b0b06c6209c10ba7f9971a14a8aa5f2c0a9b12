@@ -1,0 +1,43 @@
+packages/@n8n/db/src/migrations/common/1787826404992-AddRequireBranchForPromotionToGitConnection.ts
+  s_cf478dbb68f525::t_cf2645f6d3fff8 10-15,26-28
+  s_cf478dbb68f525::t_cfacda6f96b51b 5,16-25,30-37
+  s_28d74431bb8f04::t_372bc6608b093e 1-4,6-9,29,38-41
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_28d74431bb8f04::t_372bc6608b093e 126,165-168,612
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_28d74431bb8f04::t_372bc6608b093e 3704-3706
+packages/@n8n/api-types/src/dto/git-connections/__tests__/git-connections.dto.test.ts
+  s_28d74431bb8f04::t_1adeb78c965d12 62-77
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_28d74431bb8f04::t_372bc6608b093e 29,40,69
+packages/cli/src/modules/git-connections.ee/database/entities/git-connection.entity.ts
+  s_28d74431bb8f04::t_372bc6608b093e 42-45
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_28d74431bb8f04::t_372bc6608b093e 63,174-194,270-277,279
+packages/cli/test/integration/public-api/git-connections.test.ts
+  s_28d74431bb8f04::t_372bc6608b093e 75-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "60b0b06c6209c10ba7f9971a14a8aa5f2c0a9b12",
+  "prompts": {},
+  "sessions": {
+    "s_28d74431bb8f04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d590bb89-3aa1-4fed-b9cb-d9baddf33b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_cf478dbb68f525": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a085901d-23a6-4264-9a5a-8b9b83f78780",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

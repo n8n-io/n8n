@@ -1,0 +1,27 @@
+packages/cli/test/integration/database/repositories/poller-state.repository.test.ts
+  s_0e720ce3e9500c::t_6ff62b36350471 320
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_0e720ce3e9500c::t_b5ccbbe672ff8a 427
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_0e720ce3e9500c::t_b5ccbbe672ff8a 933,937,948
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_0e720ce3e9500c::t_b5ccbbe672ff8a 240
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_0e720ce3e9500c::t_b5ccbbe672ff8a 325,329,338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a8c9c1d3fcb73fecab948ccecf039825e51d07df",
+  "prompts": {},
+  "sessions": {
+    "s_0e720ce3e9500c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5556c9a4-9204-4b76-a29c-3ae5bdfcf229",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

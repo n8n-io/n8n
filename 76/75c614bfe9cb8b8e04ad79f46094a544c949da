@@ -1,0 +1,80 @@
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_0e720ce3e9500c::t_b5a8986f96e131 180-182
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_0e720ce3e9500c::t_b5ccbbe672ff8a 312,316,325
+  s_0e720ce3e9500c::t_21116b4a5038aa 372-374,377-397
+  s_0e720ce3e9500c::t_d4f641334fb414 375-376
+  s_0e720ce3e9500c::t_3c86658dfe6ab3 415,423
+packages/@n8n/scheduler/src/core/reconciliation/store.ts
+  s_0e720ce3e9500c::t_b5a8986f96e131 4,29-30,66
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_0e720ce3e9500c::t_b5ccbbe672ff8a 427
+packages/cli/test/integration/scheduling/scheduled-job-owner-reconciliation.test.ts
+  s_0e720ce3e9500c::t_3c86658dfe6ab3 139,151-153,158,174,185-203,213,223,339
+  s_0e720ce3e9500c::t_7e2c9b92d78791 204-208
+  s_0e720ce3e9500c::t_e2c53e76f7f7c2 315,341-343,345,349-354,358,360-363
+packages/cli/test/integration/scheduling/scheduled-repositories.test.ts
+  s_0e720ce3e9500c::t_13b284ccd83f3f 649-663
+packages/cli/test/integration/database/repositories/poller-state.repository.test.ts
+  s_0e720ce3e9500c::t_6ff62b36350471 320
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_0e720ce3e9500c::t_b5ccbbe672ff8a 933,937,948
+packages/cli/test/migration/1788359043381-generalize-scheduled-job-owner.test.ts
+  s_c4f5e2c80f4658::t_f3140b418137fa 1-387
+packages/@n8n/db/src/migrations/common/1788359043381-GeneralizeScheduledJobOwner.ts
+  s_c4f5e2c80f4658::t_f3140b418137fa 1-204
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/reconcile.test.ts
+  s_aeb8767c6711c5::t_410d347c2943c3 266-290,125,127,155,255-256,258
+  s_aeb8767c6711c5::t_cdd12199b114c6 400-418,428-429,431-449,453,455-456,122,128,130,133,136,138,140-141,144-145,151,154,156,158-159,166,170,172,177-178,251-252,254,259,261,264-265
+  s_aeb8767c6711c5::t_cbe4dc9231f35d 419-427
+  s_aeb8767c6711c5::t_8a9521d534211c 430,450-452,454
+  s_aeb8767c6711c5::t_173337208da297 506,580-584,779,253
+  s_0e720ce3e9500c::t_3c86658dfe6ab3 29,129,235,250,260,262
+  s_0e720ce3e9500c::t_e2c53e76f7f7c2 116-121,123-124,126,131-132,134-135,137,139,142-143,146-150,152-153,157,160-165,167-169,171,173-176
+  s_0e720ce3e9500c::t_7e2c9b92d78791 257
+packages/@n8n/db/src/migrations/sqlite/1788359043381-GeneralizeScheduledJobOwner.ts
+  s_c4f5e2c80f4658::t_f3140b418137fa 1-10
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_0e720ce3e9500c::t_b5ccbbe672ff8a 235
+  s_0e720ce3e9500c::t_3db9f5c1fcbf78 278-281,437-439
+  s_0e720ce3e9500c::t_42237a16f6a6db 307-311,332,419-421,428,450
+  s_0e720ce3e9500c::t_477e8d4ab839ad 339,346,348-350,357,365-366
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_aeb8767c6711c5::t_173337208da297 35-36,124
+  s_aeb8767c6711c5::t_410d347c2943c3 397-400
+  s_0e720ce3e9500c::t_42237a16f6a6db 21,25,56,67-70,344,404-405,438,458-459
+  s_0e720ce3e9500c::t_3ce3fe51f00827 73-74,277,280-284
+  s_0e720ce3e9500c::t_57a4b3673eabe4 270-271,274,278-279,285-287,307-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7675c614bfe9cb8b8e04ad79f46094a544c949da",
+  "prompts": {},
+  "sessions": {
+    "s_0e720ce3e9500c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5556c9a4-9204-4b76-a29c-3ae5bdfcf229",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_aeb8767c6711c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee3ca96c-243a-447f-b721-9220b07c2646",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_c4f5e2c80f4658": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e4d489b8-e929-4199-978d-1e90b8f60780",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

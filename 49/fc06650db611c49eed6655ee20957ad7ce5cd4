@@ -1,0 +1,22 @@
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.test.ts
+  s_9825a650ec12cf::t_be2290c0638bd0 46-48,55-62
+  s_9825a650ec12cf::t_cada8601592902 1,49-53
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.ts
+  s_9825a650ec12cf::t_779c72733b4d04 4-6,9-11,21-22,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49fc06650db611c49eed6655ee20957ad7ce5cd4",
+  "prompts": {},
+  "sessions": {
+    "s_9825a650ec12cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26366a24-8406-4014-85ca-17598aa2a15b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

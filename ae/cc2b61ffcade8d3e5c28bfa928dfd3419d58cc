@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiSettings.store.test.ts
+  s_5519021fef93fb::t_cbb87429d7b4b0 530
+  s_5519021fef93fb::t_9c397bcfa79cdf 500
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_5519021fef93fb::t_3119c9e0f8c9c9 207
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiSettings.store.ts
+  s_5519021fef93fb::t_2e64f42e0e91d8 117
+  s_5519021fef93fb::t_d55dd1a1ca2eae 145
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_5519021fef93fb::t_ad8f2d91fcb09b 1280-1281
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_5519021fef93fb::t_22da03db5af772 80
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_5519021fef93fb::t_81dfe2301ba9db 361
+packages/@n8n/config/test/config.test.ts
+  s_5519021fef93fb::t_0075b0e413b266 370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "aecc2b61ffcade8d3e5c28bfa928dfd3419d58cc",
+  "prompts": {},
+  "sessions": {
+    "s_5519021fef93fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f83f1669-9697-4f55-a886-6faab8e3810f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

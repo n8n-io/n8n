@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/recalls-report-source-table-among-two-similar-tables.json
+  s_d7dc19b022f345::t_865516e9ae56e5 106
+packages/@n8n/instance-ai/evaluations/data/workflows/recalls-write-step-rules-locked-in-at-thread-start.json
+  s_d7dc19b022f345::t_865516e9ae56e5 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b498dd60710924434d4def361865a67bae881a2d",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

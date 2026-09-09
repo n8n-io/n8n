@@ -1,0 +1,72 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_fc1a41fd88eb5b::t_b9082f54e8a2c3 995,997-1003
+  s_fc1a41fd88eb5b::t_09ce031d2becb1 996
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_fc1a41fd88eb5b::t_e9b971a16f56cb 7,207,218-224,229,256-258,281,337,431,438,196,202
+  s_fc1a41fd88eb5b::t_23a1fa0d91528b 225-226,248,213
+  s_fc1a41fd88eb5b::t_65ecb4ebb0204e 206,208,210,216
+  s_fc1a41fd88eb5b::t_b102b74b878fa7 17,197-201,203,212,214,227-228
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_da18386a9930c0::t_7aedf184dcda7f 121,159,187
+  s_da18386a9930c0::t_0e6b321125bc4c 173-174
+  s_da18386a9930c0::t_5de3bbbfd4c3ef 191
+  s_da18386a9930c0::t_d88bcb47ecacfa 122-128,184-185,188
+  s_da18386a9930c0::t_7a6855e498531c 151
+  s_fc1a41fd88eb5b::t_b102b74b878fa7 25,295-297,935
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_fc1a41fd88eb5b::t_5a83a247723fd2 4,13,148-149,176-187
+  s_fc1a41fd88eb5b::t_7762c98d66d6d7 95,101,103-106,108-109
+  s_fc1a41fd88eb5b::t_4659c7071b2043 96-100,102,107
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_da18386a9930c0::t_02e8d6daa22601 3-4,2362-2365,2395,2401,2408,2414,2418,2424,2429,2441-2454,2483-2484,2487,2480
+  s_da18386a9930c0::t_0f932166bb1dfc 23-38,2359-2360,2366-2394,2396-2400,2402-2407,2409-2413,2415-2417,2419-2423,2425-2428,2430-2440,2485-2486,2488-2489,2469,2472,2478,2482,437,442,452
+  s_da18386a9930c0::t_57e918f65776e4 2361
+  s_da18386a9930c0::t_94a0e1f49e5b19 2455-2457,2458-2464,2467-2468,2470-2471,2473-2477,2479,2481,448-449,451
+  s_da18386a9930c0::t_b19f382b1c5ff0 2465-2466
+  s_fc1a41fd88eb5b::t_de5c8834f0815f 382-395,397,399-402,405-416,420-427,429-435,440-441,443-447,450
+  s_fc1a41fd88eb5b::t_b50b20b1e42a12 396,398,403-404,417-419,428,436,438-439
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_fc1a41fd88eb5b::t_e71e8aa802eed6 200-213
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_fc1a41fd88eb5b::t_b0a4468fcb8f04 2190-2253,2274-2285,2262,2264-2265,2267-2269,2272-2273
+  s_fc1a41fd88eb5b::t_52a5efde2004fb 2254-2255,2256-2261,2263,2266,2270-2271
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_fc1a41fd88eb5b::t_87c01d1da3026b 250,533,51,56,59-63,67-68,88-102,251,259-268,536-543,547-555,557-562,564-565,567
+  s_da18386a9930c0::t_55fe26787efd5e 350,354-372,374-376,566
+  s_da18386a9930c0::t_0e6b321125bc4c 351-353
+  s_da18386a9930c0::t_71d59c71a1fd3a 373
+  s_fc1a41fd88eb5b::t_58da945b132738 46
+  s_fc1a41fd88eb5b::t_b424f0319aaa1e 52-55,57-58,64-66,556
+  s_fc1a41fd88eb5b::t_a432f78fd0079b 22,252-258
+  s_fc1a41fd88eb5b::t_a0ed76b19e4635 544-546,563
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_fc1a41fd88eb5b::t_e71e8aa802eed6 412-419
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_fc1a41fd88eb5b::t_7da9bf707534d5 4,430-481,580-597,487,489,491,494-499,503,507,510,512,515-520,523,527,530-533,538,542,546,548,551,553,562-567,570,575
+  s_fc1a41fd88eb5b::t_f38c1cf5c6a0c9 483-486,488,492-493,501,504-506,509,513-514,524-526,529,536,539-540
+  s_fc1a41fd88eb5b::t_6a6bb2ed277532 490,500,502,508,511,521-522,528,534-535,537,541,543-545,547,549-550,552,554-561,568-569,571-574,576-578
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "578023dbf2dc962338569616b17dcb4ba7788f9a",
+  "prompts": {},
+  "sessions": {
+    "s_da18386a9930c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "036af95a-e433-49fd-afd4-648c48e9f64b",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_fc1a41fd88eb5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbadcb29-0d8e-46b0-95a2-3ecb4d90ae2c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

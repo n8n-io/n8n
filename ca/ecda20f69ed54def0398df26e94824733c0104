@@ -1,0 +1,23 @@
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_6415615520e467::t_84c873950df387 11,13,16
+  s_6415615520e467::t_21aa29223930ac 38-39
+  s_6415615520e467::t_d27650cd9ae812 5
+packages/cli/src/expression-observability/expression-observability.provider.ts
+  s_6415615520e467::t_d27650cd9ae812 56-59,174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "caecda20f69ed54def0398df26e94824733c0104",
+  "prompts": {},
+  "sessions": {
+    "s_6415615520e467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97c28131-e714-48ea-a3dd-ddf5f46fbde8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/cli/test/integration/environments/source-control-export.service.test.ts
+  s_7ad6048374093f::t_f8cad5386071bf 69-70
+  s_7ad6048374093f::t_20e1dadeaa5db4 68,71,74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5efd94618c9d655d4be5d6499d207e3ee8441986",
+  "prompts": {},
+  "sessions": {
+    "s_7ad6048374093f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33541f56-ba3b-4aaa-b27c-bed113227230",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

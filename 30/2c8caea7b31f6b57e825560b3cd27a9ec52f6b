@@ -1,0 +1,25 @@
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_15350c0aaad6a2::t_8fc83742bf288a 37
+  s_15350c0aaad6a2::t_8931d91230bba9 72
+  s_15350c0aaad6a2::t_587a6157f9e6fc 230-245
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_15350c0aaad6a2::t_a6080f47117361 17
+  s_15350c0aaad6a2::t_16eccce842d814 96
+  s_15350c0aaad6a2::t_78b858a490d9e3 173-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "302c8caea7b31f6b57e825560b3cd27a9ec52f6b",
+  "prompts": {},
+  "sessions": {
+    "s_15350c0aaad6a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2330de2-ca8f-4761-88ab-76682fbe0f14",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

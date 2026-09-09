@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/shared/services/pagination.service.ts
+  h_5d40c27a8fdfd1 3-4,16-43
+packages/cli/src/public-api/v1/shared/services/__tests__/pagination.service.test.ts
+  h_5d40c27a8fdfd1 1-53
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  h_5d40c27a8fdfd1 41
+  h_5d40c27a8fdfd1 42-45,329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4b7e6513cb55ad737030e0e2e1532a316870c028",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

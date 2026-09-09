@@ -1,0 +1,24 @@
+packages/@n8n/engine/src/lifecycle-events/batching-lifecycle-event-publisher.ts
+  s_d427a339f82a38::t_4793e2b48e8038 106-110
+  s_d427a339f82a38::t_bee515699bb959 115-121
+packages/@n8n/engine/src/lifecycle-events/__tests__/batching-lifecycle-event-publisher.test.ts
+  s_d427a339f82a38::t_e4e3a3d54a5ee5 248-251,297-299,301
+  s_d427a339f82a38::t_e9a445f353dadb 144-146,149-152,154-156,159-167
+  s_d427a339f82a38::t_132bd69a310e22 147-148,153,157-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f5ec3d29200a9949dd4489201a141e7bcf79f47a",
+  "prompts": {},
+  "sessions": {
+    "s_d427a339f82a38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e7c13e2-f6b7-4525-ab96-5f78b0f1b6b7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

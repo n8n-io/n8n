@@ -1,0 +1,25 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_c0d8335268ee80::t_2498ace66efb2c 2316-2347
+packages/cli/src/modules/n8n-packages/entities/credential/credential-export-policy.ts
+  s_c0d8335268ee80::t_d99fa43e99e5a7 14-25,31-35
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-export-policy.test.ts
+  s_c0d8335268ee80::t_c706a3a2b1e9d7 46,51,58,62-71
+packages/cli/src/credentials/credentials.service.ts
+  s_c0d8335268ee80::t_cb9b746ba238d2 1741-1742,1749
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "db58598b1e9c751aa7a28e566bcbee59abeec751",
+  "prompts": {},
+  "sessions": {
+    "s_c0d8335268ee80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4da5c614-d64c-40a6-ba7c-d52d6dcc9690",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

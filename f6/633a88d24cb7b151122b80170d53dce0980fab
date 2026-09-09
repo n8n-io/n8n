@@ -1,0 +1,18 @@
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  h_5d40c27a8fdfd1 75,109
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredential.generated.yml
+  h_5d40c27a8fdfd1 3
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredentials.generated.yml
+  h_5d40c27a8fdfd1 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f6633a88d24cb7b151122b80170d53dce0980fab",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+packages/cli/src/modules/agents/agents.module.ts
+  ai_agent 160-164
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  ai_agent 1-33
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  ai_agent 6,204-205,209-213
+packages/cli/src/modules/agents/__tests__/agent-checkpoint-pruning.task.test.ts
+  ai_agent 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed6f73d740e430265cb5f138fb11b09dcaf6e63f",
+  "prompts": {}
+}

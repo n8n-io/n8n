@@ -1,0 +1,38 @@
+packages/cli/src/modules/instance-ai/observability.ts
+  s_c310adacefa6c7::t_91b7bf910ec07d 1-2,39-48
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_c310adacefa6c7::t_5598c9bf0ccbf1 6746
+  s_c310adacefa6c7::t_872fbd99a32235 176
+packages/@n8n/instance-ai/src/utils/__tests__/model-config-id.test.ts
+  s_c310adacefa6c7::t_aa0303e3a7b737 1-66
+packages/cli/src/events/maps/instance-ai.event-map.ts
+  s_c310adacefa6c7::t_0d1dc28033156f 43-45
+packages/@n8n/instance-ai/src/utils/model-config-id.ts
+  s_c310adacefa6c7::t_05a1dc8c184176 1-41
+packages/@n8n/instance-ai/src/index.ts
+  s_c310adacefa6c7::t_0907d0f40db5db 190
+  s_c310adacefa6c7::t_ec183ce8374349 191
+packages/cli/src/modules/instance-ai/__tests__/observability.test.ts
+  s_c310adacefa6c7::t_5889df3e4f9f5f 1,3,52-76
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_c310adacefa6c7::t_e9fe6a6bac4abd 1737-1786
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  s_c310adacefa6c7::t_32ac21bf2620f8 19
+  s_c310adacefa6c7::t_8e08bb3d27620e 1346-1351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3c7654b063b73dafe426136469fdbf5c31c0f016",
+  "prompts": {},
+  "sessions": {
+    "s_c310adacefa6c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd29c230-7df7-4c45-9636-525402fa5f25",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
