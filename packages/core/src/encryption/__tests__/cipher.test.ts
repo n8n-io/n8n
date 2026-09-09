@@ -437,6 +437,46 @@ describe('Cipher', () => {
 				});
 				expect(emitSpy).not.toHaveBeenCalledWith('decrypt', expect.anything());
 			});
+
+			it('should not let a throwing metrics listener break a successful decrypt', async () => {
+				const keyId = 'test-uuid-listener';
+				const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
+				const ciphertext = cipher.encryptWithKey('safe', plaintextDataKey, 'aes-256-gcm');
+				withProvider({
+					getKeyById: async (id: string) =>
+						id === keyId
+							? { id, value: encryptedDataKey, algorithm: 'aes-256-gcm', format: 'prefixed' }
+							: null,
+				});
+				const boom = () => {
+					throw new Error('listener boom');
+				};
+				cipher.events.on('decrypt', boom);
+
+				try {
+					await expect(cipher.decryptV2(`${keyId}:${ciphertext}`)).resolves.toEqual('safe');
+				} finally {
+					cipher.events.off('decrypt', boom);
+				}
+			});
+
+			it('should preserve the original error when a metrics listener throws', async () => {
+				withProvider({
+					getKeyById: async () => {
+						throw new Error('provider down');
+					},
+				});
+				const boom = () => {
+					throw new Error('listener boom');
+				};
+				cipher.events.on('key-lookup', boom);
+
+				try {
+					await expect(cipher.decryptV2('some-id:abc')).rejects.toThrow('provider down');
+				} finally {
+					cipher.events.off('key-lookup', boom);
+				}
+			});
 		});
 	});
 });

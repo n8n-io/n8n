@@ -143,7 +143,7 @@ export class Cipher {
 			return this.decryptWithKey(ciphertext, plaintextKey, algorithm);
 		} finally {
 			// Emit even on failure so the metric also captures slow or failing decryptions.
-			this.events.emit('decrypt', { algorithm, durationMs: performance.now() - start });
+			this.emitMetric('decrypt', { algorithm, durationMs: performance.now() - start });
 		}
 	}
 
@@ -157,7 +157,22 @@ export class Cipher {
 			return await lookup();
 		} finally {
 			// Emit even on failure so the metric also captures slow or failing lookups.
-			this.events.emit('key-lookup', { source, durationMs: performance.now() - start });
+			this.emitMetric('key-lookup', { source, durationMs: performance.now() - start });
+		}
+	}
+
+	/**
+	 * Best-effort metrics emit. A misbehaving listener must never break or mask a
+	 * decrypt, so listener errors are swallowed.
+	 */
+	private emitMetric<E extends keyof CipherMetricsEventMap>(
+		event: E,
+		payload: CipherMetricsEventMap[E],
+	): void {
+		try {
+			this.events.emit(event, payload);
+		} catch {
+			// Telemetry is best-effort; ignore listener failures.
 		}
 	}
 
