@@ -47,12 +47,28 @@ describe('bindModulePorts', () => {
 	it('delegates getWorkflowProjectCached to the ownership service', async () => {
 		bindModulePorts();
 		const project = mock<Project>({ id: 'project-1' });
+		// Assigned after construction: the mock helper deep-proxies nested values.
+		project.customTelemetryTags = [{ key: 'team', value: 'core' }];
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
 
 		const result = await Container.get(WorkflowProjectLookup).getWorkflowProjectCached('wf-1');
 
 		expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
-		expect(result).toBe(project);
+		expect(result).toEqual({
+			id: 'project-1',
+			customTelemetryTags: [{ key: 'team', value: 'core' }],
+		});
+	});
+
+	it('passes no field the project port does not declare', async () => {
+		bindModulePorts();
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Team project', type: 'team' }),
+		);
+
+		const result = await Container.get(WorkflowProjectLookup).getWorkflowProjectCached('wf-1');
+
+		expect(Object.keys(result).sort()).toEqual(['customTelemetryTags', 'id']);
 	});
 
 	it('reports the cli version', () => {

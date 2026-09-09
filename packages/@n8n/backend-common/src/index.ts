@@ -6,7 +6,10 @@ export { isObjectLiteral } from './utils/is-object-literal';
 export { Logger } from './logging/logger';
 export { ModuleRegistry } from './modules/module-registry';
 export { InstanceVersion } from './modules/ports/instance-version';
-export { ModulePubSubPublisher } from './modules/ports/module-pubsub-publisher';
+export {
+	ModulePubSubPublisher,
+	type ModulePubSubCommand,
+} from './modules/ports/module-pubsub-publisher';
 export {
 	WorkflowProjectLookup,
 	type WorkflowProjectSummary,

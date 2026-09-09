@@ -3,7 +3,6 @@ import { Container } from '@n8n/di';
 
 import { N8N_VERSION } from '@/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { PubSub } from '@/scaling/pubsub/pubsub.types';
 import { OwnershipService } from '@/services/ownership.service';
 
 /**
@@ -16,15 +15,19 @@ import { OwnershipService } from '@/services/ownership.service';
  */
 export function bindModulePorts() {
 	Container.set(ModulePubSubPublisher, {
-		// The port carries payload-less commands only. `PubSub.Command` demands the
-		// payload that belongs to each command name, and that map stays in cli.
-		publishCommand: async (msg) =>
-			await Container.get(Publisher).publishCommand(msg as PubSub.Command),
+		// No cast: `ModulePubSubCommand` names payload-less commands only, so tsc
+		// checks each name here against the payload map in `PubSub.Command`.
+		publishCommand: async (msg) => await Container.get(Publisher).publishCommand(msg),
 	});
 
 	Container.set(WorkflowProjectLookup, {
-		getWorkflowProjectCached: async (workflowId) =>
-			await Container.get(OwnershipService).getWorkflowProjectCached(workflowId),
+		// Destructured, so the ORM entity does not cross the port at runtime and a
+		// module cannot read a field that the port never promised.
+		getWorkflowProjectCached: async (workflowId) => {
+			const { id, customTelemetryTags } =
+				await Container.get(OwnershipService).getWorkflowProjectCached(workflowId);
+			return { id, customTelemetryTags };
+		},
 	});
 
 	Container.set(InstanceVersion, { version: N8N_VERSION });
