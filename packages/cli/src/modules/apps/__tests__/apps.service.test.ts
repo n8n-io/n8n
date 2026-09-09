@@ -99,7 +99,7 @@ const workflow = (overrides: Partial<WorkflowEntity> = {}): WorkflowEntity =>
 	({
 		id: 'wf-1',
 		name: 'Echo',
-		nodes: [triggerNode()],
+		nodes: [triggerNode({ workflowInputs: { values: [{ name: 'message', type: 'string' }] } })],
 		connections: {},
 		activeVersionId: 'v-1',
 		shared: [{ role: 'workflow:owner', projectId: 'proj-1' }],
@@ -205,7 +205,7 @@ describe('AppsService bindings', () => {
 					workflowId: 'wf-1',
 					name: 'Echo',
 					published: false,
-					input: 'passthrough',
+					input: [{ name: 'message', type: 'string' }],
 				},
 			]);
 			expect(result.warnings).toEqual([expect.stringContaining('not published')]);
@@ -311,6 +311,9 @@ describe('AppsService bindings', () => {
 			const result = await service.describeBindings(app);
 
 			expect(result.bindings[0].input).toBe('passthrough');
+			expect(result.warnings).toEqual([
+				'Workflow "Echo" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.',
+			]);
 		});
 
 		it('leaves out a binding whose workflow no longer exists and warns', async () => {

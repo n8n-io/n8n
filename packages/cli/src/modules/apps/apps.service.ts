@@ -163,6 +163,11 @@ export class AppsService {
 			}
 			// `inferInputSchema` also treats a trigger without declared fields as passthrough.
 			const fields = listWorkflowInputFields(detectTriggerNode(workflow).node);
+			if (fields.length === 0) {
+				warnings.push(
+					`Workflow "${workflow.name}" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.`,
+				);
+			}
 			bindings.push({
 				key: binding.key,
 				kind: binding.kind,
