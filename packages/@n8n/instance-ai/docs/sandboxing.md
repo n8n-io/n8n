@@ -186,8 +186,12 @@ file operations. Retry and fallback spans remain visible. Internal file spans
 omit file contents. Command spans record byte counts instead of raw commands. Failed
 commands include stdout and stderr after filtering, limited to 2,000 characters
 each. The export filter also covers status messages and exception events.
+Nonzero exit codes are command results and do not mark command spans as errors.
+Timeouts, killed commands, and thrown execution errors still mark spans as errors.
 
 Cache eviction keeps the remote sandbox. Its trace records the time of eviction.
+Uncached cleanup checks the provider before creating a trace. Disabled sandboxing
+and uncached Daytona sandboxes require no cleanup trace.
 Cleanup between turns creates an internal operation trace with the same
 `thread_id`. These sandbox lifecycle traces use the normal LangSmith settings.
 They do not require `N8N_INSTANCE_AI_TRACE_INTERNAL`. Proxy deployments resolve

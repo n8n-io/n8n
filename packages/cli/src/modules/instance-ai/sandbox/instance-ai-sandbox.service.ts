@@ -582,14 +582,14 @@ export class InstanceAiSandboxService {
 		userId?: string,
 	): Promise<void> {
 		try {
+			const base = this.getSandboxConfigFromEnv();
+			if (!base.enabled || base.provider !== 'n8n-sandbox') return;
+
 			await withSandboxLifecycleTrace(
 				threadId,
 				'destroy',
 				{ reason, cached: false },
 				async () => {
-					const base = this.getSandboxConfigFromEnv();
-					if (!base.enabled || base.provider !== 'n8n-sandbox') return;
-
 					const settings = await this.options.settingsService.resolveN8nSandboxConfig();
 					const config = withThreadScopedSandboxIdentity(
 						{

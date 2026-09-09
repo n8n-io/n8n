@@ -2327,33 +2327,66 @@ describe('createInstanceAiTraceContext', () => {
 			expect(JSON.stringify(span)).not.toContain(command);
 		});
 
-		it.each([{ exitCode: 1 }, { exitCode: 0, timedOut: true }, { exitCode: 0, killed: true }])(
-			'keeps bounded diagnostics for command failure %j',
-			async (status) => {
-				const key = `-----BEGIN PRIVATE KEY-----\n${'A'.repeat(2300)}\n-----END PRIVATE KEY-----`;
-				const result = await sandboxCommandTraceResult({
-					...status,
+		it('records a nonzero command exit as a completed result', async () => {
+			const tracing = await createSandboxTrace();
+			const commandResult = { exitCode: 1, stdout: '', stderr: 'No matching entry' };
+			const executeCommand = vi.fn(async () => await Promise.resolve(commandResult));
+			const result = await tracing.withActiveSpan(
+				tracing.rootRun,
+				async () => await runInSandbox({ sandbox: { executeCommand } }, 'grep pattern file'),
+			);
+			expect(result).toEqual(commandResult);
+			const span = agentsMock.getSpans().find((entry) => entry.name === 'sandbox: execute-command');
+			expect(span).toMatchObject({ ended: true, status: { code: 1 } });
+			expect(span?.attributes['langsmith.metadata.final_status']).toBe('completed');
+			expect(
+				jsonParse<Record<string, unknown>>(String(span?.attributes['gen_ai.completion'])),
+			).toMatchObject({ exitCode: 1, stderr: 'No matching entry' });
+		});
+
+		it('records a thrown command execution error and preserves it for the caller', async () => {
+			const tracing = await createSandboxTrace();
+			const error = new Error('Command execution unavailable');
+			const executeCommand = vi.fn(async () => await Promise.reject(error));
+			await expect(
+				tracing.withActiveSpan(
+					tracing.rootRun,
+					async () => await runInSandbox({ sandbox: { executeCommand } }, 'command'),
+				),
+			).rejects.toBe(error);
+			const span = agentsMock.getSpans().find((entry) => entry.name === 'sandbox: execute-command');
+			expect(span).toMatchObject({ ended: true, status: { code: 2 } });
+			expect(span?.attributes['langsmith.metadata.final_status']).toBe('error');
+		});
+
+		it.each([
+			{ status: { exitCode: 1 }, expectedError: undefined },
+			{ status: { exitCode: 0, timedOut: true }, expectedError: 'Command timed out' },
+			{ status: { exitCode: 0, killed: true }, expectedError: 'Command was killed' },
+		])('keeps bounded diagnostics for command result %j', async ({ status, expectedError }) => {
+			const key = `-----BEGIN PRIVATE KEY-----\n${'A'.repeat(2300)}\n-----END PRIVATE KEY-----`;
+			const result = await sandboxCommandTraceResult({
+				...status,
+				stdout: 'npm error EAI_AGAIN registry.npmjs.org',
+				stderr: key,
+			});
+			expect(result.error).toBe(expectedError);
+			expect(result.outputs).toEqual(
+				expect.objectContaining({
 					stdout: 'npm error EAI_AGAIN registry.npmjs.org',
-					stderr: key,
-				});
-				expect(result.error).toBeDefined();
-				expect(result.outputs).toEqual(
-					expect.objectContaining({
-						stdout: 'npm error EAI_AGAIN registry.npmjs.org',
-					}),
-				);
-				expect(JSON.stringify(result.outputs)).not.toContain('A'.repeat(20));
-				expect(JSON.stringify(result.outputs)).not.toContain('BEGIN PRIVATE KEY');
-				const long = await sandboxCommandTraceResult({
-					...status,
-					stdout: 'x '.repeat(3000),
-					stderr: 'y '.repeat(3000),
-				});
-				const diagnostics = long.outputs as { stdout: string; stderr: string };
-				expect(diagnostics.stdout.length).toBeLessThanOrEqual(2000);
-				expect(diagnostics.stderr.length).toBeLessThanOrEqual(2000);
-			},
-		);
+				}),
+			);
+			expect(JSON.stringify(result.outputs)).not.toContain('A'.repeat(20));
+			expect(JSON.stringify(result.outputs)).not.toContain('BEGIN PRIVATE KEY');
+			const long = await sandboxCommandTraceResult({
+				...status,
+				stdout: 'x '.repeat(3000),
+				stderr: 'y '.repeat(3000),
+			});
+			const diagnostics = long.outputs as { stdout: string; stderr: string };
+			expect(diagnostics.stdout.length).toBeLessThanOrEqual(2000);
+			expect(diagnostics.stderr.length).toBeLessThanOrEqual(2000);
+		});
 
 		it.each(['privateKey', 'private_key', 'private-key'])(
 			'filters %s fields in exported spans',

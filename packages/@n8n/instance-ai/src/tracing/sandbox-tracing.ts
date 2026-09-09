@@ -59,9 +59,8 @@ export async function sandboxCommandTraceResult(result: {
 		? 'Command timed out'
 		: result.killed
 			? 'Command was killed'
-			: result.exitCode !== 0
-				? `Command exited with code ${result.exitCode}`
-				: undefined;
+			: undefined;
+	const includeDiagnostics = result.exitCode !== 0 || error !== undefined;
 	const { scrubTelemetryText } = await import('./trace-payloads.js');
 	return {
 		outputs: {
@@ -70,7 +69,7 @@ export async function sandboxCommandTraceResult(result: {
 			killed: result.killed ?? false,
 			stdoutBytes: sandboxFileBytes(result.stdout),
 			stderrBytes: sandboxFileBytes(result.stderr),
-			...(error
+			...(includeDiagnostics
 				? {
 						stdout: scrubTelemetryText(result.stdout).slice(0, 2000),
 						stderr: scrubTelemetryText(result.stderr).slice(0, 2000),

@@ -1017,16 +1017,20 @@ describe('InstanceAiSandboxService', () => {
 				expect.any(Object),
 			);
 			expect(sandbox.destroy).toHaveBeenCalledTimes(1);
+			expect(withSandboxLifecycleTrace).toHaveBeenCalledTimes(1);
 		});
 
-		it('does not attempt an uncached destroy for the daytona provider', async () => {
-			const { service } = createSandboxService({
-				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
-			});
-
+		it.each([
+			{ sandboxEnabled: false, sandboxProvider: 'n8n-sandbox' },
+			{ sandboxEnabled: false, sandboxProvider: 'daytona' },
+			{ sandboxEnabled: true, sandboxProvider: 'daytona' },
+		])('skips uncached cleanup and tracing for %j', async (config) => {
+			const resolveTracingConfig = vi.fn(async () => await Promise.resolve({ userId: 'owner' }));
+			const { service } = createSandboxService({ config, resolveTracingConfig });
 			await service.destroySandbox('thread-1');
-
 			expect(createSandbox).not.toHaveBeenCalled();
+			expect(withSandboxLifecycleTrace).not.toHaveBeenCalled();
+			expect(resolveTracingConfig).not.toHaveBeenCalled();
 		});
 
 		it('swallows uncached destroy errors and logs a warning', async () => {
