@@ -1,0 +1,22 @@
+packages/cli/src/modules/data-table/data-table-proxy.service.ts
+  s_7868a35f94af69::t_3abc9521e40c03 77-87
+packages/cli/src/modules/data-table/__tests__/data-table-proxy.service.integration.test.ts
+  s_7868a35f94af69::t_8d876d267b31cf 18
+  s_7868a35f94af69::t_934d43680230dc 74-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c90226f1b05b37c9b8a5b871203e74422a2e4492",
+  "prompts": {},
+  "sessions": {
+    "s_7868a35f94af69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c99f314-7839-462d-bc07-95f404313740",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
