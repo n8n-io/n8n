@@ -37,6 +37,7 @@ vi.mock('../../../composables/useSetupPanelState', async () => {
 		useSetupPanelState: () => ({
 			rows: computed(() => stateMock.rows),
 			rowSource: computed(() => 'derived'),
+			workflowProjectId: computed(() => undefined),
 			isAgentBuilding: computed(() => false),
 			getNodeByName: (name: string) => stateMock.nodesByName[name],
 			refreshWorkflow: stateMock.refreshWorkflow,
@@ -53,6 +54,10 @@ vi.mock('../../../composables/useSetupPanelActions', async () => {
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: showMessageMock }),
+}));
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => ({ myProjects: [{ id: 'p1' }], getMyProjects: vi.fn() }),
 }));
 
 vi.mock('@/features/credentials/composables/useCredentialTestInBackground', () => ({

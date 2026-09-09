@@ -4,6 +4,7 @@ import isEqual from 'lodash/isEqual';
 import { N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE, type InstanceAiSetupItem } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import { deepCopy, type INodeParameters, type INodeProperties } from 'n8n-workflow';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
@@ -23,6 +24,12 @@ import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import type { SetupCredentialItem } from '../../composables/useSetupPanelActions';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
+import {
+	applySetupParameterChanges,
+	getSetupParameterChanges,
+	getSetupParameterValue,
+	type SetupParameterChange,
+} from '../../setupPanelParameterChanges';
 
 const props = defineProps<{
 	item: InstanceAiSetupItem;
@@ -35,7 +42,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	bindCredential: [item: SetupCredentialItem, credentialId: string];
-	applyParameters: [nodeName: string, values: INodeParameters];
+	applyParameters: [nodeName: string, values: INodeParameters, baseline: INodeParameters];
 }>();
 
 const i18n = useI18n();
@@ -117,8 +124,10 @@ const usedByNodesLabel = computed(() =>
 
 // --- Parameter edits (buffered locally, applied on Confirm) ---
 
-const editedParameters = ref<INodeParameters>();
-const displayParameters = computed(() => ({ ...props.node.parameters, ...editedParameters.value }));
+const parameterChanges = ref<SetupParameterChange[]>([]);
+const displayParameters = computed(() =>
+	applySetupParameterChanges(props.node.parameters, parameterChanges.value),
+);
 const parameterRoots = computed(
 	() =>
 		new Set([
@@ -126,20 +135,16 @@ const parameterRoots = computed(
 				(name) => name.split(/[.[\]]/)[0] ?? name,
 			),
 			// A saved value can resolve an issue while a newer edit still needs confirmation.
-			...Object.keys(editedParameters.value ?? {}),
+			...parameterChanges.value.map((change) => change.path[0]),
 		]),
 );
 
 watch(
 	() => props.node.parameters,
 	(saved) => {
-		if (!editedParameters.value) return;
-		const pending = Object.fromEntries(
-			Object.entries(editedParameters.value).filter(
-				([name, value]) => !isEqual(saved[name], value),
-			),
+		parameterChanges.value = parameterChanges.value.filter(
+			(change) => !isEqual(getSetupParameterValue(saved, change.path), change.value),
 		);
-		editedParameters.value = Object.keys(pending).length ? pending : undefined;
 	},
 	{ deep: true },
 );
@@ -147,22 +152,23 @@ watch(
 function onParameterValueChanged(update: IUpdateInformation) {
 	if (!parametersItem.value) return;
 	const parameterName = update.name.replace(/^parameters\./, '');
+	// Removed controls emit a cleanup event. Keep their saved values.
+	if (!parameterRoots.value.has(parameterName.split(/[.[\]]/)[0])) return;
 	const next = deepCopy(displayParameters.value);
 	setParameterValueByPath(next, parameterName, update.value);
-	const root = parameterName.split(/[.[\]]/)[0] ?? parameterName;
-	editedParameters.value = { ...editedParameters.value, [root]: next[root] };
+	parameterChanges.value = getSetupParameterChanges(props.node.parameters, next);
 }
 
 function onConfirm() {
 	const item = parametersItem.value;
-	const edited = editedParameters.value;
-	if (!item || !edited) return;
-	// The apply path merges top-level keys — send only the item's own roots.
+	if (!item || !parameterChanges.value.length) return;
+	// Pass the baseline so queued writes preserve later edits to sibling fields.
 	const values: INodeParameters = {};
-	for (const root of parameterRoots.value) {
-		if (edited[root] !== undefined) values[root] = edited[root];
+	for (const change of parameterChanges.value) {
+		const root = change.path[0];
+		if (typeof root === 'string') values[root] = displayParameters.value[root];
 	}
-	emit('applyParameters', item.nodeName, values);
+	emit('applyParameters', item.nodeName, values, props.node.parameters);
 }
 
 const nodeType = computed(() =>
@@ -173,6 +179,46 @@ const parameterDefinitions = computed<INodeProperties[]>(() => {
 	const item = parametersItem.value;
 	if (!item || !nodeType.value) return [];
 	return nodeType.value.properties.filter((property) => parameterRoots.value.has(property.name));
+});
+
+const assignmentCollectionEditableValueIndices = computed<Record<string, number[]>>(() => {
+	const result: Record<string, number[]> = {};
+	// ParameterInputList can retain a control briefly after its definition changes.
+	for (const parameter of nodeType.value?.properties ?? []) {
+		if (parameter.type !== 'assignmentCollection') continue;
+		const indices = new Set<number>();
+		for (const detail of findPlaceholderDetails(props.node.parameters[parameter.name])) {
+			if (detail.path[0] !== 'assignments' || detail.path[2] !== 'value') continue;
+			const match = /^\[(\d+)\]$/.exec(detail.path[1] ?? '');
+			if (match?.[1]) indices.add(Number.parseInt(match[1], 10));
+		}
+		// Keep a newer draft editable when an earlier save resolves its placeholder.
+		const value = displayParameters.value[parameter.name];
+		if (
+			value &&
+			typeof value === 'object' &&
+			'assignments' in value &&
+			Array.isArray(value.assignments)
+		) {
+			for (const change of parameterChanges.value) {
+				if (change.path[0] !== parameter.name || change.path[1] !== 'assignments') continue;
+				const target = change.path[2];
+				const index =
+					typeof target === 'object'
+						? value.assignments.findIndex(
+								(assignment) =>
+									assignment !== null &&
+									typeof assignment === 'object' &&
+									'id' in assignment &&
+									assignment.id === target.id,
+							)
+						: Number(target);
+				if (Number.isInteger(index) && index >= 0) indices.add(index);
+			}
+		}
+		result[parameter.name] = [...indices];
+	}
+	return result;
 });
 
 // --- Per-item document/NDV store scaffolding ---
@@ -258,12 +304,13 @@ provide(WorkflowDocumentStoreKey, workflowDocumentStore);
 				:remove-first-parameter-margin="true"
 				:remove-last-parameter-margin="true"
 				:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
+				:assignment-collection-editable-value-indices="assignmentCollectionEditableValueIndices"
 				@value-changed="onParameterValueChanged"
 			/>
 			<div :class="$style.footer">
 				<N8nButton
 					size="small"
-					:disabled="editedParameters === undefined || isApplying"
+					:disabled="parameterChanges.length === 0 || isApplying"
 					:loading="isApplying"
 					data-test-id="instance-ai-setup-panel-confirm"
 					@click="onConfirm"

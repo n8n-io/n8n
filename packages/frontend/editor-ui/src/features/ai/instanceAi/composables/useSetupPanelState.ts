@@ -125,6 +125,7 @@ export function useSetupPanelState(options: {
 		rowSource,
 		isAgentBuilding,
 		getNodeByName: derivation.getNodeByName,
+		workflowProjectId: derivation.workflowProjectId,
 		refreshWorkflow: derivation.refreshWorkflow,
 	};
 }

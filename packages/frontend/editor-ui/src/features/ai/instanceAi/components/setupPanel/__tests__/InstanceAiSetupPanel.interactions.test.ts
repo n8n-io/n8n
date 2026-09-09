@@ -3,16 +3,18 @@ import { mock } from 'vitest-mock-extended';
 import { computed, defineComponent, h, reactive, type PropType } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
+import { ResponseError } from '@n8n/rest-api-client';
 import {
 	deepCopy,
 	NodeConnectionTypes,
 	type INodeProperties,
 	type INodeTypeDescription,
+	type AssignmentCollectionValue,
 } from 'n8n-workflow';
 import type { InstanceAiAgentNode, InstanceAiCredentialSetupHint } from '@n8n/api-types';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -26,7 +28,10 @@ import {
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import type { SetupPanelThreadSource } from '../../../composables/useSetupPanelState';
 import type { SetupPanelThreadActions } from '../../../composables/useSetupPanelActions';
 import InstanceAiSetupPanel from '../InstanceAiSetupPanel.vue';
@@ -44,9 +49,17 @@ vi.mock('@/app/api/workflows', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	getWorkflow: vi.fn(),
 }));
-vi.mock('@/app/composables/useNodeHelpers', () => ({
-	useNodeHelpers: () => ({ getNodeCredentialIssues: () => null, getNodeInputIssues: () => null }),
-}));
+vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/composables/useNodeHelpers')>();
+	return {
+		...actual,
+		useNodeHelpers: () => ({
+			...actual.useNodeHelpers(),
+			getNodeCredentialIssues: () => null,
+			getNodeInputIssues: () => null,
+		}),
+	};
+});
 
 let thread: SetupPanelThreadSource & SetupPanelThreadActions;
 vi.mock('../../../instanceAi.store', () => ({ useThread: () => thread }));
@@ -133,16 +146,16 @@ const ParameterInputListStub = defineComponent({
 	},
 });
 
+const componentStubs = {
+	NodeCredentials: NodeCredentialsStub,
+	ParameterInputList: ParameterInputListStub,
+	CredentialIcon: true,
+	NodeIcon: true,
+};
+
 const renderComponent = createComponentRenderer(InstanceAiSetupPanel, {
 	props: { workflowId: 'wf-1', projectId: 'project-1' },
-	global: {
-		stubs: {
-			NodeCredentials: NodeCredentialsStub,
-			ParameterInputList: ParameterInputListStub,
-			CredentialIcon: true,
-			NodeIcon: true,
-		},
-	},
+	global: { stubs: componentStubs },
 });
 
 describe('InstanceAiSetupPanel interactions', () => {
@@ -154,6 +167,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
+		mockedStore(useProjectsStore).myProjects = [mock<ProjectListItem>({ id: 'project-1' })];
 		const nodeTypes = mockedStore(useNodeTypesStore);
 		const nodeType: INodeTypeDescription = {
 			name: 'test.notify',
@@ -247,15 +261,23 @@ describe('InstanceAiSetupPanel interactions', () => {
 		thread.messages = [{ agentTree }];
 	}
 
-	function renderPanel(hydrated = true) {
+	function renderPanel(hydrated = true, options: RenderOptions<typeof InstanceAiSetupPanel> = {}) {
 		if (hydrated) documentStore.hydrate(deepCopy(saved));
 		return renderComponent({
-			global: { provide: { [WorkflowDocumentStoreKey as symbol]: computed(() => documentStore) } },
+			...options,
+			global: {
+				...options.global,
+				stubs: { ...componentStubs, ...options.global?.stubs },
+				provide: { [WorkflowDocumentStoreKey as symbol]: computed(() => documentStore) },
+			},
 		});
 	}
 
-	async function openParameters(hydrated = true) {
-		const rendered = renderPanel(hydrated);
+	async function openParameters(
+		hydrated = true,
+		options: RenderOptions<typeof InstanceAiSetupPanel> = {},
+	) {
+		const rendered = renderPanel(hydrated, options);
 		await fireEvent.click(await rendered.findByRole('button', { name: 'Notify' }));
 		return rendered;
 	}
@@ -428,4 +450,166 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await flushPromises();
 		expect(saved.nodes[0].parameters.channel).toBe('newer-value');
 	});
+
+	it('preserves saved sibling changes when a nested edit is queued', async () => {
+		const { getByRole, getByLabelText } = await openParameters();
+		await fireEvent.update(getByLabelText('Options'), 'user-value');
+		saved.nodes[0].parameters.options = {
+			value: '<__PLACEHOLDER_VALUE__value__>',
+			other: 'Saved while editing',
+		};
+		documentStore.updateNodeProperties({
+			name: 'Notify',
+			properties: { parameters: deepCopy(saved.nodes[0].parameters) },
+		});
+		thread.setupItemsByWorkflowId['wf-1'].push({
+			id: 'wf-1:parameters:Notify',
+			kind: 'parameters',
+			nodeName: 'Notify',
+			parameterNames: ['channel', 'options'],
+		});
+		startBuild();
+		await fireEvent.click(getByRole('button', { name: 'Confirm' }));
+		expect(updateWorkflow).not.toHaveBeenCalled();
+		expect(getByLabelText('Options')).toHaveValue('user-value');
+
+		saved.nodes[0].parameters.options = {
+			value: '<__PLACEHOLDER_VALUE__value__>',
+			other: 'Saved during the build',
+		};
+		documentStore.updateNodeProperties({
+			name: 'Notify',
+			properties: { parameters: deepCopy(saved.nodes[0].parameters) },
+		});
+		thread.messages = [];
+		await flushPromises();
+		expect(updateWorkflow).toHaveBeenCalledTimes(1);
+		expect(saved.nodes[0].parameters.options).toEqual({
+			value: 'user-value',
+			other: 'Saved during the build',
+		});
+		expect(getByRole('button', { name: 'Confirm' })).toBeDisabled();
+	});
+
+	it('edits only placeholder assignment values and keeps them after their controls disappear', async () => {
+		const nodeType = mockedStore(useNodeTypesStore).allNodeTypes[0];
+		nodeType.properties.push({
+			displayName: 'Assignments',
+			name: 'assignments',
+			type: 'assignmentCollection',
+			default: { assignments: [] },
+		});
+		const assignments: AssignmentCollectionValue = {
+			assignments: [
+				{ id: 'fixed', name: 'Keep name', type: 'string', value: 'Keep value' },
+				{
+					id: 'endpoint',
+					name: 'Endpoint',
+					type: 'string',
+					value: '<__PLACEHOLDER_VALUE__endpoint__>',
+				},
+			],
+		};
+		saved.nodes[0].parameters.assignments = assignments;
+		saved.nodes[0].parameters.options = { value: 'configured', other: 'Keep this option' };
+		const { findByTestId, queryByTestId, queryAllByTestId, getByRole } = await openParameters(
+			true,
+			{
+				global: { stubs: { ParameterInputList: false } },
+			},
+		);
+		const assignment = await findByTestId('assignment');
+		expect(queryAllByTestId('assignment')).toHaveLength(1);
+		expect(queryByTestId('assignment-name')).not.toBeInTheDocument();
+		expect(queryByTestId('assignment-type-select')).not.toBeInTheDocument();
+		expect(queryByTestId('assignment-remove')).not.toBeInTheDocument();
+		expect(queryByTestId('assignment-collection-drop-area')).not.toBeInTheDocument();
+		const input = within(assignment).getByRole('textbox');
+		await fireEvent.update(input, 'https://example.com');
+		await fireEvent.blur(input);
+		const confirm = getByRole('button', { name: 'Confirm' });
+		await waitFor(() => expect(confirm).toBeEnabled(), { timeout: 2000 });
+		await fireEvent.click(confirm);
+		await waitFor(() => expect(queryByTestId('assignment-collection-assignments')).toBeNull());
+		expect(confirm).toBeDisabled();
+		expect(saved.nodes[0].parameters.assignments).toEqual({
+			assignments: [
+				assignments.assignments[0],
+				{ ...assignments.assignments[1], value: 'https://example.com' },
+			],
+		});
+		expect(updateWorkflow).toHaveBeenCalledTimes(1);
+	});
+
+	it('opens credential creation in the workflow project when artifact metadata is missing', async () => {
+		const project: ProjectListItem = {
+			id: 'workflow-project',
+			name: 'Workflow project',
+			type: 'team',
+			role: 'project:admin',
+			scopes: ['credential:create'],
+			icon: null,
+			createdAt: '',
+			updatedAt: '',
+		};
+		const projects = mockedStore(useProjectsStore);
+		projects.myProjects.push(project);
+		projects.currentProject = {
+			...project,
+			id: 'project-1',
+			scopes: ['credential:create'],
+			relations: [],
+			rolesManaged: false,
+		};
+		saved.homeProject = project;
+		const uiStore = mockedStore(useUIStore);
+		const { findByRole } = renderPanel(false, {
+			props: { projectId: undefined },
+			global: { stubs: { NodeCredentials: false } },
+		});
+		await fireEvent.click(await findByRole('button', { name: 'Slack' }));
+		const connect = await findByRole('button', { name: 'Connect to Slack' });
+		expect(connect).toBeEnabled();
+		await fireEvent.click(connect);
+		await flushPromises();
+		expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+			'slackApi',
+			false,
+			false,
+			'workflow-project',
+			undefined,
+			'Notify',
+			expect.objectContaining({ name: 'Notify' }),
+			expect.objectContaining({ workflowId: 'wf-1' }),
+		);
+	});
+
+	it.each(['dropped', 'conflict'] as const)(
+		'refreshes saved setup state after a %s write without a canvas',
+		async (outcome) => {
+			const { getByRole, getByLabelText, queryByTestId } = await openParameters(false);
+			await fireEvent.update(getByLabelText('Channel'), 'user-value');
+			if (outcome === 'dropped') {
+				saved.nodes = [];
+			} else {
+				saved.nodes[0].parameters = {
+					channel: 'Saved elsewhere',
+					options: { value: 'configured', other: 'Keep this option' },
+				};
+				updateWorkflow.mockRejectedValue(new ResponseError('Conflict', { httpStatusCode: 409 }));
+			}
+			await fireEvent.click(getByRole('button', { name: 'Confirm' }));
+			await flushPromises();
+			if (outcome === 'dropped') {
+				expect(queryByTestId('instance-ai-setup-panel')).not.toBeInTheDocument();
+				expect(updateWorkflow).not.toHaveBeenCalled();
+			} else {
+				expect(getByLabelText('Channel')).toHaveValue('user-value');
+				await fireEvent.click(getByRole('button', { name: 'Back' }));
+				expect(getByRole('button', { name: 'Notify Ready' })).toBeInTheDocument();
+				expect(saved.nodes[0].parameters.channel).toBe('Saved elsewhere');
+				expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+			}
+		},
+	);
 });

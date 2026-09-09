@@ -223,6 +223,37 @@ describe('useWorkflowSetupItems', () => {
 		expect(state.getNodeByName('Slack')?.parameters.channel).toBe('new-value');
 	});
 
+	it('recovers a failed overlapping refresh without accepting the older response', async () => {
+		const initialRead = Promise.withResolvers<IWorkflowDb>();
+		const refreshRead = Promise.withResolvers<IWorkflowDb>();
+		const retryRead = Promise.withResolvers<IWorkflowDb>();
+		workflowsListStore.fetchWorkflow
+			.mockReturnValueOnce(initialRead.promise)
+			.mockReturnValueOnce(refreshRead.promise)
+			.mockReturnValueOnce(retryRead.promise);
+		const state = useWorkflowSetupItems(() => WORKFLOW_ID);
+		const refresh = state.refreshWorkflow();
+		refreshRead.reject(new Error('Temporary failure'));
+		await flushPromises();
+		initialRead.resolve(
+			createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [createTestNode({ name: 'Slack', parameters: { channel: 'old-value' } })],
+			}),
+		);
+		await flushPromises();
+		expect(state.isWorkflowAvailable.value).toBe(false);
+		retryRead.resolve(
+			createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [createTestNode({ name: 'Slack', parameters: { channel: 'current-value' } })],
+			}),
+		);
+		await refresh;
+		expect(state.isWorkflowAvailable.value).toBe(true);
+		expect(state.getNodeByName('Slack')?.parameters.channel).toBe('current-value');
+	});
+
 	it.each<{ label: string; value: INodeParameters[string] }>([
 		{ label: 'direct', value: '<__PLACEHOLDER_VALUE__API URL__>' },
 		{ label: 'embedded', value: 'https://example.com/<__PLACEHOLDER_VALUE__path__>' },

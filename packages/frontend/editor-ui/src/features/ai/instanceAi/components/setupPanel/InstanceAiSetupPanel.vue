@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import type { InstanceAiSetupItem } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
@@ -10,6 +10,7 @@ import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import { useThread } from '../../instanceAi.store';
 import { useSetupPanelState, type SetupPanelRow } from '../../composables/useSetupPanelState';
@@ -31,12 +32,28 @@ const toast = useToast();
 const thread = useThread();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
+const projectsStore = useProjectsStore();
 const { testCredentialInBackground } = useCredentialTestInBackground();
 
-const { rows, isAgentBuilding, getNodeByName, refreshWorkflow } = useSetupPanelState({
-	thread,
-	workflowId: () => props.workflowId,
-});
+const { rows, isAgentBuilding, getNodeByName, refreshWorkflow, workflowProjectId } =
+	useSetupPanelState({
+		thread,
+		workflowId: () => props.workflowId,
+	});
+
+const credentialProjectId = computed(() => workflowProjectId.value ?? props.projectId);
+const isCredentialProjectReady = computed(() =>
+	projectsStore.myProjects.some((project) => project.id === credentialProjectId.value),
+);
+watch(
+	credentialProjectId,
+	async (id) => {
+		if (id && !isCredentialProjectReady.value) {
+			await projectsStore.getMyProjects().catch(() => {});
+		}
+	},
+	{ immediate: true },
+);
 
 const actions = useSetupPanelActions({
 	thread,
@@ -69,7 +86,11 @@ const selectedNode = computed(() => {
 
 function canOpenRow(row: SetupPanelRow): boolean {
 	const nodeName = itemNodeName(row.item);
-	return nodeName !== undefined && getNodeByName(nodeName) !== undefined;
+	return (
+		nodeName !== undefined &&
+		getNodeByName(nodeName) !== undefined &&
+		(row.item.kind !== 'credential' || isCredentialProjectReady.value)
+	);
 }
 
 function openRow(row: SetupPanelRow) {
@@ -105,7 +126,9 @@ async function notifyApplyResult(result: SetupPanelApplyResult) {
 	if (result === 'error' || result === 'conflict') {
 		toast.showMessage({ title: i18n.baseText('instanceAi.setupPanel.applyError'), type: 'error' });
 	}
-	if (result === 'applied' || result === 'noop') await refreshWorkflow();
+	if (result === 'applied' || result === 'noop' || result === 'dropped' || result === 'conflict') {
+		await refreshWorkflow();
+	}
 }
 
 async function onBindCredential(item: SetupCredentialItem, credentialId: string) {
@@ -117,10 +140,14 @@ async function onBindCredential(item: SetupCredentialItem, credentialId: string)
 	);
 }
 
-async function onApplyParameters(nodeName: string, values: INodeParameters) {
+async function onApplyParameters(
+	nodeName: string,
+	values: INodeParameters,
+	baseline?: INodeParameters,
+) {
 	isApplying.value = true;
 	try {
-		await notifyApplyResult(await actions.applyParameterValues(nodeName, values));
+		await notifyApplyResult(await actions.applyParameterValues(nodeName, values, baseline));
 	} finally {
 		isApplying.value = false;
 	}
@@ -129,7 +156,7 @@ async function onApplyParameters(nodeName: string, values: INodeParameters) {
 
 <template>
 	<section v-if="rows.length > 0" :class="$style.panel" data-test-id="instance-ai-setup-panel">
-		<template v-if="selectedRow && selectedNode">
+		<template v-if="selectedRow && selectedNode && canOpenRow(selectedRow)">
 			<header :class="$style.detailHeader">
 				<N8nButton
 					variant="ghost"
@@ -148,7 +175,7 @@ async function onApplyParameters(nodeName: string, values: INodeParameters) {
 				:item="selectedRow.item"
 				:node="selectedNode"
 				:workflow-id="workflowId"
-				:project-id="projectId"
+				:project-id="credentialProjectId"
 				:is-applying="isApplying"
 				@bind-credential="onBindCredential"
 				@apply-parameters="onApplyParameters"

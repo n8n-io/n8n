@@ -1,4 +1,4 @@
-import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/api-types';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
@@ -12,6 +12,7 @@ import {
 } from '@/features/credentials/credentials.store';
 import {
 	createWorkflowDocumentId,
+	deriveHomeProject,
 	useExistingWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import {
@@ -67,20 +68,36 @@ export function useWorkflowSetupItems(
 	 */
 	const fetchedWorkflow = ref<IWorkflowDb>();
 	let workflowFetchVersion = 0;
+	onScopeDispose(() => workflowFetchVersion++);
 
 	async function refreshWorkflow() {
 		const requestVersion = ++workflowFetchVersion;
 		const id = toValue(workflowId);
-		if (!id || toValue(options.paused) || documentStore.value?.hydrated) return;
-		try {
-			const workflow = await workflowsListStore.fetchWorkflow(id);
-			if (requestVersion === workflowFetchVersion && toValue(workflowId) === id) {
-				fetchedWorkflow.value = workflow;
+		if (!id) return;
+		const isCurrentRequest = () =>
+			requestVersion === workflowFetchVersion &&
+			toValue(workflowId) === id &&
+			!toValue(options.paused) &&
+			!documentStore.value?.hydrated;
+		// Retry the current read once. An older response can contain pre-build values.
+		for (let attempt = 0; attempt < 2 && isCurrentRequest(); attempt++) {
+			try {
+				const workflow = await workflowsListStore.fetchWorkflow(id);
+				if (isCurrentRequest()) fetchedWorkflow.value = workflow;
+				return;
+			} catch {
+				// Keep the current rows if both attempts fail.
 			}
-		} catch {
-			// Keep the current rows if the refresh fails.
 		}
 	}
+
+	const workflowProjectId = computed(() => {
+		if (documentStore.value?.hydrated) return documentStore.value.homeProject?.id;
+		const workflow = fetchedWorkflow.value;
+		return workflow?.id === toValue(workflowId) && workflow
+			? deriveHomeProject(workflow)?.id
+			: undefined;
+	});
 
 	// (Re)load the derivation's inputs while not paused, and again when an
 	// agent edit settles or a canvas host's document store goes away. Failures
@@ -310,6 +327,7 @@ export function useWorkflowSetupItems(
 
 	return {
 		isWorkflowAvailable,
+		workflowProjectId,
 		derivedItems,
 		derivedCredentialItems,
 		isItemDone,
