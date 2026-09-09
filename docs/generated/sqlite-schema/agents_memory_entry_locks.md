@@ -62,7 +62,7 @@ erDiagram
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt

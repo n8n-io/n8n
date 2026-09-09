@@ -60,7 +60,7 @@ erDiagram
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_255_ toolCallId
   timestamp_3__with_time_zone updatedAt
 }
@@ -73,7 +73,7 @@ erDiagram
   varchar_36_ id
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_messages" {
@@ -82,7 +82,7 @@ erDiagram
   varchar_36_ id
   varchar_255_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
@@ -91,7 +91,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_observation_locks" {
@@ -99,7 +99,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone heldUntil
   varchar_64_ holderId
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_20_ taskKind
   timestamp_3__with_time_zone updatedAt
 }
@@ -108,7 +108,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_16_ marker
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_36_ parentId FK
   varchar_16_ status
   varchar_36_ supersededBy FK

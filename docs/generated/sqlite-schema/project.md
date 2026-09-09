@@ -128,7 +128,7 @@ erDiagram
   varchar_128_ id PK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId
   varchar_36_ taskVersionId FK
@@ -146,7 +146,7 @@ erDiagram
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt

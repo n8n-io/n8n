@@ -24,7 +24,8 @@ export class AgentMemoryEntrySourceEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	candidateId: string | null;
 
-	@Column({ type: 'varchar', length: 255 })
+	/** Holds an `agents_threads.id`, so it matches that column's width. */
+	@Column({ type: 'varchar', length: 128 })
 	threadId: string;
 
 	@Column({ type: 'varchar', length: 64 })

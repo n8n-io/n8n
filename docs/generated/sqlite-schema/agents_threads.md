@@ -68,7 +68,7 @@ erDiagram
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_255_ toolCallId
   datetime_3_ updatedAt
 }
@@ -81,7 +81,7 @@ erDiagram
   varchar_36_ id PK
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   datetime_3_ updatedAt
 }
 "agents_messages" {
@@ -90,7 +90,7 @@ erDiagram
   varchar_36_ id PK
   varchar_255_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_36_ type
   datetime_3_ updatedAt
 }
@@ -99,7 +99,7 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
-  varchar_255_ observationScopeId PK
+  varchar_128_ observationScopeId PK
   datetime_3_ updatedAt
 }
 "agents_observation_locks" {
@@ -107,7 +107,7 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ heldUntil
   varchar_64_ holderId
-  varchar_255_ observationScopeId PK
+  varchar_128_ observationScopeId PK
   varchar_20_ taskKind PK
   datetime_3_ updatedAt
 }
@@ -116,7 +116,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_16_ marker
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_36_ parentId FK
   varchar_16_ status
   varchar_36_ supersededBy FK

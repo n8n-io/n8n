@@ -66,7 +66,7 @@ erDiagram
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_255_ toolCallId
   timestamp_3__with_time_zone updatedAt
 }
