@@ -114,10 +114,12 @@ function isEscapedObject(
  * Recursively reconstruct Date objects, NaN values, Map, and Set from
  * sentinels produced by the QuickJS-side __prepareForTransfer wrapper.
  *
- * With `luxonAsData` set, luxon markers are left as the plain objects they
- * are, for the contents of a payload the guest marked opaque.
+ * With `markersAsData` set, a transfer marker is left as the plain object it
+ * is, for the contents of a payload the guest marked opaque. The guest escapes
+ * most such objects itself, but one that also carries `__isError` leaves the
+ * guest walk before the escape, so the host must not read it as a marker.
  */
-function unwrapSentinels(value: unknown, luxonAsData = false): unknown {
+function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
 	// Escaped user objects: keys collided with the sentinel markers, so the
@@ -127,11 +129,11 @@ function unwrapSentinels(value: unknown, luxonAsData = false): unknown {
 		const inner = value.__value;
 		const result: Record<string, unknown> = {};
 		for (const key of Object.keys(inner)) {
-			result[key] = unwrapSentinels(inner[key], luxonAsData);
+			result[key] = unwrapSentinels(inner[key], markersAsData);
 		}
 		return result;
 	}
-	if (!luxonAsData) {
+	if (!markersAsData) {
 		if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
 		if (isEscapedTransferValue(value)) {
 			// A walked payload only had its own keys collide, so the walk below still
@@ -166,7 +168,7 @@ function unwrapSentinels(value: unknown, luxonAsData = false): unknown {
 		const err = new ErrorCtor(value.__message);
 		if (value.__extra) {
 			for (const [k, v] of Object.entries(value.__extra)) {
-				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v, luxonAsData);
+				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v, markersAsData);
 			}
 		}
 		return err;
@@ -174,21 +176,21 @@ function unwrapSentinels(value: unknown, luxonAsData = false): unknown {
 	if (isMapSentinel(value)) {
 		return new Map(
 			value.__entries.map(([k, v]) => [
-				unwrapSentinels(k, luxonAsData),
-				unwrapSentinels(v, luxonAsData),
+				unwrapSentinels(k, markersAsData),
+				unwrapSentinels(v, markersAsData),
 			]),
 		);
 	}
 	if (isSetSentinel(value)) {
-		return new Set(value.__values.map((entry) => unwrapSentinels(entry, luxonAsData)));
+		return new Set(value.__values.map((entry) => unwrapSentinels(entry, markersAsData)));
 	}
-	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry, luxonAsData));
+	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry, markersAsData));
 	// Pass error sentinels through untouched — execute() detects them after
 	// unwrapping and reconstructs the Error on the host.
 	if (isErrorSentinel(value)) return value;
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value as Record<string, unknown>)) {
-		result[key] = unwrapSentinels((value as Record<string, unknown>)[key], luxonAsData);
+		result[key] = unwrapSentinels((value as Record<string, unknown>)[key], markersAsData);
 	}
 	return result;
 }

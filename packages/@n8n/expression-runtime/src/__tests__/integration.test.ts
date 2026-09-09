@@ -449,6 +449,24 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(DateTime.isDateTime(node)).toBe(true);
 		});
 
+		it('should keep a marker that an error flag guards inside a class instance as data', () => {
+			const data = { $json: {} };
+
+			// An object carrying `__isError` leaves the guest walk before the walk can
+			// escape it, so it reaches the host with its keys as they were written.
+			// It sits inside a class instance, which the host reads as data, so the
+			// key that names a type is the user's own and must stay a string.
+			const result = evaluator.evaluate(
+				'{{ (function(){ function Row(){ this.m = { __isError: true, __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }; } return new Row(); })() }}',
+				data,
+				caller,
+			) as Record<string, unknown>;
+
+			const marker = result.m as Record<string, unknown>;
+			expect(DateTime.isDateTime(marker)).toBe(false);
+			expect(marker.__n8nType).toBe('DateTime');
+		});
+
 		// The isolate engine sends a class instance across by structured clone, which
 		// resolves a value that refers to itself. The QuickJS engine walks the value
 		// instead, and that walk does not end on this shape. The restriction is a
