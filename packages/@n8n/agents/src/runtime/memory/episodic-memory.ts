@@ -26,8 +26,10 @@ import { inferMemoryStoreAttributes, withMemorySpan } from '../telemetry/runtime
 export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
 
 const RRF_K = 60;
-const RECENCY_RRF_WEIGHT = 1;
-const MIN_VECTOR_RELEVANCE_SCORE = 0.2;
+// Recency breaks ties between comparably relevant entries. At full weight it
+// outranks relevance once entries share most tokens, so old relevant entries
+// fall out of topK behind recent unrelated ones.
+const RECENCY_RRF_WEIGHT = 0.25;
 const CAPTURE_STORE_METHODS = [
 	'enqueueCaptureCandidate',
 	'getPendingCaptureCandidates',
@@ -60,7 +62,6 @@ export interface NormalizedEpisodicMemoryConfig {
 	maxEntriesPerRun: number;
 	embedder: NonNullable<EpisodicMemoryConfig['embedder']>;
 	embeddingModel: string;
-	extract: EpisodicMemoryConfig['extract'];
 	reflect: EpisodicMemoryConfig['reflect'];
 	recallToolInstruction: string;
 }
@@ -103,7 +104,6 @@ export function withEpisodicMemoryDefaults(
 		maxEntriesPerRun: config.maxEntriesPerRun ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 		embedder: config.embedder,
 		embeddingModel: config.embeddingModel ?? 'custom',
-		extract: config.extract,
 		reflect: config.reflect,
 		recallToolInstruction:
 			config.prompts?.recallToolInstruction ?? DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
@@ -204,6 +204,9 @@ export function rankEpisodicMemoryEntries(
 		.map((entry) => ({ entry, score: lexicalScore(queryTokens, tokenize(entry.content)) }))
 		.filter((item) => item.score > 0)
 		.sort(compareScoredEntries);
+	// No absolute similarity cutoff: with small embedding models, scores of
+	// same-customer entries cluster in a narrow band, so a fixed gate drops the
+	// best match as often as noise. topK bounds the result instead.
 	const vector = candidates
 		.map((entry) => ({
 			entry,
@@ -212,7 +215,7 @@ export function rankEpisodicMemoryEntries(
 					? cosineSimilarity(opts.queryEmbedding, entry.embedding)
 					: 0,
 		}))
-		.filter((item) => item.score >= MIN_VECTOR_RELEVANCE_SCORE)
+		.filter((item) => item.score > 0)
 		.sort(compareScoredEntries);
 	const relevantIds = new Set([
 		...lexical.map((item) => item.entry.id),

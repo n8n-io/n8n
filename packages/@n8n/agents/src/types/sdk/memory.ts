@@ -223,32 +223,6 @@ export interface BuiltEpisodicMemoryCaptureStore {
 	episodic: EpisodicMemoryMethods & EpisodicMemoryCaptureMethods;
 }
 
-export interface EpisodicMemoryExtractionCandidate {
-	content: string;
-	sources: Array<{
-		candidateId: string;
-		evidence: string;
-	}>;
-}
-
-export interface EpisodicMemoryExtractorInput {
-	scope: EpisodicMemoryScope;
-	now: Date;
-	candidates: EpisodicMemoryCaptureCandidate[];
-	renderedCandidates: string;
-	existingEntries: RetrievedEpisodicMemoryEntry[];
-	executionCounter?: AgentExecutionCounter;
-	abortSignal?: AbortSignal;
-}
-
-export interface EpisodicMemoryExtraction {
-	entries: EpisodicMemoryExtractionCandidate[];
-}
-
-export type EpisodicMemoryExtractFn = (
-	input: EpisodicMemoryExtractorInput,
-) => Promise<EpisodicMemoryExtraction>;
-
 export interface EpisodicMemoryReflectionMerge {
 	supersedes: string[];
 	content: string;
@@ -266,7 +240,6 @@ export interface EpisodicMemoryReflectorInput {
 	entries: RetrievedEpisodicMemoryEntry[];
 	sources: EpisodicMemoryEntrySource[];
 	executionCounter?: AgentExecutionCounter;
-	abortSignal?: AbortSignal;
 }
 
 export type EpisodicMemoryReflectFn = (
@@ -290,7 +263,6 @@ export interface EpisodicMemoryReflectionResult {
 }
 
 export interface EpisodicMemoryPrompts {
-	extraction?: string;
 	reflection?: string;
 	recallToolInstruction?: string;
 }
@@ -308,7 +280,6 @@ export interface EpisodicMemoryConfig {
 	embedder?: EmbeddingModel;
 	embeddingModel?: string;
 	embeddingProviderOptions?: string | EpisodicMemoryEmbeddingProviderOptions;
-	extract?: EpisodicMemoryExtractFn;
 	reflect?: EpisodicMemoryReflectFn;
 	prompts?: EpisodicMemoryPrompts;
 }

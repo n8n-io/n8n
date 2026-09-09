@@ -47,7 +47,6 @@ describe('sanitizeUnknownAgentCredentials', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'known-cred',
-					extractorModel: workerModel,
 					reflectorModel: workerModel,
 				},
 			},
@@ -150,7 +149,7 @@ describe('sanitizeUnknownAgentCredentials', () => {
 					episodicMemory: {
 						enabled: true,
 						credential: 'managed',
-						extractorModel: { model: 'openai/gpt-4o-mini', credential: 'managed' },
+						reflectorModel: { model: 'openai/gpt-4o-mini', credential: 'managed' },
 					},
 				},
 				tools: [
@@ -194,7 +193,7 @@ describe('sanitizeUnknownAgentCredentials', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'managed',
-					extractorModel: { model: 'openai/gpt-4o-mini', credential: '' },
+					reflectorModel: { model: 'openai/gpt-4o-mini', credential: '' },
 				},
 			},
 			tools: [

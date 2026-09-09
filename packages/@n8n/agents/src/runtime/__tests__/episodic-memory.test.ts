@@ -2,8 +2,8 @@ import { embed, embedMany } from 'ai';
 
 import type {
 	BuiltTelemetry,
+	EpisodicMemoryCaptureKind,
 	EpisodicMemoryEntry,
-	EpisodicMemoryExtractFn,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySourceForEntry,
 } from '../../types';
@@ -87,6 +87,7 @@ async function enqueueCandidate(
 	memory: InMemoryMemory,
 	toolCallId = 'call-1',
 	runId = 'run-1',
+	overrides: Partial<{ content: string; kind: EpisodicMemoryCaptureKind }> = {},
 ): Promise<void> {
 	const tool = createFlagMemoryTool({
 		memory,
@@ -100,6 +101,7 @@ async function enqueueCandidate(
 			content: 'User prefers concise reports.',
 			evidence: 'I prefer concise reports',
 			kind: 'preference',
+			...overrides,
 		},
 		{ runId, toolCallId },
 	);
@@ -185,27 +187,6 @@ describe('rankEpisodicMemoryEntries', () => {
 		);
 
 		expect(results).toEqual([]);
-	});
-
-	it('ignores low-positive vector scores without lexical relevance', () => {
-		const weakVector = entry({
-			id: 'weak-vector',
-			content: 'User chose Postgres for durable memory storage.',
-			embedding: [0.01, 1],
-		});
-		const strongVector = entry({
-			id: 'strong-vector',
-			content: 'Warehouse exception routing analysis used manager escalation history.',
-			embedding: [0.8, 0.6],
-		});
-
-		const results = rankEpisodicMemoryEntries(
-			[weakVector, strongVector],
-			'prior travel itinerary hotel booking',
-			{ queryEmbedding: [1, 0], topK: 5 },
-		);
-
-		expect(results.map((result) => result.id)).toEqual(['strong-vector']);
 	});
 });
 
@@ -570,35 +551,26 @@ describe('agent-directed episodic capture', () => {
 	it('turns pending candidates into source-backed entries without observations', async () => {
 		const memory = new InMemoryMemory();
 		await enqueueCandidate(memory);
-		const extract: EpisodicMemoryExtractFn = async ({ candidates }) =>
-			await Promise.resolve({
-				entries: [
-					{
-						content: 'User prefers concise reports.',
-						sources: [
-							{
-								candidateId: candidates[0].id,
-								evidence: 'I prefer concise reports',
-							},
-						],
-					},
-				],
-			});
+		const reflect = vi.fn();
 
 		await expect(
 			runEpisodicMemoryCandidateProcessor({
 				memory,
-				config: { embedder: fakeEmbedder, extract },
+				config: { embedder: fakeEmbedder, reflect },
 				scope: { resourceId: 'user-1' },
 				now: new Date('2026-05-12T11:00:00.000Z'),
 			}),
 		).resolves.toEqual({ status: 'ran', entriesWritten: 1, candidatesProcessed: 1 });
 
+		// Reflection only runs for corrections; a plain preference must not pay for it.
+		expect(reflect).not.toHaveBeenCalled();
 		const entries = await memory.episodic.searchEntries(
 			{ resourceId: 'user-1' },
 			'concise reports',
 		);
-		expect(entries).toHaveLength(1);
+		expect(entries).toEqual([
+			expect.objectContaining({ content: 'User prefers concise reports.', status: 'active' }),
+		]);
 		await expect(memory.episodic.getEntrySources([entries[0].id])).resolves.toEqual([
 			expect.objectContaining({
 				candidateId: expect.any(String),
@@ -639,53 +611,12 @@ describe('agent-directed episodic capture', () => {
 		expect(candidate.content).toContain('[REDACTED]');
 	});
 
-	it('completes a candidate when extraction finds nothing', async () => {
-		const memory = new InMemoryMemory();
-		await enqueueCandidate(memory);
-
-		await runEpisodicMemoryCandidateProcessor({
-			memory,
-			config: {
-				embedder: fakeEmbedder,
-				extract: async () => await Promise.resolve({ entries: [] }),
-			},
-			scope: { resourceId: 'user-1' },
-		});
-
-		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1' }),
-		).resolves.toEqual([]);
-		await expect(
-			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'concise reports'),
-		).resolves.toEqual([]);
-	});
-
 	it('retries partial persistence without duplicating entries or sources', async () => {
 		const memory = new InMemoryMemory();
 		await enqueueCandidate(memory);
-		const extract: EpisodicMemoryExtractFn = async ({ candidates }) =>
-			await Promise.resolve({
-				entries: [
-					{
-						content: 'User prefers concise reports.',
-						sources: [
-							{
-								candidateId: candidates[0].id,
-								evidence: 'I prefer concise reports',
-							},
-						],
-					},
-					{
-						content: 'The preferred reports use concise summaries.',
-						sources: [
-							{
-								candidateId: candidates[0].id,
-								evidence: 'I prefer concise reports',
-							},
-						],
-					},
-				],
-			});
+		await enqueueCandidate(memory, 'call-2', 'run-1', {
+			content: 'The preferred reports use concise summaries.',
+		});
 		mockedEmbedMany.mockResolvedValue({
 			embeddings: [
 				[1, 0],
@@ -702,18 +633,21 @@ describe('agent-directed episodic capture', () => {
 		await expect(
 			runEpisodicMemoryCandidateProcessor({
 				memory,
-				config: { embedder: fakeEmbedder, extract },
+				config: { embedder: fakeEmbedder },
 				scope: { resourceId: 'user-1' },
 			}),
 		).rejects.toThrow('temporary persistence failure');
 		await expect(
 			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1' }),
-		).resolves.toEqual([expect.objectContaining({ attemptCount: 1, status: 'pending' })]);
+		).resolves.toEqual([
+			expect.objectContaining({ attemptCount: 1, status: 'pending' }),
+			expect.objectContaining({ attemptCount: 1, status: 'pending' }),
+		]);
 
 		saveSpy.mockImplementation(save);
 		await runEpisodicMemoryCandidateProcessor({
 			memory,
-			config: { embedder: fakeEmbedder, extract },
+			config: { embedder: fakeEmbedder },
 			scope: { resourceId: 'user-1' },
 		});
 
@@ -760,20 +694,6 @@ describe('agent-directed episodic capture', () => {
 			memory,
 			config: {
 				embedder: fakeEmbedder,
-				extract: async ({ candidates }) =>
-					await Promise.resolve({
-						entries: [
-							{
-								content: 'User switched memory storage from SQLite to Postgres.',
-								sources: [
-									{
-										candidateId: candidates[0].id,
-										evidence: 'I switched from SQLite to Postgres',
-									},
-								],
-							},
-						],
-					}),
 				reflect: async ({ seedEntryIds }) =>
 					await Promise.resolve({
 						drop: [],
@@ -805,7 +725,7 @@ describe('agent-directed episodic capture', () => {
 
 	it('does not retry persisted candidates when reflection fails', async () => {
 		const memory = new InMemoryMemory();
-		await enqueueCandidate(memory);
+		await enqueueCandidate(memory, 'call-1', 'run-1', { kind: 'correction' });
 		const reflectionError = new Error('reflection failed');
 
 		await expect(
@@ -813,20 +733,6 @@ describe('agent-directed episodic capture', () => {
 				memory,
 				config: {
 					embedder: fakeEmbedder,
-					extract: async ({ candidates }) =>
-						await Promise.resolve({
-							entries: [
-								{
-									content: 'User prefers concise reports.',
-									sources: [
-										{
-											candidateId: candidates[0].id,
-											evidence: 'I prefer concise reports',
-										},
-									],
-								},
-							],
-						}),
 					reflect: async () => await Promise.reject(reflectionError),
 				},
 				scope: { resourceId: 'user-1' },

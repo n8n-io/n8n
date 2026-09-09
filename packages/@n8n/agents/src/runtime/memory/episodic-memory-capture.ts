@@ -12,7 +12,6 @@ import {
 import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from './episodic-memory-defaults';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
 import { saveMessagesToThread } from './memory-store';
-import { throwIfAborted } from '../../sdk/abort';
 import { redactText } from '../../sdk/guardrails';
 import { Tool } from '../../sdk/tool';
 import type {
@@ -22,7 +21,6 @@ import type {
 	EpisodicMemoryCaptureCandidate,
 	EpisodicMemoryConfig,
 	EpisodicMemoryEntry,
-	EpisodicMemoryExtractionCandidate,
 	EpisodicMemoryReflection,
 	EpisodicMemoryReflectionMerge,
 	EpisodicMemoryScope,
@@ -40,9 +38,21 @@ const EPISODIC_MEMORY_CAPTURE_MAX_ATTEMPTS = 3;
 const captureKinds = ['explicit_remember', 'preference', 'decision', 'fact', 'correction'] as const;
 
 const FlagMemoryInputSchema = z.object({
-	content: z.string().min(1),
-	evidence: z.string().min(1),
-	kind: z.enum(captureKinds),
+	content: z
+		.string()
+		.min(1)
+		.describe('Concise durable statement that names the person, company, or account it is about.'),
+	evidence: z
+		.string()
+		.min(1)
+		.describe(
+			'One short contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks.',
+		),
+	kind: z
+		.enum(captureKinds)
+		.describe(
+			'explicit_remember when the user asked you to remember it; otherwise the closest category.',
+		),
 });
 
 const FlagMemoryOutputSchema = z.object({
@@ -69,7 +79,6 @@ export function resolveEpisodicMemoryCapture(
 	if (
 		!memory ||
 		!isEpisodicMemoryEnabled(episodicMemory) ||
-		!episodicMemory.extract ||
 		!hasEpisodicMemoryCaptureStore(memory)
 	) {
 		return undefined;
@@ -86,7 +95,7 @@ export function createFlagMemoryTool(opts: {
 }) {
 	return new Tool(FLAG_MEMORY_TOOL_NAME)
 		.description(
-			'Flag source-backed information from this conversation for durable episodic-memory processing.',
+			'Save one durable note about this user, account, or case for future conversations. This is the only record that outlives the conversation.',
 		)
 		.systemInstruction(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION)
 		.input(FlagMemoryInputSchema)
@@ -134,7 +143,6 @@ export interface RunEpisodicMemoryCandidateProcessorOpts {
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
 	agentName?: string;
-	abortSignal?: AbortSignal;
 }
 
 export type RunEpisodicMemoryCandidateProcessorResult =
@@ -142,57 +150,28 @@ export type RunEpisodicMemoryCandidateProcessorResult =
 	| { status: 'ran'; entriesWritten: number; candidatesProcessed: number };
 
 /**
- * Abort checks sit at entry, after each await that does not receive the signal,
- * and before each write. Awaits that receive the signal are checked once more
- * because a custom extractor, reflector, or embedder may ignore it.
+ * Flagged candidates become entries as written: the agent already phrased the
+ * content, and the verbatim evidence is the source. Reflection runs only when
+ * the batch corrects something, because that is when existing entries change.
  */
 export async function runEpisodicMemoryCandidateProcessor(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 ): Promise<RunEpisodicMemoryCandidateProcessorResult> {
-	throwIfAborted(opts.abortSignal);
 	if (!isEpisodicMemoryEnabled(opts.config)) return { status: 'skipped' };
 
 	const config = withEpisodicMemoryDefaults(opts.config);
-	if (!config.extract) return { status: 'skipped' };
-
-	const captureCandidates = await opts.memory.episodic.getPendingCaptureCandidates(opts.scope, {
+	const candidates = await opts.memory.episodic.getPendingCaptureCandidates(opts.scope, {
 		limit: config.maxEntriesPerRun,
 	});
-	throwIfAborted(opts.abortSignal);
-	if (captureCandidates.length === 0) return { status: 'skipped' };
+	if (candidates.length === 0) return { status: 'skipped' };
 
 	const now = opts.now ?? new Date();
-	const candidateIds = captureCandidates.map((candidate) => candidate.id);
-	const capturesById = new Map(captureCandidates.map((candidate) => [candidate.id, candidate]));
-	let savedEntries: EpisodicMemoryEntry[] = [];
+	const candidateIds = candidates.map((candidate) => candidate.id);
+	let savedEntries: EpisodicMemoryEntry[];
 	try {
-		const existingEntries = await opts.memory.episodic.searchEntries(
-			opts.scope,
-			captureCandidates
-				.flatMap((candidate) => [candidate.content, candidate.evidenceText])
-				.join('\n'),
-			{ topK: Math.max(config.topK, 20) },
-		);
-		throwIfAborted(opts.abortSignal);
-		const extraction = await config.extract({
-			scope: opts.scope,
-			now,
-			candidates: captureCandidates,
-			renderedCandidates: renderCaptureCandidates(captureCandidates),
-			existingEntries,
-			executionCounter: opts.executionCounter,
-			abortSignal: opts.abortSignal,
-		});
-		throwIfAborted(opts.abortSignal);
-		const candidates = validateExtractionCandidates(extraction.entries, capturesById).slice(
-			0,
-			config.maxEntriesPerRun,
-		);
-		savedEntries = await saveExtractionCandidates(opts, config, candidates, now);
-		throwIfAborted(opts.abortSignal);
+		savedEntries = await saveCandidateEntries(opts, config, candidates, now);
 		await opts.memory.episodic.completeCaptureCandidates(candidateIds);
 	} catch (error) {
-		if (opts.abortSignal?.aborted) throw error;
 		await opts.memory.episodic.recordCaptureCandidateFailure(
 			candidateIds,
 			EPISODIC_MEMORY_CAPTURE_MAX_ATTEMPTS,
@@ -200,13 +179,17 @@ export async function runEpisodicMemoryCandidateProcessor(
 		throw error;
 	}
 
-	if (savedEntries.length > 0 && config.reflect) {
-		await runEpisodicMemoryReflection(opts, config, savedEntries, captureCandidates, now);
+	if (
+		savedEntries.length > 0 &&
+		config.reflect &&
+		candidates.some((candidate) => candidate.kind === 'correction')
+	) {
+		await runEpisodicMemoryReflection(opts, config, savedEntries, candidates, now);
 	}
 	return {
 		status: 'ran',
 		entriesWritten: savedEntries.length,
-		candidatesProcessed: captureCandidates.length,
+		candidatesProcessed: candidates.length,
 	};
 }
 
@@ -287,68 +270,25 @@ function latestUserMessageAsEvidence(list: AgentMessageList): EvidenceSource | u
 	return undefined;
 }
 
-function renderCaptureCandidates(candidates: EpisodicMemoryCaptureCandidate[]): string {
-	return candidates
-		.map(
-			(candidate) =>
-				`[${candidate.id}] ${candidate.kind.toUpperCase()} ${candidate.createdAt.toISOString()}\nCandidate: ${candidate.content}\nEvidence: ${candidate.evidenceText}`,
-		)
-		.join('\n\n');
-}
-
-interface ValidatedExtractionCandidate {
-	content: string;
-	sources: Array<{ candidateId: string; threadId: string; evidence: string }>;
-}
-
-function validateExtractionCandidates(
-	candidates: EpisodicMemoryExtractionCandidate[],
-	capturesById: Map<string, EpisodicMemoryCaptureCandidate>,
-): ValidatedExtractionCandidate[] {
-	const valid: ValidatedExtractionCandidate[] = [];
-	for (const candidate of candidates) {
-		const sourceKeys = new Set<string>();
-		const sources = candidate.sources.flatMap((source) => {
-			const evidence = source.evidence.trim();
-			const capture = capturesById.get(source.candidateId);
-			if (!capture || !evidence || !capture.evidenceText.includes(evidence)) return [];
-			const key = `${source.candidateId}\n${evidence}`;
-			if (sourceKeys.has(key)) return [];
-			sourceKeys.add(key);
-			return [{ candidateId: source.candidateId, threadId: capture.threadId, evidence }];
-		});
-		const content = normalizeEntryContent(candidate.content);
-		if (content && sources.length > 0) valid.push({ content, sources });
-	}
-	return valid;
-}
-
 async function embedTexts(
 	config: NormalizedEpisodicMemoryConfig,
 	values: string[],
-	opts: Pick<RunEpisodicMemoryCandidateProcessorOpts, 'abortSignal' | 'executionCounter'>,
+	executionCounter: AgentExecutionCounter | undefined,
 ): Promise<number[][]> {
 	const { embedMany } = await import('ai');
 	const { embeddings, usage } = await withEmbeddingErrorContext(
-		async () =>
-			await embedMany({
-				model: config.embedder,
-				values,
-				abortSignal: opts.abortSignal,
-			}),
+		async () => await embedMany({ model: config.embedder, values }),
 	);
-	throwIfAborted(opts.abortSignal);
-	incrementTokenCountFromUsage(opts.executionCounter, usage);
+	incrementTokenCountFromUsage(executionCounter, usage);
 	return embeddings;
 }
 
-async function saveExtractionCandidates(
+async function saveCandidateEntries(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
-	candidates: ValidatedExtractionCandidate[],
+	candidates: EpisodicMemoryCaptureCandidate[],
 	now: Date,
 ): Promise<EpisodicMemoryEntry[]> {
-	if (candidates.length === 0) return [];
 	const savedEntries: EpisodicMemoryEntry[] = [];
 	await withMemorySpan(
 		'save_memory',
@@ -363,10 +303,9 @@ async function saveExtractionCandidates(
 			const embeddings = await embedTexts(
 				config,
 				candidates.map((candidate) => candidate.content),
-				opts,
+				opts.executionCounter,
 			);
 			for (const [index, candidate] of candidates.entries()) {
-				throwIfAborted(opts.abortSignal);
 				const saved = await opts.memory.episodic.saveEntryWithSources(
 					{
 						...opts.scope,
@@ -377,12 +316,14 @@ async function saveExtractionCandidates(
 						createdAt: now,
 						lastSeenAt: now,
 					},
-					candidate.sources.map((source) => ({
-						candidateId: source.candidateId,
-						threadId: source.threadId,
-						evidenceText: redactText(source.evidence).text,
-						createdAt: now,
-					})),
+					[
+						{
+							candidateId: candidate.id,
+							threadId: candidate.threadId,
+							evidenceText: candidate.evidenceText,
+							createdAt: now,
+						},
+					],
 				);
 				if (saved) savedEntries.push(saved);
 			}
@@ -406,13 +347,10 @@ async function runEpisodicMemoryReflection(
 	now: Date,
 ): Promise<void> {
 	if (!config.reflect) return;
-	throwIfAborted(opts.abortSignal);
 	const cluster = await buildReflectionCluster(opts, config, savedEntries, candidates);
-	throwIfAborted(opts.abortSignal);
 	if (cluster.length === 0) return;
 
 	const sources = await opts.memory.episodic.getEntrySources(cluster.map((entry) => entry.id));
-	throwIfAborted(opts.abortSignal);
 	const reflection = normalizeEpisodicMemoryReflection(
 		cluster,
 		await config.reflect({
@@ -422,15 +360,13 @@ async function runEpisodicMemoryReflection(
 			entries: cluster,
 			sources,
 			executionCounter: opts.executionCounter,
-			abortSignal: opts.abortSignal,
 		}),
 	);
-	throwIfAborted(opts.abortSignal);
 	if (reflection.drop.length === 0 && reflection.merge.length === 0) return;
 
 	const mergeContents = reflection.merge.map((entry) => entry.content);
 	const mergeEmbeddings =
-		mergeContents.length > 0 ? await embedTexts(config, mergeContents, opts) : [];
+		mergeContents.length > 0 ? await embedTexts(config, mergeContents, opts.executionCounter) : [];
 	await opts.memory.episodic.applyReflection(opts.scope, {
 		drop: reflection.drop,
 		merge: reflection.merge.map((merge, index) => ({

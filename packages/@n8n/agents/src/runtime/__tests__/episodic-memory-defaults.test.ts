@@ -1,10 +1,7 @@
 import type * as AiImport from 'ai';
 
 import type { ModelConfig } from '../../types';
-import {
-	createEpisodicMemoryExtractFn,
-	createEpisodicMemoryReflectFn,
-} from '../memory/episodic-memory-defaults';
+import { createEpisodicMemoryReflectFn } from '../memory/episodic-memory-defaults';
 
 type GenerateTextCall = {
 	output: {
@@ -46,30 +43,6 @@ describe('episodic memory defaults', () => {
 		mockGenerateText.mockReset();
 	});
 
-	it('rejects extracted entries without source evidence', async () => {
-		mockGenerateText.mockImplementation(async ({ output }) => {
-			const parsedOutput = output.schema.parse({
-				entries: [
-					{
-						content: 'User chose Postgres for the memory store.',
-						sources: [],
-					},
-				],
-			});
-			return await Promise.resolve({ output: parsedOutput });
-		});
-
-		await expect(
-			createEpisodicMemoryExtractFn(fakeModel)({
-				scope: { resourceId: 'user-1' },
-				now: new Date('2026-05-12T15:00:00.000Z'),
-				candidates: [],
-				renderedCandidates: '',
-				existingEntries: [],
-			}),
-		).rejects.toThrow();
-	});
-
 	it('rejects reflection merges without superseded entry IDs', async () => {
 		mockGenerateText.mockImplementation(async ({ output }) => {
 			const parsedOutput = output.schema.parse({
@@ -95,26 +68,12 @@ describe('episodic memory defaults', () => {
 		).rejects.toThrow();
 	});
 
-	it('counts extraction and reflection generation tokens when usage is available', async () => {
+	it('counts reflection generation tokens when usage is available', async () => {
 		const counter = {
 			incrementMessageCount: vi.fn(),
 			incrementToolCallCount: vi.fn(),
 			incrementTokenCount: vi.fn(),
 		};
-
-		mockGenerateText.mockImplementationOnce(async ({ output }) => {
-			const parsedOutput = output.schema.parse({ entries: [] });
-			return await Promise.resolve({ output: parsedOutput, usage: { totalTokens: 11 } });
-		});
-
-		await createEpisodicMemoryExtractFn(fakeModel)({
-			scope: { resourceId: 'user-1' },
-			now: new Date('2026-05-12T15:00:00.000Z'),
-			candidates: [],
-			renderedCandidates: '',
-			existingEntries: [],
-			executionCounter: counter,
-		});
 
 		mockGenerateText.mockImplementationOnce(async ({ output }) => {
 			const parsedOutput = output.schema.parse({ drop: [], merge: [] });
@@ -130,7 +89,6 @@ describe('episodic memory defaults', () => {
 			executionCounter: counter,
 		});
 
-		expect(counter.incrementTokenCount).toHaveBeenCalledWith(11);
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(13);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();

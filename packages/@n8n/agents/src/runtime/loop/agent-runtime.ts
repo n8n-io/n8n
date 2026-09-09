@@ -282,7 +282,7 @@ export class AgentRuntime {
 				options,
 				this.runId,
 				async () => {
-					const initializedList = await this.initRun(input, options, abortScope.signal);
+					const initializedList = await this.initRun(input, options);
 					list = initializedList;
 					const result = await this.runAgentLoop<GenerateResult>(
 						{ list: initializedList, options, abortScope },
@@ -612,18 +612,9 @@ export class AgentRuntime {
 	private async buildMessageList(
 		input: AgentMessage[],
 		options?: RunOptions & ExecutionOptions,
-		abortSignal?: AbortSignal,
 	): Promise<AgentMessageList> {
 		const list = new AgentMessageList();
-		try {
-			await this.memory.loadInto(list, options, abortSignal);
-		} catch (error) {
-			if (abortSignal?.aborted) {
-				list.addInput(input);
-				await this.memory.persistInputMessages(list, options);
-			}
-			throw error;
-		}
+		await this.memory.loadInto(list, options);
 		list.addInput(input);
 
 		// Persist input now (after history load, so the prompt isn't polluted) so it
@@ -648,7 +639,6 @@ export class AgentRuntime {
 	private async initRun(
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
-		abortSignal?: AbortSignal,
 	): Promise<AgentMessageList> {
 		this.updateState({
 			status: 'running',
@@ -658,7 +648,7 @@ export class AgentRuntime {
 		await this.ensureModelCost();
 		const normalizedInput = normalizeInput(input);
 		incrementMessageCount(options?.executionCounter);
-		return await this.buildMessageList(normalizedInput, options, abortSignal);
+		return await this.buildMessageList(normalizedInput, options);
 	}
 
 	/**
@@ -1039,8 +1029,7 @@ export class AgentRuntime {
 						server: failure.server,
 					});
 				}
-				const resolvedList =
-					ctx.list ?? (await this.initRun(ctx.input, ctx.options, ctx.abortScope.signal));
+				const resolvedList = ctx.list ?? (await this.initRun(ctx.input, ctx.options));
 				list = resolvedList;
 				sink = new StreamSink(guard, this.createRunServices(), ctx.options);
 				await this.runAgentLoop(

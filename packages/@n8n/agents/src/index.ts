@@ -49,10 +49,6 @@ export type {
 	EpisodicMemoryEmbeddingProviderOptions,
 	EpisodicMemoryEntry,
 	EpisodicMemoryEntrySource,
-	EpisodicMemoryExtractFn,
-	EpisodicMemoryExtraction,
-	EpisodicMemoryExtractionCandidate,
-	EpisodicMemoryExtractorInput,
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
 	EpisodicMemoryReflectFn,
@@ -363,20 +359,14 @@ export type {
 export {
 	DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
-	buildEpisodicMemoryExtractorPrompt,
 	buildEpisodicMemoryReflectorPrompt,
-	createEpisodicMemoryExtractFn,
 	createEpisodicMemoryReflectFn,
 } from './runtime/memory/episodic-memory-defaults';
-export type {
-	CreateEpisodicMemoryExtractFnOptions,
-	CreateEpisodicMemoryReflectFnOptions,
-} from './runtime/memory/episodic-memory-defaults';
+export type { CreateEpisodicMemoryReflectFnOptions } from './runtime/memory/episodic-memory-defaults';
 export type {
 	MemoryLifecycleState,
 	MemoryLifecycleStatus,
