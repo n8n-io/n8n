@@ -688,6 +688,7 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.errors?.join('\n')).toContain('[ALL_GROUPS_DROPPED]');
 			expect(result.errors?.join('\n')).toContain('Stage');
 			expect(result.remediation?.reason).toBe('workflow_groups_all_dropped');
+			expect(result.grouping).toMatchObject({ groupCount: 0, decision: 'grouped' });
 			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 		});
 
