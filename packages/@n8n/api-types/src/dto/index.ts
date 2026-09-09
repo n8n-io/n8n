@@ -103,6 +103,7 @@ export { SourceControlStatusPublicDto } from './source-control/source-control-st
 export { SourceControlPushRequestPublicDto } from './source-control/source-control-push-request-public.dto';
 export { SourceControlPushResponsePublicDto } from './source-control/source-control-push-response-public.dto';
 export { SourceControlPushConflictErrorPublicDto } from './source-control/source-control-push-conflict-error-public.dto';
+export { SourceControlPullResponsePublicDto } from './source-control/source-control-pull-response-public.dto';
 export {
 	CloneGitConnectionDto,
 	CreateGitConnectionDto,

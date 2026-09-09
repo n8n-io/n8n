@@ -55,7 +55,9 @@ describe('Source Control (Public API)', () => {
 			const response = await testServer.publicApiAgentWithoutApiKey().post(pullUrl).send(validBody);
 
 			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+			// Decorator-routed endpoints authenticate outside express-openapi-validator's
+			// legacy security check, so the message is generic rather than naming the header.
+			expect(response.body).toEqual({ message: 'Unauthorized' });
 		});
 
 		it('should return 401 when API key is invalid', async () => {
@@ -78,14 +80,12 @@ describe('Source Control (Public API)', () => {
 			expect(response.body).toEqual({ message: 'Forbidden' });
 		});
 
-		it('should return 401 when Source Control is not licensed', async () => {
+		it('should return 403 when Source Control is not licensed', async () => {
 			const response = await testServer.publicApiAgentFor(owner).post(pullUrl).send(validBody);
 
-			expect(response.status).toBe(401);
-			expect(response.body).toEqual({
-				status: 'Error',
-				message: 'Source Control feature is not licensed',
-			});
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message');
+			expect(response.body.message).toContain('feat:sourceControl');
 		});
 
 		it('should return 400 when licensed but Source Control is not connected', async () => {
