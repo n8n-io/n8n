@@ -1,4 +1,4 @@
-# Validate node and credential icon files exist, use the file: protocol, and that light/dark icons are different (`@n8n/community-nodes/icon-validation`)
+# Validate node and credential icon files exist and use the file: protocol (`@n8n/community-nodes/icon-validation`)
 
 💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 
@@ -8,7 +8,7 @@
 
 ## Rule Details
 
-Validates that your node and credential icon files exist and use the correct `file:` protocol. Icons must be different files when providing light/dark theme variants.
+Validates that your node and credential icon files exist and use the correct `file:` protocol. The `light` and `dark` slots can point to the same file: one theme-agnostic icon is a valid choice, and you do not have to copy it under a second filename.
 
 Both SVG and PNG icons are accepted. SVG is recommended (it scales cleanly and supports theming), but PNG is allowed — see the `icon-prefer-themed-variants` rule for the related light/dark nudge.
 
@@ -22,20 +22,6 @@ export class MyNode implements INodeType {
     displayName: 'My Node',
     name: 'myNode',
     icon: 'icons/my-icon.svg', // Missing 'file:' prefix
-    // ...
-  };
-}
-```
-
-```typescript
-export class MyNode implements INodeType {
-  description: INodeTypeDescription = {
-    displayName: 'My Node',
-    name: 'myNode',
-    icon: {
-      light: 'file:icons/my-icon.svg',
-      dark: 'file:icons/my-icon.svg', // Same file for both themes
-    },
     // ...
   };
 }
@@ -62,6 +48,20 @@ export class MyNode implements INodeType {
     icon: {
       light: 'file:icons/my-service-light.svg',
       dark: 'file:icons/my-service-dark.svg', // Different files
+    },
+    // ...
+  };
+}
+```
+
+```typescript
+export class MyNode implements INodeType {
+  description: INodeTypeDescription = {
+    displayName: 'My Node',
+    name: 'myNode',
+    icon: {
+      light: 'file:icons/my-service.svg',
+      dark: 'file:icons/my-service.svg', // One file that works on both themes
     },
     // ...
   };
