@@ -33,11 +33,6 @@ export class PairedItemMemo {
 	}
 
 	private toKey(sourceData: ISourceData, pairedItem: IPairedItemData): string {
-		return JSON.stringify([
-			sourceData.previousNode,
-			sourceData.previousNodeRun ?? 0,
-			sourceData.previousNodeOutput ?? 0,
-			pairedItem.item,
-		]);
+		return `${sourceData.previousNodeRun ?? 0}|${sourceData.previousNodeOutput ?? 0}|${pairedItem.item}|${sourceData.previousNode}`;
 	}
 }
