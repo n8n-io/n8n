@@ -57,7 +57,7 @@ const groupItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
 	})),
 );
 const groupLabel = computed(() =>
-	i18n.baseText('dataTable.kanban.sortBy', {
+	i18n.baseText('dataTable.kanban.groupByColumn', {
 		interpolate: { column: selectedGroupColumn.value?.name ?? '' },
 	}),
 );

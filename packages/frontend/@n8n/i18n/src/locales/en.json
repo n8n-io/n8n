@@ -3,7 +3,7 @@
 	"dataTable.kanban.view": "Kanban",
 	"dataTable.kanban.settings": "View settings",
 	"dataTable.kanban.groupBy": "Group by",
-	"dataTable.kanban.sortBy": "Sort by {column}",
+	"dataTable.kanban.groupByColumn": "Group by {column}",
 	"dataTable.kanban.noEnum": "Kanban needs an enum column. Close this dialog and select Add column to create one.",
 	"dataTable.kanban.invalidGrouping": "The grouping column is no longer available. Select Kanban to choose another enum column.",
 	"dataTable.kanban.settingsError": "View settings couldn't be saved. Try again.",
