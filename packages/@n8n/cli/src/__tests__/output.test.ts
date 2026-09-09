@@ -27,6 +27,21 @@ describe('table output', () => {
 		expect(lines[2]).not.toContain('schemaVersion');
 	});
 
+	it('keeps the full path when two columns end in the same name', () => {
+		const rows = [{ id: 'x', apply: { branchName: 'main' }, promote: { branchName: 'release' } }];
+
+		const lines = formatOutput(rows, {
+			format: 'table',
+			columns: ['id', 'apply.branchName', 'promote.branchName'],
+		}).split('\n');
+
+		// Two `BRANCHNAME` headers would not say which column is which.
+		expect(lines[0]).toContain('APPLY.BRANCHNAME');
+		expect(lines[0]).toContain('PROMOTE.BRANCHNAME');
+		expect(lines[2]).toContain('main');
+		expect(lines[2]).toContain('release');
+	});
+
 	it('shortens a long value in a multi-row table so the columns stay aligned', () => {
 		const rows = [
 			{ id: 'a', name: LONG },
