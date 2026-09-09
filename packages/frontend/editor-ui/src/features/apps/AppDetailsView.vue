@@ -106,13 +106,15 @@ const versionId = computed(
 
 const hasPreviewSource = computed(() => Boolean(props.liveUrl ?? versionId.value));
 
-// A freshly created app has no build yet; while its dev server comes up the
-// preview pane shows the banner alone instead of the "ask the assistant" empty state.
+// Without a build the preview pane shows the banner alone while n8n restores the
+// app and starts its dev server; only `no-source` (nothing stored for the app at
+// all) falls back to the "ask the assistant" empty state.
 const livePending = computed(
 	() =>
 		props.artifactMode &&
 		!hasPreviewSource.value &&
-		(props.liveStatus?.status === 'starting' || props.liveStatus?.status === 'no-source'),
+		props.liveStatus !== undefined &&
+		props.liveStatus.status !== 'no-source',
 );
 
 const showPreviewPane = computed(() => hasPreviewSource.value || livePending.value);
@@ -124,7 +126,7 @@ const LIVE_BANNER_KEYS = {
 	unavailable: 'apps.builder.live.unavailable',
 } as const;
 
-// Without a build there is nothing to fall back to, so the empty state speaks instead.
+// "This is the last build." only when the frame below shows one.
 const liveBanner = computed(() => {
 	const live = props.liveStatus;
 	if (!live || live.status === 'ready' || !(versionId.value || livePending.value)) return undefined;
@@ -132,10 +134,11 @@ const liveBanner = computed(() => {
 	const key =
 		live.status === 'unavailable' && live.reason === 'start-failed'
 			? 'apps.builder.live.startFailed'
-			: live.status === 'no-source' && !versionId.value
-				? 'apps.builder.live.noSourceNoBuild'
-				: LIVE_BANNER_KEYS[live.status];
-	return { key, theme } as const;
+			: LIVE_BANNER_KEYS[live.status];
+	const text = versionId.value
+		? `${i18n.baseText(key)} ${i18n.baseText('apps.builder.live.lastBuild')}`
+		: i18n.baseText(key);
+	return { text, theme } as const;
 });
 
 const modeOptions = computed(() => [
@@ -410,7 +413,7 @@ watch(showPreviewPane, (next, previous) => {
 					:round-corners="false"
 					data-test-id="app-preview-live-banner"
 				>
-					{{ i18n.baseText(liveBanner.key) }}
+					{{ liveBanner.text }}
 				</N8nCallout>
 				<AppPreviewFrame
 					v-if="app && hasPreviewSource"

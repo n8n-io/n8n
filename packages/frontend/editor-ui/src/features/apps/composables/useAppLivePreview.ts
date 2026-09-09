@@ -7,7 +7,8 @@ import { computed, onScopeDispose, ref, toValue, watch } from 'vue';
 import { ensureAppPreviewApi } from '@/features/apps/apps.api';
 
 export const LIVE_PREVIEW_POLL_MS = 1500;
-export const LIVE_PREVIEW_POLL_TIMEOUT_MS = 90_000;
+// A cold open restores the app and runs npm install in a new sandbox before Vite starts.
+export const LIVE_PREVIEW_POLL_TIMEOUT_MS = 240_000;
 export const LIVE_PREVIEW_HEARTBEAT_MS = 10 * 60_000;
 
 export type LivePreviewNext = 'poll' | 'heartbeat' | 'stop';

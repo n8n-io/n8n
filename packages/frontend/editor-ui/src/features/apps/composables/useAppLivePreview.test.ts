@@ -30,6 +30,15 @@ describe('transitionLivePreview', () => {
 		});
 	});
 
+	it('keeps polling through a cold restore and install, which outlasts the old 90 s limit', () => {
+		expect(LIVE_PREVIEW_POLL_TIMEOUT_MS).toBe(240_000);
+		expect(transitionLivePreview(STARTING, 1000, 1000 + 200_000)).toEqual({
+			status: STARTING,
+			next: 'poll',
+			pollingSince: 1000,
+		});
+	});
+
 	it('gives up on a starting streak after the timeout', () => {
 		expect(transitionLivePreview(STARTING, 1000, 1000 + LIVE_PREVIEW_POLL_TIMEOUT_MS)).toEqual({
 			status: { status: 'unavailable', reason: 'start-failed' },

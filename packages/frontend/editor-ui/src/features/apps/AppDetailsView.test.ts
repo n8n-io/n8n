@@ -387,14 +387,14 @@ describe('AppDetailsView', () => {
 			],
 			[
 				{ status: 'unavailable', reason: 'sandbox' },
-				'Live preview stopped. This is the last build.',
+				"Live preview isn't available right now. This is the last build.",
 			],
 			[
 				{ status: 'unavailable', reason: 'start-failed' },
 				"Live preview couldn't start. This is the last build.",
 			],
 		])('shows the %o banner above the last build', async (liveStatus, text) => {
-			const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }), {
+			const { getByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }), {
 				artifactMode: true,
 				liveStatus,
 			});
@@ -408,9 +408,14 @@ describe('AppDetailsView', () => {
 
 		it.each([
 			[{ status: 'starting' }, 'Starting live preview…'],
-			[{ status: 'no-source' }, "Live preview isn't available yet."],
+			[
+				{ status: 'unsupported', reason: 'provider' },
+				"Live preview isn't supported on this instance.",
+			],
+			[{ status: 'unavailable', reason: 'sandbox' }, "Live preview isn't available right now."],
+			[{ status: 'unavailable', reason: 'start-failed' }, "Live preview couldn't start."],
 		])(
-			'opens Preview with only the %o banner while a just-created app has no build',
+			'opens Preview with only the %o banner while an app without a build restores',
 			async (liveStatus, text) => {
 				const { getByTestId, queryByTestId } = await renderApp(makeApp(), {
 					artifactMode: true,
@@ -419,28 +424,36 @@ describe('AppDetailsView', () => {
 
 				expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
 				expect(getByTestId('app-preview-live-banner')).toHaveTextContent(text);
+				expect(getByTestId('app-preview-live-banner')).not.toHaveTextContent('last build');
 				expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
 				expect(queryByTestId('instance-ai-app-preview-iframe')).not.toBeInTheDocument();
 			},
 		);
 
-		it.each([
-			{ status: 'unsupported', reason: 'provider' },
-			{ status: 'unavailable', reason: 'start-failed' },
-		])(
-			'keeps the empty state instead of a %o banner when there is no build',
-			async (liveStatus) => {
-				const { getByTestId, queryByTestId } = await renderApp(makeApp(), {
-					artifactMode: true,
-					liveStatus,
-				});
+		it('switches from the empty state to Preview once the first ensure answer arrives', async () => {
+			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
+				artifactMode: true,
+			});
+			expect(getByTestId('app-builder-build')).toBeInTheDocument();
 
-				await userEvent.click(getByTestId('radio-button-preview'));
+			await rerender({ artifactMode: true, liveStatus: { status: 'starting' } });
 
-				expect(getByTestId('app-preview-empty')).toBeInTheDocument();
-				expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
-			},
-		);
+			expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+			expect(getByTestId('app-preview-live-banner')).toHaveTextContent('Starting live preview…');
+			expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
+		});
+
+		it('shows the empty state for an app with no stored source and no build', async () => {
+			const { getByTestId, queryByTestId } = await renderApp(makeApp(), {
+				artifactMode: true,
+				liveStatus: { status: 'no-source' },
+			});
+
+			await userEvent.click(getByTestId('radio-button-preview'));
+
+			expect(getByTestId('app-preview-empty')).toHaveTextContent('Nothing to preview yet');
+			expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
+		});
 
 		it('stays on Build for a starting preview outside artifact mode', async () => {
 			const { getByTestId } = await renderApp(makeApp(), { liveStatus: { status: 'starting' } });
