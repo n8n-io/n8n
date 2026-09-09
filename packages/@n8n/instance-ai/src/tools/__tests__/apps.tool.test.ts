@@ -22,6 +22,7 @@ const APP = {
 	name: 'Greeter',
 	namespace: 'greeter',
 	projectId: 'proj-1',
+	authMode: 'public' as const,
 	createdAt: '2024-01-01T00:00:00.000Z',
 };
 
@@ -59,6 +60,7 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 	const appService: InstanceAiAppService = {
 		create: vi.fn().mockResolvedValue({ app: APP }),
 		get: vi.fn().mockResolvedValue(APP),
+		updateSettings: vi.fn().mockResolvedValue({ ...APP, authMode: 'n8n' }),
 		getSourceTarball: vi.fn().mockResolvedValue({ versionId: 'v-1', data: SOURCE_TARBALL }),
 		storeVersion: vi
 			.fn()
@@ -69,7 +71,7 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 	};
 	return {
 		userId: 'user-1',
-		workflowService: {},
+		workflowService: { get: vi.fn().mockResolvedValue({ name: 'Echo' }) },
 		executionService: {},
 		nodeService: {},
 		credentialService: {},
@@ -127,11 +129,18 @@ function mockEmptyAppDir(context: InstanceAiContext) {
 	);
 }
 
-async function runAction(context: InstanceAiContext, input: Record<string, unknown>) {
+async function runAction(
+	context: InstanceAiContext,
+	input: Record<string, unknown>,
+	toolContext: unknown = {},
+) {
 	const tool = createAppsTool(context);
 	const parsed: unknown = inputSchema(tool).parse({ appId: 'app-1', ...input });
-	return await executeTool<Record<string, unknown>>(tool, parsed);
+	return await executeTool<Record<string, unknown>>(tool, parsed, toolContext);
 }
+
+/** The second call of an approval flow: the user already answered the card. */
+const approved = { resumeData: { approved: true } };
 
 function appServiceMock(context: InstanceAiContext, method: keyof InstanceAiAppService): Mock {
 	return (context.appService as unknown as Record<string, Mock>)[method];
@@ -198,6 +207,19 @@ describe('apps tool', () => {
 	});
 
 	describe('create', () => {
+		it('passes authMode through to the app service', async () => {
+			const context = createMockContext();
+
+			await runCreate(context, { authMode: 'n8n' });
+
+			expect(context.appService?.create).toHaveBeenCalledWith({
+				projectId: 'proj-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				authMode: 'n8n',
+			});
+		});
+
 		it('slugifies the name, registers the app, copies the template and returns the workspace path', async () => {
 			const context = createMockContext();
 			const result = await runCreate(context);
@@ -853,10 +875,14 @@ describe('apps tool', () => {
 			};
 			appServiceMock(context, 'setBindings').mockResolvedValue(saved);
 
-			const result = await runAction(context, {
-				action: 'bind',
-				bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-9' }],
-			});
+			const result = await runAction(
+				context,
+				{
+					action: 'bind',
+					bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-9' }],
+				},
+				approved,
+			);
 
 			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalledWith('app-1', [
 				{ key: 'notify', kind: 'workflow', workflowId: 'wf-2' },
@@ -881,10 +907,14 @@ describe('apps tool', () => {
 				new Error('Binding \'submit\': workflow "Echo" needs a trigger.'),
 			);
 
-			const result = await runAction(context, {
-				action: 'bind',
-				bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' }],
-			});
+			const result = await runAction(
+				context,
+				{
+					action: 'bind',
+					bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' }],
+				},
+				approved,
+			);
 
 			expect(result).toEqual({
 				denied: true,
@@ -901,10 +931,14 @@ describe('apps tool', () => {
 			});
 			writeFileMock(context).mockRejectedValue(new Error('disk full'));
 
-			const result = await runAction(context, {
-				action: 'bind',
-				bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' }],
-			});
+			const result = await runAction(
+				context,
+				{
+					action: 'bind',
+					bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' }],
+				},
+				approved,
+			);
 
 			expect(result).toMatchObject({
 				error: true,
@@ -916,13 +950,107 @@ describe('apps tool', () => {
 		it('returns denied for an empty bindings list without touching the app', async () => {
 			const context = createMockContext();
 
-			const result = await runAction(context, { action: 'bind', bindings: [] });
+			const result = await runAction(context, { action: 'bind', bindings: [] }, approved);
 
 			expect(result).toMatchObject({
 				denied: true,
 				reason: expect.stringContaining('at least one'),
 			});
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('bind approval', () => {
+		const bindInput = {
+			action: 'bind',
+			bindings: [
+				{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' },
+				{ key: 'notify', kind: 'workflow', workflowId: 'wf-2' },
+			],
+		};
+
+		it('is denied when the admin blocked bindAppWorkflow', async () => {
+			const context = createMockContext({ permissions: { bindAppWorkflow: 'blocked' } } as never);
+			const suspend = vi.fn();
+
+			const result = await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
+			expect(suspend).not.toHaveBeenCalled();
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('suspends for approval with one line per workflow on the first call', async () => {
+			const context = createMockContext();
+			const suspend = vi.fn().mockResolvedValue('suspended');
+
+			const result = await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(result).toBe('suspended');
+			expect(suspend).toHaveBeenCalledWith({
+				requestId: expect.any(String),
+				message:
+					'Connect workflow "Echo" (wf-1) to app "Greeter" as "submit"\n' +
+					'Connect workflow "Echo" (wf-2) to app "Greeter" as "notify"',
+				severity: 'warning',
+			});
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the workflow id when the workflow cannot be read', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as Mock).mockRejectedValue(new Error('gone'));
+			const suspend = vi.fn().mockResolvedValue('suspended');
+
+			await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(suspend.mock.calls[0][0].message).toContain('Connect workflow "wf-1" (wf-1)');
+		});
+
+		it('is denied when the user rejects the card', async () => {
+			const context = createMockContext();
+
+			const result = await runAction(context, bindInput, { resumeData: { approved: false } });
+
+			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('skips the card when the admin set bindAppWorkflow to always_allow', async () => {
+			const context = createMockContext({
+				permissions: { bindAppWorkflow: 'always_allow' },
+			} as never);
+			const suspend = vi.fn();
+
+			await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalled();
+		});
+	});
+
+	describe('settings', () => {
+		it('updates the auth mode through the app service and returns it', async () => {
+			const context = createMockContext();
+
+			const result = await runAction(context, { action: 'settings', authMode: 'n8n' });
+
+			expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalledWith('app-1', {
+				authMode: 'n8n',
+			});
+			expect(result).toEqual({ appId: 'app-1', authMode: 'n8n' });
+		});
+
+		it('rejects an unknown auth mode', () => {
+			const tool = createAppsTool(createMockContext());
+
+			const parsed = inputSchema(tool).safeParse({
+				action: 'settings',
+				appId: 'app-1',
+				authMode: 'anyone',
+			});
+
+			expect(parsed.success).toBe(false);
 		});
 	});
 

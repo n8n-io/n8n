@@ -7,6 +7,7 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	UpdateAppDto,
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
@@ -143,6 +144,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { APP_SDK_TARBALL_FILENAME, getAppSdkTarball } from '@/modules/apps/app-sdk-tarball';
+import type { App } from '@/modules/apps/app.entity';
 import { AppsService } from '@/modules/apps/apps.service';
 import { AppNamespaceConflictError } from '@/modules/apps/errors/app-namespace-conflict.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -3173,9 +3175,16 @@ export class InstanceAiAdapterService {
 			await assertProjectScope(scopes, app.projectId);
 			return app;
 		};
+		const summarize = (app: App) => ({
+			id: app.id,
+			name: app.name,
+			namespace: app.namespace,
+			projectId: app.projectId,
+			authMode: app.authMode,
+		});
 
 		return {
-			async create({ projectId: requestedProjectId, name, namespace }) {
+			async create({ projectId: requestedProjectId, name, namespace, authMode }) {
 				assertNotReadOnly();
 				const projectId = await resolveProjectId(['app:create'], requestedProjectId);
 				// The REST controller validates through this DTO; the tool path must not skip the slug rules.
@@ -3184,16 +3193,11 @@ export class InstanceAiAdapterService {
 					throw new UserError(`Invalid app: ${dto.error.issues.map((i) => i.message).join(' ')}`);
 				}
 				try {
-					const app = await appsService.createApp(projectId, dto.data);
-					return {
-						app: {
-							id: app.id,
-							name: app.name,
-							namespace: app.namespace,
-							projectId: app.projectId,
-							createdAt: app.createdAt.toISOString(),
-						},
-					};
+					const created = await appsService.createApp(projectId, dto.data);
+					const app = authMode
+						? await appsService.updateApp(created.id, UpdateAppDto.parse({ authMode }))
+						: created;
+					return { app: { ...summarize(app), createdAt: app.createdAt.toISOString() } };
 				} catch (error) {
 					if (error instanceof AppNamespaceConflictError) return { conflict: true };
 					throw error;
@@ -3201,8 +3205,19 @@ export class InstanceAiAdapterService {
 			},
 
 			async get(appId) {
-				const app = await getAccessibleApp(['app:read'], appId);
-				return { id: app.id, name: app.name, namespace: app.namespace, projectId: app.projectId };
+				return summarize(await getAccessibleApp(['app:read'], appId));
+			},
+
+			async updateSettings(appId, settings) {
+				assertNotReadOnly();
+				const app = await getAccessibleApp(['app:update'], appId);
+				const dto = UpdateAppDto.safeParse(settings);
+				if (!dto.success) {
+					throw new UserError(
+						`Invalid app settings: ${dto.error.issues.map((i) => i.message).join(' ')}`,
+					);
+				}
+				return summarize(await appsService.updateApp(app.id, dto.data));
 			},
 
 			async getSourceTarball(appId) {

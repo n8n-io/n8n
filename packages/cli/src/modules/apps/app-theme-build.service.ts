@@ -100,8 +100,11 @@ export class AppThemeBuildService {
 				throw new UnexpectedError('create is not supported by the theme rebuild pipeline');
 			},
 			async get(appId) {
-				const app = await appsService.getApp(appId);
-				return { id: app.id, name: app.name, namespace: app.namespace, projectId: app.projectId };
+				const { id, name, namespace, projectId, authMode } = await appsService.getApp(appId);
+				return { id, name, namespace, projectId, authMode };
+			},
+			updateSettings() {
+				throw new UnexpectedError('updateSettings is not supported by the theme rebuild pipeline');
 			},
 			async getSourceTarball(appId) {
 				return await appsService.getSourceTarball(appId);
