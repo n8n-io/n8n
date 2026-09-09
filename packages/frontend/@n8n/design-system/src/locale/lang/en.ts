@@ -6,6 +6,7 @@ export default {
 	'generic.cancel': 'Cancel',
 	'generic.close': 'Close',
 	'generic.moreInfo': 'More info',
+	'menuItem.new': 'New',
 	'aiModelSelector.credentialsMissing': 'Credentials missing',
 	'nds.auth.roles.owner': 'Owner',
 	'nds.userInfo.you': '(you)',
