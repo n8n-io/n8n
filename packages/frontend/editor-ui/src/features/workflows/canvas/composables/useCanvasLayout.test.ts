@@ -20,11 +20,7 @@ import {
 } from '../canvas.types';
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '@/app/constants';
-import {
-	DEFAULT_NODE_SIZE,
-	GRID_SIZE,
-	NODE_X_SPACING,
-} from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE, NODE_X_SPACING } from '@/app/utils/nodeViewUtils';
 import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 import type { INodeUi } from '@/Interface';
 import {
