@@ -9,10 +9,10 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { posix } from 'node:path';
 import { z } from 'zod';
 
+import { APPS_TOOL_ID } from './tool-ids';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { SANDBOX_RUNTIME_SKILLS_DIR } from '../skills/materialize-runtime-skills';
 import type { InstanceAiContext } from '../types';
-import { APPS_TOOL_ID } from './tool-ids';
 import { escapeSingleQuotes } from '../workspace/sandbox-fs';
 import { NPM_INSTALL_FLAGS } from '../workspace/sandbox-setup';
 
