@@ -540,7 +540,7 @@ catalogs:
       specifier: 0.6.3
       version: 0.6.3
     isolated-vm:
-      specifier: ^7.0.0
+      specifier: ^7.0.1
       version: 7.0.1
     js-base64:
       specifier: 3.7.8
