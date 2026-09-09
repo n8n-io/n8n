@@ -1,11 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { OperationalError } from 'n8n-workflow';
 
 import { EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS } from './constants';
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 import type { SecretsProvider } from './types';
+import { withTimeout } from './with-timeout';
 
 /**
  * Manages secrets caching and refresh from providers
@@ -43,33 +43,16 @@ export class ExternalSecretsSecretsCache {
 		}
 
 		try {
-			await this.refreshProviderWithTimeout(provider);
+			await withTimeout(
+				provider.update(),
+				EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS,
+				`Timed out refreshing secrets after ${EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS}ms`,
+			);
 			this.logger.debug(`Refreshed secrets from provider ${name}`);
 		} catch (error) {
 			this.logger.error(`Error refreshing secrets from provider ${name}`, {
 				error: ensureError(error),
 			});
-		}
-	}
-
-	private async refreshProviderWithTimeout(provider: SecretsProvider): Promise<void> {
-		let timeoutId: NodeJS.Timeout | undefined;
-		const timeoutPromise = new Promise<never>((_, reject) => {
-			timeoutId = setTimeout(() => {
-				reject(
-					new OperationalError(
-						`Timed out refreshing secrets after ${EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS}ms`,
-					),
-				);
-			}, EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS);
-		});
-
-		try {
-			await Promise.race([provider.update(), timeoutPromise]);
-		} finally {
-			if (timeoutId !== undefined) {
-				clearTimeout(timeoutId);
-			}
 		}
 	}
 

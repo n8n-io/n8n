@@ -2,8 +2,10 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
+import { EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS } from './constants';
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import type { SecretsProvider, SecretsProviderSettings } from './types';
+import { withTimeout } from './with-timeout';
 
 interface ProviderInitResult {
 	success: boolean;
@@ -80,7 +82,13 @@ export class ExternalSecretsProviderLifecycle {
 			this.logger.debug(`Connecting secrets provider ${provider.displayName} (${provider.name})`);
 
 			provider.setState('connecting');
-			await provider.connect();
+			// A vault that never answers must not hold up the caller: module init awaits the first
+			// connect, and nothing behind it in the boot sequence runs until this returns.
+			await withTimeout(
+				provider.connect(),
+				EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS,
+				`Timed out connecting to secrets provider after ${EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS}ms`,
+			);
 
 			if (provider.state === 'error') {
 				return {

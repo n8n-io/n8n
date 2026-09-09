@@ -7,6 +7,7 @@ import {
 	MockProviders,
 } from '@test/external-secrets/utils';
 
+import { EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS } from '../constants';
 import { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
 
 describe('ProviderLifecycle', () => {
@@ -98,6 +99,25 @@ describe('ProviderLifecycle', () => {
 			await lifecycle.connect(provider);
 
 			expect(stateBeforeConnect).toBe('connecting');
+		});
+
+		it('should not hang when connect exceeds the connect timeout', async () => {
+			const provider = new DummyProvider();
+			await provider.init(providerSettings);
+			vi.spyOn(provider, 'connect').mockImplementation(async () => await new Promise(() => {}));
+
+			vi.useFakeTimers();
+			try {
+				const connectPromise = lifecycle.connect(provider);
+				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS);
+
+				const result = await connectPromise;
+				expect(result.success).toBe(false);
+				expect(result.error?.message).toContain('Timed out connecting');
+				expect(provider.state).toBe('error');
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('should handle connection failure', async () => {
