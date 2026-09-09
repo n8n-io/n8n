@@ -64,6 +64,7 @@ const chromeMock = {
 	action: {
 		setBadgeText: vi.fn(),
 		setBadgeBackgroundColor: vi.fn(),
+		setTitle: vi.fn(),
 		setPopup: vi.fn(),
 		onClicked: {
 			addListener: vi.fn((fn: () => void) => actionClickedListeners.push(fn)),
@@ -406,6 +407,30 @@ describe('external messages (direct connect flow)', () => {
 		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
 
 		expect(firstResult()).toEqual({ connected: false });
+	});
+});
+
+describe('updateRecordingIndicator', () => {
+	it('turns the toolbar icon red while recording', async () => {
+		const { updateRecordingIndicator } = await import('./background');
+
+		updateRecordingIndicator(true);
+
+		expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '•' });
+		expect(chromeMock.action.setBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#D32F2F' });
+		expect(chromeMock.action.setTitle).toHaveBeenCalledWith({
+			title: 'n8n Browser Use — Recording…',
+		});
+	});
+
+	it('restores the default badge and title once recording stops', async () => {
+		const { updateRecordingIndicator } = await import('./background');
+
+		updateRecordingIndicator(false);
+
+		// No active connection in this test, so the badge falls back to empty/disconnected.
+		expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '' });
+		expect(chromeMock.action.setTitle).toHaveBeenCalledWith({ title: 'n8n Browser Use' });
 	});
 });
 
