@@ -420,7 +420,7 @@ describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () =>
 	});
 });
 
-describe('IAM-1353 repro: consent reuse on a second visit', () => {
+describe('consent reuse on a second visit', () => {
 	const pkce = async () => {
 		const { createHash, randomBytes } = await import('node:crypto');
 		const codeVerifier = randomBytes(32).toString('base64url');
@@ -483,9 +483,9 @@ describe('IAM-1353 repro: consent reuse on a second visit', () => {
 	});
 
 	test('a visitor who already consented is auto-approved after authenticating mid-flow', async () => {
-		// This is the real IAM-1353 shape: the visitor already has a UserConsent row from a
-		// prior visit (e.g. the local grant cookie was cleared/expired), but their n8n-auth
-		// cookie is gone too — so the very first /oauth/authorize hit has no cookie to check
+		// The visitor already has a UserConsent row from a prior visit (e.g. the local grant
+		// cookie was cleared/expired), but their n8n-auth cookie is gone too — so the very
+		// first /oauth/authorize hit has no cookie to check
 		// and tryAutoApproveConsent is skipped. They then log in as part of reaching the
 		// (auth-gated) consent page. GET /consent/details now retries the reuse check once
 		// the user is authenticated, instead of unconditionally returning the manual picker.
