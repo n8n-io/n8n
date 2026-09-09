@@ -48,8 +48,10 @@ function assertEndpointAllowed(credentials: ICredentialDataDecryptedObject): voi
 	try {
 		endpoint = new URL(String(credentials.customEndpoint));
 	} catch {}
-	if (!endpoint || !['http:', 'https:'].includes(endpoint.protocol)) {
-		throw new UserError('Endpoint must be a full URL that starts with https://');
+	if (!endpoint || endpoint.protocol !== 'https:' || endpoint.href !== `${endpoint.origin}/`) {
+		throw new UserError(
+			'Endpoint must be an https:// URL with only a hostname and an optional port, for example https://myaccount.privatelink.blob.core.windows.net',
+		);
 	}
 }
 
@@ -120,7 +122,7 @@ export class AzureStorageSharedKeyApi implements ICredentialType {
 				},
 			},
 			description:
-				'The full URL of the storage endpoint. The account name must be in the hostname. An administrator must set <code>N8N_AZURE_STORAGE_CUSTOM_ENDPOINTS_ENABLED=true</code> on this n8n instance. Endpoints with the account name in the path, such as Azurite, do not work.',
+				'The https:// URL of the storage endpoint. The account name must be in the hostname. An administrator must set <code>N8N_AZURE_STORAGE_CUSTOM_ENDPOINTS_ENABLED=true</code> on this n8n instance. Endpoints with the account name in the path, such as Azurite, do not work.',
 		},
 		{
 			displayName: 'Base URL',

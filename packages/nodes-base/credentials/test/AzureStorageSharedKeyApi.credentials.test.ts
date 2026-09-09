@@ -206,16 +206,19 @@ describe('AzureStorageSharedKeyApi Credential', () => {
 			);
 		});
 
-		it('should sign a custom endpoint request when the instance allows it', async () => {
-			securityConfig.azureStorageCustomEndpoints = true;
+		it.each([privateEndpoint, `${privateEndpoint}/`, 'https://myaccount.example.com:10000'])(
+			'should sign a request to the custom endpoint %j when the instance allows it',
+			async (customEndpoint) => {
+				securityConfig.azureStorageCustomEndpoints = true;
 
-			const result = await credential.authenticate(
-				custom(privateEndpoint),
-				listBlobsRequest(privateEndpoint),
-			);
+				const result = await credential.authenticate(
+					custom(customEndpoint),
+					listBlobsRequest(customEndpoint),
+				);
 
-			expect(result.headers?.[HeaderConstants.AUTHORIZATION]).toBe(publicCloudSignature);
-		});
+				expect(result.headers?.[HeaderConstants.AUTHORIZATION]).toBe(publicCloudSignature);
+			},
+		);
 
 		it('should require an endpoint for a custom cloud', async () => {
 			securityConfig.azureStorageCustomEndpoints = true;
@@ -231,21 +234,26 @@ describe('AzureStorageSharedKeyApi Credential', () => {
 			);
 		});
 
-		it.each(['myaccount.privatelink.blob.core.windows.net', 'ftp://myaccount.example.com'])(
-			'should reject the endpoint %j',
-			async (customEndpoint) => {
-				securityConfig.azureStorageCustomEndpoints = true;
+		it.each([
+			'myaccount.privatelink.blob.core.windows.net',
+			'ftp://myaccount.example.com',
+			'http://myaccount.example.com',
+			'https://user:pass@myaccount.example.com',
+			'https://myaccount.example.com/devstoreaccount1',
+			'https://myaccount.example.com/?x=1',
+			'https://myaccount.example.com/#fragment',
+		])('should reject the endpoint %j', async (customEndpoint) => {
+			securityConfig.azureStorageCustomEndpoints = true;
 
-				const request = credential.authenticate(
-					custom(customEndpoint),
-					listBlobsRequest('https://myaccount.blob.core.windows.net'),
-				);
+			const request = credential.authenticate(
+				custom(customEndpoint),
+				listBlobsRequest('https://myaccount.blob.core.windows.net'),
+			);
 
-				await expect(request).rejects.toThrow(UserError);
-				await expect(request).rejects.toThrow(
-					'Endpoint must be a full URL that starts with https://',
-				);
-			},
-		);
+			await expect(request).rejects.toThrow(UserError);
+			await expect(request).rejects.toThrow(
+				'Endpoint must be an https:// URL with only a hostname and an optional port',
+			);
+		});
 	});
 });
