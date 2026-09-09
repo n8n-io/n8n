@@ -335,11 +335,20 @@ export function useCanvasOperations() {
 		events: CanvasNodeMoveEvent[],
 		{ trackHistory = false, trackBulk = true } = {},
 	) {
+		const changedEvents = events.filter(({ id, position }) => {
+			const node = workflowDocumentStore.value.getNodeById(id);
+			if (!node) return false;
+			return node.position[0] !== position.x || node.position[1] !== position.y;
+		});
+		if (changedEvents.length === 0) {
+			return;
+		}
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
-		events.forEach(({ id, position }) => {
+		changedEvents.forEach(({ id, position }) => {
 			updateNodePosition(id, position, { trackHistory });
 		});
 
@@ -360,6 +369,9 @@ export function useCanvasOperations() {
 
 		const oldPosition: XYPosition = [...node.position];
 		const newPosition: XYPosition = [position.x, position.y];
+		if (oldPosition[0] === newPosition[0] && oldPosition[1] === newPosition[1]) {
+			return;
+		}
 
 		workflowDocumentStore.value.setNodePositionById(id, newPosition);
 

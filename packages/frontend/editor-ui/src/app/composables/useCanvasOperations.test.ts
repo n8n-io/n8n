@@ -13,7 +13,13 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
-import type { AddedNode, INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
+import type {
+	AddedNode,
+	INodeUi,
+	IWorkflowDb,
+	WorkflowDataWithTemplateId,
+	XYPosition,
+} from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
@@ -263,6 +269,18 @@ describe('useCanvasOperations', () => {
 			getParentNodesByDepth: workflowDocumentStoreInstance.getParentNodesByDepth,
 		});
 	});
+
+	function mockStoreNodePositions(positionsByNodeId: Record<string, XYPosition>) {
+		const nodesById = new Map(
+			Object.entries(positionsByNodeId).map(([id, position]) => [
+				id,
+				createTestNode({ id, position }),
+			]),
+		);
+		vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id: string) =>
+			nodesById.get(id),
+		);
+	}
 
 	describe('requireNodeTypeDescription', () => {
 		it('should return node type description when type and version match', () => {
@@ -1162,6 +1180,7 @@ describe('useCanvasOperations', () => {
 			];
 			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
 			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+			mockStoreNodePositions({ node1: [0, 0], node2: [0, 0] });
 
 			const { updateNodesPosition } = useCanvasOperations();
 			updateNodesPosition(events, { trackHistory: true, trackBulk: true });
@@ -1176,17 +1195,7 @@ describe('useCanvasOperations', () => {
 				{ id: 'node2', position: { x: 208, y: 208 } },
 			];
 			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
-			const node0 = createTestNode({
-				id: events[0].id,
-				position: [events[0].position.x, events[0].position.y],
-			});
-			const node1 = createTestNode({
-				id: events[1].id,
-				position: [events[1].position.x, events[1].position.y],
-			});
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById')
-				.mockReturnValueOnce(node0)
-				.mockReturnValueOnce(node1);
+			mockStoreNodePositions({ node1: [0, 0], node2: [0, 0] });
 
 			const { updateNodesPosition } = useCanvasOperations();
 			updateNodesPosition(events);
@@ -1194,6 +1203,25 @@ describe('useCanvasOperations', () => {
 			expect(setNodePositionByIdSpy).toHaveBeenCalledTimes(2);
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node1', [96, 96]);
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node2', [208, 208]);
+		});
+
+		it('does not update or record history when positions are unchanged', () => {
+			const historyStore = useHistoryStore();
+			const events = [
+				{ id: 'node1', position: { x: 96, y: 96 } },
+				{ id: 'node2', position: { x: 208, y: 208 } },
+			];
+			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
+			mockStoreNodePositions({ node1: [96, 96], node2: [208, 208] });
+
+			const { updateNodesPosition } = useCanvasOperations();
+			updateNodesPosition(events, { trackHistory: true, trackBulk: true });
+
+			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
+			expect(stopRecordingUndoSpy).not.toHaveBeenCalled();
+			expect(setNodePositionByIdSpy).not.toHaveBeenCalled();
 		});
 
 		it('does not record history when trackHistory is false', () => {
@@ -1226,6 +1254,7 @@ describe('useCanvasOperations', () => {
 			};
 			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
 			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+			mockStoreNodePositions({ node1: [0, 0], node2: [0, 0] });
 
 			const { tidyUp } = useCanvasOperations();
 			tidyUp(event);
@@ -1247,17 +1276,7 @@ describe('useCanvasOperations', () => {
 				},
 			};
 			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
-			const tidyNode0 = createTestNode({
-				id: event.result.nodes[0].id,
-				position: [event.result.nodes[0].x, event.result.nodes[0].y],
-			});
-			const tidyNode1 = createTestNode({
-				id: event.result.nodes[1].id,
-				position: [event.result.nodes[1].x, event.result.nodes[1].y],
-			});
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById')
-				.mockReturnValueOnce(tidyNode0)
-				.mockReturnValueOnce(tidyNode1);
+			mockStoreNodePositions({ node1: [0, 0], node2: [0, 0] });
 
 			const { tidyUp } = useCanvasOperations();
 			tidyUp(event);
@@ -1265,6 +1284,32 @@ describe('useCanvasOperations', () => {
 			expect(setNodePositionByIdSpy).toHaveBeenCalledTimes(2);
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node1', [96, 96]);
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node2', [208, 208]);
+		});
+
+		it('does not update or record history when tidy positions are unchanged', () => {
+			const historyStore = useHistoryStore();
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'all',
+				result: {
+					nodes: [
+						{ id: 'node1', x: 96, y: 96 },
+						{ id: 'node2', x: 208, y: 208 },
+					],
+					boundingBox: { height: 96, width: 96, x: 0, y: 0 },
+				},
+			};
+			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
+			mockStoreNodePositions({ node1: [96, 96], node2: [208, 208] });
+
+			const { tidyUp } = useCanvasOperations();
+			tidyUp(event);
+
+			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
+			expect(stopRecordingUndoSpy).not.toHaveBeenCalled();
+			expect(setNodePositionByIdSpy).not.toHaveBeenCalled();
 		});
 
 		it('should send a "User tidied up workflow" telemetry event', () => {
@@ -1385,20 +1430,28 @@ describe('useCanvasOperations', () => {
 		it('should update node position', () => {
 			const id = 'node1';
 			const position: CanvasNode['position'] = { x: 10, y: 20 };
-			const node = createTestNode({
-				id,
-				type: 'node',
-				position: [0, 0],
-				name: 'Node 1',
-			});
 			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
-
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValueOnce(node);
+			mockStoreNodePositions({ node1: [0, 0] });
 
 			const { updateNodePosition } = useCanvasOperations();
 			updateNodePosition(id, position);
 
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith(id, [position.x, position.y]);
+		});
+
+		it('does not update or record history when the position is unchanged', () => {
+			const id = 'node1';
+			const position: CanvasNode['position'] = { x: 10, y: 20 };
+			const historyStore = useHistoryStore();
+			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
+			const pushCommandToUndoSpy = vi.spyOn(historyStore, 'pushCommandToUndo');
+			mockStoreNodePositions({ node1: [position.x, position.y] });
+
+			const { updateNodePosition } = useCanvasOperations();
+			updateNodePosition(id, position, { trackHistory: true });
+
+			expect(setNodePositionByIdSpy).not.toHaveBeenCalled();
+			expect(pushCommandToUndoSpy).not.toHaveBeenCalled();
 		});
 	});
 
