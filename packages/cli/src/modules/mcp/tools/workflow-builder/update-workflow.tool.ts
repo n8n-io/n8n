@@ -34,6 +34,7 @@ import {
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import { topLevelItemsWarning } from './top-level-items-warning';
 import {
 	buildUpdateVersionMetadata,
 	resolveVersionMetadata,
@@ -1347,6 +1348,26 @@ export const createUpdateWorkflowTool = (
 					skippedOperations,
 					result.groupOperations,
 				);
+
+				// Groups are dropped on save when the flag is off, so only warn when they can be kept.
+				// A canvas that was already this wide before the update is marked pre-existing,
+				// so the agent does not rework a layout it did not make.
+				const ceilingWarning = canvasGroupsEnabled
+					? topLevelItemsWarning(updatedWorkflow)
+					: undefined;
+
+				if (ceilingWarning) {
+					const wasWideBefore = topLevelItemsWarning(existingWorkflow) !== undefined;
+					validationWarnings.push(
+						wasWideBefore
+							? {
+									...ceilingWarning,
+									message: `[pre-existing] ${ceilingWarning.message}`,
+									preExisting: true,
+								}
+							: ceilingWarning,
+					);
+				}
 
 				const output: UpdateWorkflowOutput = {
 					workflowId: updatedWorkflow.id,
