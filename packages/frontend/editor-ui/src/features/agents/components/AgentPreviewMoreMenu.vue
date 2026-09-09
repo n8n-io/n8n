@@ -18,7 +18,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 import { useAgentSessionsStore } from '../agentSessions.store';
 import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
-import { AGENT_PREVIEW_VIEW, CONTINUE_SESSION_ID_PARAM } from '../constants';
+import { AGENT_BUILDER_VIEW, CONTINUE_SESSION_ID_PARAM, OPEN_PREVIEW_PARAM } from '../constants';
 
 const COPY_LINK = 'copy-link';
 const COPY_CONVERSATION = 'copy-conversation';
@@ -144,9 +144,12 @@ const lastMessageLabel = computed(() => {
 
 function getSessionRoute() {
 	return router.resolve({
-		name: AGENT_PREVIEW_VIEW,
+		name: AGENT_BUILDER_VIEW,
 		params: { projectId: props.projectId, agentId: props.agentId },
-		query: { [CONTINUE_SESSION_ID_PARAM]: props.effectiveSessionId },
+		query: {
+			[CONTINUE_SESSION_ID_PARAM]: props.effectiveSessionId,
+			[OPEN_PREVIEW_PARAM]: 'true',
+		},
 	});
 }
 

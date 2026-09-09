@@ -366,7 +366,7 @@ onBeforeUnmount(() => {
 					v-if="icon?.type === 'icon'"
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
-					:color="disabled ? 'text-xlight' : destructive ? undefined : 'text-light'"
+					:color="disabled ? 'text-xlight' : 'text-light'"
 					size="large"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
@@ -406,7 +406,7 @@ onBeforeUnmount(() => {
 					v-if="icon?.type === 'icon'"
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
-					:color="disabled ? 'text-xlight' : destructive ? undefined : 'text-light'"
+					:color="disabled ? 'text-xlight' : 'text-light'"
 					size="large"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
@@ -429,7 +429,7 @@ onBeforeUnmount(() => {
 				icon="check"
 				:class="$style['item-check']"
 				size="large"
-				:color="disabled ? 'text-xlight' : destructive ? undefined : 'text-light'"
+				:color="disabled ? 'text-xlight' : 'text-light'"
 			/>
 		</DropdownMenuItem>
 	</div>
@@ -494,7 +494,7 @@ onBeforeUnmount(() => {
 			.icon.icon,
 			.item-check.item-check,
 			.sub-indicator.sub-indicator {
-				color: var(--icon-color--danger);
+				color: var(--icon-color--danger) !important;
 			}
 		}
 	}

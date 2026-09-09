@@ -201,9 +201,9 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		await flushPromises();
 
 		expect(routerResolve).toHaveBeenCalledWith({
-			name: 'AgentPreviewView',
+			name: 'AgentBuilderView',
 			params: { projectId: 'project-1', agentId: 'agent-1' },
-			query: { continueSessionId: 'thread-1' },
+			query: { continueSessionId: 'thread-1', openPreview: 'true' },
 		});
 		expect(clipboardCopy).toHaveBeenCalledWith('http://localhost:3000/resolved-preview');
 		expect(showMessage).toHaveBeenCalledWith({
@@ -266,9 +266,9 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 			getDropdown(wrapper).vm.$emit('select', 'open-in-new-tab');
 
 			expect(routerResolve).toHaveBeenCalledExactlyOnceWith({
-				name: 'AgentPreviewView',
+				name: 'AgentBuilderView',
 				params: { projectId: 'project-1', agentId: 'agent-1' },
-				query: { continueSessionId: 'thread-1' },
+				query: { continueSessionId: 'thread-1', openPreview: 'true' },
 			});
 			expect(open).toHaveBeenCalledExactlyOnceWith('/resolved-preview', '_blank', 'noopener');
 		} finally {
