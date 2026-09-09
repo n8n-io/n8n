@@ -36,6 +36,14 @@ type GitOperation = {
 	configId: string;
 };
 
+const BASE_GIT_OPTIONS = {
+	binary: 'git',
+	maxConcurrentProcesses: 1,
+	trimmed: false,
+	timeout: { block: GIT_COMMAND_STALL_TIMEOUT_MS },
+	config: ['core.autocrlf=false'],
+} satisfies Partial<SimpleGitOptions>;
+
 /**
  * Plain-Git transport. Takes plain values, so it never sees an ORM entity and can
  * be given a snapshot taken before the operation started.
@@ -223,23 +231,63 @@ export class PromotionsGitService {
 		}
 	}
 
-	async refreshCheckout({
+	private async fetchBranch({
 		remoteUrl,
 		credentials,
 		paths,
 		branchName,
-		configId,
-	}: GitOperation): Promise<{ commitSha: string }> {
+	}: GitOperation): Promise<void> {
+		await this.withGit(
+			{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+			async (git) => {
+				// --progress keeps the stall-timeout timer fed during a healthy transfer.
+				await git.fetch('origin', `+refs/heads/${branchName}:refs/remotes/origin/${branchName}`, [
+					'--progress',
+				]);
+			},
+		);
+	}
+
+	async refreshCheckout(operation: GitOperation): Promise<{ commitSha: string }> {
+		const { paths, branchName, configId } = operation;
 		try {
-			return await this.withGit(
-				{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
-				async (git) => {
-					// --progress keeps the stall-timeout timer fed during a healthy transfer.
-					await git.fetch('origin', branchName, ['--progress']);
-					await git.raw(['reset', '--hard', `origin/${branchName}`]);
-					return { commitSha: (await git.revparse(['HEAD'])).trim() };
-				},
-			);
+			await this.fetchBranch(operation);
+			const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+			await git.raw(['reset', '--hard', `origin/${branchName}`]);
+			return { commitSha: (await git.revparse(['HEAD'])).trim() };
+		} catch (error) {
+			throw this.mapGitError(error, { configId, branchName });
+		}
+	}
+
+	async listBranchTree({
+		pathspecs,
+		...operation
+	}: GitOperation & { pathspecs: string[] }): Promise<string> {
+		const { remoteUrl, credentials, paths, branchName, configId } = operation;
+		try {
+			const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+			try {
+				await this.fetchBranch(operation);
+			} catch (error) {
+				const cached = await git.branch(['--remotes', '--list', `origin/${branchName}`]);
+				if (cached.all.length > 0) throw error;
+
+				const refs = await this.withGit(
+					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+					async (git) => await git.listRemote(['origin']),
+				);
+				if (!refs.trim()) return '';
+				throw error;
+			}
+			return await git.raw([
+				'ls-tree',
+				'-r',
+				'-z',
+				`refs/remotes/origin/${branchName}`,
+				'--',
+				...pathspecs,
+			]);
 		} catch (error) {
 			throw this.mapGitError(error, { configId, branchName });
 		}
@@ -263,19 +311,17 @@ export class PromotionsGitService {
 		operation: (git: SimpleGit) => Promise<T>,
 	) {
 		await mkdir(repoDir, { recursive: true });
-		const options: Partial<SimpleGitOptions> = {
+		const options = {
+			...BASE_GIT_OPTIONS,
 			baseDir: repoDir,
-			binary: 'git',
-			maxConcurrentProcesses: 1,
-			trimmed: false,
-			timeout: { block: GIT_COMMAND_STALL_TIMEOUT_MS },
+			config: [...BASE_GIT_OPTIONS.config, ...extraConfig],
 		};
 		let temporaryFolder: string | undefined;
 
 		try {
 			let git: SimpleGit;
 			if (credentials.authType === 'token') {
-				const config = [...buildHttpsGitConfig({ repositoryUrl: remoteUrl }), ...extraConfig];
+				const config = [...options.config, ...buildHttpsGitConfig({ repositoryUrl: remoteUrl })];
 
 				git = simpleGit({
 					...options,
@@ -298,7 +344,6 @@ export class PromotionsGitService {
 				});
 				git = simpleGit({
 					...options,
-					config: extraConfig,
 					unsafe: { allowUnsafeSshCommand: true },
 				})
 					.env('GIT_SSH_COMMAND', sshCommand)

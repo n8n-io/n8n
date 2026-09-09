@@ -1,5 +1,6 @@
 import {
 	PACKAGE_ENTITY_LAYOUT,
+	WORKFLOW_LIFECYCLE_FILE_NAME,
 	type ManifestEntityCollection,
 } from '../n8n-packages/io/manifest-entry';
 
@@ -13,13 +14,11 @@ const BASE_BRANCH_ENTITIES = {
 	tags: { ...PACKAGE_ENTITY_LAYOUT.tags, type: 'tag', includeRoot: true },
 } as const satisfies Record<ManifestEntityCollection, { type: string; includeRoot: boolean }>;
 
-export type BaseBranchEntityType = (typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]['type'];
-
 export type BaseBranchFile = {
 	key: string;
 	path: string;
 	blobSha: string;
-	type: BaseBranchEntityType;
+	type: (typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]['type'];
 };
 
 export const BASE_BRANCH_DIRECTORIES: string[] = Object.values(BASE_BRANCH_ENTITIES)
@@ -39,6 +38,7 @@ export function parseBaseBranchFiles(
 	lsTreeOutput: string,
 	{ exportRoot, projectId }: { exportRoot: string; projectId: string },
 ): BaseBranchFile[] {
+	const { projects, folders } = BASE_BRANCH_ENTITIES;
 	const files: BaseBranchFile[] = [];
 	const rootPrefix = `${exportRoot}/`;
 
@@ -55,7 +55,7 @@ export function parseBaseBranchFiles(
 		const segments = path.slice(rootPrefix.length).split('/');
 		if (segments.length < 3) continue;
 
-		if (segments[0] === BASE_BRANCH_ENTITIES.projects.directory) {
+		if (segments[0] === projects.directory) {
 			if (entityIdOfSegment(segments[1]) !== projectId) continue;
 		} else if (!BASE_BRANCH_DIRECTORIES.includes(segments[0])) {
 			continue;
@@ -63,12 +63,15 @@ export function parseBaseBranchFiles(
 
 		const fileName = segments[segments.length - 1];
 		const entity =
-			segments[0] === BASE_BRANCH_ENTITIES.projects.directory &&
-			segments[2] === BASE_BRANCH_ENTITIES.folders.directory &&
-			fileName === BASE_BRANCH_ENTITIES.folders.fileName
-				? BASE_BRANCH_ENTITIES.folders
+			segments[0] === projects.directory &&
+			segments[2] === folders.directory &&
+			fileName === folders.fileName
+				? folders
 				: ENTITIES_BY_DIRECTORY.get(segments[segments.length - 3]);
-		if (!entity || fileName !== entity.fileName) continue;
+		if (!entity) continue;
+		const isWorkflowLifecycle =
+			entity.type === 'workflow' && fileName === WORKFLOW_LIFECYCLE_FILE_NAME;
+		if (fileName !== entity.fileName && !isWorkflowLifecycle) continue;
 		const { type } = entity;
 
 		const entitySegment = segments[segments.length - 2];

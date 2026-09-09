@@ -34,6 +34,11 @@ import {
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { ProjectService } from '@/services/project.service.ee';
 
+import {
+	BASE_BRANCH_DIRECTORIES,
+	parseBaseBranchFiles,
+	type BaseBranchFile,
+} from './base-branch-files';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
 import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
@@ -233,6 +238,22 @@ export class PromotionsService {
 			counts: this.toApplyCounts({ importResult: result, projectReconciliation }),
 			git: { commitSha, branchName },
 		};
+	}
+
+	async listBaseBranchFiles(projectId: string): Promise<BaseBranchFile[]> {
+		const input = await this.resolver.resolveForProject(projectId, 'promote');
+		await this.assertCheckoutReady(input, 'listing branch files');
+
+		const lsTreeOutput = await this.gitService.listBranchTree({
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+			paths: this.workingDirectory.paths(input.configId),
+			branchName: checkoutBranchName(input.config),
+			configId: input.configId,
+			pathspecs: BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
+		});
+
+		return parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId });
 	}
 
 	/**

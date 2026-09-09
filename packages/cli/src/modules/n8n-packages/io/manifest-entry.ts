@@ -72,8 +72,8 @@ export function entityFilePath(collection: ManifestEntityCollection, target: str
 	return `${target}/${PACKAGE_ENTITY_LAYOUT[collection].fileName}`;
 }
 
-/** Out of `FILE_NAMES` because it is no entity of its own: no manifest entry, shares the target. */
-const WORKFLOW_LIFECYCLE_FILE_NAME = 'workflow-lifecycle.json';
+/** Lifecycle files share the workflow target and have no manifest entry. */
+export const WORKFLOW_LIFECYCLE_FILE_NAME = 'workflow-lifecycle.json';
 
 export function workflowLifecycleFilePath(target: string): string {
 	return `${target}/${WORKFLOW_LIFECYCLE_FILE_NAME}`;
