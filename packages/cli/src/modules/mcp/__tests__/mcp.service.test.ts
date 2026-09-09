@@ -45,7 +45,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
 
-import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
+import { MCP_DISCOVER_METHOD, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService, type McpFeatureFlags, type McpServerBuildOptions } from '../mcp.service';
 import type { McpAuthContext, McpClientInfo } from '../mcp.types';
 
@@ -620,6 +620,15 @@ describe('McpService', () => {
 				});
 			});
 
+			const handshakeInstructions = async (res: Response) => {
+				expect(res.status).toBe(200);
+				const text = await res.text();
+				const message = res.headers.get('content-type')?.includes('text/event-stream')
+					? sseData(text)[0]
+					: (JSON.parse(text) as Record<string, unknown>);
+				return (message as { result: { instructions?: string } }).result.instructions ?? '';
+			};
+
 			const initialize = async (flags: McpFeatureFlags) => {
 				const handler = await buildHandler(flags, { isConnectionHandshake: true });
 				const res = await handler.fetch(
@@ -642,22 +651,75 @@ describe('McpService', () => {
 						}),
 					}),
 				);
-				expect(res.status).toBe(200);
-				const text = await res.text();
-				const message = res.headers.get('content-type')?.includes('text/event-stream')
-					? sseData(text)[0]
-					: (JSON.parse(text) as Record<string, unknown>);
-				return (message as { result: { instructions?: string } }).result.instructions ?? '';
+				return await handshakeInstructions(res);
+			};
+
+			// The 2026-07-28 revision drops `initialize`, so a modern client opens the
+			// connection with `server/discover`: the other branch of
+			// `isConnectionHandshake`, and the one that carries the instructions today.
+			const discover = async (flags: McpFeatureFlags) => {
+				const handler = await buildHandler(flags, { isConnectionHandshake: true });
+				const res = await handler.fetch(
+					new Request('http://n8n.local/mcp-server/http', {
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json',
+							accept: 'application/json, text/event-stream',
+							'mcp-method': MCP_DISCOVER_METHOD,
+						},
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: MCP_DISCOVER_METHOD,
+							params: {
+								_meta: {
+									'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+									'io.modelcontextprotocol/clientCapabilities': {},
+									'io.modelcontextprotocol/clientInfo': { name: 'vitest', version: '1.0.0' },
+								},
+							},
+						}),
+					}),
+				);
+				return await handshakeInstructions(res);
 			};
 
 			it('serves the AI preferences block in the initialize instructions when the flag is on', async () => {
+				aiPreferenceService.getApplicableAcrossProjects.mockResolvedValue({
+					instance: ['Ask before you publish.'],
+					user: ['Keep replies short.'],
+					projects: [{ id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
+				});
+
+				const instructions = await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }));
+
+				expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'user-1' }),
+				);
+				expect(instructions).toContain('official MCP server for n8n');
+				expect(instructions.endsWith('</ai-preferences>')).toBe(true);
+				expect(instructions).toContain('- Keep replies short.');
+
+				// The three sections keep the order the renderer sets: instance, then the
+				// projects, then the personal one. `toContain` alone passes on a reshuffle.
+				const instanceAt = instructions.indexOf(
+					'Instance preferences (set by an admin for everyone):',
+				);
+				const projectAt = instructions.indexOf('Preferences for project "Marketing":');
+				const personalAt = instructions.indexOf('Personal preferences:');
+				expect(instanceAt).toBeGreaterThan(-1);
+				expect(projectAt).toBeGreaterThan(instanceAt);
+				expect(personalAt).toBeGreaterThan(projectAt);
+			});
+
+			it('serves the AI preferences block in the server/discover instructions when the flag is on', async () => {
 				aiPreferenceService.getApplicableAcrossProjects.mockResolvedValue({
 					instance: [],
 					user: ['Keep replies short.'],
 					projects: [{ id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
 				});
 
-				const instructions = await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }));
+				const instructions = await discover(mcpFeatureFlags({ aiPreferencesEnabled: true }));
 
 				expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'user-1' }),
@@ -674,6 +736,22 @@ describe('McpService', () => {
 				expect(aiPreferenceService.getApplicableAcrossProjects).not.toHaveBeenCalled();
 				expect(instructions).toContain('official MCP server for n8n');
 				expect(instructions).not.toContain('<ai-preferences>');
+			});
+
+			it('serves the instructions unchanged when the caller has no preferences', async () => {
+				aiPreferenceService.getApplicableAcrossProjects.mockResolvedValue({
+					instance: [],
+					user: [],
+					projects: [],
+				});
+
+				const withFlagOn = await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }));
+				const withFlagOff = await initialize(mcpFeatureFlags());
+
+				expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledTimes(1);
+				expect(withFlagOn).not.toContain('<ai-preferences>');
+				// Byte-identical, so an empty set leaves no trailing separator either.
+				expect(withFlagOn).toBe(withFlagOff);
 			});
 
 			it('does not read the preferences for a request that is not the handshake', async () => {
