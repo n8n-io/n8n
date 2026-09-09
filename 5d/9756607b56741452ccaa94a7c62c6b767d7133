@@ -1,0 +1,73 @@
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_816e8d02944032::t_111c5d7af7ee1a 30-35
+  s_816e8d02944032::t_a663b803b3052c 90
+  s_816e8d02944032::t_8eafa7bdf367a0 9
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_816e8d02944032::t_324fa5f6e18918 136-137,140,142-156,158-159,163,166-187,190-208,210,212-213,221-241,245,252,254,264-287,290,293-297,306-307,310-316,326-392,394-430
+packages/@n8n/db/src/migrations/common/1788877732544-CreateAgentMemoryEntryCandidates.ts
+  s_816e8d02944032::t_cadbd0d9fcaa10 57-59
+  s_816e8d02944032::t_ab2a1d6a7ff31f 132-133,140-148,152-175
+  s_816e8d02944032::t_3e1381c3013f7f 6
+  s_816e8d02944032::t_ce24de67e5809d 18-26
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_816e8d02944032::t_dda5c132bce9bd 16
+  s_816e8d02944032::t_989af21ec02cb0 99,104-105
+  s_816e8d02944032::t_1653c129610eaa 163
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_816e8d02944032::t_979a01949c2e31 587-588
+  s_816e8d02944032::t_bb95621631a1d1 613
+  s_816e8d02944032::t_aa5efddb550ca2 579-580
+  s_816e8d02944032::t_b2378eec278c76 687-697
+  s_816e8d02944032::t_5348a74ff58e19 778-784
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_816e8d02944032::t_64aceb78a69361 639
+  s_816e8d02944032::t_d5daa2f52f52f5 551
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_816e8d02944032::t_754372160c6453 228-230
+  s_816e8d02944032::t_b5781decc84f83 236-241
+  s_816e8d02944032::t_8d9bca86b24eef 18-22
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_816e8d02944032::t_df6f35a799717d 780-781,783-784,789
+  s_816e8d02944032::t_1ae7d04e52529e 3
+  s_816e8d02944032::t_7b4fe671c293c7 761-762,764,766
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_816e8d02944032::t_574629cbd820b9 6379,6383-6410
+  s_816e8d02944032::t_d0efa3d1ee4165 6193-6194,6196-6198,6217-6218
+  s_816e8d02944032::t_a760830a6a2c9d 6235,6237-6239,6258-6259
+  s_816e8d02944032::t_da9a08f366bfd8 6425,6428-6431
+packages/cli/test/migration/1788877732544-create-agent-memory-entry-candidates.test.ts
+  s_816e8d02944032::t_50d002def9c1d7 150-152
+  s_816e8d02944032::t_4faca4f7a23eed 247-249
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_816e8d02944032::t_a3fa299885f83a 4,6,11,53-79,136,139-143,148,151,157,159,161,174,182,186,199,233,238,246,250,253,258-273,278,292-296,309-314,335,349,361-362,373-374,391
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_816e8d02944032::t_f2c3fd3739f5b5 741-747
+docs/generated/postgres-schema/public.agents.md
+  s_816e8d02944032::t_c090a627e0b622 10
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_816e8d02944032::t_888d9d261e5e90 13
+docs/generated/postgres-schema/public.agents_threads.md
+  s_816e8d02944032::t_856b204fd20645 8
+docs/generated/sqlite-schema/agents.md
+  s_816e8d02944032::t_86c30642d26254 21
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_816e8d02944032::t_d7ce39d10d32b2 9
+docs/generated/sqlite-schema/agents_threads.md
+  s_816e8d02944032::t_3511dd379ba544 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5d9756607b56741452ccaa94a7c62c6b767d7133",
+  "prompts": {},
+  "sessions": {
+    "s_816e8d02944032": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e4a4a35f-e2a9-42e5-be67-c9e9bd76db57",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
