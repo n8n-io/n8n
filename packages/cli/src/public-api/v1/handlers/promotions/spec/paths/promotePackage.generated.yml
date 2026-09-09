@@ -1,0 +1,99 @@
+operationId: promotePackage
+tags:
+  - Promotions
+summary: Promote all team projects
+description: Exports every team project, commits it, and pushes to the configured branch. Personal projects are ignored. Requires the Promote direction to be cloned first, and is available on the instance connection only. The API key also needs variable:list when the workflows reference variables.
+x-required-scope: gitConnection:push
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the promotion connection.
+    name: id
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          commitMessage:
+            type: string
+            minLength: 1
+            maxLength: 1000
+          force:
+            type: boolean
+        required:
+          - commitMessage
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            connectionId:
+              type: string
+            configId:
+              type: string
+            counts:
+              type: object
+              properties:
+                workflows:
+                  type: integer
+                  minimum: 0
+                folders:
+                  type: integer
+                  minimum: 0
+                credentials:
+                  type: integer
+                  minimum: 0
+                dataTables:
+                  type: integer
+                  minimum: 0
+                variables:
+                  type: integer
+                  minimum: 0
+                tags:
+                  type: integer
+                  minimum: 0
+              required:
+                - workflows
+                - folders
+                - credentials
+                - dataTables
+                - variables
+                - tags
+            git:
+              type: object
+              properties:
+                commitSha:
+                  type: string
+                branchName:
+                  type: string
+              required:
+                - commitSha
+                - branchName
+          required:
+            - connectionId
+            - configId
+            - counts
+            - git
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

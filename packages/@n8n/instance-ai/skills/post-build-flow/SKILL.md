@@ -202,6 +202,14 @@ publish-readiness evidence. If the user explicitly asks to publish before a
 live execution succeeds, warn that the live path remains untested, then follow
 the requested publish flow.
 
+`workflows(action="publish")` enforces this. While the latest verification left
+nodes unreached or simulated, the call is refused and returns
+`verificationDisclosure` — the coverage facts, generated from the run. Relay
+those facts to the user and offer a live end-to-end test. Publish only if they
+still ask, by calling publish again with `acknowledgeUnverified: true`. Never
+set that flag to skip the disclosure. The user also sees the same facts in the
+publish approval prompt, so a summary that contradicts them is visible to them.
+
 Execution evidence can come from a run you started or a run the user started.
 If the user says they ran the workflow manually, call
 `executions(action="list", workflowId)`, identify the relevant run, and inspect
@@ -258,8 +266,9 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
 - A failed rerun removes that trigger's earlier coverage. Verify that trigger
   again before you claim that the workflow is verified.
 - Report per-trigger coverage — name each trigger and whether its branch ran.
-  Claim the workflow is verified only when every trigger's branch has a
-  successful pass and their combined coverage includes every planned node.
+  Read `claim.level` for the combined result. It becomes `verified` only after
+  every trigger passes and real executions cover every planned node. A simulated
+  or pinned result can complete automatic coverage without proving live behavior.
 - When the user asked for a live run, pass `triggerNodeName` to
   `executions(action="run")` the same way — one run per trigger — and report
   each branch's result.
@@ -279,8 +288,10 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      `workflow-builder` skill and patch the same workflow with `build-workflow`
      using the existing `workflowId` and `workItemId`; then inspect and verify
      again.
-   - If `verificationReadiness.status === "already_verified"`, treat the
-     workflow as verified and do **not** call `verify-built-workflow` again.
+   - If `verificationReadiness.status === "already_verified"`, do not repeat
+     automatic verification. Read the saved claim before describing the workflow
+     as verified. For tracked multi-trigger builds, follow the verification
+     obligation until every trigger has a successful pass.
 
 - If `verificationReadiness.status === "ready"`, call
   `verify-built-workflow` with the `workflowId`, the `workItemId` when you
@@ -479,9 +490,29 @@ result.
 
 ## Claiming success
 
-Do not tell the user a workflow is "fixed", "verified", "tested", "working", or
-has "no errors" unless you have a passing `verify-built-workflow`,
-`executions(action="run")`, or inspected user-run execution that exercised the
+For tracked multi-trigger builds, `claim` combines the saved successful passes.
+`nodesNotReached` outside the claim describes only the current trigger's branch.
+If `claim.pendingTriggers` is not empty, verify those triggers before reporting
+completion. The attempt limit still applies.
+
+`verify-built-workflow` returns a `claim`, and its `level` decides what you may
+say:
+
+- `verified` — you may call the workflow verified, tested, or working.
+- `partial`, `unproven`, or `failed` — you may NOT. Name what is unconfirmed
+  instead.
+
+**`success: true` does not mean verified.** It means the run ended without an
+error, and a run with every write simulated also ends without an error. Read
+`claim.level`, not `success`.
+
+Nothing else tells the user how strong the claim is. Your message is the only
+place they learn it, so name the unreached and simulated nodes yourself, and say
+what stays unconfigured and what that means when the workflow runs.
+
+Without a claim, do not tell the user a workflow is "fixed", "verified",
+"tested", "working", or has "no errors" unless you have a passing
+`executions(action="run")` or an inspected user-run execution that exercised the
 path being claimed. Do not call a workflow "ready to use" or "ready to publish"
 unless a passing execution met the publish-readiness requirement above. A
 successful `build-workflow`/save, a static `workflows(action="validate")`, or

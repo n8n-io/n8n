@@ -26,6 +26,10 @@ export type ChatModelRecoveryOptions = Pick<
 
 type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
 
+/** Disclosure for a node whose output came from pin data saved on the workflow. */
+export const WORKFLOW_PIN_SIMULATION_REASON =
+	'Output came from pinned data saved on the workflow — unpin it for a live test';
+
 const CREDENTIAL_FAILURE_KEYWORDS = [
 	'credential',
 	'unauthorized',
@@ -415,6 +419,7 @@ export interface VerificationAnalysis {
 	success: boolean;
 	reachedNames: Set<string>;
 	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>;
+	workflowPinnedNodeNames: string[];
 	nodesNotReached: string[];
 	remediation?: RemediationMetadata;
 	nodesExecuted?: string[];
@@ -477,10 +482,7 @@ export function analyzeVerificationResult(args: {
 	const plannedSimulatedNames = new Set(simulatedNodes.map((n) => n.nodeName));
 	const workflowPinnedNodes = (result.workflowPinnedNodeNames ?? [])
 		.filter((name) => reachedNames.has(name) && !plannedSimulatedNames.has(name))
-		.map((name) => ({
-			nodeName: name,
-			reason: 'Output came from pinned data saved on the workflow — unpin it for a live test',
-		}));
+		.map((name) => ({ nodeName: name, reason: WORKFLOW_PIN_SIMULATION_REASON }));
 	const reachedSimulatedNodes = [
 		...simulatedNodes.filter((n) => reachedNames.has(n.nodeName)),
 		...workflowPinnedNodes,
@@ -518,6 +520,7 @@ export function analyzeVerificationResult(args: {
 		success,
 		reachedNames,
 		reachedSimulatedNodes,
+		workflowPinnedNodeNames: workflowPinnedNodes.map((n) => n.nodeName),
 		nodesNotReached,
 		remediation,
 		nodesExecuted: namesOrDataKeys(reachedNames, result.data),

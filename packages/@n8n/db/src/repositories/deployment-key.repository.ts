@@ -130,6 +130,18 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 		return await this.find({ where: { type } });
 	}
 
+	async findDataEncryptionKeys(): Promise<DeploymentKey[]> {
+		return await this.find({ where: { type: 'data_encryption' } });
+	}
+
+	async rewrapLegacyDataEncryptionValue(
+		id: string,
+		oldValue: string,
+		wrappedValue: string,
+	): Promise<void> {
+		await this.update({ id, type: 'data_encryption', value: oldValue }, { value: wrappedValue });
+	}
+
 	async findAndCountForList(
 		opts: ListDeploymentKeysOptions,
 	): Promise<{ items: DeploymentKey[]; count: number }> {

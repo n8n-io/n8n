@@ -25,7 +25,8 @@ import {
 	resolveCredentials,
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
-import { buildSetupItemsFromSetupRequests, isSetupPanelEnabled } from './setup-items';
+import { isSetupPanelEnabled } from './setup-items';
+import { recordWorkflowSetupState } from './setup-panel-state';
 import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
@@ -1189,18 +1190,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					const setupRequests = analyzedRequests.filter((request) => !!request.needsAction);
 					if (setupItemsEmitter) {
 						// Every saved iteration re-announces the checklist; the emitter
-						// drops unchanged snapshots. Best-effort: never fail a build over it.
-						try {
-							setupItemsEmitter.emit(
-								saved.id,
-								buildSetupItemsFromSetupRequests(saved.id, analyzedRequests),
-							);
-						} catch (error) {
-							context.logger.warn('Failed to emit setup-items snapshot for built workflow', {
-								workflowId: saved.id,
-								error: error instanceof Error ? error.message : String(error),
-							});
-						}
+						// drops unchanged snapshots. Best-effort: never fails a build.
+						await recordWorkflowSetupState(context, saved.id, analyzedRequests);
 					}
 					// Two independent filters over the same list: `isInSetupScope` drops nodes this
 					// build never touched, the skip partition drops cards the user declined. A node

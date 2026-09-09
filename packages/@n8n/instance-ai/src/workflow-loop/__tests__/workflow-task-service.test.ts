@@ -97,9 +97,9 @@ describe('WorkflowTaskCoordinator', () => {
 				[],
 			);
 		}
-		expect((await coordinator.getBuildOutcome('wi_1'))?.verificationProgress).toEqual({
-			A: ['A'],
-			B: ['B'],
+		expect((await coordinator.getBuildOutcome('wi_1'))?.verificationProgress).toMatchObject({
+			A: { nodesExecuted: ['A'] },
+			B: { nodesExecuted: ['B'] },
 		});
 	});
 

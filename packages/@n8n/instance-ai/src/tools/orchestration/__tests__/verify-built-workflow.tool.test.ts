@@ -1646,8 +1646,8 @@ describe('verify-built-workflow tool — trigger selection', () => {
 		const result = await runTool(ctx, triggerAInput);
 
 		expect(result.nodesNotReached).toBeUndefined();
-		expect(updateBuildOutcome.mock.calls.at(-1)![1].verificationProgress).toEqual({
-			'Trigger A': ['Trigger A', 'Step A'],
+		expect(updateBuildOutcome.mock.calls.at(-1)![1].verificationProgress).toMatchObject({
+			'Trigger A': { nodesExecuted: ['Trigger A', 'Step A'] },
 		});
 		expect(updateBuildOutcome.mock.calls.at(-1)![1].verification?.evidence?.triggerNodeName).toBe(
 			'Trigger A',
@@ -1742,11 +1742,9 @@ describe('verify-built-workflow tool — trigger selection', () => {
 			executedNodeNames: ['Trigger A', 'Alternate Step'],
 		});
 		await runTool(ctx, triggerAInput);
-		expect(getOutcome().verificationProgress?.['Trigger A']).toEqual([
-			'Trigger A',
-			'Step A',
-			'Alternate Step',
-		]);
+		expect(getOutcome().verificationProgress?.['Trigger A']).toMatchObject({
+			nodesExecuted: ['Trigger A', 'Step A', 'Alternate Step'],
+		});
 	});
 
 	it('starts verification from the named trigger', async () => {

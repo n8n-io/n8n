@@ -82,6 +82,7 @@ export const workflowLoopStateSchema = z.object({
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
+	lastFailedNodeName: z.string().optional(),
 	lastWorkflowInspection: z.string().optional(),
 	rebuildAttempts: z.number().int().min(0),
 	/** Credential types that were mocked during build (persisted across phases). */
@@ -154,6 +155,44 @@ export const executionNodeErrorSchema = z.object({
 });
 
 /**
+ * Strength of the claim a verification run supports. `verified` means every
+ * planned node ran for real; anything less must not be reported as verified.
+ * See `verification-claim.ts` for the derivation.
+ */
+export const verificationClaimLevelSchema = z.enum(['verified', 'partial', 'unproven', 'failed']);
+
+export type VerificationClaimLevel = z.infer<typeof verificationClaimLevelSchema>;
+
+/**
+ * The deterministic verdict from verification evidence. Backend-only: it shapes
+ * the tool result the model reads and gates the publish offer. It is
+ * deliberately not sent to the client — see INS-1308.
+ */
+export const verificationClaimSchema = z.object({
+	level: verificationClaimLevelSchema,
+	/** Nodes the verification plan covers. Excludes triggers the classifier skips. */
+	plannedNodeCount: z.number().int().min(0),
+	/** Planned nodes the run reached. Same set as `plannedNodeCount`. */
+	reachedNodeCount: z.number().int().min(0),
+	nodesNotReached: z.array(z.string()),
+	/** Reached nodes whose output was mocked, so the run proves nothing about them. */
+	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })),
+	/** Pin-fed subset of `simulatedNodes` — these need the pin removed for a live test. */
+	pinnedNodes: z.array(z.string()),
+	/**
+	 * Fix targets still unreached or simulated — the reason this run cannot
+	 * claim `verified` even when it ended without an error.
+	 */
+	unprovenTargets: z.array(z.string()),
+	/** Triggers with missing or incomplete scoped verification evidence. */
+	pendingTriggers: z.array(z.string()).optional(),
+	publishReady: z.boolean(),
+	liveTestRecommended: z.boolean(),
+});
+
+export type VerificationClaim = z.infer<typeof verificationClaimSchema>;
+
+/**
  * Structured verification evidence the builder captures when it runs
  * `verify-built-workflow`. Downstream checkpoint runs read this and skip
  * running verify again when `success === true`.
@@ -164,6 +203,7 @@ export const workflowVerificationEvidenceSchema = z.object({
 	executionId: z.string().optional(),
 	status: z.enum(['success', 'error', 'waiting', 'running', 'unknown']).optional(),
 	failureSignature: z.string().optional(),
+	claim: verificationClaimSchema.optional(),
 	evidence: z
 		.object({
 			nodesExecuted: z.array(z.string()).optional(),
@@ -186,7 +226,26 @@ export const workflowVerificationEvidenceSchema = z.object({
 
 export type WorkflowVerificationEvidence = z.infer<typeof workflowVerificationEvidenceSchema>;
 
-export const workflowVerificationProgressSchema = z.record(z.string(), z.array(z.string()));
+const workflowTriggerVerificationProgressSchema = z.union([
+	// Older saved progress records contain reachability only.
+	z.array(z.string()),
+	z.object({
+		nodesExecuted: z.array(z.string()),
+		liveNodesExecuted: z.array(z.string()),
+		simulatedNodes: verificationClaimSchema.shape.simulatedNodes,
+		pinnedNodes: z.array(z.string()),
+		unprovenTargets: z.array(z.string()),
+	}),
+]);
+
+export type WorkflowTriggerVerificationProgress = z.infer<
+	typeof workflowTriggerVerificationProgressSchema
+>;
+
+export const workflowVerificationProgressSchema = z.record(
+	z.string(),
+	workflowTriggerVerificationProgressSchema,
+);
 
 export const workflowVerificationReadinessSchema = z.discriminatedUnion('status', [
 	z.object({ status: z.literal('ready') }),
@@ -460,6 +519,7 @@ export const verificationResultSchema = z.object({
 	workflowId: z.string(),
 	executionId: z.string().optional(),
 	verdict: verificationVerdictSchema,
+	claim: verificationClaimSchema.optional(),
 	workflowInspection: z.string().optional(),
 	failureSignature: z.string().optional(),
 	failedNodeName: z.string().optional(),
@@ -491,6 +551,7 @@ export type WorkflowLoopAction =
 			type: 'done';
 			workflowId?: string;
 			summary: string;
+			claim?: VerificationClaim;
 			mockedCredentialTypes?: string[];
 			hasUnresolvedPlaceholders?: boolean;
 			setupSkippedByUser?: boolean;

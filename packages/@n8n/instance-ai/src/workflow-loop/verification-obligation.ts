@@ -1,5 +1,6 @@
 import { MAX_VERIFY_ATTEMPTS } from './remediation';
 import { setupRemediationBlocksVerification } from './setup-verification-policy';
+import { getMultiTriggerCoverage } from './verification-progress';
 import type {
 	AttemptRecord,
 	WorkflowBuildOwner,
@@ -38,23 +39,6 @@ const UNSETTLED_OBLIGATION_STATUSES = new Set<WorkflowVerificationObligationStat
 	'ready_to_verify',
 	'verifying',
 ]);
-
-function getMultiTriggerCoverage(outcome: WorkflowBuildOutcome | undefined) {
-	const progress = outcome?.verificationProgress;
-	const triggers = outcome?.triggerNodes ?? [];
-	if (!outcome || outcome.executionIntent === 'one-off' || !progress || triggers.length < 2) {
-		return undefined;
-	}
-
-	const passedTriggers = triggers.filter((trigger) => Object.hasOwn(progress, trigger.nodeName));
-	const coveredNodes = new Set(passedTriggers.flatMap((trigger) => progress[trigger.nodeName]));
-	return {
-		allTriggersPassed: passedTriggers.length === triggers.length,
-		nodesNotReached: (outcome.nodeSimulationPlan ?? [])
-			.map((node) => node.nodeName)
-			.filter((nodeName) => !coveredNodes.has(nodeName)),
-	};
-}
 
 type MultiTriggerCoverage = ReturnType<typeof getMultiTriggerCoverage>;
 

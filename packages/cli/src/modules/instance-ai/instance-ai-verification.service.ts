@@ -300,6 +300,7 @@ export class InstanceAiVerificationService {
 				saved?.apiKey ??
 				instanceAi.n8nSandboxServiceApiKey,
 			timeout: instanceAi.sandboxTimeout,
+			ephemeral: true,
 		};
 	}
 }

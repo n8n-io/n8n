@@ -23,7 +23,11 @@ import { prepareVerificationRun } from './verification/prepare-run';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
-import { executionNodeErrorSchema } from '../../workflow-loop/workflow-loop-state';
+import { deriveVerificationClaim } from '../../workflow-loop/verification-claim';
+import {
+	executionNodeErrorSchema,
+	verificationClaimSchema,
+} from '../../workflow-loop/workflow-loop-state';
 import { collectChatModelRecoveryContext } from '../workflows/chat-model-validation';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
@@ -85,6 +89,16 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 			'Optional per-run output fixtures keyed by node name. Only nodes already classified as simulated in the build outcome may be overridden. Use this for alternate deterministic scenarios, not raw trigger input. ' +
 				'An empty array is rejected unless the node is also listed in `allowZeroItemFixtures`.',
 		),
+	fixTargetNodeNames: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Node names this change is about — the node the user reported as failing, or the node ' +
+				'you just repaired. The verdict shown to the user is downgraded to "changed but ' +
+				'unverified" when any of these was never reached or had simulated output, so a green ' +
+				'run elsewhere cannot pass as proof for them. Pass these whenever you are fixing a ' +
+				'specific node rather than building from scratch.',
+		),
 	allowZeroItemFixtures: z
 		.array(z.string())
 		.optional()
@@ -129,6 +143,7 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
+	claim: verificationClaimSchema.optional(),
 	data: z.record(z.unknown()).optional(),
 	error: z.string().optional(),
 	remediation: remediationOutputSchema,
@@ -203,7 +218,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				buildOutcome.verificationProgress && selectedTriggerNodeName && workflow
 					? getTriggerMainFlowScope(workflow.connections, selectedTriggerNodeName)
 					: undefined;
-			const previousNodes = await workflowTaskService.startVerification(
+			const previousProgress = await workflowTaskService.startVerification(
 				resolvedInput.workItemId,
 				verificationScope ? selectedTriggerNodeName : undefined,
 			);
@@ -256,7 +271,28 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						};
 					})();
 
-			await persistVerificationOutcome({
+			// The repair target from an earlier verdict counts even when the model
+			// omits it here — that is exactly the turn where it stops mentioning it.
+			const fixTargetNodeNames = [
+				...new Set(
+					[
+						...(resolvedInput.fixTargetNodeNames ?? []),
+						target.stateBefore?.lastFailedNodeName,
+					].filter((name): name is string => name !== undefined),
+				),
+			];
+			const runClaim = deriveVerificationClaim({
+				analysis: {
+					...analysis,
+					nodesNotReached: buildOutcome.nodeSimulationPlan
+						.map((node) => node.nodeName)
+						.filter((name) => !analysis.reachedNames.has(name)),
+				},
+				plannedNodeCount: buildOutcome.nodeSimulationPlan?.length ?? 0,
+				fixTargetNodeNames,
+			});
+
+			const claim = await persistVerificationOutcome({
 				input: resolvedInput,
 				context,
 				workflowTaskService,
@@ -264,7 +300,8 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				result,
 				analysis,
 				scopedTriggerNodeName: verificationScope ? selectedTriggerNodeName : undefined,
-				previousNodes,
+				previousProgress,
+				claim: runClaim,
 			});
 
 			const maxDataChars = resolvedInput.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
@@ -273,6 +310,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				resolvedWorkItemId: resolvedInput.workItemId,
 				executionId: result.executionId || undefined,
 				success: analysis.success,
+				claim,
 				status: result.status,
 				nodesExecuted: analysis.nodesExecuted,
 				lastNodeExecuted: result.lastNodeExecuted,

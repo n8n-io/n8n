@@ -5,25 +5,14 @@ import { mount, shallowMount } from '@vue/test-utils';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
-const { routerResolve, useKeybindingsMock } = vi.hoisted(function createMocks() {
+const { useKeybindingsMock } = vi.hoisted(function createMocks() {
 	return {
-		routerResolve: vi.fn(function resolveRoute() {
-			return { href: '/resolved-preview' };
-		}),
 		useKeybindingsMock: vi.fn(),
 	};
 });
 
 vi.mock('@/app/composables/useKeybindings', function mockUseKeybindings() {
 	return { useKeybindings: useKeybindingsMock };
-});
-
-vi.mock('vue-router', function mockVueRouter() {
-	return {
-		useRouter: function useRouter() {
-			return { resolve: routerResolve };
-		},
-	};
 });
 
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
@@ -36,14 +25,6 @@ vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
-}));
-
-vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
-	default: {
-		name: 'AgentSessionTimelinePanel',
-		props: ['projectId', 'agentId', 'threadId'],
-		template: '<div data-testid="agent-preview-session-timeline" />',
-	},
 }));
 
 vi.mock('@n8n/design-system', () => ({
@@ -85,18 +66,12 @@ vi.mock('@n8n/design-system', () => ({
 
 const AgentPreviewChatPageStub = {
 	name: 'AgentPreviewChatPage',
-	props: ['beforeSend', 'layout'],
+	props: ['beforeSend'],
 	emits: ['continue-loaded', 'open-build', 'send-to-assistant'],
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
 		expose({ focusInput: vi.fn() });
 	},
 	template: '<div data-testid="agent-preview-chat-page-stub" />',
-};
-
-const AgentSessionTimelinePanelStub = {
-	name: 'AgentSessionTimelinePanel',
-	props: ['projectId', 'agentId', 'threadId'],
-	template: '<div data-testid="agent-preview-session-timeline" />',
 };
 
 function mountDock(
@@ -127,7 +102,6 @@ function mountDock(
 		global: {
 			stubs: {
 				AgentPreviewChatPage: AgentPreviewChatPageStub,
-				AgentSessionTimelinePanel: AgentSessionTimelinePanelStub,
 			},
 		},
 	});
@@ -135,9 +109,7 @@ function mountDock(
 
 describe('AgentPreviewDock', () => {
 	beforeEach(() => {
-		routerResolve.mockClear();
 		useKeybindingsMock.mockClear();
-		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
 
 	it('renders the session switcher before the compact actions', () => {
@@ -159,12 +131,10 @@ describe('AgentPreviewDock', () => {
 			'agent-preview-session-title',
 			'agent-preview-view-session-btn',
 			'agent-preview-new-chat-btn',
-			'agent-preview-layout-btn',
 		]);
 	});
 
 	it('renders accessible header actions and emits their events', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
 		const wrapper = mountDock();
 		const expectedActions = [
 			{
@@ -213,7 +183,7 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.find('[data-testid="agent-preview-view-session-tooltip"]').exists()).toBe(false);
 	});
 
-	it('forwards chat events and opts the chat page into dock layout', () => {
+	it('forwards chat events to the preview page', () => {
 		const beforeSend = vi.fn();
 		const fixEvent = {
 			executionId: 'execution-1',
@@ -229,7 +199,6 @@ describe('AgentPreviewDock', () => {
 		const wrapper = mountDock({ beforeSend });
 		const chatPage = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
 
-		expect(chatPage.props('layout')).toBe('dock');
 		expect(chatPage.props('beforeSend')).toBe(beforeSend);
 		chatPage.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 3 });
 		chatPage.vm.$emit('open-build');
@@ -254,24 +223,6 @@ describe('AgentPreviewDock', () => {
 		});
 	});
 
-	it('opens the active session in a new tab', () => {
-		const open = vi.spyOn(window, 'open').mockImplementation(function openWindow() {
-			return null;
-		});
-		const wrapper = mountDock();
-		const layoutMenu = wrapper.findAllComponents({ name: 'N8nDropdownMenu' })[1];
-
-		layoutMenu?.vm.$emit('select', 'open-in-new-tab');
-
-		expect(routerResolve).toHaveBeenCalledExactlyOnceWith({
-			name: 'AgentPreviewView',
-			params: { projectId: 'project-1', agentId: 'agent-1' },
-			query: { continueSessionId: 'thread-1' },
-		});
-		expect(open).toHaveBeenCalledExactlyOnceWith('/resolved-preview', '_blank', 'noopener');
-		open.mockRestore();
-	});
-
 	it('creates a new session from the registered keyboard shortcut', () => {
 		const wrapper = mountDock();
 		const newSessionShortcut = useKeybindingsMock.mock.calls[0]?.[0]?.[
@@ -284,7 +235,6 @@ describe('AgentPreviewDock', () => {
 	});
 
 	it('only enables Escape while focus is within the dock', () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
 		const host = document.createElement('div');
 		const outsideButton = document.createElement('button');
 		document.body.append(host, outsideButton);
@@ -308,84 +258,10 @@ describe('AgentPreviewDock', () => {
 		host.remove();
 		outsideButton.remove();
 	});
-
-	it('shows the session timeline in full-page layout without navigating', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-show-chat-btn"]').exists()).toBe(true);
-		expect(
-			wrapper
-				.find('[data-testid="agent-preview-show-chat-btn"]')
-				.find('[data-icon="message-circle"]')
-				.exists(),
-		).toBe(true);
-	});
-
-	it('returns to chat from the full-page timeline view', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		await wrapper.get('[data-testid="agent-preview-show-chat-btn"]').trigger('click');
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(true);
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-	});
-
-	it('returns to chat when switching from full-page timeline to docked layout', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-		const layoutMenu = wrapper.findAllComponents({ name: 'N8nDropdownMenu' })[1];
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(true);
-
-		layoutMenu?.vm.$emit('select', 'docked');
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(true);
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-	});
-
-	it('returns to chat when starting a new session from the full-page timeline', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		await wrapper.get('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(true);
-		expect(wrapper.emitted('new-session')).toEqual([[]]);
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-	});
-
-	it('returns to chat when the dock closes while showing the timeline', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(true);
-
-		await wrapper.setProps({ isOpen: false });
-		await wrapper.setProps({ isOpen: true });
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(true);
-	});
 });
 
 describe('AgentPreviewChatPage', () => {
-	function mountChatPage(layout?: 'page' | 'dock', beforeSend?: () => Promise<void> | void) {
+	function mountChatPage(beforeSend?: () => Promise<void> | void) {
 		return shallowMount(AgentPreviewChatPage, {
 			props: {
 				initialized: true,
@@ -395,29 +271,24 @@ describe('AgentPreviewChatPage', () => {
 				localConfig: null,
 				connectedTriggers: [],
 				effectiveSessionId: 'thread-1',
-				layout,
 				beforeSend,
 			},
 		});
 	}
 
-	it('keeps the main landmark for the standalone page layout', () => {
-		expect(mountChatPage().element.tagName).toBe('MAIN');
-	});
-
 	it('uses a neutral root inside the complementary dock landmark', () => {
-		expect(mountChatPage('dock').element.tagName).toBe('DIV');
+		expect(mountChatPage().element.tagName).toBe('DIV');
 	});
 
 	it('forwards the pre-send guard to the chat panel', () => {
 		const beforeSend = vi.fn();
-		const wrapper = mountChatPage('dock', beforeSend);
+		const wrapper = mountChatPage(beforeSend);
 
 		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('beforeSend')).toBe(beforeSend);
 	});
 
 	it('forwards the session-aware history event from the chat panel', () => {
-		const wrapper = mountChatPage('dock');
+		const wrapper = mountChatPage();
 
 		wrapper
 			.findComponent({ name: 'AgentChatPanel' })
@@ -438,7 +309,7 @@ describe('AgentPreviewChatPage', () => {
 				},
 			],
 		};
-		const wrapper = mountChatPage('dock');
+		const wrapper = mountChatPage();
 
 		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('send-to-assistant', fixEvent);
 

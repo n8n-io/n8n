@@ -202,8 +202,14 @@ coverage per trigger. Each retry reserves an attempt and clears that trigger's
 old pass before execution. A successful result restores the combined coverage.
 If either write fails, the tool reports an error. The attempt limit still applies.
 
+The returned `claim` and the saved claim use the same cumulative evidence.
+`claim.pendingTriggers` lists triggers with incomplete verification evidence.
+Real executions must cover every planned node before `claim.level` can become
+`verified`. Simulated and pinned results can complete automatic coverage, but
+they do not prove live behavior. Starting a retry also clears publish readiness.
+
 **Writes on success/failure**: the tool persists a structured `verification`
-record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) onto
+record (`{ attempted, success, executionId, status, claim, evidence, verifiedAt }`) onto
 the build outcome so workflow-verification follow-ups and exceptional checkpoint
 turns can reuse it without re-running verify.
 
@@ -397,6 +403,28 @@ confirmation card.
 **Returns**: `{ completedNodes, nodesStillNeedingSetup, skippedByUser, failedNodes }` —
 `nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
 actively dismissed and the agent must not re-open (see `reopenSkipped`).
+
+**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): the normal setup call
+analyzes the whole workflow, including bound slots. It publishes the `setup-items`
+snapshot and confirms that it reached storage. It then saves the build's setup
+routing marker. Only after both steps succeed does it return
+`{ success: true, announced: true, workflowId, open, configured, validationWarnings, message }`.
+The agent summarizes the result and ends its turn. `open` lists pending items.
+`configured` lists stored bindings. Configuration does not prove that a connection
+test or workflow execution passed. Failed connection checks appear in `validationWarnings`.
+
+Validation and destination approval run before the announcement. The agent follows
+the returned guidance for errors, denials, or approvals. Explicit
+`preferNewCredentials` requests use the selection card. Existing cards keep their
+`apply`, `test-trigger`, and decline paths.
+
+Each new user turn carries a `<workflow-setup-state>` block with current saved
+state and items that settled since the previous look. This observation does not
+publish snapshots or change the current workflow target. It preserves announced
+recipes and does not count temporary credential replacement requests as user progress.
+This observation reads saved bindings and checks required values and placeholders.
+It does not test credentials or fetch provider resource lists. It does not produce
+fresh connection-test warnings. Live checks remain part of setup and verification.
 
 ### `workflows(action="publish")`
 

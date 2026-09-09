@@ -11,8 +11,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
  * Runs on all instance types — enforcement points sit on execution paths that
  * also run on workers and webhook processes.
  *
- * Opt-in via `N8N_ENABLED_MODULES=policy-infrastructure` while it is being
- * built out; becomes a default module at GA. Disabling it is the documented
+ * On by default. `N8N_DISABLED_MODULES=policy-infrastructure` is the documented
  * break-glass lever: no checks run and everything is allowed.
  */
 @BackendModule({ name: 'policy-infrastructure' })

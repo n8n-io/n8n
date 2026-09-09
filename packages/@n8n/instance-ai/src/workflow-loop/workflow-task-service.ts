@@ -3,12 +3,19 @@ import { UserError } from 'n8n-workflow';
 import type { WorkflowTaskService } from '../types';
 import { MAX_VERIFY_ATTEMPTS } from './remediation';
 import { WorkflowLoopRuntime } from './runtime';
+import { deriveVerificationClaim } from './verification-claim';
+import {
+	deriveWorkflowVerificationClaim,
+	mergeTriggerVerificationProgress,
+} from './verification-progress';
 import type {
 	VerificationResult,
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
 	WorkflowLoopState,
 	WorkflowVerificationEvidence,
+	WorkflowTriggerVerificationProgress,
+	VerificationClaim,
 } from './workflow-loop-state';
 import type { WorkflowLoopStorage } from '../storage/workflow-loop-storage';
 
@@ -70,9 +77,12 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 		}));
 	}
 
-	/** Keep prior nodes outside storage until a successful retry restores their coverage. */
-	async startVerification(workItemId: string, triggerNodeName?: string): Promise<string[]> {
-		let previousNodes: string[] = [];
+	/** Keep prior evidence outside storage until a successful retry restores it. */
+	async startVerification(
+		workItemId: string,
+		triggerNodeName?: string,
+	): Promise<WorkflowTriggerVerificationProgress> {
+		let previousProgress: WorkflowTriggerVerificationProgress = [];
 		await this.storage.updateBuildOutcome(this.threadId, workItemId, (outcome) => {
 			if ((outcome.verifyAttempts ?? 0) >= MAX_VERIFY_ATTEMPTS) {
 				throw new UserError(
@@ -81,38 +91,65 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 			}
 			const progress = outcome.verificationProgress && { ...outcome.verificationProgress };
 			if (progress && triggerNodeName) {
-				previousNodes = Object.hasOwn(progress, triggerNodeName) ? progress[triggerNodeName] : [];
+				previousProgress = Object.hasOwn(progress, triggerNodeName)
+					? progress[triggerNodeName]
+					: [];
 				delete progress[triggerNodeName];
 			}
-			return {
+			const verification: WorkflowVerificationEvidence = {
+				// Keep the obligation open while the reserved execution is in progress.
+				attempted: false,
+				success: false,
+				status: 'running',
+				claim: deriveVerificationClaim({
+					analysis: {
+						success: false,
+						nodesNotReached: (outcome.nodeSimulationPlan ?? []).map((node) => node.nodeName),
+						reachedSimulatedNodes: [],
+						workflowPinnedNodeNames: [],
+					},
+					plannedNodeCount: outcome.nodeSimulationPlan?.length ?? 0,
+					fixTargetNodeNames: outcome.verification?.claim?.unprovenTargets,
+				}),
+			};
+			const next = {
 				...outcome,
 				verifyAttempts: (outcome.verifyAttempts ?? 0) + 1,
 				// An unscoped retry cannot identify which pass it replaces.
 				verificationProgress: progress && !triggerNodeName ? {} : progress,
-				verification: undefined,
+				verification,
 			};
+			verification.claim = deriveWorkflowVerificationClaim(next, verification);
+			return next;
 		});
-		return previousNodes;
+		return previousProgress;
 	}
 
 	async recordVerification(
 		workItemId: string,
 		verification: WorkflowVerificationEvidence,
-		previousNodes: string[],
-	): Promise<void> {
+		previousProgress: WorkflowTriggerVerificationProgress,
+	): Promise<VerificationClaim | undefined> {
+		let claim: VerificationClaim | undefined;
 		await this.storage.updateBuildOutcome(this.threadId, workItemId, (outcome) => {
 			const trigger = verification.evidence?.triggerNodeName;
 			const nodes = verification.evidence?.nodesExecuted ?? [];
 			const progress = outcome.verificationProgress && { ...outcome.verificationProgress };
 			if (progress && trigger) {
 				if (verification.success && verification.executionId && nodes.includes(trigger)) {
-					const priorNodes = Object.hasOwn(progress, trigger) ? progress[trigger] : [];
-					progress[trigger] = [...new Set([...priorNodes, ...previousNodes, ...nodes])];
+					const priorProgress = Object.hasOwn(progress, trigger) ? progress[trigger] : [];
+					progress[trigger] = mergeTriggerVerificationProgress(
+						[priorProgress, previousProgress],
+						verification,
+					);
 				} else {
 					delete progress[trigger];
 				}
 			}
-			return { ...outcome, verificationProgress: progress, verification };
+			const next = { ...outcome, verificationProgress: progress };
+			claim = deriveWorkflowVerificationClaim(next, verification);
+			return { ...next, verification: { ...verification, claim } };
 		});
+		return claim;
 	}
 }

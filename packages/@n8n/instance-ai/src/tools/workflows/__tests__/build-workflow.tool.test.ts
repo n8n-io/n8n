@@ -805,8 +805,10 @@ describe('createBuildWorkflowTool', () => {
 			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([openSlackRequest, boundGmailRequest]);
 			const emitter = {
 				emit: vi.fn(() => true),
+				announce: vi.fn().mockResolvedValue(undefined),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn(),
+				workflowIds: vi.fn(() => []),
 			};
 			const { context, filePath } = makeContext({
 				source: 'workflow source from workspace',
@@ -848,8 +850,10 @@ describe('createBuildWorkflowTool', () => {
 			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([boundGmailRequest]);
 			const emitter = {
 				emit: vi.fn(() => true),
+				announce: vi.fn().mockResolvedValue(undefined),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn(),
+				workflowIds: vi.fn(() => []),
 			};
 			const { context, filePath } = makeContext({
 				source: 'workflow source from workspace',
@@ -897,8 +901,10 @@ describe('createBuildWorkflowTool', () => {
 				emit: vi.fn(() => {
 					throw new Error('bus down');
 				}),
+				announce: vi.fn().mockResolvedValue(undefined),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn(),
+				workflowIds: vi.fn(() => []),
 			};
 			const { context, filePath } = makeContext({
 				source: 'workflow source from workspace',

@@ -1,4 +1,8 @@
-export { SystemTask, resolveSystemTaskRunOptions } from './system-task';
+export {
+	SystemTask,
+	resolveSystemTaskRunOptions,
+	resolveSystemTaskSchedule,
+} from './system-task';
 export type {
 	SystemTaskClass,
 	SystemTaskEffects,

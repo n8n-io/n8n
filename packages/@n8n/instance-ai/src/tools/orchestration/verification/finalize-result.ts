@@ -11,7 +11,11 @@ import type {
 } from './types';
 import type { OrchestrationContext } from '../../../types';
 import { createRemediation } from '../../../workflow-loop/remediation';
-import type { RemediationMetadata } from '../../../workflow-loop/workflow-loop-state';
+import type {
+	RemediationMetadata,
+	VerificationClaim,
+	WorkflowTriggerVerificationProgress,
+} from '../../../workflow-loop/workflow-loop-state';
 
 /**
  * Handle the no-simulation-plan case: refuse to run because destructive nodes
@@ -89,8 +93,10 @@ export async function persistVerificationOutcome(args: {
 	result: ExecutionRunResult;
 	analysis: VerificationAnalysis;
 	scopedTriggerNodeName?: string;
-	previousNodes: string[];
-}): Promise<void> {
+	previousProgress: WorkflowTriggerVerificationProgress;
+	/** Deterministic verdict for this run, persisted so later turns cannot re-litigate it. */
+	claim: VerificationClaim;
+}): Promise<VerificationClaim | undefined> {
 	const {
 		input,
 		context,
@@ -99,10 +105,11 @@ export async function persistVerificationOutcome(args: {
 		result,
 		analysis,
 		scopedTriggerNodeName,
-		previousNodes,
+		previousProgress,
+		claim,
 	} = args;
 	const executedForEvidence = namesOrDataKeys(analysis.reachedNames, result.data);
-	await workflowTaskService.recordVerification(
+	const storedClaim = await workflowTaskService.recordVerification(
 		input.workItemId,
 		{
 			attempted: true,
@@ -110,6 +117,7 @@ export async function persistVerificationOutcome(args: {
 			executionId: result.executionId || undefined,
 			status: result.status,
 			failureSignature: analysis.success ? undefined : analysis.errorMessage,
+			claim,
 			evidence: {
 				...(scopedTriggerNodeName ? { triggerNodeName: scopedTriggerNodeName } : {}),
 				nodesExecuted:
@@ -122,7 +130,7 @@ export async function persistVerificationOutcome(args: {
 			},
 			verifiedAt: new Date().toISOString(),
 		},
-		previousNodes,
+		previousProgress,
 	);
 
 	if (analysis.remediation && !analysis.remediation.shouldEdit) {
@@ -135,6 +143,7 @@ export async function persistVerificationOutcome(args: {
 			remediation: analysis.remediation,
 		});
 	}
+	return storedClaim;
 }
 
 async function reportTerminalRemediation(args: {
