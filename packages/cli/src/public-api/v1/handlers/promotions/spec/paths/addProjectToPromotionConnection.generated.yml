@@ -1,0 +1,49 @@
+operationId: addProjectToPromotionConnection
+tags:
+  - Promotions
+summary: Link a project to a promotion connection
+description: Links a team project to a project-scoped connection. A project can be linked to only one connection.
+x-required-scope: gitConnection:manageProjects
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the promotion connection.
+    name: id
+    in: path
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            projectId:
+              type: string
+            connectionId:
+              type: string
+          required:
+            - projectId
+            - connectionId
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml
