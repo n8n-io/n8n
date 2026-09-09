@@ -173,6 +173,14 @@ catalog:
   '@types/uuid': ^11.0.0
   '@types/ws': ^8.18.1
   '@types/xml2js': ^0.4.14
+  # Pinned exactly and kept together: these packages cross types with each other
+  # (`rule-tester` pins `utils` exactly), so a caret that lets one float breaks the
+  # other. Must match the `typescript-eslint` meta-package version below.
+  '@typescript-eslint/eslint-plugin': 8.35.0
+  '@typescript-eslint/parser': 8.35.0
+  '@typescript-eslint/rule-tester': 8.35.0
+  '@typescript-eslint/typescript-estree': 8.35.0
+  '@typescript-eslint/utils': 8.35.0
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
