@@ -19,6 +19,7 @@ import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/
 import type { CliArgs } from '../cli/args';
 import {
 	buildWorkflowViaMcp,
+	readExtraMcpServers,
 	stageLaneMcpConfig,
 	unlinkStagedMcpConfig,
 	type McpBuildResult,
@@ -153,10 +154,19 @@ export interface LaneState {
 	}) => Promise<Awaited<ReturnType<typeof executeAgentScenario>>>;
 }
 
+/** Extra MCP server blocks staged alongside n8n, read once from --extra-mcp-config. */
+function loadExtraMcpServers(args: CliArgs): Record<string, unknown> {
+	return args.extraMcpConfigPath ? readExtraMcpServers(args.extraMcpConfigPath) : {};
+}
+
 /** Map eval CLI args to the shared MCP builder's settings. */
-function mcpBuildSettingsFromArgs(args: CliArgs): McpBuildSettings {
+function mcpBuildSettingsFromArgs(
+	args: CliArgs,
+	extraServerNames: readonly string[] = [],
+): McpBuildSettings {
 	return {
 		serverName: args.mcpServerName,
+		extraServerNames,
 		model: args.buildModel,
 		maxAttempts: args.buildMaxAttempts,
 		mcpTimeoutMs: args.buildMcpTimeoutMs,
@@ -214,10 +224,12 @@ async function buildWorkflowViaMcpOnLane(config: {
 		return failure(`MCP build user/credential setup failed: ${extractErrorMessage(error)}`);
 	}
 
+	const extraServers = loadExtraMcpServers(args);
 	const mcpConfigPath = stageLaneMcpConfig({
 		serverName: args.mcpServerName,
 		url: `${lane.baseUrl}/mcp-server/http`,
 		apiKey: mcpApiKey,
+		extraServers,
 	});
 
 	let result: McpBuildResult;
@@ -227,7 +239,7 @@ async function buildWorkflowViaMcpOnLane(config: {
 			slug,
 			iteration,
 			mcpConfigPath,
-			settings: mcpBuildSettingsFromArgs(args),
+			settings: mcpBuildSettingsFromArgs(args, Object.keys(extraServers)),
 			logDir,
 			log: (message) => logger.info(message),
 		});
