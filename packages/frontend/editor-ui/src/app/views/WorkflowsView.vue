@@ -2575,6 +2575,8 @@ const onNameSubmit = async (name: string) => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .easy-ai-workflow-callout {
 	// Make the callout padding in line with workflow cards
 	margin-top: var(--spacing--xs);

@@ -392,7 +392,7 @@ function toPlanItem(
 				...prepared,
 				existing,
 				archiveTransition: decideWorkflowArchiveTransition(
-					prepared.entity.isArchived,
+					prepared.sourceArchived,
 					existing.isArchived,
 				),
 			};

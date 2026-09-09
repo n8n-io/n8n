@@ -392,6 +392,28 @@ confirmation card.
 `nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
 actively dismissed and the agent must not re-open (see `reopenSkipped`).
 
+**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): the normal setup call
+analyzes the whole workflow, including bound slots. It publishes the `setup-items`
+snapshot and confirms that it reached storage. It then saves the build's setup
+routing marker. Only after both steps succeed does it return
+`{ success: true, announced: true, workflowId, open, configured, validationWarnings, message }`.
+The agent summarizes the result and ends its turn. `open` lists pending items.
+`configured` lists stored bindings. Configuration does not prove that a connection
+test or workflow execution passed. Failed connection checks appear in `validationWarnings`.
+
+Validation and destination approval run before the announcement. The agent follows
+the returned guidance for errors, denials, or approvals. Explicit
+`preferNewCredentials` requests use the selection card. Existing cards keep their
+`apply`, `test-trigger`, and decline paths.
+
+Each new user turn carries a `<workflow-setup-state>` block with current saved
+state and items that settled since the previous look. This observation does not
+publish snapshots or change the current workflow target. It preserves announced
+recipes and does not count temporary credential replacement requests as user progress.
+This observation reads saved bindings and checks required values and placeholders.
+It does not test credentials or fetch provider resource lists. It does not produce
+fresh connection-test warnings. Live checks remain part of setup and verification.
+
 ### `workflows(action="publish")`
 
 Publish a workflow version to production. Makes it active — it will run on triggers.

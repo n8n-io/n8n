@@ -1,7 +1,7 @@
 import type { StreamChunk } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
-import type { Logger } from 'n8n-workflow';
+import { OperationalError, type Logger } from 'n8n-workflow';
 
 import type { BridgeStatusHandle } from './agent-chat-integration';
 import { isIntegrationActionSuspendPayload } from './agent-chat-suspension-cards';
@@ -16,12 +16,20 @@ export type SuspensionHandlingResult = 'posted' | 'skipped' | 'failed';
 interface AgentChatStreamConsumerOptions {
 	disableStreaming: boolean;
 	logger: Logger;
-	postErrorToThread: (thread: Thread<unknown, unknown> | null, error: unknown) => Promise<void>;
+	postErrorToThread: (
+		thread: Thread<unknown, unknown> | null,
+		error: unknown,
+		throwOnDeliveryError?: boolean,
+	) => Promise<void>;
 	handleSuspension: (
 		chunk: SuspendedChunk,
 		thread: Thread<unknown, unknown>,
 	) => Promise<SuspensionHandlingResult>;
-	handleMessage: (chunk: MessageChunk, thread: Thread<unknown, unknown>) => Promise<boolean>;
+	handleMessage: (
+		chunk: MessageChunk,
+		thread: Thread<unknown, unknown>,
+		throwOnDeliveryError?: boolean,
+	) => Promise<boolean>;
 	/**
 	 * Identifies this bridge's integration action tool. Only its results are
 	 * trusted for the `silent: true` outcome (`do_not_respond`) — arbitrary
@@ -32,6 +40,8 @@ interface AgentChatStreamConsumerOptions {
 
 interface ConsumeStreamOptions {
 	forceBuffered?: boolean;
+	/** Buffer output and report posting failures so the caller can retry. */
+	throwOnDeliveryError?: boolean;
 	statusHandle?: BridgeStatusHandle;
 }
 
@@ -75,10 +85,8 @@ export class AgentChatStreamConsumer {
 		thread: Thread<unknown, unknown>,
 		options: ConsumeStreamOptions = {},
 	): Promise<void> {
-		if (this.options.disableStreaming || options.forceBuffered) {
-			await this.consumeBuffered(stream, thread, {
-				statusHandle: options.statusHandle,
-			});
+		if (this.options.disableStreaming || options.forceBuffered || options.throwOnDeliveryError) {
+			await this.consumeBuffered(stream, thread, options);
 			return;
 		}
 
@@ -279,6 +287,7 @@ export class AgentChatStreamConsumer {
 		state: ResponseState,
 		lifecycle: ResponseLifecycle,
 		thread: Thread<unknown, unknown>,
+		throwOnDeliveryError = false,
 	): Promise<void> {
 		if (!state.fallbackSource) return;
 		// Earlier output only excuses a tool error (the agent's own text explains
@@ -287,14 +296,14 @@ export class AgentChatStreamConsumer {
 		if (state.fallbackSource === 'tool-error' && state.hasVisibleResponse) return;
 
 		await lifecycle.startDiscreteResponse();
-		await this.options.postErrorToThread(thread, state.fallbackError);
+		await this.options.postErrorToThread(thread, state.fallbackError, throwOnDeliveryError);
 		state.hasVisibleResponse = true;
 	}
 
 	private async consumeBuffered(
 		stream: AsyncGenerator<StreamChunk>,
 		thread: Thread<unknown, unknown>,
-		options: { statusHandle?: BridgeStatusHandle } = {},
+		options: ConsumeStreamOptions = {},
 	): Promise<void> {
 		let buffer = '';
 		const responseState = createResponseState();
@@ -315,10 +324,11 @@ export class AgentChatStreamConsumer {
 				// shape the streaming path uses under the hood.
 				await thread.post({ markdown: text });
 			} catch (postError: unknown) {
-				await this.options.postErrorToThread(thread, postError);
 				this.options.logger.error('[AgentChatBridge] Buffered post failed', {
 					error: postError instanceof Error ? postError.message : String(postError),
 				});
+				if (options.throwOnDeliveryError) throw postError;
+				await this.options.postErrorToThread(thread, postError);
 			}
 			responseState.hasVisibleResponse = true;
 		};
@@ -340,20 +350,29 @@ export class AgentChatStreamConsumer {
 						const result = await this.options.handleSuspension(chunk, thread);
 						responseState.hasVisibleResponse ||= result === 'posted';
 						if (result === 'failed') {
+							if (options.throwOnDeliveryError) {
+								throw new OperationalError('Failed to post tool approval request');
+							}
 							responseState.fallbackSource = 'suspension';
 							responseState.fallbackError = new Error('Failed to post tool approval request');
 						}
 						break;
 					}
-					case 'message':
+					case 'message': {
 						await flushBuffer();
 						await responseLifecycle.startDiscreteResponse();
-						responseState.hasVisibleResponse ||= await this.options.handleMessage(chunk, thread);
+						const posted = await this.options.handleMessage(
+							chunk,
+							thread,
+							options.throwOnDeliveryError,
+						);
+						responseState.hasVisibleResponse ||= posted;
 						break;
+					}
 					case 'error':
 						await flushBuffer();
 						await responseLifecycle.startDiscreteResponse();
-						await this.options.postErrorToThread(thread, chunk.error);
+						await this.options.postErrorToThread(thread, chunk.error, options.throwOnDeliveryError);
 						responseState.hasVisibleResponse = true;
 						break;
 					case 'tool-result':
@@ -375,7 +394,12 @@ export class AgentChatStreamConsumer {
 				}
 			}
 			await flushBuffer();
-			await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
+			await this.postFallbackIfNeeded(
+				responseState,
+				responseLifecycle,
+				thread,
+				options.throwOnDeliveryError,
+			);
 		} finally {
 			await flushBuffer();
 			await responseLifecycle.finish();

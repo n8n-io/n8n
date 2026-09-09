@@ -493,7 +493,11 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 	() => loadRunStateRegistry().RunStateRegistry,
 );
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
-export { createSetupItemsEmitter } from './tools/workflows/setup-items';
+export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
+export {
+	formatWorkflowSetupStateNote,
+	observeWorkflowSetupStates,
+} from './tools/workflows/setup-panel-state';
 export type { RunDebugRecord } from './debug/run-debug-buffer';
 export {
 	RunDebugBuffer,

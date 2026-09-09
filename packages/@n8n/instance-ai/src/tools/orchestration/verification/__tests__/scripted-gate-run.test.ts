@@ -174,4 +174,33 @@ describe('runScriptedGateVerification — merge consistency', () => {
 		// Publish is reached only by the approve pass; the decline pass ran last.
 		expect(analysis.simulationNote).toContain('Publish');
 	});
+
+	it('discloses a node fed by workflow pin data in any pass', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({ ...approvePassResult, workflowPinnedNodeNames: ['Router'] })
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		// Pins come from the run result, so they exist per pass only. Losing them
+		// in the merge would let a pin-fed gate run read as a live test.
+		expect(analysis.workflowPinnedNodeNames).toEqual(['Router']);
+		expect(analysis.reachedSimulatedNodes.map((node) => node.nodeName)).toContain('Router');
+		expect(analysis.simulationNote).toContain('Router');
+	});
+
+	it('does not double-count a pinned node that the plan already simulates', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({ ...approvePassResult, workflowPinnedNodeNames: ['Generate'] })
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(analysis.workflowPinnedNodeNames).toEqual([]);
+		expect(
+			analysis.reachedSimulatedNodes.filter((node) => node.nodeName === 'Generate'),
+		).toHaveLength(1);
+	});
 });

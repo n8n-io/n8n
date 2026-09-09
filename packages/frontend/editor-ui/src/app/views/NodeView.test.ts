@@ -37,6 +37,8 @@ const routeMock = vi.hoisted(() => ({
 	name: undefined as string | undefined,
 	params: {},
 	query: {} as Record<string, string>,
+	// The NDV subtree that the canvas slot renders reads `route.meta`, so the
+	// mock has to carry it — a missing `meta` throws while Vue renders.
 	meta: {} as Record<string, unknown>,
 }));
 
@@ -47,6 +49,13 @@ vi.mock('vue-router', () => ({
 		template: '<a><slot /></a>',
 	},
 	onBeforeRouteLeave: vi.fn(),
+}));
+
+// Route actions open the NDV. The real NDV needs `route.meta` and `<dialog>`
+// APIs that this mock and jsdom lack; these tests only assert canvas state.
+vi.mock('@/features/ndv/shared/views/NodeDetailsView.vue', () => ({
+	__esModule: true,
+	default: { name: 'NodeDetailsView', render: () => null },
 }));
 
 describe('NodeView', () => {
