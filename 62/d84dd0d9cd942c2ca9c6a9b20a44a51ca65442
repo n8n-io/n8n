@@ -1,0 +1,11 @@
+packages/@n8n/instance-ai/src/workflow-loop/render-claim.ts
+  h_2f80f0e06f710c 34
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  h_2f80f0e06f710c 1915
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "62d84dd0d9cd942c2ca9c6a9b20a44a51ca65442",
+  "prompts": {}
+}
