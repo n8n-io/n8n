@@ -27,7 +27,7 @@ describe('ChannelRateLimitGuard', () => {
 	it('extends an existing block when a second record would end later', () => {
 		const guard = new ChannelRateLimitGuard();
 		guard.record('slack:cred-a', 1_000);
-		guard.record('slack:cred-a', 1_000 + 10_000);
+		guard.record('slack:cred-a', 10_000);
 		// First until = 1_000 + COOLDOWN; second until = 10_000 + COOLDOWN (later)
 		expect(guard.isBlocked('slack:cred-a', 5_000 + 10_000)).toBe(true);
 		expect(guard.isBlocked('slack:cred-a', 10_000 + CHANNEL_RATE_LIMIT_COOLDOWN_MS)).toBe(false);

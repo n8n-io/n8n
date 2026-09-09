@@ -57,6 +57,7 @@ import {
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
+import type { IntegrationMessageContext } from '../integration-tool-types';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
@@ -1529,7 +1530,7 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
-		const ctx = {
+		const ctx: IntegrationMessageContext = {
 			integrationConnectionId: 'slack:cred-a',
 			platform: 'slack',
 			target: {

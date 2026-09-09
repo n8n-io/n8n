@@ -12,7 +12,9 @@ function makeStream(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
 	})();
 }
 
-function makeConsumer(postErrorToThread: ReturnType<typeof vi.fn>) {
+function makeConsumer(
+	postErrorToThread: (thread: Thread<unknown, unknown> | null, error: unknown) => Promise<void>,
+) {
 	return new AgentChatStreamConsumer({
 		disableStreaming: true,
 		logger: mock<Logger>(),
