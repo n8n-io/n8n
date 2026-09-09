@@ -1236,10 +1236,9 @@ async function handleSetupApply(
 			resumeData.nodeParameters,
 		);
 
-		// Nothing was saved, so there is nothing to re-analyze. A failed result keeps
-		// the setup panel open with the user's input; a "partial" success would
-		// replace the panel and hide the reason (e.g. a credential the workflow's
-		// project cannot use).
+		// Nothing was saved, so there is nothing to re-analyze. A failed result shows
+		// the reason to the user and the agent; a "partial" success would hide it
+		// (e.g. a credential the workflow's project cannot use).
 		if (applyResult.saveError) {
 			return { success: false, error: applyResult.saveError };
 		}

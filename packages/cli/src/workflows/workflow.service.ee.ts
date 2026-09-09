@@ -223,7 +223,7 @@ export class EnterpriseWorkflowService {
 			const previous = this.getNodeCredentialRefs(previousNodeVersion);
 			const current = this.getNodeCredentialRefs(node);
 			return (
-				(current.hasUnresolved && !previous.hasUnresolved) ||
+				current.unresolved.some((ref) => !previous.unresolved.includes(ref)) ||
 				current.ids.some((id) => !allowedCredentialIds.includes(id) && !previous.ids.includes(id))
 			);
 		};
@@ -277,8 +277,8 @@ export class EnterpriseWorkflowService {
 		}
 		const allowedCredentialIds = userCredIds instanceof Set ? userCredIds : new Set(userCredIds);
 		return workflow.nodes.filter((node) => {
-			const { ids, hasUnresolved } = this.getNodeCredentialRefs(node);
-			return hasUnresolved || ids.some((credId) => !allowedCredentialIds.has(credId));
+			const { ids, unresolved } = this.getNodeCredentialRefs(node);
+			return unresolved.length > 0 || ids.some((credId) => !allowedCredentialIds.has(credId));
 		});
 	}
 
@@ -292,7 +292,7 @@ export class EnterpriseWorkflowService {
 		for (const node of workflow.nodes ?? []) {
 			const references = this.getNodeCredentialRefs(node);
 			for (const id of references.ids) ids.add(id);
-			hasUnresolved ||= references.hasUnresolved;
+			hasUnresolved ||= references.unresolved.length > 0;
 		}
 
 		return { ids, hasUnresolved };
@@ -305,8 +305,8 @@ export class EnterpriseWorkflowService {
 	 * including its nodes' credentials — inside its `workflowJson` string
 	 * parameter, so those references are walked as well.
 	 *
-	 * Returns `ids` (resolvable credential ids) and `hasUnresolved` (a non-managed
-	 * credential carrying no id, i.e. only a name). A name-only reference can be
+	 * Returns `ids` (resolvable credential ids) and `unresolved` (one `type:name`
+	 * key per non-managed credential carrying no id). A name-only reference can be
 	 * resolved by name to a credential the user cannot access, so callers gating a
 	 * save must reject it rather than treat the node as credential-free.
 	 * `__aiGatewayManaged` credentials with a null id are resolved at execution and
@@ -319,23 +319,23 @@ export class EnterpriseWorkflowService {
 	 * the request size (each level embeds its child as literal escaped JSON) and
 	 * cannot cycle, so the stack cannot grow unbounded.
 	 */
-	private getNodeCredentialRefs(node: INode): { ids: string[]; hasUnresolved: boolean } {
+	private getNodeCredentialRefs(node: INode): { ids: string[]; unresolved: string[] } {
 		const ids: string[] = [];
-		let hasUnresolved = false;
+		const unresolved: string[] = [];
 		const stack: INode[] = [node];
 
 		while (stack.length > 0) {
 			const current = stack.pop()!;
 
 			if (current.credentials) {
-				for (const nodeCred of Object.values(current.credentials)) {
+				for (const [type, nodeCred] of Object.entries(current.credentials)) {
 					const id = nodeCred.id?.toString();
 					if (id) {
 						ids.push(id);
 					} else if (nodeCred.__aiGatewayManaged && nodeCred.id === null) {
 						// Managed credential, resolved at execution — exempt.
 					} else if (nodeCred.id === null || nodeCred.id === '') {
-						hasUnresolved = true;
+						unresolved.push(`${type}:${nodeCred.name}`);
 					}
 				}
 			}
@@ -345,7 +345,7 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
-		return { ids, hasUnresolved };
+		return { ids, unresolved };
 	}
 
 	/**

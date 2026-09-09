@@ -374,6 +374,19 @@ describe('EnterpriseWorkflowService', () => {
 
 			expect(result.nodes[0].parameters).toEqual({ url: '' });
 		});
+
+		it('rejects an unresolved credential that replaces a different one on an existing node', () => {
+			const previousVersion = {
+				nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'Old' } })],
+			} as unknown as IWorkflowBase;
+			const newVersion = {
+				nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'New' } }, { url: 'https://x.test' })],
+			} as unknown as IWorkflowBase;
+
+			expect(() =>
+				service.validateWorkflowCredentialUsage(newVersion, previousVersion, accessible),
+			).toThrow(/credentials in the 'Call' node/);
+		});
 	});
 
 	describe('attemptWorkflowReactivation', () => {
