@@ -1,9 +1,10 @@
 import type { AppBinding } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
-import type { User, WorkflowEntity } from '@n8n/db';
-import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, type INode } from 'n8n-workflow';
+import type { IExecutionResponse, User, WorkflowEntity } from '@n8n/db';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, type IDataObject, type INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
 import type { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -37,6 +38,7 @@ describe('AppsService', () => {
 			appVersionService,
 			globalConfig,
 			mock<WorkflowToolWorkflowLoader>(),
+			mock<ExecutionPersistence>(),
 		);
 	});
 
@@ -114,10 +116,30 @@ const binding = (key = 'submit', workflowId = 'wf-1'): AppBinding => ({
 
 const notPublished = () => new WorkflowToolUnavailableError('not_published', 'not published');
 
+const successfulExecution = (items: IDataObject[]): IExecutionResponse =>
+	({
+		id: '42',
+		workflowId: 'wf-1',
+		startedAt: new Date('2026-09-09T10:00:00.000Z'),
+		stoppedAt: new Date('2026-09-09T10:00:01.000Z'),
+		data: {
+			resultData: {
+				lastNodeExecuted: 'Reply',
+				runData: { Reply: [{ data: { main: [items.map((json) => ({ json }))] } }] },
+			},
+		},
+	}) as unknown as IExecutionResponse;
+
+const typedOutput = {
+	output: [{ name: 'reply', type: 'string', nullable: false, optional: false }],
+	outputSource: { kind: 'execution', executionId: '42', at: '2026-09-09T10:00:01.000Z' },
+};
+
 describe('AppsService bindings', () => {
 	let appRepository: ReturnType<typeof mock<AppRepository>>;
 	let workflowFinderService: ReturnType<typeof mock<WorkflowFinderService>>;
 	let workflowLoader: ReturnType<typeof mock<WorkflowToolWorkflowLoader>>;
+	let executionPersistence: ReturnType<typeof mock<ExecutionPersistence>>;
 	let service: AppsService;
 	let app: App;
 
@@ -125,13 +147,18 @@ describe('AppsService bindings', () => {
 		appRepository = mock<AppRepository>();
 		workflowFinderService = mock<WorkflowFinderService>();
 		workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findMultipleExecutions.mockResolvedValue([
+			successfulExecution([{ reply: 'hi' }]),
+		]);
 		service = new AppsService(
 			appRepository,
 			mock<PageRepository>(),
 			workflowFinderService,
 			mock<AppVersionService>(),
-			mock<GlobalConfig>(),
+			mock<GlobalConfig>({ executions: { maxDisplaySize: 1024 } }),
 			workflowLoader,
+			executionPersistence,
 		);
 		app = { id: 'app-1', projectId: 'proj-1', bindings: [] } as unknown as App;
 		appRepository.findOneBy.mockResolvedValue(app);
@@ -206,6 +233,7 @@ describe('AppsService bindings', () => {
 					name: 'Echo',
 					published: false,
 					input: [{ name: 'message', type: 'string' }],
+					...typedOutput,
 				},
 			]);
 			expect(result.warnings).toEqual([expect.stringContaining('not published')]);
@@ -326,6 +354,66 @@ describe('AppsService bindings', () => {
 
 			expect(result.bindings.map((b) => b.key)).toEqual(['submit']);
 			expect(result.warnings).toEqual([expect.stringContaining("'gone'")]);
+		});
+
+		it('types the output from the latest successful execution of the workflow', async () => {
+			app.bindings = [binding()];
+			workflowLoader.loadWorkflow.mockResolvedValue(workflow());
+			executionPersistence.findMultipleExecutions.mockResolvedValue([
+				successfulExecution([
+					{ reply: 'a', count: 1 },
+					{ reply: 'b', count: null },
+				]),
+			]);
+
+			const result = await service.describeBindings(app);
+
+			expect(executionPersistence.findMultipleExecutions).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { workflowId: 'wf-1', status: 'success' },
+					order: { id: 'DESC' },
+					take: 1,
+				}),
+				{ includeData: true, unflattenData: true, maxDataSizeBytes: 1024 },
+			);
+			expect(result.bindings[0]).toMatchObject({
+				output: [
+					{ name: 'reply', type: 'string', nullable: false, optional: false },
+					{ name: 'count', type: 'number', nullable: true, optional: false },
+				],
+				outputSource: { kind: 'execution', executionId: '42', at: '2026-09-09T10:00:01.000Z' },
+			});
+			expect(result.warnings).toEqual([]);
+		});
+
+		it('reports unknown output with a warning while the workflow has no successful execution', async () => {
+			app.bindings = [binding()];
+			workflowLoader.loadWorkflow.mockResolvedValue(workflow());
+			executionPersistence.findMultipleExecutions.mockResolvedValue([]);
+
+			const result = await service.describeBindings(app);
+
+			expect(result.bindings[0]).toMatchObject({
+				output: 'unknown',
+				outputSource: { kind: 'unknown' },
+			});
+			expect(result.warnings).toEqual([
+				'Output of "submit" is untyped. Run the workflow once (executions run) and call `apps bindings` to type it from the result.',
+			]);
+		});
+
+		it('reports unknown output when the execution produced no items', async () => {
+			app.bindings = [binding()];
+			workflowLoader.loadWorkflow.mockResolvedValue(workflow());
+			executionPersistence.findMultipleExecutions.mockResolvedValue([successfulExecution([])]);
+
+			const result = await service.describeBindings(app);
+
+			expect(result.bindings[0]).toMatchObject({
+				output: 'unknown',
+				outputSource: { kind: 'unknown' },
+			});
+			expect(result.warnings).toEqual([expect.stringContaining('is untyped')]);
 		});
 	});
 });

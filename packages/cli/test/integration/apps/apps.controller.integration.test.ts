@@ -4,10 +4,12 @@ import { createWorkflow, getPersonalProject, testDb } from '@n8n/backend-test-ut
 import { AppsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { stringify } from 'flatted';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
+import { createExecution } from '@test-integration/db/executions';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -40,7 +42,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['App', 'Page']);
+	await testDb.truncate(['App', 'Page', 'ExecutionEntity']);
 });
 
 describe('POST /projects/:projectId/apps', () => {
@@ -166,10 +168,77 @@ describe('GET /projects/:projectId/apps/:appId/bindings', () => {
 				name: 'Echo',
 				published: false,
 				input: [{ name: 'message', type: 'string' }],
+				output: 'unknown',
+				outputSource: { kind: 'unknown' },
 			},
 		]);
-		expect(response.body.data.warnings).toHaveLength(1);
+		expect(response.body.data.warnings).toHaveLength(2);
 		expect(response.body.data.warnings[0]).toContain('not published');
+		expect(response.body.data.warnings[1]).toContain('Output of "submit" is untyped');
+	});
+
+	test('types the output from the latest successful execution', async () => {
+		const workflow = await createWorkflow(
+			{
+				name: 'Echo',
+				nodes: [
+					{
+						id: 'trigger',
+						name: 'When Executed by Another Workflow',
+						type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+						typeVersion: 1.1,
+						position: [0, 0],
+						parameters: { inputSource: 'passthrough' },
+					},
+				],
+			},
+			ownerProject,
+		);
+		const runData = (items: Array<Record<string, unknown>>) => ({
+			resultData: {
+				lastNodeExecuted: 'Reply',
+				runData: { Reply: [{ data: { main: [items.map((json) => ({ json }))] } }] },
+			},
+		});
+		await createExecution(
+			{ status: 'success', data: stringify(runData([{ reply: 'old', legacy: true }])) },
+			workflow,
+		);
+		await createExecution({ status: 'error', data: stringify(runData([{ failed: 1 }])) }, workflow);
+		const latest = await createExecution(
+			{
+				status: 'success',
+				stoppedAt: new Date('2026-09-09T10:00:01.000Z'),
+				data: stringify(
+					runData([
+						{ reply: 'a', count: 1 },
+						{ reply: 'b', count: null },
+					]),
+				),
+			},
+			workflow,
+		);
+		const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+		const app = await appRepository.updateBindings(created, [
+			{ key: 'submit', kind: 'workflow', workflowId: workflow.id },
+		]);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.expect(200);
+
+		expect(response.body.data.bindings[0]).toMatchObject({
+			output: [
+				{ name: 'reply', type: 'string', nullable: false, optional: false },
+				{ name: 'count', type: 'number', nullable: true, optional: false },
+			],
+			outputSource: {
+				kind: 'execution',
+				executionId: latest.id,
+				at: '2026-09-09T10:00:01.000Z',
+			},
+		});
+		expect(response.body.data.warnings).not.toContainEqual(expect.stringContaining('untyped'));
 	});
 
 	test('rejects a non-member with 403', async () => {

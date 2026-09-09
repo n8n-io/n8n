@@ -13,6 +13,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	detectTriggerNode,
 	listWorkflowInputFields,
@@ -26,6 +27,7 @@ import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 import { deriveRoutesFromRouterSource } from './derive-routes';
 import { AppNotFoundError } from './errors/app-not-found.error';
+import { inferOutputFields, sampleOutputItems } from './infer-output-fields';
 import { AppQuotaExceededError } from './errors/app-quota-exceeded.error';
 import { BindingIncompatibleError } from './errors/binding-incompatible.error';
 import { BindingProjectMismatchError } from './errors/binding-project-mismatch.error';
@@ -47,6 +49,7 @@ export class AppsService {
 		private readonly appVersionService: AppVersionService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly workflowLoader: WorkflowToolWorkflowLoader,
+		private readonly executionPersistence: ExecutionPersistence,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto) {
@@ -136,7 +139,8 @@ export class AppsService {
 	 * version, or the draft with a warning while none is published. Its trigger declares
 	 * the input fields, so the generated types match what the runtime validates. A binding
 	 * whose workflow left the project or lost its trigger since bind time is left out and
-	 * reported as a warning, so the remaining bindings stay usable.
+	 * reported as a warning, so the remaining bindings stay usable. Output fields come from
+	 * the latest successful execution; without one the output is `'unknown'` with a warning.
 	 */
 	async describeBindings(app: App): Promise<{ bindings: DescribedBinding[]; warnings: string[] }> {
 		const bindings: DescribedBinding[] = [];
@@ -168,6 +172,12 @@ export class AppsService {
 					`Workflow "${workflow.name}" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.`,
 				);
 			}
+			const { output, outputSource } = await this.inferOutput(workflow.id);
+			if (output === 'unknown') {
+				warnings.push(
+					`Output of "${binding.key}" is untyped. Run the workflow once (executions run) and call \`apps bindings\` to type it from the result.`,
+				);
+			}
 			bindings.push({
 				key: binding.key,
 				kind: binding.kind,
@@ -175,10 +185,48 @@ export class AppsService {
 				name: workflow.name,
 				published,
 				input: fields.length > 0 ? fields : 'passthrough',
+				output,
+				outputSource,
 			});
 		}
 
 		return { bindings, warnings };
+	}
+
+	/**
+	 * Same query as `ExecutionService.getLastSuccessfulExecution`, without redaction: no user
+	 * is acting here and only key names and kinds leave `inferOutputFields`, never values.
+	 * Scoping by `workflowId` alone is enough because `loadBoundWorkflow` already confirmed the
+	 * workflow belongs to the app's project. Oversized run data arrives empty and reads as no sample.
+	 */
+	private async inferOutput(
+		workflowId: string,
+	): Promise<Pick<DescribedBinding, 'output' | 'outputSource'>> {
+		const [execution] = await this.executionPersistence.findMultipleExecutions(
+			{
+				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
+				where: { workflowId, status: 'success' },
+				order: { id: 'DESC' },
+				take: 1,
+			},
+			{
+				includeData: true,
+				unflattenData: true,
+				maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize,
+			},
+		);
+		const output = execution ? inferOutputFields(sampleOutputItems(execution.data)) : 'unknown';
+		if (!execution || output === 'unknown') {
+			return { output: 'unknown', outputSource: { kind: 'unknown' } };
+		}
+		return {
+			output,
+			outputSource: {
+				kind: 'execution',
+				executionId: execution.id,
+				at: (execution.stoppedAt ?? execution.startedAt).toISOString(),
+			},
+		};
 	}
 
 	/** Same loader and options as the runtime, so describe sees the nodes the runtime runs. */
