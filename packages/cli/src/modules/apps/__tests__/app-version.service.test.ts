@@ -348,4 +348,37 @@ describe('AppVersionService', () => {
 			expect(await service.readSource({ id: 'app-1', activeVersionId: null } as App)).toBeNull();
 		});
 	});
+
+	describe('hasUnpublishedChanges', () => {
+		const row = (id: string, createdAt: number) =>
+			({ id, createdAt: new Date(createdAt) }) as AppVersion;
+
+		it.each([
+			{ name: 'no versions', versions: [], activeVersionId: null, expected: false },
+			{
+				name: 'a snapshot but nothing published',
+				versions: [row('s-1', 5)],
+				activeVersionId: null,
+				expected: true,
+			},
+			{
+				name: 'the newest version is the published one',
+				versions: [row('v-2', 9), row('s-1', 5)],
+				activeVersionId: 'v-2',
+				expected: false,
+			},
+			{
+				name: 'a snapshot newer than the published version',
+				versions: [row('s-3', 12), row('v-2', 9)],
+				activeVersionId: 'v-2',
+				expected: true,
+			},
+		])('is $expected with $name', async ({ versions, activeVersionId, expected }) => {
+			appVersionRepository.listByAppId.mockResolvedValue(versions);
+
+			expect(await service.hasUnpublishedChanges({ id: 'app-1', activeVersionId } as App)).toBe(
+				expected,
+			);
+		});
+	});
 });

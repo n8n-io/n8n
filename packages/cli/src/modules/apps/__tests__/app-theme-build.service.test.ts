@@ -163,6 +163,7 @@ describe('AppThemeBuildService', () => {
 			projectId: 'proj-1',
 			versionId: 'v-0',
 			workspacePath: '/ws/apps/greeter',
+			installed: true,
 			warnings: [],
 		});
 		vi.mocked(buildApp).mockResolvedValue({

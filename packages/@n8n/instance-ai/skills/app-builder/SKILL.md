@@ -6,8 +6,8 @@ description: >-
   people open in a browser — "build me a hello world app", "make a dashboard
   for X", "add a form page", "make the heading red". Covers the whole loop:
   create the app, edit its source files in the workspace while the live
-  preview follows, fix the preview errors, and build only when the user asks
-  to publish. Not for n8n workflows, agents, or data tables on their own.
+  preview follows, fix the preview errors, and publish only when the user asks
+  for it. Not for n8n workflows, agents, or data tables on their own.
 recommended_tools:
   - apps
   - workspace_write_file
@@ -22,16 +22,17 @@ recommended_tools:
 You build small static web apps that n8n serves at `/apps/<namespace>/`. The
 source lives in the sandbox workspace under `apps/<namespace>/`; `apps` has
 four actions: `create` registers an app and installs its dependencies,
-`build` publishes the source as a served version, `restore` brings the stored
-source back into a workspace that does not have it, `add-component` copies a
-component from this skill's own catalog (built on `@ark-ui/vue`) into an app —
-`create` uses it for the two the starter page needs, and every other
-component goes through it too.
+`publish` builds the current source into the served version after the user
+confirms, `restore` brings the stored source back into a workspace that does
+not have it, `add-component` copies a component from this skill's own catalog
+(built on `@ark-ui/vue`) into an app — `create` uses it for the two the
+starter page needs, and every other component goes through it too.
 
 The user sees a live preview of the source in the workspace. n8n runs a dev
 server for it: every file you write appears in the preview by itself (hot
 module reload), without a build. The preview is the source of truth while you
-work; a build only changes the published URL.
+work; publishing only changes what `/apps/<namespace>/` serves. The user can
+also publish with the Publish button above the preview, without you.
 
 ## The loop
 
@@ -48,26 +49,33 @@ work; a build only changes the published URL.
 2. Edit files under `workspacePath` with `workspace_write_file` and
    `workspace_str_replace_file`. The template's `AI_RULES.md` describes the
    layout. Do not start a dev server and do not run a build to check your
-   work: the live preview updates on its own. Never call `apps(action="build")`
-   while iterating. Tell the user what changed and stop; the preview shows it.
+   work: the live preview updates on its own. Never run a build to check your
+   work. Tell the user what changed and stop; the preview shows it.
 3. Preview errors (compile errors, uncaught exceptions) arrive as context on
    the user's next message. Fix them before anything else. Run
    `npm run typecheck` in the app directory when you changed TypeScript.
    You cannot see the page: do not claim visual results.
 4. Publish only when the user asks to publish, deploy, share or go live:
-   `apps(action="build", appId)`. Success returns `url`, `versionId`,
+   `apps(action="publish", appId)`. The user sees a confirmation card first
+   ("Publish <name> to /apps/<namespace>/") and can approve, decline, or
+   approve for the rest of the conversation. `{ denied, reason:
+   "user_declined" }` means they declined: stop, do not call it again unasked.
+   On approval n8n snapshots your current edits, runs `npm run build` in its
+   own build sandbox and packages `dist/`. Success returns `url`, `versionId`,
    `namespace`, `projectId`; it stores a version and updates
    `/apps/<namespace>/`. Give the user the `url`.
 5. On `{ error, stage, message, log }` read `log` (last 4 KB of the build
-   output), fix the cause, build again. Do not retry the same build without a
-   change.
+   output), fix the cause, publish again. Do not retry the same publish
+   without a change.
+   - `snapshot` or `restore`: n8n could not capture or unpack your source;
+     `message` says why. Usually transient: try once more.
    - `install`: `npm install` failed. Check `package.json` dependency names
      and versions; the sandbox has npm and network access to the registry.
-   - `build`: the build command exited non-zero. Missing imports and
+   - `build`: `npm run build` exited non-zero. Missing imports and
      syntax errors show up here. Exit code 134 or 137 means the build ran
      out of memory (the sandbox has 512 MiB): drop the heavy dependency, do
      not retry with a bigger heap.
-   - `check`: the output is not a servable static site: `<outDir>/index.html`
+   - `check`: the output is not a servable static site: `dist/index.html`
      is missing, a `server/` directory exists, or a tarball is over 20 MB.
    - `store`: n8n rejected the upload; `message` says why.
 
@@ -93,10 +101,11 @@ not only the last published build. Then continue with step 2. `{ denied, reason 
   `createWebHistory(import.meta.env.BASE_URL)`. Do not hardcode `/`.
 - Default to the Vue template. Use another stack only when the user asks for
   it; then follow `references/frameworks.md` for the static-export and
-  base-path settings and pass matching `command`/`outDir` to `build`.
-- The sandbox has 512 MiB of memory, shared by the dev server and a build.
-  Keep type checking out of the build script (`npm run typecheck` is
-  separate; run it after you changed TypeScript).
+  base-path settings. Publishing always runs `npm run build` and serves
+  `dist/`, so the `build` script must write the static site there.
+- The build sandbox has 512 MiB of memory. Keep type checking out of the
+  build script (`npm run typecheck` is separate; run it after you changed
+  TypeScript).
 - Look: build UI from this skill's own catalog components (`Button`, `Input`,
   `Card`, `Dialog`, `Select`, `Tabs`, `Badge`, `Switch`, `Checkbox`, `Tooltip`,
   `DropdownMenu` — see `references/design-system.md` for the full catalog and
@@ -112,8 +121,8 @@ not only the last published build. Then continue with step 2. `{ denied, reason 
   different look when the user asks for one — and point them at the app's
   Theme tab for color/font/radius changes instead of hardcoding a look.
 - Keep dependencies few. Adding one means you must run `npm install` in the
-  app directory yourself (the dev server does not), and every dependency
-  costs build memory.
+  app directory yourself (the dev server does not; publishing installs on its
+  own), and every dependency costs build memory.
 - Never paste file contents into the chat; point at the file path.
 
 ## Template

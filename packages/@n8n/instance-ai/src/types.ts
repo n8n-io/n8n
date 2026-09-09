@@ -1052,7 +1052,21 @@ export interface InstanceAiAppService {
 		appId: string,
 		files: { source: Buffer; dist: Buffer },
 	): Promise<{ versionId: string; url: string }>;
+	/**
+	 * Builds the newest stored source (after snapshotting the thread's draft) in
+	 * n8n's own build sandbox and makes the result the served version.
+	 */
+	publish(appId: string): Promise<AppPublishResult>;
 }
+
+export type AppPublishResult =
+	| { versionId: string; url: string }
+	| {
+			error: true;
+			stage: 'sandbox' | 'snapshot' | 'restore' | 'install' | 'build' | 'check' | 'store';
+			message: string;
+			log?: string;
+	  };
 
 // ── Workflow template service ────────────────────────────────────────────────
 

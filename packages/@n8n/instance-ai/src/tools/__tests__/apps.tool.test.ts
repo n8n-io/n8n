@@ -3,7 +3,13 @@ import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiAppService, InstanceAiContext } from '../../types';
-import { buildCheckScript, createAppsTool, slugifyNamespace, tailLog } from '../apps.tool';
+import {
+	buildCheckScript,
+	createAppsTool,
+	handleBuild,
+	slugifyNamespace,
+	tailLog,
+} from '../apps.tool';
 
 vi.mock('@n8n/agents/sandbox', () => ({
 	getWorkspaceRoot: vi.fn(async () => await Promise.resolve('/home/daytona/workspace')),
@@ -34,6 +40,9 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 		storeVersion: vi
 			.fn()
 			.mockResolvedValue({ versionId: 'v-1', url: 'http://localhost:5678/apps/greeter/' }),
+		publish: vi
+			.fn()
+			.mockResolvedValue({ versionId: 'v-2', url: 'http://localhost:5678/apps/greeter/' }),
 	};
 	return {
 		userId: 'user-1',
@@ -77,10 +86,32 @@ function inputSchema(tool: unknown): z.ZodTypeAny {
 	return (tool as { inputSchema: z.ZodTypeAny }).inputSchema;
 }
 
-async function runBuild(context: InstanceAiContext, input: Record<string, unknown> = {}) {
+/** `build` is no tool action any more; n8n's publish pipeline calls `handleBuild` directly. */
+async function runBuild(
+	context: InstanceAiContext,
+	input: { command?: string; outDir?: string } = {},
+	abortSignal?: AbortSignal,
+) {
+	const result: unknown = await handleBuild(
+		context,
+		{ action: 'build', appId: 'app-1', ...input },
+		abortSignal,
+	);
+	return result as Record<string, unknown>;
+}
+
+function suspendCtx(suspendFn: Mock) {
+	return { resumeData: undefined, suspend: suspendFn } as never;
+}
+
+function resumeCtx(approved: boolean, scope?: 'once' | 'session') {
+	return { resumeData: { approved, ...(scope ? { scope } : {}) } } as never;
+}
+
+async function runPublish(context: InstanceAiContext, ctx: unknown) {
 	const tool = createAppsTool(context);
-	const parsed: unknown = inputSchema(tool).parse({ action: 'build', appId: 'app-1', ...input });
-	return await executeTool<Record<string, unknown>>(tool, parsed);
+	const parsed: unknown = inputSchema(tool).parse({ action: 'publish', appId: 'app-1' });
+	return await executeTool<Record<string, unknown>>(tool, parsed, ctx);
 }
 
 async function runRestore(context: InstanceAiContext) {
@@ -126,11 +157,10 @@ describe('apps tool', () => {
 			expect(parsed.success).toBe(false);
 		});
 
-		it('accepts a bare build call; defaults are applied by the handler', async () => {
-			const context = createMockContext();
-			await runBuild(context);
-			expect(commandsRun(context)[1]).toBe(`${BUILD_PREFIX} npm run build`);
-			expect(commandsRun(context)[2]).toContain("'dist/index.html'");
+		it('rejects the build action: publishing goes through publish', () => {
+			const tool = createAppsTool(createMockContext());
+			expect(inputSchema(tool).safeParse({ action: 'build', appId: 'app-1' }).success).toBe(false);
+			expect(inputSchema(tool).safeParse({ action: 'publish', appId: 'app-1' }).success).toBe(true);
 		});
 
 		it('points the agent at the app-builder skill', () => {
@@ -278,7 +308,7 @@ describe('apps tool', () => {
 				.mockResolvedValueOnce(fail('cp: cannot stat template'));
 
 			await expect(runCreate(context)).rejects.toThrow(
-				/id app-1, namespace "greeter".*cp: cannot stat template.*\/home\/daytona\/workspace\/apps\/greeter.*appId app-1/,
+				/id app-1, namespace "greeter".*cp: cannot stat template.*\/home\/daytona\/workspace\/apps\/greeter.*app id app-1/,
 			);
 			expect(context.appService?.create).toHaveBeenCalledTimes(1);
 		});
@@ -303,7 +333,77 @@ describe('apps tool', () => {
 		});
 	});
 
-	describe('build', () => {
+	describe('publish', () => {
+		it('suspends for confirmation first, naming the app and its URL', async () => {
+			const context = createMockContext();
+			const suspendFn = vi.fn();
+
+			await runPublish(context, suspendCtx(suspendFn));
+
+			expect(suspendFn).toHaveBeenCalledWith({
+				requestId: expect.any(String),
+				message: 'Publish Greeter to /apps/greeter/',
+				severity: 'info',
+			});
+			expect(context.appService?.publish).not.toHaveBeenCalled();
+		});
+
+		it('publishes through the app service once approved and returns the registry shape', async () => {
+			const context = createMockContext();
+
+			const result = await runPublish(context, resumeCtx(true));
+
+			expect(context.appService?.publish).toHaveBeenCalledWith('app-1');
+			expect(result).toEqual({
+				appId: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'proj-1',
+				versionId: 'v-2',
+				url: 'http://localhost:5678/apps/greeter/',
+			});
+		});
+
+		it('returns denied when the user declines', async () => {
+			const context = createMockContext();
+
+			const result = await runPublish(context, resumeCtx(false));
+
+			expect(result).toEqual({ denied: true, reason: 'user_declined' });
+			expect(context.appService?.publish).not.toHaveBeenCalled();
+		});
+
+		it('skips the confirmation when the thread granted always allow, and records a new grant', async () => {
+			const granted = createMockContext({ sessionApprovedToolKeys: new Set(['apps:publish']) });
+			const suspendFn = vi.fn();
+
+			await runPublish(granted, suspendCtx(suspendFn));
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(granted.appService?.publish).toHaveBeenCalledWith('app-1');
+
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({ grantSessionToolApproval });
+			await runPublish(context, resumeCtx(true, 'session'));
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('apps:publish');
+		});
+
+		it('passes a publish failure through unchanged', async () => {
+			const context = createMockContext();
+			const failure = { error: true, stage: 'build', message: 'vite failed', log: 'boom' };
+			(context.appService?.publish as Mock).mockResolvedValue(failure);
+
+			await expect(runPublish(context, resumeCtx(true))).resolves.toEqual(failure);
+		});
+	});
+
+	describe('handleBuild', () => {
+		it('applies the default command and outDir', async () => {
+			const context = createMockContext();
+			await runBuild(context);
+			expect(commandsRun(context)[1]).toBe(`${BUILD_PREFIX} npm run build`);
+			expect(commandsRun(context)[2]).toContain("'dist/index.html'");
+		});
+
 		it('runs install, build and check, stores both tarballs and returns the url', async () => {
 			const context = createMockContext();
 			readFileMock(context)
@@ -500,10 +600,8 @@ describe('apps tool', () => {
 		it('forwards the run abort signal to every sandbox command and tarball read', async () => {
 			const context = createMockContext();
 			const abortSignal = new AbortController().signal;
-			const tool = createAppsTool(context);
-			const parsed: unknown = inputSchema(tool).parse({ action: 'build', appId: 'app-1' });
 
-			await executeTool(tool, parsed, { abortSignal });
+			await runBuild(context, {}, abortSignal);
 
 			const commandCalls = executeCommandMock(context).mock.calls as Array<
 				[string, string[], { abortSignal?: AbortSignal }]

@@ -6,6 +6,7 @@ import { Service } from '@n8n/di';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AppVersionService } from './app-version.service';
+import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 import { deriveRoutesFromRouterSource } from './derive-routes';
 import { AppNotFoundError } from './errors/app-not-found.error';
@@ -16,6 +17,9 @@ import { IndexPageMustBeTopLevelError } from './errors/index-page-must-be-top-le
 import { PageNotFoundError } from './errors/page-not-found.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
 import { PageRepository } from './page.repository';
+
+/** What the REST API returns for an app: the entity plus its draft-versus-published state. */
+export type AppResponse = App & { hasUnpublishedChanges: boolean };
 
 @Service()
 export class AppsService {
@@ -43,6 +47,11 @@ export class AppsService {
 		const app = await this.appRepository.findOneBy({ id: appId });
 		if (!app) throw new AppNotFoundError(appId);
 		return app;
+	}
+
+	async toResponse(app: App): Promise<AppResponse> {
+		const hasUnpublishedChanges = await this.appVersionService.hasUnpublishedChanges(app);
+		return { ...app, hasUnpublishedChanges };
 	}
 
 	async updateApp(appId: string, dto: UpdateAppDto) {

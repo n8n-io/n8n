@@ -210,6 +210,18 @@ export class AppVersionService {
 		}
 	}
 
+	/**
+	 * True when a version newer than the published one exists: a per-turn snapshot
+	 * after the last publish, or any version while nothing is published yet.
+	 */
+	async hasUnpublishedChanges(app: App): Promise<boolean> {
+		const versions = await this.appVersionRepository.listByAppId(app.id);
+		const [newest] = versions;
+		if (!newest) return false;
+		const active = versions.find((version) => version.id === app.activeVersionId);
+		return !active || newest.createdAt > active.createdAt;
+	}
+
 	toResponse(version: AppVersion): AppVersionResponse {
 		return {
 			id: version.id,

@@ -5,9 +5,12 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { AppPublishService } from '@/modules/apps/app-publish.service';
 import type { App } from '@/modules/apps/app.entity';
 import type { AppsService } from '@/modules/apps/apps.service';
+import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 import { AppPreviewController } from '../app-preview.controller';
 import type { AppPreviewService } from '../app-preview.service';
@@ -19,11 +22,15 @@ describe('AppPreviewController', () => {
 	const appsService = mock<AppsService>();
 	const instanceAiService = mock<InstanceAiService>();
 	const memoryService = mock<InstanceAiMemoryService>();
+	const appPublishService = mock<AppPublishService>();
+	const instanceWriteAccess = mock<InstanceWriteAccessService>();
 	const controller = new AppPreviewController(
 		appPreviewService,
 		appsService,
 		instanceAiService,
 		memoryService,
+		appPublishService,
+		instanceWriteAccess,
 	);
 	const user = mock<User>({ id: 'user-1' });
 	const req = mock<AuthenticatedRequest<{ projectId: string }>>({
@@ -40,18 +47,99 @@ describe('AppPreviewController', () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
 		instanceAiService.getN8nSandboxConfig.mockResolvedValue(sandbox);
 		appPreviewService.ensure.mockResolvedValue({ status: 'starting' });
+		instanceWriteAccess.isReadOnly.mockReturnValue(false);
+		instanceAiService.getCachedWorkspace.mockReturnValue(undefined);
+		appPublishService.publish.mockResolvedValue({
+			versionId: 'v-2',
+			url: 'http://n8n/apps/greeter/',
+		});
 	});
 
+	const routeMetadata = (handler: string) =>
+		Container.get(ControllerRegistryMetadata)
+			.getControllerMetadata(AppPreviewController as never)
+			.routes.get(handler);
+
 	it('gates the route with a project-scoped app:read check', () => {
-		const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-			AppPreviewController as never,
-		);
-		const route = metadata.routes.get('ensure');
+		const route = routeMetadata('ensure');
 
 		expect(route?.method).toBe('post');
 		expect(route?.path).toBe('/:appId/preview');
 		expect(route?.skipAuth).toBeFalsy();
 		expect(route?.accessScope).toEqual({ scope: 'app:read', globalOnly: false });
+	});
+
+	describe('publish', () => {
+		it('gates the route with a project-scoped app:update check', () => {
+			const route = routeMetadata('publish');
+
+			expect(route?.method).toBe('post');
+			expect(route?.path).toBe('/:appId/publish');
+			expect(route?.skipAuth).toBeFalsy();
+			expect(route?.accessScope).toEqual({ scope: 'app:update', globalOnly: false });
+		});
+
+		it('publishes without a draft when no thread is given', async () => {
+			await expect(controller.publish(req, res, 'app-1', {})).resolves.toEqual({
+				versionId: 'v-2',
+				url: 'http://n8n/apps/greeter/',
+			});
+
+			expect(appPublishService.publish).toHaveBeenCalledWith('app-1', user, { draft: undefined });
+			expect(memoryService.checkThreadOwnership).not.toHaveBeenCalled();
+		});
+
+		it('hands the thread sandbox over as the draft when the caller owns the thread', async () => {
+			const workspace = mock<Workspace>();
+			instanceAiService.getCachedWorkspace.mockReturnValue(workspace);
+
+			await controller.publish(req, res, 'app-1', { threadId: 'thread-1' });
+
+			expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith('user-1', 'thread-1');
+			expect(instanceAiService.getCachedWorkspace).toHaveBeenCalledWith('thread-1');
+			expect(appPublishService.publish).toHaveBeenCalledWith('app-1', user, {
+				draft: { threadId: 'thread-1', workspace },
+			});
+		});
+
+		it('publishes without a draft when the thread has no live sandbox', async () => {
+			await controller.publish(req, res, 'app-1', { threadId: 'thread-1' });
+
+			expect(appPublishService.publish).toHaveBeenCalledWith('app-1', user, { draft: undefined });
+		});
+
+		it('returns a build failure as the payload, not as an HTTP error', async () => {
+			const failure = { error: true as const, stage: 'build' as const, message: 'boom', log: '' };
+			appPublishService.publish.mockResolvedValue(failure);
+
+			await expect(controller.publish(req, res, 'app-1', {})).resolves.toEqual(failure);
+		});
+
+		it.each(['other_user', 'not_found'] as const)(
+			'answers 404 when the thread is %s',
+			async (ownership) => {
+				memoryService.checkThreadOwnership.mockResolvedValue(ownership);
+
+				await expect(
+					controller.publish(req, res, 'app-1', { threadId: 'thread-1' }),
+				).rejects.toThrow(NotFoundError);
+				expect(appPublishService.publish).not.toHaveBeenCalled();
+			},
+		);
+
+		it('answers 404 when the app belongs to another project', async () => {
+			appsService.getApp.mockResolvedValue(mock<App>({ id: 'app-1', projectId: 'project-2' }));
+
+			await expect(controller.publish(req, res, 'app-1', {})).rejects.toThrow(NotFoundError);
+			expect(appPublishService.publish).not.toHaveBeenCalled();
+		});
+
+		it('answers 403 on a read-only instance', async () => {
+			instanceWriteAccess.isReadOnly.mockReturnValue(true);
+
+			await expect(controller.publish(req, res, 'app-1', {})).rejects.toThrow(ForbiddenError);
+			expect(appPublishService.publish).not.toHaveBeenCalled();
+		});
 	});
 
 	it('ensures the preview for the app in the thread', async () => {

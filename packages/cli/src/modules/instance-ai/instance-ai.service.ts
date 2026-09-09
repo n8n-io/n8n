@@ -1999,6 +1999,11 @@ export class InstanceAiService {
 		return entry?.workspace;
 	}
 
+	/** The thread's runtime workspace only if a run already created it; never creates one. */
+	getCachedWorkspace(threadId: string): Workspace | undefined {
+		return this.sandboxService.getCachedWorkspaceEntry(threadId)?.workspace;
+	}
+
 	/** Builder sub-agent sessions (`ia-builder:<threadId>:*`) live in the agents
 	 *  module's memory tables; instance-AI storage cleanup does not cover them.
 	 *  Best-effort: a failure here must never block thread deletion. */
@@ -2564,6 +2569,7 @@ export class InstanceAiService {
 			nodeUsageEnabled,
 			conversationHistory,
 			modelId,
+			getThreadWorkspace: () => this.getCachedWorkspace(threadId),
 		});
 
 		// Merge both local gateway and direct browser-use into a single

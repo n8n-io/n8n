@@ -118,7 +118,8 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		try {
-			return await this.appsService.createApp(req.params.projectId, dto);
+			const app = await this.appsService.createApp(req.params.projectId, dto);
+			return await this.appsService.toResponse(app);
 		} catch (e: unknown) {
 			this.handleAppError(e);
 		}
@@ -127,7 +128,8 @@ export class AppsController {
 	@Get('/')
 	@ProjectScope('app:listProject')
 	async listApps(req: AuthenticatedRequest<{ projectId: string }>, _res: Response) {
-		return await this.appsService.listApps(req.params.projectId);
+		const apps = await this.appsService.listApps(req.params.projectId);
+		return await Promise.all(apps.map(async (app) => await this.appsService.toResponse(app)));
 	}
 
 	/** Workflows a page can set as its `dataWorkflowId` — same trigger-compatible list agents pick tools from. */
@@ -144,7 +146,7 @@ export class AppsController {
 		_res: Response,
 		@Param('appId') appId: string,
 	) {
-		return await this.appsService.getApp(appId);
+		return await this.appsService.toResponse(await this.appsService.getApp(appId));
 	}
 
 	@Patch('/:appId')
@@ -157,7 +159,7 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		try {
-			return await this.appsService.updateApp(appId, dto);
+			return await this.appsService.toResponse(await this.appsService.updateApp(appId, dto));
 		} catch (e: unknown) {
 			this.handleAppError(e);
 		}
@@ -181,7 +183,7 @@ export class AppsController {
 		await this.appsService.updateApp(appId, { theme: dto.theme });
 		const result = await this.appThemeBuildService.applyTheme(appId, dto.theme, req.user);
 		if ('error' in result) throw new BadRequestError(result.message);
-		return await this.appsService.getApp(appId);
+		return await this.appsService.toResponse(await this.appsService.getApp(appId));
 	}
 
 	@Delete('/:appId')

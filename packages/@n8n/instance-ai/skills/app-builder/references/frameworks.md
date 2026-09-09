@@ -1,14 +1,15 @@
 # Static export and base path per framework
 
-`apps(action="build")` runs the build command with `APP_BASE=/apps/<namespace>/`
-(trailing slash) in the app directory and then packages `outDir`. The output
-must be a static site with `index.html` at the root of `outDir`. n8n serves
-unknown paths with `index.html` (SPA fallback), so client-side routing works.
+Publishing runs `npm run build` with `APP_BASE=/apps/<namespace>/` (trailing
+slash) in the app directory and then packages `dist/`. The output must be a
+static site with `index.html` at the root of `dist/`. n8n serves unknown paths
+with `index.html` (SPA fallback), so client-side routing works.
 
-Pass `command` and `outDir` to `build` when they differ from the defaults
-(`npm run build`, `dist`). The command runs with `node_modules/.bin` on `PATH`,
-so `vite build` works without `npx`. Most frameworks want the base without the
-trailing slash; strip it where noted.
+The `build` script in `package.json` must write to `dist/`; when a framework
+writes elsewhere, move the output there at the end of the script (see below).
+The script runs with `node_modules/.bin` on `PATH`, so `vite build` works
+without `npx`. Most frameworks want the base without the trailing slash; strip
+it where noted.
 
 ## Memory: 512 MiB for every framework
 
@@ -69,8 +70,8 @@ export default defineNuxtConfig({
 });
 ```
 
-Build: `command: "npx nuxi generate"`, `outDir: ".output/public"`. Do not add
-`server/` routes; the check rejects `.output/server`.
+`"build": "nuxi generate && rm -rf dist && cp -r .output/public dist"`. Do not
+add `server/` routes; the check rejects `.output/server`.
 
 ## SvelteKit
 
@@ -87,7 +88,8 @@ export default {
 
 Set `export const ssr = false;` in `src/routes/+layout.ts`. The `fallback`
 option writes the SPA shell; do not add `prerender = true`. Links use `{base}`
-from `$app/paths`. `outDir`: `build`.
+from `$app/paths`. Point the adapter at `dist`: `adapter({ pages: 'dist',
+assets: 'dist', fallback: 'index.html' })`.
 
 ## Next.js
 
@@ -104,7 +106,7 @@ module.exports = {
 ```
 
 No API routes, no server components that fetch at request time, no
-middleware. Build: `command: "npx next build"`, `outDir: "out"`.
+middleware. `"build": "next build && rm -rf dist && mv out dist"`.
 
 ## Astro
 
@@ -116,11 +118,11 @@ export default defineConfig({
 });
 ```
 
-Links: `import.meta.env.BASE_URL`. `outDir`: `dist`.
+Links: `import.meta.env.BASE_URL`. Astro writes `dist/` by default.
 
 ## Plain HTML
 
 No bundler: `template: "none"`, put the files in `public/` and copy them on
-build: `command: "rm -rf dist && cp -r public dist"`. Use relative URLs
-(`./style.css`) so the base path does not matter. Keep sources out of
-`outDir`; the source tarball excludes it. Uses no build memory at all.
+build: `"build": "rm -rf dist && cp -r public dist"` in `package.json`. Use
+relative URLs (`./style.css`) so the base path does not matter. Keep sources
+out of `dist/`; the source tarball excludes it. Uses no build memory at all.

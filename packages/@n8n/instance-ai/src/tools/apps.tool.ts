@@ -1,11 +1,16 @@
 /**
  * Apps tool — create an app, restore its stored source into a fresh sandbox,
- * and build the current workspace sources into a served version. The agent
- * edits files with the workspace tool in between.
+ * and publish it as a served version once the user confirms. The agent edits
+ * files with the workspace tool in between; the live preview follows.
  */
 import { Tool } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import {
+	instanceAiApprovalResumeSchema,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { nanoid } from 'nanoid';
 import { posix } from 'node:path';
 import { z } from 'zod';
 
@@ -20,9 +25,9 @@ export { APPS_TOOL_ID };
 
 /**
  * The slice of `InstanceAiContext` the create/build/restore handlers actually
- * touch. Narrow and exported so a headless caller (e.g. the Theme tab's
- * rebuild pipeline) can reuse `handleBuild`/`handleRestore` without
- * constructing — or faking — a full `InstanceAiContext`.
+ * touch. Narrow and exported so a headless caller (n8n's publish and theme
+ * pipelines) can reuse `handleBuild`/`handleRestore` without constructing — or
+ * faking — a full `InstanceAiContext`.
  */
 export type AppSandboxContext = Pick<
 	InstanceAiContext,
@@ -66,17 +71,9 @@ const createSchema = z.object({
 		.describe('Starter files to copy (default "vue"). "none" leaves the app directory empty.'),
 });
 
-const buildSchema = z.object({
-	action: z.literal('build'),
+const publishSchema = z.object({
+	action: z.literal('publish'),
 	appId: z.string(),
-	command: z
-		.string()
-		.optional()
-		.describe('Build command run in the app directory (default "npm run build")'),
-	outDir: z
-		.string()
-		.optional()
-		.describe('Build output directory relative to the app (default "dist")'),
 });
 
 const restoreSchema = z.object({
@@ -96,10 +93,36 @@ const addComponentSchema = z.object({
 });
 
 type CreateInput = z.infer<typeof createSchema>;
-type BuildInput = z.infer<typeof buildSchema>;
+type PublishInput = z.infer<typeof publishSchema>;
 type RestoreInput = z.infer<typeof restoreSchema>;
 type AddComponentInput = z.infer<typeof addComponentSchema>;
-type AppsInput = CreateInput | BuildInput | RestoreInput | AddComponentInput;
+type AppsInput = CreateInput | PublishInput | RestoreInput | AddComponentInput;
+
+/** Not a tool action: n8n's publish pipeline calls `handleBuild` directly. */
+export interface BuildInput {
+	action: 'build';
+	appId: string;
+	/** Build command run in the app directory (default "npm run build"). */
+	command?: string;
+	/** Build output directory relative to the app (default "dist"). */
+	outDir?: string;
+}
+
+const confirmationSuspendSchema = z.object({
+	requestId: z.string(),
+	message: z.string(),
+	severity: instanceAiConfirmationSeveritySchema,
+});
+
+type ResumeData = z.infer<typeof instanceAiApprovalResumeSchema>;
+
+interface ConfirmationToolContext {
+	resumeData: ResumeData | undefined;
+	suspend: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
+}
+
+/** Thread-level "always allow" grant; the editor derives the same `<tool>:<action>` key. */
+const PUBLISH_SESSION_GRANT_KEY = `${APPS_TOOL_ID}:publish`;
 
 // Defaults live here, not in the schema: the flattened union schema the model
 // sees wraps every field in `.optional()`, which skips Zod defaults at parse time.
@@ -415,9 +438,52 @@ async function handleCreate(
 	} catch (error) {
 		throw new Error(
 			`App "${input.name}" is registered (id ${created.app.id}, namespace "${namespace}") but scaffolding failed: ` +
-				`${getErrorMessage(error)} Write the files by hand under ${workspacePath}, then call build with appId ${created.app.id}.`,
+				`${getErrorMessage(error)} Write the files by hand under ${workspacePath} (app id ${created.app.id}).`,
 		);
 	}
+}
+
+/**
+ * Publishing makes the draft public at /apps/<namespace>/, so the user
+ * confirms first (or granted "always allow" for this thread). The build itself
+ * runs in n8n's own sandbox, after the thread's current edits are snapshotted.
+ */
+async function handlePublish(
+	context: InstanceAiContext,
+	input: PublishInput,
+	ctx: ConfirmationToolContext,
+) {
+	const appService = requireAppService(context);
+	const app = await appService.get(input.appId);
+	const resumeData = ctx.resumeData;
+
+	const needsApproval = context.sessionApprovedToolKeys?.has(PUBLISH_SESSION_GRANT_KEY) !== true;
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		return await ctx.suspend({
+			requestId: nanoid(),
+			message: `Publish ${app.name} to /${APPS_DIR}/${app.namespace}/`,
+			severity: 'info' as const,
+		});
+	}
+
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { denied: true, reason: 'user_declined' };
+	}
+
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(PUBLISH_SESSION_GRANT_KEY);
+	}
+
+	const published = await appService.publish(app.id);
+	if ('error' in published) return published;
+	return {
+		appId: app.id,
+		name: app.name,
+		namespace: app.namespace,
+		projectId: app.projectId,
+		versionId: published.versionId,
+		url: published.url,
+	};
 }
 
 export async function handleBuild(
@@ -642,7 +708,12 @@ function requireAppService(
 
 export function createAppsTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(
-		z.discriminatedUnion('action', [createSchema, buildSchema, restoreSchema, addComponentSchema]),
+		z.discriminatedUnion('action', [
+			createSchema,
+			publishSchema,
+			restoreSchema,
+			addComponentSchema,
+		]),
 	);
 
 	return new Tool(APPS_TOOL_ID)
@@ -650,19 +721,21 @@ export function createAppsTool(context: InstanceAiContext) {
 			'Create, restore and publish user-facing web apps served by n8n at /apps/<namespace>/. ' +
 				'Load the `app-builder` skill via `load_skill` before calling this tool. ' +
 				'`create` registers the app, copies a starter template into apps/<namespace>/ in the workspace and installs its dependencies; ' +
-				'edit the files there and the live preview updates by itself. Never call `build` while iterating. ' +
-				'Call `build` only when the user asks to publish, deploy or share the app: it compiles the files, stores a version and updates /apps/<namespace>/. ' +
-				'`build` returns the published `url` on success, or `{ error, stage, message, log }` to fix and retry. ' +
+				'edit the files there and the live preview updates by itself. Never build to check your work. ' +
+				'Call `publish` only when the user asks to publish, deploy or share the app: the user confirms, then n8n builds the current source, stores a version and updates /apps/<namespace>/. ' +
+				'`publish` returns the published `url` on success, `{ denied }` when the user declines, or `{ error, stage, message, log }` to fix and retry. ' +
 				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet. ' +
 				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too.",
 		)
 		.input(inputSchema)
+		.suspend(confirmationSuspendSchema)
+		.resume(instanceAiApprovalResumeSchema)
 		.handler(async (input: AppsInput, ctx) => {
 			switch (input.action) {
 				case 'create':
 					return await handleCreate(context, input, ctx.abortSignal);
-				case 'build':
-					return await handleBuild(context, input, ctx.abortSignal);
+				case 'publish':
+					return await handlePublish(context, input, ctx);
 				case 'restore':
 					return await handleRestore(context, input, ctx.abortSignal);
 				case 'add-component':

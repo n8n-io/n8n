@@ -98,6 +98,9 @@ export class AppThemeBuildService {
 			create() {
 				throw new UnexpectedError('create is not supported by the theme rebuild pipeline');
 			},
+			publish() {
+				throw new UnexpectedError('publish is not supported by the theme rebuild pipeline');
+			},
 			async get(appId) {
 				const app = await appsService.getApp(appId);
 				return { id: app.id, name: app.name, namespace: app.namespace, projectId: app.projectId };
