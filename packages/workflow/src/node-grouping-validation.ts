@@ -68,8 +68,15 @@ export function collectSubNodeNames(
 	const subNodeNames = new Set<string>();
 
 	for (const [nodeName, connectionsByType] of Object.entries(connectionsBySourceNode ?? {})) {
-		const types = Object.keys(connectionsByType);
-		if (types.length > 0 && types.every((type) => type !== NodeConnectionTypes.Main)) {
+		// An empty slot (`ai_tool: [[]]`) is not a connection, so it must not make a sub-node.
+		const connectedTypes = Object.entries(connectionsByType)
+			.filter(([, outputs]) => outputs.some((targets) => (targets?.length ?? 0) > 0))
+			.map(([type]) => type);
+
+		if (
+			connectedTypes.length > 0 &&
+			connectedTypes.every((type) => type !== NodeConnectionTypes.Main)
+		) {
 			subNodeNames.add(nodeName);
 		}
 	}

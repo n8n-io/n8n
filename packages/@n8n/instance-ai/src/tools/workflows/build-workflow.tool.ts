@@ -504,6 +504,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		errors: formattedErrors,
 		remediation,
 		warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
+		...(grouping ? { grouping } : {}),
 	};
 }
 

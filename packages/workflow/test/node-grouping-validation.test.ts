@@ -1226,4 +1226,14 @@ describe('collectSubNodeNames', () => {
 		expect([...collectSubNodeNames(connections)]).toEqual(['Model']);
 		expect(collectSubNodeNames(undefined).size).toBe(0);
 	});
+
+	it('does not treat a node with only empty non-main slots as a sub-node', () => {
+		const connections: IConnections = {
+			'Loose Tool': { ai_tool: [[]] },
+			'Wired Tool': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+			Agent: { main: [[]], ai_tool: [[{ node: 'Other Agent', type: 'ai_tool', index: 0 }]] },
+		};
+
+		expect([...collectSubNodeNames(connections)].sort()).toEqual(['Agent', 'Wired Tool']);
+	});
 });
