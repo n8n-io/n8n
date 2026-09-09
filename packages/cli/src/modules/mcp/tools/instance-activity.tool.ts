@@ -60,6 +60,7 @@ const listInputSchema = {
 		.describe('Page backwards — only entries older than this id.'),
 	projectId: z
 		.string()
+		.min(1)
 		.optional()
 		.describe(
 			'Read one project instead of every project you can see. Obtain it from search_projects. Read-only, so it narrows what you can already see rather than widening it.',
@@ -73,7 +74,14 @@ const listOutputSchema = {
 	hasMore: z
 		.boolean()
 		.describe(
-			'The log holds more below this page. Page back by calling again with beforeId set to the lowest id returned. A short or empty page can still have more below it, so do not read one as "nothing has happened" while this is true.',
+			'The log holds more below this page. A short or empty page can still have more below it, so do not read one as "nothing has happened" while this is true.',
+		),
+	nextBeforeId: z
+		.number()
+		.int()
+		.optional()
+		.describe(
+			'Pass this back as beforeId to read the next page. Present whenever hasMore is true, including when this page returned no entries.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -81,6 +89,7 @@ const expandInputSchema = {
 	id: z.number().int().describe('The entry id, as returned by get_instance_activity.'),
 	projectId: z
 		.string()
+		.min(1)
 		.optional()
 		.describe('Restrict the lookup to one project. Obtain it from search_projects.'),
 } satisfies z.ZodRawShape;
@@ -114,15 +123,16 @@ type ListParams = {
 type ExpandParams = { id: number; projectId?: string };
 
 /**
- * `credentialsVisible` mirrors the caller's `credential:read` grant: a grant that cannot list
- * credentials must not read their history either.
+ * `credentialGranted` reports whether the caller's token carries `credential:read`. The reader
+ * treats it as one half of the gate and checks the caller's real access for the other half, so a
+ * token scope alone never opens credential history.
  */
 const buildScope = (
 	projectId: string | undefined,
-	credentialsVisible: boolean,
+	credentialGranted: boolean,
 ): InstanceContextScope => ({
 	surface: 'mcp',
-	credentialsVisible,
+	credentialGranted,
 	...(projectId !== undefined ? { projectId } : {}),
 });
 
@@ -130,7 +140,7 @@ export const createGetInstanceActivityTool = (
 	user: User,
 	instanceContext: InstanceContextService,
 	telemetry: Telemetry,
-	options: { credentialsVisible: boolean },
+	options: { credentialGranted: boolean },
 ): ToolDefinition<typeof listInputSchema> => ({
 	name: GET_INSTANCE_ACTIVITY_TOOL_NAME,
 	config: {
@@ -141,7 +151,7 @@ export const createGetInstanceActivityTool = (
 			'answer is usually the most recent thing here. Returns log entries, not live records — ' +
 			'each entry carries the id to pass to search_workflows, get_workflow_details or ' +
 			'get_workflow_execution. An entry may name a resource that has since been deleted. ' +
-			'Check `hasMore` before concluding a short page is the whole story.',
+			'Check `hasMore` before concluding a short page is the whole story, and page with `nextBeforeId`.',
 		inputSchema: listInputSchema,
 		outputSchema: listOutputSchema,
 		annotations: {
@@ -160,16 +170,23 @@ export const createGetInstanceActivityTool = (
 		};
 
 		try {
-			const { entries, hasMore } = await instanceContext.listPage({
+			// Clamped as well as schema-bounded, as `list_workflow_tags` and `search_workflows` do:
+			// this figure sizes a database read, so it should not depend on validation upstream.
+			const { entries, hasMore, nextBeforeId } = await instanceContext.listPage({
 				user,
-				scope: buildScope(projectId, options.credentialsVisible),
-				limit: Math.min(limit ?? DEFAULT_LIMIT, MAX_RESULTS),
+				scope: buildScope(projectId, options.credentialGranted),
+				limit: Math.min(Math.max(1, limit ?? DEFAULT_LIMIT), MAX_RESULTS),
 				...(category !== undefined ? { category } : {}),
 				...(resourceId !== undefined ? { resourceId } : {}),
 				...(beforeId !== undefined ? { beforeId } : {}),
 			});
 
-			const payload = { entries, count: entries.length, hasMore };
+			const payload = {
+				entries,
+				count: entries.length,
+				hasMore,
+				...(nextBeforeId !== undefined ? { nextBeforeId } : {}),
+			};
 
 			telemetryPayload.results = { success: true, data: { count: payload.count, hasMore } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -193,7 +210,7 @@ export const createExpandInstanceActivityTool = (
 	user: User,
 	instanceContext: InstanceContextService,
 	telemetry: Telemetry,
-	options: { credentialsVisible: boolean },
+	options: { credentialGranted: boolean },
 ): ToolDefinition<typeof expandInputSchema> => ({
 	name: EXPAND_INSTANCE_ACTIVITY_TOOL_NAME,
 	config: {
@@ -222,7 +239,7 @@ export const createExpandInstanceActivityTool = (
 			const expansion = await instanceContext.expand({
 				id,
 				user,
-				scope: buildScope(projectId, options.credentialsVisible),
+				scope: buildScope(projectId, options.credentialGranted),
 			});
 
 			// A pruned id and one the caller may not see answer the same way, so the tool cannot be

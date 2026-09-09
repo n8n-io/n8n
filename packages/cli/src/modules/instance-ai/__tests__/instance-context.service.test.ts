@@ -42,7 +42,7 @@ const BOUND: InstanceContextScope = { surface: 'conversation', projectId: PROJEC
 const MCP_BOUND: InstanceContextScope = {
 	surface: 'mcp',
 	projectId: PROJECT_ID,
-	credentialsVisible: true,
+	credentialGranted: true,
 };
 
 function entry(overrides: Partial<ActivityEvent> = {}): ActivityEvent {
@@ -619,9 +619,9 @@ describe('InstanceContextService', () => {
 	 * under the visibility rules the rest of that surface already enforces.
 	 */
 	describe('the MCP surface', () => {
-		const unbound = (credentialsVisible = true): InstanceContextScope => ({
+		const unbound = (credentialGranted = true): InstanceContextScope => ({
 			surface: 'mcp',
-			credentialsVisible,
+			credentialGranted,
 		});
 
 		it('reads every project the caller can see, plus their personal one', async () => {
@@ -654,17 +654,86 @@ describe('InstanceContextService', () => {
 			);
 		});
 
-		/** The scoped query already returns personal projects for them, so the extra lookup is waste. */
-		it('skips the personal-project lookup for a global reader', async () => {
+		/**
+		 * Enumerating would bind one parameter per project, and an instance holds one per user, so
+		 * a whole-instance reader asks for no project predicate at all.
+		 */
+		it('reads the whole instance without enumerating projects for a global reader', async () => {
 			const service = serviceWith();
-			projectService.getProjectIdsWithScope.mockResolvedValue(['team-a', PERSONAL_PROJECT_ID]);
 
 			await service.list({ user: GLOBAL_READER, scope: unbound(), limit: 5 });
 
+			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
 			expect(projectRepository.getPersonalProjectForUser).not.toHaveBeenCalled();
 			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
-				expect.objectContaining({ projectIds: ['team-a', PERSONAL_PROJECT_ID] }),
+				expect.objectContaining({ projectIds: 'all-projects' }),
 			);
+		});
+
+		/**
+		 * The token scope narrows a token; it does not attest a permission. A custom project role
+		 * may hold `workflow:read` without `credential:read`, and its holder must not read
+		 * credential history just because their token asked for the scope.
+		 */
+		it('reads only workflow entries when the grant is not backed by the permission', async () => {
+			const service = serviceWith();
+			projectService.getProjectIdsWithScope.mockImplementation(async (_user, scopes) =>
+				scopes.includes('credential:read') ? [] : ['team-a'],
+			);
+
+			await service.list({ user: USER, scope: unbound(true), limit: 5 });
+
+			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
+				expect.objectContaining({ category: 'workflow' }),
+			);
+		});
+
+		it('drops a credential entry from a project whose credentials the caller cannot read', async () => {
+			const service = serviceWith();
+			projectService.getProjectIdsWithScope.mockImplementation(async (_user, scopes) =>
+				scopes.includes('credential:read') ? ['team-a'] : ['team-a', 'team-b'],
+			);
+			activityEventRepository.findFeed.mockResolvedValue([
+				entry({ id: 2, category: 'credential', resourceType: 'credential', projectId: 'team-a' }),
+				entry({ id: 1, category: 'credential', resourceType: 'credential', projectId: 'team-b' }),
+			]);
+
+			const entries = await service.list({ user: USER, scope: unbound(true), limit: 5 });
+
+			expect(entries.map((e) => e.id)).toEqual([2]);
+		});
+
+		/**
+		 * The case the cursor exists for: the read filled, every row was withheld, so the page shows
+		 * nothing and still has to be pageable. A cursor drawn from the visible rows would be absent
+		 * exactly here, leaving the caller told that more exists with no way to reach it.
+		 */
+		it('returns a cursor even when every row on the page was withheld', async () => {
+			const service = serviceWith();
+			// A full read: limit 2 over-fetches to 8, and all 8 come back withheld.
+			activityEventRepository.findFeed.mockResolvedValue(
+				Array.from({ length: 8 }, (_, index) => entry({ id: 20 - index, resourceId: 'wf-hidden' })),
+			);
+			workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(
+				new Map([['wf-hidden', false]]),
+			);
+
+			const page = await service.listPage({ user: USER, scope: MCP_BOUND, limit: 2 });
+
+			expect(page.entries).toEqual([]);
+			expect(page.hasMore).toBe(true);
+			// The lowest id *read*, not the lowest shown — nothing was shown.
+			expect(page.nextBeforeId).toBe(13);
+		});
+
+		it('reports no more below when the read did not fill', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue([entry({ id: 3 })]);
+
+			const page = await service.listPage({ user: USER, scope: MCP_BOUND, limit: 2 });
+
+			expect(page.hasMore).toBe(false);
+			expect(page.nextBeforeId).toBeUndefined();
 		});
 
 		it('reads nothing from a named project the caller cannot open', async () => {
@@ -746,7 +815,7 @@ describe('InstanceContextService', () => {
 
 			await service.list({
 				user: USER,
-				scope: { ...MCP_BOUND, credentialsVisible: false },
+				scope: { ...MCP_BOUND, credentialGranted: false },
 				limit: 5,
 			});
 
@@ -760,7 +829,7 @@ describe('InstanceContextService', () => {
 
 			const entries = await service.list({
 				user: USER,
-				scope: { ...MCP_BOUND, credentialsVisible: false },
+				scope: { ...MCP_BOUND, credentialGranted: false },
 				limit: 5,
 				category: 'credential',
 			});
@@ -778,7 +847,7 @@ describe('InstanceContextService', () => {
 			const expansion = await service.expand({
 				id: 9,
 				user: USER,
-				scope: { ...MCP_BOUND, credentialsVisible: false },
+				scope: { ...MCP_BOUND, credentialGranted: false },
 			});
 
 			expect(expansion).toBeNull();

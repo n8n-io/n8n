@@ -23,7 +23,7 @@ const entry = {
 	byCurrentUser: true,
 };
 
-function harness(credentialsVisible = true) {
+function harness(credentialGranted = true) {
 	const instanceContext = mock<InstanceContextService>();
 	const telemetry = mock<Telemetry>();
 
@@ -33,9 +33,9 @@ function harness(credentialsVisible = true) {
 	return {
 		instanceContext,
 		telemetry,
-		list: createGetInstanceActivityTool(user, instanceContext, telemetry, { credentialsVisible }),
+		list: createGetInstanceActivityTool(user, instanceContext, telemetry, { credentialGranted }),
 		expand: createExpandInstanceActivityTool(user, instanceContext, telemetry, {
-			credentialsVisible,
+			credentialGranted,
 		}),
 	};
 }
@@ -52,7 +52,7 @@ describe('get_instance_activity', () => {
 
 		expect(instanceContext.listPage).toHaveBeenCalledWith(
 			expect.objectContaining({
-				scope: { surface: 'mcp', credentialsVisible: true },
+				scope: { surface: 'mcp', credentialGranted: true },
 			}),
 		);
 	});
@@ -64,7 +64,7 @@ describe('get_instance_activity', () => {
 
 		expect(instanceContext.listPage).toHaveBeenCalledWith(
 			expect.objectContaining({
-				scope: expect.objectContaining({ credentialsVisible: false }),
+				scope: expect.objectContaining({ credentialGranted: false }),
 			}),
 		);
 	});
@@ -76,7 +76,7 @@ describe('get_instance_activity', () => {
 
 		expect(instanceContext.listPage).toHaveBeenCalledWith(
 			expect.objectContaining({
-				scope: { surface: 'mcp', credentialsVisible: true, projectId: 'project-1' },
+				scope: { surface: 'mcp', credentialGranted: true, projectId: 'project-1' },
 			}),
 		);
 	});
@@ -193,7 +193,7 @@ describe('expand_instance_activity', () => {
 		expect(instanceContext.expand).toHaveBeenCalledWith(
 			expect.objectContaining({
 				id: 7,
-				scope: { surface: 'mcp', credentialsVisible: false },
+				scope: { surface: 'mcp', credentialGranted: false },
 			}),
 		);
 	});

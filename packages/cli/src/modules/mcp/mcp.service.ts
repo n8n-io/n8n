@@ -584,30 +584,36 @@ export class McpService {
 			registerIfAllowed(listTagsTool);
 		}
 
-		// Instance-context reads. Resolved lazily rather than injected: the reader belongs to the
-		// `instance-ai` module, and an instance with the surface off should not construct it at all.
-		if (featureFlags.instanceContextEnabled && this.moduleRegistry.isActive('instance-ai')) {
-			const { InstanceContextService } = await import(
-				'@/modules/instance-ai/instance-context.service.js'
-			);
+		if (featureFlags.instanceContextEnabled) {
+			// Whether the *token* carries `credential:read`. It narrows a token rather than proving a
+			// permission, so the reader treats it as one half of the credential gate and resolves the
+			// caller's real access for the other half.
+			const credentialGranted = allowedToolNames?.has('list_credentials') ?? true;
+
+			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
+			// only when that module is active — an instance with the surface off never builds it.
+			if (this.moduleRegistry.isActive('instance-ai')) {
+				const { InstanceContextService } = await import(
+					'@/modules/instance-ai/instance-context.service.js'
+				);
+				const instanceContext = Container.get(InstanceContextService);
+
+				registerIfAllowed(
+					createGetInstanceActivityTool(user, instanceContext, this.telemetry, {
+						credentialGranted,
+					}),
+				);
+				registerIfAllowed(
+					createExpandInstanceActivityTool(user, instanceContext, this.telemetry, {
+						credentialGranted,
+					}),
+				);
+			}
+
+			// Node usage reads the dependency index, which is not part of any module and is always
+			// available, so it is not gated on `instance-ai` the way the activity tools are.
 			const { WorkflowDependencyQueryService } = await import(
 				'@/modules/workflow-index/workflow-dependency-query.service.js'
-			);
-			const instanceContext = Container.get(InstanceContextService);
-
-			// A grant that cannot list credentials must not read their history either. `undefined`
-			// is a non-scope-bearing credential (API key), which sees everything.
-			const credentialsVisible = allowedToolNames?.has('list_credentials') ?? true;
-
-			registerIfAllowed(
-				createGetInstanceActivityTool(user, instanceContext, this.telemetry, {
-					credentialsVisible,
-				}),
-			);
-			registerIfAllowed(
-				createExpandInstanceActivityTool(user, instanceContext, this.telemetry, {
-					credentialsVisible,
-				}),
 			);
 			registerIfAllowed(
 				createGetNodeUsageTool(user, Container.get(WorkflowDependencyQueryService), this.telemetry),

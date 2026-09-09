@@ -296,9 +296,9 @@ describe('InstanceContextService', () => {
 	 * would report the filter working whatever that column actually holds.
 	 */
 	describe('the MCP surface', () => {
-		const mcp = (credentialsVisible = true): InstanceContextScope => ({
+		const mcp = (credentialGranted = true): InstanceContextScope => ({
 			surface: 'mcp',
-			credentialsVisible,
+			credentialGranted,
 		});
 
 		it('reads the projects the caller can open and not the ones they cannot', async () => {
@@ -354,6 +354,27 @@ describe('InstanceContextService', () => {
 			const entries = await service.list({ user, scope: mcp(), limit: 20 });
 
 			expect(entries.map((entry) => entry.resourceId)).toEqual([visible.id]);
+		});
+
+		/**
+		 * Every other MCP read refuses an archived workflow before it looks at the setting, so the
+		 * feed must not be the one door that reports its history.
+		 */
+		it('treats an archived workflow as withheld even when it is marked available', async () => {
+			const archived = await createWorkflow(
+				{ name: 'Archived', isArchived: true, settings: { availableInMCP: true } },
+				project,
+			);
+			await record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: project.id,
+				resourceType: 'workflow',
+				resourceId: archived.id,
+				resourceName: archived.name,
+			});
+
+			expect(await service.list({ user, scope: mcp(), limit: 20 })).toEqual([]);
 		});
 
 		/** A deleted workflow cannot be withheld from anything, and the deletion is the point. */

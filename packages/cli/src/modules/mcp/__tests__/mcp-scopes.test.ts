@@ -214,14 +214,22 @@ describe('McpService scope enforcement', () => {
 		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
 	});
 
-	it('registers none of them with the flag on but the module inactive', async () => {
+	/**
+	 * Node usage reads the dependency index, which belongs to no module, so it does not follow the
+	 * activity tools off the instance when the AI assistant is disabled.
+	 */
+	it('keeps node usage but drops the activity tools when the module is inactive', async () => {
+		mockInstance(WorkflowDependencyQueryService);
+
 		const server = await buildService({ instanceAiActive: false }).getServer(
 			user,
 			mcpFeatureFlags({ instanceContextEnabled: true }),
 		);
 
 		const registered = getRegisteredToolNames(server);
-		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
+		expect(registered).toContain('get_node_usage');
+		expect(registered).not.toContain('get_instance_activity');
+		expect(registered).not.toContain('expand_instance_activity');
 	});
 
 	/** They ride on `workflow:read`, so a grant without it must not reach them. */

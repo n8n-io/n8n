@@ -2,6 +2,12 @@
  * Which node types this instance actually uses, read from the dependency index rather than by
  * fetching workflows. Answers "how does this instance normally do X" for a fraction of the tokens
  * a sample of real workflows would cost.
+ *
+ * Unlike the activity tools beside it, this does not hide workflows withheld from MCP. The line
+ * this surface draws is that a workflow's existence and name are already visible — `search_workflows`
+ * lists withheld ones and simply reports the flag — while what has *happened* to one is not, which
+ * is why the activity feed and the execution search both filter. Names and counts sit on the
+ * visible side of that line.
  */
 import type { User } from '@n8n/db';
 import z from 'zod';
@@ -27,6 +33,7 @@ const inputSchema = {
 		),
 	projectId: z
 		.string()
+		.min(1)
 		.optional()
 		.describe(
 			'Read one project instead of every workflow you can see. Obtain it from search_projects.',
@@ -110,7 +117,7 @@ export const createGetNodeUsageTool = (
 			const usage = await workflowDependencyQueryService.getNodeTypeUsage(user, {
 				...(nodeType !== undefined ? { nodeType } : {}),
 				...(projectId !== undefined ? { projectId } : {}),
-				...(limit !== undefined ? { limit: Math.min(limit, MAX_RESULTS) } : {}),
+				...(limit !== undefined ? { limit: Math.min(Math.max(1, limit), MAX_RESULTS) } : {}),
 			});
 
 			const payload = {
