@@ -286,6 +286,22 @@ describe('AppsService bindings', () => {
 			]);
 		});
 
+		it('reads the declared fields of a trigger the editor saved without inputSource', async () => {
+			app.bindings = [binding()];
+			workflowLoader.loadWorkflow.mockResolvedValue(
+				workflow({
+					nodes: [
+						triggerNode({ workflowInputs: { values: [{ name: 'message', type: 'string' }] } }),
+					],
+				}),
+			);
+
+			const result = await service.describeBindings(app);
+
+			expect(result.bindings[0].input).toEqual([{ name: 'message', type: 'string' }]);
+			expect(result.warnings).toEqual([]);
+		});
+
 		it('reports passthrough triggers', async () => {
 			app.bindings = [binding()];
 			workflowLoader.loadWorkflow.mockResolvedValue(

@@ -49,7 +49,10 @@ const tgz = (files: Record<string, string>) => {
 	return gzipSync(Buffer.concat([...blocks, Buffer.alloc(1024)]));
 };
 
-/** "When Executed by Another Workflow" (message, count) → Set node that echoes both. */
+/**
+ * "When Executed by Another Workflow" (message, count) → Set node that echoes both.
+ * No `inputSource`: the editor drops the default value when it saves the node.
+ */
 const echoWorkflow = () => ({
 	nodes: [
 		{
@@ -59,7 +62,6 @@ const echoWorkflow = () => ({
 			typeVersion: 1.1,
 			position: [0, 0] as [number, number],
 			parameters: {
-				inputSource: 'workflowInputs',
 				workflowInputs: {
 					values: [
 						{ name: 'message', type: 'string' },
