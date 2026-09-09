@@ -265,6 +265,26 @@ describe('createRecallMemoryTool', () => {
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 	});
 
+	it('names the embedding provider when the recall embedding request fails', async () => {
+		const tool = createRecallMemoryTool({
+			memory: new InMemoryMemory(),
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+		});
+		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
+
+		mockedEmbed.mockRejectedValueOnce(Object.assign(new Error('Not Found'), { statusCode: 404 }));
+		await expect(tool.handler({ query: 'what did we decide?' }, {})).rejects.toThrow(
+			'Episodic memory embedding request failed (HTTP 404): Not Found. Check the episodic memory embedding credential and model.',
+		);
+
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+		mockedEmbed.mockRejectedValueOnce(abortError);
+		await expect(tool.handler({ query: 'what did we decide?' }, {})).rejects.toBe(abortError);
+	});
+
 	it('does not call describe() on the memory backend when ctx.parentTelemetry is absent', async () => {
 		// Regression guard: a third-party BuiltMemory implementation is not
 		// required to implement describe() (it's only otherwise used for schema
@@ -495,7 +515,56 @@ describe('agent-directed episodic capture', () => {
 				},
 				{ runId: 'run-1', toolCallId: 'call-2' },
 			),
-		).rejects.toThrow('must exactly match');
+		).rejects.toThrow('one contiguous quote');
+	});
+
+	it('resolves re-typed evidence to the verbatim span and falls back for explicit remembers', async () => {
+		const memory = new InMemoryMemory();
+		const tool = createFlagMemoryTool({
+			memory,
+			scope: { resourceId: 'user-1' },
+			persistence: { resourceId: 'user-1', threadId: 'thread-1' },
+			list: sourceList('Remember this:\nDana’s invoices must CC ap@harborfinch.example.'),
+		});
+		if (!tool.handler) throw new Error('Expected flag memory tool to have a handler');
+		const flag = async (evidence: string, kind: 'fact' | 'explicit_remember', toolCallId: string) =>
+			await tool.handler!(
+				{ content: 'Harbor & Finch invoices must CC ap@harborfinch.example.', evidence, kind },
+				{ runId: 'run-1', toolCallId },
+			);
+
+		await flag(
+			'"remember this: Dana\'s invoices must CC ap@harborfinch.example."',
+			'fact',
+			'call-1',
+		);
+		await flag('Dana said something else entirely.', 'explicit_remember', 'call-2');
+		await expect(flag('Dana said something else entirely.', 'fact', 'call-3')).rejects.toThrow(
+			'one contiguous quote',
+		);
+
+		const candidates = await memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1' });
+		expect(
+			candidates.map(({ toolCallId, sourceMessageId, evidenceText }) => ({
+				toolCallId,
+				sourceMessageId,
+				evidenceText,
+			})),
+		).toEqual(
+			expect.arrayContaining([
+				{
+					toolCallId: 'call-1',
+					sourceMessageId: 'message-1',
+					evidenceText: 'Remember this:\nDana’s invoices must CC ap@harborfinch.example.',
+				},
+				{
+					toolCallId: 'call-2',
+					sourceMessageId: 'message-1',
+					evidenceText: 'Remember this:\nDana’s invoices must CC ap@harborfinch.example.',
+				},
+			]),
+		);
+		expect(candidates).toHaveLength(2);
 	});
 
 	it('turns pending candidates into source-backed entries without observations', async () => {

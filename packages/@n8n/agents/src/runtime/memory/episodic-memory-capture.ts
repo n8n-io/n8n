@@ -5,6 +5,7 @@ import {
 	hashEpisodicMemoryContent,
 	hasEpisodicMemoryCaptureStore,
 	isEpisodicMemoryEnabled,
+	withEmbeddingErrorContext,
 	withEpisodicMemoryDefaults,
 	type NormalizedEpisodicMemoryConfig,
 } from './episodic-memory';
@@ -28,7 +29,7 @@ import type {
 	RetrievedEpisodicMemoryEntry,
 } from '../../types';
 import type { AgentExecutionCounter, AgentPersistenceOptions } from '../../types/sdk/agent';
-import type { AgentDbMessage } from '../../types/sdk/message';
+import type { AgentDbMessage, Message } from '../../types/sdk/message';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
 import { inferMemoryStoreAttributes, withMemorySpan } from '../telemetry/runtime-telemetry';
@@ -93,9 +94,13 @@ export function createFlagMemoryTool(opts: {
 		.handler(async ({ content, evidence, kind }, ctx): Promise<FlagMemoryOutput> => {
 			if (!ctx.toolCallId) throw new Error('Memory capture requires a tool-call ID.');
 			if (!ctx.runId) throw new Error('Memory capture requires a run ID.');
-			const source = findEvidenceSource(opts.list, evidence);
+			const source =
+				findEvidenceSource(opts.list, evidence) ??
+				(kind === 'explicit_remember' ? latestUserMessageAsEvidence(opts.list) : undefined);
 			if (!source) {
-				throw new Error('Memory evidence must exactly match text from this conversation.');
+				throw new Error(
+					'Memory evidence must be one contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks.',
+				);
 			}
 			const normalizedContent = normalizeEntryContent(content);
 			if (!normalizedContent) throw new Error('Memory content cannot be empty.');
@@ -104,16 +109,16 @@ export function createFlagMemoryTool(opts: {
 				opts.memory,
 				opts.persistence.threadId,
 				opts.persistence.resourceId,
-				[source],
+				[source.message],
 			);
 			await opts.memory.episodic.enqueueCaptureCandidate({
 				...opts.scope,
 				threadId: opts.persistence.threadId,
-				sourceMessageId: source.id,
+				sourceMessageId: source.message.id,
 				runId: ctx.runId,
 				toolCallId: ctx.toolCallId,
 				content: normalizedContent,
-				evidenceText: redactText(evidence.trim()).text,
+				evidenceText: redactText(source.evidenceText).text,
 				kind,
 			});
 			return { status: 'noted' };
@@ -205,18 +210,81 @@ export async function runEpisodicMemoryCandidateProcessor(
 	};
 }
 
-function findEvidenceSource(list: AgentMessageList, evidence: string): AgentDbMessage | undefined {
-	const normalizedEvidence = evidence.trim();
-	if (!normalizedEvidence) return undefined;
+interface EvidenceSource {
+	message: AgentDbMessage;
+	evidenceText: string;
+}
+
+const QUOTE_MARKS = '"\'\u2018\u2019\u201C\u201D';
+const WRAPPED_IN_QUOTES = new RegExp(`^[${QUOTE_MARKS}](.*)[${QUOTE_MARKS}]$`, 's');
+const CHAR_FOLDS = new Map([
+	['\u2018', "'"],
+	['\u2019', "'"],
+	['\u201C', '"'],
+	['\u201D', '"'],
+	['\u2013', '-'],
+	['\u2014', '-'],
+]);
+
+/**
+ * Lowercases, folds typographic quotes and dashes, and collapses whitespace so a
+ * model's re-typed quote still matches. `offsets[i]` is the index in `text` of
+ * the character that produced folded code unit `i`, so a match maps back to the
+ * verbatim span.
+ */
+function foldForMatch(text: string): { folded: string; offsets: number[] } {
+	let folded = '';
+	const offsets: number[] = [];
+	for (let i = 0; i < text.length; i++) {
+		const char = text[i];
+		let lower: string;
+		if (/\s/.test(char)) lower = folded.endsWith(' ') ? '' : ' ';
+		else lower = (CHAR_FOLDS.get(char) ?? char).toLowerCase();
+		for (let k = 0; k < lower.length; k++) offsets.push(i);
+		folded += lower;
+	}
+	return { folded, offsets };
+}
+
+function* evidenceCandidateMessages(
+	list: AgentMessageList,
+): Generator<Extract<AgentDbMessage, Message>> {
 	const responseIds = new Set(list.responseDelta().map((message) => message.id));
-	return [...list.messages()].reverse().find((message) => {
-		if (responseIds.has(message.id) || !('role' in message)) return false;
-		if (message.role !== 'user' && message.role !== 'assistant') return false;
-		if (message.origin?.kind === 'tool') return false;
-		return message.content.some(
-			(part) => part.type === 'text' && part.text.includes(normalizedEvidence),
-		);
-	});
+	for (const message of [...list.messages()].reverse()) {
+		if (responseIds.has(message.id) || !('role' in message)) continue;
+		if (message.role !== 'user' && message.role !== 'assistant') continue;
+		if (message.origin?.kind === 'tool') continue;
+		yield message;
+	}
+}
+
+function findEvidenceSource(list: AgentMessageList, evidence: string): EvidenceSource | undefined {
+	const needle = foldForMatch(evidence.trim().replace(WRAPPED_IN_QUOTES, '$1')).folded.trim();
+	if (!needle) return undefined;
+	for (const message of evidenceCandidateMessages(list)) {
+		for (const part of message.content) {
+			if (part.type !== 'text') continue;
+			const { folded, offsets } = foldForMatch(part.text);
+			const start = folded.indexOf(needle);
+			if (start === -1) continue;
+			const end = offsets[start + needle.length - 1] + 1;
+			return { message, evidenceText: part.text.slice(offsets[start], end) };
+		}
+	}
+	return undefined;
+}
+
+/** An explicit "remember this" nearly always lives in the latest user message. */
+function latestUserMessageAsEvidence(list: AgentMessageList): EvidenceSource | undefined {
+	for (const message of evidenceCandidateMessages(list)) {
+		if (message.role !== 'user') continue;
+		const evidenceText = message.content
+			.flatMap((part) => (part.type === 'text' ? [part.text] : []))
+			.join('\n')
+			.trim();
+		if (evidenceText) return { message, evidenceText };
+	}
+	return undefined;
 }
 
 function renderCaptureCandidates(candidates: EpisodicMemoryCaptureCandidate[]): string {
@@ -261,11 +329,14 @@ async function embedTexts(
 	opts: Pick<RunEpisodicMemoryCandidateProcessorOpts, 'abortSignal' | 'executionCounter'>,
 ): Promise<number[][]> {
 	const { embedMany } = await import('ai');
-	const { embeddings, usage } = await embedMany({
-		model: config.embedder,
-		values,
-		abortSignal: opts.abortSignal,
-	});
+	const { embeddings, usage } = await withEmbeddingErrorContext(
+		async () =>
+			await embedMany({
+				model: config.embedder,
+				values,
+				abortSignal: opts.abortSignal,
+			}),
+	);
 	throwIfAborted(opts.abortSignal);
 	incrementTokenCountFromUsage(opts.executionCounter, usage);
 	return embeddings;

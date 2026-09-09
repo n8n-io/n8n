@@ -7,6 +7,7 @@ import {
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from './episodic-memory-defaults';
 import { hasFunctionProperty } from './observation-log-store';
+import { isAbortError } from '../../sdk/abort';
 import { Tool } from '../../sdk/tool';
 import type {
 	BuiltEpisodicMemoryCaptureStore,
@@ -109,6 +110,27 @@ export function withEpisodicMemoryDefaults(
 	};
 }
 
+/**
+ * Provider errors from the embedder arrive as bare messages such as "Not Found".
+ * Name the failing component so the tool step and logs point at the fix.
+ */
+export async function withEmbeddingErrorContext<T>(run: () => Promise<T>): Promise<T> {
+	try {
+		return await run();
+	} catch (error) {
+		if (isAbortError(error)) throw error;
+		const status =
+			error instanceof Error && 'statusCode' in error && typeof error.statusCode === 'number'
+				? ` (HTTP ${error.statusCode})`
+				: '';
+		const message = error instanceof Error ? error.message : String(error);
+		throw new Error(
+			`Episodic memory embedding request failed${status}: ${message}. Check the episodic memory embedding credential and model.`,
+			{ cause: error },
+		);
+	}
+}
+
 export function createRecallMemoryTool(opts: {
 	memory: BuiltMemory & BuiltEpisodicMemoryStore;
 	config: EpisodicMemoryConfig;
@@ -127,11 +149,14 @@ export function createRecallMemoryTool(opts: {
 		.output(RecallMemoryOutputSchema)
 		.handler(async ({ query }, ctx): Promise<RecallMemoryOutput> => {
 			const { embed } = await import('ai');
-			const { embedding: queryEmbedding, usage } = await embed({
-				model: normalized.embedder,
-				value: query,
-				abortSignal: ctx.abortSignal,
-			});
+			const { embedding: queryEmbedding, usage } = await withEmbeddingErrorContext(
+				async () =>
+					await embed({
+						model: normalized.embedder,
+						value: query,
+						abortSignal: ctx.abortSignal,
+					}),
+			);
 			incrementTokenCountFromUsage(opts.executionCounter, usage);
 			return await withMemorySpan(
 				'query_memory',
