@@ -427,7 +427,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(DurableScheduler).start();
 
 		const systemTaskMetadata = Container.get(SystemTaskMetadata);
-		for (const taskClass of mainSystemTasks(this.globalConfig)) {
+		for (const taskClass of await mainSystemTasks(this.globalConfig)) {
 			systemTaskMetadata.register(taskClass);
 		}
 

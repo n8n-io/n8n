@@ -15,8 +15,8 @@ const configWith = ({ pruneData = true, useWorkflowPublicationService = true } =
 		workflows: { useWorkflowPublicationService },
 	});
 
-it('should return every main task when all features are on', () => {
-	const tasks = mainSystemTasks(configWith());
+it('should return every main task when all features are on', async () => {
+	const tasks = await mainSystemTasks(configWith());
 
 	expect(tasks).toEqual([
 		ActivityPruningTask,
@@ -27,15 +27,15 @@ it('should return every main task when all features are on', () => {
 	]);
 });
 
-it('should leave out execution pruning soft delete when pruning is off', () => {
-	const tasks = mainSystemTasks(configWith({ pruneData: false }));
+it('should leave out execution pruning soft delete when pruning is off', async () => {
+	const tasks = await mainSystemTasks(configWith({ pruneData: false }));
 
 	expect(tasks).not.toContain(ExecutionPruningSoftDeleteTask);
 	expect(tasks).toContain(WorkflowPublicationOutboxCleanupTask);
 });
 
-it('should leave out outbox cleanup when the publication service is off', () => {
-	const tasks = mainSystemTasks(configWith({ useWorkflowPublicationService: false }));
+it('should leave out outbox cleanup when the publication service is off', async () => {
+	const tasks = await mainSystemTasks(configWith({ useWorkflowPublicationService: false }));
 
 	expect(tasks).not.toContain(WorkflowPublicationOutboxCleanupTask);
 	expect(tasks).toContain(ExecutionPruningSoftDeleteTask);
