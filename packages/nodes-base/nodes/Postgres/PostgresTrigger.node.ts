@@ -301,7 +301,19 @@ export class PostgresTrigger implements INodeType {
 			throw error;
 		}
 
+		// Cleanup runs at most once. A manual execution reaches it twice: the 60s
+		// timeout below calls it before rejecting, and n8n then calls closeFunction
+		// as that execution unwinds. Releasing the connection makes the second pass
+		// consequential — its `SELECT 1` health probe fails against a connection the
+		// first pass already returned, turning a cleanup that fully succeeded into a
+		// TriggerCloseError warning. Nothing is lost by skipping it: the connection is
+		// gone, so a second pass could not issue UNLISTEN or DROP either way.
+		let cleanedUp = false;
+
 		const cleanUpDb = async () => {
+			if (cleanedUp) return;
+			cleanedUp = true;
+
 			try {
 				try {
 					// check if the connection is healthy
