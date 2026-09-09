@@ -11,6 +11,9 @@ type AnyWorkflows = Record<string, { input: unknown; output: unknown }>;
 type Workflows = Bindings extends { workflows: infer W extends AnyWorkflows } ? W : AnyWorkflows;
 type WorkflowKey = Extract<keyof Workflows, string>;
 
+/** The signed-in visitor of an app with `authMode: 'n8n'`; `null` for a public app. */
+export type Principal = { userId: string } | null;
+
 export interface RunResult<T> {
 	executionId: string;
 	status: 'success' | 'error' | 'waiting' | 'canceled' | 'running' | 'unknown';
@@ -18,7 +21,7 @@ export interface RunResult<T> {
 	/** Set when the response was binary data, which v1 does not return; `output` is then `null`. */
 	outputTruncated?: true;
 	error?: string;
-	principal: null;
+	principal: Principal;
 }
 
 export class N8nAppError extends Error {
@@ -82,14 +85,41 @@ function defaultBaseUrl(): string {
 	return `/${root}/${namespace}/api`;
 }
 
+const PAGE_TOKEN_META_NAME = 'n8n-app-token';
+
+/** n8n puts the page token into the served `index.html`; every call sends it back. */
+function pageToken(): string | undefined {
+	if (typeof document === 'undefined') return undefined;
+	return (
+		document.querySelector(`meta[name="${PAGE_TOKEN_META_NAME}"]`)?.getAttribute('content') ??
+		undefined
+	);
+}
+
+// A 401 means the page token expired (15 min): a fresh navigation re-mints it, and for an
+// `n8n` app the cookie or the OAuth flow signs the visitor in again. Once per page load, so a
+// server that keeps answering 401 cannot loop the page. The call still rejects, because the
+// reload is asynchronous and the caller's error handling must not hang on it.
+let reloadedOnce = false;
+
+function reloadOnce(): void {
+	if (reloadedOnce || typeof location === 'undefined') return;
+	reloadedOnce = true;
+	location.reload();
+}
+
 export function createClient(opts: { baseUrl?: string } = {}): N8nAppClient {
 	return {
 		workflows: {
 			async run(key, input, runOpts) {
 				const baseUrl = (opts.baseUrl ?? defaultBaseUrl()).replace(/\/+$/, '');
+				const token = pageToken();
 				const response = await fetch(`${baseUrl}/workflows/${encodeURIComponent(key)}`, {
 					method: 'POST',
-					headers: [['Content-Type', 'application/json']],
+					headers: [
+						['Content-Type', 'application/json'],
+						...(token ? [['Authorization', `Bearer ${token}`] as [string, string]] : []),
+					],
 					body: JSON.stringify(input ?? {}),
 					signal: runOpts?.signal,
 				}).catch((error: unknown) => {
@@ -104,6 +134,7 @@ export function createClient(opts: { baseUrl?: string } = {}): N8nAppClient {
 				});
 				const body = await readJson(response);
 
+				if (response.status === 401) reloadOnce();
 				if (!response.ok) {
 					const error = isRecord(body) ? body : {};
 					throw new N8nAppError(

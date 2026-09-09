@@ -16,6 +16,73 @@ describe('createClient', () => {
 		vi.unstubAllEnvs();
 	});
 
+	it('sends the page token from the meta tag as bearer token', async () => {
+		vi.stubGlobal('document', {
+			querySelector: vi.fn((selector: string) =>
+				selector === 'meta[name="n8n-app-token"]' ? { getAttribute: () => 'tok.en' } : null,
+			),
+		});
+		fetchMock.mockResolvedValue(
+			jsonResponse(200, { executionId: '1', status: 'success', principal: null }),
+		);
+
+		await createClient({ baseUrl: '/x' }).workflows.run('submit');
+
+		expect(fetchMock.mock.calls[0][1]?.headers).toEqual([
+			['Content-Type', 'application/json'],
+			['Authorization', 'Bearer tok.en'],
+		]);
+	});
+
+	it('sends no Authorization header when the page has no token', async () => {
+		vi.stubGlobal('document', { querySelector: vi.fn(() => null) });
+		fetchMock.mockResolvedValue(
+			jsonResponse(200, { executionId: '1', status: 'success', principal: null }),
+		);
+
+		await createClient({ baseUrl: '/x' }).workflows.run('submit');
+
+		expect(fetchMock.mock.calls[0][1]?.headers).toEqual([['Content-Type', 'application/json']]);
+	});
+
+	it('types the principal of an n8n app', async () => {
+		fetchMock.mockResolvedValue(
+			jsonResponse(200, { executionId: '1', status: 'success', principal: { userId: 'u1' } }),
+		);
+
+		const result = await createClient({ baseUrl: '/x' }).workflows.run('submit');
+
+		expect(result.principal).toEqual({ userId: 'u1' });
+	});
+
+	describe('on 401', () => {
+		const reload = vi.fn();
+
+		beforeEach(() => {
+			vi.stubGlobal('location', { pathname: '/apps/runner/', reload });
+			reload.mockReset();
+			fetchMock.mockImplementation(
+				async () =>
+					await Promise.resolve(
+						jsonResponse(401, { code: 'unauthorized', message: 'Reload the app.' }),
+					),
+			);
+		});
+
+		it('reloads the page once and still rejects', async () => {
+			await expect(createClient({ baseUrl: '/x' }).workflows.run('submit')).rejects.toMatchObject({
+				status: 401,
+				code: 'unauthorized',
+			});
+			await expect(createClient({ baseUrl: '/x' }).workflows.run('submit')).rejects.toMatchObject({
+				status: 401,
+				code: 'unauthorized',
+			});
+
+			expect(reload).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	it('posts the input as JSON to <baseUrl>/workflows/<key>', async () => {
 		fetchMock.mockResolvedValue(
 			jsonResponse(200, { executionId: '1', status: 'success', output: [], principal: null }),
