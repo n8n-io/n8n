@@ -37,6 +37,80 @@ describe('createRefreshingAuthFetch', () => {
 		expect(init.redirect).toBe('manual');
 	});
 
+	it('carries the rest of a Request past the unwrap to a URL', async () => {
+		const baseFetch = vi.fn().mockResolvedValue(new Response('ok'));
+		const request = new Request('https://example.com/mcp', {
+			method: 'POST',
+			body: 'payload',
+			cache: 'no-store',
+			credentials: 'include',
+			integrity: 'sha256-abc',
+			referrerPolicy: 'no-referrer',
+		});
+		const fetchWithAuth = createRefreshingAuthFetch({
+			baseFetch,
+			initialHeaders: { Authorization: 'Bearer token' },
+		});
+
+		await fetchWithAuth(request);
+
+		const [, init] = baseFetch.mock.calls[0] as [string, RequestInit];
+		expect(init.cache).toBe('no-store');
+		expect(init.credentials).toBe('include');
+		expect(init.integrity).toBe('sha256-abc');
+		expect(init.referrerPolicy).toBe('no-referrer');
+	});
+
+	describe('a caller that handles redirects itself', () => {
+		it('returns the redirect unfollowed when the caller asked for manual', async () => {
+			const baseFetch = vi.fn().mockResolvedValue(makeRedirect('https://example.com/v2/mcp'));
+			const assertAllowedUrl = vi.fn();
+			const fetchWithAuth = createRefreshingAuthFetch({
+				baseFetch,
+				initialHeaders: { Authorization: 'Bearer token' },
+				assertAllowedUrl,
+			});
+
+			const response = await fetchWithAuth('https://example.com/mcp', { redirect: 'manual' });
+
+			expect(response.status).toBe(302);
+			expect(baseFetch).toHaveBeenCalledTimes(1);
+			// The start URL is still validated, even with the hop loop skipped
+			expect(assertAllowedUrl).toHaveBeenCalledWith('https://example.com/mcp');
+		});
+
+		it('leaves the caller redirect mode on the request', async () => {
+			const baseFetch = vi.fn().mockResolvedValue(new Response('ok'));
+			const fetchWithAuth = createRefreshingAuthFetch({
+				baseFetch,
+				initialHeaders: { Authorization: 'Bearer token' },
+			});
+
+			await fetchWithAuth('https://example.com/mcp', { redirect: 'error' });
+
+			const [, init] = baseFetch.mock.calls[0] as [string, RequestInit];
+			expect(init.redirect).toBe('error');
+		});
+
+		it('still injects and refreshes auth on the single request', async () => {
+			const baseFetch = vi
+				.fn()
+				.mockResolvedValueOnce(makeUnauthorized())
+				.mockResolvedValueOnce(new Response('ok'));
+			const refreshHeaders = vi.fn().mockResolvedValue({ Authorization: 'Bearer fresh' });
+			const fetchWithAuth = createRefreshingAuthFetch({
+				baseFetch,
+				initialHeaders: { Authorization: 'Bearer stale' },
+				refreshHeaders,
+			});
+
+			const response = await fetchWithAuth('https://example.com/mcp', { redirect: 'manual' });
+
+			expect(response.status).toBe(200);
+			expect(baseFetch.mock.calls.map(authorizationOf)).toEqual(['Bearer stale', 'Bearer fresh']);
+		});
+	});
+
 	it('withholds auth headers on a cross-origin redirect with no URL validation configured', async () => {
 		const baseFetch = vi
 			.fn()
