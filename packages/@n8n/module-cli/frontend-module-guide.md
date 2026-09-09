@@ -149,14 +149,24 @@ fails `typecheck` with `TS2307`. If the shell or another package needs a value, 
 here.
 
 A module that needs a second entry — insights exports `./insights.module`, so the shell can
-register the descriptor without pulling the store into the eager graph — adds three lines together:
-the key in its own `exports` map, the `paths` entry in `editor-ui/tsconfig.json`, and nothing else.
-The alias generator reads the `exports` map, and `aliases.test.ts` fails if the two disagree.
+register the descriptor without pulling the store into the eager graph — declares it in two
+places: the key in its own `exports` map, and the matching `paths` entry in
+`editor-ui/tsconfig.json`. The alias generator reads the `exports` map, and `aliases.test.ts`
+fails if the two disagree. Then write the import that needs the entry, as
+`modules.manifest.ts` does for `./insights.module`.
 
-A module can opt out of the whole rule with a `"./*"` key (`"./*": "./src/*"` in `exports`, plus
-`"@n8n/frontend-module-x/*"` in the `paths` of editor-ui). Every file under `src` then resolves and
-lints clean, at any depth. Do this only for a module that means it: the entries are the part of a
-module you cannot move, so a wildcard makes the whole `src` tree the contract.
+A key can carry a wildcard, at the top level or nested:
+
+| `exports` key           | `paths` key in editor-ui              | what resolves                   |
+| ----------------------- | ------------------------------------- | ------------------------------- |
+| `"./insights.module"`   | `"@n8n/frontend-module-x/insights.module"` | that one file                   |
+| `"./views/*"`           | `"@n8n/frontend-module-x/views/*"`    | anything under `src/views`, at any depth |
+| `"./*"`                 | `"@n8n/frontend-module-x/*"`          | anything under `src`, at any depth |
+
+A `"./*"` key is the opt-out from the whole rule. Use it only for a module that means it: the
+entries are the part of a module you cannot move, so a wildcard makes the whole `src` tree the
+contract. A nested key such as `"./views/*"` is the middle ground — one directory becomes public
+and the rest of `src` stays internal.
 
 ```ts
 // src/my-feature.module.ts

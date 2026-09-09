@@ -21,33 +21,50 @@ const moduleManifests = () => {
 		.filter(({ name }) => typeof name === 'string' && name.startsWith('@n8n/frontend-module-'));
 };
 
-/** The specifiers an `exports` map declares, as a consumer writes them. */
-const declaredEntries = (name, exports) =>
-	Object.keys(exports ?? { '.': '' }).map((subpath) =>
-		subpath === '.' ? name : `${name}/${subpath.replace(/^\.\//, '')}`,
-	);
+/** The subpath of an `exports` key, as a consumer writes it after the package name. */
+const subpathOf = (key) => key.replace(/^\.\//, '');
 
 /**
- * `no-restricted-imports` matches a `group` with gitignore semantics, where `*` stops at a `/`.
- * A `*` in an `exports` key does not: Node matches it across `/`, and so do the Vite alias and
- * the tsconfig `paths` entry that mirror it. So a `"./*"` module resolves `<name>/one/two`, and
- * `!<name>/*` would still refuse it. Widen the `*` to `**` to keep lint and resolution in step.
+ * The `!` patterns that re-allow one declared subpath. `no-restricted-imports` matches a `group`
+ * with gitignore semantics, which costs two adjustments:
+ *
+ * 1. A gitignore `*` stops at a `/`. A `*` in an `exports` key does not — Node matches it across
+ *    one, and so do the Vite alias and the tsconfig `paths` entry that mirror the key. So a
+ *    `"./*"` module resolves `<name>/one/two`, and `!<name>/*` would refuse it. Widen it to `**`.
+ * 2. gitignore refuses to re-include a path whose parent directory is excluded, and `<name>/**`
+ *    excludes every directory inside the package. So a nested key such as `"./views/*"` needs
+ *    each ancestor directory unexcluded first. The trailing slash keeps that to the directory:
+ *    `!<name>/views/` un-prunes the directory without making the bare `<name>/views` — which no
+ *    `exports` key declares and nothing resolves — an allowed specifier.
+ *
+ * `src/app/moduleEntries.test.ts` runs each key shape through ESLint. Both adjustments look
+ * unnecessary until it does.
  */
-const negate = (entry) => `!${entry.replace('*', '**')}`;
+const negations = (name, subpath) => {
+	const segments = subpath.split('/');
+	const ancestors = segments
+		.slice(0, -1)
+		.map((_, index) => `!${name}/${segments.slice(0, index + 1).join('/')}/`);
+
+	return [...ancestors, `!${name}/${subpath.replace('*', '**')}`];
+};
 
 /**
  * One `no-restricted-imports` pattern for one module package: ban every path inside it, then
  * re-allow the entries its `exports` map declares.
  *
  * A module that declares `"./*"` re-allows all of them, which is the documented opt-out back
- * into a wildcard. `src/app/moduleEntries.test.ts` covers that case, and the two-segment
- * specifier that broke it.
+ * into a wildcard.
  */
 export const moduleEntryPattern = ({ name, exports }) => {
-	const entries = declaredEntries(name, exports);
+	const keys = Object.keys(exports ?? { '.': '' });
+	const entries = keys.map((key) => (key === '.' ? name : `${name}/${subpathOf(key)}`));
+	const allowed = keys
+		.filter((key) => key !== '.')
+		.flatMap((key) => negations(name, subpathOf(key)));
 
 	return {
-		group: [`${name}/**`, ...entries.filter((entry) => entry !== name).map(negate)],
+		group: [`${name}/**`, ...allowed],
 		message: `${name} is reachable only at its declared entries: ${entries.join(', ')}. A deeper path is internal to the module. To add an entry, put it in the "exports" map of the package and in the paths of editor-ui/tsconfig.json.`,
 	};
 };

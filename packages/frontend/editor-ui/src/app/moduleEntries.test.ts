@@ -87,63 +87,97 @@ describe('module entry ratchet', () => {
 		expect(await restrictions(source)).toHaveLength(1);
 	}, 60000);
 
-	describe('a module that declares "./*"', () => {
-		// The documented opt-out back into a wildcard. No module in the tree declares it, so the
-		// pattern comes from the same builder the config uses, fed to ESLint through
-		// `overrideConfig`. Without the two-segment case below, `!<name>/*` looked correct: a
-		// gitignore `*` stops at a `/`, while the `exports` key, the Vite alias and the tsconfig
-		// `paths` entry all match across one.
-		const WILDCARD = '@n8n/frontend-module-wildcard-probe';
-		const NARROW = '@n8n/frontend-module-narrow-probe';
+	describe('every shape an exports key can take', () => {
+		// No module in the tree declares a wildcard or a nested key, so each shape comes from the
+		// same builder the config uses, fed to ESLint through `overrideConfig`. Both gitignore
+		// adjustments in `negations` look unnecessary until this runs: `!<name>/*` refuses the
+		// second segment under a `"./*"` key, and `!<name>/views/**` alone refuses every path
+		// under a `"./views/*"` key, because `<name>/**` excludes the parent directory.
+		const NAME = '@n8n/frontend-module-shape-probe';
 
-		const withPattern = (manifest: { name: string; exports: Record<string, string> }) =>
+		const withKey = (key: string, target: string) =>
 			new ESLint({
 				cwd: process.cwd(),
 				overrideConfig: {
-					rules: { [RULE]: ['error', { patterns: [moduleEntryPattern(manifest)] }] },
+					rules: {
+						[RULE]: [
+							'error',
+							{
+								patterns: [
+									moduleEntryPattern({
+										name: NAME,
+										exports: { '.': './src/index.ts', [key]: target },
+									}),
+								],
+							},
+						],
+					},
 				},
 			});
 
-		it.each([
-			['the bare name', ''],
-			['one segment', '/one'],
-			['two segments', '/one/two'],
-			['three segments', '/one/two/three'],
-		])(
-			'allows %s under the wildcard key',
-			async (_label, subpath) => {
-				const instance = withPattern({
-					name: WILDCARD,
-					exports: { '.': './src/index.ts', './*': './src/*' },
-				});
+		const verdicts = async (key: string, target: string, subpaths: string[]) => {
+			const instance = withKey(key, target);
+			const refused: string[] = [];
 
-				expect(await restrictions(`import '${WILDCARD}${subpath}';\n`, instance)).toEqual([]);
-			},
-			60000,
-		);
+			for (const subpath of subpaths) {
+				const hits = await restrictions(`import '${NAME}${subpath}';\n`, instance);
+				if (hits.length > 0) refused.push(subpath);
+			}
 
-		it.each(['/one', '/one/two'])(
-			'still refuses %s under a narrow key',
-			async (subpath) => {
-				// The control. A module that declares one subpath does not get the wildcard by
-				// accident, at either depth.
-				const instance = withPattern({
-					name: NARROW,
-					exports: { '.': './src/index.ts', './narrow.module': './src/narrow.module.ts' },
-				});
+			return refused;
+		};
 
-				expect(await restrictions(`import '${NARROW}${subpath}';\n`, instance)).toHaveLength(1);
-			},
-			60000,
-		);
+		it('allows any depth under a "./*" key, and nothing else is left to refuse', async () => {
+			expect(await verdicts('./*', './src/*', ['', '/one', '/one/two', '/one/two/three'])).toEqual(
+				[],
+			);
+		}, 60000);
 
-		it('allows the entry a narrow key declares', async () => {
-			const instance = withPattern({
-				name: NARROW,
-				exports: { '.': './src/index.ts', './narrow.module': './src/narrow.module.ts' },
-			});
+		it('allows any depth under a nested "./views/*" key', async () => {
+			// The case a `!<name>/views/**` negation alone refused at every depth.
+			expect(
+				await verdicts('./views/*', './src/views/*', [
+					'',
+					'/views/One',
+					'/views/One.vue',
+					'/views/deep/Two',
+				]),
+			).toEqual([]);
+		}, 60000);
 
-			expect(await restrictions(`import '${NARROW}/narrow.module';\n`, instance)).toEqual([]);
+		it('refuses what a nested key does not declare', async () => {
+			// The ancestor directory is unexcluded with a trailing slash, so the bare
+			// `<name>/views` stays refused. No `exports` key declares it, and nothing resolves it.
+			expect(
+				await verdicts('./views/*', './src/views/*', [
+					'/views',
+					'/internal',
+					'/internal/deep',
+					'/other/One',
+				]),
+			).toEqual(['/views', '/internal', '/internal/deep', '/other/One']);
+		}, 60000);
+
+		it('allows two levels of nesting under a "./views/deep/*" key', async () => {
+			expect(
+				await verdicts('./views/deep/*', './src/views/deep/*', [
+					'/views/deep/Two',
+					'/views/deep/a/b',
+				]),
+			).toEqual([]);
+		}, 60000);
+
+		it('refuses every depth a flat key does not declare', async () => {
+			// The control. A module that declares one flat subpath does not get a wildcard by
+			// accident, and the declared entry itself still passes.
+			expect(
+				await verdicts('./narrow.module', './src/narrow.module.ts', [
+					'',
+					'/narrow.module',
+					'/one',
+					'/one/two',
+				]),
+			).toEqual(['/one', '/one/two']);
 		}, 60000);
 	});
 });
