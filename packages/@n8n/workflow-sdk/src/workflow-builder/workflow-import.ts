@@ -93,6 +93,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 				alwaysOutputData: n8nNode.alwaysOutputData,
 				onError: n8nNode.onError,
 				extendsCredential: n8nNode.extendsCredential,
+				customTelemetryTags: n8nNode.customTelemetryTags,
 			},
 			update(config) {
 				return { ...this, config: { ...this.config, ...config } };

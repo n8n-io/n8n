@@ -4641,6 +4641,7 @@ function toWorkflowJSON(
 			// ones, and dropping the flag would silently reset the node to `stopWorkflow`.
 			onError: n.onError ?? (n.continueOnFail ? 'continueRegularOutput' : undefined),
 			extendsCredential: n.extendsCredential,
+			customTelemetryTags: n.customTelemetryTags,
 		})),
 		connections: source.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],

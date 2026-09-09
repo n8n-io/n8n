@@ -2200,6 +2200,7 @@ describe('createWorkflowAdapter', () => {
 					alwaysOutputData: true,
 					onError: 'continueErrorOutput',
 					extendsCredential: 'httpHeaderAuth',
+					customTelemetryTags: { tag: [{ key: 'team', value: 'growth' }] },
 				},
 			],
 			connections: {},
@@ -2219,6 +2220,7 @@ describe('createWorkflowAdapter', () => {
 				alwaysOutputData: true,
 				onError: 'continueErrorOutput',
 				extendsCredential: 'httpHeaderAuth',
+				customTelemetryTags: { tag: [{ key: 'team', value: 'growth' }] },
 			}),
 		);
 	});
@@ -2248,6 +2250,7 @@ describe('createWorkflowAdapter', () => {
 			alwaysOutputData: true,
 			onError: 'continueRegularOutput',
 			extendsCredential: 'httpHeaderAuth',
+			customTelemetryTags: { tag: [{ key: 'team', value: 'growth' }] },
 		};
 		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
 			id: 'wf-roundtrip',
@@ -2298,6 +2301,7 @@ describe('createWorkflowAdapter', () => {
 				alwaysOutputData: true,
 				onError: 'continueRegularOutput',
 				extendsCredential: 'httpHeaderAuth',
+				customTelemetryTags: { tag: [{ key: 'team', value: 'growth' }] },
 			}),
 		);
 	});

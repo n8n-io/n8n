@@ -87,6 +87,11 @@ export interface NewCredentialValue {
  */
 export type OnError = 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 
+/** Custom OpenTelemetry span attributes, set for each node in the node's Settings tab. */
+export interface CustomTelemetryTags {
+	tag?: Array<{ key: string; value: string }>;
+}
+
 // =============================================================================
 // Workflow Settings (with extensibility)
 // =============================================================================
@@ -323,6 +328,7 @@ export interface NodeJSON {
 	alwaysOutputData?: boolean;
 	onError?: OnError;
 	extendsCredential?: string;
+	customTelemetryTags?: CustomTelemetryTags;
 }
 
 /**
@@ -462,6 +468,7 @@ export interface NodeConfig<TParams = IDataObject> {
 	alwaysOutputData?: boolean;
 	onError?: OnError;
 	extendsCredential?: string;
+	customTelemetryTags?: CustomTelemetryTags;
 	pinData?: IDataObject[];
 	/**
 	 * Declared output shape for data flow validation.
