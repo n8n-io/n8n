@@ -29,6 +29,30 @@ const ENTITY_FILES = {
 	'workflow.json': 'workflows',
 } as const satisfies Record<string, keyof BranchState>;
 
+/** Dependency collections whose directory a rename relocates (name-derived slug). */
+const DEPENDENCY_COLLECTIONS = ['credentials', 'dataTables', 'tags'] as const;
+
+type DependencyCollection = (typeof DEPENDENCY_COLLECTIONS)[number];
+
+const DEPENDENCY_FILES = {
+	'credential.json': 'credentials',
+	'data-table.json': 'dataTables',
+	'tag.json': 'tags',
+} as const satisfies Record<string, DependencyCollection>;
+
+const DEPENDENCY_FILE_BY_COLLECTION = {
+	credentials: 'credential.json',
+	dataTables: 'data-table.json',
+	tags: 'tag.json',
+} as const satisfies Record<DependencyCollection, string>;
+
+/** A credential/dataTable/tag directory the branch holds. */
+interface DependencyRef {
+	collection: DependencyCollection;
+	id: string;
+	target: string;
+}
+
 /**
  * Applies a selective export to the exported working copy of a branch. It reads
  * the branch, runs the guards, then overlays. The caller resolves the
@@ -73,12 +97,19 @@ export class WorkingCopyUpdater {
 	 * `workflow.json`. Placement and guards only need those collections.
 	 */
 	async readBranchState(exportFolder: string): Promise<BranchState> {
+		return (await this.scanBranch(exportFolder)).state;
+	}
+
+	private async scanBranch(
+		exportFolder: string,
+	): Promise<{ state: BranchState; dependencies: DependencyRef[] }> {
 		const resolvedBase = await this.resolveContained(exportFolder, '.');
 		// A fresh branch holds no export yet, so a first push has nothing to read.
 		const rootInfo = await fs.stat(resolvedBase).catch(() => null);
-		if (rootInfo === null || !rootInfo.isDirectory()) return {};
+		if (rootInfo === null || !rootInfo.isDirectory()) return { state: {}, dependencies: [] };
 
-		const state: Required<BranchState> = { projects: [], folders: [], workflows: [] };
+		const collected: Required<BranchState> = { projects: [], folders: [], workflows: [] };
+		const dependencies: DependencyRef[] = [];
 
 		const walk = async (absDir: string): Promise<void> => {
 			const entries = await fs.readdir(absDir, { withFileTypes: true });
@@ -95,22 +126,31 @@ export class WorkingCopyUpdater {
 				}
 				if (!entry.isFile()) continue;
 
-				const kind = ENTITY_FILES[entry.name as keyof typeof ENTITY_FILES];
-				if (kind === undefined) continue;
-
 				const relativeFile = path.relative(resolvedBase, fullPath).split(path.sep).join('/');
 				const target = path.posix.dirname(relativeFile);
-				state[kind].push(await this.readEntityFile(fullPath, target, relativeFile));
+
+				const kind = ENTITY_FILES[entry.name as keyof typeof ENTITY_FILES];
+				if (kind !== undefined) {
+					collected[kind].push(await this.readEntityFile(fullPath, target, relativeFile));
+					continue;
+				}
+
+				const collection = DEPENDENCY_FILES[entry.name as keyof typeof DEPENDENCY_FILES];
+				if (collection !== undefined) {
+					const id = await this.readEntityId(fullPath);
+					if (id !== undefined) dependencies.push({ collection, id, target });
+				}
 			}
 		};
 
 		await walk(resolvedBase);
-		this.assertUniqueEntityIds(state);
-		return {
-			...(state.projects.length > 0 ? { projects: state.projects } : {}),
-			...(state.folders.length > 0 ? { folders: state.folders } : {}),
-			...(state.workflows.length > 0 ? { workflows: state.workflows } : {}),
+		this.assertUniqueEntityIds(collected);
+		const state: BranchState = {
+			...(collected.projects.length > 0 ? { projects: collected.projects } : {}),
+			...(collected.folders.length > 0 ? { folders: collected.folders } : {}),
+			...(collected.workflows.length > 0 ? { workflows: collected.workflows } : {}),
 		};
+		return { state, dependencies };
 	}
 
 	/**
@@ -230,8 +270,7 @@ export class WorkingCopyUpdater {
 		selection: SelectivePushOptions,
 	): Promise<void> {
 		this.validateSelection(selection);
-		const existing = await this.readBranchState(exportFolder);
-		this.assertUniqueEntityIds(existing);
+		const { state: existing, dependencies } = await this.scanBranch(exportFolder);
 		this.assertDeletionsOnBranch(existing, selection);
 		this.assertNoCrossProjectMoves(existing, selection);
 
@@ -243,6 +282,9 @@ export class WorkingCopyUpdater {
 			),
 		};
 		const parent = path.dirname(exportFolder);
+		// A first push meets a branch with no export yet; create it so the temp copy
+		// and the later swap have a directory to work with.
+		await fs.mkdir(exportFolder, { recursive: true });
 		const workFolder = await fs.mkdtemp(path.join(parent, `.${path.basename(exportFolder)}-`));
 		let backupFolder: string | undefined;
 
@@ -258,6 +300,15 @@ export class WorkingCopyUpdater {
 					recursive: true,
 					force: true,
 				});
+			}
+			// Drop a renamed dependency's old file so it does not collide on id with
+			// the new one when the import manifest is written. Remove only that file,
+			// not the directory, so a sibling dependency sharing it is not dropped;
+			// remove the directory once it is empty.
+			for (const { collection, target } of this.renamedDependencies(dependencies, staging)) {
+				const dir = await this.resolveDependencyDir(workFolder, target);
+				await fs.rm(path.join(dir, DEPENDENCY_FILE_BY_COLLECTION[collection]), { force: true });
+				if ((await fs.readdir(dir)).length === 0) await fs.rmdir(dir);
 			}
 			await this.overlayDirectory(stagingFolder, workFolder, placement);
 			await writeImportManifest({
@@ -352,6 +403,72 @@ export class WorkingCopyUpdater {
 		if (containers.some((container) => container === target || isUnder(container, target))) {
 			throw new BadRequestError(
 				`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
+			);
+		}
+
+		return resolved;
+	}
+
+	/**
+	 * Each branch dependency for which staging points at a different path. A
+	 * dependency staging no longer includes stays; a full push removes it.
+	 */
+	private renamedDependencies(
+		dependencies: DependencyRef[],
+		staging: PackageManifest,
+	): Array<{ collection: DependencyCollection; target: string }> {
+		const stagingTargets = new Map<string, string>();
+		for (const collection of DEPENDENCY_COLLECTIONS) {
+			for (const entry of staging[collection] ?? []) {
+				stagingTargets.set(`${collection}:${entry.id}`, entry.target);
+			}
+		}
+		if (stagingTargets.size === 0) return [];
+
+		const renamed: Array<{ collection: DependencyCollection; target: string }> = [];
+		for (const dependency of dependencies) {
+			const newTarget = stagingTargets.get(`${dependency.collection}:${dependency.id}`);
+			if (newTarget !== undefined && newTarget !== dependency.target) {
+				renamed.push({ collection: dependency.collection, target: dependency.target });
+			}
+		}
+		return renamed;
+	}
+
+	/** Id in a dependency file, or undefined when unreadable — a malformed leftover is skipped, not fatal. */
+	private async readEntityId(file: string): Promise<string | undefined> {
+		let parsed: unknown;
+		try {
+			parsed = jsonParse(await fs.readFile(file, 'utf-8'));
+		} catch {
+			return undefined;
+		}
+		if (
+			typeof parsed === 'object' &&
+			parsed !== null &&
+			typeof (parsed as { id?: unknown }).id === 'string'
+		) {
+			return (parsed as { id: string }).id;
+		}
+		return undefined;
+	}
+
+	/**
+	 * Resolve a dependency directory to remove a file from, rejecting a non-leaf
+	 * target, an escape, or a symlinked path (via `resolveContained`).
+	 */
+	private async resolveDependencyDir(exportFolder: string, target: string): Promise<string> {
+		const segments = target.split(/[\\/]/).filter(Boolean);
+		if (segments.length === 0 || segments.includes('.') || segments.includes('..')) {
+			throw new BadRequestError(
+				`Dependency target "${target}" is not a managed leaf directory. Remove it and retry.`,
+			);
+		}
+
+		const resolved = await this.resolveContained(exportFolder, target);
+		if (resolved === path.resolve(exportFolder)) {
+			throw new BadRequestError(
+				`Dependency target "${target}" is not a managed leaf directory. Remove it and retry.`,
 			);
 		}
 

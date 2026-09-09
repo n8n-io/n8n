@@ -78,6 +78,9 @@ const workflowFile = (id: string, extra: Record<string, unknown> = {}) =>
 		...extra,
 	});
 const credentialFile = (id: string) => JSON.stringify({ id, name: id });
+const dataTableFile = (id: string) => JSON.stringify({ id, name: id });
+const tagFile = (id: string) => JSON.stringify({ id, name: id });
+const variableFile = (id: string, name: string) => JSON.stringify({ id, name });
 
 const selection = (overrides: Partial<SelectivePushOptions> = {}): SelectivePushOptions => ({
 	projectId: 'p1',
@@ -703,6 +706,215 @@ describe('WorkingCopyUpdater', () => {
 			expect(await readExported('projects/alpha/folders/sales/folder.json')).toBe(
 				folderFile('f1', 'Sales'),
 			);
+		});
+
+		it('applies a first push to a branch with no export directory', async () => {
+			const staging = makeManifest({ projects: [alpha], workflows: [wf('w1')] });
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+
+			await updater.applySelection(
+				exportFolder,
+				stagingFolder,
+				staging,
+				selection({ workflowIds: ['w1'] }),
+			);
+
+			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+				workflowFile('w1'),
+			);
+			expect((await readWrittenManifest()).workflows).toEqual([wf('w1')]);
+		});
+
+		it('removes the old directory of a renamed credential a selected workflow still uses', async () => {
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/credentials/old-c1/credential.json': credentialFile('c1'),
+			});
+			const staging = makeManifest({
+				projects: [alpha],
+				workflows: [wf('w1')],
+				credentials: [{ id: 'c1', name: 'New', target: 'projects/alpha/credentials/new-c1' }],
+			});
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/credentials/new-c1/credential.json': credentialFile('c1'),
+			});
+
+			await updater.applySelection(
+				exportFolder,
+				stagingFolder,
+				staging,
+				selection({ workflowIds: ['w1'] }),
+			);
+
+			expect(await readExported('projects/alpha/credentials/new-c1/credential.json')).toBe(
+				credentialFile('c1'),
+			);
+			await expectAbsent('projects/alpha/credentials/old-c1');
+			expect((await readWrittenManifest()).credentials).toEqual([
+				{ id: 'c1', name: 'c1', target: 'projects/alpha/credentials/new-c1' },
+			]);
+		});
+
+		it('removes the old directories of a renamed data table and tag', async () => {
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/data-tables/old-d1/data-table.json': dataTableFile('d1'),
+				'tags/old-t1/tag.json': tagFile('t1'),
+			});
+			const staging = makeManifest({
+				projects: [alpha],
+				workflows: [wf('w1')],
+				dataTables: [{ id: 'd1', name: 'New', target: 'projects/alpha/data-tables/new-d1' }],
+				tags: [{ id: 't1', name: 'New', target: 'tags/new-t1' }],
+			});
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/data-tables/new-d1/data-table.json': dataTableFile('d1'),
+				'tags/new-t1/tag.json': tagFile('t1'),
+			});
+
+			await updater.applySelection(
+				exportFolder,
+				stagingFolder,
+				staging,
+				selection({ workflowIds: ['w1'] }),
+			);
+
+			await expectAbsent('projects/alpha/data-tables/old-d1');
+			await expectAbsent('tags/old-t1');
+			expect(await readExported('projects/alpha/data-tables/new-d1/data-table.json')).toBe(
+				dataTableFile('d1'),
+			);
+			expect(await readExported('tags/new-t1/tag.json')).toBe(tagFile('t1'));
+		});
+
+		it('removes only the relocated file when a directory holds another dependency', async () => {
+			// A malformed branch can place two dependency files in one directory.
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/shared/credential.json': credentialFile('c1'),
+				'projects/alpha/shared/tag.json': tagFile('t1'),
+			});
+			const staging = makeManifest({
+				projects: [alpha],
+				workflows: [wf('w1')],
+				credentials: [{ id: 'c1', name: 'New', target: 'projects/alpha/credentials/new-c1' }],
+			});
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/credentials/new-c1/credential.json': credentialFile('c1'),
+			});
+
+			await updater.applySelection(
+				exportFolder,
+				stagingFolder,
+				staging,
+				selection({ workflowIds: ['w1'] }),
+			);
+
+			await expectAbsent('projects/alpha/shared/credential.json');
+			expect(await readExported('projects/alpha/shared/tag.json')).toBe(tagFile('t1'));
+			expect(await readExported('projects/alpha/credentials/new-c1/credential.json')).toBe(
+				credentialFile('c1'),
+			);
+		});
+
+		it('relocates a dependency that moved from global to project scope', async () => {
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'credentials/old-c1/credential.json': credentialFile('c1'),
+			});
+			const staging = makeManifest({
+				projects: [alpha],
+				workflows: [wf('w1')],
+				credentials: [{ id: 'c1', name: 'C1', target: 'projects/alpha/credentials/new-c1' }],
+			});
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/credentials/new-c1/credential.json': credentialFile('c1'),
+			});
+
+			await updater.applySelection(
+				exportFolder,
+				stagingFolder,
+				staging,
+				selection({ workflowIds: ['w1'] }),
+			);
+
+			expect(await readExported('projects/alpha/credentials/new-c1/credential.json')).toBe(
+				credentialFile('c1'),
+			);
+			await expectAbsent('credentials/old-c1');
+		});
+
+		it('keeps a dependency directory that staging does not re-include', async () => {
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/credentials/leftover-c9/credential.json': credentialFile('c9'),
+			});
+			const staging = makeManifest({ projects: [alpha], workflows: [wf('w1')] });
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+
+			await updater.applySelection(
+				exportFolder,
+				stagingFolder,
+				staging,
+				selection({ workflowIds: ['w1'] }),
+			);
+
+			expect(await readExported('projects/alpha/credentials/leftover-c9/credential.json')).toBe(
+				credentialFile('c9'),
+			);
+		});
+
+		it('leaves a renamed variable directory in place, deferred to a full push', async () => {
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/variables/old-v1/variable.json': variableFile('v1', 'old'),
+			});
+			const staging = makeManifest({
+				projects: [alpha],
+				workflows: [wf('w1')],
+				variables: [{ id: 'v1', name: 'new', target: 'projects/alpha/variables/new-v1' }],
+			});
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/variables/new-v1/variable.json': variableFile('v1', 'new'),
+			});
+
+			await updater.applySelection(
+				exportFolder,
+				stagingFolder,
+				staging,
+				selection({ workflowIds: ['w1'] }),
+			);
+
+			// Variables dedupe by id, so the stale directory is harmless; full push GCs it.
+			expect(await readExported('projects/alpha/variables/old-v1/variable.json')).toBe(
+				variableFile('v1', 'old'),
+			);
+			expect((await readWrittenManifest()).variables).toEqual([
+				{ id: 'v1', name: 'new', target: 'projects/alpha/variables/new-v1' },
+			]);
 		});
 
 		it('leaves the export in place when moving it aside fails', async () => {
