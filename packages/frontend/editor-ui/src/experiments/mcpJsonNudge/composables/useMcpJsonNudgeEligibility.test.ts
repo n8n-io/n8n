@@ -6,7 +6,7 @@ const mockIsFeatureEnabled = vi.hoisted(() => vi.fn());
 const mockIsCalloutDismissed = vi.hoisted(() => vi.fn());
 const mockSetCalloutDismissed = vi.hoisted(() => vi.fn());
 const mockCurrentUser = vi.hoisted<{ settings: Record<string, unknown> }>(() => ({ settings: {} }));
-const mockUpdateCurrentUserSettings = vi.hoisted(() => vi.fn());
+const mockUpdateUserSettings = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
 	useMCPStore: () => mockMcpStore,
@@ -21,15 +21,8 @@ vi.mock('@n8n/stores/users.store', () => ({
 		currentUser: mockCurrentUser,
 		isCalloutDismissed: mockIsCalloutDismissed,
 		setCalloutDismissed: mockSetCalloutDismissed,
+		updateUserSettings: mockUpdateUserSettings,
 	}),
-}));
-
-vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: { baseUrl: '', pushRef: '' } }),
-}));
-
-vi.mock('@n8n/rest-api-client/api/users', () => ({
-	updateCurrentUserSettings: mockUpdateCurrentUserSettings,
 }));
 
 import { useMcpJsonNudgeEligibility } from './useMcpJsonNudgeEligibility';
@@ -41,7 +34,7 @@ describe('useMcpJsonNudgeEligibility', () => {
 		mockIsCalloutDismissed.mockReset().mockReturnValue(false);
 		mockSetCalloutDismissed.mockClear();
 		mockCurrentUser.settings = {};
-		mockUpdateCurrentUserSettings.mockClear();
+		mockUpdateUserSettings.mockClear();
 	});
 
 	it('is registered in EXPERIMENTS_TO_TRACK', () => {
@@ -102,10 +95,7 @@ describe('useMcpJsonNudgeEligibility', () => {
 
 			await recordImpression();
 
-			expect(mockUpdateCurrentUserSettings).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({ mcpJsonNudge: { impressions: 1 } }),
-			);
+			expect(mockUpdateUserSettings).toHaveBeenCalledWith({ mcpJsonNudge: { impressions: 1 } });
 		});
 
 		it('increments an existing impressions count', async () => {
@@ -114,10 +104,7 @@ describe('useMcpJsonNudgeEligibility', () => {
 
 			await recordImpression();
 
-			expect(mockUpdateCurrentUserSettings).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({ mcpJsonNudge: { impressions: 2 } }),
-			);
+			expect(mockUpdateUserSettings).toHaveBeenCalledWith({ mcpJsonNudge: { impressions: 2 } });
 		});
 	});
 
@@ -129,12 +116,9 @@ describe('useMcpJsonNudgeEligibility', () => {
 			await dismissForever();
 
 			expect(mockSetCalloutDismissed).toHaveBeenCalledWith(MCP_JSON_NUDGE_CALLOUT);
-			expect(mockUpdateCurrentUserSettings).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({
-					dismissedCallouts: { someOtherCallout: true, [MCP_JSON_NUDGE_CALLOUT]: true },
-				}),
-			);
+			expect(mockUpdateUserSettings).toHaveBeenCalledWith({
+				dismissedCallouts: { someOtherCallout: true, [MCP_JSON_NUDGE_CALLOUT]: true },
+			});
 		});
 	});
 });
