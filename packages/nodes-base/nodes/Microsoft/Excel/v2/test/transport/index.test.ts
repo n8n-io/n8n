@@ -927,4 +927,56 @@ describe('Microsoft Excel Transport', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
 		});
 	});
+
+	describe('FileOpenUserUnauthorized', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({});
+		});
+
+		const request = async () =>
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/drive/items/WB/workbook/worksheets',
+				{},
+				{},
+				undefined,
+				{},
+				0,
+			);
+
+		// Graph nests the parsed body differently depending on which request helper
+		// ran, so both shapes must reach the same steer.
+		it.each([
+			['a body nested under `error`', { error: { error: { code: 'FileOpenUserUnauthorized' } } }],
+			['a bare body', { error: { code: 'FileOpenUserUnauthorized' } }],
+		])('steers to the SharePoint node for %s', async (_name, failure) => {
+			mockRequestOAuth2.mockRejectedValue(failure);
+
+			let caught: unknown;
+			try {
+				await request();
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(NodeApiError);
+			expect((caught as NodeApiError).message).toBe('Microsoft could not open this workbook');
+			expect((caught as NodeApiError).description).toContain('Microsoft Excel (SharePoint)');
+		});
+
+		it('leaves an unrelated Graph error unchanged', async () => {
+			mockRequestOAuth2.mockRejectedValue({ error: { error: { code: 'itemNotFound' } } });
+
+			let caught: unknown;
+			try {
+				await request();
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(NodeApiError);
+			expect((caught as NodeApiError).message).not.toBe('Microsoft could not open this workbook');
+		});
+	});
 });

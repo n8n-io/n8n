@@ -107,6 +107,17 @@ export function resolveScopeRoot(
 	return getServicePrincipalResourceRoot(target, id, this.getNode());
 }
 
+function asObject(value: unknown): JsonObject {
+	return typeof value === 'object' && value !== null ? (value as JsonObject) : {};
+}
+
+/** Graph's error code, read from either the raw body or a body nested under `error`. */
+export function graphErrorCode(error: JsonObject): string {
+	const body = asObject(error.error);
+	const code = asObject(body.error).code ?? body.code ?? error.code;
+	return typeof code === 'string' ? code : '';
+}
+
 // `itemIndex` is REQUIRED so the compiler enforces the per-item contract: execute
 // call sites pass the loop index (batch ops pass a literal 0, matching their item-0
 // param reads); loadOptions/listSearch call sites pass a literal 0, where
@@ -166,8 +177,20 @@ export async function microsoftApiRequest(
 		}
 		return await this.helpers.requestOAuth2.call(this, credentialType, options);
 	} catch (error) {
+		const failure = error as JsonObject;
+		// Graph answers FileOpenUserUnauthorized when the Excel service refuses to open
+		// the workbook for this credential. The file's own permissions are a red herring:
+		// this node addresses workbooks under a user drive, so one that lives in a
+		// SharePoint document library stays out of reach whatever rights the account holds.
+		if (graphErrorCode(failure) === 'FileOpenUserUnauthorized') {
+			throw new NodeApiError(this.getNode(), failure, {
+				message: 'Microsoft could not open this workbook',
+				description:
+					'The Excel service refused to open the file for this credential. This node reaches workbooks in a user drive only. If the workbook is in a SharePoint document library, use the "Microsoft Excel (SharePoint)" node, which lets you choose the site and library. A file can open in Excel Online even when the credential cannot reach it.',
+			});
+		}
 		// The operation's catch stamps the failing item's index.
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(this.getNode(), failure);
 	}
 }
 
