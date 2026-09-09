@@ -199,7 +199,7 @@ export class AppsService {
 			const passthrough = listWorkflowInputFields(trigger.node).length === 0;
 			if (passthrough) {
 				warnings.push(
-					`Workflow "${workflow.name}" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.`,
+					`Binding '${binding.key}': workflow "${workflow.name}" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.`,
 				);
 			}
 			const { output, outputSource } = await this.inferOutput(workflow.id);

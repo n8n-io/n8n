@@ -372,7 +372,7 @@ describe('AppsService bindings', () => {
 
 			expect(result.bindings[0].input).toEqual({ type: 'object', additionalProperties: true });
 			expect(result.warnings).toEqual([
-				'Workflow "Echo" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.',
+				'Binding \'submit\': workflow "Echo" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.',
 			]);
 		});
 
