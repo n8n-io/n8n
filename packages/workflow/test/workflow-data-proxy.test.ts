@@ -10,6 +10,7 @@ import {
 	type IExecuteData,
 	type INode,
 	type INodeExecutionData,
+	type IPairedItemData,
 	type IPinData,
 	type IRun,
 	type IWorkflowBase,
@@ -2394,7 +2395,28 @@ describe('WorkflowDataProxy → pairedItem traversal with sourceOverwrite routes
 		updatedAt: new Date(),
 	});
 
-	const makeRun = (startItems: INodeExecutionData[], midRunPairing: number[]): IRun => {
+	const midRun = (outputs: INodeExecutionData[][]) => ({
+		startTime: 0,
+		executionTime: 0,
+		executionIndex: 0,
+		source: [{ previousNode: 'Start' }],
+		data: { main: outputs },
+	});
+
+	// Mid run N emits one item paired to Start item `midRunPairing[N]`
+	const midRunsPairedTo = (midRunPairing: number[]) =>
+		midRunPairing.map((startItem) => midRun([[{ json: {}, pairedItem: { item: startItem } }]]));
+
+	const defaultJoinPairing: IPairedItemData[] = [
+		{ item: 0 },
+		{ item: 0, sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 1 } },
+	];
+
+	const makeRun = (
+		startItems: INodeExecutionData[],
+		midRuns: ReturnType<typeof midRun>[],
+		joinPairing: IPairedItemData[] = defaultJoinPairing,
+	): IRun => {
 		const start = {
 			startTime: 0,
 			executionTime: 0,
@@ -2403,32 +2425,12 @@ describe('WorkflowDataProxy → pairedItem traversal with sourceOverwrite routes
 			data: { main: [startItems] },
 		};
 
-		const midRuns = midRunPairing.map((startItem) => ({
-			startTime: 0,
-			executionTime: 0,
-			executionIndex: 0,
-			source: [{ previousNode: 'Start' }],
-			data: { main: [[{ json: {}, pairedItem: { item: startItem } }]] },
-		}));
-
 		const join = {
 			startTime: 0,
 			executionTime: 0,
 			executionIndex: 0,
 			source: [{ previousNode: 'Mid', previousNodeRun: 0 }],
-			data: {
-				main: [
-					[
-						{
-							json: {},
-							pairedItem: [
-								{ item: 0 },
-								{ item: 0, sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 1 } },
-							],
-						},
-					],
-				],
-			},
+			data: { main: [[{ json: {}, pairedItem: joinPairing }]] },
 		};
 
 		const end = {
@@ -2451,7 +2453,10 @@ describe('WorkflowDataProxy → pairedItem traversal with sourceOverwrite routes
 	};
 
 	test('resolves when the default and overwritten routes agree on the ancestor item', () => {
-		const run = makeRun([{ json: { origin: true }, pairedItem: { item: 0 } }], [0, 0]);
+		const run = makeRun(
+			[{ json: { origin: true }, pairedItem: { item: 0 } }],
+			midRunsPairedTo([0, 0]),
+		);
 		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
 
 		expect(proxy.$('Start').item.json).toEqual({ origin: true });
@@ -2462,7 +2467,62 @@ describe('WorkflowDataProxy → pairedItem traversal with sourceOverwrite routes
 			{ json: { item: 0 }, pairedItem: { item: 0 } },
 			{ json: { item: 1 }, pairedItem: { item: 1 } },
 		];
-		const run = makeRun(startItems, [0, 1]);
+		const run = makeRun(startItems, midRunsPairedTo([0, 1]));
+		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+		expect(() => proxy.$('Start').item).toThrowError('Multiple matches');
+	});
+
+	test('returns the resolving route when another route fails, also on its memoized revisit', () => {
+		const startItems = [{ json: { origin: true }, pairedItem: { item: 0 } }];
+		// Mid run 1 has no pairedItem, so the overwritten route cannot resolve.
+		// It is listed twice so the second visit replays the memoized error.
+		const brokenRoute = { item: 0, sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 1 } };
+		const midRuns = [...midRunsPairedTo([0]), midRun([[{ json: {} }]])];
+
+		const okFirst = getProxyFromFixture(
+			makeWorkflow(),
+			makeRun(startItems, midRuns, [{ item: 0 }, brokenRoute, brokenRoute]),
+			'End',
+		);
+		expect(okFirst.$('Start').item.json).toEqual({ origin: true });
+
+		const okLast = getProxyFromFixture(
+			makeWorkflow(),
+			makeRun(startItems, midRuns, [brokenRoute, brokenRoute, { item: 0 }]),
+			'End',
+		);
+		expect(okLast.$('Start').item.json).toEqual({ origin: true });
+
+		const allBroken = getProxyFromFixture(
+			makeWorkflow(),
+			makeRun(startItems, midRuns, [brokenRoute, brokenRoute]),
+			'End',
+		);
+		expect(() => allBroken.$('Start').item).toThrowError(
+			"Paired item data for item from node 'Mid' is unavailable",
+		);
+	});
+
+	test('treats the same item index on different outputs of one run as distinct states', () => {
+		const startItems = [
+			{ json: { item: 0 }, pairedItem: { item: 0 } },
+			{ json: { item: 1 }, pairedItem: { item: 1 } },
+		];
+		// Mid run 0 output 0 item 0 pairs to Start 0, output 1 item 0 pairs to Start 1
+		const midRuns = [
+			midRun([[{ json: {}, pairedItem: { item: 0 } }], [{ json: {}, pairedItem: { item: 1 } }]]),
+		];
+		const run = makeRun(startItems, midRuns, [
+			{
+				item: 0,
+				sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 0, previousNodeOutput: 0 },
+			},
+			{
+				item: 0,
+				sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 0, previousNodeOutput: 1 },
+			},
+		]);
 		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
 
 		expect(() => proxy.$('Start').item).toThrowError('Multiple matches');

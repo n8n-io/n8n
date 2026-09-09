@@ -43,6 +43,7 @@ import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
 import { getPinDataIfManualExecution } from './workflow-data-proxy-helpers';
+import { PairedItemMemo } from './workflow-data-proxy-paired-item-memo';
 
 const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	const node = workflow.getNode(nodeName);
@@ -58,11 +59,6 @@ const PAIRED_ITEM_METHOD = {
 } as const;
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
-
-type PairedItemMemo = Map<
-	string,
-	{ ok: true; result: INodeExecutionData } | { ok: false; error: unknown }
->;
 
 /**
  * Whether the runtime can compile expressions. The expression engine compiles
@@ -1049,7 +1045,7 @@ export class WorkflowDataProxy {
 				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
 				// Aggregate output pairing to all its inputs), so without memoization
 				// the walk revisits the same item exponentially often.
-				new Map(),
+				new PairedItemMemo(),
 			);
 
 		const resolvePairedItem = (
@@ -1067,36 +1063,16 @@ export class WorkflowDataProxy {
 				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
-			// The outcome is a pure function of this state (for a fixed destination),
-			// so an already-visited item resolves from the memo.
-			// JSON serialization keeps the key collision-safe.
-			const memoKey = JSON.stringify([
-				sourceData.previousNode,
-				sourceData.previousNodeRun ?? 0,
-				sourceData.previousNodeOutput ?? 0,
-				pairedItem.item,
-			]);
-			const memoized = memo.get(memoKey);
-			if (memoized) {
-				if (memoized.ok) return memoized.result;
-				throw memoized.error;
-			}
-
-			try {
-				const result = resolvePairedItemUncached(
+			return memo.resolve(sourceData, pairedItem, () =>
+				resolvePairedItemUncached(
 					destinationNodeName,
 					sourceData,
 					pairedItem,
 					usedMethodName,
 					nodeBeforeLast,
 					memo,
-				);
-				memo.set(memoKey, { ok: true, result });
-				return result;
-			} catch (error) {
-				memo.set(memoKey, { ok: false, error });
-				throw error;
-			}
+				),
+			);
 		};
 
 		const resolvePairedItemUncached = (
