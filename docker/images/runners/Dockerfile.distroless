@@ -13,6 +13,7 @@
 # ==============================================================================
 
 ARG NODE_VERSION=24.13.1
+ARG PNPM_VERSION=10.22.0
 ARG PYTHON_VERSION=3.13
 
 
@@ -24,7 +25,8 @@ COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 WORKDIR /app/task-runner-javascript
 
-RUN corepack enable pnpm
+ARG PNPM_VERSION
+RUN npm i -g "pnpm@${PNPM_VERSION}"
 
 # Remove `catalog` and `workspace` references from package.json to allow `pnpm add`
 RUN node -e "const pkg = require('./package.json'); \
