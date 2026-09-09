@@ -36,20 +36,26 @@ function entityIdOfSegment(segment: string): string {
 
 export function parseBaseBranchFiles(
 	lsTreeOutput: string,
+	options: { exportRoot: string; projectId: string },
+): BaseBranchFile[] {
+	const files = lsTreeOutput.split('\0').flatMap((record) => {
+		const tabIndex = record.indexOf('\t');
+		if (tabIndex === -1) return [];
+		const [, objectType, blobSha] = record.slice(0, tabIndex).split(' ');
+		return objectType === 'blob' ? [{ path: record.slice(tabIndex + 1), blobSha }] : [];
+	});
+	return parsePackageFiles(files, options);
+}
+
+export function parsePackageFiles(
+	packageFiles: Array<{ path: string; blobSha: string }>,
 	{ exportRoot, projectId }: { exportRoot: string; projectId: string },
 ): BaseBranchFile[] {
 	const { projects, folders } = BASE_BRANCH_ENTITIES;
 	const files: BaseBranchFile[] = [];
 	const rootPrefix = `${exportRoot}/`;
 
-	for (const record of lsTreeOutput.split('\0')) {
-		const tabIndex = record.indexOf('\t');
-		if (tabIndex === -1) continue;
-
-		const [, objectType, blobSha] = record.slice(0, tabIndex).split(' ');
-		if (objectType !== 'blob') continue;
-
-		const path = record.slice(tabIndex + 1);
+	for (const { path, blobSha } of packageFiles) {
 		if (!path.startsWith(rootPrefix)) continue;
 
 		const segments = path.slice(rootPrefix.length).split('/');

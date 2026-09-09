@@ -251,7 +251,7 @@ onMounted(async () => {
 											color="text-light"
 											>·</N8nText
 										>
-										<N8nText size="small" color="text-light">
+										<N8nText v-if="change.updatedAt" size="small" color="text-light">
 											<TimeAgo :date="change.updatedAt" />
 										</N8nText>
 										<template v-if="change.dependencyCount > 0">

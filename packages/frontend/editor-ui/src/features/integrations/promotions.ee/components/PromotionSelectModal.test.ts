@@ -215,7 +215,7 @@ describe('PromotionSelectModal', () => {
 				type: 'workflow',
 				status: 'deleted',
 				version: null,
-				updatedAt: new Date().toISOString(),
+				updatedAt: null,
 				updatedBy: null,
 				dependencyCount: 0,
 			},
