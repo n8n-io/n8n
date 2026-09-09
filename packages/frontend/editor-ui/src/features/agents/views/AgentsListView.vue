@@ -129,6 +129,15 @@ function onNewAgentChat(agentId: string, agentProjectId: string) {
 function onAgentDuplicate(agentId: string) {
 	const agent = allAgents.value.find((a) => a.id === agentId);
 	if (!agent) return;
+	// An unconfigured agent has no config to clone — duplicating it would only
+	// yield an empty draft, so inform the user instead of opening the modal.
+	if (!agent.schema) {
+		toast.showMessage({
+			title: locale.baseText('agents.duplicate.modal.unconfigured'),
+			type: 'info',
+		});
+		return;
+	}
 	uiStore.openModalWithData({
 		name: AGENT_DUPLICATE_MODAL_KEY,
 		data: {

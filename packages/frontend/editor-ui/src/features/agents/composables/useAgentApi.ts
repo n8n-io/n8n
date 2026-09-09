@@ -129,12 +129,10 @@ export const duplicateAgent = async (
 	agentId: string,
 	name: string,
 ): Promise<AgentResource> => {
-	const agent = await getAgent(context, projectId, agentId);
-	// An unconfigured source has no config to clone — create an empty draft.
-	if (!agent.schema) {
-		return await createAgent(context, projectId, name);
-	}
-	const config = await getAgentConfig(context, projectId, agentId);
+	const [agent, config] = await Promise.all([
+		getAgent(context, projectId, agentId),
+		getAgentConfig(context, projectId, agentId),
+	]);
 	// Task bodies live in a separate table we don't copy, so drop the refs —
 	// otherwise the clone carries dangling task ids and cannot be published.
 	const { tasks: _tasks, ...configWithoutTasks } = config;

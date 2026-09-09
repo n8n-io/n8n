@@ -7601,6 +7601,7 @@
 	"agents.duplicate.modal.enterName": "Enter a name for the duplicated agent",
 	"agents.duplicate.modal.success": "Agent duplicated",
 	"agents.duplicate.modal.error": "Could not duplicate agent",
+	"agents.duplicate.modal.unconfigured": "Configure the agent before duplicating it",
 	"agents.duplicate.modal.button.confirm": "Create",
 	"agents.duplicate.modal.button.nameTaken": "Agent name already exists",
 	"agents.publish.button.publish": "Publish",

@@ -203,46 +203,5 @@ describe('useAgentApi', () => {
 				},
 			);
 		});
-
-		it('creates an empty draft when the source has no config yet', async () => {
-			const unconfigured = {
-				id: 'agent-1',
-				name: 'Draft Agent',
-				schema: null,
-			} as unknown as AgentResource;
-			const created = { id: 'agent-2', name: 'Draft Agent (copy)' } as unknown as AgentResource;
-			// Only getAgent then createAgent — no config fetch for an unconfigured source.
-			vi.mocked(makeRestApiRequest)
-				.mockResolvedValueOnce(unconfigured)
-				.mockResolvedValueOnce(created);
-
-			const result = await duplicateAgent(
-				restApiContext,
-				'project-1',
-				'agent-1',
-				'Draft Agent (copy)',
-			);
-
-			expect(result).toBe(created);
-			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
-				1,
-				restApiContext,
-				'GET',
-				'/projects/project-1/agents/v2/agent-1',
-			);
-			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
-				2,
-				restApiContext,
-				'POST',
-				'/projects/project-1/agents/v2',
-				{ name: 'Draft Agent (copy)' },
-			);
-			// No config fetch for an unconfigured source.
-			expect(makeRestApiRequest).not.toHaveBeenCalledWith(
-				restApiContext,
-				'GET',
-				'/projects/project-1/agents/v2/agent-1/config',
-			);
-		});
 	});
 });

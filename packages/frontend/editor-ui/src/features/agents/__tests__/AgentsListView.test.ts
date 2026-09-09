@@ -14,6 +14,9 @@ const mocks = vi.hoisted(() => ({
 	setTitle: vi.fn(),
 	trackClickedNewAgent: vi.fn(),
 	routeProjectId: undefined as string | undefined,
+	toastShowMessage: vi.fn(),
+	toastShowError: vi.fn(),
+	openModalWithData: vi.fn(),
 }));
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -32,6 +35,14 @@ vi.mock('vue-router', async (importOriginal) => {
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: 'push-ref' } }),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: mocks.toastShowMessage, showError: mocks.toastShowError }),
+}));
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({ openModalWithData: mocks.openModalWithData }),
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -108,7 +119,7 @@ vi.mock('../components/AgentCard.vue', async () => {
 		default: defineComponent({
 			name: 'AgentCard',
 			props: ['agent', 'projectId'],
-			emits: ['new-chat'],
+			emits: ['new-chat', 'duplicate'],
 			template: '<div data-test-id="agent-card">{{ agent.name }}</div>',
 		}),
 	};
@@ -188,6 +199,22 @@ describe('AgentsListView — project page', () => {
 			params: { projectId: 'project-1', agentId: 'agent-1' },
 			query: { [NEW_SESSION_PARAM]: 'true' },
 		});
+	});
+
+	it('informs the user when duplicating an unconfigured agent instead of opening the modal', async () => {
+		// The factory omits `schema`, so this agent is unconfigured.
+		mocks.listAgentsPage.mockResolvedValueOnce({
+			count: 1,
+			data: [agent('agent-1', 'Draft Agent')],
+		});
+		const wrapper = await mountView();
+
+		wrapper.findComponent({ name: 'AgentCard' }).vm.$emit('duplicate', 'agent-1');
+
+		expect(mocks.toastShowMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'agents.duplicate.modal.unconfigured' }),
+		);
+		expect(mocks.openModalWithData).not.toHaveBeenCalled();
 	});
 
 	it('refetches with backend search, pagination, and sorting parameters', async () => {
