@@ -2,7 +2,7 @@ operationId: pullSourceControl
 tags:
   - SourceControl
 summary: Pull changes from the remote repository
-description: Fetches changes from the connected Git repository into the instance.
+description: Fetches changes from the connected Git branch into the instance.
 x-required-scope: sourceControl:pull
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler

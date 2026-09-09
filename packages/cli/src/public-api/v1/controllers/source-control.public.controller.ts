@@ -49,7 +49,7 @@ export class SourceControlPublicController {
 	@ApiKeyScope('sourceControl:read')
 	@ApiSummary('Preview pending source control changes')
 	@ApiDescription(
-		'Previews the pending changes between the instance and the connected Git repository in either the `push` or `pull` direction.',
+		'Previews the pending changes between the instance and the connected Git branch in either the `push` or `pull` direction.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, SourceControlStatusPublicDto)
@@ -82,7 +82,7 @@ export class SourceControlPublicController {
 	@ApiKeyScope('sourceControl:push')
 	@ApiSummary('Push local source control changes')
 	@ApiDescription(
-		'Commits and pushes the selected files to the connected Git repository. Each entry in ' +
+		'Commits and pushes the selected files to the connected Git branch. Each entry in ' +
 			'`fileNames` is resolved against a fresh preview of the pending changes.',
 	)
 	@ApiTags(tags)
@@ -131,7 +131,7 @@ export class SourceControlPublicController {
 	@Licensed(LICENSE_FEATURES.SOURCE_CONTROL)
 	@ApiKeyScope('sourceControl:pull')
 	@ApiSummary('Pull changes from the remote repository')
-	@ApiDescription('Fetches changes from the connected Git repository into the instance.')
+	@ApiDescription('Fetches changes from the connected Git branch into the instance.')
 	@ApiTags(tags)
 	@ApiResponse(200, SourceControlPullResponsePublicDto)
 	@ApiErrorResponse(400)
