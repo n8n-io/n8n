@@ -107,7 +107,7 @@ describe('CreateAiPreferenceTable migration', () => {
 		return await context.runQuery<PreferenceRow[]>(
 			`SELECT "id" AS "id", "userId" AS "userId", "projectId" AS "projectId",
 			        "createdById" AS "createdById"
-			 FROM ${table} ORDER BY "createdAt"`,
+			 FROM ${table}`,
 		);
 	}
 
@@ -124,11 +124,14 @@ describe('CreateAiPreferenceTable migration', () => {
 			return await getPreferences(context);
 		});
 
-		expect(rows.map((row) => [row.userId, row.projectId])).toEqual([
-			[null, null],
-			[userId, null],
-			[null, projectId],
-		]);
+		expect(rows).toHaveLength(3);
+		expect(rows.map((row) => [row.userId, row.projectId])).toEqual(
+			expect.arrayContaining([
+				[null, null],
+				[userId, null],
+				[null, projectId],
+			]),
+		);
 	});
 
 	it('rejects a preference with both a user and a project', async () => {
