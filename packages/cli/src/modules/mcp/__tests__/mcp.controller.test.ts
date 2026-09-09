@@ -406,7 +406,6 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 			{ name: 'Claude', version: '1.0.0' },
 			{ caller: undefined, grantedScopes: undefined },
-
 			{ isConnectionHandshake: true },
 		);
 	});
@@ -441,7 +440,6 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
 			undefined,
 			{ caller: undefined, grantedScopes: undefined },
-
 			{ isConnectionHandshake: false },
 		);
 		// Non-initialize requests still skip telemetry tracking.
@@ -476,7 +474,6 @@ describe('McpController', () => {
 				caller: { authType: 'oauth', clientId: 'client-abc' },
 				grantedScopes: ['workflow:read'],
 			},
-
 			{ isConnectionHandshake: false },
 		);
 	});

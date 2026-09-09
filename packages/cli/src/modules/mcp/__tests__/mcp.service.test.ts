@@ -26,8 +26,8 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { AiPreferenceService } from '@/services/ai-preference.service';
+import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -46,7 +46,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
 
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
-import { McpService, type McpFeatureFlags } from '../mcp.service';
+import { McpService, type McpFeatureFlags, type McpServerBuildOptions } from '../mcp.service';
 import type { McpAuthContext, McpClientInfo } from '../mcp.types';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
@@ -562,11 +562,15 @@ describe('McpService', () => {
 					.filter((line) => line.startsWith('data: '))
 					.map((line) => JSON.parse(line.slice(6)) as Record<string, unknown>);
 
-			const buildHandler = async () => {
+			const buildHandler = async (
+				flags = mcpFeatureFlags(),
+				options: McpServerBuildOptions = {},
+			) => {
 				const user = Object.assign(new User(), { id: 'user-1' });
-				return createMcpHandler(async () => await mcpService.getServer(user, mcpFeatureFlags()), {
-					legacy: 'stateless',
-				});
+				return createMcpHandler(
+					async () => await mcpService.getServer(user, flags, undefined, undefined, options),
+					{ legacy: 'stateless' },
+				);
 			};
 
 			it('serves tools/list to a 2026-07-28 client with bridged JSON schemas', async () => {
@@ -617,14 +621,7 @@ describe('McpService', () => {
 			});
 
 			const initialize = async (flags: McpFeatureFlags) => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const handler = createMcpHandler(
-					async () =>
-						await mcpService.getServer(user, flags, undefined, undefined, {
-							isConnectionHandshake: true,
-						}),
-					{ legacy: 'stateless' },
-				);
+				const handler = await buildHandler(flags, { isConnectionHandshake: true });
 				const res = await handler.fetch(
 					new Request('http://n8n.local/mcp-server/http', {
 						method: 'POST',
@@ -681,36 +678,9 @@ describe('McpService', () => {
 
 			it('does not read the preferences for a request that is not the handshake', async () => {
 				const user = Object.assign(new User(), { id: 'user-1' });
-				const handler = createMcpHandler(
-					async () =>
-						await mcpService.getServer(user, mcpFeatureFlags({ aiPreferencesEnabled: true })),
-					{ legacy: 'stateless' },
-				);
 
-				const res = await handler.fetch(
-					new Request('http://n8n.local/mcp-server/http', {
-						method: 'POST',
-						headers: {
-							'content-type': 'application/json',
-							accept: 'application/json, text/event-stream',
-							'mcp-method': 'tools/list',
-						},
-						body: JSON.stringify({
-							jsonrpc: '2.0',
-							id: 1,
-							method: 'tools/list',
-							params: {
-								_meta: {
-									'io.modelcontextprotocol/protocolVersion': '2026-07-28',
-									'io.modelcontextprotocol/clientCapabilities': {},
-									'io.modelcontextprotocol/clientInfo': { name: 'vitest', version: '1.0.0' },
-								},
-							},
-						}),
-					}),
-				);
+				await mcpService.getServer(user, mcpFeatureFlags({ aiPreferencesEnabled: true }));
 
-				expect(res.status).toBe(200);
 				expect(aiPreferenceService.getApplicableAcrossProjects).not.toHaveBeenCalled();
 			});
 

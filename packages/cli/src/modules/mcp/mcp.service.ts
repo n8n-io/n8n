@@ -16,6 +16,7 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
@@ -33,8 +34,12 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import {
+	AiPreferenceService,
+	renderAiPreferencesBlock,
+	type ApplicableAiPreferences,
+} from '@/services/ai-preference.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
-import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -237,7 +242,7 @@ export class McpService {
 	/**
 	 * Resolves every PostHog-gated MCP feature for a user with a single flags
 	 * lookup. Env overrides are force-enable-only and take precedence over
-	 * PostHog. AI preferences have no env override, so the lookup always runs.
+	 * PostHog.
 	 */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
 		const { mcpAppsEnabled, mcpCanvasGroupsEnabled } = this.globalConfig.endpoints;
@@ -255,23 +260,24 @@ export class McpService {
 	}
 
 	/** Best-effort: a failed read costs the preferences, not the MCP request. */
-	private async resolveAiPreferencesBlock(user: User): Promise<string | undefined> {
+	private async readAiPreferencesBlock(user: User): Promise<string | undefined> {
+		let preferences: ApplicableAiPreferences;
 		try {
-			const preferences = await this.aiPreferenceService.getApplicableAcrossProjects(user);
-			return renderAiPreferencesBlock(preferences);
+			preferences = await this.aiPreferenceService.getApplicableAcrossProjects(user);
 		} catch (error) {
 			this.logger.warn('Failed to read the AI preferences for the MCP server instructions', {
 				userId: user.id,
-				error: error instanceof Error ? error.message : String(error),
+				error: ensureError(error).message,
 			});
 			return undefined;
 		}
+		return renderAiPreferencesBlock(preferences);
 	}
 
-	private resolveMcpApps(envOverride: boolean, flags?: FeatureFlags): McpAppsResolution {
+	private resolveMcpApps(envOverride: boolean, flags: FeatureFlags): McpAppsResolution {
 		if (envOverride) return { enabled: true, variant: 'env_override' };
 
-		const raw = flags?.[MCP_APPS_FLAG];
+		const raw = flags[MCP_APPS_FLAG];
 		if (raw === MCP_APPS_VARIANT_ENABLED) return { enabled: true, variant: 'variant' };
 		if (raw === MCP_APPS_VARIANT_CONTROL) return { enabled: false, variant: 'control' };
 		return { enabled: false, variant: 'unassigned' };
@@ -417,6 +423,13 @@ export class McpService {
 		auth?: McpAuthContext,
 		options: McpServerBuildOptions = {},
 	) {
+		// Only the handshake response carries the instructions, so the per-user
+		// block is read only there and not on every tool call. The read starts
+		// first so it overlaps the other lookups below; it never rejects.
+		const aiPreferences =
+			featureFlags.aiPreferencesEnabled && options.isConnectionHandshake
+				? this.readAiPreferencesBlock(user)
+				: undefined;
 		const { McpServer } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
 		);
@@ -437,12 +450,6 @@ export class McpService {
 		// the agent tools gets no agent build walkthrough.
 		const agentInstructionsEnabled =
 			agentsEnabled && (allowedToolNames?.has(MCP_CREATE_AGENT_TOOL_NAME) ?? true);
-		// Only the handshake response carries the instructions, so the per-user
-		// block is read only there and not on every tool call.
-		const aiPreferences =
-			featureFlags.aiPreferencesEnabled && options.isConnectionHandshake
-				? await this.resolveAiPreferencesBlock(user)
-				: undefined;
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -454,7 +461,7 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
-					aiPreferences,
+					aiPreferences: await aiPreferences,
 				}),
 			},
 		);
