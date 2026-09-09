@@ -10,9 +10,11 @@
 
 import {
 	browserRecordingActionSchema,
+	browserRecordingScreenshotSchema,
 	browserRecordingSchema,
 	type BrowserRecording,
 	type BrowserRecordingAction,
+	type BrowserRecordingScreenshot,
 } from '@n8n/api-types';
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
@@ -112,6 +114,12 @@ export class CDPRelayServer {
 
 	/** Called for each action captured while a recording is still in progress. */
 	onRecordingActionAppended?: (recordingId: string, action: BrowserRecordingAction) => void;
+
+	/** Called for each screenshot captured while a recording is still in progress. */
+	onRecordingScreenshotCaptured?: (
+		recordingId: string,
+		screenshot: BrowserRecordingScreenshot,
+	) => void;
 
 	private readonly connectionTimeoutMs: number;
 
@@ -921,6 +929,11 @@ export class CDPRelayServer {
 				const parsed = browserRecordingActionSchema.safeParse(eventParams.action);
 				if (!parsed.success) return;
 				this.onRecordingActionAppended?.(eventParams.recordingId, parsed.data);
+			} else if (method === 'recordingScreenshotCaptured') {
+				const eventParams = params as ExtensionEvents['recordingScreenshotCaptured']['params'];
+				const parsed = browserRecordingScreenshotSchema.safeParse(eventParams.screenshot);
+				if (!parsed.success) return;
+				this.onRecordingScreenshotCaptured?.(eventParams.recordingId, parsed.data);
 			}
 		};
 	}

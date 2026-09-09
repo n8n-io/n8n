@@ -11,7 +11,9 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, type Ref } from 'vue';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
+import type { LiveRecordingState } from '../composables/useLiveRecordingState';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
+import { RECORDING_TAB_ID } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
 import {
 	agentPreviewContextIcon,
@@ -51,6 +53,8 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 	'openAgentPreview',
 	undefined,
 );
+const openRecordingPreview = inject<(() => void) | undefined>('openRecordingPreview', undefined);
+const liveRecording = inject<LiveRecordingState | undefined>('liveRecording', undefined);
 const pendingComposerContext = inject<Readonly<Ref<InstanceAiHandoffContext | null>> | undefined>(
 	'pendingComposerContext',
 	undefined,
@@ -83,6 +87,10 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		if (!artifact.projectId || !openAgentPreview) return;
 		e.preventDefault();
 		openAgentPreview(artifact.id, artifact.projectId);
+	} else if (artifact.type === 'recording') {
+		if (!openRecordingPreview) return;
+		e.preventDefault();
+		openRecordingPreview();
 	}
 }
 
@@ -112,6 +120,16 @@ const artifacts = computed((): ResourceEntry[] => {
 			result.push(entry);
 		}
 	}
+	// The recording tab isn't a durable resource (see useCanvasPreview), so it isn't in
+	// producedArtifacts — surface it here too while live or recapping, so it's reachable
+	// after being switched away from, not just from the tab bar.
+	if (liveRecording?.isRecording.value || liveRecording?.hasRecap.value) {
+		result.push({
+			type: 'recording',
+			id: RECORDING_TAB_ID,
+			name: i18n.baseText('instanceAi.recordingPreview.title'),
+		});
+	}
 	return result;
 });
 
@@ -119,6 +137,7 @@ const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
+	recording: 'circle-dot',
 };
 
 function artifactHref(artifact: ResourceEntry) {

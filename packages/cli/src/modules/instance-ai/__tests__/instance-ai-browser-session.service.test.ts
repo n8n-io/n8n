@@ -24,6 +24,7 @@ vi.mock('@n8n/mcp-browser', () => {
 		onExtensionDisconnect?: () => void;
 		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
 		onRecordingActionAppended?: (recordingId: string, action: unknown) => void;
+		onRecordingScreenshotCaptured?: (recordingId: string, screenshot: unknown) => void;
 		attachExtension = vi.fn();
 		attachController = vi.fn();
 		stop = vi.fn();
@@ -55,6 +56,7 @@ const mcpBrowserMock: {
 		onExtensionDisconnect?: () => void;
 		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
 		onRecordingActionAppended?: (recordingId: string, action: unknown) => void;
+		onRecordingScreenshotCaptured?: (recordingId: string, screenshot: unknown) => void;
 		attachExtension: Mock;
 		attachController: Mock;
 		stop: Mock;
@@ -69,6 +71,7 @@ const mcpBrowserMock: {
 		onExtensionDisconnect?: () => void;
 		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
 		onRecordingActionAppended?: (recordingId: string, action: unknown) => void;
+		onRecordingScreenshotCaptured?: (recordingId: string, screenshot: unknown) => void;
 		attachExtension: Mock;
 		attachController: Mock;
 		stop: Mock;
@@ -548,6 +551,50 @@ describe('InstanceAiBrowserSessionService', () => {
 				url: 'https://example.com',
 			});
 			await vi.advanceTimersByTimeAsync(300);
+
+			expect(push.sendToUsers).not.toHaveBeenCalled();
+		});
+
+		it('pushes each streamed screenshot immediately, with no debounce', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			await service.startRecording(USER_ID, 'thread-1');
+			push.sendToUsers.mockClear();
+
+			relay.onRecordingScreenshotCaptured?.('rec-1', {
+				id: 's1',
+				actionId: 'a1',
+				data: 'ZmFrZQ==',
+				mimeType: 'image/jpeg',
+				timestamp: 0,
+			});
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiRecordingScreenshotReceived',
+					data: {
+						threadId: 'thread-1',
+						actionId: 'a1',
+						mimeType: 'image/jpeg',
+						data: 'ZmFrZQ==',
+					},
+				},
+				[USER_ID],
+			);
+		});
+
+		it('ignores a streamed screenshot while no recording was started from a thread', async () => {
+			const { relay } = await createSession(service);
+			relay.onExtensionConnect?.();
+			push.sendToUsers.mockClear();
+
+			relay.onRecordingScreenshotCaptured?.('rec-1', {
+				id: 's1',
+				actionId: 'a1',
+				data: 'ZmFrZQ==',
+				mimeType: 'image/jpeg',
+				timestamp: 0,
+			});
 
 			expect(push.sendToUsers).not.toHaveBeenCalled();
 		});

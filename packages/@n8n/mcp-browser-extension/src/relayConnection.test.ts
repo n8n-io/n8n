@@ -1153,6 +1153,37 @@ describe('RelayConnection', () => {
 
 			expect(findSent(ws, 'recordingActionAppended')).toBeUndefined();
 		});
+
+		it('sends a recordingScreenshotCaptured frame for one captured screenshot', () => {
+			const screenshot = {
+				id: 's1',
+				actionId: 'a1',
+				data: 'ZmFrZQ==',
+				mimeType: 'image/jpeg' as const,
+				timestamp: 0,
+			};
+
+			relay.sendRecordingScreenshot('rec-1', screenshot);
+
+			expect(findSent(ws, 'recordingScreenshotCaptured')).toEqual({
+				method: 'recordingScreenshotCaptured',
+				params: { recordingId: 'rec-1', screenshot },
+			});
+		});
+
+		it('does not send a recordingScreenshotCaptured frame while the socket is closed', () => {
+			ws.readyState = MockWebSocket.CLOSED;
+
+			relay.sendRecordingScreenshot('rec-1', {
+				id: 's1',
+				actionId: 'a1',
+				data: 'ZmFrZQ==',
+				mimeType: 'image/jpeg',
+				timestamp: 0,
+			});
+
+			expect(findSent(ws, 'recordingScreenshotCaptured')).toBeUndefined();
+		});
 	});
 });
 

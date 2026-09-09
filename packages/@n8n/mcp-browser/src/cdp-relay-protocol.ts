@@ -1,4 +1,8 @@
-import type { BrowserRecording, BrowserRecordingAction } from '@n8n/api-types';
+import type {
+	BrowserRecording,
+	BrowserRecordingAction,
+	BrowserRecordingScreenshot,
+} from '@n8n/api-types';
 
 /**
  * Protocol types for communication between the CDP relay server and the Chrome extension.
@@ -9,7 +13,7 @@ import type { BrowserRecording, BrowserRecordingAction } from '@n8n/api-types';
  */
 
 /** Version of the extension protocol. Bump when commands/events change. */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 // ---------------------------------------------------------------------------
 // Commands: relay → extension
@@ -115,6 +119,13 @@ export interface ExtensionEvents {
 		params: {
 			recordingId: string;
 			action: BrowserRecordingAction;
+		};
+	};
+	/** One screenshot captured during an in-progress recording, sent live as it happens. */
+	recordingScreenshotCaptured: {
+		params: {
+			recordingId: string;
+			screenshot: BrowserRecordingScreenshot;
 		};
 	};
 }

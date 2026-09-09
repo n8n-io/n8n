@@ -1,3 +1,4 @@
+import type { BrowserRecordingScreenshot } from '../schemas/browser-recording.schema';
 import type { InstanceAiCredits, ToolCategory } from '../schemas/instance-ai.schema';
 
 export type InstanceAiPushMessage =
@@ -49,5 +50,16 @@ export type InstanceAiPushMessage =
 				/** Latest running summary of what's been seen so far, once one has been
 				 *  generated. Absent until the first caption tick completes. */
 				caption?: string;
+			};
+	  }
+	| {
+			type: 'instanceAiRecordingScreenshotReceived';
+			data: {
+				/** The thread that asked for this recording — same matching rule as
+				 *  `instanceAiRecordingStateChanged`. */
+				threadId: string;
+				actionId: BrowserRecordingScreenshot['actionId'];
+				mimeType: BrowserRecordingScreenshot['mimeType'];
+				data: BrowserRecordingScreenshot['data'];
 			};
 	  };

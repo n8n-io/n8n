@@ -5,7 +5,7 @@
  * and tracks tab lifecycle for agent-created tabs only.
  */
 
-import type { BrowserRecordingAction } from '@n8n/api-types';
+import type { BrowserRecordingAction, BrowserRecordingScreenshot } from '@n8n/api-types';
 
 import { isHostApproved } from './approvedHosts';
 import { createLogger } from './logger';
@@ -495,14 +495,16 @@ function scheduleScreenshot(actionId: string, chromeTabId: number): void {
 		if (!data || data.length > MAX_RECORDING_SCREENSHOT_BASE64_BYTES) return;
 		const totalBytes = screenshots.reduce((total, screenshot) => total + screenshot.data.length, 0);
 		if (totalBytes + data.length > MAX_RECORDING_SCREENSHOTS_BASE64_BYTES) return;
-		screenshots.push({
+		const screenshot: BrowserRecordingScreenshot = {
 			id: crypto.randomUUID(),
 			actionId,
 			data,
 			mimeType: 'image/jpeg',
 			timestamp: Date.now() - Date.parse(recording.startedAt),
-		});
+		};
+		screenshots.push(screenshot);
 		recording.screenshots = screenshots;
+		activeConnection?.relay.sendRecordingScreenshot(recordingId, screenshot);
 	});
 }
 
@@ -664,6 +666,19 @@ function getVisibleRecording(): BrowserRecording | null {
 	return { ...recording, screenshots: [] };
 }
 
+/** Whether `tabUrl` already points at the same thread as `destination` (same origin +
+ *  path, ignoring query/hash) — used to skip a needless reload when the tab about to
+ *  receive the recording result is already showing that exact thread. */
+function isSameThreadUrl(tabUrl: string | undefined, destination: URL): boolean {
+	if (!tabUrl) return false;
+	try {
+		const current = new URL(tabUrl);
+		return current.origin === destination.origin && current.pathname === destination.pathname;
+	} catch {
+		return false;
+	}
+}
+
 async function openRecordingThread(threadUrl: string): Promise<void> {
 	try {
 		const destination = new URL(threadUrl);
@@ -681,7 +696,13 @@ async function openRecordingThread(threadUrl: string): Promise<void> {
 			await chrome.tabs.create({ url: destination.href, active: true });
 			return;
 		}
-		await chrome.tabs.update(target.id, { url: destination.href, active: true });
+		// Already on that exact thread (e.g. the user stopped the recording from the
+		// conversation they're still looking at) — just focus it, don't reload it.
+		if (isSameThreadUrl(target.url, destination)) {
+			await chrome.tabs.update(target.id, { active: true });
+		} else {
+			await chrome.tabs.update(target.id, { url: destination.href, active: true });
+		}
 		if (target.windowId !== undefined) {
 			await chrome.windows.update(target.windowId, { focused: true });
 		}

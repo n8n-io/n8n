@@ -102,6 +102,49 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(openWorkflowPreview).toHaveBeenCalledWith('wf-1');
 	});
 
+	it('surfaces the recording as an artifact while live or recapping, and reopens it on click', async () => {
+		const openRecordingPreview = vi.fn();
+		const liveRecording = {
+			isRecording: ref(false),
+			hasRecap: ref(true),
+			actionCount: ref(5),
+			caption: ref(undefined),
+			elapsedMs: ref(0),
+			screenshots: ref([]),
+		};
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openRecordingPreview,
+					liveRecording,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open Browser recording' });
+		await fireEvent.click(artifactLink);
+
+		expect(openRecordingPreview).toHaveBeenCalled();
+	});
+
+	it('does not show a recording artifact once neither live nor recapping', () => {
+		const liveRecording = {
+			isRecording: ref(false),
+			hasRecap: ref(false),
+			actionCount: ref(0),
+			caption: ref(undefined),
+			elapsedMs: ref(0),
+			screenshots: ref([]),
+		};
+
+		const { queryByRole } = renderComponent({
+			global: { provide: { liveRecording } },
+		});
+
+		expect(queryByRole('link', { name: 'Open Browser recording' })).not.toBeInTheDocument();
+	});
+
 	it('renders agent preview handoff context using the matching agent name', () => {
 		storeState.producedArtifacts = new Map<string, ResourceEntry>([
 			[
