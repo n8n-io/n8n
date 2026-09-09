@@ -61,7 +61,12 @@ const renderComponent = createComponentRenderer(AppDetailsView, {
 		stubs: {
 			PageViewLayout: { template: '<div data-test-id="page-view-layout"><slot /></div>' },
 			AppBreadcrumbs: { template: '<nav data-test-id="app-breadcrumbs" />' },
-			AppThemeEditor: { template: '<div data-test-id="app-theme-editor-stub" />' },
+			AppThemeEditor: {
+				props: ['projectId', 'app', 'threadId'],
+				emits: ['saved'],
+				template:
+					'<div data-test-id="app-theme-editor-stub" :data-thread-id="threadId" @click="$emit(\'saved\', { ...app, hasUnpublishedChanges: true })" />',
+			},
 			TimeAgo: { template: '<span data-test-id="time-ago-stub" />' },
 		},
 	},
@@ -529,6 +534,37 @@ describe('AppDetailsView', () => {
 		expect(openAppArtifactThread).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), {
 			initialDraft: 'Update the page at "/clients/:id" in this app.',
 		});
+	});
+
+	it('hands the thread to the theme editor and flags the draft after a save, staying on Build', async () => {
+		const { getByTestId, getByRole, queryByTestId } = await renderApp(makeApp(), {
+			artifactMode: true,
+			threadId: 'thread-1',
+		});
+
+		await userEvent.click(getByRole('tab', { name: 'Theme' }));
+		expect(getByTestId('app-theme-editor-stub')).toHaveAttribute('data-thread-id', 'thread-1');
+
+		await userEvent.click(getByTestId('app-theme-editor-stub'));
+
+		expect(getByTestId('app-unpublished-changes')).toBeInTheDocument();
+		expect(getByTestId('app-builder-build')).toBeInTheDocument();
+		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
+	});
+
+	it('switches to the live preview after a theme save when the dev server is showing', async () => {
+		const { getByTestId, getByRole } = await renderApp(makeApp(), {
+			artifactMode: true,
+			threadId: 'thread-1',
+			liveUrl: '/apps-preview/tok/',
+			liveStatus: { status: 'ready', url: '/apps-preview/tok/', expiresAt: '2026-09-09T00:00:00Z' },
+		});
+		await userEvent.click(getByTestId('radio-button-build'));
+		await userEvent.click(getByRole('tab', { name: 'Theme' }));
+
+		await userEvent.click(getByTestId('app-theme-editor-stub'));
+
+		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
 	});
 
 	it('prefers the thread build over the stored version and switches to Preview on the first build', async () => {

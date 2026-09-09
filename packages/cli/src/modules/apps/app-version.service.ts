@@ -166,7 +166,7 @@ export class AppVersionService {
 	/**
 	 * Source tarball of the newest version, snapshot or build. The active version
 	 * is the published one; the newest is the working copy, which is what a
-	 * restore (agent or Theme tab) must continue from.
+	 * restore, publish, or Theme-tab save must continue from.
 	 */
 	async readSource(app: App): Promise<{ versionId: string; data: Buffer } | null> {
 		const [version] = await this.appVersionRepository.listByAppId(app.id);

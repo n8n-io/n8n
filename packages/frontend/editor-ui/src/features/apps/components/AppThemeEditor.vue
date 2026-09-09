@@ -19,9 +19,11 @@ import type { App, AppTheme } from '@/features/apps/apps.types';
 const props = defineProps<{
 	projectId: string;
 	app: App;
+	/** Thread whose sandbox holds the draft; the theme files are written there so the live preview shows them. */
+	threadId?: string;
 }>();
 
-const emit = defineEmits<{ applied: [App] }>();
+const emit = defineEmits<{ saved: [App] }>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -103,7 +105,7 @@ const accentColor = ref(props.app.theme?.vars['--primary'] ?? DEFAULT_ACCENT);
 const mode = ref<AppTheme['mode']>(props.app.theme?.mode ?? 'system');
 const font = ref(props.app.theme?.vars['--font-sans'] ?? SYSTEM_FONT);
 const radius = ref(parsePxRadius(props.app.theme?.vars['--radius']) ?? DEFAULT_RADIUS);
-const applying = ref(false);
+const saving = ref(false);
 
 // Switching apps (route param change) reuses this component instance.
 watch(
@@ -151,18 +153,24 @@ const theme = computed<AppTheme>(() => {
 });
 
 const onSave = async () => {
-	applying.value = true;
+	saving.value = true;
 	try {
-		const updated = await appsStore.applyAppTheme(props.projectId, props.app.id, theme.value);
-		emit('applied', updated);
+		const updated = await appsStore.applyAppTheme(
+			props.projectId,
+			props.app.id,
+			theme.value,
+			props.threadId,
+		);
+		emit('saved', updated);
 		toast.showMessage({
-			title: i18n.baseText('apps.builder.theme.applied'),
+			title: i18n.baseText('apps.builder.theme.saved'),
+			message: i18n.baseText('apps.builder.theme.saved.message'),
 			type: 'success',
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('apps.builder.theme.error'));
 	} finally {
-		applying.value = false;
+		saving.value = false;
 	}
 };
 </script>
@@ -226,7 +234,7 @@ const onSave = async () => {
 		</N8nSettingsSection>
 
 		<div :class="$style.footer">
-			<N8nButton :loading="applying" data-test-id="app-theme-save" @click="onSave">
+			<N8nButton :loading="saving" data-test-id="app-theme-save" @click="onSave">
 				{{ i18n.baseText('apps.builder.theme.save') }}
 			</N8nButton>
 		</div>

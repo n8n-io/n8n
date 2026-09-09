@@ -5,9 +5,11 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AppPublishService } from '@/modules/apps/app-publish.service';
+import type { AppThemeService } from '@/modules/apps/app-theme.service';
 import type { App } from '@/modules/apps/app.entity';
 import type { AppsService } from '@/modules/apps/apps.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
@@ -23,6 +25,7 @@ describe('AppPreviewController', () => {
 	const instanceAiService = mock<InstanceAiService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const appPublishService = mock<AppPublishService>();
+	const appThemeService = mock<AppThemeService>();
 	const instanceWriteAccess = mock<InstanceWriteAccessService>();
 	const controller = new AppPreviewController(
 		appPreviewService,
@@ -30,6 +33,7 @@ describe('AppPreviewController', () => {
 		instanceAiService,
 		memoryService,
 		appPublishService,
+		appThemeService,
 		instanceWriteAccess,
 	);
 	const user = mock<User>({ id: 'user-1' });
@@ -53,6 +57,10 @@ describe('AppPreviewController', () => {
 			versionId: 'v-2',
 			url: 'http://n8n/apps/greeter/',
 		});
+		appThemeService.applyTheme.mockResolvedValue({ versionId: 's-3' });
+		appsService.toResponse.mockImplementation(
+			async (value) => await Promise.resolve({ ...value, hasUnpublishedChanges: true }),
+		);
 	});
 
 	const routeMetadata = (handler: string) =>
@@ -139,6 +147,72 @@ describe('AppPreviewController', () => {
 
 			await expect(controller.publish(req, res, 'app-1', {})).rejects.toThrow(ForbiddenError);
 			expect(appPublishService.publish).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('applyTheme', () => {
+		const theme = { mode: 'dark' as const, vars: { '--primary': '#000' } };
+
+		it('gates the route with a project-scoped app:update check', () => {
+			const route = routeMetadata('applyTheme');
+
+			expect(route?.method).toBe('post');
+			expect(route?.path).toBe('/:appId/theme');
+			expect(route?.skipAuth).toBeFalsy();
+			expect(route?.accessScope).toEqual({ scope: 'app:update', globalOnly: false });
+		});
+
+		it('stores the theme, writes it into the stored source without a thread, and answers the app', async () => {
+			await expect(controller.applyTheme(req, res, 'app-1', { theme })).resolves.toMatchObject({
+				id: 'app-1',
+				hasUnpublishedChanges: true,
+			});
+
+			expect(appsService.updateApp).toHaveBeenCalledWith('app-1', { theme });
+			expect(appThemeService.applyTheme).toHaveBeenCalledWith('app-1', theme, user, {
+				draft: undefined,
+			});
+			expect(memoryService.checkThreadOwnership).not.toHaveBeenCalled();
+		});
+
+		it('hands the thread sandbox over as the draft when the caller owns the thread', async () => {
+			const workspace = mock<Workspace>();
+			instanceAiService.getCachedWorkspace.mockReturnValue(workspace);
+
+			await controller.applyTheme(req, res, 'app-1', { theme, threadId: 'thread-1' });
+
+			expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith('user-1', 'thread-1');
+			expect(appThemeService.applyTheme).toHaveBeenCalledWith('app-1', theme, user, {
+				draft: { threadId: 'thread-1', workspace },
+			});
+		});
+
+		it('answers 400 with the service message when the theme cannot be saved', async () => {
+			appThemeService.applyTheme.mockResolvedValue({ error: true, message: 'no source yet' });
+
+			const attempt = controller.applyTheme(req, res, 'app-1', { theme });
+
+			await expect(attempt).rejects.toThrow(BadRequestError);
+			await expect(attempt).rejects.toThrow('no source yet');
+		});
+
+		it('answers 404 for a thread the caller does not own, before storing anything', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.applyTheme(req, res, 'app-1', { theme, threadId: 'thread-1' }),
+			).rejects.toThrow(NotFoundError);
+			expect(appsService.updateApp).not.toHaveBeenCalled();
+			expect(appThemeService.applyTheme).not.toHaveBeenCalled();
+		});
+
+		it('answers 403 on a read-only instance', async () => {
+			instanceWriteAccess.isReadOnly.mockReturnValue(true);
+
+			await expect(controller.applyTheme(req, res, 'app-1', { theme })).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(appsService.updateApp).not.toHaveBeenCalled();
 		});
 	});
 

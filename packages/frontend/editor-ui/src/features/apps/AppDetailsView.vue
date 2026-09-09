@@ -280,9 +280,10 @@ const onElementSelected = async (element: InspectedElement) => {
 	await selectElement(app.value, element, props.artifactMode);
 };
 
-const onThemeApplied = (updated: App) => {
+// Only the live preview shows the draft; the published build stays as it was until a publish.
+const onThemeSaved = (updated: App) => {
 	app.value = updated;
-	mode.value = 'preview';
+	if (props.liveUrl) mode.value = 'preview';
 };
 
 const refreshVersions = async () => {
@@ -606,7 +607,12 @@ watch(buildTab, async (tab) => {
 				</div>
 
 				<div v-else-if="buildTab === 'theme'" :class="$style.container">
-					<AppThemeEditor :project-id="projectId" :app="app" @applied="onThemeApplied" />
+					<AppThemeEditor
+						:project-id="projectId"
+						:app="app"
+						:thread-id="props.threadId"
+						@saved="onThemeSaved"
+					/>
 				</div>
 
 				<div

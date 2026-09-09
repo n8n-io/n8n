@@ -25,9 +25,9 @@ export { APPS_TOOL_ID };
 
 /**
  * The slice of `InstanceAiContext` the create/build/restore handlers actually
- * touch. Narrow and exported so a headless caller (n8n's publish and theme
- * pipelines) can reuse `handleBuild`/`handleRestore` without constructing — or
- * faking — a full `InstanceAiContext`.
+ * touch. Narrow and exported so a headless caller (n8n's publish pipeline) can
+ * reuse `handleBuild`/`handleRestore` without constructing — or faking — a full
+ * `InstanceAiContext`.
  */
 export type AppSandboxContext = Pick<
 	InstanceAiContext,

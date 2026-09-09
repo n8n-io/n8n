@@ -63,6 +63,7 @@ describe('AppThemeEditor', () => {
 					'--radius': '4px',
 				}),
 			}),
+			undefined,
 		);
 	});
 
@@ -82,6 +83,7 @@ describe('AppThemeEditor', () => {
 				mode: 'dark',
 				vars: expect.objectContaining({ '--primary': '#4f46e5', '--ring': '#4f46e5' }),
 			}),
+			undefined,
 		);
 	});
 
@@ -125,10 +127,28 @@ describe('AppThemeEditor', () => {
 				mode: 'dark',
 				vars: expect.objectContaining({ '--radius': '12px' }),
 			}),
+			undefined,
 		);
 	});
 
-	it('shows a loading state while applying and a success toast after', async () => {
+	it('passes the thread along so the live preview picks the theme up', async () => {
+		const app = makeApp();
+		appsStore.applyAppTheme.mockResolvedValue(app);
+		const { getByTestId } = renderEditor({
+			props: { projectId: 'proj-1', app, threadId: 'thread-1' },
+		});
+
+		await userEvent.click(getByTestId('app-theme-save'));
+
+		expect(appsStore.applyAppTheme).toHaveBeenCalledWith(
+			'proj-1',
+			'app-1',
+			expect.any(Object),
+			'thread-1',
+		);
+	});
+
+	it('shows a loading state while saving and a "publish next" toast after', async () => {
 		let resolveApply: (app: App) => void = () => {};
 		appsStore.applyAppTheme.mockReturnValue(new Promise((resolve) => (resolveApply = resolve)));
 		const app = makeApp();
@@ -137,32 +157,40 @@ describe('AppThemeEditor', () => {
 		await userEvent.click(getByTestId('app-theme-save'));
 		expect(getByTestId('app-theme-save')).toHaveAttribute('aria-disabled', 'true');
 
-		resolveApply(makeApp({ activeVersionId: 'v-2' }));
-		await vi.waitFor(() => expect(showMessage).toHaveBeenCalled());
+		resolveApply(makeApp({ hasUnpublishedChanges: true }));
+		await vi.waitFor(() =>
+			expect(showMessage).toHaveBeenCalledWith({
+				title: 'Theme saved',
+				message: 'Publish to make it live.',
+				type: 'success',
+			}),
+		);
 		expect(getByTestId('app-theme-save')).not.toHaveAttribute('aria-disabled', 'true');
 	});
 
 	it('emits the updated app on success', async () => {
 		const app = makeApp();
-		const updated = makeApp({ activeVersionId: 'v-2' });
+		const updated = makeApp({ hasUnpublishedChanges: true });
 		appsStore.applyAppTheme.mockResolvedValue(updated);
 		const { getByTestId, emitted } = renderEditor({ props: { projectId: 'proj-1', app } });
 
 		await userEvent.click(getByTestId('app-theme-save'));
-		await vi.waitFor(() => expect(emitted().applied).toBeTruthy());
+		await vi.waitFor(() => expect(emitted().saved).toBeTruthy());
 
-		expect(emitted().applied[0]).toEqual([updated]);
+		expect(emitted().saved[0]).toEqual([updated]);
 	});
 
-	it('shows an error toast without emitting when the build fails', async () => {
+	it('shows an error toast without emitting when the save fails', async () => {
 		const app = makeApp();
-		const error = new Error('Build the app once before applying a theme.');
+		const error = new Error('App "Greeter" has no source yet.');
 		appsStore.applyAppTheme.mockRejectedValue(error);
 		const { getByTestId, emitted } = renderEditor({ props: { projectId: 'proj-1', app } });
 
 		await userEvent.click(getByTestId('app-theme-save'));
-		await vi.waitFor(() => expect(showError).toHaveBeenCalledWith(error, 'Error applying theme'));
+		await vi.waitFor(() =>
+			expect(showError).toHaveBeenCalledWith(error, "Couldn't save the theme"),
+		);
 
-		expect(emitted().applied).toBeUndefined();
+		expect(emitted().saved).toBeUndefined();
 	});
 });

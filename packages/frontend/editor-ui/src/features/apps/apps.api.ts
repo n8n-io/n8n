@@ -42,18 +42,19 @@ export const updateAppApi = async (
 	});
 };
 
-/** Persists the theme and rebuilds the app so the served version carries it; can take a while on a cold sandbox. */
+/** Saves the theme into the app's draft; with `threadId` the thread's dev server shows it right away. Nothing is published. */
 export const applyAppThemeApi = async (
 	context: IRestApiContext,
 	projectId: string,
 	appId: string,
 	theme: AppTheme,
+	threadId?: string,
 ) => {
 	return await makeRestApiRequest<App>(
 		context,
 		'POST',
 		`/projects/${projectId}/apps/${appId}/theme`,
-		{ theme },
+		threadId ? { theme, threadId } : { theme },
 	);
 };
 
