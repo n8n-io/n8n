@@ -130,7 +130,7 @@ export class SourceControlGitService {
 
 		if (preferences.connectionType === 'https') {
 			const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
-			const config = buildHttpsGitConfig(preferences.repositoryUrl);
+			const config = buildHttpsGitConfig({ repositoryUrl: preferences.repositoryUrl });
 			const httpsGitOptions = {
 				...this.gitOptions,
 				config,

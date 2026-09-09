@@ -9,7 +9,7 @@ import {
 	SSH_SERVER_ALIVE_COUNT_MAX,
 	SSH_SERVER_ALIVE_INTERVAL_SECONDS,
 } from './constants';
-import type { ResolvedPromotionConfig } from './promotions.types';
+import type { PromotionOperationInput, ResolvedPromotionConfig } from './promotions.types';
 
 /** Quote a value for use as one POSIX shell argument. */
 const quoteShellArg = (value: string) => `'${value.replace(/'/g, "'\"'\"'")}'`;
@@ -20,7 +20,7 @@ const quoteShellArg = (value: string) => `'${value.replace(/'/g, "'\"'\"'")}'`;
  * The credential helper serves every request from this Git process. Each
  * operation uses a separate process and configuration.
  */
-export function buildHttpsGitConfig(repositoryUrl: string): string[] {
+export function buildHttpsGitConfig({ repositoryUrl }: { repositoryUrl: string }): string[] {
 	// Read credentials from the operation's environment to keep them out of process arguments.
 	const helper =
 		'!f() { printf \'%s\\n\' "username=$N8N_GIT_USERNAME" "password=$N8N_GIT_PASSWORD"; }; f';
@@ -76,4 +76,9 @@ export async function generateSshKeyPair(keyType: PromotionSshKeyType, comment: 
  */
 export function checkoutBranchName(config: ResolvedPromotionConfig): string {
 	return config.direction === 'apply' ? config.settings.branchName : config.settings.baseBranchName;
+}
+
+/** Keep the repository URL consistent across Git operations and cache identity. */
+export function repositoryUrl(input: PromotionOperationInput): string {
+	return input.target.remoteUrl;
 }

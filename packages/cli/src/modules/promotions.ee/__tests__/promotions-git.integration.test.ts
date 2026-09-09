@@ -7,7 +7,7 @@ describe('Promotion Git credentials', () => {
 		{ username: 'git-user', password: 'git-password' },
 		{ username: 'user\'"$name', password: 'pass\'"$(printf expanded)`printf expanded`\\end' },
 	])('passes literal credential values to Git (%#)', ({ username, password }) => {
-		const config = buildHttpsGitConfig('https://example.com/repo.git');
+		const config = buildHttpsGitConfig({ repositoryUrl: 'https://example.com/repo.git' });
 		const args = [
 			'-c',
 			'credential.helper=',

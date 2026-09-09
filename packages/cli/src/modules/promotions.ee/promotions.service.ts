@@ -39,7 +39,7 @@ import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
-import { checkoutBranchName } from './promotions-git.utils';
+import { checkoutBranchName, repositoryUrl } from './promotions-git.utils';
 import type { PromotionCacheDescriptor, PromotionOperationInput } from './promotions.types';
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
@@ -92,7 +92,7 @@ export class PromotionsService {
 		const branchName = checkoutBranchName(input.config);
 
 		await this.gitService.clone({
-			remoteUrl: input.target.remoteUrl,
+			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
 			paths: this.workingDirectory.paths(input.configId),
 			branchName,
@@ -171,7 +171,7 @@ export class PromotionsService {
 			await rename(stagingFolder, packageFolder);
 
 			const { commitSha } = await this.gitService.commitAndPush({
-				remoteUrl: input.target.remoteUrl,
+				remoteUrl: repositoryUrl(input),
 				credentials: await this.credentialsFor(input),
 				paths: this.workingDirectory.paths(input.configId),
 				branchName,
@@ -204,7 +204,7 @@ export class PromotionsService {
 		const paths = this.workingDirectory.paths(input.configId);
 
 		const { commitSha } = await this.gitService.refreshCheckout({
-			remoteUrl: input.target.remoteUrl,
+			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
@@ -270,7 +270,7 @@ export class PromotionsService {
 			schemaVersion: 1,
 			configId: input.configId,
 			connectionId: input.connectionId,
-			remoteUrl: input.target.remoteUrl,
+			remoteUrl: repositoryUrl(input),
 			checkoutBranchName: checkoutBranchName(input.config),
 		};
 	}

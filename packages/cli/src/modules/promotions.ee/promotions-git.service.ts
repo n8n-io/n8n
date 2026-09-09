@@ -275,7 +275,7 @@ export class PromotionsGitService {
 		try {
 			let git: SimpleGit;
 			if (credentials.authType === 'token') {
-				const config = [...buildHttpsGitConfig(remoteUrl), ...extraConfig];
+				const config = [...buildHttpsGitConfig({ repositoryUrl: remoteUrl }), ...extraConfig];
 
 				git = simpleGit({
 					...options,

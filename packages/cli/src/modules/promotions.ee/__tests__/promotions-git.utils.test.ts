@@ -30,7 +30,7 @@ describe('promotions-git.utils', () => {
 		});
 
 		it('builds a credential helper that reads the operation environment', () => {
-			const config = buildHttpsGitConfig('https://github.com/user/repo.git');
+			const config = buildHttpsGitConfig({ repositoryUrl: 'https://github.com/user/repo.git' });
 
 			expect(config).toEqual([
 				'credential.helper=!f() { printf \'%s\\n\' "username=$N8N_GIT_USERNAME" "password=$N8N_GIT_PASSWORD"; }; f',
@@ -43,13 +43,13 @@ describe('promotions-git.utils', () => {
 		it('adds http.proxy when a proxy resolves for the repository URL', () => {
 			process.env.HTTPS_PROXY = 'http://proxy.company.com:8080';
 
-			const config = buildHttpsGitConfig('https://github.com/user/repo.git');
+			const config = buildHttpsGitConfig({ repositoryUrl: 'https://github.com/user/repo.git' });
 
 			expect(config).toContain('http.proxy=http://proxy.company.com:8080');
 		});
 
 		it('adds no proxy setting when no proxy is configured', () => {
-			const config = buildHttpsGitConfig('https://github.com/user/repo.git');
+			const config = buildHttpsGitConfig({ repositoryUrl: 'https://github.com/user/repo.git' });
 
 			expect(config.some((entry) => entry.includes('proxy='))).toBe(false);
 		});
