@@ -1,0 +1,90 @@
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_816e8d02944032::t_b80f30062ebcce 14,69,77-82,87
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_816e8d02944032::t_0dda208621abaa 6191
+  s_816e8d02944032::t_914571bbfb9345 6166,6190,6192-6199
+  s_816e8d02944032::t_18aaaeffd6c3f3 6172,6225,6264
+packages/cli/test/migration/1788877732544-create-agent-memory-entry-candidates.test.ts
+  s_816e8d02944032::t_9b48d29e18a963 165-166,173
+packages/cli/test/integration/database/repositories/agent-memory-entry-candidate.repository.test.ts
+  s_816e8d02944032::t_c52f23fc24e48e 60,67,78,94-96,106
+packages/@n8n/db/src/migrations/common/1788877732544-CreateAgentMemoryEntryCandidates.ts
+  s_816e8d02944032::t_da4798efaa57b2 37-39,60
+packages/cli/src/modules/agents/repositories/agent-memory-entry-candidate.repository.ts
+  s_816e8d02944032::t_b67bc3e88af65c 12,28,38
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_816e8d02944032::t_d5e72e6f1bd1af 96
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_816e8d02944032::t_2135b99b0779cc 483
+packages/cli/src/modules/agents/entities/agent-memory-entry-candidate.entity.ts
+  s_816e8d02944032::t_9227e108ed25e4 6,24-25
+  s_816e8d02944032::t_e1f1a163139e50 26
+packages/@n8n/agents/src/__tests__/integration/memory-episodic.test.ts
+  s_816e8d02944032::t_86c99474ef26b3 322
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_816e8d02944032::t_66568aae6b442c 53,864-875
+  s_816e8d02944032::t_218e1a14742c40 825,833,839,846,856,858
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_816e8d02944032::t_eef7c8af8fdccf 275-294
+  s_816e8d02944032::t_176b76b069af36 86-90,104,269,273,295,322,388
+  s_816e8d02944032::t_b53183791fb822 509,620
+  s_816e8d02944032::t_29a7cdfa8e4faf 296
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_816e8d02944032::t_0056b47f6abbeb 1090
+docs/generated/postgres-schema/README.md
+  s_816e8d02944032::t_9659e3fe407da2 32,648
+docs/generated/postgres-schema/public.agents.md
+  s_816e8d02944032::t_ac84889ef35254 263
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_816e8d02944032::t_feb8af415be8a1 15,41,54,78
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_816e8d02944032::t_a43402fdb3fff9 98
+docs/generated/postgres-schema/public.agents_messages.md
+  s_816e8d02944032::t_31a85b4c3792ed 65
+docs/generated/postgres-schema/public.agents_resources.md
+  s_816e8d02944032::t_595a05e05bc1f4 66
+docs/generated/postgres-schema/public.agents_threads.md
+  s_816e8d02944032::t_da01c7c625fbcd 61
+docs/generated/sqlite-schema/README.md
+  s_816e8d02944032::t_26c2e33b6dcd74 32,635
+docs/generated/sqlite-schema/agents.md
+  s_816e8d02944032::t_8a9a1b2cdd68ff 265
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_816e8d02944032::t_b59cf84d8661c1 9,26,53,77
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_816e8d02944032::t_7aa99b4126e09c 102
+docs/generated/sqlite-schema/agents_messages.md
+  s_816e8d02944032::t_94737429e57105 70
+docs/generated/sqlite-schema/agents_resources.md
+  s_816e8d02944032::t_2e5c37cb3fb944 75
+docs/generated/sqlite-schema/agents_threads.md
+  s_816e8d02944032::t_297c8da13c17e8 69
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_816e8d02944032::t_2541ebad303f0c 73,75-80,83-86,88,92-93,96,130,148,201,203-208,211-214,216,220-221,224,299,301-306,309-312,314,318-319,322,338,343,346,348,361,430,432-437,440-443,445,449-450,453,469,474,477,479,492,511,514,516,529,604,606-611,614-617,619,623-624,627,648,651,653,666,698,714,767,769-774,777-780,782,786-787,790
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-captured-entries-source-backed-without-creating-observations.json
+  s_816e8d02944032::t_ab8ee58c669caa 73,75-80,83-86,88,92-93,96,130,133,135,148,201,203-208,211-214,216,220-221,224,292,299,301-306,309-312,314,318-319,322,345,348,350,363,432,434-439,442-445,447,451-452,455,476,479,481,494
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_816e8d02944032::t_559935f1feb9d4 73,75-80,83-86,88,92-93,96,130,143,156,174,179,184,238,240-245,248-251,253,257-258,261,295,308,321,339,344,349,360,363-364,378-601,654,656-661,664-667,669,673-674,677,745,752,754-759,762-765,767,771-772,775,788-790,795,800,803,805,815,818,880,887,889-894,897-900,902,906-907,910,987,989-994,997-1000,1002,1006-1007,1010,1044,1047,1062,1115,1117-1122,1125-1128,1130,1134-1135,1138,1206,1213,1215-1220,1223-1226,1228,1232-1233,1236,1249,1254,1259,1262,1264,1274,1277,1339,1346,1348-1353,1356-1359,1361,1365-1366,1369,1390,1393,1395,1408,1427,1430,1432,1445,1520,1522-1527,1530-1533,1535,1539-1540,1543,1561,1566,1569,1571,1584,1616,1632-1633,1685,1687-1692,1695-1698,1700,1704-1705,1708
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/processes-a-pending-capture-before-a-later-run.json
+  s_816e8d02944032::t_e2447b63b9fd2b 71,73-78,81-84,86,90-91,94,106,110,115,118,120,130,133,195,202,204-209,212-215,217,221-222,225,302,304-309,312-315,317,321-322,325,346,349,351,364,396,412-413,465,467-472,475-478,480,484-485,488,509,512,514,527
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_816e8d02944032::t_4d2fb578dd3863 73,75-80,83-86,88,92-93,96,130,133,148,201,203-208,211-214,216,220-221,224,292,299,301-306,309-312,314,318-319,322,343,346,348,361,430,432-437,440-443,445,449-450,453,530,532-537,540-543,545,549-550,553,587,590,605,658,660-665,668-671,673,677-678,681,749,756,758-763,766-769,771,775-776,779,792,797,802,805,807,817,820,882,889,891-896,899-902,904,908-909,912,925,930,935,938,940,950,953,1028,1030-1035,1038-1041,1043,1047-1048,1051,1072,1075,1077,1090,1126,1142-1143,1195,1197-1202,1205-1208,1210,1214-1215,1218
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_816e8d02944032::t_b4b5965bf64229 73,75-80,83-86,88,92-93,96,130,148,201,203-208,211-214,216,220-221,224,299,301-306,309-312,314,318-319,322,335,340,345,348,350,360,363,425,432,434-439,442-445,447,451-452,455,476,479,481,494,569,571-576,579-582,584,588-589,592,613,616,618,631,663,679-680,732,734-739,742-745,747,751-752,755
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5931c25ffc89168eed8399d14ff3892d487a7dc2",
+  "prompts": {},
+  "sessions": {
+    "s_816e8d02944032": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e4a4a35f-e2a9-42e5-be67-c9e9bd76db57",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
