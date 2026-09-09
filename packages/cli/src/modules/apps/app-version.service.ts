@@ -1,4 +1,5 @@
 import type { AppVersion as AppVersionResponse } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { InstanceSettings } from 'n8n-core';
@@ -13,7 +14,8 @@ import type { AppVersion } from './app-version.entity';
 import { AppVersionRepository } from './app-version.repository';
 import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
-import { AppNotFoundError } from './errors/app-not-found.error';
+import { AppBlobSizeQuotaExceededError } from './errors/app-blob-size-quota-exceeded.error';
+import { AppVersionQuotaExceededError } from './errors/app-version-quota-exceeded.error';
 import { InvalidAppVersionTarballError } from './errors/invalid-app-version-tarball.error';
 import { createDistTarFilter, DIST_TAR_LIMITS } from './serving/dist-tar-filter';
 
@@ -40,15 +42,22 @@ export class AppVersionService {
 		private readonly appVersionRepository: AppVersionRepository,
 		private readonly blobStore: AppVersionBlobStore,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
-	async create(appId: string, source: Buffer, dist: Buffer): Promise<AppVersion> {
+	async create(
+		appId: string,
+		projectId: string,
+		source: Buffer,
+		dist: Buffer,
+	): Promise<AppVersion> {
+		await this.assertUnderQuota(appId, projectId, source, dist);
+
 		await this.assertTarball('source', source);
 		const distEntries = await this.assertTarball('dist', dist, createDistTarFilter());
 		if (!distEntries.some((entry) => path.posix.normalize(entry) === 'index.html')) {
 			throw new InvalidAppVersionTarballError('dist', 'has no index.html at its root');
 		}
-		if (!(await this.appRepository.existsBy({ id: appId }))) throw new AppNotFoundError(appId);
 
 		const versionId = generateNanoId();
 		const version = await this.storeVersion(appId, versionId, source, dist);
@@ -56,6 +65,32 @@ export class AppVersionService {
 		await this.pruneDist(appId, versionId);
 
 		return version;
+	}
+
+	/**
+	 * Cheapest checks first, before any tarball parsing CPU cost. The app's
+	 * existence is guaranteed by the caller (`AppsService.createVersion` calls
+	 * `getApp` first), so this only checks quotas.
+	 */
+	private async assertUnderQuota(
+		appId: string,
+		projectId: string,
+		source: Buffer,
+		dist: Buffer,
+	): Promise<void> {
+		const versionCount = await this.appVersionRepository.countByAppId(appId);
+		if (versionCount >= this.globalConfig.apps.maxVersionsPerApp) {
+			throw new AppVersionQuotaExceededError(
+				this.globalConfig.apps.maxVersionsPerApp,
+				versionCount,
+			);
+		}
+
+		const projectSize = await this.appVersionRepository.sumSizeByProjectId(projectId);
+		const newSize = projectSize + source.length + dist.length;
+		if (newSize > this.globalConfig.apps.maxProjectBlobSize) {
+			throw new AppBlobSizeQuotaExceededError(this.globalConfig.apps.maxProjectBlobSize, newSize);
+		}
 	}
 
 	/** Writes both blobs and the row; a failure at any step deletes the blobs written so far. */
@@ -77,6 +112,8 @@ export class AppVersionService {
 				storedAt: sourceBlob.storedAt,
 				sourceStorageKey: sourceBlob.storageKey,
 				distStorageKey: distBlob.storageKey,
+				sourceSizeBytes: source.length,
+				distSizeBytes: dist.length,
 			});
 		} catch (error) {
 			await this.blobStore.delete(written);

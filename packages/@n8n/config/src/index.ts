@@ -6,6 +6,7 @@ import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiGatewayConfig } from './configs/ai-gateway.config';
 import { AiConfig } from './configs/ai.config';
+import { AppsConfig } from './configs/apps.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
@@ -59,6 +60,7 @@ import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
+export { AppsConfig } from './configs/apps.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
@@ -293,6 +295,9 @@ export class GlobalConfig {
 
 	@Nested
 	dataTable: DataTableConfig;
+
+	@Nested
+	apps: AppsConfig;
 
 	@Nested
 	workflowHistoryCompaction: WorkflowHistoryCompactionConfig;

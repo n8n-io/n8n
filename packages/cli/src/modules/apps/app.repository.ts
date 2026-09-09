@@ -28,6 +28,10 @@ export class AppRepository extends Repository<App> {
 		return await this.findBy({ projectId });
 	}
 
+	async countByProjectId(projectId: string): Promise<number> {
+		return await this.countBy({ projectId });
+	}
+
 	async updateApp(app: App, updates: Partial<Pick<App, 'name' | 'namespace' | 'theme'>>) {
 		if (
 			updates.namespace !== undefined &&

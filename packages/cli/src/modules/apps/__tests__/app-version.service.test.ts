@@ -1,3 +1,4 @@
+import type { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 import { gzipSync } from 'node:zlib';
 import { Header } from 'tar';
@@ -7,6 +8,8 @@ import type { AppVersionBlobStore } from '../app-version-blob-store';
 import type { AppVersionRepository } from '../app-version.repository';
 import { AppVersionService } from '../app-version.service';
 import type { AppRepository } from '../app.repository';
+import { AppBlobSizeQuotaExceededError } from '../errors/app-blob-size-quota-exceeded.error';
+import { AppVersionQuotaExceededError } from '../errors/app-version-quota-exceeded.error';
 import { InvalidAppVersionTarballError } from '../errors/invalid-app-version-tarball.error';
 
 const tgz = (files: Record<string, string>) => {
@@ -28,19 +31,29 @@ describe('AppVersionService', () => {
 	let appRepository: ReturnType<typeof mock<AppRepository>>;
 	let appVersionRepository: ReturnType<typeof mock<AppVersionRepository>>;
 	let blobStore: ReturnType<typeof mock<AppVersionBlobStore>>;
+	let globalConfig: GlobalConfig;
 	let service: AppVersionService;
 
 	beforeEach(() => {
 		appRepository = mock<AppRepository>();
 		appVersionRepository = mock<AppVersionRepository>();
 		blobStore = mock<AppVersionBlobStore>();
+		globalConfig = mock<GlobalConfig>({
+			apps: {
+				maxVersionsPerApp: 50,
+				maxProjectBlobSize: 500 * 1024 * 1024,
+			},
+		});
 		service = new AppVersionService(
 			appRepository,
 			appVersionRepository,
 			blobStore,
 			mock<InstanceSettings>({ n8nFolder: '/tmp/n8n' }),
+			globalConfig,
 		);
-		appRepository.existsBy.mockResolvedValue(true);
+		appVersionRepository.countByAppId.mockResolvedValue(0);
+		appVersionRepository.sumSizeByProjectId.mockResolvedValue(0);
+		appVersionRepository.findDistPrunable.mockResolvedValue([]);
 	});
 
 	describe('create', () => {
@@ -50,7 +63,7 @@ describe('AppVersionService', () => {
 				.mockResolvedValueOnce(sourceBlob)
 				.mockRejectedValueOnce(new Error('disk full'));
 
-			await expect(service.create('app-1', source, dist)).rejects.toThrow('disk full');
+			await expect(service.create('app-1', 'project-1', source, dist)).rejects.toThrow('disk full');
 
 			expect(blobStore.delete).toHaveBeenCalledWith([sourceBlob]);
 			expect(appVersionRepository.insertVersion).not.toHaveBeenCalled();
@@ -62,7 +75,9 @@ describe('AppVersionService', () => {
 			blobStore.write.mockResolvedValueOnce(sourceBlob).mockResolvedValueOnce(distBlob);
 			appVersionRepository.insertVersion.mockRejectedValue(new Error('constraint'));
 
-			await expect(service.create('app-1', source, dist)).rejects.toThrow('constraint');
+			await expect(service.create('app-1', 'project-1', source, dist)).rejects.toThrow(
+				'constraint',
+			);
 
 			expect(blobStore.delete).toHaveBeenCalledWith([sourceBlob, distBlob]);
 		});
@@ -70,7 +85,7 @@ describe('AppVersionService', () => {
 		it('rejects a dist without index.html at its root', async () => {
 			const noIndex = tgz({ './assets/app.js': ';', './nested/index.html': '' });
 
-			await expect(service.create('app-1', source, noIndex)).rejects.toThrow(
+			await expect(service.create('app-1', 'project-1', source, noIndex)).rejects.toThrow(
 				InvalidAppVersionTarballError,
 			);
 
@@ -93,11 +108,57 @@ describe('AppVersionService', () => {
 				gzipSync(Buffer.alloc(1024)),
 			]);
 
-			await expect(service.create('app-1', bomb, dist)).rejects.toThrow(
+			await expect(service.create('app-1', 'project-1', bomb, dist)).rejects.toThrow(
 				/Invalid source tarball: unpacks to more than/,
 			);
 
 			expect(blobStore.write).not.toHaveBeenCalled();
+		});
+
+		it('persists sourceSizeBytes/distSizeBytes equal to the tarball buffer lengths', async () => {
+			const sourceBlob = { storedAt: 'db' as const, storageKey: 'source-key' };
+			const distBlob = { storedAt: 'db' as const, storageKey: 'dist-key' };
+			blobStore.write.mockResolvedValueOnce(sourceBlob).mockResolvedValueOnce(distBlob);
+
+			await service.create('app-1', 'project-1', source, dist);
+
+			expect(appVersionRepository.insertVersion).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sourceSizeBytes: source.length,
+					distSizeBytes: dist.length,
+				}),
+			);
+		});
+
+		it('throws AppVersionQuotaExceededError when the app already has maxVersionsPerApp versions, without writing any blob', async () => {
+			appVersionRepository.countByAppId.mockResolvedValue(50);
+
+			await expect(service.create('app-1', 'project-1', source, dist)).rejects.toThrow(
+				AppVersionQuotaExceededError,
+			);
+
+			expect(blobStore.write).not.toHaveBeenCalled();
+		});
+
+		it('throws AppBlobSizeQuotaExceededError when existing project usage plus the new tarballs would exceed maxProjectBlobSize', async () => {
+			appVersionRepository.sumSizeByProjectId.mockResolvedValue(
+				globalConfig.apps.maxProjectBlobSize - source.length, // one byte under, dist pushes it over
+			);
+
+			await expect(service.create('app-1', 'project-1', source, dist)).rejects.toThrow(
+				AppBlobSizeQuotaExceededError,
+			);
+
+			expect(blobStore.write).not.toHaveBeenCalled();
+		});
+
+		it('checks quotas before parsing the tarball, rejecting for the quota reason even when the tarball itself is invalid', async () => {
+			appVersionRepository.countByAppId.mockResolvedValue(50);
+			const garbage = Buffer.from('not a tarball at all');
+
+			await expect(service.create('app-1', 'project-1', garbage, garbage)).rejects.toThrow(
+				AppVersionQuotaExceededError,
+			);
 		});
 	});
 });

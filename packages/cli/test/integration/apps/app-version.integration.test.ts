@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { AppsConfig } from '@n8n/config';
 import { BinaryDataRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -213,6 +214,73 @@ describe('POST /projects/:projectId/apps/:appId/versions', () => {
 		const app = await createApp();
 
 		await upload(app.id, sourceTgz(), Buffer.alloc(MAX_TARBALL_BYTES + 1)).expect(400);
+	});
+
+	test('rejects an upload past maxVersionsPerApp with a friendly message', async () => {
+		const app = await createApp();
+		const appsConfig = Container.get(AppsConfig);
+		const original = appsConfig.maxVersionsPerApp;
+		appsConfig.maxVersionsPerApp = 1;
+
+		try {
+			await upload(app.id).expect(200);
+
+			const response = await upload(app.id).expect(400);
+
+			expect(response.body.message).toContain('Version limit exceeded');
+			expect(await appVersionRepository.listByAppId(app.id)).toHaveLength(1);
+		} finally {
+			appsConfig.maxVersionsPerApp = original;
+		}
+	});
+
+	test('rejects an upload that would exceed maxProjectBlobSize with a friendly message', async () => {
+		const app = await createApp();
+		const appsConfig = Container.get(AppsConfig);
+		const original = appsConfig.maxProjectBlobSize;
+		appsConfig.maxProjectBlobSize = 10;
+
+		try {
+			const response = await upload(app.id).expect(400);
+
+			expect(response.body.message).toContain('App storage limit exceeded');
+			expect(await appVersionRepository.listByAppId(app.id)).toHaveLength(0);
+		} finally {
+			appsConfig.maxProjectBlobSize = original;
+		}
+	});
+
+	test("sumSizeByProjectId only counts the given project's apps, and excludes pruned dist blobs", async () => {
+		const memberProject = await getPersonalProject(member);
+		const app = await createApp();
+		const otherApp = await appRepository.createApp(memberProject.id, 'Other', 'other');
+
+		await upload(app.id).expect(200);
+		await authMemberAgent
+			.post(`/projects/${memberProject.id}/apps/${otherApp.id}/versions`)
+			.attach('source', sourceTgz(), 'src.tgz')
+			.attach('dist', distTgz(), 'dist.tgz')
+			.expect(200);
+
+		const [version] = await appVersionRepository.listByAppId(app.id);
+		expect(await appVersionRepository.sumSizeByProjectId(ownerProject.id)).toBe(
+			version.sourceSizeBytes + (version.distSizeBytes ?? 0),
+		);
+		expect(await appVersionRepository.sumSizeByProjectId(memberProject.id)).toBeGreaterThan(0);
+
+		// Pruning (six uploads keeps five dists) clears distSizeBytes alongside
+		// distStorageKey - the sum must equal exactly what the surviving rows hold.
+		// Which of the six gets pruned isn't fixed (ties on createdAt), so read it
+		// back from the rows rather than assuming it's the first upload.
+		for (let i = 0; i < 5; i++) await upload(app.id, sourceTgz(), distTgz(`v${i}`)).expect(200);
+		const versions = await appVersionRepository.listByAppId(app.id);
+		expect(versions).toHaveLength(6);
+		expect(versions.filter((v) => v.distSizeBytes === null)).toHaveLength(1);
+		const expectedTotal = versions.reduce(
+			(sum, v) => sum + v.sourceSizeBytes + (v.distSizeBytes ?? 0),
+			0,
+		);
+		expect(await appVersionRepository.sumSizeByProjectId(ownerProject.id)).toBe(expectedTotal);
 	});
 
 	test('skips entries that would land outside the dist directory', async () => {
