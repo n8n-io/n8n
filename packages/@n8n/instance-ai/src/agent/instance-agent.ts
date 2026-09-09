@@ -23,6 +23,7 @@ import {
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
+import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type {
 	CreateInstanceAgentOptions,
@@ -200,6 +201,7 @@ export async function createInstanceAgent(
 		// Presence of the service IS the experiment gate — the host only wires it
 		// for flagged-in users on project-bound runs.
 		conversationHistoryEnabled: Boolean(context.conversationHistoryService),
+		setupPanelEnabled: isSetupPanelEnabled(context),
 		workspaceRoot:
 			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 				? orchestrationContext.workspaceRoot
