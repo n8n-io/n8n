@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_f7968c95eb9657::t_251fe425c0e80d 9,31-33,229,235-239,241-242,244-246,535-538,540-542
+  s_f7968c95eb9657::t_6bbff296a4578b 545,547
+  s_f7968c95eb9657::t_731dc134b58cb5 332-341,533,543-544,546,548-553
+  s_f7968c95eb9657::t_9a168fe0373ec8 240,243,327-331,534,539,554
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  s_f7968c95eb9657::t_e35b6475753f86 5,8-9,23,55,59-73,75-90
+  s_f7968c95eb9657::t_e6ccc10aa40f8d 74
+  s_f7968c95eb9657::t_676a7536b6c8df 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "da0f604f6c8883326e5f25bc2769750ac33259f9",
+  "prompts": {},
+  "sessions": {
+    "s_f7968c95eb9657": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad9ababa-a183-483f-beea-caf2c7bae387",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

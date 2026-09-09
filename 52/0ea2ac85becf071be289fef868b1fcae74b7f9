@@ -1,0 +1,33 @@
+packages/testing/code-health/src/single-instance/lockfile-splits.test.ts
+  s_2d7c6932e0c038::t_ea2e33d19a36d4 3-10,12-17,20-50
+  s_2d7c6932e0c038::t_f57d1249b6fbf2 122-126,143-147
+  s_2d7c6932e0c038::t_0d72c59014bbe7 165-172
+  s_2d7c6932e0c038::t_2048f14dd880e3 183-278
+packages/testing/code-health/src/utils/pnpm-lock-parser.ts
+  s_2d7c6932e0c038::t_2071ac99c05b87 143-147
+  s_2d7c6932e0c038::t_3a1ecfd4995e4d 21-26,30,109-111,118-119,130-131,154-155,161-166,172-178,180,186
+packages/testing/code-health/src/single-instance/lockfile-splits.ts
+  s_2d7c6932e0c038::t_e9df06eace2e3a 1,85-113,118
+  s_2d7c6932e0c038::t_14495489569ece 75-80,82
+  s_2d7c6932e0c038::t_2071ac99c05b87 121,166-175
+packages/testing/code-health/src/rules/single-instance-lockfile.rule.ts
+  s_2d7c6932e0c038::t_2071ac99c05b87 7-11,59
+pnpm-lock.yaml
+  ai_agent 17742
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "520ea2ac85becf071be289fef868b1fcae74b7f9",
+  "prompts": {},
+  "sessions": {
+    "s_2d7c6932e0c038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "351b79f5-b6ce-4968-b7f0-30dc498fd9a1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

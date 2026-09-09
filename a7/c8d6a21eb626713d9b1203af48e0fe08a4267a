@@ -1,0 +1,64 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
+  s_aa4dc5d9a1db02::t_a61e45f1f010e6 6
+  s_aa4dc5d9a1db02::t_750d045f211d85 48
+  s_aa4dc5d9a1db02::t_265f937eee18ee 106
+  s_aa4dc5d9a1db02::t_df47397abffdea 125
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getUsers.test.ts
+  s_aa4dc5d9a1db02::t_22bae53df2792d 188-189,195-204,235-269,271-319
+  s_aa4dc5d9a1db02::t_1661a1f20269e1 270
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/rlc.description.ts
+  s_aa4dc5d9a1db02::t_7b97ac40e0fa42 376-426
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/utils.test.ts
+  s_aa4dc5d9a1db02::t_0259c57193e57c 193-203,440-487,489-675
+  s_aa4dc5d9a1db02::t_23376349f6f8b8 488
+  s_aa4dc5d9a1db02::t_290183312b3175 3,35-51,171,192,219,221-224,296,371
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.tagMentions.test.ts
+  s_aa4dc5d9a1db02::t_8fe56001308278 1-107
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
+  s_aa4dc5d9a1db02::t_74cb20e0891318 8,15,23-25
+  s_aa4dc5d9a1db02::t_e7d6cef6fddbff 113-152,155-170,177-191,214,216-219,229-249,267-279,282
+  s_aa4dc5d9a1db02::t_1bdc480d5f828b 153-154
+  s_aa4dc5d9a1db02::t_e1c7ee73392957 202-210
+  s_aa4dc5d9a1db02::t_1661a1f20269e1 171-176
+  s_aa4dc5d9a1db02::t_253571a68d8b83 192,194,196-198,250-266,284-285,333
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.mentions.test.ts
+  s_aa4dc5d9a1db02::t_20796b24e36a5f 131
+  s_aa4dc5d9a1db02::t_1172d0275297b1 3,120,122
+  s_aa4dc5d9a1db02::t_f4306157077bbb 2,5,113-119,121,123-130
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/common.description.ts
+  s_aa4dc5d9a1db02::t_750d045f211d85 3,22-23,34,47-86
+  s_aa4dc5d9a1db02::t_46261c92ff09ad 87-90
+  s_aa4dc5d9a1db02::t_df47397abffdea 43-46
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.mentions.test.ts
+  s_aa4dc5d9a1db02::t_3b4a55574e40af 6-10,21-30,36,50-59,71,91-97
+  s_aa4dc5d9a1db02::t_7cd6b80ea4a233 98-100
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.tagMentions.workflow.json
+  s_aa4dc5d9a1db02::t_cd404c9875aa2c 1-158
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/reply.operation.ts
+  s_aa4dc5d9a1db02::t_41f4d2d6cc0f59 101
+  s_aa4dc5d9a1db02::t_750d045f211d85 59
+  s_aa4dc5d9a1db02::t_a61e45f1f010e6 6
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.mentions.workflow.json
+  s_aa4dc5d9a1db02::t_99cd2513e2f99c 34,41-49,91,110-117,119
+  s_aa4dc5d9a1db02::t_a405eb72a2187a 118
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/create.perItem.test.ts
+  s_aa4dc5d9a1db02::t_53b2ef538d0d25 209
+  s_aa4dc5d9a1db02::t_60e79fde9790a2 26-30,85-86,119,174-208
+  s_aa4dc5d9a1db02::t_70b3394f52fba6 173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a7c8d6a21eb626713d9b1203af48e0fe08a4267a",
+  "prompts": {},
+  "sessions": {
+    "s_aa4dc5d9a1db02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3be6a95-6503-4192-954e-1d5f96c876b3",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

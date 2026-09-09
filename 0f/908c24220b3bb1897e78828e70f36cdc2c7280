@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_9816e97ee5d092::t_a3f25d112e6bf0 1449,1452
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_9816e97ee5d092::t_a3f25d112e6bf0 17,71,76-79,211,216,222-226,234,245,256,302-307,336,364,423-426,450-454
+  s_9816e97ee5d092::t_30526f1c494bc3 73-75,220-221
+  s_9816e97ee5d092::t_22641bb7a3bf46 72
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_f7968c95eb9657::t_573ac98c43ee10 2,1797-1848
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_f7968c95eb9657::t_186f615beb8d83 1214-1314
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0f908c24220b3bb1897e78828e70f36cdc2c7280",
+  "prompts": {},
+  "sessions": {
+    "s_9816e97ee5d092": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01d99011-723c-48e4-b274-cf4268f85fd4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_f7968c95eb9657": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad9ababa-a183-483f-beea-caf2c7bae387",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

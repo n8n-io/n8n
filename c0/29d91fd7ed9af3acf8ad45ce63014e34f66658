@@ -1,0 +1,21 @@
+packages/cli/test/integration/public-api/source-control.test.ts
+  s_f132370d90443c::t_4107c7133e2cc0 160,170-173
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_f132370d90443c::t_489fe6ad98b906 145-149,159,164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c029d91fd7ed9af3acf8ad45ce63014e34f66658",
+  "prompts": {},
+  "sessions": {
+    "s_f132370d90443c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25ed8c69-7f66-4eb4-b9c9-748477178fd8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

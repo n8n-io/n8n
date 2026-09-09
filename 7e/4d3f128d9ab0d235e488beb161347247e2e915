@@ -1,0 +1,15 @@
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/workflow-lifecycle.schema.test.ts
+  ai_agent 1-33
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  ai_agent 1110,1113-1127,2517,2537,2539,2541-2542
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  ai_agent 4,6,56,59-63,149-164
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  ai_agent 233-234,269-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7e4d3f128d9ab0d235e488beb161347247e2e915",
+  "prompts": {}
+}

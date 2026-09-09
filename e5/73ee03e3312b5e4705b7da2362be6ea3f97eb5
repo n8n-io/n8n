@@ -1,0 +1,21 @@
+pnpm-workspace.yaml
+  s_2d7c6932e0c038::t_0826e46f09d916 125-127
+packages/nodes-base/package.json
+  s_2d7c6932e0c038::t_c9190d0492660f 941
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e573ee03e3312b5e4705b7da2362be6ea3f97eb5",
+  "prompts": {},
+  "sessions": {
+    "s_2d7c6932e0c038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "351b79f5-b6ce-4968-b7f0-30dc498fd9a1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

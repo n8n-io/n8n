@@ -1,0 +1,46 @@
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_27dcc65e96f9fe::t_6aa1caaecf66c6 440
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_27dcc65e96f9fe::t_3cec3c5316859a 17-21
+  h_7555c3ee6524cf 22
+  s_2e47a32894ad9a::t_8fc298ec3ecdca 119
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  h_7555c3ee6524cf 787-788
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  h_7555c3ee6524cf 4,41
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  h_7555c3ee6524cf 973
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  h_7555c3ee6524cf 763,766,797
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  h_7555c3ee6524cf 4-6,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "21bd6560f21f161953057d6db0e6268231e39159",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_27dcc65e96f9fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0810c-13ac-7de2-affe-87c09db0fab9",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_2e47a32894ad9a": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1788789732631",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

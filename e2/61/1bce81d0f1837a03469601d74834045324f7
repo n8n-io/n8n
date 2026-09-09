@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/listSearch.test.ts
+  s_14f52ab61740a5::t_86dafcd43a5ed5 281,298
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_14f52ab61740a5::t_cb2a0f9af3c54b 164,177-182
+  s_14f52ab61740a5::t_6c7be77f8a5772 149-163
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getUsers.test.ts
+  s_14f52ab61740a5::t_23a55c3c57085f 11,20-22,30-32,37,39-42,44,47-55,57-58,62-63,65,68-71,73-75,81,84,86-91,93-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e2611bce81d0f1837a03469601d74834045324f7",
+  "prompts": {},
+  "sessions": {
+    "s_14f52ab61740a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3435d574-b67e-42e7-9ac5-77452c95f9ae",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

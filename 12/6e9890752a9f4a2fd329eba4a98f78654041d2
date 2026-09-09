@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/dto/source-control/pull-work-folder-request.dto.ts
+  s_f132370d90443c::t_9a26771c9ced32 11-20
+  s_f132370d90443c::t_e9338b602b62f3 1-2
+  s_f132370d90443c::t_8e4e1846bcd5ce 21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "126e9890752a9f4a2fd329eba4a98f78654041d2",
+  "prompts": {},
+  "sessions": {
+    "s_f132370d90443c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25ed8c69-7f66-4eb4-b9c9-748477178fd8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

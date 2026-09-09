@@ -1,0 +1,23 @@
+packages/cli/src/modules/promotion-reviews.poc/SPIKE.md
+  s_662fe516e9ef0e::t_b2c6efd90ef614 275-277
+  s_662fe516e9ef0e::t_091969bc77a8fa 335-350
+  s_662fe516e9ef0e::t_28dbf615b00ee5 100
+  s_662fe516e9ef0e::t_93ad979f3e5b1b 403
+  s_662fe516e9ef0e::t_379a2b503ea486 60-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e0f6407443a0f7cf29986eee8571c7a1320fce73",
+  "prompts": {},
+  "sessions": {
+    "s_662fe516e9ef0e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eae92f44-7d62-4eb5-86ad-432ea8f102dd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

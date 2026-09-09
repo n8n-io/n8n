@@ -1,0 +1,53 @@
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_7042435b4384cd::t_f0b23f00d8c8ac 40-45
+  s_7042435b4384cd::t_f3a27b95babedb 95
+packages/cli/src/modules/git-connections.ee/base-branch-files.ts
+  s_7042435b4384cd::t_1b1fb7c8ce7c74 48-51
+  s_7042435b4384cd::t_91b569659cd1ba 1-47,53-81,86-89
+  s_7042435b4384cd::t_921779ec7e1824 52
+  s_7042435b4384cd::t_1fa0fe8ace291b 82-85
+packages/cli/src/modules/git-connections.ee/__tests__/base-branch-files.test.ts
+  s_7042435b4384cd::t_93244bf43022c7 122-135
+  s_7042435b4384cd::t_93ecbce4eca081 97
+  s_7042435b4384cd::t_b366a61388d45b 1-28,30-96,98-121,136-160
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.service.test.ts
+  s_7042435b4384cd::t_9d34152844bd3c 341-368,370-374,377-381,384-392,397-399
+  s_7042435b4384cd::t_be98a76fce7a91 393-396
+  s_7042435b4384cd::t_ed1a4a60ae9a53 375-376,382-383
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-base-branch.integration.test.ts
+  s_7042435b4384cd::t_9006efc71eec4f 196
+  s_7042435b4384cd::t_17dff3d42f5b3d 295
+  s_7042435b4384cd::t_cb4e624ba2e4d8 253
+  s_7042435b4384cd::t_d5070e2aa01426 261
+  s_7042435b4384cd::t_15d7ff7005ed7e 1-195,197-252,254-260,262-294,296-346
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_7042435b4384cd::t_1db74a2f92eb95 46-50
+  s_7042435b4384cd::t_61d582df74ecf5 395-428
+packages/cli/src/modules/n8n-packages/io/__tests__/manifest-entry.test.ts
+  s_7042435b4384cd::t_e2337f3696ab6d 22
+  s_7042435b4384cd::t_0fc8af85485cc7 5
+  s_7042435b4384cd::t_88de57bcd8d365 27-37
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_7042435b4384cd::t_65f561d56bbdb9 372-383
+  s_7042435b4384cd::t_ebf25b9679dec2 438
+  s_7042435b4384cd::t_8b0eca1c53781f 323-330
+  s_7042435b4384cd::t_21ef7b60bfed21 415
+  s_7042435b4384cd::t_a2cc4bb95f7243 30-32
+  s_7042435b4384cd::t_cd0e9037b055a6 243-244,254,257,269-322,333-349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "01d76a37df1f78ab25ce1ba862548f08b3fe2e70",
+  "prompts": {},
+  "sessions": {
+    "s_7042435b4384cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa05707c-0497-4ef5-b091-c6e3c26588ca",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
