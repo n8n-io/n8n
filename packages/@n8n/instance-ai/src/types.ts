@@ -1909,11 +1909,11 @@ export interface WorkflowTaskService {
 	startVerification(
 		workItemId: string,
 		triggerNodeName?: string,
-	): Promise<WorkflowTriggerVerificationProgress>;
+	): Promise<WorkflowTriggerVerificationProgress | undefined>;
 	recordVerification(
 		workItemId: string,
-		verification: WorkflowVerificationEvidence,
-		previousProgress: WorkflowTriggerVerificationProgress,
+		verification: WorkflowVerificationEvidence & { claim: VerificationClaim },
+		previousProgress?: WorkflowTriggerVerificationProgress,
 	): Promise<VerificationClaim | undefined>;
 }
 

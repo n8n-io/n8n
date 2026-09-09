@@ -15,6 +15,7 @@ import {
 	buildNodePreviews,
 	getTriggerMainFlowScope,
 } from './verification/analyze-result';
+import { deriveVerificationClaim } from './verification/claim';
 import {
 	handleMissingSimulationPlan,
 	persistVerificationOutcome,
@@ -23,7 +24,6 @@ import { prepareVerificationRun } from './verification/prepare-run';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
-import { deriveVerificationClaim } from '../../workflow-loop/verification-claim';
 import {
 	executionNodeErrorSchema,
 	verificationClaimSchema,

@@ -86,16 +86,23 @@ describe('WorkflowTaskCoordinator', () => {
 		await coordinator.startVerification('wi_1', 'A');
 		await coordinator.startVerification('wi_1', 'B');
 		for (const triggerNodeName of ['B', 'A']) {
-			await coordinator.recordVerification(
-				'wi_1',
-				{
-					attempted: true,
-					success: true,
-					executionId: triggerNodeName,
-					evidence: { triggerNodeName, nodesExecuted: [triggerNodeName] },
+			await coordinator.recordVerification('wi_1', {
+				attempted: true,
+				success: true,
+				executionId: triggerNodeName,
+				evidence: { triggerNodeName, nodesExecuted: [triggerNodeName] },
+				claim: {
+					level: 'verified',
+					plannedNodeCount: 1,
+					reachedNodeCount: 1,
+					nodesNotReached: [],
+					simulatedNodes: [],
+					pinnedNodes: [],
+					unprovenTargets: [],
+					publishReady: true,
+					liveTestRecommended: false,
 				},
-				[],
-			);
+			});
 		}
 		expect((await coordinator.getBuildOutcome('wi_1'))?.verificationProgress).toMatchObject({
 			A: { nodesExecuted: ['A'] },

@@ -1,5 +1,5 @@
-import { deriveVerificationClaim } from '../../../../workflow-loop/verification-claim';
 import type { VerificationAnalysis } from '../analyze-result';
+import { deriveVerificationClaim } from '../claim';
 
 function makeAnalysis(overrides: Partial<VerificationAnalysis> = {}): VerificationAnalysis {
 	return {

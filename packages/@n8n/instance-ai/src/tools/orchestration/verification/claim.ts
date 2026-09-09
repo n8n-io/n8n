@@ -6,15 +6,17 @@
  * the user is computed from run evidence instead of asked for in a prompt.
  */
 
-import type { VerificationClaim, VerificationClaimLevel } from './workflow-loop-state';
+import type { VerificationAnalysis } from './analyze-result';
+import type {
+	VerificationClaim,
+	VerificationClaimLevel,
+} from '../../../workflow-loop/workflow-loop-state';
 
 export interface DeriveVerificationClaimArgs {
-	analysis: {
-		success: boolean;
-		nodesNotReached: string[];
-		reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>;
-		workflowPinnedNodeNames: string[];
-	};
+	analysis: Pick<
+		VerificationAnalysis,
+		'success' | 'nodesNotReached' | 'reachedSimulatedNodes' | 'workflowPinnedNodeNames'
+	>;
 	pendingTriggers?: string[];
 	/** Planned nodes from the build outcome simulation plan. */
 	plannedNodeCount: number;

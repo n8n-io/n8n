@@ -1,19 +1,10 @@
-import { deriveVerificationClaim } from './verification-claim';
 import type {
+	VerificationClaim,
 	WorkflowBuildOutcome,
 	WorkflowTriggerVerificationProgress,
 	WorkflowVerificationEvidence,
 } from './workflow-loop-state';
-
-function getExecutedNodes(progress: WorkflowTriggerVerificationProgress): string[] {
-	return Array.isArray(progress) ? progress : progress.nodesExecuted;
-}
-
-function hasVerificationProof(
-	progress: WorkflowTriggerVerificationProgress,
-): progress is Exclude<WorkflowTriggerVerificationProgress, string[]> {
-	return !Array.isArray(progress);
-}
+import { deriveVerificationClaim } from '../tools/orchestration/verification/claim';
 
 export function getMultiTriggerCoverage(outcome: WorkflowBuildOutcome | undefined) {
 	const progress = outcome?.verificationProgress;
@@ -24,7 +15,7 @@ export function getMultiTriggerCoverage(outcome: WorkflowBuildOutcome | undefine
 
 	const passedTriggers = triggers.filter((trigger) => Object.hasOwn(progress, trigger.nodeName));
 	const passes = passedTriggers.map((trigger) => progress[trigger.nodeName]);
-	const coveredNodes = new Set(passes.flatMap(getExecutedNodes));
+	const coveredNodes = new Set(passes.flatMap((pass) => pass.nodesExecuted));
 	return {
 		passes,
 		allTriggersPassed: passedTriggers.length === triggers.length,
@@ -39,39 +30,38 @@ export function getMultiTriggerCoverage(outcome: WorkflowBuildOutcome | undefine
 
 export function mergeTriggerVerificationProgress(
 	previous: WorkflowTriggerVerificationProgress[],
-	verification: WorkflowVerificationEvidence,
+	verification: Pick<WorkflowVerificationEvidence, 'evidence'> & { claim: VerificationClaim },
 ): WorkflowTriggerVerificationProgress {
 	const nodes = verification.evidence?.nodesExecuted ?? [];
-	const proofs = previous.filter(hasVerificationProof);
-	const simulated = verification.claim?.simulatedNodes ?? [];
+	const simulated = verification.claim.simulatedNodes;
 	const simulatedNames = new Set([
 		...simulated.map((node) => node.nodeName),
-		...(verification.claim?.pinnedNodes ?? []),
+		...verification.claim.pinnedNodes,
 	]);
 	const liveNodes = new Set([
-		...proofs.flatMap((pass) => pass.liveNodesExecuted),
-		...(verification.claim ? nodes.filter((name) => !simulatedNames.has(name)) : []),
+		...previous.flatMap((pass) => pass.liveNodesExecuted),
+		...nodes.filter((name) => !simulatedNames.has(name)),
 	]);
 	return {
-		nodesExecuted: [...new Set([...previous.flatMap(getExecutedNodes), ...nodes])],
+		nodesExecuted: [...new Set([...previous.flatMap((pass) => pass.nodesExecuted), ...nodes])],
 		liveNodesExecuted: [...liveNodes],
 		simulatedNodes: [
 			...new Map(
-				[...proofs.flatMap((pass) => pass.simulatedNodes), ...simulated]
+				[...previous.flatMap((pass) => pass.simulatedNodes), ...simulated]
 					.filter((node) => !liveNodes.has(node.nodeName))
 					.map((node) => [node.nodeName, node]),
 			).values(),
 		],
 		pinnedNodes: [
 			...new Set([
-				...proofs.flatMap((pass) => pass.pinnedNodes),
-				...(verification.claim?.pinnedNodes ?? []),
+				...previous.flatMap((pass) => pass.pinnedNodes),
+				...verification.claim.pinnedNodes,
 			]),
 		].filter((name) => !liveNodes.has(name)),
 		unprovenTargets: [
 			...new Set([
-				...proofs.flatMap((pass) => pass.unprovenTargets),
-				...(verification.claim?.unprovenTargets ?? []),
+				...previous.flatMap((pass) => pass.unprovenTargets),
+				...verification.claim.unprovenTargets,
 			]),
 		].filter((name) => !liveNodes.has(name)),
 	};
@@ -79,52 +69,23 @@ export function mergeTriggerVerificationProgress(
 
 export function deriveWorkflowVerificationClaim(
 	outcome: WorkflowBuildOutcome,
-	verification: WorkflowVerificationEvidence,
+	verification: WorkflowVerificationEvidence & { claim: VerificationClaim },
 ) {
 	const coverage = getMultiTriggerCoverage(outcome);
-	if (!coverage || !verification.claim) return verification.claim;
+	if (!coverage) return verification.claim;
 
-	const proofs = coverage.passes.filter(hasVerificationProof);
-	const liveNodes = new Set(proofs.flatMap((pass) => pass.liveNodesExecuted));
-	const simulatedNodes = [
-		...new Map(
-			[...proofs.flatMap((pass) => pass.simulatedNodes), ...verification.claim.simulatedNodes]
-				.filter((node) => !liveNodes.has(node.nodeName))
-				.map((node) => [node.nodeName, node]),
-		).values(),
-	];
-	const unprovenTargets = [
-		...proofs.flatMap((pass) => pass.unprovenTargets),
-		...verification.claim.unprovenTargets,
-	].filter((name) => !liveNodes.has(name));
-	const knownNodes = new Set([...liveNodes, ...simulatedNodes.map((node) => node.nodeName)]);
+	// Only successful scoped passes contribute coverage. Keep the latest run's limitations.
+	const progress = mergeTriggerVerificationProgress(coverage.passes, { claim: verification.claim });
 
 	return deriveVerificationClaim({
 		analysis: {
 			success: verification.success,
 			nodesNotReached: coverage.nodesNotReached,
-			reachedSimulatedNodes: simulatedNodes,
-			workflowPinnedNodeNames: [
-				...new Set([
-					...proofs.flatMap((pass) => pass.pinnedNodes),
-					...verification.claim.pinnedNodes,
-				]),
-			].filter((name) => !liveNodes.has(name)),
+			reachedSimulatedNodes: progress.simulatedNodes,
+			workflowPinnedNodeNames: progress.pinnedNodes,
 		},
 		plannedNodeCount: outcome.nodeSimulationPlan?.length ?? 0,
-		fixTargetNodeNames: unprovenTargets,
-		// Reachability-only records cannot establish live verification evidence.
-		pendingTriggers: [
-			...coverage.pendingTriggers,
-			...(outcome.triggerNodes ?? [])
-				.filter((trigger) => {
-					const pass = outcome.verificationProgress?.[trigger.nodeName];
-					return (
-						pass &&
-						(Array.isArray(pass) || pass.nodesExecuted.some((name) => !knownNodes.has(name)))
-					);
-				})
-				.map((trigger) => trigger.nodeName),
-		],
+		fixTargetNodeNames: progress.unprovenTargets,
+		pendingTriggers: coverage.pendingTriggers,
 	});
 }

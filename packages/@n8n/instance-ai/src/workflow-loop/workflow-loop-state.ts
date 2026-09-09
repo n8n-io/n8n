@@ -157,7 +157,7 @@ export const executionNodeErrorSchema = z.object({
 /**
  * Strength of the claim a verification run supports. `verified` means every
  * planned node ran for real; anything less must not be reported as verified.
- * See `verification-claim.ts` for the derivation.
+ * See `tools/orchestration/verification/claim.ts` for the derivation.
  */
 export const verificationClaimLevelSchema = z.enum(['verified', 'partial', 'unproven', 'failed']);
 
@@ -226,17 +226,13 @@ export const workflowVerificationEvidenceSchema = z.object({
 
 export type WorkflowVerificationEvidence = z.infer<typeof workflowVerificationEvidenceSchema>;
 
-const workflowTriggerVerificationProgressSchema = z.union([
-	// Older saved progress records contain reachability only.
-	z.array(z.string()),
-	z.object({
-		nodesExecuted: z.array(z.string()),
-		liveNodesExecuted: z.array(z.string()),
-		simulatedNodes: verificationClaimSchema.shape.simulatedNodes,
-		pinnedNodes: z.array(z.string()),
-		unprovenTargets: z.array(z.string()),
-	}),
-]);
+const workflowTriggerVerificationProgressSchema = z.object({
+	nodesExecuted: z.array(z.string()),
+	liveNodesExecuted: z.array(z.string()),
+	simulatedNodes: verificationClaimSchema.shape.simulatedNodes,
+	pinnedNodes: z.array(z.string()),
+	unprovenTargets: z.array(z.string()),
+});
 
 export type WorkflowTriggerVerificationProgress = z.infer<
 	typeof workflowTriggerVerificationProgressSchema

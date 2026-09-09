@@ -93,7 +93,7 @@ export async function persistVerificationOutcome(args: {
 	result: ExecutionRunResult;
 	analysis: VerificationAnalysis;
 	scopedTriggerNodeName?: string;
-	previousProgress: WorkflowTriggerVerificationProgress;
+	previousProgress?: WorkflowTriggerVerificationProgress;
 	/** Deterministic verdict for this run, persisted so later turns cannot re-litigate it. */
 	claim: VerificationClaim;
 }): Promise<VerificationClaim | undefined> {

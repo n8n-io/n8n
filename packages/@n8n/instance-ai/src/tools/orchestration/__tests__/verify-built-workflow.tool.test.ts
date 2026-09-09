@@ -57,7 +57,7 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 		getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue(defaultBuildOutcome),
 		getWorkflowLoopState: vi.fn(),
 		updateBuildOutcome: vi.fn(),
-		startVerification: vi.fn().mockResolvedValue([]),
+		startVerification: vi.fn(),
 		recordVerification: vi.fn(),
 	};
 
@@ -1710,11 +1710,21 @@ describe('verify-built-workflow tool — trigger selection', () => {
 		},
 	);
 
+	const passedA = {
+		'Trigger A': {
+			nodesExecuted: ['Trigger A', 'Step A'],
+			liveNodesExecuted: ['Trigger A', 'Step A'],
+			simulatedNodes: [],
+			pinnedNodes: [],
+			unprovenTargets: [],
+		},
+	};
+
 	it('keeps the attempt and removes old coverage when the result cannot be saved', async () => {
 		const { ctx, getOutcome } = makeSequenceContext(
 			makeTrackedOutcome({
 				verifyAttempts: MAX_VERIFY_ATTEMPTS - 1,
-				verificationProgress: { 'Trigger A': ['Trigger A', 'Step A'] },
+				verificationProgress: passedA,
 			}),
 		);
 		ctx.domainContext.executionService.run.mockResolvedValueOnce(successfulA);
@@ -1734,7 +1744,7 @@ describe('verify-built-workflow tool — trigger selection', () => {
 	it('combines repeated successful passes for the same trigger', async () => {
 		const { ctx, getOutcome } = makeSequenceContext(
 			makeTrackedOutcome({
-				verificationProgress: { 'Trigger A': ['Trigger A', 'Step A'] },
+				verificationProgress: passedA,
 			}),
 		);
 		ctx.domainContext.executionService.run.mockResolvedValueOnce({

@@ -141,8 +141,23 @@ describe('deriveWorkflowVerificationObligation', () => {
 		expect(obligation.evidence?.executionId).toBe('exec-1');
 	});
 
-	const passedA = { 'Trigger A': ['Trigger A', 'Step A'] };
-	const passedAll = { ...passedA, 'Trigger B': ['Trigger B', 'Step B'] };
+	const passedA = {
+		'Trigger A': {
+			nodesExecuted: ['Trigger A', 'Step A'],
+			liveNodesExecuted: ['Trigger A', 'Step A'],
+			simulatedNodes: [],
+			pinnedNodes: [],
+			unprovenTargets: [],
+		},
+	};
+	const passedAll = {
+		...passedA,
+		'Trigger B': {
+			...passedA['Trigger A'],
+			nodesExecuted: ['Trigger B', 'Step B'],
+			liveNodesExecuted: ['Trigger B', 'Step B'],
+		},
+	};
 	const successfulPass: WorkflowBuildOutcome['verification'] = {
 		attempted: true,
 		success: true,

@@ -1,9 +1,7 @@
 import { UserError } from 'n8n-workflow';
 
-import type { WorkflowTaskService } from '../types';
 import { MAX_VERIFY_ATTEMPTS } from './remediation';
 import { WorkflowLoopRuntime } from './runtime';
-import { deriveVerificationClaim } from './verification-claim';
 import {
 	deriveWorkflowVerificationClaim,
 	mergeTriggerVerificationProgress,
@@ -18,6 +16,8 @@ import type {
 	VerificationClaim,
 } from './workflow-loop-state';
 import type { WorkflowLoopStorage } from '../storage/workflow-loop-storage';
+import { deriveVerificationClaim } from '../tools/orchestration/verification/claim';
+import type { WorkflowTaskService } from '../types';
 
 function lastAttemptTimeMs(
 	item: NonNullable<Awaited<ReturnType<WorkflowLoopStorage['listWorkItems']>>>[number],
@@ -81,8 +81,8 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 	async startVerification(
 		workItemId: string,
 		triggerNodeName?: string,
-	): Promise<WorkflowTriggerVerificationProgress> {
-		let previousProgress: WorkflowTriggerVerificationProgress = [];
+	): Promise<WorkflowTriggerVerificationProgress | undefined> {
+		let previousProgress: WorkflowTriggerVerificationProgress | undefined;
 		await this.storage.updateBuildOutcome(this.threadId, workItemId, (outcome) => {
 			if ((outcome.verifyAttempts ?? 0) >= MAX_VERIFY_ATTEMPTS) {
 				throw new UserError(
@@ -93,10 +93,10 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 			if (progress && triggerNodeName) {
 				previousProgress = Object.hasOwn(progress, triggerNodeName)
 					? progress[triggerNodeName]
-					: [];
+					: undefined;
 				delete progress[triggerNodeName];
 			}
-			const verification: WorkflowVerificationEvidence = {
+			const verification = {
 				// Keep the obligation open while the reserved execution is in progress.
 				attempted: false,
 				success: false,
@@ -111,7 +111,7 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 					plannedNodeCount: outcome.nodeSimulationPlan?.length ?? 0,
 					fixTargetNodeNames: outcome.verification?.claim?.unprovenTargets,
 				}),
-			};
+			} satisfies WorkflowVerificationEvidence;
 			const next = {
 				...outcome,
 				verifyAttempts: (outcome.verifyAttempts ?? 0) + 1,
@@ -127,8 +127,8 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 
 	async recordVerification(
 		workItemId: string,
-		verification: WorkflowVerificationEvidence,
-		previousProgress: WorkflowTriggerVerificationProgress,
+		verification: WorkflowVerificationEvidence & { claim: VerificationClaim },
+		previousProgress?: WorkflowTriggerVerificationProgress,
 	): Promise<VerificationClaim | undefined> {
 		let claim: VerificationClaim | undefined;
 		await this.storage.updateBuildOutcome(this.threadId, workItemId, (outcome) => {
@@ -137,9 +137,9 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 			const progress = outcome.verificationProgress && { ...outcome.verificationProgress };
 			if (progress && trigger) {
 				if (verification.success && verification.executionId && nodes.includes(trigger)) {
-					const priorProgress = Object.hasOwn(progress, trigger) ? progress[trigger] : [];
+					const priorProgress = Object.hasOwn(progress, trigger) ? progress[trigger] : undefined;
 					progress[trigger] = mergeTriggerVerificationProgress(
-						[priorProgress, previousProgress],
+						[priorProgress, previousProgress].filter((pass) => pass !== undefined),
 						verification,
 					);
 				} else {
