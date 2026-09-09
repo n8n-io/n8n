@@ -16,6 +16,7 @@ import { OtelService } from '@/modules/otel/otel.service';
 import { COMMAND_PUBSUB_CHANNEL } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubEventBus } from '@/scaling/pubsub/pubsub.eventbus';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { RedisClientService } from '@/services/redis-client.service';
 import { createOwner } from '@test-integration/db/users';
@@ -44,7 +45,7 @@ function createFakeRedisClient() {
 	return mock<SingleNodeClient>({
 		publish: ((channel: string, message: string) => {
 			bus.published.push({ channel, message });
-			for (const client of bus.clients) {
+			for (const client of [...bus.clients]) {
 				if (!client.channels.has(channel)) continue;
 				for (const listener of client.listeners) listener(channel, message);
 			}
@@ -60,14 +61,31 @@ function createFakeRedisClient() {
 			if (event === 'message') state.listeners.push(listener);
 			return undefined as never;
 		}) as never,
-		disconnect: (() => {}) as never,
+		// A disconnected client receives nothing more, so it leaves the bus.
+		disconnect: (() => {
+			const index = bus.clients.indexOf(state);
+			if (index !== -1) bus.clients.splice(index, 1);
+		}) as never,
 	});
 }
+
+const redisClientService = mock<RedisClientService>({
+	createClient: () => createFakeRedisClient(),
+});
 
 const REDIS_PREFIX = 'n8n';
 const MAIN_HOST_ID = 'main-testhost';
 const WORKER_HOST_ID = 'worker-testhost';
 const commandChannel = `${REDIS_PREFIX}:${COMMAND_PUBSUB_CHANNEL}`;
+
+/** The subscriber debounces every command that `IMMEDIATE_COMMANDS` does not name. */
+const DEBOUNCE_MS = 300;
+
+const workerInstanceSettings = mock<InstanceSettings>({
+	hostId: WORKER_HOST_ID,
+	instanceType: 'worker',
+	instanceRole: 'unset',
+});
 
 const validSettings = {
 	enabled: false,
@@ -87,8 +105,8 @@ describe('reload-otel-config propagation in queue mode', () => {
 	let owner: User;
 	let workerEventBus: PubSubEventBus;
 	let workerSubscriber: Subscriber;
-	/** Calls of the worker-side `reload-otel-config` handler. */
-	let workerHandlerCalls = 0;
+	/** Deliveries of `reload-otel-config` to the worker's event bus. */
+	let workerDeliveries = 0;
 
 	// Declared before `setupTestServer` on purpose: this hook must run before the
 	// test server constructs the otel controller, so that on any revision the
@@ -98,10 +116,6 @@ describe('reload-otel-config propagation in queue mode', () => {
 		const queueConfig = Container.get(ExecutionsConfig);
 		queueConfig.mode = 'queue';
 		Container.get(GlobalConfig).redis.prefix = REDIS_PREFIX;
-
-		const redisClientService = mock<RedisClientService>({
-			createClient: () => createFakeRedisClient(),
-		});
 
 		// The main instance's publisher: the real class, on the fake transport.
 		Container.set(
@@ -114,51 +128,23 @@ describe('reload-otel-config propagation in queue mode', () => {
 				Container.get(GlobalConfig),
 			),
 		);
-
-		// A second instance on the same channel, with a worker's host id and type.
-		// Its own event bus keeps its deliveries distinct from the main's.
-		workerEventBus = new PubSubEventBus();
-		workerSubscriber = new Subscriber(
-			Container.get(Logger),
-			mock<InstanceSettings>({
-				hostId: WORKER_HOST_ID,
-				instanceType: 'worker',
-				instanceRole: 'unset',
-			}),
-			workerEventBus,
-			redisClientService,
-			queueConfig,
-			Container.get(GlobalConfig),
-		);
 	});
 
 	const testServer = setupTestServer({ endpointGroups: ['otel'] });
 
 	beforeAll(async () => {
 		await testDb.init();
-		await workerSubscriber.subscribe(commandChannel);
 
-		// Register the worker's `reload-otel-config` handler the way `PubSubRegistry`
-		// does: from the decorator metadata, resolving the handler class from the
-		// container. On a worker this is the only path that reaches otel.
+		// The registration the worker's registry reads. Asserted separately so that
+		// a missing decorator names itself, instead of showing up as no delivery.
 		const handlers = Container.get(PubSubMetadata)
 			.getHandlers()
 			.filter((handler) => handler.eventName === 'reload-otel-config');
 
 		expect(handlers).toHaveLength(1);
-		const [{ eventHandlerClass, methodName, filter }] = handlers;
-		expect(eventHandlerClass).toBe(OtelLifecycleHandler);
-		// No instance-type filter, so the handler registers on a worker too.
-		expect(filter?.instanceType).toBeUndefined();
-
-		const handlerInstance = Container.get(eventHandlerClass) as unknown as Record<
-			string,
-			() => Promise<void>
-		>;
-		workerEventBus.on('reload-otel-config', async () => {
-			workerHandlerCalls++;
-			await handlerInstance[methodName]();
-		});
+		expect(handlers[0].eventHandlerClass).toBe(OtelLifecycleHandler);
+		// No instance-type filter, so a worker's registry registers it too.
+		expect(handlers[0].filter?.instanceType).toBeUndefined();
 	});
 
 	beforeEach(async () => {
@@ -167,15 +153,41 @@ describe('reload-otel-config propagation in queue mode', () => {
 		await Container.get(OtelSettingsService).loadSettings();
 		owner = await createOwner();
 		bus.published.length = 0;
-		workerHandlerCalls = 0;
+		workerDeliveries = 0;
+
+		// A worker instance, rebuilt for each test. `shutdown()` in `afterEach`
+		// cancels the trailing debounce, so a timer armed by one test can never
+		// deliver into the next one.
+		workerEventBus = new PubSubEventBus();
+		workerSubscriber = new Subscriber(
+			Container.get(Logger),
+			workerInstanceSettings,
+			workerEventBus,
+			redisClientService,
+			Container.get(ExecutionsConfig),
+			Container.get(GlobalConfig),
+		);
+		await workerSubscriber.subscribe(commandChannel);
+
+		// The real registry wires the real `@OnPubSubEvent` handler onto this bus.
+		// On a worker this is the only path that reaches otel.
+		const workerRegistry = new PubSubRegistry(
+			Container.get(Logger),
+			workerInstanceSettings,
+			Container.get(PubSubMetadata),
+			workerEventBus,
+		);
+		workerRegistry.init();
+
+		// Observes what the transport delivered. The registry stays under test.
+		workerEventBus.on('reload-otel-config', () => {
+			workerDeliveries++;
+		});
 	});
 
 	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
-	afterAll(() => {
 		workerSubscriber.shutdown();
+		vi.restoreAllMocks();
 	});
 
 	it('publishes reload-otel-config on the command channel with the expected payload', async () => {
@@ -202,10 +214,10 @@ describe('reload-otel-config propagation in queue mode', () => {
 		expect(response.status).toBe(200);
 
 		// 300 ms subscriber debounce, so poll rather than assert once.
-		await vi.waitFor(() => expect(workerHandlerCalls).toBe(1), { timeout: 5_000 });
+		await vi.waitFor(() => expect(workerDeliveries).toBe(1), { timeout: 5_000 });
 
-		// Once for the main's own local reload, once for the worker's.
-		expect(restart).toHaveBeenCalledTimes(2);
+		// Once for the main's own local reload, once through the worker's registry.
+		await vi.waitFor(() => expect(restart).toHaveBeenCalledTimes(2), { timeout: 5_000 });
 	});
 
 	it('does not publish when the write is rejected', async () => {
@@ -216,5 +228,22 @@ describe('reload-otel-config propagation in queue mode', () => {
 
 		expect(response.status).toBe(400);
 		expect(bus.published).toHaveLength(0);
+	});
+
+	it('delivers nothing to a worker that shut down with a debounce armed', async () => {
+		const response = await testServer.authAgentFor(owner).put('/otel/settings').send(validSettings);
+
+		expect(response.status).toBe(200);
+		await vi.waitFor(() => expect(bus.published).toHaveLength(1));
+		// The trailing timer is armed, and it has not fired yet.
+		expect(workerDeliveries).toBe(0);
+
+		workerSubscriber.shutdown();
+
+		// A negative claim over time needs a bounded wait: no event marks the
+		// moment a cancelled timer does not fire.
+		await new Promise((resolve) => setTimeout(resolve, DEBOUNCE_MS * 2));
+
+		expect(workerDeliveries).toBe(0);
 	});
 });
