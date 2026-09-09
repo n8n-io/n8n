@@ -131,7 +131,7 @@ export class SourceControlPublicController {
 	@Licensed(LICENSE_FEATURES.SOURCE_CONTROL)
 	@ApiKeyScope('sourceControl:pull')
 	@ApiSummary('Pull changes from the remote repository')
-	@ApiDescription('Fetches changes from the connected Git branch into the instance.')
+	@ApiDescription('Fetches changes from the connected Git repository into the instance.')
 	@ApiTags(tags)
 	@ApiResponse(200, SourceControlPullResponsePublicDto)
 	@ApiErrorResponse(400)
