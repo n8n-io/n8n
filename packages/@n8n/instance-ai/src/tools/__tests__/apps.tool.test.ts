@@ -1052,6 +1052,101 @@ describe('apps tool', () => {
 
 			expect(parsed.success).toBe(false);
 		});
+
+		describe('making an app with connected workflows public', () => {
+			const stored = [
+				{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' },
+				{ key: 'notify', kind: 'workflow', workflowId: 'wf-2' },
+			];
+			const makePublic = { action: 'settings', authMode: 'public' };
+
+			function contextWithBindings(overrides: Partial<InstanceAiContext> = {}) {
+				const context = createMockContext(overrides);
+				appServiceMock(context, 'getBindings').mockResolvedValue({
+					bindings: [],
+					warnings: [],
+					stored,
+				});
+				return context;
+			}
+
+			it('suspends for approval on the first call', async () => {
+				const context = contextWithBindings();
+				const suspend = vi.fn().mockResolvedValue('suspended');
+
+				const result = await runAction(context, makePublic, { resumeData: undefined, suspend });
+
+				expect(result).toBe('suspended');
+				expect(suspend).toHaveBeenCalledWith({
+					requestId: expect.any(String),
+					message:
+						'Make app "Greeter" public: 2 connected workflows become callable by anyone with the URL',
+					severity: 'warning',
+				});
+				expect(appServiceMock(context, 'updateSettings')).not.toHaveBeenCalled();
+			});
+
+			it('is denied when the admin blocked bindAppWorkflow', async () => {
+				const context = contextWithBindings({
+					permissions: { bindAppWorkflow: 'blocked' },
+				} as never);
+				const suspend = vi.fn();
+
+				const result = await runAction(context, makePublic, { resumeData: undefined, suspend });
+
+				expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
+				expect(suspend).not.toHaveBeenCalled();
+				expect(appServiceMock(context, 'updateSettings')).not.toHaveBeenCalled();
+			});
+
+			it('is denied when the user rejects the card', async () => {
+				const context = contextWithBindings();
+
+				const result = await runAction(context, makePublic, { resumeData: { approved: false } });
+
+				expect(result).toEqual({ denied: true, reason: 'User denied the action' });
+				expect(appServiceMock(context, 'updateSettings')).not.toHaveBeenCalled();
+			});
+
+			it('updates the auth mode once the user approved', async () => {
+				const context = contextWithBindings();
+				appServiceMock(context, 'updateSettings').mockResolvedValue({ ...APP, authMode: 'public' });
+
+				const result = await runAction(context, makePublic, approved);
+
+				expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalledWith('app-1', {
+					authMode: 'public',
+				});
+				expect(result).toEqual({ appId: 'app-1', authMode: 'public' });
+			});
+
+			it('skips the card when the app has no connected workflows', async () => {
+				const context = createMockContext();
+				const suspend = vi.fn();
+
+				await runAction(context, makePublic, { resumeData: undefined, suspend });
+
+				expect(suspend).not.toHaveBeenCalled();
+				expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalledWith('app-1', {
+					authMode: 'public',
+				});
+			});
+
+			it('skips the card when switching to n8n, whatever the bindings', async () => {
+				const context = contextWithBindings();
+				const suspend = vi.fn();
+
+				await runAction(
+					context,
+					{ action: 'settings', authMode: 'n8n' },
+					{ resumeData: undefined, suspend },
+				);
+
+				expect(suspend).not.toHaveBeenCalled();
+				expect(appServiceMock(context, 'getBindings')).not.toHaveBeenCalled();
+				expect(appServiceMock(context, 'updateSettings')).toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('unbind', () => {

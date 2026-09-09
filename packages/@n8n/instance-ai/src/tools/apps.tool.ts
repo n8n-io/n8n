@@ -797,9 +797,36 @@ async function resolveWorkflowName(context: InstanceAiContext, workflowId: strin
 }
 
 /**
+ * The `bindAppWorkflow` permission, the way `workflows` asks before a publish: `null`
+ * when the action may proceed, the reason when it may not; suspends for the card
+ * when the user has not answered it yet.
+ */
+async function requireBindAppWorkflowApproval(
+	context: InstanceAiContext,
+	ctx: ConfirmationToolContext,
+	describe: () => string | Promise<string>,
+): Promise<AppActionDenied | null> {
+	if (context.permissions?.bindAppWorkflow === 'blocked') {
+		return { denied: true, reason: 'Action blocked by admin' };
+	}
+	const resumeData = ctx.resumeData;
+	const needsApproval = context.permissions?.bindAppWorkflow !== 'always_allow';
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		return await ctx.suspend({
+			requestId: nanoid(),
+			message: await describe(),
+			severity: 'warning' as const,
+		});
+	}
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { denied: true, reason: 'User denied the action' };
+	}
+	return null;
+}
+
+/**
  * Upsert by key: a binding with an existing key replaces it, the others stay. A bind
- * exposes a workflow to everyone who can open the app, so it asks the user first, the
- * way `workflows` asks before a publish.
+ * exposes a workflow to everyone who can open the app, so it asks the user first.
  */
 async function handleBind(
 	context: InstanceAiContext,
@@ -813,29 +840,18 @@ async function handleBind(
 			reason: 'Pass at least one binding as { key, kind: "workflow", workflowId }.',
 		};
 	}
-	if (context.permissions?.bindAppWorkflow === 'blocked') {
-		return { denied: true, reason: 'Action blocked by admin' };
-	}
 	const app = await requireAppService(context).get(input.appId);
 
-	const resumeData = ctx.resumeData;
-	const needsApproval = context.permissions?.bindAppWorkflow !== 'always_allow';
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+	const denied = await requireBindAppWorkflowApproval(context, ctx, async () => {
 		const lines = await Promise.all(
 			input.bindings.map(
 				async ({ key, workflowId }) =>
 					`Connect workflow "${await resolveWorkflowName(context, workflowId)}" (${workflowId}) to app "${app.name}" as "${key}"`,
 			),
 		);
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: lines.join('\n'),
-			severity: 'warning' as const,
-		});
-	}
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return { denied: true, reason: 'User denied the action' };
-	}
+		return lines.join('\n');
+	});
+	if (denied) return denied;
 
 	const replaced = new Set(input.bindings.map((binding) => binding.key));
 	return await replaceBindings(
@@ -869,10 +885,30 @@ async function handleBindings(context: InstanceAiContext, input: BindingsInput) 
 	return { appId: app.id, bindings, warnings };
 }
 
-async function handleSettings(context: InstanceAiContext, input: SettingsInput) {
-	const app = await requireAppService(context).updateSettings(input.appId, {
-		authMode: input.authMode,
-	});
+/**
+ * Making an app public exposes every bound workflow to anyone with the URL, the
+ * same exposure a bind creates, so it asks the user under the same permission.
+ */
+async function handleSettings(
+	context: InstanceAiContext,
+	input: SettingsInput,
+	ctx: ConfirmationToolContext,
+) {
+	const appService = requireAppService(context);
+	if (input.authMode === 'public') {
+		const app = await appService.get(input.appId);
+		const { stored } = await appService.getBindings(app.id);
+		if (stored.length > 0) {
+			const denied = await requireBindAppWorkflowApproval(
+				context,
+				ctx,
+				() =>
+					`Make app "${app.name}" public: ${stored.length} connected ${stored.length === 1 ? 'workflow becomes' : 'workflows become'} callable by anyone with the URL`,
+			);
+			if (denied) return denied;
+		}
+	}
+	const app = await appService.updateSettings(input.appId, { authMode: input.authMode });
 	return { appId: app.id, authMode: app.authMode };
 }
 
@@ -928,7 +964,7 @@ export function createAppsTool(context: InstanceAiContext) {
 				'It asks the user for approval first. ' +
 				'`unbind` removes a key; `bindings` lists the current ones. Bind before writing code that calls a workflow. ' +
 				'`settings` changes `authMode`: "public" (anyone with the URL, the default) or "n8n" (visitors sign in to this n8n instance and need access to the project). ' +
-				'`create` accepts `authMode` too.',
+				'Making an app with bindings public asks the user for approval first. `create` accepts `authMode` too.',
 		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
@@ -950,7 +986,7 @@ export function createAppsTool(context: InstanceAiContext) {
 				case 'bindings':
 					return await handleBindings(context, input);
 				case 'settings':
-					return await handleSettings(context, input);
+					return await handleSettings(context, input, ctx);
 			}
 		})
 		.build();
