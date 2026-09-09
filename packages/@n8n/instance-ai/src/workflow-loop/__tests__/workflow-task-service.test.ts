@@ -85,12 +85,145 @@ describe('WorkflowTaskCoordinator', () => {
 		});
 	}
 
-	it.each([true, false])(
-		'preserves the repair path with setup panel enabled=%s',
-		async (setupPanelEnabled) => {
+	function verificationContext(coordinator: WorkflowTaskCoordinator) {
+		const run = vi.fn().mockResolvedValue({ executionId: 'exec-1', status: 'success' });
+		return {
+			run,
+			context: mock<OrchestrationContext>({
+				runId: 'run-1',
+				setupPanelEnabled: true,
+				workflowTaskService: coordinator,
+				logger: mock<OrchestrationContext['logger']>(),
+				domainContext: mock<InstanceAiContext>({
+					executionService: mock<InstanceAiContext['executionService']>({ run }),
+					workflowService: mock<InstanceAiContext['workflowService']>({
+						getAsWorkflowJSON: vi.fn().mockResolvedValue({ nodes: [], connections: {} }),
+					}),
+				}),
+			}),
+		};
+	}
+
+	it.each(['before the claim', 'after the claim'])(
+		'reports a changed state when the second request reads state %s',
+		async (timing) => {
 			const { storage } = createStorage();
 			const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
 			await coordinator.reportBuildOutcome(setupBlockedOutcome());
+			const { context, run } = verificationContext(coordinator);
+			const readState = coordinator.getWorkflowLoopState.bind(coordinator);
+			const begin = coordinator.beginVerification.bind(coordinator);
+			let releaseReads!: () => void;
+			const readsReady = new Promise<void>((resolve) => {
+				releaseReads = resolve;
+			});
+			let releaseClaim!: () => void;
+			const claimDone = new Promise<void>((resolve) => {
+				releaseClaim = resolve;
+			});
+			let reads = 0;
+			vi.spyOn(coordinator, 'beginVerification').mockImplementation(async (...args) => {
+				const result = await begin(...args);
+				releaseClaim();
+				return result;
+			});
+			vi.spyOn(coordinator, 'getWorkflowLoopState').mockImplementation(async (id) => {
+				const index = ++reads;
+				if (index === 2 && timing === 'after the claim') await claimDone;
+				const state = await readState(id);
+				if (index <= 2 && timing === 'before the claim') {
+					if (index === 2) releaseReads();
+					await readsReady;
+				}
+				return state;
+			});
+			const tool = createVerifyBuiltWorkflowTool(context);
+			const input = { workItemId: 'wi_1', workflowId: 'wf-1' };
+			const results = await Promise.all([executeTool(tool, input), executeTool(tool, input)]);
+			expect(run).toHaveBeenCalledOnce();
+			expect(results.filter((result) => result.success)).toHaveLength(1);
+			expect(results.find((result) => !result.success)?.remediation).toMatchObject({
+				category: 'blocked',
+				reason: 'verification_state_changed',
+			});
+		},
+	);
+
+	it('does not execute when saving verification ownership fails', async () => {
+		const { storage } = createStorage();
+		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+		await coordinator.reportBuildOutcome(setupBlockedOutcome());
+		const before = await storage.getWorkItem('thread-1', 'wi_1');
+		const { context, run } = verificationContext(coordinator);
+		vi.mocked(storage.updateWorkItem).mockRejectedValueOnce(new Error('Save failed'));
+		await expect(
+			executeTool(createVerifyBuiltWorkflowTool(context), {
+				workItemId: 'wi_1',
+				workflowId: 'wf-1',
+			}),
+		).rejects.toThrow('Save failed');
+		expect(run).not.toHaveBeenCalled();
+		expect(await storage.getWorkItem('thread-1', 'wi_1')).toEqual(before);
+	});
+
+	it.each(['run-1', 'run-next'])(
+		'can verify a saved final repair in %s without resetting its budget',
+		async (runId) => {
+			const { storage } = createStorage();
+			const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+			const outcome = setupBlockedOutcome({
+				needsUserInput: false,
+				remediation: undefined,
+				verificationReadiness: { status: 'ready' },
+			});
+			await coordinator.reportBuildOutcome(outcome);
+			for (let attempt = 0; attempt < MAX_POST_SUBMIT_REMEDIATION_SUBMITS; attempt++) {
+				await coordinator.reportBuildOutcome({ ...outcome, taskId: `repair-${attempt}` });
+			}
+			const { context, run } = verificationContext(coordinator);
+			context.runId = runId;
+			await executeTool(createVerifyBuiltWorkflowTool(context), {
+				workItemId: 'wi_1',
+				workflowId: 'wf-1',
+			});
+			expect(run).toHaveBeenCalledOnce();
+			expect(
+				(await coordinator.getWorkflowLoopState('wi_1'))?.postSubmitRemediationSubmitsUsed,
+			).toBe(MAX_POST_SUBMIT_REMEDIATION_SUBMITS);
+		},
+	);
+
+	it.each([
+		{ setupPanelEnabled: true, runId: 'run-1', previouslyVerified: false },
+		{ setupPanelEnabled: false, runId: 'run-1', previouslyVerified: false },
+		{ setupPanelEnabled: true, runId: 'run-next', previouslyVerified: false },
+		{ setupPanelEnabled: true, runId: 'run-next', previouslyVerified: true },
+	])(
+		'preserves repair with panel=$setupPanelEnabled, run=$runId, prior verification=$previouslyVerified',
+		async ({ setupPanelEnabled, runId, previouslyVerified }) => {
+			const { storage } = createStorage();
+			const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+			await coordinator.reportBuildOutcome(
+				setupBlockedOutcome(
+					previouslyVerified
+						? {
+								needsUserInput: false,
+								remediation: undefined,
+								verificationReadiness: { status: 'ready' },
+								verifyAttempts: 1,
+								verification: { attempted: true, success: true, executionId: 'previous-exec' },
+							}
+						: {},
+				),
+			);
+			if (previouslyVerified)
+				await coordinator.reportVerificationVerdict({
+					workItemId: 'wi_1',
+					workflowId: 'wf-1',
+					runId: 'run-1',
+					verdict: 'verified',
+					summary: 'Verified.',
+				});
 			const previous = await storage.getWorkItem('thread-1', 'wi_1');
 			const run = vi.fn().mockResolvedValue({
 				executionId: 'exec-1',
@@ -99,7 +232,7 @@ describe('WorkflowTaskCoordinator', () => {
 				nodeErrors: [{ nodeName: 'Transform', message: 'Invalid expression' }],
 			});
 			const context = mock<OrchestrationContext>({
-				runId: 'run-1',
+				runId,
 				setupPanelEnabled,
 				workflowTaskService: coordinator,
 				logger: mock<OrchestrationContext['logger']>(),
@@ -125,6 +258,7 @@ describe('WorkflowTaskCoordinator', () => {
 			expect(result.remediation).toMatchObject({ category: 'code_fixable', shouldEdit: true });
 			const afterRun = await storage.getWorkItem('thread-1', 'wi_1');
 			expect(afterRun?.state).toMatchObject({
+				runId,
 				phase: 'verifying',
 				status: 'active',
 				postSubmitRemediationSubmitsUsed: previous?.state.postSubmitRemediationSubmitsUsed,
@@ -149,6 +283,29 @@ describe('WorkflowTaskCoordinator', () => {
 			expect(report.guidance).toContain('src/workflows/main.workflow.ts');
 			expect(report.guidance).not.toContain('BUILD BLOCKED');
 			expect((await coordinator.getWorkflowLoopState('wi_1'))?.phase).toBe('repairing');
+			await expect(
+				coordinator.reportVerificationVerdict({
+					workItemId: 'wi_1',
+					workflowId: 'wf-1',
+					runId: 'run-old',
+					verdict: 'verified',
+					summary: 'Late result.',
+				}),
+			).resolves.toMatchObject({ type: 'ignored' });
+			await expect(
+				coordinator.reportBuildOutcome(
+					setupBlockedOutcome({
+						runId,
+						taskId: 'repair-1',
+						needsUserInput: false,
+						remediation: undefined,
+						verificationReadiness: { status: 'ready' },
+					}),
+				),
+			).resolves.toMatchObject({ type: 'verify' });
+			expect(
+				(await coordinator.getWorkflowLoopState('wi_1'))?.postSubmitRemediationSubmitsUsed,
+			).toBe(1);
 		},
 	);
 
@@ -168,9 +325,9 @@ describe('WorkflowTaskCoordinator', () => {
 			const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
 			await coordinator.reportBuildOutcome(setupBlockedOutcome(overrides));
 			const before = await storage.getWorkItem('thread-1', 'wi_1');
-			await expect(coordinator.resumeSetupBlockedVerification('wi_1', 'run-1')).resolves.toBe(
-				false,
-			);
+			await expect(
+				coordinator.beginVerification(before!.lastBuildOutcome!, before!.state, 'run-1'),
+			).resolves.toBe(false);
 			expect(await storage.getWorkItem('thread-1', 'wi_1')).toEqual(before);
 		},
 	);
@@ -188,7 +345,11 @@ describe('WorkflowTaskCoordinator', () => {
 				item.state.lastRemediation = { category: 'blocked', shouldEdit: false, guidance: 'Stop.' };
 			await storage.saveWorkItem('thread-1', item.state, item.attempts, item.lastBuildOutcome);
 			await expect(
-				coordinator.resumeSetupBlockedVerification('wi_1', guard === 'run' ? 'run-old' : 'run-1'),
+				coordinator.beginVerification(
+					item.lastBuildOutcome!,
+					{ ...item.state, ...(guard === 'run' ? { runId: 'run-old' } : {}) },
+					'run-next',
+				),
 			).resolves.toBe(false);
 			expect(await storage.getWorkItem('thread-1', 'wi_1')).toEqual(item);
 		},

@@ -299,7 +299,8 @@ describe('TypeORMAgentMemory', () => {
 	it('saveThread derives a sub-agent thread project from its parent', async () => {
 		const threadRepo = mock<InstanceAiThreadRepository>();
 		const parentThreadId = '00000000-0000-4000-8000-000000000001';
-		threadRepo.findOneBy.mockResolvedValueOnce(null).mockResolvedValueOnce({
+		threadRepo.updateThread.mockResolvedValueOnce(null);
+		threadRepo.findOneBy.mockResolvedValueOnce({
 			id: parentThreadId,
 			resourceId: 'user-1',
 			title: '',

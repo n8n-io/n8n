@@ -1,4 +1,4 @@
-import { createRemediation } from '../remediation';
+import { createRemediation, MAX_POST_SUBMIT_REMEDIATION_SUBMITS } from '../remediation';
 import {
 	deriveWorkflowVerificationObligation,
 	deriveWorkflowVerificationObligationFromOutcome,
@@ -53,6 +53,41 @@ function makeOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBui
 }
 
 describe('deriveWorkflowVerificationObligation', () => {
+	it('keeps an exhausted setup verification budget blocked', () => {
+		const remediation = createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			guidance: 'Connect the account.',
+		});
+		const record = {
+			state: makeState({
+				status: 'blocked',
+				lastRemediation: remediation,
+				successfulSubmitSeen: true,
+				postSubmitRemediationSubmitsUsed: MAX_POST_SUBMIT_REMEDIATION_SUBMITS,
+			}),
+			attempts: [],
+			lastBuildOutcome: makeOutcome({
+				needsUserInput: true,
+				nodeSimulationPlan: [],
+				remediation,
+				verificationReadiness: {
+					status: 'needs_setup',
+					reason: 'workflow-needs-setup',
+					guidance: 'Connect the account.',
+				},
+			}),
+		};
+		const original = structuredClone(record);
+		const obligation = deriveWorkflowVerificationObligation('thread-1', record, {
+			setupPanelEnabled: true,
+		});
+		expect(obligation.status).toBe('blocked');
+		expect(obligation.blockingReason).toContain('repair budget is exhausted');
+		expect(isWorkflowVerificationObligationUnsettled(obligation)).toBe(false);
+		expect(record).toEqual(original);
+	});
+
 	it.each([
 		['first attempt', {}, 'ready_to_verify'],
 		['legacy attempt', { verifyAttempts: 1 }, 'needs_setup'],

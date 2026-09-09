@@ -1,7 +1,6 @@
 import {
-	canVerifyPendingSetup,
-	isNeedsSetupRemediation,
 	setupRemediationBlocksVerification,
+	stateForPendingSetupVerification,
 } from './setup-verification-policy';
 import type {
 	AttemptRecord,
@@ -192,21 +191,15 @@ export function deriveWorkflowVerificationObligation(
 	options: DeriveWorkflowVerificationObligationOptions = {},
 ): WorkflowVerificationObligation {
 	const savedOutcome = record.lastBuildOutcome;
-	const canVerifyBeforeSetup =
-		options.setupPanelEnabled === true &&
-		savedOutcome !== undefined &&
-		canVerifyPendingSetup(savedOutcome);
+	const setupVerificationState =
+		options.setupPanelEnabled === true && savedOutcome
+			? stateForPendingSetupVerification(record.state, savedOutcome)
+			: undefined;
 	const outcome: WorkflowBuildOutcome | undefined =
-		canVerifyBeforeSetup && savedOutcome
+		setupVerificationState && savedOutcome
 			? { ...savedOutcome, verificationReadiness: { status: 'ready' } }
 			: savedOutcome;
-	const blockedOnlyBySetup =
-		isNeedsSetupRemediation(record.state.lastRemediation) ||
-		(record.state.lastRemediation === undefined && savedOutcome?.needsUserInput === true);
-	const state: WorkflowLoopState =
-		canVerifyBeforeSetup && record.state.status === 'blocked' && blockedOnlyBySetup
-			? { ...record.state, status: 'active' }
-			: record.state;
+	const state = setupVerificationState ?? record.state;
 	const status = deriveStatus(state, outcome);
 	const updatedAt =
 		options.updatedAt ?? lastAttemptTimestamp(record.attempts) ?? new Date().toISOString();

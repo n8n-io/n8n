@@ -420,7 +420,8 @@ user turn. Setup changes do not start an agent run by themselves.
 The panel's Execute action sends a normal chat message with
 `context: { source: 'setup-panel-execute', workflowId }`. With the flag on,
 the host adds a private `workflow-test-request` block that identifies the target.
-The agent runs the saved workflow through `executions(action="run")`, inspects
+If required setup remains open, the agent reports those items and ends the turn
+without a run. Otherwise, it runs the saved workflow through `executions(action="run")`, inspects
 the output, and reports the test result in chat. Execution approval policy still
 applies. The new panel does not use the wizard's trigger-test resume loop.
 

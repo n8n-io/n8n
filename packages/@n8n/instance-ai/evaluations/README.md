@@ -318,6 +318,12 @@ external suite with `--source langtracer --suite <suite-id>`, or stage a local
 case and select it with `--filter <case-slug>`. Run those cases with the flag on.
 The repository does not include a `setup-panel-v2` tier.
 
+Remote Execute cases require LangTracer to preserve `attach.source` when it
+writes and reads a case. Deploy the companion schema and normalizer change
+before using those cases from a remote suite. Confirm that a write/read round
+trip retains `source: "setup-panel-execute"`. Until then, keep the Execute case
+on disk. Losing this field turns it into a normal attachment test.
+
 ## Environment variables
 
 | Variable | Required | Description |

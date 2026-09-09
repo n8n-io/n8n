@@ -1,4 +1,9 @@
-import type { RemediationMetadata, WorkflowBuildOutcome } from './workflow-loop-state';
+import { terminalRemediationFromState } from './remediation';
+import type {
+	RemediationMetadata,
+	WorkflowBuildOutcome,
+	WorkflowLoopState,
+} from './workflow-loop-state';
 
 export function isNeedsSetupRemediation(
 	remediation: RemediationMetadata | undefined,
@@ -22,6 +27,31 @@ export function canVerifyPendingSetup(outcome: WorkflowBuildOutcome): boolean {
 		(outcome.verifyAttempts ?? 0) === 0 &&
 		outcome.verification?.attempted !== true
 	);
+}
+
+/** Remove only a setup blocker that the first simulated verification can supersede. */
+export function stateForPendingSetupVerification(
+	state: WorkflowLoopState,
+	outcome: WorkflowBuildOutcome,
+): WorkflowLoopState | undefined {
+	if (
+		!canVerifyPendingSetup(outcome) ||
+		!(
+			isNeedsSetupRemediation(state.lastRemediation) ||
+			(state.lastRemediation === undefined && outcome.needsUserInput)
+		)
+	) {
+		return undefined;
+	}
+
+	const next: WorkflowLoopState = {
+		...state,
+		phase: 'verifying',
+		status: 'active',
+		lastRemediation: undefined,
+	};
+	const blocker = terminalRemediationFromState(next);
+	return blocker ? { ...state, status: 'blocked', lastRemediation: blocker } : next;
 }
 
 export function buildRemediationForVerification(

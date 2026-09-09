@@ -12,7 +12,7 @@ import {
 } from '../../../workflow-loop/remediation';
 import {
 	canVerifyPendingSetup,
-	isNeedsSetupRemediation,
+	stateForPendingSetupVerification,
 } from '../../../workflow-loop/setup-verification-policy';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 
@@ -80,15 +80,18 @@ export async function resolveVerificationTarget(
 	let stateBefore = await context.workflowTaskService.getWorkflowLoopState(
 		resolvedInput.workItemId,
 	);
-	const terminalRemediation =
-		stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
-			? terminalRemediationFromState(stateBefore, context.runId)
+	const setupVerificationState =
+		context.setupPanelEnabled === true && stateBefore
+			? stateForPendingSetupVerification(stateBefore, buildOutcome)
 			: undefined;
-	const canVerifyBeforePanelSetup =
-		context.setupPanelEnabled === true &&
-		stateBefore?.runId === context.runId &&
-		canVerifyPendingSetup(buildOutcome) &&
-		(!terminalRemediation || isNeedsSetupRemediation(terminalRemediation));
+	const terminalRemediation = setupVerificationState
+		? terminalRemediationFromState(setupVerificationState)
+		: stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
+			? terminalRemediationFromState(
+					stateBefore,
+					context.setupPanelEnabled === true ? undefined : context.runId,
+				)
+			: undefined;
 
 	if (!buildOutcome.workflowId) {
 		return {
@@ -138,22 +141,30 @@ export async function resolveVerificationTarget(
 	}
 
 	let verificationBlocker = terminalRemediation;
-	if (canVerifyBeforePanelSetup) {
-		// The reads can overlap a state change. Always claim a pending outcome from this run.
-		const resumed = await context.workflowTaskService.resumeSetupBlockedVerification(
-			resolvedInput.workItemId,
+	if (
+		!verificationBlocker &&
+		context.setupPanelEnabled === true &&
+		stateBefore &&
+		(canVerifyPendingSetup(buildOutcome) || stateBefore.runId !== context.runId)
+	) {
+		const started = await context.workflowTaskService.beginVerification(
+			buildOutcome,
+			stateBefore,
 			context.runId,
 		);
-		verificationBlocker = resumed
-			? undefined
-			: (terminalRemediation ??
-				createRemediation({
-					category: 'blocked',
-					shouldEdit: false,
-					reason: 'verification_state_changed',
-					guidance:
-						'The work item changed before verification could start. Read its current state before continuing.',
-				}));
+		if (started) {
+			stateBefore = await context.workflowTaskService.getWorkflowLoopState(
+				resolvedInput.workItemId,
+			);
+		} else {
+			verificationBlocker = createRemediation({
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'verification_state_changed',
+				guidance:
+					'The work item changed before verification could start. Read its current state before continuing.',
+			});
+		}
 	}
 
 	if (verificationBlocker) {
@@ -167,10 +178,6 @@ export async function resolveVerificationTarget(
 				guidance: verificationBlocker.guidance,
 			},
 		};
-	}
-
-	if (canVerifyBeforePanelSetup) {
-		stateBefore = await context.workflowTaskService.getWorkflowLoopState(resolvedInput.workItemId);
 	}
 
 	return {
