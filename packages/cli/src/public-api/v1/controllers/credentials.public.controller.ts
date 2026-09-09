@@ -2,6 +2,7 @@ import {
 	CredentialListPublicDto,
 	CredentialPublicDto,
 	ListCredentialsQueryDto,
+	credentialIdParamSchema,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, CredentialsEntity } from '@n8n/db';
 import {
@@ -112,7 +113,7 @@ export class CredentialsPublicController {
 	async getCredential(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('credentialId') credentialId: string,
+		@Param('credentialId', credentialIdParamSchema) credentialId: string,
 	): Promise<CredentialPublicDto> {
 		const credential = await this.credentialsFinderService.findById(credentialId);
 		if (!credential) {

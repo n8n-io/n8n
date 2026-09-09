@@ -28,7 +28,7 @@ export interface BackgroundSpawnRequest {
 	difficulty?: SubAgentTaskDifficulty;
 	parentThreadId: string;
 	parentResourceId: string;
-	parentSandboxPrincipalHash?: string;
+	parentSandboxPrincipalHash: string;
 }
 
 /**
@@ -57,7 +57,12 @@ export class SubAgentBackgroundRunner {
 			parentAgentId: string;
 		} & Pick<
 			SubAgentRunContext,
-			'credentialProvider' | 'runType' | 'workflowToolExecutionMode' | 'user' | 'instrumentation'
+			| 'credentialProvider'
+			| 'runType'
+			| 'workflowToolExecutionMode'
+			| 'user'
+			| 'instrumentation'
+			| 'parentWorkspaceHandle'
 		>,
 	): Promise<BackgroundJobReceipt> {
 		// Throws on an unusable task name — before the job row exists, so a bad
@@ -71,6 +76,8 @@ export class SubAgentBackgroundRunner {
 			id: jobId,
 			parentAgentId: context.parentAgentId,
 			parentThreadId: request.parentThreadId,
+			parentResourceId: request.parentResourceId,
+			parentPrincipalHash: request.parentSandboxPrincipalHash,
 			title: request.taskName,
 			subAgentId: request.subAgentId,
 			childThreadId,
@@ -110,9 +117,7 @@ export class SubAgentBackgroundRunner {
 						: {}),
 					parentThreadId: request.parentThreadId,
 					parentResourceId: request.parentResourceId,
-					...(request.parentSandboxPrincipalHash !== undefined
-						? { parentSandboxPrincipalHash: request.parentSandboxPrincipalHash }
-						: {}),
+					parentSandboxPrincipalHash: request.parentSandboxPrincipalHash,
 					childThreadId,
 					taskPath,
 				},
@@ -127,6 +132,9 @@ export class SubAgentBackgroundRunner {
 					abortSignal: abortController.signal,
 					...(request.difficulty !== undefined
 						? { selfDelegationDifficulty: request.difficulty }
+						: {}),
+					...(context.parentWorkspaceHandle !== undefined
+						? { parentWorkspaceHandle: context.parentWorkspaceHandle }
 						: {}),
 				},
 			)

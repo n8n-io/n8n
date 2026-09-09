@@ -1,10 +1,9 @@
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
+import { SystemTask, wholeSeconds } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InsightsCompactionService } from './insights-compaction.service';
 import { InsightsConfig } from './insights.config';
-import { wholeSeconds } from './whole-seconds';
 
 /**
  * Rolls raw insight events up into per-period summaries, so the insights

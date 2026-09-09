@@ -33,7 +33,10 @@ import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.serv
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '../agent-sandbox-principal';
 import type {
 	AgentSandboxRuntime,
 	AgentSandboxRuntimeService,
@@ -924,5 +927,80 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		);
 
 		expect(getInjectedToolNames()).toEqual(expect.arrayContaining(BACKGROUND_TOOL_NAMES));
+	});
+
+	function getInjectedSpawnBackgroundTool() {
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as BuiltTool;
+				if (tool.name === 'spawn_background_subagent') return tool;
+			}
+		}
+		return undefined;
+	}
+
+	it('forwards the parent workspace handle to a background spawn', async () => {
+		Container.get(AgentsConfig).backgroundTasksEnabled = true;
+		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+		const handle = mock<AgentSandboxRuntime>();
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace: new Workspace({}),
+			handle,
+		});
+		const backgroundRunner = mock<SubAgentBackgroundRunner>();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		Container.set(SubAgentBackgroundRunner, backgroundRunner);
+		const service = makeReconstructionService({
+			agentSandboxRuntimeService: mock<AgentSandboxRuntimeService>({ isEnabled: () => true }),
+			agentWorkspaceService,
+		});
+
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(),
+			mock<CredentialProvider>(),
+			'production',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			principalHash,
+		);
+
+		const spawnTool = getInjectedSpawnBackgroundTool();
+		if (!spawnTool?.handler) throw new Error('Expected spawn_background_subagent handler');
+		await spawnTool.handler(
+			{ subAgentId: 'inline', taskName: 'research', goal: 'find things' },
+			{
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeAgentSandboxHostMetadata({ projectId: 'project-1', principalHash }),
+				},
+			},
+		);
+
+		expect(backgroundRunner.spawn.mock.calls[0][1].parentWorkspaceHandle).toBe(handle);
+	});
+
+	it('injects no background tools for task runtimes when the flag is on', async () => {
+		Container.get(AgentsConfig).backgroundTasksEnabled = true;
+		const { service, credentialProvider } = setupWithRoster();
+
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(undefined, { subAgents }),
+			credentialProvider,
+			'production',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			undefined,
+			undefined,
+			false,
+		);
+
+		const toolNames = getInjectedToolNames();
+		for (const name of BACKGROUND_TOOL_NAMES) expect(toolNames).not.toContain(name);
 	});
 });

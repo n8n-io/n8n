@@ -1,10 +1,10 @@
 import {
-	zodToJsonSchema,
 	type CredentialProvider,
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 

@@ -101,7 +101,7 @@ without search results. `research(action="fetch-url")` still works.
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | number | `300000` | Default command timeout in the sandbox (milliseconds). |
 | `N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS` | number | `900` | Eval-harness-only Daytona cold-provisioning timeout in seconds. It must be a positive integer. |
 | `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | string | `''` | Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`). Also surfaced as a `name_prefix` label. Empty in production. |
-| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | boolean | `false` | When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate. |
+| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | boolean | `false` | When true, sandboxes are created ephemeral: the provider deletes them once idle instead of leaving them stopped. Applies to both `n8n-sandbox` and `daytona`. Intended for throwaway eval instances so sandboxes don't accumulate. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | number | `15` | Minutes an idle Daytona sandbox waits before being stopped. `0` disables auto-stop. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | number | `60` (1 hour) | Minutes a stopped Daytona sandbox waits before being archived to cold storage. `0` uses Daytona's maximum interval. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | number | `10080` (7 days) | Minutes a stopped Daytona sandbox waits before being deleted. Negative disables auto-delete; `0` deletes on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |

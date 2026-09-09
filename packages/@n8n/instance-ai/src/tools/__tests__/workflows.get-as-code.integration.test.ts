@@ -83,7 +83,7 @@ describe('workflows get-as-code integration', () => {
 			workflowVersionId: 'v-stale',
 			workflowChecksum: 'checksum-stale',
 		});
-		const tool = createWorkflowsTool(context, 'full');
+		const tool = createWorkflowsTool(context);
 
 		const result = await executeTool<GetAsCodeResult>(tool, {
 			action: 'get-as-code',

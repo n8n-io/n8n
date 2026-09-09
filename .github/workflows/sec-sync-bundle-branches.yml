@@ -17,6 +17,11 @@
 # head is the bundle branch). A merged fix and a manual dispatch before a cut are the moments
 # that matter.
 #
+# Only published history is synced in. A cut leaves a private-only `chore: Bundle/*` commit on
+# private master that the hourly public→private mirror later discards for the public copy, so a
+# run in that window skips instead of building the branch on it — a dispatch or a merged fix PR
+# right after a cut can legitimately do nothing. See sync-bundle-branch.mjs.
+#
 # One job per bundle branch: a conflict on one FAILS THAT JOB and leaves its branch untouched,
 # while the other still syncs. Recovery is manual and deliberate — merge the base in locally,
 # resolve, push, then re-run this workflow. That resolution then lives in the merge commit,
@@ -87,10 +92,21 @@ jobs:
           BASE_BRANCH: ${{ matrix.base }}
         run: node .github/scripts/sync-bundle-branch.mjs
 
+  # A deleted bundle branch takes its open PRs with it: GitHub moves them onto the base. The
+  # sync re-creates the branch, so this runs after it — a conflict on one branch does not
+  # change where PRs point, so run even then.
+  retarget:
+    name: Retarget bundle PRs
+    needs: [sync]
+    if: ${{ !cancelled() && needs.sync.result != 'skipped' }}
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/sec-sync-retarget-prs.yml
+
   notify-on-failure:
     name: Notify Slack on failure
-    needs: [sync]
-    if: ${{ always() && needs.sync.result == 'failure' }}
+    needs: [sync, retarget]
+    if: ${{ always() && (needs.sync.result == 'failure' || needs.retarget.result == 'failure') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read # checkout the slack scripts
@@ -100,7 +116,7 @@ jobs:
           sparse-checkout: .github/scripts/slack
           sparse-checkout-cone-mode: false
           persist-credentials: false
-      # Branch names and a run link only: conflicted paths and commit subjects hint at the
+      # A run link only: conflicted paths, commit subjects and PR titles all hint at the
       # vulnerability, and Slack reaches a wider audience than the private repo.
       - name: Notify Slack
         env:
@@ -109,4 +125,4 @@ jobs:
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel '#alerts-security' \
-            --text "<${RUN_URL}|A bundle branch could not be synced with its base>. The branch is untouched; see the run for which one and why."
+            --text "<${RUN_URL}|Bundle branch maintenance failed>: a branch could not be synced with its base, or its PRs could not be retargeted. Nothing was rewritten; see the run for which one and why."
