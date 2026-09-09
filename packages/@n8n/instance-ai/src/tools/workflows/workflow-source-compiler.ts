@@ -147,9 +147,19 @@ function fillMissingNodePositions(json: WorkflowJSON): void {
 
 	if (!json.nodes?.some(needsPosition)) return;
 
+	// The builder treats any present position as explicit, so a malformed one such as
+	// `[100]` survives the layout and would reach the save as `[100, undefined]`. Drop it
+	// first. The declared type says `position` is always a valid pair, but this JSON is
+	// written by hand, so it can be absent or malformed.
+	const layoutNodes = json.nodes.map((node) => {
+		if (!needsPosition(node)) return node;
+		const { position: _malformed, ...withoutPosition } = node;
+		return withoutPosition as WorkflowJSON['nodes'][number];
+	});
+
 	let laidOut: WorkflowJSON;
 	try {
-		laidOut = workflowBuilder.fromJSON(json).toJSON();
+		laidOut = workflowBuilder.fromJSON({ ...json, nodes: layoutNodes }).toJSON();
 	} catch {
 		// Leave the JSON as it is. The save reports what is wrong with it.
 		return;
@@ -158,7 +168,7 @@ function fillMissingNodePositions(json: WorkflowJSON): void {
 	const positionsById = new Map<string, [number, number]>();
 	const positionsByName = new Map<string, [number, number]>();
 	for (const node of laidOut.nodes ?? []) {
-		if (!Array.isArray(node.position)) continue;
+		if (needsPosition(node)) continue;
 		if (node.id) positionsById.set(node.id, node.position);
 		if (node.name) positionsByName.set(node.name, node.position);
 	}

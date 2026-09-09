@@ -354,6 +354,47 @@ describe('compileWorkflowSource > node positions in JSON sources', () => {
 		}
 	});
 
+	it('replaces a malformed position instead of padding it', async () => {
+		// The builder treats any present position as explicit, so `[100]` survives its layout.
+		// Left alone it reaches the save as `[100, undefined]`.
+		const workflow = {
+			name: 'Malformed',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [100],
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: ['200', 0],
+					parameters: { url: 'https://example.com' },
+				},
+			],
+			connections: {
+				'Every Hour': { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/malformed.workflow.json',
+			JSON.stringify(workflow),
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		for (const node of result.workflow.nodes) {
+			expect(node.position).toEqual([expect.any(Number), expect.any(Number)]);
+		}
+	});
+
 	it('leaves positions the JSON already declares untouched', async () => {
 		const workflow = {
 			name: 'Positioned',
