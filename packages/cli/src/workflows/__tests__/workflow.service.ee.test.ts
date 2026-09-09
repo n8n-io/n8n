@@ -387,6 +387,19 @@ describe('EnterpriseWorkflowService', () => {
 				service.validateWorkflowCredentialUsage(newVersion, previousVersion, accessible),
 			).toThrow(/credentials in the 'Call' node/);
 		});
+
+		it('compares unresolved credentials by type and name, not by a joined string', () => {
+			const previousVersion = {
+				nodes: [httpNode({ a: { id: null, name: 'b:c' } })],
+			} as unknown as IWorkflowBase;
+			const newVersion = {
+				nodes: [httpNode({ 'a:b': { id: null, name: 'c' } })],
+			} as unknown as IWorkflowBase;
+
+			expect(() =>
+				service.validateWorkflowCredentialUsage(newVersion, previousVersion, accessible),
+			).toThrow(/credentials in the 'Call' node/);
+		});
 	});
 
 	describe('attemptWorkflowReactivation', () => {

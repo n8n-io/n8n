@@ -305,8 +305,9 @@ export class EnterpriseWorkflowService {
 	 * including its nodes' credentials — inside its `workflowJson` string
 	 * parameter, so those references are walked as well.
 	 *
-	 * Returns `ids` (resolvable credential ids) and `unresolved` (one `type:name`
-	 * key per non-managed credential carrying no id). A name-only reference can be
+	 * Returns `ids` (resolvable credential ids) and `unresolved` (one JSON
+	 * `[type, name]` key per non-managed credential carrying no id; a joined string
+	 * could collide when a type or name contains the separator). A name-only reference can be
 	 * resolved by name to a credential the user cannot access, so callers gating a
 	 * save must reject it rather than treat the node as credential-free.
 	 * `__aiGatewayManaged` credentials with a null id are resolved at execution and
@@ -335,7 +336,7 @@ export class EnterpriseWorkflowService {
 					} else if (nodeCred.__aiGatewayManaged && nodeCred.id === null) {
 						// Managed credential, resolved at execution — exempt.
 					} else if (nodeCred.id === null || nodeCred.id === '') {
-						unresolved.push(`${type}:${nodeCred.name}`);
+						unresolved.push(JSON.stringify([type, nodeCred.name]));
 					}
 				}
 			}
