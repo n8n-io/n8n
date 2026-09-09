@@ -330,8 +330,11 @@ describe('AppDetailsView', () => {
 
 		it('lists the connected workflows with a link, key and per-binding warning', async () => {
 			appsStore.bindings = bindings;
-			appsStore.bindingWarnings = ['Binding \'notify\': workflow "Notify" is not published.'];
-			const { getByRole, getAllByTestId } = await renderApp(makeApp());
+			appsStore.bindingWarnings = [
+				'Binding \'notify\': workflow "Notify" is not published.',
+				"Binding 'gone': workflow 'wf-3' no longer exists in the app's project.",
+			];
+			const { getByRole, getByTestId, getAllByTestId } = await renderApp(makeApp());
 
 			expect(appsStore.fetchBindings).toHaveBeenCalledWith('proj-1', 'app-1');
 			await userEvent.click(getByRole('tab', { name: 'Connections' }));
@@ -346,6 +349,8 @@ describe('AppDetailsView', () => {
 			expect(rows[0].querySelector('[data-test-id="app-connection-warning"]')).toBeNull();
 			expect(rows[1].querySelector('[data-test-id="app-connection-warning"]')).not.toBeNull();
 			expect(getAllByTestId('app-connection-delete')).toHaveLength(2);
+			expect(getByTestId('app-connections-warning')).toHaveTextContent("Binding 'gone'");
+			expect(getByTestId('app-connections-warning')).not.toHaveTextContent("Binding 'notify'");
 		});
 
 		it('deletes a connection after confirmation', async () => {

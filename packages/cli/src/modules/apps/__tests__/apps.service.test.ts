@@ -434,7 +434,7 @@ describe('AppsService bindings', () => {
 				outputSource: { kind: 'unknown' },
 			});
 			expect(result.warnings).toEqual([
-				'Output of "submit" is untyped. Run the workflow once (executions run) and call `apps bindings` to type it from the result.',
+				"Binding 'submit': output is untyped. Run the workflow once (executions run) and call `apps bindings` to type it from the result.",
 			]);
 		});
 

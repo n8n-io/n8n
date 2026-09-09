@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	N8nButton,
+	N8nCallout,
 	N8nIcon,
 	N8nIconButton,
 	N8nLink,
@@ -108,11 +109,17 @@ const buildTabOptions = computed(() => [
 	},
 ]);
 
-// The API reports warnings as one flat list; each names its binding by the quoted key.
+// The API reports warnings as one flat list; each starts with the quoted binding key.
 const bindingWarnings = (key: string) =>
+	appsStore.bindingWarnings.filter((warning) => warning.startsWith(`Binding '${key}':`));
+
+// Warnings about bindings the API left out (workflow gone or incompatible) have no row.
+const unlistedBindingWarnings = computed(() =>
 	appsStore.bindingWarnings.filter(
-		(warning) => warning.includes(`'${key}'`) || warning.includes(`"${key}"`),
-	);
+		(warning) =>
+			!appsStore.bindings.some((binding) => warning.startsWith(`Binding '${binding.key}':`)),
+	),
+);
 
 const showErrorAndGoBack = async (error: unknown) => {
 	toast.showError(error, i18n.baseText('apps.getDetails.error'));
@@ -494,6 +501,14 @@ watch(versionId, (next, previous) => {
 							/>
 						</N8nTooltip>
 					</div>
+
+					<N8nCallout
+						v-if="unlistedBindingWarnings.length > 0"
+						theme="warning"
+						data-test-id="app-connections-warning"
+					>
+						{{ unlistedBindingWarnings.join(' ') }}
+					</N8nCallout>
 				</div>
 
 				<div v-else-if="buildTab === 'theme'" :class="$style.container">

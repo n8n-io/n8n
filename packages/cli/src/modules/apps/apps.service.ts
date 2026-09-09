@@ -205,7 +205,7 @@ export class AppsService {
 			const { output, outputSource } = await this.inferOutput(workflow.id);
 			if (outputSource.kind === 'unknown') {
 				warnings.push(
-					`Output of "${binding.key}" is untyped. Run the workflow once (executions run) and call \`apps bindings\` to type it from the result.`,
+					`Binding '${binding.key}': output is untyped. Run the workflow once (executions run) and call \`apps bindings\` to type it from the result.`,
 				);
 			}
 			bindings.push({

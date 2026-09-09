@@ -43,7 +43,9 @@ becomes `Record<string, any>`.
 the workflow is unpublished; bind then warns): `string | null` (default),
 `number | null`, `boolean | null`, `unknown[] | null` (array),
 `Record<string, any> | null` (object), `unknown` (any). Every field is
-optional; a missing field is absent from the workflow's input item. A trigger without
+optional; a missing field is absent from the workflow's input item. The schema says
+`additionalProperties: false`, but the runtime strips a key that is not a declared
+field and answers 200; it does not reject the call. A trigger without
 declared fields (passthrough) accepts any object (`{ type: "object",
 additionalProperties: true }`): the app cannot type-check the
 input and the server does not validate it, so `bind` warns about each such
