@@ -118,12 +118,14 @@ describe('AppThemeBuildService', () => {
 
 		expect(restoreApp).not.toHaveBeenCalled();
 		expect(writeFile).toHaveBeenCalledWith(
-			'apps/greeter/src/theme-overrides.css',
+			expect.stringContaining('apps/greeter/src/theme-overrides.css'),
 			expect.stringContaining('--primary: oklch(0.6 0.2 280);'),
+			undefined,
 		);
 		expect(writeFile).toHaveBeenCalledWith(
-			'apps/greeter/src/theme-mode.ts',
+			expect.stringContaining('apps/greeter/src/theme-mode.ts'),
 			expect.stringContaining("'dark'"),
+			undefined,
 		);
 		expect(result).toEqual({ versionId: 'v-1', url: 'http://localhost:5678/apps/greeter/' });
 	});
@@ -144,8 +146,8 @@ describe('AppThemeBuildService', () => {
 
 		await service.applyTheme('app-1', THEME, USER);
 
-		const written = writeFile.mock.calls.find(
-			(call) => call[0] === 'apps/greeter/src/theme-overrides.css',
+		const written = writeFile.mock.calls.find((call) =>
+			(call[0] as string).endsWith('apps/greeter/src/theme-overrides.css'),
 		)?.[1] as string;
 		expect(written).toContain('--chart-1: #ff00ff;');
 		expect(written).toContain('--primary: oklch(0.6 0.2 280);');
