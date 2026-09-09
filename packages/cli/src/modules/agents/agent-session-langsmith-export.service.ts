@@ -1,4 +1,4 @@
-import { redactDeep, redactText, SUPPORTED_PII_CATEGORIES } from '@n8n/agents';
+import { redactDeep, redactText } from '@n8n/agents';
 import type { AgentSessionLangSmithExportResponse } from '@n8n/api-types';
 import { buildProxyHeaders } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -6,7 +6,9 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
+import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
 import type { Client } from 'langsmith';
+import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
@@ -18,14 +20,20 @@ import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
-import type { AgentExecution } from './entities/agent-execution.entity';
-import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
-import type { TimelineEvent } from './execution-recorder';
 import { AgentExecutionService, type ThreadDetail } from './agent-execution.service';
+import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
+import type { AgentExecution } from './entities/agent-execution.entity';
+import type { TimelineEvent } from './execution-recorder';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 
 const LANGSMITH_PROJECT = 'n8n-user-agents-debug';
+const MAX_RUNS_PER_BATCH = 100;
+const MAX_BATCH_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_FIELD_CHARS = 50_000;
+const EXPORT_TIMEOUT_MS = 60_000;
 const EXPORT_NAMESPACE = uuidv5('n8n-agent-session-langsmith-export', uuidv5.URL);
+// `detect` includes `crypto-wallet`, so `redactText`/`redactDeep` stay on
+// `@n8n/agents`, which binds the Node-only Base58Check validator.
 const REDACTION_OPTIONS = {
 	secrets: true,
 	detect: SUPPORTED_PII_CATEGORIES,
@@ -33,7 +41,7 @@ const REDACTION_OPTIONS = {
 	redactSensitiveKeys: true,
 };
 
-type LangSmithRun = Parameters<Client['createRun']>[0];
+type LangSmithRun = NonNullable<Parameters<Client['batchIngestRuns']>[0]['runCreates']>[number];
 type DottedOrderConverter = (
 	epoch: number,
 	runId: string,
@@ -89,17 +97,22 @@ export class AgentSessionLangSmithExportService {
 		const traceId = uuidv5(canonicalSerialize(draft), EXPORT_NAMESPACE);
 		const { convertToDottedOrderFormat } = await import('langsmith/run_trees');
 		const runs = materializeRuns(draft, traceId, convertToDottedOrderFormat);
+		const startedAt = Date.now();
+		let batchCount = 0;
 
 		try {
+			const batches = batchRuns(runs);
+			batchCount = batches.length;
 			const client = await this.createClient(input.user);
-			for (const run of runs) {
-				await client.createRun(run);
-			}
+			await sendBatchesWithTimeout(client, batches);
 		} catch (error) {
 			this.logger.error('Failed to export agent session to LangSmith', {
 				projectId: input.projectId,
 				agentId: input.agentId,
 				threadId: input.threadId,
+				runCount: runs.length,
+				batchCount,
+				elapsedMs: Date.now() - startedAt,
 				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new ServiceUnavailableError("Session couldn't be sent to LangSmith. Try again.");
@@ -219,7 +232,7 @@ function buildSessionRun(session: LoadedSession, path: string): DraftRun {
 		lastExecution?.updatedAt.getTime() ??
 		session.thread.updatedAt.getTime();
 
-	return {
+	return truncateDraftRun({
 		path,
 		name: `Agent session: ${session.thread.agentName}`,
 		runType: 'chain',
@@ -250,7 +263,7 @@ function buildSessionRun(session: LoadedSession, path: string): DraftRun {
 			totalDuration: session.thread.totalDuration,
 		},
 		children: [...executionRuns, ...unmatchedChildren],
-	};
+	});
 }
 
 function buildExecutionRun(
@@ -262,7 +275,7 @@ function buildExecutionRun(
 	const path = `${sessionPath}/executions/${execution.id}`;
 	const events = execution.timeline ?? [];
 	const children = events.map((event, index) => {
-		const eventRun = buildEventRun(event, execution, `${path}/events/${index}`);
+		const eventRun = truncateDraftRun(buildEventRun(event, execution, `${path}/events/${index}`));
 		const childThreadId = delegatedChildThreadId(event);
 		const childSession = childThreadId ? childSessions.get(childThreadId) : undefined;
 		if (childSession && !matchedChildren.has(childSession.thread.id)) {
@@ -276,7 +289,7 @@ function buildExecutionRun(
 	const startTime = execution.startedAt?.getTime() ?? execution.createdAt.getTime();
 	const endTime = execution.stoppedAt?.getTime() ?? execution.updatedAt.getTime();
 
-	return {
+	return truncateDraftRun({
 		path,
 		name: 'Agent turn',
 		runType: 'chain',
@@ -290,7 +303,7 @@ function buildExecutionRun(
 		error: execution.error ?? undefined,
 		metadata: executionMetadata(execution),
 		children,
-	};
+	});
 }
 
 function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: string): DraftRun {
@@ -419,6 +432,31 @@ function toRecord(value: unknown): Record<string, unknown> {
 	return isRecord(value) ? value : { value };
 }
 
+function truncateDraftRun(run: DraftRun): DraftRun {
+	return {
+		...run,
+		inputs: truncateRecord(sanitizeRecord(run.inputs)),
+		outputs: run.outputs ? truncateRecord(sanitizeRecord(run.outputs)) : undefined,
+		error: run.error ? truncateText(scrubText(run.error)) : undefined,
+	};
+}
+
+function truncateRecord(value: Record<string, unknown>): Record<string, unknown> {
+	return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, truncateValue(item)]));
+}
+
+function truncateValue(value: unknown): unknown {
+	if (typeof value === 'string') return truncateText(value);
+	if (Array.isArray(value)) return value.map(truncateValue);
+	if (isRecord(value)) return truncateRecord(value);
+	return value;
+}
+
+function truncateText(value: string): string {
+	if (value.length <= MAX_FIELD_CHARS) return value;
+	return `${value.slice(0, MAX_FIELD_CHARS)}… [truncated ${value.length - MAX_FIELD_CHARS} chars]`;
+}
+
 function materializeRuns(
 	root: DraftRun,
 	traceId: string,
@@ -451,7 +489,7 @@ function materializeRuns(
 			run_type: draft.runType,
 			start_time: draft.startTime,
 			end_time: draft.endTime,
-			project_name: LANGSMITH_PROJECT,
+			session_name: LANGSMITH_PROJECT,
 		});
 
 		draft.children.forEach((child, index) => {
@@ -461,6 +499,64 @@ function materializeRuns(
 
 	visit(root, undefined, undefined, 1);
 	return runs;
+}
+
+function batchRuns(runs: LangSmithRun[]): LangSmithRun[][] {
+	const batches: LangSmithRun[][] = [];
+	let batch: LangSmithRun[] = [];
+	const emptyBatchSize = serializedSize({ post: [], patch: [] });
+	let batchSize = emptyBatchSize;
+
+	for (const run of runs) {
+		const separatorSize = batch.length > 0 ? 1 : 0;
+		const runSize = serializedSize(run);
+		if (emptyBatchSize + runSize > MAX_BATCH_SIZE_BYTES) {
+			throw new UserError('LangSmith run exceeds maximum batch size');
+		}
+		if (
+			batch.length > 0 &&
+			(batch.length >= MAX_RUNS_PER_BATCH ||
+				batchSize + separatorSize + runSize > MAX_BATCH_SIZE_BYTES)
+		) {
+			batches.push(batch);
+			batch = [];
+			batchSize = emptyBatchSize;
+		}
+
+		batch.push(run);
+		batchSize += (batch.length > 1 ? 1 : 0) + runSize;
+	}
+
+	if (batch.length > 0) batches.push(batch);
+	return batches;
+}
+
+function serializedSize(value: unknown): number {
+	return Buffer.byteLength(JSON.stringify(value) ?? '');
+}
+
+async function sendBatchesWithTimeout(client: Client, batches: LangSmithRun[][]): Promise<void> {
+	let timedOut = false;
+	let timeoutId: NodeJS.Timeout | undefined;
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(() => {
+			timedOut = true;
+			reject(new ServiceUnavailableError("Session couldn't be sent to LangSmith. Try again."));
+		}, EXPORT_TIMEOUT_MS);
+	});
+	const uploadPromise = (async () => {
+		for (const batch of batches) {
+			if (timedOut) return;
+			await client.batchIngestRuns({ runCreates: batch });
+		}
+	})();
+
+	try {
+		// The client cannot abort an in-flight batch; `timedOut` prevents the next one from starting.
+		await Promise.race([uploadPromise, timeoutPromise]);
+	} finally {
+		if (timeoutId) clearTimeout(timeoutId);
+	}
 }
 
 function sanitizeRecord(value: Record<string, unknown>): Record<string, unknown> {

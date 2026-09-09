@@ -11,11 +11,13 @@ parameters:
   - schema:
       type: string
     required: true
+    description: The ID of the promotion connection.
     name: id
     in: path
   - schema:
       type: string
     required: true
+    description: 'The direction of the promotion: apply or promote.'
     name: direction
     in: path
 responses:

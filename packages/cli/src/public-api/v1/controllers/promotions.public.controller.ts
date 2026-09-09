@@ -21,7 +21,11 @@ import {
 	UpdatePromotionProviderDto,
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
+	projectIdParamSchema,
+	promotionConnectionIdParamSchema,
+	promotionDirectionParamSchema,
 	promotionDirectionSchema,
+	promotionProviderIdParamSchema,
 	type PromotionDirection,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -124,7 +128,7 @@ export class PromotionsPublicController {
 	async getPromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', promotionProviderIdParamSchema) id: string,
 	): Promise<PromotionProviderPublicDto> {
 		return await (await this.providersService()).findOne(id);
 	}
@@ -144,7 +148,7 @@ export class PromotionsPublicController {
 	async updatePromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', promotionProviderIdParamSchema) id: string,
 		@Body input: UpdatePromotionProviderDto,
 	): Promise<PromotionProviderPublicDto> {
 		return await (await this.providersService()).update(id, input);
@@ -164,7 +168,7 @@ export class PromotionsPublicController {
 	async deletePromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', promotionProviderIdParamSchema) id: string,
 	): Promise<void> {
 		await (await this.providersService()).delete(id);
 	}
@@ -233,7 +237,7 @@ export class PromotionsPublicController {
 	async getPromotionConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
 	): Promise<PromotionConnectionPublicDto> {
 		return await (await this.connectionsService()).findOne(id);
 	}
@@ -253,7 +257,7 @@ export class PromotionsPublicController {
 	async updatePromotionConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
 		@Body input: UpdatePromotionConnectionDto,
 	): Promise<PromotionConnectionPublicDto> {
 		return await (await this.connectionsService()).update(id, input);
@@ -274,7 +278,7 @@ export class PromotionsPublicController {
 	async deletePromotionConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
 	): Promise<void> {
 		await (await this.connectionsService()).delete(id);
 	}
@@ -297,7 +301,7 @@ export class PromotionsPublicController {
 	async upsertPromotionApplyConfig(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
 		@Body input: UpsertPromotionApplyConfigDto,
 	): Promise<PromotionApplyConfigPublicDto> {
 		return await (await this.connectionsService()).upsertConfig(id, {
@@ -322,7 +326,7 @@ export class PromotionsPublicController {
 	async upsertPromotionPromoteConfig(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
 		@Body input: UpsertPromotionPromoteConfigDto,
 	): Promise<PromotionPromoteConfigPublicDto> {
 		return await (await this.connectionsService()).upsertConfig(id, {
@@ -344,8 +348,8 @@ export class PromotionsPublicController {
 	async deletePromotionConfig(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
-		@Param('direction') direction: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('direction', promotionDirectionParamSchema) direction: string,
 	): Promise<void> {
 		await (await this.connectionsService()).deleteConfig(id, parseDirection(direction));
 	}
@@ -368,8 +372,8 @@ export class PromotionsPublicController {
 	async clonePromotionCheckout(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
-		@Param('direction') direction: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('direction', promotionDirectionParamSchema) direction: string,
 	): Promise<PromotionCheckoutPublicDto> {
 		return await (await this.promotionsService()).clone(id, parseDirection(direction));
 	}
@@ -389,8 +393,8 @@ export class PromotionsPublicController {
 	async disconnectPromotionCheckout(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
-		@Param('direction') direction: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('direction', promotionDirectionParamSchema) direction: string,
 	): Promise<PromotionCheckoutPublicDto> {
 		return await (await this.promotionsService()).disconnect(id, parseDirection(direction));
 	}
@@ -409,7 +413,7 @@ export class PromotionsPublicController {
 	async getPromotionConnectionProjects(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
 	): Promise<PromotionConnectionProjectListPublicDto> {
 		return await (await this.connectionsService()).listProjects(id);
 	}
@@ -432,8 +436,8 @@ export class PromotionsPublicController {
 	async addProjectToPromotionConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
-		@Param('projectId') projectId: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
 	): Promise<PromotionConnectionProjectPublicDto> {
 		return await (await this.connectionsService()).addProject({
 			user: req.user,
@@ -456,8 +460,8 @@ export class PromotionsPublicController {
 	async removeProjectFromPromotionConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
-		@Param('projectId') projectId: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
 	): Promise<void> {
 		await (await this.connectionsService()).removeProject({
 			user: req.user,
@@ -484,7 +488,7 @@ export class PromotionsPublicController {
 	async promotePackage(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
 		@Body input: PromotePackageDto,
 	): Promise<PromotePackageResultDto> {
 		return await (await this.promotionsService()).promote(id, req.user, {
@@ -511,7 +515,7 @@ export class PromotionsPublicController {
 	async applyPackage(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', promotionConnectionIdParamSchema) id: string,
 	): Promise<ApplyPackageResultDto> {
 		return await (await this.promotionsService()).apply(id, req.user);
 	}
