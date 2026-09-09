@@ -60,7 +60,6 @@ const nameInputRef = ref<HTMLInputElement | null>(null);
 const columnName = ref('');
 const columnType = ref<DataTableColumnType>('string');
 const enumOptions = ref<DataTableEnumOption[]>([]);
-const enumOptionInput = ref('');
 const enumDefaultValue = ref<string | null>(null);
 
 const columnTypes: DataTableColumnType[] = [...DATA_TABLE_COLUMN_TYPES];
@@ -80,12 +79,7 @@ const selectedDefaultOption = computed(() =>
 	enumOptions.value.find((option) => option.id === enumDefaultValue.value),
 );
 const canSubmit = computed(() =>
-	Boolean(
-		columnName.value &&
-			columnType.value &&
-			!error.value &&
-			enumOptionsValid.value,
-	),
+	Boolean(columnName.value && columnType.value && !error.value && enumOptionsValid.value),
 );
 
 // Handling popover state manually to prevent it closing when interacting with dropdown
@@ -143,7 +137,6 @@ const onAddButtonClicked = async () => {
 	columnName.value = '';
 	columnType.value = 'string';
 	enumOptions.value = [];
-	enumOptionInput.value = '';
 	enumDefaultValue.value = null;
 	popoverOpen.value = false;
 };
@@ -177,21 +170,32 @@ const validateName = () => {
 
 const onInput = debounce(validateName, { debounceTime: 100 });
 
-const addEnumOption = () => {
-	const text = enumOptionInput.value.trim();
-	if (
-		!text ||
-		enumOptions.value.some((option) => option.text.toLowerCase() === text.toLowerCase()) ||
-		enumOptions.value.length >= 100
-	) {
-		return;
+const createEnumOption = (): DataTableEnumOption => {
+	let optionNumber = enumOptions.value.length + 1;
+	const existingNames = new Set(
+		enumOptions.value.map((option) => option.text.trim().toLowerCase()),
+	);
+	let text = i18n.baseText('dataTable.addColumn.enumOptions.defaultName', {
+		interpolate: { index: String(optionNumber) },
+	});
+
+	while (existingNames.has(text.toLowerCase())) {
+		optionNumber++;
+		text = i18n.baseText('dataTable.addColumn.enumOptions.defaultName', {
+			interpolate: { index: String(optionNumber) },
+		});
 	}
-	enumOptions.value.push({
+
+	return {
 		id: nanoid(),
 		text,
 		color: getDefaultDataTableEnumColor(enumOptions.value.length),
-	});
-	enumOptionInput.value = '';
+	};
+};
+
+const addEnumOption = () => {
+	if (enumOptions.value.length >= 100) return;
+	enumOptions.value.push(createEnumOption());
 };
 
 const removeEnumOption = (optionId: string) => {
@@ -200,9 +204,12 @@ const removeEnumOption = (optionId: string) => {
 };
 
 watch(columnType, (type) => {
-	if (type !== 'enum') {
+	if (type === 'enum' && enumOptions.value.length === 0) {
+		enumOptions.value.push(createEnumOption());
+		enumOptions.value.push(createEnumOption());
+		enumDefaultValue.value = enumOptions.value[0].id;
+	} else if (type !== 'enum') {
 		enumOptions.value = [];
-		enumOptionInput.value = '';
 		enumDefaultValue.value = null;
 	}
 });
@@ -315,23 +322,7 @@ watch(
 								:label="i18n.baseText('dataTable.addColumn.enumOptions.label')"
 								:required="true"
 							>
-								<div class="enum-option-creator">
-									<N8nInput
-										v-model="enumOptionInput"
-										:placeholder="i18n.baseText('dataTable.addColumn.enumOptions.placeholder')"
-										data-test-id="add-column-enum-options-input"
-										@keyup.enter.prevent="addEnumOption"
-									/>
-									<N8nIconButton
-										icon="plus"
-										type="button"
-										:aria-label="i18n.baseText('dataTable.addColumn.enumOptions.add')"
-										:disabled="!enumOptionInput.trim() || enumOptions.length >= 100"
-										data-test-id="add-column-enum-option-add"
-										@click="addEnumOption"
-									/>
-								</div>
-								<div v-if="enumOptions.length" class="enum-option-list">
+								<div class="enum-option-list">
 									<div v-for="option in enumOptions" :key="option.id" class="enum-option-row">
 										<N8nInput
 											v-model="option.text"
@@ -357,6 +348,16 @@ watch(
 										/>
 									</div>
 								</div>
+								<N8nButton
+									type="button"
+									variant="subtle"
+									class="enum-option-add"
+									:disabled="enumOptions.length >= 100"
+									data-test-id="add-column-enum-option-add"
+									@click="addEnumOption"
+								>
+									{{ i18n.baseText('dataTable.addColumn.enumOptions.add') }}
+								</N8nButton>
 								<N8nText
 									v-if="enumOptions.length > 0 && !enumOptionsValid"
 									size="small"
@@ -448,7 +449,6 @@ watch(
 	align-items: center;
 	gap: var(--spacing--xs);
 }
-.enum-option-creator,
 .enum-option-row,
 .enum-option-select-item {
 	display: flex;
@@ -459,6 +459,9 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+}
+.enum-option-add {
+	width: 100%;
 	margin-top: var(--spacing--2xs);
 }
 .enum-option-row {

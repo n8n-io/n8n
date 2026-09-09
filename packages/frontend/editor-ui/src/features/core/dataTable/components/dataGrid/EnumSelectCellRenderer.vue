@@ -13,7 +13,9 @@ const props = defineProps<{
 }>();
 
 const selectedId =
-	typeof props.params.value === 'object' && props.params.value !== null && 'id' in props.params.value
+	typeof props.params.value === 'object' &&
+	props.params.value !== null &&
+	'id' in props.params.value
 		? props.params.value.id
 		: props.params.value;
 
@@ -27,6 +29,7 @@ const updateValue = (value: unknown) => {
 
 <template>
 	<N8nSelect
+		class="cell-renderer-enum-select"
 		:model-value="selectedId ?? null"
 		:disabled="params.isDisabled()"
 		clearable
@@ -41,3 +44,9 @@ const updateValue = (value: unknown) => {
 		/>
 	</N8nSelect>
 </template>
+
+<style lang="scss">
+.cell-renderer-enum-select {
+	--input--color--background: var(--background--surface);
+}
+</style>

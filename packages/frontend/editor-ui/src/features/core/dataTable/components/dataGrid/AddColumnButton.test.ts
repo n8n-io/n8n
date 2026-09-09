@@ -44,8 +44,8 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'dataTable.addColumn.nameInput.placeholder': 'Enter column name',
 				'dataTable.addColumn.typeInput.label': 'Column type',
 				'dataTable.addColumn.enumOptions.label': 'Options',
-				'dataTable.addColumn.enumOptions.placeholder': 'Low, Medium, High',
-				'dataTable.addColumn.enumOptions.add': 'Add option',
+				'dataTable.addColumn.enumOptions.add': 'Add another option',
+				'dataTable.addColumn.enumOptions.defaultName': `Option ${options?.interpolate?.index}`,
 				'dataTable.addColumn.enumOptions.name': 'Option name',
 				'dataTable.addColumn.enumOptions.color': 'Option color',
 				'dataTable.addColumn.enumOptions.remove': 'Remove option',
@@ -169,9 +169,10 @@ describe('AddColumnButton', () => {
 		});
 	});
 
-	it('should add enum options and submit the default', async () => {
+	it('should start with two enum options and add editable option rows', async () => {
 		const {
-			getByPlaceholderText,
+			getAllByLabelText,
+			getAllByRole,
 			getByRole,
 			getByTestId,
 			openPopover,
@@ -182,13 +183,30 @@ describe('AddColumnButton', () => {
 		await openPopover();
 		await setColumnName('priority');
 		await selectType('enum');
-		const optionsInput = getByTestId<HTMLInputElement>('add-column-enum-options-input');
-		for (const option of ['Low', 'Medium', 'High']) {
-			await user.type(optionsInput, option);
-			await user.click(getByTestId('add-column-enum-option-add'));
+
+		let optionInputs = getAllByLabelText<HTMLInputElement>('Option name');
+		expect(optionInputs).toHaveLength(2);
+		expect(optionInputs[0]).toHaveValue('Option 1');
+		expect(optionInputs[1]).toHaveValue('Option 2');
+
+		const defaultSelect = getAllByRole('combobox')[1];
+		await user.click(defaultSelect);
+		const initialDefaultOption = getByRole('option', { name: 'Option 1' });
+		expect(initialDefaultOption).toHaveAttribute('aria-selected', 'true');
+		await user.click(initialDefaultOption);
+
+		await user.click(getByTestId('add-column-enum-option-add'));
+		optionInputs = getAllByLabelText<HTMLInputElement>('Option name');
+		expect(optionInputs).toHaveLength(3);
+		expect(optionInputs[2]).toHaveValue('Option 3');
+
+		const optionNames = ['Low', 'Medium', 'High'];
+		for (let index = 0; index < optionInputs.length; index++) {
+			await user.clear(optionInputs[index]);
+			await user.type(optionInputs[index], optionNames[index]);
 		}
 
-		await user.click(getByPlaceholderText('Select a default status'));
+		await user.click(defaultSelect);
 		await user.click(getByRole('option', { name: 'Medium' }));
 		await submit();
 
