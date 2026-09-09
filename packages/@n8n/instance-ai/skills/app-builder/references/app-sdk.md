@@ -98,7 +98,7 @@ On any other status `run` throws `N8nAppError`:
 class N8nAppError extends Error {
   status: number;   // HTTP status
   code: string;     // see below
-  issues?: unknown; // zod issues for invalid_input
+  issues?: unknown; // for invalid_input: [{ path: string[], code: string }] per rejected field
 }
 ```
 
@@ -110,7 +110,7 @@ class N8nAppError extends Error {
 | `workflow_not_published` | 409  | The workflow has no published version. Publish it in n8n; no app change needed.             |
 | `workflow_incompatible`  | 409  | The workflow lost its "When Executed by Another Workflow" trigger or gained a Form node.     |
 | `workflow_not_callable`  | 403  | The workflow's "This workflow can be called by" setting excludes the app's project.         |
-| `invalid_input`          | 400  | The body does not match the trigger fields; `issues` lists the fields. Fix the call.        |
+| `invalid_input`          | 400  | The body does not match the trigger fields; `issues` lists each rejected field's `path` and zod `code` (for example `invalid_type`). Fix the call. |
 | `payload_too_large`      | 413  | The body is over 1 MiB.                                                                     |
 | `too_many_requests`      | 429  | The instance already holds its maximum of concurrent app runs (default 10). Retry after a moment. |
 | `execution_failed`       | 500  | n8n could not start the run. Retry later; the message is safe to show.                      |

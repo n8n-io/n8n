@@ -238,7 +238,7 @@ describe('AppRuntimeService', () => {
 				'invalid_input',
 			);
 
-			expect(error.issues).toEqual([expect.objectContaining({ path: ['count'] })]);
+			expect(error.issues).toEqual([{ path: ['count'], code: 'invalid_type' }]);
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 

@@ -250,7 +250,7 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 			.expect(400);
 
 		expect(response.body).toMatchObject({ code: 'invalid_input' });
-		expect(response.body.issues).toEqual([expect.objectContaining({ path: ['count'] })]);
+		expect(response.body.issues).toEqual([{ path: ['count'], code: 'invalid_type' }]);
 	});
 
 	test('answers 413 payload_too_large for a body over 1 MiB', async () => {

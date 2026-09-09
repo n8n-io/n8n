@@ -140,11 +140,14 @@ export class AppRuntimeService {
 		const trigger = detectTriggerNode(workflow);
 		const parsed = inferInputSchema(trigger.node, trigger.triggerType).safeParse(body);
 		if (!parsed.success || !isDataObject(parsed.data)) {
+			// Path and code only: the full issue restates the private trigger's expected types.
 			throw new AppRuntimeError(
 				400,
 				'invalid_input',
 				'The request body does not match the workflow inputs.',
-				parsed.success ? undefined : parsed.error.issues,
+				parsed.success
+					? undefined
+					: parsed.error.issues.map(({ path, code }) => ({ path: path.map(String), code })),
 			);
 		}
 
