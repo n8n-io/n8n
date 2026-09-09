@@ -227,9 +227,13 @@ const projectLocation = computed(() => {
 }
 
 .badge {
+	border: var(--border);
+
 	:global(.n8n-text),
 	a {
 		color: var(--color--text);
+		font-size: var(--font-size--xs);
+		font-weight: var(--font-weight--medium);
 	}
 }
 
