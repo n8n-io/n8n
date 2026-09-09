@@ -120,6 +120,7 @@ import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAg
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
+import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 
 const props = defineProps<{
 	threadId: string;
@@ -315,6 +316,24 @@ const preview = useCanvasPreview({
 		persistedArtifactPreviewOpen.value = open;
 	},
 });
+
+const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
+const agentReturnWorkflowId = agentReturnContext?.workflowId;
+const agentReturnNodeId = ref(agentReturnContext?.nodeId);
+if (agentReturnWorkflowId) {
+	preview.openWorkflowPreview(agentReturnWorkflowId);
+}
+
+function consumeAgentReturnNodeId() {
+	agentReturnNodeId.value = undefined;
+}
+
+function openAgentChatPreview(agentId: string, projectId: string): boolean {
+	preview.openAgentPreview(agentId, projectId);
+	isAgentPreviewDockOpen.value = true;
+	return true;
+}
+
 const activeAgentPreviewSessionId = computed(() => {
 	const context = pendingComposerContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -331,6 +350,7 @@ const activeAgentPreviewSessionId = computed(() => {
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openAgentChatPreview', openAgentChatPreview);
 provide('pendingComposerContext', pendingComposerContext);
 provide('dismissPendingComposerContext', dismissPendingComposerContext);
 
@@ -481,11 +501,15 @@ const chatPanelWidthRatio = useLocalStorage(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL
 	writeDefaults: false,
 });
 
-watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
-	if (activeTabId !== previousActiveTabId) {
-		isAgentPreviewDockOpen.value = false;
-	}
-});
+watch(
+	preview.activeTabId,
+	(activeTabId, previousActiveTabId) => {
+		if (activeTabId !== previousActiveTabId) {
+			isAgentPreviewDockOpen.value = false;
+		}
+	},
+	{ flush: 'sync' },
+);
 
 // Below two panel minimums the limits meet at half, so both panels share the space evenly.
 const halfThreadAreaWidth = computed(() => Math.round(threadAreaWidth.value / 2));
@@ -1468,8 +1492,14 @@ async function dismissComposerContextChip() {
 									{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
+								:initial-node-id="
+									preview.activeWorkflowId.value === agentReturnWorkflowId
+										? agentReturnNodeId
+										: undefined
+								"
 								:refresh-key="preview.workflowRefreshKey.value"
 								:execution-result="preview.activeWorkflowExecutionResult.value"
+								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
@@ -1489,6 +1519,7 @@ async function dismissComposerContextChip() {
 								:agent-id="preview.activeAgentId.value"
 								:project-id="preview.activeAgentProjectId.value"
 								:preview-session-id="activeAgentPreviewSessionId"
+								:preview-open="isAgentPreviewDockOpen"
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"

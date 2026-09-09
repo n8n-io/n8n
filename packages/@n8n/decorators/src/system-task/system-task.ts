@@ -7,6 +7,8 @@ import {
 import { Service, type Constructable } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { wholeSeconds } from './whole-seconds';
+
 /** Whether a run is safe to repeat. */
 export type SystemTaskEffects = 'idempotent' | 'non-idempotent';
 
@@ -136,6 +138,18 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	assertInRange(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 1);
 
 	return options;
+}
+
+/**
+ * Resolves the schedule a task is planned with. An interval is rounded to the
+ * whole second the scheduler requires, so a cadence derived from a fractional
+ * config value keeps running as it did on the legacy timers.
+ */
+export function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule {
+	const { schedule } = task;
+	if (schedule.kind !== 'interval') return schedule;
+
+	return { ...schedule, intervalSeconds: wholeSeconds(schedule.intervalSeconds) };
 }
 
 /** Ceiling of an `int` column, which is what both fields are stored in. */

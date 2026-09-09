@@ -2,6 +2,8 @@ import type { WorkflowLoopAction } from './workflow-loop-state';
 
 export interface WorkflowLoopGuidanceOptions {
 	workItemId?: string;
+	/** Setup panel v2: `workflows(action="setup")` announces instead of opening a card. */
+	setupPanelEnabled?: boolean;
 }
 
 function formatSourceFileInstruction(sourceFilePath: string | undefined): string {
@@ -31,6 +33,16 @@ export function formatWorkflowLoopGuidance(
 				);
 			}
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
+				if (options.setupPanelEnabled) {
+					return (
+						'Workflow verified successfully with temporary mock data. ' +
+						`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" once: ` +
+						'it lists the remaining credentials and values in the setup panel next to the chat and returns them to you. ' +
+						'When the result has `announced: true`, summarize it, report any validation warnings, and end your turn. ' +
+						'Otherwise follow the returned guidance for validation errors, approvals, skipped items, or an existing setup card. ' +
+						'Do not call `credentials(action="setup")` or `apply-workflow-credentials`, and do not tell the user to open the editor or canvas.'
+					);
+				}
 				return (
 					'Workflow verified successfully with temporary mock data. ' +
 					`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" ` +

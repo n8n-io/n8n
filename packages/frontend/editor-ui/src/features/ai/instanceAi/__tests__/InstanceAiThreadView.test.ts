@@ -32,6 +32,7 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
+import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 } as Ref<number>,
@@ -282,11 +283,20 @@ let workflowPreviewEmit:
 
 const InstanceAiWorkflowPreviewStub = defineComponent({
 	name: 'InstanceAiWorkflowPreviewStub',
-	emits: ['workflow-failures'],
-	setup(_, { emit, expose }) {
+	props: {
+		workflowId: { type: String, required: true },
+		initialNodeId: { type: String, required: false },
+	},
+	emits: ['initial-node-id-consumed', 'workflow-failures'],
+	setup(props, { emit, expose }) {
 		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
 		expose({ requestFitView: vi.fn() });
-		return () => h('div', { 'data-test-id': 'instance-ai-workflow-preview-stub' });
+		return () =>
+			h('div', {
+				'data-test-id': 'instance-ai-workflow-preview-stub',
+				'data-workflow-id': props.workflowId,
+				'data-initial-node-id': props.initialNodeId,
+			});
 	},
 });
 
@@ -296,9 +306,14 @@ const InstanceAiAgentPreviewStub = defineComponent({
 		agentId: { type: String, required: true },
 		projectId: { type: String, required: true },
 		previewSessionId: { type: String, required: false },
+		previewOpen: { type: Boolean, required: true },
 	},
 	emits: ['preview-open-change', 'assistant-handoff'],
 	setup(props, { emit }) {
+		const openAgentChatPreview = inject<
+			((agentId: string, projectId: string) => boolean) | undefined
+		>('openAgentChatPreview', undefined);
+
 		return () =>
 			h(
 				'div',
@@ -307,6 +322,7 @@ const InstanceAiAgentPreviewStub = defineComponent({
 					'data-agent-id': props.agentId,
 					'data-project-id': props.projectId,
 					'data-preview-session-id': props.previewSessionId,
+					'data-preview-open': String(props.previewOpen),
 				},
 				[
 					h(
@@ -339,6 +355,22 @@ const InstanceAiAgentPreviewStub = defineComponent({
 								}),
 						},
 						'Fix with Assistant',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-preview-link',
+							onClick: () => openAgentChatPreview?.(props.agentId, props.projectId),
+						},
+						'Preview',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-external-preview-link',
+							onClick: () => openAgentChatPreview?.('agent-2', 'proj-2'),
+						},
+						'External preview',
 					),
 				],
 			);
@@ -383,7 +415,6 @@ const InstanceAiArtifactsPanelStub = defineComponent({
 			'dismissPendingComposerContext',
 			undefined,
 		);
-
 		return () =>
 			h(
 				'button',
@@ -570,6 +601,7 @@ describe('InstanceAiThreadView', () => {
 		inputState.initialDraft = '';
 		inputState.hasAttachments = false;
 		mockSidebarCollapsed.value = false;
+		history.replaceState({}, '');
 		testAgentOfferState.evalsFlagEnabled = false;
 		testAgentOfferState.capabilitySummary = null;
 	});
@@ -1722,6 +1754,29 @@ describe('InstanceAiThreadView', () => {
 		expect(routerPushSpy).not.toHaveBeenCalled();
 	});
 
+	it('opens the embedded agent chat when an Instance AI preview link is selected', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		const preview = getByTestId('instance-ai-agent-preview-stub');
+
+		expect(preview).toHaveAttribute('data-preview-open', 'false');
+
+		await user.click(getByTestId('instance-ai-agent-preview-link'));
+
+		expect(preview).toHaveAttribute('data-preview-open', 'true');
+		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
+	});
+
+	it('opens a linked agent that is not a produced artifact', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+
+		await user.click(getByTestId('instance-ai-agent-external-preview-link'));
+
+		const preview = getByTestId('instance-ai-agent-preview-stub');
+		expect(preview).toHaveAttribute('data-agent-id', 'agent-2');
+		expect(preview).toHaveAttribute('data-project-id', 'proj-2');
+		expect(preview).toHaveAttribute('data-preview-open', 'true');
+	});
+
 	it('restores the default or preferred preview width when available space grows', async () => {
 		const { getByTestId } = await renderAgentArtifact({ threadAreaWidth: 1200 });
 		const previewPanel = getByTestId('instance-ai-preview-panel');
@@ -1976,6 +2031,41 @@ describe('InstanceAiThreadView', () => {
 		expect(refreshedRender.queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
 		expect(await refreshedRender.findByTestId('instance-ai-preview-panel')).not.toBeVisible();
 		expect(refreshedRender.getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+	});
+
+	it('restores the workflow artifact selected before opening an agent', async () => {
+		thread.producedArtifacts = new Map([
+			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'First workflow' }],
+			['workflow-2', { type: 'workflow', id: 'workflow-2', name: 'Selected workflow' }],
+		]) as typeof thread.producedArtifacts;
+		thread.messages = [
+			{
+				id: 'msg-workflow',
+				role: 'user',
+				content: 'Update this workflow',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				attachments: [{ type: 'workflow', id: 'workflow-1', name: 'First workflow' }],
+			},
+		] as typeof thread.messages;
+		const returnContextStore = mockedStore(useAgentReturnContextStore);
+		returnContextStore.consumePendingArtifactReturn.mockReturnValueOnce({
+			workflowId: 'workflow-2',
+			nodeId: 'node-2',
+		});
+
+		const { findByTestId, unmount } = renderView({ props: { threadId: 'thread-1' } });
+		const workflowPreview = await findByTestId('instance-ai-workflow-preview-stub');
+
+		expect(workflowPreview).toHaveAttribute('data-workflow-id', 'workflow-2');
+		expect(workflowPreview).toHaveAttribute('data-initial-node-id', 'node-2');
+
+		unmount();
+		const reopenedView = renderView({ props: { threadId: 'thread-1' } });
+		const reopenedPreview = await reopenedView.findByTestId('instance-ai-workflow-preview-stub');
+
+		expect(reopenedPreview).toHaveAttribute('data-workflow-id', 'workflow-1');
+		expect(reopenedPreview).not.toHaveAttribute('data-initial-node-id');
 	});
 
 	describe('Fix with AI card', () => {
