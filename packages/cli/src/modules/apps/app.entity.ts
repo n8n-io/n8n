@@ -1,4 +1,4 @@
-import type { AppBinding, AppTheme } from '@n8n/api-types';
+import type { AppAuthMode, AppBinding, AppTheme } from '@n8n/api-types';
 import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
@@ -21,6 +21,10 @@ export class App extends WithTimestampsAndStringId {
 	/** Resources the served app may call through `/apps/<namespace>/api/*`, keyed by `key`. */
 	@JsonColumn({ default: '[]' })
 	bindings: AppBinding[];
+
+	/** Who may open the served app; `n8n` sends visitors through the instance's OAuth flow first. */
+	@Column({ type: 'varchar', length: 16, default: 'public' })
+	authMode: AppAuthMode;
 
 	@ManyToOne(() => Project)
 	@JoinColumn({ name: 'projectId' })
