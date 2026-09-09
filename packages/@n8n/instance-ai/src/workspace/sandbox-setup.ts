@@ -34,7 +34,6 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
-import { traceSandboxOperation, sandboxFileBytes } from '../tracing/sandbox-tracing';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
 import {
 	isLinkWorkspaceSdkEnabled,
@@ -48,8 +47,10 @@ import {
 	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
+import { settleWorkspaceOperations } from './workspace-files';
 import { joinWorkspacePath } from './workspace-paths';
 import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
+import { traceSandboxOperation, sandboxFileBytes } from '../tracing/sandbox-tracing';
 
 const hostRequire = createRequire(__filename);
 
@@ -328,13 +329,13 @@ async function writeWorkspaceFiles(
 			const filesystem = workspace.filesystem;
 			if (filesystem) {
 				// `writeFile` only creates parent dirs as a side-effect of writing a file.
-				await Promise.all(
+				await settleWorkspaceOperations(
 					ALWAYS_PRESENT_DIRS.map(
 						async (dir) =>
 							await createWorkspaceDirectory(workspace, filesystem, joinWorkspacePath(root, dir)),
 					),
 				);
-				await Promise.all(
+				await settleWorkspaceOperations(
 					[...files].map(
 						async ([path, content]) =>
 							await writeWorkspaceFile(

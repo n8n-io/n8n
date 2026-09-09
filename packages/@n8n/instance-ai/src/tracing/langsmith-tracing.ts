@@ -2,6 +2,7 @@ import {
 	LangSmithTelemetry,
 	Telemetry,
 	isAbortError,
+	raceWithAbort,
 	type AttributeValue,
 	type BuiltTelemetry,
 	type BuiltTool,
@@ -183,6 +184,7 @@ interface ProductOtelTraceRuntime {
 	telemetry: BuiltTelemetry;
 	spans: Map<string, OtelApiSpan>;
 	contexts: Map<string, OtelContext>;
+	pendingOperations: Map<string, InstanceAiTraceRun>;
 	shutdown: boolean;
 	lifetime: ProductTelemetryLifetime;
 }
@@ -489,6 +491,13 @@ async function releaseProductOtelRuntime(
 	if (runtime.shutdown) return;
 
 	runtime.shutdown = true;
+	for (const run of runtime.pendingOperations.values()) {
+		await finishProductSpanBestEffort(runtime, run, {
+			error: 'Operation did not finish before the trace closed',
+			metadata: { final_status: 'cancelled' },
+		});
+	}
+	runtime.pendingOperations.clear();
 	runtime.spans.clear();
 	runtime.contexts.clear();
 	otelTraceRuntimes.delete(traceId);
@@ -725,7 +734,9 @@ interface CurrentTraceSpanOptions<T = unknown> {
 	metadata?: Record<string, unknown>;
 	inputs?: unknown;
 	processOutputs?: (result: T) => unknown;
-	processResult?: (result: T) => InstanceAiTraceRunFinishOptions;
+	processResult?: (
+		result: T,
+	) => InstanceAiTraceRunFinishOptions | Promise<InstanceAiTraceRunFinishOptions>;
 }
 
 type NativeToolContext = ToolContext | InterruptibleToolContext;
@@ -931,11 +942,12 @@ export async function withCurrentTraceSpan<T>(
 		return await fn();
 	}
 
+	currentProductTrace.runtime.pendingOperations.set(spanRun.id, spanRun);
 	try {
 		const result = await withProductSpanContextBestEffort(currentProductTrace.runtime, spanRun, fn);
 		let finish: InstanceAiTraceRunFinishOptions = {};
 		try {
-			finish = options.processResult?.(result) ?? {
+			finish = (await options.processResult?.(result)) ?? {
 				...(options.processOutputs ? { outputs: options.processOutputs(result) } : {}),
 			};
 		} catch {
@@ -952,6 +964,8 @@ export async function withCurrentTraceSpan<T>(
 			metadata: { final_status: isAbortError(error) ? 'cancelled' : 'error' },
 		});
 		throw error;
+	} finally {
+		currentProductTrace.runtime.pendingOperations.delete(spanRun.id);
 	}
 }
 
@@ -1706,6 +1720,7 @@ async function createProductOtelRuntime(
 		telemetry,
 		spans: new Map(),
 		contexts: new Map(),
+		pendingOperations: new Map(),
 		shutdown: false,
 		lifetime: new ProductTelemetryLifetime(telemetry),
 	};
@@ -1885,15 +1900,27 @@ export async function createInternalOperationTraceContext(
 	return await createOperationTraceContext(options);
 }
 
+const SANDBOX_TRACE_TIMEOUT_MS = 1_000;
+
+interface SandboxLifecycleTraceOptions {
+	detached?: boolean;
+	resolveConfig?: () => Promise<{ userId: string; proxyConfig?: ServiceProxyConfig }>;
+}
+
 export async function withSandboxLifecycleTrace<T>(
 	threadId: string,
 	operation: string,
 	inputs: Record<string, unknown>,
 	fn: () => Promise<T>,
-	resolveConfig?: () => Promise<{ userId: string; proxyConfig?: ServiceProxyConfig }>,
+	options?: SandboxLifecycleTraceOptions,
 ): Promise<T> {
 	const current = getCurrentProductTrace();
-	if (current && !current.runtime.shutdown && current.currentRun.metadata?.thread_id === threadId) {
+	if (
+		!options?.detached &&
+		current &&
+		!current.runtime.shutdown &&
+		current.currentRun.metadata?.thread_id === threadId
+	) {
 		return await withCurrentTraceSpan(
 			{
 				name: `sandbox: ${operation}`,
@@ -1906,37 +1933,67 @@ export async function withSandboxLifecycleTrace<T>(
 		);
 	}
 
-	// Timers must not reuse the turn context that scheduled them.
 	let tracing: InstanceAiTraceContext | undefined;
 	try {
 		if (isLangSmithTracingEnabled(true)) {
-			const config = await resolveConfig?.();
-			tracing = await createOperationTraceContext({
-				threadId,
-				runId: randomUUID(),
-				userId: config?.userId ?? 'system',
-				proxyConfig: config?.proxyConfig,
-				operationName: `sandbox.${operation}`,
-				metadata: { sandbox_operation: operation },
-				input: inputs,
-			});
+			const controller = new AbortController();
+			const timer = setTimeout(() => controller.abort(), SANDBOX_TRACE_TIMEOUT_MS);
+			timer.unref();
+			try {
+				tracing = await raceWithAbort(async () => {
+					const config = await options?.resolveConfig?.();
+					if (controller.signal.aborted) return undefined;
+					const created = await createOperationTraceContext({
+						threadId,
+						runId: randomUUID(),
+						userId: config?.userId ?? 'system',
+						proxyConfig: config?.proxyConfig,
+						operationName: `sandbox.${operation}`,
+						metadata: { sandbox_operation: operation },
+						input: inputs,
+					});
+					if (controller.signal.aborted && created) {
+						releaseTraceClient(created.rootRun.traceId);
+						return undefined;
+					}
+					return created;
+				}, controller.signal);
+			} finally {
+				clearTimeout(timer);
+			}
 		}
 	} catch {
-		// Trace configuration must not prevent cleanup.
+		// Trace setup must not prevent cleanup.
 	}
-	if (!tracing) return await fn();
+	if (!tracing) {
+		return await productTraceStorage.exit(async () => await otelContext.with(ROOT_CONTEXT, fn));
+	}
 
 	try {
-		const result = await tracing.withActiveSpan(tracing.rootRun, fn);
+		// Authentication was resolved within the setup deadline.
+		const runtime = otelTraceRuntimes.get(tracing.rootRun.traceId);
+		const result = runtime
+			? await withProductSpanContextBestEffort(runtime, tracing.rootRun, fn)
+			: await fn();
 		try {
-			await tracing.finishRun(tracing.rootRun, { metadata: { final_status: 'completed' } });
+			await raceWithAbort(
+				async () =>
+					await tracing.finishRun(tracing.rootRun, { metadata: { final_status: 'completed' } }),
+				AbortSignal.timeout(SANDBOX_TRACE_TIMEOUT_MS),
+			);
 		} catch {
 			// Export failures must not change the cleanup result.
 		}
 		return result;
 	} catch (error) {
 		try {
-			await tracing.failRun(tracing.rootRun, error);
+			await raceWithAbort(
+				async () =>
+					await tracing.failRun(tracing.rootRun, error, {
+						final_status: isAbortError(error) ? 'cancelled' : 'error',
+					}),
+				AbortSignal.timeout(SANDBOX_TRACE_TIMEOUT_MS),
+			);
 		} catch {
 			// Preserve the cleanup error.
 		}

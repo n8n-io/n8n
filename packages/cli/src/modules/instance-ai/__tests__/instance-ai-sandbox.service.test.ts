@@ -13,8 +13,16 @@ vi.mock('@n8n/instance-ai', () => ({
 		async <T>(_operation: string, _options: unknown, fn: () => Promise<T>) => await fn(),
 	),
 	withSandboxLifecycleTrace: vi.fn(
-		async <T>(_threadId: string, _operation: string, _inputs: unknown, fn: () => Promise<T>) =>
-			await fn(),
+		async <T>(
+			_threadId: string,
+			_operation: string,
+			_inputs: unknown,
+			fn: () => Promise<T>,
+			options?: { resolveConfig?: () => Promise<unknown> },
+		) => {
+			await options?.resolveConfig?.();
+			return await fn();
+		},
 	),
 }));
 
@@ -22,6 +30,7 @@ import {
 	createSandbox,
 	createWorkspace,
 	setupSandboxWorkspace,
+	withSandboxLifecycleTrace,
 	type InstanceAiContext,
 	type ManagedBackgroundTask,
 } from '@n8n/instance-ai';
@@ -38,6 +47,7 @@ import {
 const fakeUser = { id: 'user-1' } as User;
 
 type Overrides = {
+	resolveTracingConfig?: InstanceAiSandboxServiceOptions['resolveTracingConfig'];
 	config?: Partial<InstanceAiConfig>;
 	runState?: Partial<InstanceAiSandboxRunState>;
 	backgroundTasks?: Partial<InstanceAiSandboxBackgroundTasks>;
@@ -75,6 +85,7 @@ function createSandboxService(overrides: Overrides = {}) {
 		backgroundTasks,
 		settingsService,
 		aiService,
+		resolveTracingConfig: overrides.resolveTracingConfig,
 	};
 	const service = new InstanceAiSandboxService(options);
 	return { service, logger, errorReporter, runState, backgroundTasks, settingsService, aiService };
@@ -825,6 +836,9 @@ describe('InstanceAiSandboxService', () => {
 				expect(entry).toBeDefined();
 
 				vi.advanceTimersByTime(1000);
+				expect(vi.mocked(withSandboxLifecycleTrace).mock.calls[0]?.[4]).toMatchObject({
+					detached: true,
+				});
 
 				// Eviction drops the cache entry but never destroys the remote workspace.
 				expect(workspace.destroy).not.toHaveBeenCalled();
@@ -894,6 +908,36 @@ describe('InstanceAiSandboxService', () => {
 	});
 
 	describe('destroySandbox', () => {
+		it.each([true, false])(
+			'keeps the owner available for cleanup when cached=%s',
+			async (cached) => {
+				const resolveTracingConfig = vi.fn(async (_threadId: string, userId?: string) => {
+					if (!userId) throw new Error('Thread row is no longer available');
+					return { userId };
+				});
+				const { service } = createSandboxService({
+					config: {
+						sandboxEnabled: true,
+						sandboxProvider: 'n8n-sandbox',
+						n8nSandboxServiceUrl: 'http://sandbox.example',
+					},
+					resolveTracingConfig,
+				});
+				const destroy = vi.fn(async () => {});
+				(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1', destroy });
+				(createWorkspace as Mock).mockReturnValue({ init: vi.fn(async () => {}), destroy });
+				if (cached) await service.getOrCreateWorkspaceEntry('thread-1', fakeUser);
+				await service.destroySandbox(
+					'thread-1',
+					'thread_cleanup',
+					cached ? undefined : fakeUser.id,
+				);
+				expect(destroy).toHaveBeenCalledTimes(1);
+				expect(resolveTracingConfig).toHaveBeenCalledWith('thread-1', fakeUser.id);
+				service.stopSandboxExpiryTimers();
+			},
+		);
+
 		it('destroys and removes the workspace for a thread', async () => {
 			const { service } = createSandboxService({
 				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },

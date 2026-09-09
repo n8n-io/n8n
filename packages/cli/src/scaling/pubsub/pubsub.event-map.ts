@@ -206,6 +206,7 @@ export type PubSubCommandMap = {
 	 */
 	'relay-instance-ai-task-control': {
 		threadId: string;
+		userId?: string;
 		taskId?: string;
 		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
 		correction?: string;

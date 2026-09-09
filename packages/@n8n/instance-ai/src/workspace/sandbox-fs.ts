@@ -130,7 +130,10 @@ export async function runInSandbox(
 		'execute-command',
 		{
 			kind: 'io',
-			inputs: { command, cwd: typeof cwdOrOptions === 'string' ? cwdOrOptions : cwdOrOptions?.cwd },
+			inputs: {
+				commandBytes: sandboxFileBytes(command),
+				cwd: typeof cwdOrOptions === 'string' ? cwdOrOptions : cwdOrOptions?.cwd,
+			},
 			processResult: sandboxCommandTraceResult,
 		},
 		async () => await runInSharedSandbox(workspace, command, cwdOrOptions),

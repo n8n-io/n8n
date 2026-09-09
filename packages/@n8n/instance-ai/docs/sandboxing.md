@@ -176,21 +176,26 @@ preparation runs inside the agent's lazy build and uses the same trace context.
 | Initialize workspace | Marker check, node catalog, workflow sync counts, base files, dependency installation, and optional SDK linking |
 | Sync skills and knowledge base | Bundle hash, file counts, byte counts, reuse or upload, and manifest check result |
 | Read, write, and edit files | File operations under the existing tool span, paths, byte counts, and errors |
-| Execute commands and compile workflows | Command, exit code, timeout or cancellation, compile result, and bounded diagnostics |
+| Execute commands and compile workflows | Command size, exit code, timeout or cancellation, compile result, and bounded diagnostics |
 | Retry and fallback | File path, failed attempt, retry delay, and command fallback |
 | Evict cache and destroy | Reason, provider, sandbox ID, and cleanup errors |
 
-Batch spans summarize file transfers. They omit individual successful file
-operations. Retry and fallback spans remain visible. Internal file spans omit
-file contents. Command spans omit successful output and limit error output to
-2,048 characters. The existing export redactor applies to all trace data.
+Batch spans wait for all started file transfers to settle. They omit individual
+successful file operations. Retry and fallback spans remain visible. Internal file spans omit
+file contents. Command spans record byte counts instead of raw commands. Failed
+commands include stdout and stderr after filtering, limited to 2,000 characters
+each. The export filter also covers status messages and exception events.
 
 Cache eviction keeps the remote sandbox. Its trace records the time of eviction.
 Cleanup between turns creates an internal operation trace with the same
 `thread_id`. These sandbox lifecycle traces use the normal LangSmith settings.
 They do not require `N8N_INSTANCE_AI_TRACE_INTERNAL`. Proxy deployments resolve
-fresh trace configuration for cleanup. Trace failures do not change sandbox
-results or prevent cleanup.
+fresh trace configuration for cleanup. Cleanup requests carry the owner ID so
+other processes can trace cleanup after the thread row is deleted. Timers create
+detached traces even when they inherit an earlier turn context. Trace setup and
+finalization each have a one-second deadline. Trace failures do not change
+sandbox results or prevent cleanup. Operations still open when a turn closes
+end with a cancelled status; their underlying work can finish independently.
 
 Provider-side automatic stop and deletion are not reported. They require
 provider notifications or polling.

@@ -403,7 +403,13 @@ class LazyRuntimeSandbox extends BaseSandbox {
 				'execute-command',
 				{
 					kind: 'io',
-					inputs: { command, args, cwd: options?.cwd, timeout: options?.timeout },
+					inputs: {
+						commandBytes: sandboxFileBytes(command),
+						argumentBytes: args.reduce((bytes, arg) => bytes + sandboxFileBytes(arg), 0),
+						argumentCount: args.length,
+						cwd: options?.cwd,
+						timeout: options?.timeout,
+					},
 					processResult: sandboxCommandTraceResult,
 				},
 				async () => await executeCommand(command, args, options),

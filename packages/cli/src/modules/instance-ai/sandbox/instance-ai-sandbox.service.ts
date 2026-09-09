@@ -32,6 +32,7 @@ const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
 
 /** Cached runtime sandbox + workspace pair for a single thread. */
 export type RuntimeSandboxEntry = {
+	userId: string;
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
 	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
 	configFingerprint: string;
@@ -169,6 +170,7 @@ export type InstanceAiSandboxServiceOptions = {
 	aiService: InstanceAiSandboxProxy;
 	resolveTracingConfig?: (
 		threadId: string,
+		userId?: string,
 	) => Promise<{ userId: string; proxyConfig?: ServiceProxyConfig }>;
 };
 
@@ -474,6 +476,7 @@ export class InstanceAiSandboxService {
 		}
 
 		const entry: RuntimeSandboxEntry = {
+			userId: user.id,
 			sandbox,
 			workspace,
 			configFingerprint: cacheState.fingerprint,
@@ -510,6 +513,7 @@ export class InstanceAiSandboxService {
 		threadId: string,
 		entry: RuntimeSandboxEntry,
 		reason = 'settings_changed',
+		detached = false,
 	): void {
 		if (this.sandboxes.get(threadId) !== entry) return;
 
@@ -529,17 +533,21 @@ export class InstanceAiSandboxService {
 				remoteDestroyed: false,
 			},
 			async () => {},
-			this.lifecycleTraceConfig(threadId),
+			{ resolveConfig: this.lifecycleTraceConfig(threadId, entry.userId), detached },
 		).catch(() => {
 			// Cache eviction does not depend on trace delivery.
 		});
 	}
 
 	/** Destroy and remove the shared runtime workspace for a thread. */
-	async destroySandbox(threadId: string, reason = 'thread_cleanup'): Promise<void> {
+	async destroySandbox(
+		threadId: string,
+		reason = 'thread_cleanup',
+		userId?: string,
+	): Promise<void> {
 		const entry = this.sandboxes.get(threadId);
 		if (!entry?.sandbox) {
-			await this.destroyUncachedSandbox(threadId, reason);
+			await this.destroyUncachedSandbox(threadId, reason, userId);
 			return;
 		}
 
@@ -550,7 +558,7 @@ export class InstanceAiSandboxService {
 				'destroy',
 				{ reason, sandboxId: entry.sandbox.id, provider: entry.sandbox.provider },
 				async () => await entry.workspace.destroy(),
-				this.lifecycleTraceConfig(threadId),
+				{ resolveConfig: this.lifecycleTraceConfig(threadId, entry.userId) },
 			);
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
@@ -568,7 +576,11 @@ export class InstanceAiSandboxService {
 	 * that never existed is a cheap 404. Daytona is left to its own
 	 * auto-stop/auto-delete lifecycle.
 	 */
-	private async destroyUncachedSandbox(threadId: string, reason: string): Promise<void> {
+	private async destroyUncachedSandbox(
+		threadId: string,
+		reason: string,
+		userId?: string,
+	): Promise<void> {
 		try {
 			await withSandboxLifecycleTrace(
 				threadId,
@@ -600,7 +612,7 @@ export class InstanceAiSandboxService {
 						async () => await sandbox?.destroy?.(),
 					);
 				},
-				this.lifecycleTraceConfig(threadId),
+				{ resolveConfig: this.lifecycleTraceConfig(threadId, userId) },
 			);
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
@@ -611,9 +623,9 @@ export class InstanceAiSandboxService {
 		}
 	}
 
-	private lifecycleTraceConfig(threadId: string) {
+	private lifecycleTraceConfig(threadId: string, userId?: string) {
 		const resolve = this.options.resolveTracingConfig;
-		return resolve ? async () => await resolve(threadId) : undefined;
+		return resolve ? async () => await resolve(threadId, userId) : undefined;
 	}
 
 	private get sandboxTtlMs(): number {
@@ -658,7 +670,7 @@ export class InstanceAiSandboxService {
 				this.touchSandboxEntry(threadId, entry);
 				return;
 			}
-			this.evictSandboxEntry(threadId, entry, 'idle');
+			this.evictSandboxEntry(threadId, entry, 'idle', true);
 		}, delay);
 		entry.cleanupTimer.unref();
 	}

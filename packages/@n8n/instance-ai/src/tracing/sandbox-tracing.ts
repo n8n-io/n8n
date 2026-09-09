@@ -9,7 +9,9 @@ interface SandboxTraceOptions<T> {
 	inputs?: Record<string, unknown>;
 	/** Batch spans summarize file transfers. I/O spans suppress transport details. */
 	kind?: 'batch' | 'io';
-	processResult?: (result: T) => InstanceAiTraceRunFinishOptions;
+	processResult?: (
+		result: T,
+	) => InstanceAiTraceRunFinishOptions | Promise<InstanceAiTraceRunFinishOptions>;
 }
 
 export async function traceSandboxOperation<T>(
@@ -46,13 +48,13 @@ export function sandboxFileBytes(content: string | Uint8Array): number {
 	return typeof content === 'string' ? Buffer.byteLength(content, 'utf8') : content.byteLength;
 }
 
-export function sandboxCommandTraceResult(result: {
+export async function sandboxCommandTraceResult(result: {
 	exitCode: number;
 	stdout: string;
 	stderr: string;
 	timedOut?: boolean;
 	killed?: boolean;
-}): InstanceAiTraceRunFinishOptions {
+}): Promise<InstanceAiTraceRunFinishOptions> {
 	const error = result.timedOut
 		? 'Command timed out'
 		: result.killed
@@ -60,6 +62,7 @@ export function sandboxCommandTraceResult(result: {
 			: result.exitCode !== 0
 				? `Command exited with code ${result.exitCode}`
 				: undefined;
+	const { scrubTelemetryText } = await import('./trace-payloads.js');
 	return {
 		outputs: {
 			exitCode: result.exitCode,
@@ -67,8 +70,12 @@ export function sandboxCommandTraceResult(result: {
 			killed: result.killed ?? false,
 			stdoutBytes: sandboxFileBytes(result.stdout),
 			stderrBytes: sandboxFileBytes(result.stderr),
-			// The export redactor also scrubs these bounded diagnostics.
-			...(result.exitCode !== 0 ? { stderr: result.stderr.slice(0, 2048) } : {}),
+			...(error
+				? {
+						stdout: scrubTelemetryText(result.stdout).slice(0, 2000),
+						stderr: scrubTelemetryText(result.stderr).slice(0, 2000),
+					}
+				: {}),
 		},
 		...(error ? { error } : {}),
 	};
