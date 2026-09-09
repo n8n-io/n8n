@@ -29,6 +29,7 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
+import { AppPreviewService } from '../app-preview/app-preview.service';
 import { AppSourceSnapshotService } from '../app-preview/app-source-snapshot.service';
 import { InstanceAiService } from '../instance-ai.service';
 
@@ -55,6 +56,7 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 	const user = { id: 'user-1' } as User;
 	const workspace = { id: 'ws' };
 	const snapshotAfterRun = vi.fn(async () => {});
+	const rebuildIfBuilt = vi.fn(async () => {});
 
 	function createService(
 		{ cachedEntry }: { cachedEntry?: unknown } = { cachedEntry: { workspace } },
@@ -70,9 +72,11 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 
 	beforeEach(() => {
 		snapshotAfterRun.mockReset().mockResolvedValue(undefined);
+		rebuildIfBuilt.mockReset().mockResolvedValue(undefined);
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) return { isActive: (name: string) => name === 'apps' };
 			if (token === AppSourceSnapshotService) return { snapshotAfterRun };
+			if (token === AppPreviewService) return { rebuildIfBuilt };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 	});
@@ -91,6 +95,23 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 
 		expect(service.sandboxService.getCachedWorkspaceEntry).toHaveBeenCalledWith('thread-1');
 		expect(snapshotAfterRun).toHaveBeenCalledWith('thread-1', user, workspace);
+		expect(rebuildIfBuilt).toHaveBeenCalledWith('thread-1', workspace);
+	});
+
+	it('marks built previews for rebuild in the same tick as the run-finish, before the snapshot', async () => {
+		const service = createService();
+		snapshotAfterRun.mockReturnValue(new Promise(() => {}));
+
+		const finalized = service.finalizeRun('thread-1', 'run-1', 'completed', {
+			userId: 'user-1',
+			user,
+		});
+
+		expect(rebuildIfBuilt).toHaveBeenCalledWith('thread-1', workspace);
+		expect(rebuildIfBuilt.mock.invocationCallOrder[0]).toBeLessThan(
+			snapshotAfterRun.mock.invocationCallOrder[0],
+		);
+		await finalized;
 	});
 
 	it.each(['cancelled', 'errored'] as const)('does not snapshot a %s run', async (status) => {
@@ -100,6 +121,7 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 		await flush();
 
 		expect(snapshotAfterRun).not.toHaveBeenCalled();
+		expect(rebuildIfBuilt).not.toHaveBeenCalled();
 	});
 
 	it('does not snapshot without a user', async () => {

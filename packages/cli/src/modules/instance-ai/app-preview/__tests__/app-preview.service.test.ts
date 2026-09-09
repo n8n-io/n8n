@@ -1,3 +1,4 @@
+import type { CommandResult, ExecuteCommandOptions, Workspace } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecRequest, ExecResult, SandboxRecord } from '@n8n/sandbox-client';
 import { SandboxServiceError } from '@n8n/sandbox-client';
@@ -11,9 +12,15 @@ import {
 	buildDevServerStartScript,
 	buildDevServerStopScript,
 	buildOccupiedCheckScript,
+	buildPreviewBuildScript,
 	buildRestoreScript,
 	type EnsureAppPreviewInput,
 } from '../app-preview.service';
+
+vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents/sandbox')>()),
+	getWorkspaceRoot: vi.fn(async () => await Promise.resolve('/home/user/workspace')),
+}));
 
 const sandboxClient = {
 	getSandbox: vi.fn<(id: string) => Promise<SandboxRecord>>(),
@@ -56,6 +63,30 @@ const getWorkspace = vi.fn<EnsureAppPreviewInput['getWorkspace']>();
 const getSourceTarball = vi.fn<EnsureAppPreviewInput['getSourceTarball']>();
 const tarball = { data: Buffer.from('gzip') };
 
+/** The thread workspace as any provider exposes it: shell via `executeCommand`, files via `filesystem`. */
+const workspaceExec =
+	vi.fn<
+		(command: string, args?: string[], options?: ExecuteCommandOptions) => Promise<CommandResult>
+	>();
+const workspaceFs = {
+	exists: vi.fn<(path: string) => Promise<boolean>>(),
+	readFile: vi.fn<(path: string) => Promise<Buffer>>(),
+	writeFile: vi.fn<(path: string, content: Buffer) => Promise<void>>(),
+};
+const workspace = {
+	sandbox: {
+		id: 'sb',
+		name: 'sb',
+		provider: 'daytona',
+		status: 'ready',
+		executeCommand: workspaceExec,
+	},
+	filesystem: { id: 'fs', name: 'fs', provider: 'daytona', status: 'ready', ...workspaceFs },
+} as unknown as Workspace;
+const commandOk: CommandResult = { ...execOk, executionTimeMs: 1 };
+const ROOT = '/home/user/workspace';
+const DIST_INDEX = `${ROOT}/apps/greeter/.n8n-preview-dist/index.html`;
+
 const input: EnsureAppPreviewInput = {
 	threadId: 'thread-1',
 	appId: 'app-1',
@@ -94,9 +125,12 @@ describe('AppPreviewService', () => {
 		sandboxClient.stat.mockResolvedValue({});
 		sandboxClient.exec.mockResolvedValue(execOk);
 		sandboxClient.writeFile.mockResolvedValue(undefined);
-		getWorkspace.mockResolvedValue(mock());
+		getWorkspace.mockResolvedValue(workspace);
 		getSourceTarball.mockResolvedValue(tarball);
 		fetchMock.mockResolvedValue(httpResponse(200));
+		workspaceExec.mockResolvedValue(commandOk);
+		workspaceFs.exists.mockResolvedValue(true);
+		workspaceFs.writeFile.mockResolvedValue(undefined);
 		service = new AppPreviewService(jwtService, mockLogger());
 	});
 
@@ -318,19 +352,27 @@ describe('AppPreviewService', () => {
 		});
 
 		it.each([501, 404])(
-			'returns unsupported/port-route on a plain %i from the port route and caches it',
+			'falls back to a built preview on a plain %i from the port route and caches the missing route',
 			async (status) => {
 				fetchMock.mockResolvedValue(httpResponse(status, { 'Content-Type': 'text/plain' }));
 
-				await expect(service.ensure(input)).resolves.toEqual({
-					status: 'unsupported',
-					reason: 'port-route',
-				});
-				await expect(service.ensure({ ...input, appId: 'app-2' })).resolves.toEqual({
-					status: 'unsupported',
-					reason: 'port-route',
-				});
+				const first = await service.ensure(input);
+
+				expect(first).toMatchObject({ status: 'ready', url: expect.stringMatching(/\?b=1$/) });
+				const clientCommands = sandboxClient.exec.mock.calls.map(([, request]) => request.command);
+				expect(clientCommands).toEqual([
+					expect.stringContaining('exec node_modules/.bin/vite'),
+					buildDevServerStopScript('greeter'),
+				]);
+				expect(workspaceExec).toHaveBeenCalledTimes(1);
+				expect(service.resolveToken(tokenOf(first))).toMatchObject({ kind: 'built', buildSeq: 1 });
+
+				const second = await service.ensure({ ...input, appId: 'app-2', namespace: 'other' });
+
+				expect(second).toMatchObject({ status: 'ready', url: expect.stringMatching(/\?b=1$/) });
 				expect(fetchMock).toHaveBeenCalledTimes(1);
+				expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
+				expect(workspaceExec.mock.calls[1][0]).toContain('cd apps/other && ');
 			},
 		);
 
@@ -507,11 +549,237 @@ describe('AppPreviewService', () => {
 		});
 	});
 
+	describe('built preview', () => {
+		/** A provider without a port route, like Daytona: the controller hands over no sandbox service. */
+		const builtInput: EnsureAppPreviewInput = { ...input, sandbox: undefined };
+		const workspaceCommands = () => workspaceExec.mock.calls.map(([command]) => command);
+		const buildOptions = (index: number) => workspaceExec.mock.calls[index][2];
+		const rebuild = async () => await service.rebuildIfBuilt('thread-1', workspace);
+
+		it('builds the app through the thread workspace when the provider has no sandbox service', async () => {
+			const result = await service.ensure(builtInput);
+
+			expect(result.status).toBe('ready');
+			if (result.status !== 'ready') return;
+			const token = tokenOf(result);
+			expect(result.url).toBe(`/apps-preview/${token}/?b=1`);
+			expect(workspaceFs.exists.mock.calls[0][0]).toBe(`${ROOT}/apps/greeter/package.json`);
+			expect(workspaceCommands()).toEqual([
+				buildPreviewBuildScript({ namespace: 'greeter', token }),
+			]);
+			expect(workspaceCommands()[0]).toBe(
+				`cd apps/greeter && ulimit -c 0 && APP_BASE=/apps-preview/${token}/ VITE_N8N_API_BASE=/apps/greeter/api VITE_N8N_PREVIEW=1 CI=true node_modules/.bin/vite build --outDir .n8n-preview-dist > .n8n-dev.log 2>&1 || { tail -c 4096 .n8n-dev.log; exit 1; }`,
+			);
+			expect(buildOptions(0)).toMatchObject({ cwd: ROOT, timeout: 600_000 });
+			expect(sandboxClient.exec).not.toHaveBeenCalled();
+			expect(sandboxClient.getSandbox).not.toHaveBeenCalled();
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(service.resolveToken(token)).toMatchObject({
+				kind: 'built',
+				buildSeq: 1,
+				dist: { dir: 'apps/greeter/.n8n-preview-dist' },
+			});
+		});
+
+		it('restores the stored source through the workspace before the first build', async () => {
+			workspaceFs.exists.mockResolvedValueOnce(false);
+			workspaceExec.mockImplementation(async (command) =>
+				command === buildOccupiedCheckScript(APP_DIR) ? { ...commandOk, exitCode: 1 } : commandOk,
+			);
+
+			await expect(service.ensure(builtInput)).resolves.toMatchObject({ status: 'ready' });
+
+			expect(getSourceTarball).toHaveBeenCalledTimes(1);
+			expect(workspaceCommands()).toEqual([
+				buildOccupiedCheckScript(APP_DIR),
+				`mkdir -p ${ROOT}/.app-builds ${APP_DIR}`,
+				expect.stringMatching(
+					/^tar -xzf .* npm install --ignore-scripts --no-audit --no-fund --prefer-offline\)$/,
+				),
+				expect.stringContaining('vite build --outDir .n8n-preview-dist'),
+			]);
+			expect(buildOptions(2)).toMatchObject({ env: { CI: 'true' }, timeout: 600_000 });
+			const [tarballPath, written] = workspaceFs.writeFile.mock.calls[0];
+			expect(tarballPath).toMatch(
+				/^\/home\/user\/workspace\/\.app-builds\/greeter-\d+-preview-restore\.tgz$/,
+			);
+			expect(written).toBe(tarball.data);
+			expect(workspaceCommands()[2]).toBe(buildRestoreScript({ appDir: APP_DIR, tarballPath }));
+			expect(sandboxClient.writeFile).not.toHaveBeenCalled();
+		});
+
+		it('returns no-source when the app directory is missing and nothing is stored', async () => {
+			workspaceFs.exists.mockResolvedValueOnce(false);
+			getSourceTarball.mockResolvedValue(null);
+
+			await expect(service.ensure(builtInput)).resolves.toEqual({ status: 'no-source' });
+			expect(workspaceExec).not.toHaveBeenCalled();
+		});
+
+		it('returns unavailable/sandbox when the thread has no workspace', async () => {
+			getWorkspace.mockResolvedValue(undefined);
+
+			await expect(service.ensure(builtInput)).resolves.toEqual({
+				status: 'unavailable',
+				reason: 'sandbox',
+			});
+		});
+
+		it('reports a failed build once as start-failed with the log tail, then builds again', async () => {
+			workspaceExec.mockResolvedValueOnce({
+				...commandOk,
+				exitCode: 1,
+				success: false,
+				stdout: 'error during build:\nRollupError: boom',
+			});
+
+			await expect(service.ensure(builtInput)).resolves.toEqual({
+				status: 'unavailable',
+				reason: 'start-failed',
+				log: 'error during build:\nRollupError: boom',
+			});
+			await expect(service.ensure(builtInput)).resolves.toMatchObject({
+				status: 'ready',
+				url: expect.stringMatching(/\?b=1$/),
+			});
+			expect(workspaceExec).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps the URL while the dist is still there and rebuilds from scratch when it is gone', async () => {
+			const first = await service.ensure(builtInput);
+			await expect(service.ensure(builtInput)).resolves.toEqual(first);
+			expect(workspaceFs.exists.mock.lastCall?.[0]).toBe(DIST_INDEX);
+			expect(workspaceExec).toHaveBeenCalledTimes(1);
+
+			workspaceFs.exists.mockResolvedValueOnce(false);
+			const second = await service.ensure(builtInput);
+
+			expect(second).toMatchObject({ status: 'ready', url: expect.stringMatching(/\?b=1$/) });
+			expect(second).not.toEqual(first);
+			expect(service.resolveToken(tokenOf(first))).toBeUndefined();
+			expect(workspaceExec).toHaveBeenCalledTimes(2);
+		});
+
+		describe('rebuildIfBuilt', () => {
+			it('rebuilds after a turn and bumps the build sequence in the URL', async () => {
+				const first = await service.ensure(builtInput);
+				const token = tokenOf(first);
+
+				await rebuild();
+
+				expect(workspaceCommands()).toEqual([
+					buildPreviewBuildScript({ namespace: 'greeter', token }),
+					buildPreviewBuildScript({ namespace: 'greeter', token }),
+				]);
+				await expect(service.ensure(builtInput)).resolves.toMatchObject({
+					url: `/apps-preview/${token}/?b=2`,
+				});
+				expect(service.resolveToken(token)).toMatchObject({ buildSeq: 2 });
+			});
+
+			it('makes an ensure that arrives during the rebuild wait for the new build', async () => {
+				const first = await service.ensure(builtInput);
+				let finishBuild: (result: CommandResult) => void = () => {};
+				workspaceExec.mockImplementationOnce(
+					async () => await new Promise<CommandResult>((resolve) => (finishBuild = resolve)),
+				);
+
+				const rebuilding = rebuild();
+				const ensured = service.ensure(builtInput);
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				expect(workspaceExec).toHaveBeenCalledTimes(2);
+
+				finishBuild(commandOk);
+				await rebuilding;
+				await expect(ensured).resolves.toMatchObject({
+					status: 'ready',
+					url: `/apps-preview/${tokenOf(first)}/?b=2`,
+				});
+			});
+
+			it('answers starting when the rebuild outlasts the wait, then ready with the new build', async () => {
+				vi.useFakeTimers();
+				await service.ensure(builtInput);
+				let finishBuild: (result: CommandResult) => void = () => {};
+				workspaceExec.mockImplementationOnce(
+					async () => await new Promise<CommandResult>((resolve) => (finishBuild = resolve)),
+				);
+
+				const rebuilding = rebuild();
+				const ensured = service.ensure(builtInput);
+				await vi.advanceTimersByTimeAsync(45_000);
+				await expect(ensured).resolves.toEqual({ status: 'starting' });
+
+				finishBuild(commandOk);
+				await rebuilding;
+				await expect(service.ensure(builtInput)).resolves.toMatchObject({
+					url: expect.stringMatching(/\?b=2$/),
+				});
+			});
+
+			it('runs one rebuild at a time per preview and follows an in-flight one with one more', async () => {
+				await service.ensure(builtInput);
+				const builds: Array<(result: CommandResult) => void> = [];
+				workspaceExec.mockImplementation(
+					async () => await new Promise<CommandResult>((resolve) => builds.push(resolve)),
+				);
+
+				const first = rebuild();
+				const second = rebuild();
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				expect(builds).toHaveLength(1);
+
+				builds[0](commandOk);
+				await first;
+				await vi.waitFor(() => expect(builds).toHaveLength(2));
+				builds[1](commandOk);
+				await second;
+
+				expect(service.resolveToken(tokenOf(await service.ensure(builtInput)))).toMatchObject({
+					buildSeq: 3,
+				});
+			});
+
+			it('reports a failed rebuild once on the next ensure, then starts over', async () => {
+				const first = await service.ensure(builtInput);
+				workspaceExec.mockResolvedValueOnce({
+					...commandOk,
+					exitCode: 1,
+					success: false,
+					stdout: 'RollupError: boom',
+				});
+
+				await rebuild();
+
+				expect(service.resolveToken(tokenOf(first))).toBeUndefined();
+				await expect(service.ensure(builtInput)).resolves.toEqual({
+					status: 'unavailable',
+					reason: 'start-failed',
+					log: 'RollupError: boom',
+				});
+				const second = await service.ensure(builtInput);
+				expect(second).toMatchObject({ status: 'ready', url: expect.stringMatching(/\?b=1$/) });
+				expect(tokenOf(second)).not.toBe(tokenOf(first));
+			});
+
+			it('leaves dev-server previews and other threads alone', async () => {
+				await service.ensure(input);
+				await service.ensure({ ...builtInput, threadId: 'thread-2' });
+				workspaceExec.mockClear();
+
+				await rebuild();
+
+				expect(workspaceExec).not.toHaveBeenCalled();
+			});
+		});
+	});
+
 	describe('resolveToken', () => {
 		it('returns the entry for a live token', async () => {
 			const result = await service.ensure(input);
 
 			expect(service.resolveToken(tokenOf(result))).toMatchObject({
+				kind: 'dev',
 				appId: 'app-1',
 				threadId: 'thread-1',
 				projectId: 'project-1',

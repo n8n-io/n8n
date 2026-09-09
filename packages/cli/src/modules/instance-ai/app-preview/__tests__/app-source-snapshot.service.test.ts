@@ -82,11 +82,11 @@ describe('buildSnapshotScript', () => {
 
 		expect(script).toContain(`cd '${ROOT}/apps/greeter'`);
 		expect(script).toContain(
-			'tar -cf - --exclude=node_modules --exclude=dist --exclude=.git --exclude=.n8n-dev.log --exclude=.n8n-dev.pid . | (sha256sum 2>/dev/null || cksum)',
+			'tar -cf - --exclude=node_modules --exclude=dist --exclude=.git --exclude=.n8n-dev.log --exclude=.n8n-dev.pid --exclude=.n8n-preview-dist . | (sha256sum 2>/dev/null || cksum)',
 		);
 		expect(script).toContain('if [ "$hash" = \'abc\' ]; then echo UNCHANGED; exit 0; fi');
 		expect(script).toContain(
-			`tar -czf '${ROOT}/.app-builds/greeter-1-snapshot.tgz' --exclude=node_modules --exclude=dist --exclude=.git --exclude=.n8n-dev.log --exclude=.n8n-dev.pid .`,
+			`tar -czf '${ROOT}/.app-builds/greeter-1-snapshot.tgz' --exclude=node_modules --exclude=dist --exclude=.git --exclude=.n8n-dev.log --exclude=.n8n-dev.pid --exclude=.n8n-preview-dist .`,
 		);
 		expect(script).toContain('echo "SNAPSHOT $hash $(stat -c %s');
 	});

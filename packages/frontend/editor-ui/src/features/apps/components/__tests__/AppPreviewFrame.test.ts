@@ -32,4 +32,21 @@ describe('AppPreviewFrame', () => {
 			'/apps-preview/tok/',
 		);
 	});
+
+	it('keeps the build cache-buster of a built live preview behind the page path', async () => {
+		const { getByTestId, rerender } = renderComponent({
+			props: { namespace: 'greeter', liveUrl: '/apps-preview/tok/?b=2', path: 'clients/:id' },
+		});
+
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+			'src',
+			'/apps-preview/tok/clients/%3Aid?b=2',
+		);
+
+		await rerender({ liveUrl: '/apps-preview/tok/?b=3', path: '' });
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+			'src',
+			'/apps-preview/tok/?b=3',
+		);
+	});
 });

@@ -6,12 +6,15 @@ import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 import { getHtmlSandboxCSP } from 'n8n-core';
 import type { IncomingMessage, Server as HttpServer } from 'node:http';
 import type { Socket } from 'node:net';
+import path from 'node:path';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	APP_PREVIEW_PATH_PREFIX,
 	AppPreviewService,
+	type AppPreviewBuiltDist,
+	type AppPreviewDevEntry,
 	type AppPreviewEntry,
 } from './app-preview.service';
 
@@ -38,6 +41,21 @@ function hasDotDotSegment(segments: string[]): boolean {
 }
 
 /**
+ * Root-relative path of the requested file inside the built dist, or undefined
+ * when the segments would leave it. Sandbox paths are POSIX whatever n8n runs
+ * on, hence not `resolveDistPath` from the apps module. No segments resolve to
+ * the dist itself, which the caller turns into `index.html`.
+ */
+function resolveBuiltPath(distDir: string, segments: string[]): string | undefined {
+	const root = path.posix.normalize(distDir);
+	const target = path.posix.normalize(path.posix.join(root, ...segments.filter(Boolean)));
+	return target === root || target.startsWith(`${root}/`) ? target : undefined;
+}
+
+const devEntry = (req: AppPreviewRequest): AppPreviewDevEntry | undefined =>
+	req.appPreview?.kind === 'dev' ? req.appPreview : undefined;
+
+/**
  * Reverse proxy from `/apps-preview/<token>/…` to the dev server in the
  * thread's sandbox. The token in the path is the credential
  * (`AppPreviewService.resolveToken`), so the router skips session auth: the
@@ -60,26 +78,26 @@ export class AppPreviewProxyController {
 	private readonly proxy = createProxyMiddleware<AppPreviewRequest, Response>({
 		// Replaced per request by `router`; the dev server lives behind the sandbox service the entry names.
 		target: 'http://127.0.0.1',
-		router: (req) => req.appPreview?.sandbox.url,
+		router: (req) => devEntry(req)?.sandbox.url,
 		changeOrigin: true,
 		// Express hands the router a URL relative to the mount; the upgrade path arrives whole.
-		pathRewrite: (path, req) =>
-			`/sandboxes/${req.appPreview?.sandboxId}/ports/${req.appPreview?.port}${req.originalUrl ?? path}`,
+		pathRewrite: (requestPath, req) => {
+			const entry = devEntry(req);
+			return `/sandboxes/${entry?.sandboxId}/ports/${entry?.port}${req.originalUrl ?? requestPath}`;
+		},
 		on: {
 			proxyReq: (proxyReq, req) => {
 				proxyReq.removeHeader('cookie');
 				proxyReq.removeHeader('authorization');
-				if (req.appPreview?.sandbox.apiKey) {
-					proxyReq.setHeader('X-Api-Key', req.appPreview.sandbox.apiKey);
-				}
+				const apiKey = devEntry(req)?.sandbox.apiKey;
+				if (apiKey) proxyReq.setHeader('X-Api-Key', apiKey);
 				fixRequestBody(proxyReq, req);
 			},
 			proxyReqWs: (proxyReq, req) => {
 				proxyReq.removeHeader('cookie');
 				proxyReq.removeHeader('authorization');
-				if (req.appPreview?.sandbox.apiKey) {
-					proxyReq.setHeader('X-Api-Key', req.appPreview.sandbox.apiKey);
-				}
+				const apiKey = devEntry(req)?.sandbox.apiKey;
+				if (apiKey) proxyReq.setHeader('X-Api-Key', apiKey);
 			},
 			proxyRes: (proxyRes, req) => {
 				delete proxyRes.headers['content-security-policy'];
@@ -135,11 +153,15 @@ export class AppPreviewProxyController {
 			res.status(404).type('text').send('Not found');
 			return;
 		}
+		if (entry.kind === 'built') {
+			await this.serveBuilt(entry.dist, rest, req, res);
+			return;
+		}
 		req.appPreview = entry;
 		await this.proxy(req, res, next);
 	}
 
-	/** Proxies the Vite HMR WebSocket; the sandbox never sees the editor's cookie. */
+	/** Proxies the Vite HMR WebSocket; the sandbox never sees the editor's cookie. A built preview has none. */
 	setupUpgrade(server: HttpServer): void {
 		server.on('upgrade', (req: AppPreviewRequest, socket: Socket, head: Buffer) => {
 			const pathname = URL.parse(req.url ?? '', 'http://localhost')?.pathname;
@@ -148,7 +170,7 @@ export class AppPreviewProxyController {
 			const entry = hasDotDotSegment(rest)
 				? undefined
 				: this.appPreviewService.resolveToken(token ?? '');
-			if (!entry) {
+			if (entry?.kind !== 'dev') {
 				socket.destroy();
 				return;
 			}
@@ -157,6 +179,55 @@ export class AppPreviewProxyController {
 			req.appPreview = entry;
 			this.proxy.upgrade(req, socket, head);
 		});
+	}
+
+	/**
+	 * Serves a file of the built preview from the sandbox filesystem with the
+	 * headers the built app gets from `AppServingController`; an unknown path
+	 * falls back to `index.html` for the app's own routes.
+	 */
+	private async serveBuilt(
+		dist: AppPreviewBuiltDist | undefined,
+		segments: string[],
+		req: Request,
+		res: Response,
+	): Promise<void> {
+		if (req.method !== 'GET' && req.method !== 'HEAD') {
+			res.set('Allow', 'GET, HEAD').status(405).type('text').send('Method Not Allowed');
+			return;
+		}
+		const target = dist && resolveBuiltPath(dist.dir, segments.map(decodeURIComponent));
+		if (!dist || !target) {
+			res.status(404).type('text').send('Not found');
+			return;
+		}
+		const indexPath = `${dist.dir}/index.html`;
+		const filePath = target === dist.dir ? indexPath : target;
+		const file =
+			(await this.readBuiltFile(dist, filePath)) ??
+			(filePath === indexPath ? undefined : await this.readBuiltFile(dist, indexPath));
+		if (!file) {
+			res.status(404).type('text').send('Not found');
+			return;
+		}
+		const isHtml = path.posix.extname(file.path) === '.html';
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+		res.setHeader('Cache-Control', isHtml ? 'no-cache' : 'public, max-age=0, must-revalidate');
+		if (isHtml) res.setHeader('Referrer-Policy', 'no-referrer');
+		res.type(path.posix.extname(file.path) || 'bin').send(file.content);
+	}
+
+	/** Undefined when the path is missing or a directory. */
+	private async readBuiltFile(
+		dist: AppPreviewBuiltDist,
+		filePath: string,
+	): Promise<{ path: string; content: Buffer } | undefined> {
+		try {
+			const content = await dist.filesystem.readFile(filePath);
+			return { path: filePath, content: Buffer.isBuffer(content) ? content : Buffer.from(content) };
+		} catch {
+			return undefined;
+		}
 	}
 
 	/** The iframe document, as opposed to the modules and assets it loads with a wildcard Accept. */

@@ -1,7 +1,8 @@
-import type { Workspace } from '@n8n/agents';
+import type { Workspace, WorkspaceFilesystem } from '@n8n/agents';
+import { createScopedWorkspace } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import type { AppPreviewStatus } from '@n8n/api-types';
-import { N8N_SANDBOX_WORKSPACE_ROOT } from '@n8n/agents/sandbox';
+import { getWorkspaceRoot, N8N_SANDBOX_WORKSPACE_ROOT } from '@n8n/agents/sandbox';
 import { Service } from '@n8n/di';
 import { SandboxClient, SandboxServiceError } from '@n8n/sandbox-client';
 import { nanoid } from 'nanoid';
@@ -12,12 +13,16 @@ import { buildThreadScopedSandboxUuid } from '../sandbox/instance-ai-sandbox.ser
 
 export const APP_PREVIEW_PORT = 5173;
 export const APP_PREVIEW_PATH_PREFIX = '/apps-preview';
+/** Output of the fallback build inside the app directory; excluded from source tarballs like the dev log. */
+export const APP_PREVIEW_DIST_DIR = '.n8n-preview-dist';
 const TOKEN_TTL_SECONDS = 8 * 60 * 60;
 /** Separates preview tokens from the session, invite and reset tokens signed with the same secret. */
 const TOKEN_AUDIENCE = 'app-preview';
 const PROBE_TIMEOUT_MS = 3_000;
 /** A start slower than this answers `starting` and lets the client poll. */
 const START_HANDOFF_MS = 2_000;
+/** An ensure waits this long for a rebuild in flight, so the frame reloads only once the new dist exists. */
+const REBUILD_WAIT_MS = 45_000;
 const START_TIMEOUT_MS = 600_000;
 const UNSUPPORTED_ROUTE_CACHE_MS = 10 * 60 * 1000;
 const LOG_TAIL_BYTES = 4096;
@@ -29,16 +34,16 @@ const NPM_INSTALL_FLAGS = '--ignore-scripts --no-audit --no-fund --prefer-offlin
 
 export type AppPreviewSandbox = { url: string; apiKey?: string };
 
-/** One running dev server, reachable through the capability URL its token names. */
-export type AppPreviewEntry = {
+/** Where a built preview's files live: root-relative `dir` inside the thread workspace's `filesystem`. */
+export type AppPreviewBuiltDist = { filesystem: WorkspaceFilesystem; dir: string };
+
+type AppPreviewEntryBase = {
 	token: string;
 	jti: string;
 	sandboxId: string;
-	sandbox: AppPreviewSandbox;
 	appId: string;
 	projectId: string;
 	namespace: string;
-	port: number;
 	userId: string;
 	threadId: string;
 	startedAt: Date;
@@ -48,13 +53,35 @@ export type AppPreviewEntry = {
 	failed?: AppPreviewStatus;
 };
 
+/** A dev server in the sandbox, reached through the sandbox service's port route. */
+export type AppPreviewDevEntry = AppPreviewEntryBase & {
+	kind: 'dev';
+	sandbox: AppPreviewSandbox;
+	port: number;
+};
+
+/** A `vite build` output served from the sandbox filesystem; rebuilt after every completed turn. */
+export type AppPreviewBuiltEntry = AppPreviewEntryBase & {
+	kind: 'built';
+	/** Bumped on every rebuild; the preview URL carries it so the frame reloads. */
+	buildSeq: number;
+	builtAt: Date;
+	/** Absent until the first build succeeded; a resolved token always has one. */
+	dist?: AppPreviewBuiltDist;
+	rebuilding?: Promise<void>;
+};
+
+/** One preview, reachable through the capability URL its token names. */
+export type AppPreviewEntry = AppPreviewDevEntry | AppPreviewBuiltEntry;
+
 export type EnsureAppPreviewInput = {
 	threadId: string;
 	appId: string;
 	projectId: string;
 	namespace: string;
 	userId: string;
-	sandbox: AppPreviewSandbox;
+	/** The n8n sandbox service the thread's sandbox runs in; undefined for other providers, which only get a built preview. */
+	sandbox?: AppPreviewSandbox;
 	/** Creates the thread's sandbox when it has none yet; undefined when the sandbox is disabled. */
 	getWorkspace: () => Promise<Workspace | undefined>;
 	/** The app's newest stored source; null when the app was never scaffolded. */
@@ -62,6 +89,22 @@ export type EnsureAppPreviewInput = {
 };
 
 type AppPreviewTokenClaims = { sub: string; appId: string; threadId: string; jti: string };
+
+type ExecOutput = { exitCode: number; stdout: string; stderr: string };
+
+/** Shell and file access to the thread's sandbox: the sandbox client for the dev server, the workspace for a built preview. */
+type SandboxRunner = {
+	root: string;
+	exec(
+		command: string,
+		options?: { env?: Record<string, string>; timeoutMs?: number },
+	): Promise<ExecOutput>;
+	writeFile(path: string, content: Buffer): Promise<void>;
+};
+
+type WorkspaceRunner = SandboxRunner & { filesystem: WorkspaceFilesystem };
+
+type StartOutcome = { status: AppPreviewStatus; entry: AppPreviewEntry };
 
 /** Kills the dev server whose pid the app directory records, if any. */
 export function buildDevServerStopScript(namespace: string): string {
@@ -86,6 +129,16 @@ export function buildDevServerStartScript(input: { namespace: string; token: str
 	].join(' && ');
 }
 
+/**
+ * Builds the app under its preview base into the preview dist directory.
+ * `VITE_N8N_PREVIEW` makes the template load its diagnostics bridge, which a
+ * publish build leaves out. Prints the log tail and exits non-zero on failure.
+ */
+export function buildPreviewBuildScript(input: { namespace: string; token: string }): string {
+	const base = `${APP_PREVIEW_PATH_PREFIX}/${input.token}/`;
+	return `cd apps/${input.namespace} && ulimit -c 0 && APP_BASE=${base} VITE_N8N_API_BASE=/apps/${input.namespace}/api VITE_N8N_PREVIEW=1 CI=true node_modules/.bin/vite build --outDir ${APP_PREVIEW_DIST_DIR} > .n8n-dev.log 2>&1 || { tail -c ${LOG_TAIL_BYTES} .n8n-dev.log; exit 1; }`;
+}
+
 /** Non-zero when `dir` is missing or empty; a restore may only fill an empty app directory. */
 export function buildOccupiedCheckScript(dir: string): string {
 	return `[ -d ${dir} ] && [ -n "$(ls -A ${dir})" ]`;
@@ -105,11 +158,24 @@ export function buildRestoreScript(input: { appDir: string; tarballPath: string 
 
 const entryKey = (threadId: string, appId: string) => `${threadId}:${appId}`;
 
+/** Resolves to true when `promise` settles within `ms`, false otherwise. */
+async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
+	const settled = promise.then(
+		() => true,
+		() => true,
+	);
+	const timeout = new Promise<boolean>((resolve) => {
+		const timer = setTimeout(() => resolve(false), ms);
+		void settled.finally(() => clearTimeout(timer));
+	});
+	return await Promise.race([settled, timeout]);
+}
+
 @Service()
 export class AppPreviewService {
 	private readonly entries = new Map<string, AppPreviewEntry>();
 
-	/** The sandbox service answered 404/501 on the port route; do not retry until this time. */
+	/** The sandbox service answered 404/501 on the port route; previews are built until this time. */
 	private portRouteUnsupportedUntil = 0;
 
 	constructor(
@@ -120,9 +186,6 @@ export class AppPreviewService {
 	}
 
 	async ensure(input: EnsureAppPreviewInput): Promise<AppPreviewStatus> {
-		if (Date.now() < this.portRouteUnsupportedUntil) {
-			return { status: 'unsupported', reason: 'port-route' };
-		}
 		const key = entryKey(input.threadId, input.appId);
 		const existing = this.entries.get(key);
 		if (existing?.starting) return { status: 'starting' };
@@ -130,10 +193,19 @@ export class AppPreviewService {
 			this.entries.delete(key);
 			return existing.failed;
 		}
+		if (existing?.kind === 'built' && existing.rebuilding) {
+			if (!(await settlesWithin(existing.rebuilding, REBUILD_WAIT_MS))) {
+				return { status: 'starting' };
+			}
+			// The rebuild settled into the map: a failure to report, or a new build sequence.
+			return await this.ensure(input);
+		}
 		if (existing) {
 			const probe = await this.probe(existing);
 			if (probe === 'ready') return this.ready(existing);
-			if (probe === 'unsupported') return { status: 'unsupported', reason: 'port-route' };
+			if (probe === 'unsupported' && existing.kind === 'dev') {
+				await this.stopDevServer(existing).catch(() => undefined);
+			}
 			this.entries.delete(key);
 		}
 		return await this.start(input, key);
@@ -165,10 +237,66 @@ export class AppPreviewService {
 		}
 	}
 
+	/**
+	 * Rebuilds every built preview of the thread from the sandbox's current
+	 * sources, so the frame shows the turn's edits. Marks the entries
+	 * synchronously: an ensure that arrives meanwhile waits for the rebuild. A
+	 * rebuild already in flight is followed by one more. Never rejects.
+	 */
+	async rebuildIfBuilt(threadId: string, workspace: Workspace): Promise<void> {
+		const entries = [...this.entries.values()].filter(
+			(entry): entry is AppPreviewBuiltEntry =>
+				entry.threadId === threadId && entry.kind === 'built' && !entry.starting && !entry.failed,
+		);
+		await Promise.all(
+			entries.map(async (entry) => {
+				const previous = entry.rebuilding ?? Promise.resolve();
+				const rebuilding = previous
+					.then(async () => await this.rebuild(entry, workspace))
+					.finally(() => {
+						if (entry.rebuilding === rebuilding) entry.rebuilding = undefined;
+					});
+				entry.rebuilding = rebuilding;
+				await rebuilding;
+			}),
+		);
+	}
+
+	private async rebuild(entry: AppPreviewBuiltEntry, workspace: Workspace): Promise<void> {
+		const key = entryKey(entry.threadId, entry.appId);
+		if (this.entries.get(key) !== entry || entry.failed) return;
+		try {
+			const runner = await this.workspaceRunner(workspace);
+			if (!runner) throw new Error('The thread workspace has no sandbox');
+			const result = await runner.exec(
+				buildPreviewBuildScript({ namespace: entry.namespace, token: entry.token }),
+				{ timeoutMs: START_TIMEOUT_MS },
+			);
+			if (this.entries.get(key) !== entry) return;
+			if (result.exitCode !== 0) {
+				entry.failed = this.startFailed(result);
+				return;
+			}
+			entry.buildSeq += 1;
+			entry.builtAt = new Date();
+			entry.dist = { filesystem: runner.filesystem, dir: this.distDir(entry.namespace) };
+		} catch (error) {
+			this.logger.warn('App preview rebuild failed', {
+				appId: entry.appId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			if (this.entries.get(key) === entry) {
+				entry.failed = { status: 'unavailable', reason: 'sandbox' };
+			}
+		}
+	}
+
 	private ready(entry: AppPreviewEntry): AppPreviewStatus {
+		const base = `${APP_PREVIEW_PATH_PREFIX}/${entry.token}/`;
 		return {
 			status: 'ready',
-			url: `${APP_PREVIEW_PATH_PREFIX}/${entry.token}/`,
+			// The build sequence is a cache-buster for the frame; the server ignores it.
+			url: entry.kind === 'built' ? `${base}?b=${entry.buildSeq}` : base,
 			expiresAt: entry.expiresAt.toISOString(),
 		};
 	}
@@ -187,37 +315,39 @@ export class AppPreviewService {
 			audience: TOKEN_AUDIENCE,
 		});
 		const startedAt = new Date();
-		const entry: AppPreviewEntry = {
+		const base: AppPreviewEntryBase = {
 			token,
 			jti,
 			sandboxId,
-			sandbox: input.sandbox,
 			appId: input.appId,
 			projectId: input.projectId,
 			namespace: input.namespace,
-			port: APP_PREVIEW_PORT,
 			userId: input.userId,
 			threadId: input.threadId,
 			startedAt,
 			expiresAt: new Date(startedAt.getTime() + TOKEN_TTL_SECONDS * 1000),
 		};
+		const entry: AppPreviewEntry =
+			input.sandbox && Date.now() >= this.portRouteUnsupportedUntil
+				? { ...base, kind: 'dev', sandbox: input.sandbox, port: APP_PREVIEW_PORT }
+				: this.builtEntry(base);
 		// A sibling start or `clearThread` may have replaced or removed this entry meanwhile;
 		// only the entry still in the map may settle itself.
-		const settle = (status: AppPreviewStatus) => {
-			if (this.entries.get(key) !== entry) return status;
-			const settled =
-				status.status === 'ready'
-					? { ...entry, starting: undefined }
-					: { ...entry, starting: undefined, failed: status };
+		const settle = (outcome: StartOutcome) => {
+			if (this.entries.get(key) !== entry) return outcome.status;
+			const settled: AppPreviewEntry =
+				outcome.status.status === 'ready'
+					? { ...outcome.entry, starting: undefined }
+					: { ...entry, starting: undefined, failed: outcome.status };
 			this.entries.set(key, settled);
-			return status;
+			return outcome.status;
 		};
 		const starting = this.runStart(entry, input).then(settle, (error: unknown) => {
-			this.logger.warn('App preview dev server start failed', {
+			this.logger.warn('App preview start failed', {
 				appId: input.appId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return settle({ status: 'unavailable', reason: 'sandbox' });
+			return settle({ status: { status: 'unavailable', reason: 'sandbox' }, entry });
 		});
 		entry.starting = starting;
 		this.entries.set(key, entry);
@@ -234,42 +364,105 @@ export class AppPreviewService {
 		return result;
 	}
 
+	private builtEntry(base: AppPreviewEntryBase): AppPreviewBuiltEntry {
+		return { ...base, kind: 'built', buildSeq: 0, builtAt: base.startedAt };
+	}
+
 	private async runStart(
 		entry: AppPreviewEntry,
 		input: EnsureAppPreviewInput,
-	): Promise<AppPreviewStatus> {
+	): Promise<StartOutcome> {
+		if (entry.kind === 'built') return await this.runBuild(entry, input);
+
 		const client = this.client(entry.sandbox);
+		const runner = this.clientRunner(client, entry.sandboxId);
 		if (await this.needsRestore(client, entry)) {
-			const restored = await this.restore(client, entry, input);
-			if (restored) return restored;
+			const tarball = await input.getSourceTarball();
+			if (!tarball) return { status: { status: 'no-source' }, entry };
+			if (!(await input.getWorkspace())) {
+				return { status: { status: 'unavailable', reason: 'sandbox' }, entry };
+			}
+			const restored = await this.restore(runner, entry, tarball.data);
+			if (restored) return { status: restored, entry };
 		}
 
-		// One dev server per sandbox: a preview of another app in this thread must yield its port.
-		// A sibling still starting settles first, so its probe never hits this entry's dev server.
+		await this.stopSiblings(entry);
+		const result = await client.exec(entry.sandboxId, {
+			command: buildDevServerStartScript({ namespace: entry.namespace, token: entry.token }),
+			workdir: N8N_SANDBOX_WORKSPACE_ROOT,
+			timeoutMs: START_TIMEOUT_MS,
+		});
+		if (result.exitCode !== 0) return { status: this.startFailed(result), entry };
+		// Vite is up inside the sandbox; the probe tells whether the service can route to it.
+		const probe = await this.probe(entry);
+		if (probe === 'ready') return { status: this.ready(entry), entry };
+		if (probe === 'gone') return { status: { status: 'unavailable', reason: 'sandbox' }, entry };
+		// No port route: the dev server is useless here, a build from the sandbox filesystem takes over.
+		await this.stopDevServer(entry).catch(() => undefined);
+		const { sandbox: _sandbox, port: _port, kind: _kind, starting: _starting, ...base } = entry;
+		return await this.runBuild(this.builtEntry(base), input);
+	}
+
+	/**
+	 * Builds the app in the thread's workspace, whichever provider backs it,
+	 * restoring the stored source first when the app directory is missing.
+	 */
+	private async runBuild(
+		entry: AppPreviewBuiltEntry,
+		input: EnsureAppPreviewInput,
+	): Promise<StartOutcome> {
+		const workspace = await input.getWorkspace();
+		const runner = workspace ? await this.workspaceRunner(workspace) : undefined;
+		if (!runner) return { status: { status: 'unavailable', reason: 'sandbox' }, entry };
+
+		if (!(await runner.filesystem.exists(`${runner.root}/apps/${entry.namespace}/package.json`))) {
+			const tarball = await input.getSourceTarball();
+			if (!tarball) return { status: { status: 'no-source' }, entry };
+			const restored = await this.restore(runner, entry, tarball.data);
+			if (restored) return { status: restored, entry };
+		}
+
+		await this.stopSiblings(entry);
+		const result = await runner.exec(
+			buildPreviewBuildScript({ namespace: entry.namespace, token: entry.token }),
+			{ timeoutMs: START_TIMEOUT_MS },
+		);
+		if (result.exitCode !== 0) return { status: this.startFailed(result), entry };
+		const built: AppPreviewBuiltEntry = {
+			...entry,
+			buildSeq: entry.buildSeq + 1,
+			builtAt: new Date(),
+			dist: { filesystem: runner.filesystem, dir: this.distDir(entry.namespace) },
+		};
+		return { status: this.ready(built), entry: built };
+	}
+
+	private distDir(namespace: string): string {
+		return `apps/${namespace}/${APP_PREVIEW_DIST_DIR}`;
+	}
+
+	/**
+	 * One dev server per sandbox: a preview of another app in this thread must
+	 * yield its port. A sibling still starting settles first, so its probe never
+	 * hits this entry's dev server. A built sibling has no process to stop.
+	 */
+	private async stopSiblings(entry: AppPreviewEntry): Promise<void> {
 		const siblings = [...this.entries.values()].filter(
 			(other) => other.sandboxId === entry.sandboxId && other.jti !== entry.jti,
 		);
 		await Promise.allSettled(siblings.map(async (other) => await other.starting));
 		for (const other of siblings) {
 			this.markDead(other);
-			await client.exec(entry.sandboxId, {
-				command: buildDevServerStopScript(other.namespace),
-				workdir: N8N_SANDBOX_WORKSPACE_ROOT,
-				timeoutMs: PROBE_TIMEOUT_MS,
-			});
+			if (other.kind === 'dev') await this.stopDevServer(other);
 		}
+	}
 
-		const result = await client.exec(entry.sandboxId, {
-			command: buildDevServerStartScript({ namespace: entry.namespace, token: entry.token }),
+	private async stopDevServer(entry: AppPreviewDevEntry): Promise<void> {
+		await this.client(entry.sandbox).exec(entry.sandboxId, {
+			command: buildDevServerStopScript(entry.namespace),
 			workdir: N8N_SANDBOX_WORKSPACE_ROOT,
-			timeoutMs: START_TIMEOUT_MS,
+			timeoutMs: PROBE_TIMEOUT_MS,
 		});
-		if (result.exitCode !== 0) return this.startFailed(result);
-		// Vite is up inside the sandbox; the probe tells whether the service can route to it.
-		const probe = await this.probe(entry);
-		if (probe === 'ready') return this.ready(entry);
-		if (probe === 'unsupported') return { status: 'unsupported', reason: 'port-route' };
-		return { status: 'unavailable', reason: 'sandbox' };
 	}
 
 	/** The sandbox or the app's `package.json` in it is missing: a new thread that has not held the app yet. */
@@ -288,54 +481,55 @@ export class AppPreviewService {
 	}
 
 	/**
-	 * Brings the app's newest stored source into the thread's sandbox, creating
-	 * the sandbox first when the thread has none. Resolves to a status that ends
-	 * the start, or to undefined when the dev server may start: after a restore,
-	 * or without one when the agent already filled the app directory.
+	 * Brings the app's newest stored source into the thread's sandbox. Resolves
+	 * to a status that ends the start, or to undefined when the preview may
+	 * start: after a restore, or without one when the agent already filled the
+	 * app directory.
 	 */
 	private async restore(
-		client: SandboxClient,
+		runner: SandboxRunner,
 		entry: AppPreviewEntry,
-		input: EnsureAppPreviewInput,
+		tarball: Buffer,
 	): Promise<AppPreviewStatus | undefined> {
-		const tarball = await input.getSourceTarball();
-		if (!tarball) return { status: 'no-source' };
-		if (!(await input.getWorkspace())) return { status: 'unavailable', reason: 'sandbox' };
-
-		const appDir = `${N8N_SANDBOX_WORKSPACE_ROOT}/apps/${entry.namespace}`;
-		const occupied = await client.exec(entry.sandboxId, {
-			command: buildOccupiedCheckScript(appDir),
+		const appDir = `${runner.root}/apps/${entry.namespace}`;
+		const occupied = await runner.exec(buildOccupiedCheckScript(appDir), {
 			timeoutMs: PROBE_TIMEOUT_MS,
 		});
 		if (occupied.exitCode === 0) return undefined;
 
-		const stagingDir = `${N8N_SANDBOX_WORKSPACE_ROOT}/${RESTORE_STAGING_DIR}`;
+		const stagingDir = `${runner.root}/${RESTORE_STAGING_DIR}`;
 		const tarballPath = `${stagingDir}/${entry.namespace}-${Date.now()}-preview-restore.tgz`;
-		const prepared = await client.exec(entry.sandboxId, {
-			command: `mkdir -p ${stagingDir} ${appDir}`,
+		const prepared = await runner.exec(`mkdir -p ${stagingDir} ${appDir}`, {
 			timeoutMs: PROBE_TIMEOUT_MS,
 		});
 		if (prepared.exitCode !== 0) return this.startFailed(prepared);
-		await client.writeFile(entry.sandboxId, tarballPath, tarball.data);
-		const restored = await client.exec(entry.sandboxId, {
-			command: buildRestoreScript({ appDir, tarballPath }),
+		await runner.writeFile(tarballPath, tarball);
+		const restored = await runner.exec(buildRestoreScript({ appDir, tarballPath }), {
 			env: { CI: 'true' },
-			workdir: N8N_SANDBOX_WORKSPACE_ROOT,
 			timeoutMs: START_TIMEOUT_MS,
 		});
 		return restored.exitCode === 0 ? undefined : this.startFailed(restored);
 	}
 
-	private startFailed(result: { stdout: string; stderr: string }): AppPreviewStatus {
+	private startFailed(result: ExecOutput): AppPreviewStatus {
 		const log = `${result.stdout}${result.stderr}`.slice(-LOG_TAIL_BYTES);
 		return { status: 'unavailable', reason: 'start-failed', ...(log ? { log } : {}) };
 	}
 
 	/**
-	 * Fetches the dev server's root through the sandbox port route, which also
-	 * refreshes the sandbox's `last_active_at`.
+	 * Dev server: fetches its root through the sandbox port route, which also
+	 * refreshes the sandbox's `last_active_at`. Built: checks that the dist is
+	 * still in the sandbox filesystem.
 	 */
 	private async probe(entry: AppPreviewEntry): Promise<'ready' | 'gone' | 'unsupported'> {
+		if (entry.kind === 'built') {
+			try {
+				const present = await entry.dist?.filesystem.exists(`${entry.dist.dir}/index.html`);
+				return present ? 'ready' : 'gone';
+			} catch {
+				return 'gone';
+			}
+		}
 		const url = `${entry.sandbox.url.replace(/\/+$/, '')}/sandboxes/${entry.sandboxId}/ports/${entry.port}${APP_PREVIEW_PATH_PREFIX}/${entry.token}/`;
 		try {
 			const response = await fetch(url, {
@@ -359,7 +553,7 @@ export class AppPreviewService {
 	}
 
 	/** A 404 on the port route is only "route missing" when the sandbox itself is still there. */
-	private async sandboxExists(entry: AppPreviewEntry): Promise<boolean> {
+	private async sandboxExists(entry: AppPreviewDevEntry): Promise<boolean> {
 		try {
 			await this.client(entry.sandbox).getSandbox(entry.sandboxId);
 			return true;
@@ -370,6 +564,42 @@ export class AppPreviewService {
 
 	private client(sandbox: AppPreviewSandbox): SandboxClient {
 		return new SandboxClient({ baseUrl: sandbox.url, apiKey: sandbox.apiKey });
+	}
+
+	private clientRunner(client: SandboxClient, sandboxId: string): SandboxRunner {
+		return {
+			root: N8N_SANDBOX_WORKSPACE_ROOT,
+			exec: async (command, options) =>
+				await client.exec(sandboxId, {
+					command,
+					...(options?.env ? { env: options.env } : {}),
+					workdir: N8N_SANDBOX_WORKSPACE_ROOT,
+					timeoutMs: options?.timeoutMs ?? PROBE_TIMEOUT_MS,
+				}),
+			writeFile: async (path, content) => await client.writeFile(sandboxId, path, content),
+		};
+	}
+
+	/** Undefined when the workspace cannot run commands or read files, which a preview needs. */
+	private async workspaceRunner(workspace: Workspace): Promise<WorkspaceRunner | undefined> {
+		const root = await getWorkspaceRoot(workspace);
+		const scoped = createScopedWorkspace(workspace, root);
+		const executeCommand = scoped.sandbox?.executeCommand?.bind(scoped.sandbox);
+		const filesystem = scoped.filesystem;
+		if (!executeCommand || !filesystem) return undefined;
+		return {
+			root,
+			filesystem,
+			exec: async (command, options) => {
+				const result = await executeCommand(command, [], {
+					cwd: root,
+					env: options?.env,
+					timeout: options?.timeoutMs ?? PROBE_TIMEOUT_MS,
+				});
+				return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
+			},
+			writeFile: async (path, content) => await filesystem.writeFile(path, content),
+		};
 	}
 
 	private verify(token: string): AppPreviewTokenClaims | undefined {

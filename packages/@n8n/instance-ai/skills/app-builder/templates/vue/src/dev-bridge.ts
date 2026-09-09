@@ -1,8 +1,9 @@
 import type { ErrorPayload } from 'vite';
 
 // Reports compile and runtime errors to the n8n editor that embeds the live
-// preview, so they reach the assistant with the user's next message. Loaded
-// only by `vite dev` (see main.ts); a build never includes this file.
+// preview, so they reach the assistant with the user's next message. Loaded by
+// `vite dev` and by n8n's preview build (see main.ts); a publish build never
+// includes this file.
 
 type PreviewDiagnostic = {
 	kind: 'vite-error' | 'uncaught';

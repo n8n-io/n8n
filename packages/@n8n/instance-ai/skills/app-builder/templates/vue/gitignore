@@ -4,3 +4,4 @@ dist
 *.tsbuildinfo
 .n8n-dev.log
 .n8n-dev.pid
+.n8n-preview-dist

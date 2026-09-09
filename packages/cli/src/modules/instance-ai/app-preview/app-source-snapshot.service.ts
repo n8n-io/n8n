@@ -11,7 +11,14 @@ import { AppsService } from '@/modules/apps/apps.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 /** Same list `apps build` uses for the source tarball (`apps.tool.ts`); keep them in step. */
-const SNAPSHOT_EXCLUDES = ['node_modules', 'dist', '.git', '.n8n-dev.log', '.n8n-dev.pid'];
+const SNAPSHOT_EXCLUDES = [
+	'node_modules',
+	'dist',
+	'.git',
+	'.n8n-dev.log',
+	'.n8n-dev.pid',
+	'.n8n-preview-dist',
+];
 /** Same staging directory `apps build` uses: the scoped filesystem only reads inside the workspace root. */
 const STAGING_DIR = '.app-builds';
 const APPS_DIR = 'apps';

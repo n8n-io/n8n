@@ -54,9 +54,11 @@ export class AppPreviewController {
 	}
 
 	/**
-	 * Starts (or confirms) the app's dev server in the thread's sandbox and returns
-	 * its preview URL. A thread that has not held the app yet gets its sandbox
-	 * created and the app's newest stored source restored into it first.
+	 * Starts (or confirms) the app's preview in the thread's sandbox and returns
+	 * its URL: a dev server where the sandbox service can route to it, a build
+	 * served from the sandbox filesystem otherwise. A thread that has not held
+	 * the app yet gets its sandbox created and the app's newest stored source
+	 * restored into it first.
 	 */
 	@Post('/:appId/preview')
 	@ProjectScope('app:read')
@@ -69,8 +71,8 @@ export class AppPreviewController {
 		const app = await this.getAppInProject(appId, req.params.projectId);
 		await this.assertThreadOwned(req.user.id, dto.threadId);
 
-		const sandbox = await this.instanceAiService.getN8nSandboxConfig(req.user);
-		if (!sandbox) return { status: 'unsupported', reason: 'provider' };
+		const access = await this.instanceAiService.getAppPreviewSandbox(req.user);
+		if (!access.enabled) return { status: 'unsupported', reason: 'provider' };
 
 		return await this.appPreviewService.ensure({
 			threadId: dto.threadId,
@@ -78,7 +80,7 @@ export class AppPreviewController {
 			projectId: app.projectId,
 			namespace: app.namespace,
 			userId: req.user.id,
-			sandbox,
+			sandbox: access.n8nSandbox,
 			getWorkspace: async () =>
 				await this.instanceAiService.getOrCreateWorkspace(dto.threadId, req.user),
 			getSourceTarball: async () => await this.appsService.getSourceTarball(app.id),

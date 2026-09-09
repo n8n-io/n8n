@@ -53,8 +53,8 @@ const NPM_INSTALL_COMMAND = `npm install ${NPM_INSTALL_FLAGS}`;
 const NO_PACKAGE_JSON_EXIT = 99;
 /** Core dump names: `core`, `core.<pid>`, `<name>.core`. Anchored to the app root so `src/core/` stays in. */
 const CORE_DUMP_EXCLUDES = ['./core', './core.*', './*.core'];
-/** Where n8n's live-preview dev server writes its output and pid inside the app directory. */
-const DEV_SERVER_FILES = ['.n8n-dev.log', '.n8n-dev.pid'];
+/** Written by n8n's live preview inside the app directory: the dev server's log and pid, and the fallback build's output. */
+const LIVE_PREVIEW_FILES = ['.n8n-dev.log', '.n8n-dev.pid', '.n8n-preview-dist'];
 
 const createSchema = z.object({
 	action: z.literal('create'),
@@ -251,7 +251,7 @@ export function buildCheckScript(input: {
 		`if [ -d ${q(`${outDir}/server`)} ] || [ -d .output/server ]; then echo ${q(`${CHECK_FAIL_MARKER} server output found (${outDir}/server or .output/server). Only a static export can be served.`)}; exit 1; fi`,
 		`mkdir -p ${q(dirnamePosix(input.distTarball))}`,
 		`tar -czf ${q(input.distTarball)} -C ${q(outDir)} .`,
-		`tar -czf ${q(input.sourceTarball)} --exclude=node_modules --exclude=${q(outDir)} --exclude=.git ${[...DEV_SERVER_FILES, ...CORE_DUMP_EXCLUDES.map(q)].map((pattern) => `--exclude=${pattern}`).join(' ')} -C . .`,
+		`tar -czf ${q(input.sourceTarball)} --exclude=node_modules --exclude=${q(outDir)} --exclude=.git ${[...LIVE_PREVIEW_FILES, ...CORE_DUMP_EXCLUDES.map(q)].map((pattern) => `--exclude=${pattern}`).join(' ')} -C . .`,
 		`dist_size=$(stat -c %s ${q(input.distTarball)})`,
 		`src_size=$(stat -c %s ${q(input.sourceTarball)})`,
 		`if [ "$dist_size" -gt ${maxBytes} ]; then echo "${CHECK_FAIL_MARKER} build output is $dist_size bytes compressed; the limit is ${maxBytes}. Remove large assets from ${outDir}."; exit 1; fi`,

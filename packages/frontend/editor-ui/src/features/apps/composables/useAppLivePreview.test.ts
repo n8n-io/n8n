@@ -75,11 +75,15 @@ describe('useAppLivePreview', () => {
 		await Promise.resolve();
 	}
 
-	function mountLive(visible = ref(true), builtVersionId = ref<string | undefined>()) {
+	function mountLive(
+		visible = ref(true),
+		builtVersionId = ref<string | undefined>(),
+		running = ref(false),
+	) {
 		const scope = effectScope();
-		const live = scope.run(() => useAppLivePreview(target, visible, builtVersionId));
+		const live = scope.run(() => useAppLivePreview(target, visible, builtVersionId, running));
 		if (!live) throw new Error('scope did not run');
-		return { ...live, visible, builtVersionId, scope };
+		return { ...live, visible, builtVersionId, running, scope };
 	}
 
 	beforeEach(() => {
@@ -220,6 +224,75 @@ describe('useAppLivePreview', () => {
 		live.builtVersionId.value = 'v-3';
 		await flush();
 		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(2);
+		live.scope.stop();
+	});
+
+	it('ensures once more when the run ends and follows the URL of the rebuilt preview', async () => {
+		const REBUILT: AppPreviewStatus = { ...READY, url: '/apps-preview/tok/?b=2' };
+		ensureAppPreviewApi.mockResolvedValueOnce(READY).mockResolvedValue(REBUILT);
+		const live = mountLive();
+		await flush();
+		expect(live.liveUrl.value).toBe('/apps-preview/tok/');
+
+		live.running.value = true;
+		await flush();
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(1);
+
+		live.running.value = false;
+		await flush();
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(2);
+		expect(live.liveUrl.value).toBe('/apps-preview/tok/?b=2');
+		expect(live.status.value).toEqual(REBUILT);
+
+		await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_HEARTBEAT_MS);
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(3);
+		live.scope.stop();
+	});
+
+	it.each([
+		{ status: 'no-source' },
+		{ status: 'unavailable', reason: 'start-failed' },
+	] satisfies AppPreviewStatus[])('retries after %o when the run ends', async (answer) => {
+		ensureAppPreviewApi.mockResolvedValueOnce(answer).mockResolvedValueOnce(READY);
+		const live = mountLive(ref(true), ref(), ref(true));
+		await flush();
+		expect(live.status.value).toEqual(answer);
+
+		live.running.value = false;
+		await flush();
+
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(2);
+		expect(live.liveUrl.value).toBe('/apps-preview/tok/');
+		live.scope.stop();
+	});
+
+	it('does not ensure at the end of a run while starting, unsupported or hidden', async () => {
+		ensureAppPreviewApi.mockResolvedValueOnce(STARTING).mockResolvedValue(READY);
+		const live = mountLive(ref(true), ref(), ref(true));
+		await flush();
+
+		live.running.value = false;
+		await flush();
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(1);
+
+		await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_POLL_MS);
+		expect(live.liveUrl.value).toBe('/apps-preview/tok/');
+		live.visible.value = false;
+		live.running.value = true;
+		await flush();
+		live.running.value = false;
+		await flush();
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(2);
+
+		ensureAppPreviewApi.mockResolvedValue({ status: 'unsupported', reason: 'provider' });
+		live.visible.value = true;
+		await flush();
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(3);
+		live.running.value = true;
+		await flush();
+		live.running.value = false;
+		await flush();
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(3);
 		live.scope.stop();
 	});
 

@@ -34,6 +34,7 @@ const live = useAppLivePreview(
 	{ projectId: () => props.projectId, appId: () => props.appId, threadId: () => thread.id },
 	isVisible,
 	() => props.versionId,
+	() => thread.isStreaming,
 );
 
 const diagnostics = inject<AppPreviewDiagnostics | undefined>('appPreviewDiagnostics', undefined);

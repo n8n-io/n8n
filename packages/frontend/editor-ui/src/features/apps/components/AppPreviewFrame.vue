@@ -50,9 +50,11 @@ watch(iframeKey, () => {
 // `v` busts the browser cache on every new build; `r` on every manual refresh.
 const iframeSrc = computed(() => {
 	const pathSegments = props.path.split('/').filter(Boolean).map(encodeURIComponent).join('/');
-	// The live URL is `/apps-preview/<token>/`, so the page path appends directly.
-	const base = props.liveUrl
-		? `${props.liveUrl}${pathSegments}`
+	// The live URL is `/apps-preview/<token>/` plus, for a built preview, its `?b=` cache-buster;
+	// the page path appends to the slash, before the query.
+	const live = props.liveUrl ? new URL(props.liveUrl, window.location.origin) : undefined;
+	const base = live
+		? `${live.pathname}${pathSegments}${live.search}`
 		: `/apps/${props.namespace}/${pathSegments}?v=${props.versionId}`;
 	if (refreshCount.value === 0) return base;
 	return `${base}${base.includes('?') ? '&' : '?'}r=${refreshCount.value}`;

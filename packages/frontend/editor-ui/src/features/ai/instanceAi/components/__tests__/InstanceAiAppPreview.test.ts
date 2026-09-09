@@ -6,6 +6,7 @@ import InstanceAiAppPreview from '../InstanceAiAppPreview.vue';
 
 const threadState = {
 	id: 'thread-1',
+	isStreaming: false,
 	producedArtifacts: new Map([
 		['app-1', { type: 'app', id: 'app-1', name: 'Greeter', projectId: 'proj-1' }],
 	]),
@@ -83,10 +84,11 @@ describe('InstanceAiAppPreview', () => {
 		liveStatus.value = { status: 'starting' };
 		const wrapper = mountPreview({ versionId: 'v-1' });
 
-		const [target, , builtVersionId] = useAppLivePreviewMock.mock.calls[0] as unknown as [
+		const [target, , builtVersionId, running] = useAppLivePreviewMock.mock.calls[0] as unknown as [
 			{ projectId: () => string; appId: () => string; threadId: () => string },
 			unknown,
 			() => string | undefined,
+			() => boolean,
 		];
 		expect([target.projectId(), target.appId(), target.threadId(), builtVersionId()]).toEqual([
 			'proj-1',
@@ -94,6 +96,10 @@ describe('InstanceAiAppPreview', () => {
 			'thread-1',
 			'v-1',
 		]);
+		expect(running()).toBe(false);
+		threadState.isStreaming = true;
+		expect(running()).toBe(true);
+		threadState.isStreaming = false;
 
 		const view = wrapper.get('[data-test-id="app-details-view-stub"]');
 		expect(view.attributes('data-live-status')).toBe('starting');

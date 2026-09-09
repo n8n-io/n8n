@@ -1,3 +1,4 @@
+import type { WorkspaceFilesystem } from '@n8n/agents';
 import type { User, UserRepository } from '@n8n/db';
 import express from 'express';
 import type { AddressInfo, Socket } from 'node:net';
@@ -8,7 +9,11 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AppPreviewProxyController } from '../app-preview-proxy.controller';
-import type { AppPreviewEntry, AppPreviewService } from '../app-preview.service';
+import type {
+	AppPreviewBuiltEntry,
+	AppPreviewDevEntry,
+	AppPreviewService,
+} from '../app-preview.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
@@ -23,7 +28,7 @@ describe('AppPreviewProxyController', () => {
 	let upstreamWs: WebSocketServer;
 	let server: HttpServer;
 	let baseUrl: string;
-	let entry: AppPreviewEntry;
+	let entry: AppPreviewDevEntry;
 
 	beforeAll(async () => {
 		upstream = createServer((req, res) => {
@@ -45,6 +50,7 @@ describe('AppPreviewProxyController', () => {
 		await new Promise<void>((resolve) => upstream.listen(0, '127.0.0.1', resolve));
 		const upstreamUrl = `http://127.0.0.1:${(upstream.address() as AddressInfo).port}`;
 		entry = {
+			kind: 'dev',
 			token: LIVE_TOKEN,
 			jti: 'jti-1',
 			sandboxId: 'sandbox-1',
@@ -310,5 +316,116 @@ describe('AppPreviewProxyController', () => {
 
 		expect(response.status).toBe(502);
 		expect(appPreviewService.markDead).toHaveBeenCalledWith(deadEntry);
+	});
+
+	describe('built preview', () => {
+		const readFile = vi.fn<(path: string) => Promise<Buffer>>();
+		const files: Record<string, string> = {
+			'apps/greeter/.n8n-preview-dist/index.html': '<html>built</html>',
+			'apps/greeter/.n8n-preview-dist/assets/index-abc.js': 'export {}',
+			'apps/greeter/.n8n-preview-dist/assets/logo.svg': '<svg/>',
+		};
+		const filesystem = { readFile } as unknown as WorkspaceFilesystem;
+		let builtEntry: AppPreviewBuiltEntry;
+
+		beforeEach(() => {
+			const { sandbox: _sandbox, port: _port, kind: _kind, ...base } = entry;
+			builtEntry = {
+				...base,
+				kind: 'built',
+				buildSeq: 3,
+				builtAt: new Date(),
+				dist: { filesystem, dir: 'apps/greeter/.n8n-preview-dist' },
+			};
+			appPreviewService.resolveToken.mockImplementation((token) =>
+				token === LIVE_TOKEN ? builtEntry : undefined,
+			);
+			readFile.mockImplementation(async (path) => {
+				const content = files[path];
+				if (content === undefined) throw new Error(`ENOENT: ${path}`);
+				return await Promise.resolve(Buffer.from(content));
+			});
+		});
+
+		it('serves index.html from the sandbox filesystem with the sandbox CSP and no caching', async () => {
+			const response = await get(`/apps-preview/${LIVE_TOKEN}/?b=3`, { accept: 'text/html' });
+
+			expect(response.status).toBe(200);
+			expect(await response.text()).toBe('<html>built</html>');
+			expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+			expect(response.headers.get('content-security-policy')).toMatch(/^sandbox /);
+			expect(response.headers.get('cache-control')).toBe('no-cache');
+			expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+			expect(response.headers.get('set-cookie')).toBeNull();
+			expect(readFile).toHaveBeenCalledWith('apps/greeter/.n8n-preview-dist/index.html');
+			expect(upstreamRequests).toHaveLength(0);
+			expect(userHasScopes).toHaveBeenCalled();
+		});
+
+		it.each([
+			['assets/index-abc.js', 'text/javascript; charset=utf-8'],
+			['assets/logo.svg', 'image/svg+xml'],
+		])('serves %s with its content type and revalidation caching', async (file, contentType) => {
+			const response = await get(`/apps-preview/${LIVE_TOKEN}/${file}?b=3`);
+
+			expect(response.status).toBe(200);
+			expect(response.headers.get('content-type')).toBe(contentType);
+			expect(response.headers.get('cache-control')).toBe('public, max-age=0, must-revalidate');
+			expect(response.headers.get('content-security-policy')).toMatch(/^sandbox /);
+			expect(response.headers.get('referrer-policy')).toBeNull();
+		});
+
+		it('falls back to index.html for an app route', async () => {
+			const response = await get(`/apps-preview/${LIVE_TOKEN}/clients/42`, { accept: 'text/html' });
+
+			expect(response.status).toBe(200);
+			expect(await response.text()).toBe('<html>built</html>');
+			expect(readFile.mock.calls.map(([path]) => path)).toEqual([
+				'apps/greeter/.n8n-preview-dist/clients/42',
+				'apps/greeter/.n8n-preview-dist/index.html',
+			]);
+		});
+
+		it('answers 404 when the dist has no index.html either', async () => {
+			readFile.mockRejectedValue(new Error('ENOENT'));
+
+			expect((await get(`/apps-preview/${LIVE_TOKEN}/`)).status).toBe(404);
+		});
+
+		it.each(['/../../../etc/passwd', '/assets/..%2F..%2Fpackage.json', '/%2e%2e/secret'])(
+			'answers 404 without reading when the path climbs out of the dist (%s)',
+			async (suffix) => {
+				const response = await getRaw(`/apps-preview/${LIVE_TOKEN}${suffix}`);
+
+				expect(response.statusCode).toBe(404);
+				expect(readFile).not.toHaveBeenCalled();
+			},
+		);
+
+		it('answers 405 for anything but GET and HEAD', async () => {
+			const response = await fetch(`${baseUrl}/apps-preview/${LIVE_TOKEN}/api/x`, {
+				method: 'POST',
+				body: '{}',
+			});
+
+			expect(response.status).toBe(405);
+			expect(response.headers.get('allow')).toBe('GET, HEAD');
+			expect(readFile).not.toHaveBeenCalled();
+		});
+
+		it('destroys the socket on a WebSocket upgrade, which a built preview has no use for', async () => {
+			const ws = new WebSocket(
+				`${baseUrl.replace('http', 'ws')}/apps-preview/${LIVE_TOKEN}/`,
+				'vite-hmr',
+			);
+			const outcome = await new Promise<string>((resolve) => {
+				ws.on('open', () => resolve('open'));
+				ws.on('error', () => resolve('error'));
+				ws.on('close', () => resolve('close'));
+			});
+
+			expect(outcome).not.toBe('open');
+			expect(upstreamRequests).toHaveLength(0);
+		});
 	});
 });

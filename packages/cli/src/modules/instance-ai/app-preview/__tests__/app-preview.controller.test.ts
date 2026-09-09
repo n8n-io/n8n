@@ -49,7 +49,10 @@ describe('AppPreviewController', () => {
 		vi.clearAllMocks();
 		appsService.getApp.mockResolvedValue(app);
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		instanceAiService.getN8nSandboxConfig.mockResolvedValue(sandbox);
+		instanceAiService.getAppPreviewSandbox.mockResolvedValue({
+			enabled: true,
+			n8nSandbox: sandbox,
+		});
 		appPreviewService.ensure.mockResolvedValue({ status: 'starting' });
 		instanceWriteAccess.isReadOnly.mockReturnValue(false);
 		instanceAiService.getCachedWorkspace.mockReturnValue(undefined);
@@ -269,13 +272,23 @@ describe('AppPreviewController', () => {
 		},
 	);
 
-	it('reports the provider as unsupported when the workspace is not an n8n sandbox', async () => {
-		instanceAiService.getN8nSandboxConfig.mockResolvedValue(null);
+	it('reports the provider as unsupported when the sandbox is disabled', async () => {
+		instanceAiService.getAppPreviewSandbox.mockResolvedValue({ enabled: false });
 
 		await expect(controller.ensure(req, res, 'app-1', { threadId: 'thread-1' })).resolves.toEqual({
 			status: 'unsupported',
 			reason: 'provider',
 		});
 		expect(appPreviewService.ensure).not.toHaveBeenCalled();
+	});
+
+	it('ensures without a sandbox service when the provider cannot route to a port', async () => {
+		instanceAiService.getAppPreviewSandbox.mockResolvedValue({ enabled: true });
+
+		await controller.ensure(req, res, 'app-1', { threadId: 'thread-1' });
+
+		expect(appPreviewService.ensure).toHaveBeenCalledWith(
+			expect.objectContaining({ appId: 'app-1', sandbox: undefined }),
+		);
 	});
 });

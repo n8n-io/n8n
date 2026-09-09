@@ -12,6 +12,6 @@ if (THEME_MODE === 'dark' || (THEME_MODE === 'system' && prefersDark)) {
 	document.documentElement.classList.add('dark');
 }
 
-if (import.meta.env.DEV) void import('./dev-bridge');
+if (import.meta.env.DEV || import.meta.env.VITE_N8N_PREVIEW) void import('./dev-bridge');
 
 createApp(App).use(router).mount('#app');

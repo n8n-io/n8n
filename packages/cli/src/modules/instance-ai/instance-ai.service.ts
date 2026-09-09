@@ -1975,17 +1975,22 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Where a thread's workspace lives when the provider is the n8n sandbox
-	 * service; null for Daytona or a disabled sandbox. Only that service can
-	 * route to a port inside the sandbox, which the live app preview needs.
+	 * How the live app preview reaches a thread's sandbox. Only the n8n sandbox
+	 * service can route to a port inside the sandbox, so `n8nSandbox` is set for
+	 * that provider alone; other providers get a preview built into the workspace.
 	 */
-	async getN8nSandboxConfig(user: User): Promise<{ url: string; apiKey?: string } | null> {
+	async getAppPreviewSandbox(
+		user: User,
+	): Promise<
+		{ enabled: false } | { enabled: true; n8nSandbox?: { url: string; apiKey?: string } }
+	> {
 		try {
 			const config = await this.sandboxService.resolveSandboxConfig(user);
-			if (!config.enabled || config.provider !== 'n8n-sandbox') return null;
-			return { url: config.serviceUrl, apiKey: config.apiKey };
+			if (!config.enabled) return { enabled: false };
+			if (config.provider !== 'n8n-sandbox') return { enabled: true };
+			return { enabled: true, n8nSandbox: { url: config.serviceUrl, apiKey: config.apiKey } };
 		} catch {
-			return null;
+			return { enabled: false };
 		}
 	}
 
@@ -6890,11 +6895,15 @@ export class InstanceAiService {
 				this.logger.debug('No cached sandbox to snapshot app sources from', { threadId });
 				return;
 			}
+			// Marked before the first await: the run-finish event is already out, and the
+			// client's ensure that follows it must find the rebuild in flight.
+			const rebuilt = Container.get(AppPreviewService).rebuildIfBuilt(threadId, entry.workspace);
 			await Container.get(AppSourceSnapshotService).snapshotAfterRun(
 				threadId,
 				user,
 				entry.workspace,
 			);
+			await rebuilt;
 		} catch (error) {
 			this.logger.warn('App source snapshot failed', {
 				threadId,
