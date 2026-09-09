@@ -46,6 +46,9 @@ export type EffectivePolicy = {
 	readonly attachments: readonly PolicyAttachment[];
 };
 
+/** One type's composed verdict, as `evaluateComposedTypes` reports it. */
+export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
+
 type PolicyDocumentWrite = {
 	readonly policy: TypeAvailabilityPolicy;
 	readonly warnings: readonly ShadowWarning[];
@@ -681,20 +684,49 @@ export class TypeAvailabilityPolicyService {
 	}
 
 	/**
-	 * Composes the instance and project verdicts for one type, per `evaluateComposedType`. Reads
-	 * both scopes' effective policies in parallel — point-in-time snapshots, not one transaction,
-	 * which is fine for an evaluation path (unlike a write).
+	 * Composes the instance and project verdicts for one type, per `evaluateComposedType`.
 	 */
 	async evaluateComposedType(
 		kind: string,
 		projectId: string,
 		typeName: string,
 	): Promise<ComposedVerdict> {
+		const { instance, project } = await this.readComposedScopes(kind, projectId);
+
+		return evaluateComposedType(instance, project, typeName);
+	}
+
+	/**
+	 * Composes the verdict for many types against one project, reading each scope once and
+	 * evaluating in memory. There is no materialized effective set — recomputing every loaded
+	 * type against a realistic rule list is cheaper than keeping a cached one fresh.
+	 */
+	async evaluateComposedTypes(
+		kind: string,
+		projectId: string,
+		typeNames: readonly string[],
+	): Promise<ComposedTypeVerdict[]> {
+		const { instance, project } = await this.readComposedScopes(kind, projectId);
+
+		return typeNames.map((name) => ({
+			name,
+			...evaluateComposedType(instance, project, name),
+		}));
+	}
+
+	/**
+	 * Reads both scopes in parallel — point-in-time snapshots, not one transaction, which is
+	 * fine for an evaluation path (unlike a write).
+	 */
+	private async readComposedScopes(
+		kind: string,
+		projectId: string,
+	): Promise<{ instance: EffectivePolicy; project: EffectivePolicy }> {
 		const [instance, project] = await Promise.all([
 			this.getEffectivePolicy(kind, null),
 			this.getEffectivePolicy(kind, projectId),
 		]);
 
-		return evaluateComposedType(instance, project, typeName);
+		return { instance, project };
 	}
 }

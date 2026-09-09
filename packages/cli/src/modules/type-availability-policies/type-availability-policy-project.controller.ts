@@ -3,13 +3,9 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { NODE_TYPES_KIND } from './constants';
 import { PutProjectPolicyDto } from './dto/put-project-policy.dto';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
-
-/**
- * The one `kind` this REST surface manages — see `TypeAvailabilityPolicyInstanceController`.
- */
-const NODE_TYPES_KIND = 'node-types';
 
 /**
  * Project-scope REST surface for a project's own node type availability policy row. Every
