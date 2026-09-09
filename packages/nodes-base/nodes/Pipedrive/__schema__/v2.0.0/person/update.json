@@ -1,0 +1,77 @@
+{
+	"properties": {
+		"add_time": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"type": "object"
+		},
+		"emails": {
+			"items": {
+				"properties": {
+					"label": {
+						"type": "string"
+					},
+					"primary": {
+						"type": "boolean"
+					},
+					"value": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"first_name": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"label_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"last_name": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"org_id": {
+			"type": "number"
+		},
+		"owner_id": {
+			"type": "number"
+		},
+		"phones": {
+			"items": {
+				"properties": {
+					"label": {
+						"type": "string"
+					},
+					"primary": {
+						"type": "boolean"
+					},
+					"value": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"picture_id": {},
+		"update_time": {
+			"type": "string"
+		},
+		"visible_to": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

@@ -132,7 +132,11 @@ function createMockRoute(threadId = 'thread-1') {
 // Test helper — create composable + flush
 // ---------------------------------------------------------------------------
 
-function setup(options?: { threadOverrides?: Partial<MockThread> }) {
+function setup(options?: {
+	threadOverrides?: Partial<MockThread>;
+	initialAgentId?: () => string | undefined;
+	previewOpenState?: () => boolean | undefined;
+}) {
 	const thread = createMockThread();
 	if (options?.threadOverrides) Object.assign(thread, options.threadOverrides);
 	const route = createMockRoute();
@@ -141,6 +145,8 @@ function setup(options?: { threadOverrides?: Partial<MockThread> }) {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		thread: thread as any,
 		threadId: () => route.params.threadId,
+		initialAgentId: options?.initialAgentId,
+		previewOpenState: options?.previewOpenState,
 	});
 
 	return { ...result, thread, route };
@@ -1105,6 +1111,31 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.activeTabId.value).toBe('agent-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('restores the attached agent instead of an earlier helper workflow', async () => {
+			const ctx = setup({ previewOpenState: () => true });
+			ctx.thread.isHydratingThread = true;
+			registerWorkflow(ctx.thread, 'workflow-1', 'Helper workflow');
+			registerAgent(ctx.thread, 'agent-1', 'Support Agent', 'proj-1');
+			ctx.thread.messages = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'agent-1',
+							name: 'Support Agent',
+							projectId: 'proj-1',
+						},
+					],
+				}),
+			];
+			ctx.thread.isHydratingThread = false;
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('agent-1');
+			expect(ctx.activeAgentId.value).toBe('agent-1');
 		});
 	});
 

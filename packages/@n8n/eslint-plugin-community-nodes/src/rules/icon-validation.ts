@@ -16,7 +16,6 @@ import {
 
 const messages = {
 	iconFileNotFound: 'Icon file "{{ iconPath }}" does not exist',
-	lightDarkSame: 'Light and dark icons cannot be the same file. Both point to "{{ iconPath }}"',
 	invalidIconPath: 'Icon path "{{ iconPath }}" must use file: protocol and be a string',
 	missingIcon: 'Node/Credential class must have an icon property defined',
 	addPlaceholder: 'Add icon property with placeholder',
@@ -29,8 +28,7 @@ export const IconValidationRule = createRule({
 	meta: {
 		type: 'problem',
 		docs: {
-			description:
-				'Validate node and credential icon files exist, use the file: protocol, and that light/dark icons are different',
+			description: 'Validate node and credential icon files exist and use the file: protocol',
 		},
 		messages,
 		schema: [],
@@ -114,22 +112,12 @@ export const IconValidationRule = createRule({
 				const lightProperty = findObjectProperty(iconValue, 'light');
 				const darkProperty = findObjectProperty(iconValue, 'dark');
 
-				const lightPath = lightProperty ? getStringLiteralValue(lightProperty.value) : null;
-				const darkPath = darkProperty ? getStringLiteralValue(darkProperty.value) : null;
-
+				// A theme-agnostic file can fill both slots, so only each path is checked
 				if (lightProperty) {
-					validateIcon(lightPath, lightProperty.value);
+					validateIcon(getStringLiteralValue(lightProperty.value), lightProperty.value);
 				}
 				if (darkProperty) {
-					validateIcon(darkPath, darkProperty.value);
-				}
-
-				if (lightPath && darkPath && lightPath === darkPath && lightProperty) {
-					context.report({
-						node: lightProperty.value,
-						messageId: 'lightDarkSame',
-						data: { iconPath: lightPath.replace(/^file:/, '') },
-					});
+					validateIcon(getStringLiteralValue(darkProperty.value), darkProperty.value);
 				}
 			}
 		};

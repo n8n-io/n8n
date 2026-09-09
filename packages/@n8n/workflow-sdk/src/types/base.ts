@@ -493,6 +493,17 @@ export interface StickyNoteConfig {
  * Subnode configuration for AI nodes
  */
 export interface SubnodeConfig {
+	/**
+	 * Language model(s) for the parent node.
+	 *
+	 * - single instance, or `[m]` — the primary model, on input index 0.
+	 * - flat `[primary, fallback]` — sequential input indices (0, 1, …). On an Agent
+	 *   or Basic LLM Chain, index 1 is the Fallback Model input, which the node only
+	 *   declares when its `needsFallback` parameter is `true` — set that alongside,
+	 *   or the fallback never runs. Model Selector takes many models this way and
+	 *   has no such toggle.
+	 * - nested `[[m1, m2]]` — every model on the SAME input index; not a fallback.
+	 */
 	model?: LanguageModelInstance | LanguageModelInstance[] | LanguageModelInstance[][];
 	memory?: MemoryInstance;
 	tools?: ToolInstance[];
