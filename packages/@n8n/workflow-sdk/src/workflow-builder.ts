@@ -462,8 +462,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		assertNotOutputSelector(handler, 'onError');
 
 		const sourceKey = this._currentNode;
-		const sourceInstance = sourceKey ? this._nodes.get(sourceKey)?.instance : undefined;
-		if (!sourceInstance || typeof sourceInstance.onError !== 'function') {
+		const sourceGraphNode = sourceKey ? this._nodes.get(sourceKey) : undefined;
+		if (!sourceGraphNode || typeof sourceGraphNode.instance.onError !== 'function') {
 			throw new Error(
 				'.onError() must follow adding a node. Use it as ' +
 					'workflow.add(trigger).to(httpNode).onError(errorHandler).',
@@ -472,11 +472,41 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		if (handler === null || handler === undefined) return this;
 
+		const sourceInstance = sourceGraphNode.instance;
+		// A node handle from `fromJSON()` declares no connections — every one of its
+		// connection methods throws by design, and connections are made on the builder
+		// instead. Write the route into the graph in the shape the serializer folds into
+		// the error pin, so `.onError()` works on an imported workflow like `.to()` does.
+		if ('_originalName' in sourceInstance.config) {
+			this.connectErrorRouteInGraph(sourceGraphNode, handler);
+			return this;
+		}
+
 		sourceInstance.onError(handler as NodeInstance<string, string, unknown>);
 		// The handler is reachable only through the node's declared connections, so pull it
 		// — and anything it fans out to — into the graph.
 		this.addSingleNodeConnectionTargets(this._nodes, sourceInstance);
 		return this;
+	}
+
+	/** Error route for a node that cannot declare one on itself. See {@link onError}. */
+	private connectErrorRouteInGraph(sourceGraphNode: GraphNode, handler: unknown): void {
+		const target = isInputTarget(handler)
+			? handler.node
+			: (handler as NodeInstance<string, string, unknown>);
+		const targetIndex = isInputTarget(handler) ? handler.inputIndex : 0;
+		const targetKey = this.addNodeWithSubnodes(this._nodes, target) ?? target.name;
+
+		sourceGraphNode.instance.config.onError ??= 'continueErrorOutput';
+
+		const errorConns =
+			sourceGraphNode.connections.get('error') ?? new Map<number, ConnectionTarget[]>();
+		const outputConns: ConnectionTarget[] = errorConns.get(0) ?? [];
+		if (!outputConns.some((c) => c.node === targetKey && c.index === targetIndex)) {
+			outputConns.push({ node: targetKey, type: 'main', index: targetIndex });
+			errorConns.set(0, outputConns);
+			sourceGraphNode.connections.set('error', errorConns);
+		}
 	}
 
 	/**

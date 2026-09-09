@@ -978,6 +978,46 @@ describe('Workflow Builder', () => {
 			expect(json.connections['Fetch Positions']?.main[0]?.[0]?.node).toBe('Compute');
 		});
 
+		it('routes the error output of an imported node, which declares no connections itself', () => {
+			// A node handle from fromJSON() throws on every connection method by design, so
+			// the builder has to wire this route into the graph itself.
+			const imported: WorkflowJSON = {
+				id: 'test-id',
+				name: 'Imported',
+				nodes: [
+					{
+						id: 't',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'h',
+						name: 'Fetch',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+				connections: { Start: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] } },
+			};
+			const notify = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.3,
+				config: { name: 'Notify' },
+			});
+
+			const json = workflow.fromJSON(imported).onError(notify).toJSON();
+
+			// fromJSON leaves the cursor on the last imported node.
+			expect(json.connections.Fetch?.main[1]?.[0]?.node).toBe('Notify');
+			expect(json.nodes.find((n) => n.name === 'Fetch')?.onError).toBe('continueErrorOutput');
+			expect(json.nodes.map((n) => n.name)).toContain('Notify');
+		});
+
 		it('explains itself when there is no node to attach to', () => {
 			const { sendFetchFailure } = buildRetryFlow();
 
