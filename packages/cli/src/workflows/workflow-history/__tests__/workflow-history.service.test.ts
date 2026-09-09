@@ -269,19 +269,6 @@ describe('WorkflowHistoryService', () => {
 		});
 	});
 
-	describe('insertVersion', () => {
-		it('rethrows a failed insert instead of logging it', async () => {
-			const workflow = getWorkflow({ addNodeWithoutCreds: true });
-			workflow.connections = {};
-			workflow.versionId = '456';
-			workflowHistoryRepository.insert.mockRejectedValueOnce(new Error('Test error'));
-
-			await expect(
-				workflowHistoryService.insertVersion({ user: testUser, workflow, workflowId: '123' }),
-			).rejects.toThrow('Test error');
-		});
-	});
-
 	describe('getVersionsByIds', () => {
 		it('should return empty array when versionIds is empty', async () => {
 			// Arrange

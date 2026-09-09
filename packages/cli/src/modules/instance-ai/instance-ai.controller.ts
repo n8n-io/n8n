@@ -1047,8 +1047,8 @@ export class InstanceAiController {
 	 * Seed an existing (owned) thread with a previously exported conversation:
 	 * recreate the artifacts the history references — workflows (node credentials
 	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
-	 * and agents — then write the native message log verbatim and publish the
-	 * workflows the seed flags `published`. The thread then continues as if the
+	 * and agents — publish the workflows the seed flags `published`, then write the
+	 * native message log verbatim. The thread then continues as if the
 	 * conversation really happened, so an eval can drive the next turn live.
 	 */
 	@Post('/eval/restore-thread')
@@ -1109,6 +1109,10 @@ export class InstanceAiController {
 				idMap,
 				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
 			);
+			// BEFORE the messages, which the rollback cannot undo: a refused activation
+			// (no trigger, webhook conflict, unresolved credential) must fail while the
+			// restore is still fully rollback-able. The rollback unpublishes.
+			await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
 			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
 			// Built (and validated) BEFORE the message write: a rejected binding — two
 			// agents whose refs collide — must fail while the restore is still fully
@@ -1143,8 +1147,6 @@ export class InstanceAiController {
 					payload.messages,
 				));
 			}
-			// Last: a refused activation leaves nothing live for the rollback to undo.
-			await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
 		} catch (error) {
 			if (bindingWritten) {
 				try {

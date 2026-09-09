@@ -263,16 +263,20 @@ export class EvalThreadRestoreService {
 	}
 
 	/** Publish the seeds flagged `published` on the product's own activation path,
-	 *  so the workflow is live the way the user's publish left it. Run last: a
-	 *  refusal (unresolved credential, no trigger) fails the whole restore. Every
-	 *  seed attempted is unpublished again on failure, because the rollback only
-	 *  deletes rows and would leave registered triggers behind; a seed refused
-	 *  before activation has no live version, so its unpublish is a no-op. */
+	 *  so the workflow is live the way the user's publish left it. Runs before the
+	 *  messages: a refusal (unresolved credential, no trigger, webhook conflict)
+	 *  must fail while the restore can still be rolled back, and the messages
+	 *  cannot be. Every seed attempted is unpublished again on failure: the
+	 *  rollback only covers the workflows this restore created, and a re-applied
+	 *  seed is not one of them. */
 	async publishSeedWorkflows(workflows: InstanceAiEvalSeedWorkflow[], user: User): Promise<void> {
 		const attempted: string[] = [];
 		try {
 			for (const workflow of workflows) {
 				if (!workflow.published) continue;
+				// Activation looks the versionId up in the history ("Version not found"
+				// without the row); the snapshot writes it once and verifies it landed.
+				await this.workflowHistoryService.snapshotCurrent(workflow.id);
 				// Before the await: activation can throw after its triggers are registered.
 				attempted.push(workflow.id);
 				await this.workflowService.activateWorkflow(user, workflow.id);
@@ -289,11 +293,19 @@ export class EvalThreadRestoreService {
 		}
 	}
 
-	/** Best-effort delete (rollback of a failed restore). */
+	/** Best-effort delete (rollback of a failed restore). A published seed is
+	 *  unpublished first, so no trigger stays registered for a row that is gone. */
 	async deleteWorkflows(workflowIds: string[]): Promise<void> {
+		// One deadline for the whole batch, not one per seed.
+		const deadline = Date.now() + 10_000;
 		for (const id of workflowIds) {
 			try {
-				await this.awaitPublicationTeardown(id);
+				await this.workflowService.deactivateWorkflowAsSystem(id);
+			} catch {
+				// best-effort
+			}
+			await this.awaitPublicationTeardown(id, deadline);
+			try {
 				await this.workflowRepo.delete({ id });
 			} catch {
 				// best-effort
@@ -305,12 +317,16 @@ export class EvalThreadRestoreService {
 	 *  published-version mapping goes once the consumer has torn the triggers
 	 *  down, and its RESTRICT FK blocks the delete until then. Wait for it,
 	 *  bounded, so a slow consumer costs seconds rather than a leaked seed. Off
-	 *  the service no mapping is ever written, so this returns at once. */
-	private async awaitPublicationTeardown(workflowId: string): Promise<void> {
-		const deadline = Date.now() + 10_000;
-		while (await this.workflowPublishedVersionRepo.getPublishedVersionId(workflowId)) {
-			if (Date.now() >= deadline) return;
-			await new Promise((resolve) => setTimeout(resolve, 200));
+	 *  the service no mapping is ever written, so this returns at once. Never
+	 *  throws: the delete it guards is attempted either way. */
+	private async awaitPublicationTeardown(workflowId: string, deadline: number): Promise<void> {
+		try {
+			while (await this.workflowPublishedVersionRepo.getPublishedVersionId(workflowId)) {
+				if (Date.now() >= deadline) return;
+				await new Promise((resolve) => setTimeout(resolve, 200));
+			}
+		} catch {
+			// best-effort
 		}
 	}
 
@@ -338,6 +354,7 @@ export class EvalThreadRestoreService {
 			}
 			const { credentials, ...rest } = node;
 			const resolved = await this.resolveNodeCredentials(
+				workflow,
 				credentials,
 				projectId,
 				allowedCredentialIds,
@@ -390,25 +407,20 @@ export class EvalThreadRestoreService {
 				await this.workflowRepo.createContent(entity, ctx);
 				await this.sharedWorkflowRepo.makeOwner([workflow.id], projectId, em);
 			}
-			// Publishing looks the live versionId up in the history; without this row
-			// a seeded workflow can never be published ("Version not found"). The
-			// strict insert fails the transaction instead of logging a missing row.
-			await this.workflowHistoryService.insertVersion({
-				user: 'Eval seed',
-				workflow: { versionId: entity.versionId, nodes, connections },
-				workflowId: workflow.id,
-				transactionManager: em,
-			});
 		});
 		return stored === null;
 	}
 
 	/** A seed names a node's credential the way the case's fixture does. Keep the
-	 *  ref only when the thread's project holds a credential of that type and name
-	 *  (one the thread's credential allowlist admits, when it has one), pointed at
-	 *  it; anything else addresses the source instance and is stripped, so a seed
-	 *  can never reach past the eval credential pin. */
+	 *  ref only when the thread's project holds exactly one credential of that type
+	 *  and name (among those the thread's credential allowlist admits, when it has
+	 *  one), pointed at it, as the product's own resolver does. Anything else
+	 *  addresses the source instance and is stripped, so a seed can never reach
+	 *  past the eval credential pin. A `published` seed is refused instead: it
+	 *  would go live with a node the case meant to be configured, and the case
+	 *  could pass for the wrong reason. */
 	private async resolveNodeCredentials(
+		seed: InstanceAiEvalSeedWorkflow,
 		credentials: unknown,
 		projectId: string,
 		allowedCredentialIds?: Set<string>,
@@ -417,13 +429,16 @@ export class EvalThreadRestoreService {
 		const resolved: INodeCredentials = {};
 		for (const [type, ref] of Object.entries(credentials)) {
 			if (!isRecord(ref) || typeof ref.name !== 'string') continue;
-			const candidates = await this.credentialsRepo.findByNameAndTypeInProject(
-				ref.name,
-				type,
-				projectId,
-			);
-			const match = candidates.find((c) => allowedCredentialIds?.has(c.id) ?? true);
-			if (match) resolved[type] = { id: match.id, name: match.name };
+			const candidates = (
+				await this.credentialsRepo.findByNameAndTypeInProject(ref.name, type, projectId)
+			).filter((c) => allowedCredentialIds?.has(c.id) ?? true);
+			if (candidates.length === 1) {
+				resolved[type] = { id: candidates[0].id, name: candidates[0].name };
+			} else if (seed.published) {
+				throw new BadRequestError(
+					`Seed workflow ${seed.id} is published, but its ${type} credential "${ref.name}" matched ${candidates.length} project credentials (need exactly 1)`,
+				);
+			}
 		}
 		return Object.keys(resolved).length > 0 ? resolved : undefined;
 	}

@@ -887,6 +887,24 @@ describe('InstanceAiController', () => {
 			expect(result).toMatchObject({ restored: 0, dataTableIds: ['dt-new'] });
 		});
 
+		it('publishes the flagged seeds before the messages, so a refused publish strands nothing', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+			evalThreadRestore.restoreWorkflows.mockResolvedValue(['wf-1']);
+			evalThreadRestore.publishSeedWorkflows.mockRejectedValueOnce(
+				new Error('Workflow has no trigger'),
+			);
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(
+				'Workflow has no trigger',
+			);
+
+			// The messages cannot be rolled back, so they are not written yet.
+			expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
+			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith(['wf-1']);
+		});
+
 		it('should roll back created workflows and data tables when a later step fails', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			memoryService.getThreadProjectId.mockResolvedValue('project-1');
