@@ -83,7 +83,7 @@ export async function initializeCore() {
 	// Must run before any view renders: expressions evaluate as soon as workflow
 	// data is displayed, and the engine has to be in place by then.
 	try {
-		await initializeExpressionEngine(settingsStore.settings.envFeatureFlags);
+		await initializeExpressionEngine(settingsStore.settings.expressionEngine);
 	} catch (error) {
 		console.error('Failed to initialize the expression engine', error);
 	}
@@ -276,6 +276,16 @@ function registerAuthenticationHooks() {
 
 	usersStore.registerLoginHook(async (user) => {
 		await settingsStore.getSettings();
+
+		// Start the expression engine now if the app booted unauthenticated.
+		// Public settings omit the engine, so `initializeCore` left the legacy
+		// evaluator in place; this is the first point where the choice is known.
+		// Nothing evaluates an expression before login, so this is early enough.
+		try {
+			await initializeExpressionEngine(settingsStore.settings.expressionEngine);
+		} catch (error) {
+			console.error('Failed to initialize the expression engine', error);
+		}
 
 		// Re-initialize SSO store with authenticated settings.
 		// Before login, public settings omit callbackUrl, leaving it empty.
