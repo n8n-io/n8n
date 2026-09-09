@@ -885,7 +885,7 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ ...initialConfig, name: 'My Agent' },
 				user,
-				{ modifiedBy: 'mcp' },
+				{ baseConfigHash: expect.stringMatching(/^[a-f0-9]{64}$/), modifiedBy: 'mcp' },
 			);
 			expect(result.structuredContent).toEqual({
 				ok: true,

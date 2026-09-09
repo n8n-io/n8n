@@ -729,7 +729,8 @@ interface ConfigAutosaveSnapshot {
 	projectId: string;
 	agentId: string;
 	config: AgentJsonConfig;
-	baseConfigHash: string | null;
+	/** `undefined` while the agent's config has not been fetched yet (e.g. before it is persisted). */
+	baseConfigHash: string | null | undefined;
 }
 
 interface SkillAutosaveSnapshot {
@@ -900,7 +901,11 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveRes
 			snapshot.projectId,
 			snapshot.agentId,
 			snapshot.config,
-			snapshot.baseConfigHash,
+			// Edits made before the agent was persisted have no fetched hash yet;
+			// the create response carries the hash of the seeded config.
+			snapshot.baseConfigHash === undefined
+				? (agent.value?.configHash ?? null)
+				: snapshot.baseConfigHash,
 		);
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {

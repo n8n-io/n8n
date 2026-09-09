@@ -6,7 +6,8 @@ import type { AgentJsonConfig } from '../types';
 export function useAgentConfig() {
 	const rootStore = useRootStore();
 	const config = ref<AgentJsonConfig | null>(null);
-	const configHash = ref<string | null>(null);
+	// `undefined` until a fetch or update lands; `null` when the agent has no config.
+	const configHash = ref<string | null>();
 	const loading = ref(false);
 
 	// Tracks the most recently requested (project, agent) pair. fetch/update
@@ -31,7 +32,7 @@ export function useAgentConfig() {
 	function repoint(projectId: string, agentId: string) {
 		latestKey = keyFor(projectId, agentId);
 		config.value = null;
-		configHash.value = null;
+		configHash.value = undefined;
 		loading.value = false;
 	}
 
@@ -54,13 +55,14 @@ export function useAgentConfig() {
 	 * `baseConfigHash` is the server hash the edit was made against. Callers
 	 * that debounce saves must capture it at edit time: a refresh landing in
 	 * between would otherwise lend the stale snapshot the fresh hash and let it
-	 * pass the backend's conflict check.
+	 * pass the backend's conflict check. An unknown hash is sent as `null`, so
+	 * the server rejects the write unless the agent really has no config yet.
 	 */
 	async function updateConfig(
 		projectId: string,
 		agentId: string,
 		data: AgentJsonConfig,
-		baseConfigHash: string | null = configHash.value,
+		baseConfigHash: string | null = configHash.value ?? null,
 	): Promise<{ versionId: string | null; stale: boolean }> {
 		const key = keyFor(projectId, agentId);
 		const result = await updateAgentConfig(
@@ -68,7 +70,7 @@ export function useAgentConfig() {
 			projectId,
 			agentId,
 			data,
-			baseConfigHash ?? undefined,
+			baseConfigHash,
 		);
 		const stale = latestKey !== key;
 		if (!stale) {

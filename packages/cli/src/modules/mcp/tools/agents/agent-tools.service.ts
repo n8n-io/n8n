@@ -595,7 +595,10 @@ export class McpAgentToolsService {
 								projectId,
 								initialConfig,
 								user,
-								{ modifiedBy: 'mcp' },
+								{
+									baseConfigHash: getAgentConfigHash(this.configFromEntity(agent)),
+									modifiedBy: 'mcp',
+								},
 							);
 							configHash = getAgentConfigHash(result.config);
 							versionId = result.versionId;

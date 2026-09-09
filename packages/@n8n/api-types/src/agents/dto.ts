@@ -131,7 +131,8 @@ export class CreateAgentDto extends Z.class({
 
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
-	baseConfigHash: z.string().optional(),
+	/** Hash of the config the edit was made against (`null` when the agent had none). */
+	baseConfigHash: z.string().nullable(),
 }) {}
 
 export class CreateAgentTaskDto extends Z.class({

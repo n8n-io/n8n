@@ -27,7 +27,6 @@ import { getAgentConfigHash } from '../utils/agent-config-hash';
 const agentId = 'agent-1';
 const projectId = 'project-1';
 const user = { id: 'user-1' } as User;
-const byUser = { modifiedBy: 'user' } as const;
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Support Agent',
@@ -55,6 +54,15 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		...overrides,
 	} as unknown as Agent;
 }
+
+/** Write options fenced against `agent`, the entity the repository mock returns. */
+function fencedOn(agent: Agent) {
+	return {
+		modifiedBy: 'user',
+		baseConfigHash: getAgentConfigHash(composeJsonConfig(agent)),
+	} as const;
+}
+const byUser = fencedOn(makeAgent());
 
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
@@ -329,7 +337,7 @@ describe('AgentConfigService', () => {
 					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 				} as unknown as AgentJsonConfig,
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
@@ -387,7 +395,7 @@ describe('AgentConfigService', () => {
 				projectId,
 				{ ...baseConfig, instructions: 'Updated instructions' },
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 			let saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema).toEqual(
@@ -406,7 +414,7 @@ describe('AgentConfigService', () => {
 				projectId,
 				{ ...baseConfig, integrations: [] },
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.integrations).toEqual([]);
@@ -423,13 +431,13 @@ describe('AgentConfigService', () => {
 				projectId,
 				{ ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' },
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 			let saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
 
 			// Omitting the field keeps the stored value (merge semantics).
-			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, byUser);
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
 
@@ -440,7 +448,7 @@ describe('AgentConfigService', () => {
 				projectId,
 				{ ...baseConfig, modelDeploymentName: '' },
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
@@ -450,13 +458,13 @@ describe('AgentConfigService', () => {
 				projectId,
 				{ ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' },
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 
 			// Full-replace callers remove it when omitted.
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, {
 				clearOmittedOptionalFields: true,
-				...byUser,
+				...fencedOn(agent),
 			});
 			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
@@ -480,7 +488,7 @@ describe('AgentConfigService', () => {
 				projectId,
 				{ ...baseConfig, memory: { enabled: false, storage: 'n8n' } },
 				user,
-				{ clearOmittedOptionalFields: true, ...byUser },
+				{ clearOmittedOptionalFields: true, ...fencedOn(agent) },
 			);
 
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
@@ -723,7 +731,7 @@ describe('AgentConfigService', () => {
 					},
 				},
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 
 			const saved = agentRepository.saveDraftFenced.mock.calls[0][0];
@@ -763,7 +771,7 @@ describe('AgentConfigService', () => {
 				projectId,
 				{ ...baseConfig, personalisation: { icon: 'mail' } },
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 
 			const saved = agentRepository.saveDraftFenced.mock.calls[0][0];
@@ -806,7 +814,7 @@ describe('AgentConfigService', () => {
 					personalisation: { icon: 'mail' },
 				},
 				user,
-				{ clearOmittedOptionalFields: true, ...byUser },
+				{ clearOmittedOptionalFields: true, ...fencedOn(agent) },
 			);
 
 			const saved = agentRepository.saveDraftFenced.mock.calls[0][0];
@@ -843,7 +851,7 @@ describe('AgentConfigService', () => {
 					},
 				},
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 
 			expect(agentRepository.saveDraftFenced.mock.calls[0][0].schema?.subAgents).toEqual({
@@ -865,7 +873,7 @@ describe('AgentConfigService', () => {
 					},
 				},
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 			expect(agentRepository.saveDraftFenced.mock.calls[0][0].schema?.subAgents).toEqual({
 				agents: [{ agentId: 'agent-3', useWhen: 'Use for unpublished work.' }],
@@ -880,7 +888,7 @@ describe('AgentConfigService', () => {
 						subAgents: { agents: [{ agentId, useWhen: 'Use for self-delegation.' }] },
 					},
 					user,
-					byUser,
+					fencedOn(agent),
 				),
 			).rejects.toThrow('cannot use itself');
 		});
@@ -959,9 +967,10 @@ describe('AgentConfigService', () => {
 
 		it('reports the write that first configures an agent as a creation, not a modification', async () => {
 			const { service, agentRepository, telemetry } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: blankConfig }));
+			const agent = makeAgent({ schema: blankConfig });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, byUser);
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 
 			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT)).toMatchObject({
 				agent_id: agentId,
@@ -997,14 +1006,15 @@ describe('AgentConfigService', () => {
 
 		it('stays silent when a write leaves the agent unconfigured, so a creation is always its first event', async () => {
 			const { service, agentRepository, telemetry } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: blankConfig }));
+			const agent = makeAgent({ schema: blankConfig });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.updateConfig(
 				agentId,
 				projectId,
 				{ ...blankConfig, name: 'Renamed' },
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 
 			expect(telemetry.track).not.toHaveBeenCalledWith(
@@ -1073,7 +1083,7 @@ describe('AgentConfigService', () => {
 				projectId,
 				{ ...baseConfig, instructions: 'Escalate billing questions' },
 				user,
-				{ modifiedBy },
+				{ ...byUser, modifiedBy },
 			);
 
 			expect(modifiedEvent(telemetry, entry)).toEqual(
@@ -1206,15 +1216,14 @@ describe('AgentConfigService', () => {
 
 		it('reports a providerTools-only change', async () => {
 			const { service, agentRepository, telemetry } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(
-				makeAgent({
-					schema: {
-						...baseConfig,
-						config: { webSearch: { enabled: true } },
-						providerTools: { 'anthropic.web_search': { maxUses: 5 } },
-					},
-				}),
-			);
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					config: { webSearch: { enabled: true } },
+					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.updateConfig(
 				agentId,
@@ -1225,7 +1234,7 @@ describe('AgentConfigService', () => {
 					providerTools: { 'anthropic.web_search': { maxUses: 10 } },
 				} as unknown as AgentJsonConfig,
 				user,
-				byUser,
+				fencedOn(agent),
 			);
 
 			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({

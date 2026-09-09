@@ -447,7 +447,7 @@ export const updateAgentConfig = async (
 	projectId: string,
 	agentId: string,
 	config: AgentJsonConfig,
-	baseConfigHash?: string,
+	baseConfigHash: string | null,
 ): Promise<AgentConfigMutationResponse> => {
 	return await makeRestApiRequest<AgentConfigMutationResponse>(
 		context,

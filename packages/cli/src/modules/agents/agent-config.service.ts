@@ -149,7 +149,8 @@ export class AgentConfigService {
 		config: unknown,
 		user: User,
 		options: {
-			baseConfigHash?: string | null;
+			/** Hash of the config the caller read before editing; `null` when the agent had none. */
+			baseConfigHash: string | null;
 			clearOmittedOptionalFields?: boolean;
 			modifiedBy: AgentActor;
 			/** Push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
@@ -158,10 +159,7 @@ export class AgentConfigService {
 	): Promise<AgentConfigMutationResponse> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
-		if (
-			options.baseConfigHash !== undefined &&
-			options.baseConfigHash !== getAgentConfigHash(composeJsonConfig(entity))
-		) {
+		if (options.baseConfigHash !== getAgentConfigHash(composeJsonConfig(entity))) {
 			throw new ConflictError(
 				'Agent config was changed elsewhere; reload to get the latest version',
 			);

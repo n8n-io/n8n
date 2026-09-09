@@ -10,7 +10,8 @@ import {
 } from './agent-publish.service';
 import { AgentValidationService } from './agent-validation.service';
 import type { Agent } from './entities/agent.entity';
-import { getAgentSkillHash } from './utils/agent-config-hash';
+import { composeJsonConfig } from './json-config/agent-config-composition';
+import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
 
 @Service()
 export class AgentRunnableStateService {
@@ -38,9 +39,12 @@ export class AgentRunnableStateService {
 		Agent & {
 			isRunnable: boolean;
 			hasPublishHistory: boolean;
+			configHash: string | null;
 			skillHashes: Record<string, string>;
 		}
 	> {
+		// Base hashes for the optimistic-concurrency checks on config and skill writes.
+		const configHash = getAgentConfigHash(composeJsonConfig(agent));
 		const skillHashes = Object.fromEntries(
 			Object.entries(agent.skills ?? {}).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 		);
@@ -49,6 +53,7 @@ export class AgentRunnableStateService {
 			return Object.assign(agent, {
 				isRunnable: true,
 				hasPublishHistory,
+				configHash,
 				skillHashes,
 			});
 		}
@@ -71,6 +76,7 @@ export class AgentRunnableStateService {
 		return Object.assign(agent, {
 			isRunnable: validation.status === 'valid',
 			hasPublishHistory,
+			configHash,
 			skillHashes,
 		});
 	}

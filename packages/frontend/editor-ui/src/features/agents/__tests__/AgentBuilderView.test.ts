@@ -273,7 +273,7 @@ const mockConfig = ref<TestAgentConfig | null>(
 		instructions: 'You are a helpful assistant.',
 	}),
 );
-const mockConfigHash = ref<string | null>('hash-1');
+const mockConfigHash = ref<string | null | undefined>('hash-1');
 // Stash the "desired config" separately so the fetchConfig mock can restore
 // the ref after `initialize()` clears `localConfig` and re-fetches. Without
 // this, the view's `localConfig = null` reset sticks — the config ref hasn't
@@ -1503,6 +1503,12 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 	it('flushes edits and persists an unsaved artifact before a Preview message', async () => {
 		mockPendingAgentRow('a2');
+		// Nothing was fetched for an agent that does not exist yet; the first save
+		// must be fenced against the config the create call seeded.
+		mockConfigHash.value = undefined;
+		createAgentMock.mockResolvedValueOnce(
+			makeAgentResponse({ id: 'a2', configHash: 'seeded-hash' }),
+		);
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -1533,7 +1539,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			'p2',
 			'a2',
 			expect.objectContaining({ name: 'Ready to chat' }),
-			'hash-1',
+			'seeded-hash',
 		);
 	});
 
