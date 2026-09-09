@@ -1849,6 +1849,7 @@ const instanceAiPermissionsSchema = z.object({
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeMcpTool: instanceAiPermissionModeSchema,
+	bindAppWorkflow: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -1875,6 +1876,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 	executeMcpTool: 'require_approval',
+	bindAppWorkflow: 'require_approval',
 };
 
 /**
