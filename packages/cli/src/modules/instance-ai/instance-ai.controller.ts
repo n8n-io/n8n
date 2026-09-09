@@ -1093,6 +1093,7 @@ export class InstanceAiController {
 		// restore doesn't leak workflows/tables/agents into the shared eval project.
 		let restored = 0;
 		let createdWorkflowIds: string[] = [];
+		let publishedWorkflowIds: string[] = [];
 		let createdAgentIds: string[] = [];
 		// Captured so the binding write is undoable: the message write happens after
 		// it, and without this a message failure left a binding pointing at agents the
@@ -1112,7 +1113,7 @@ export class InstanceAiController {
 			// BEFORE the messages, which the rollback cannot undo: a refused activation
 			// (no trigger, webhook conflict, unresolved credential) must fail while the
 			// restore is still fully rollback-able. The rollback unpublishes.
-			await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
+			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
 			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
 			// Built (and validated) BEFORE the message write: a rejected binding — two
 			// agents whose refs collide — must fail while the restore is still fully
@@ -1161,6 +1162,9 @@ export class InstanceAiController {
 				}
 			}
 			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
+			// Every seed this restore published, not only the created ones: a re-applied
+			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
+			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
 			throw error;

@@ -778,6 +778,7 @@ describe('InstanceAiController', () => {
 
 		beforeEach(() => {
 			evalThreadRestore.restoreAgents.mockResolvedValue([]);
+			evalThreadRestore.publishSeedWorkflows.mockResolvedValue([]);
 			// The allowlist service is real and shared: drop what the allowlist tests pinned.
 			evalCredentialAllowlists.clearThread(THREAD_ID);
 		});
@@ -903,6 +904,22 @@ describe('InstanceAiController', () => {
 			// The messages cannot be rolled back, so they are not written yet.
 			expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
 			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith(['wf-1']);
+		});
+
+		it('unpublishes a re-applied published seed when a later step fails', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+			// The seed id already existed in the project, so the restore created nothing.
+			evalThreadRestore.restoreWorkflows.mockResolvedValue([]);
+			evalThreadRestore.publishSeedWorkflows.mockResolvedValue(['wf-1']);
+			evalThreadRestore.restoreAgents.mockRejectedValueOnce(new Error('agents down'));
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow('agents down');
+
+			// Not in the created list, so the delete never sees it: the unpublish must.
+			expect(evalThreadRestore.unpublishWorkflows).toHaveBeenCalledWith(['wf-1']);
+			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith([]);
 		});
 
 		it('should roll back created workflows and data tables when a later step fails', async () => {

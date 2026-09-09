@@ -266,10 +266,14 @@ export class EvalThreadRestoreService {
 	 *  so the workflow is live the way the user's publish left it. Runs before the
 	 *  messages: a refusal (unresolved credential, no trigger, webhook conflict)
 	 *  must fail while the restore can still be rolled back, and the messages
-	 *  cannot be. Every seed attempted is unpublished again on failure: the
-	 *  rollback only covers the workflows this restore created, and a re-applied
-	 *  seed is not one of them. */
-	async publishSeedWorkflows(workflows: InstanceAiEvalSeedWorkflow[], user: User): Promise<void> {
+	 *  cannot be. Every seed attempted is unpublished again on failure. Returns
+	 *  the ids it published: the caller's rollback only deletes the workflows this
+	 *  restore created, and a re-applied seed is not one of them, so the caller
+	 *  unpublishes these when a later step fails. */
+	async publishSeedWorkflows(
+		workflows: InstanceAiEvalSeedWorkflow[],
+		user: User,
+	): Promise<string[]> {
 		const attempted: string[] = [];
 		try {
 			for (const workflow of workflows) {
@@ -282,14 +286,20 @@ export class EvalThreadRestoreService {
 				await this.workflowService.activateWorkflow(user, workflow.id);
 			}
 		} catch (error) {
-			for (const id of attempted) {
-				try {
-					await this.workflowService.deactivateWorkflowAsSystem(id);
-				} catch {
-					// best-effort, like deleteWorkflows
-				}
-			}
+			await this.unpublishWorkflows(attempted);
 			throw error;
+		}
+		return attempted;
+	}
+
+	/** Best-effort unpublish (rollback of a failed restore). */
+	async unpublishWorkflows(workflowIds: string[]): Promise<void> {
+		for (const id of workflowIds) {
+			try {
+				await this.workflowService.deactivateWorkflowAsSystem(id);
+			} catch {
+				// best-effort, like deleteWorkflows
+			}
 		}
 	}
 
@@ -428,15 +438,25 @@ export class EvalThreadRestoreService {
 		if (!isRecord(credentials)) return undefined;
 		const resolved: INodeCredentials = {};
 		for (const [type, ref] of Object.entries(credentials)) {
-			if (!isRecord(ref) || typeof ref.name !== 'string') continue;
+			const name = isRecord(ref) && typeof ref.name === 'string' ? ref.name : undefined;
+			if (name === undefined) {
+				// Nothing to resolve against: dropped on a draft, refused on a published
+				// seed, where activation would not notice the missing credential.
+				if (seed.published) {
+					throw new BadRequestError(
+						`Seed workflow ${seed.id} is published, but its ${type} credential reference has no name`,
+					);
+				}
+				continue;
+			}
 			const candidates = (
-				await this.credentialsRepo.findByNameAndTypeInProject(ref.name, type, projectId)
+				await this.credentialsRepo.findByNameAndTypeInProject(name, type, projectId)
 			).filter((c) => allowedCredentialIds?.has(c.id) ?? true);
 			if (candidates.length === 1) {
 				resolved[type] = { id: candidates[0].id, name: candidates[0].name };
 			} else if (seed.published) {
 				throw new BadRequestError(
-					`Seed workflow ${seed.id} is published, but its ${type} credential "${ref.name}" matched ${candidates.length} project credentials (need exactly 1)`,
+					`Seed workflow ${seed.id} is published, but its ${type} credential "${name}" matched ${candidates.length} project credentials (need exactly 1)`,
 				);
 			}
 		}

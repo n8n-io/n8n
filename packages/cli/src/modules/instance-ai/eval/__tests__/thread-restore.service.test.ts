@@ -209,10 +209,44 @@ describe('EvalThreadRestoreService', () => {
 		expect(workflowRepo.runInTransaction).not.toHaveBeenCalled();
 	});
 
+	it('refuses a published seed whose node credential matches several project credentials', async () => {
+		credentialsRepo.findByNameAndTypeInProject.mockResolvedValue([
+			mock<CredentialsEntity>({ id: 'cred-a', name: 'Slack' }),
+			mock<CredentialsEntity>({ id: 'cred-b', name: 'Slack' }),
+		]);
+		const node = makeNode({ credentials: { slackApi: { id: '', name: 'Slack' } } });
+
+		await expect(
+			service.restoreWorkflows(
+				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
+				'project-1',
+			),
+		).rejects.toThrow(
+			'Seed workflow wf-live is published, but its slackApi credential "Slack" matched 2 project credentials (need exactly 1)',
+		);
+		expect(workflowRepo.runInTransaction).not.toHaveBeenCalled();
+	});
+
+	it('refuses a published seed whose node credential reference has no name', async () => {
+		// The seed schema lets any object through as a node; this reference lost its name.
+		const node = makeNode({ credentials: { slackApi: { id: 'cred-1' } } as never });
+
+		await expect(
+			service.restoreWorkflows(
+				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
+				'project-1',
+			),
+		).rejects.toThrow(
+			'Seed workflow wf-live is published, but its slackApi credential reference has no name',
+		);
+		expect(credentialsRepo.findByNameAndTypeInProject).not.toHaveBeenCalled();
+		expect(workflowRepo.runInTransaction).not.toHaveBeenCalled();
+	});
+
 	it('publishes only the seeds flagged published, as the requesting user, with their history row in place', async () => {
 		const user = mock<User>();
 
-		await service.publishSeedWorkflows(
+		const published = await service.publishSeedWorkflows(
 			[
 				{ id: 'wf-live', name: 'Live', nodes: [], connections: {}, published: true },
 				{ id: 'wf-draft', name: 'Draft', nodes: [], connections: {} },
@@ -220,6 +254,8 @@ describe('EvalThreadRestoreService', () => {
 			user,
 		);
 
+		// The caller's rollback unpublishes these: a re-applied seed is not a created one.
+		expect(published).toEqual(['wf-live']);
 		expect(workflowHistoryService.snapshotCurrent).toHaveBeenCalledExactlyOnceWith('wf-live');
 		expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(user, 'wf-live');
 		// The row first: activation looks the version up in the history.
@@ -245,6 +281,17 @@ describe('EvalThreadRestoreService', () => {
 		).rejects.toThrow('Workflow has no trigger');
 
 		// The failed seed too: activation can throw after its triggers are registered.
+		expect(workflowService.deactivateWorkflowAsSystem.mock.calls).toEqual([
+			['wf-first'],
+			['wf-second'],
+		]);
+	});
+
+	it('keeps unpublishing the other seeds when one deactivation fails', async () => {
+		workflowService.deactivateWorkflowAsSystem.mockRejectedValueOnce(new Error('already gone'));
+
+		await service.unpublishWorkflows(['wf-first', 'wf-second']);
+
 		expect(workflowService.deactivateWorkflowAsSystem.mock.calls).toEqual([
 			['wf-first'],
 			['wf-second'],
