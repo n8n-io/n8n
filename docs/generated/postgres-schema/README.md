@@ -38,6 +38,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agents_resources](public.agents_resources.md) | 4 |  | BASE TABLE |
 | [public.agents_threads](public.agents_threads.md) | 6 |  | BASE TABLE |
 | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) | 4 |  | BASE TABLE |
+| [public.ai_preference](public.ai_preference.md) | 7 |  | BASE TABLE |
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
@@ -97,7 +98,6 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) | 8 |  | BASE TABLE |
 | [public.oauth_user_consents](public.oauth_user_consents.md) | 5 |  | BASE TABLE |
 | [public.poller_state](public.poller_state.md) | 7 |  | BASE TABLE |
-| [public.preference](public.preference.md) | 8 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
 | [public.project](public.project.md) | 9 |  | BASE TABLE |
 | [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
@@ -218,6 +218,9 @@ erDiagram
 "public.agents_observations" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
 "public.ai_builder_temporary_workflow" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.ai_builder_temporary_workflow" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.ai_preference" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.ai_preference" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.ai_preference" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.auth_identity" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id)"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES chat_hub_agents(id) ON DELETE CASCADE"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_tools" : "FOREIGN KEY (#quot;toolId#quot;) REFERENCES chat_hub_tools(id) ON DELETE CASCADE"
@@ -296,9 +299,6 @@ erDiagram
 "public.oauth_user_consents" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.oauth_user_consents" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.poller_state" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
-"public.preference" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
-"public.preference" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
-"public.preference" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.processed_data" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.project" }o--o| "public.user" : "FOREIGN KEY (#quot;creatorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.project_pool_settings" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -708,6 +708,15 @@ erDiagram
   uuid threadId FK
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
+}
+"public.ai_preference" {
+  text content
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  uuid id
+  varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
 }
 "public.annotation_tag_entity" {
   timestamp_3__with_time_zone createdAt
@@ -1266,16 +1275,6 @@ erDiagram
   varchar_36_ nodeId
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
-}
-"public.preference" {
-  text content
-  timestamp_3__with_time_zone createdAt
-  uuid createdById FK
-  uuid id
-  varchar_36_ projectId FK
-  varchar_16_ scope
-  timestamp_3__with_time_zone updatedAt
-  uuid userId FK
 }
 "public.processed_data" {
   varchar_255_ context

@@ -10,18 +10,17 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreatePreferenceTable1788882375989';
-const PREFERENCE_TABLE = 'preference';
+const MIGRATION_NAME = 'CreateAiPreferenceTable1788882375989';
+const AI_PREFERENCE_TABLE = 'ai_preference';
 
 type PreferenceRow = {
 	id: string;
-	scope: string;
 	userId: string | null;
 	projectId: string | null;
 	createdById: string | null;
 };
 
-describe('CreatePreferenceTable migration', () => {
+describe('CreateAiPreferenceTable migration', () => {
 	let dataSource: DataSource;
 
 	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {
@@ -81,20 +80,18 @@ describe('CreatePreferenceTable migration', () => {
 	async function insertPreference(
 		context: TestMigrationContext,
 		row: {
-			scope: string;
 			userId?: string | null;
 			projectId?: string | null;
 			createdById?: string | null;
 		},
 	) {
-		const table = context.escape.tableName(PREFERENCE_TABLE);
+		const table = context.escape.tableName(AI_PREFERENCE_TABLE);
 		const now = new Date();
 		await context.runQuery(
-			`INSERT INTO ${table} ("id", "scope", "content", "userId", "projectId", "createdById", "createdAt", "updatedAt")
-			 VALUES (:id, :scope, :content, :userId, :projectId, :createdById, :createdAt, :updatedAt)`,
+			`INSERT INTO ${table} ("id", "content", "userId", "projectId", "createdById", "createdAt", "updatedAt")
+			 VALUES (:id, :content, :userId, :projectId, :createdById, :createdAt, :updatedAt)`,
 			{
 				id: randomUUID(),
-				scope: row.scope,
 				content: 'Prefer sub-workflows to groups.',
 				userId: row.userId ?? null,
 				projectId: row.projectId ?? null,
@@ -106,47 +103,43 @@ describe('CreatePreferenceTable migration', () => {
 	}
 
 	async function getPreferences(context: TestMigrationContext): Promise<PreferenceRow[]> {
-		const table = context.escape.tableName(PREFERENCE_TABLE);
+		const table = context.escape.tableName(AI_PREFERENCE_TABLE);
 		return await context.runQuery<PreferenceRow[]>(
-			`SELECT "id" AS "id", "scope" AS "scope", "userId" AS "userId", "projectId" AS "projectId",
+			`SELECT "id" AS "id", "userId" AS "userId", "projectId" AS "projectId",
 			        "createdById" AS "createdById"
-			 FROM ${table} ORDER BY "scope"`,
+			 FROM ${table} ORDER BY "createdAt"`,
 		);
 	}
 
-	it('accepts one preference per scope', async () => {
+	it('accepts global, personal, and project preferences', async () => {
 		const userId = randomUUID();
 		const projectId = randomUUID();
 
 		const rows = await withContext(async (context) => {
 			await insertUser(context, userId);
 			await insertProject(context, projectId);
-			await insertPreference(context, { scope: 'global' });
-			await insertPreference(context, { scope: 'personal', userId });
-			await insertPreference(context, { scope: 'project', projectId });
+			await insertPreference(context, {});
+			await insertPreference(context, { userId });
+			await insertPreference(context, { projectId });
 			return await getPreferences(context);
 		});
 
-		expect(rows.map((row) => row.scope)).toEqual(['global', 'personal', 'project']);
+		expect(rows.map((row) => [row.userId, row.projectId])).toEqual([
+			[null, null],
+			[userId, null],
+			[null, projectId],
+		]);
 	});
 
-	it.each<[string, { scope: string; userId?: string; projectId?: string }]>([
-		['a personal preference without a user', { scope: 'personal' }],
-		['a personal preference with a project', { scope: 'personal', userId: 'u', projectId: 'p' }],
-		['a project preference without a project', { scope: 'project' }],
-		['a project preference with a user', { scope: 'project', userId: 'u', projectId: 'p' }],
-		['a global preference with a user', { scope: 'global', userId: 'u' }],
-		['a global preference with a project', { scope: 'global', projectId: 'p' }],
-		['an unknown scope', { scope: 'team' }],
-	])('rejects %s', async (_, row) => {
-		const userId = row.userId ? randomUUID() : null;
-		const projectId = row.projectId ? randomUUID() : null;
+	it('rejects a preference with both a user and a project', async () => {
+		const userId = randomUUID();
+		const projectId = randomUUID();
 
 		await expect(
 			withContext(async (context) => {
-				if (userId) await insertUser(context, userId);
-				if (projectId) await insertProject(context, projectId);
-				await insertPreference(context, { ...row, userId, projectId });
+				await insertUser(context, userId);
+				await insertProject(context, projectId);
+				await insertPreference(context, { userId, projectId });
 			}),
 		).rejects.toThrow();
 	});
@@ -156,8 +149,8 @@ describe('CreatePreferenceTable migration', () => {
 
 		const rows = await withContext(async (context) => {
 			await insertUser(context, userId);
-			await insertPreference(context, { scope: 'global' });
-			await insertPreference(context, { scope: 'personal', userId });
+			await insertPreference(context, {});
+			await insertPreference(context, { userId });
 
 			const userTable = context.escape.tableName('user');
 			await context.runQuery(`DELETE FROM ${userTable} WHERE "id" = :userId`, { userId });
@@ -165,7 +158,8 @@ describe('CreatePreferenceTable migration', () => {
 			return await getPreferences(context);
 		});
 
-		expect(rows.map((row) => row.scope)).toEqual(['global']);
+		expect(rows).toHaveLength(1);
+		expect(rows[0].userId).toBeNull();
 	});
 
 	it('keeps a preference when its author is deleted, dropping only the attribution', async () => {
@@ -173,7 +167,7 @@ describe('CreatePreferenceTable migration', () => {
 
 		const rows = await withContext(async (context) => {
 			await insertUser(context, authorId);
-			await insertPreference(context, { scope: 'global', createdById: authorId });
+			await insertPreference(context, { createdById: authorId });
 
 			const userTable = context.escape.tableName('user');
 			await context.runQuery(`DELETE FROM ${userTable} WHERE "id" = :authorId`, { authorId });
@@ -190,8 +184,8 @@ describe('CreatePreferenceTable migration', () => {
 
 		const rows = await withContext(async (context) => {
 			await insertProject(context, projectId);
-			await insertPreference(context, { scope: 'global' });
-			await insertPreference(context, { scope: 'project', projectId });
+			await insertPreference(context, {});
+			await insertPreference(context, { projectId });
 
 			const projectTable = context.escape.tableName('project');
 			await context.runQuery(`DELETE FROM ${projectTable} WHERE "id" = :projectId`, {
@@ -201,7 +195,8 @@ describe('CreatePreferenceTable migration', () => {
 			return await getPreferences(context);
 		});
 
-		expect(rows.map((row) => row.scope)).toEqual(['global']);
+		expect(rows).toHaveLength(1);
+		expect(rows[0].projectId).toBeNull();
 	});
 
 	it('drops the table on revert', async () => {
@@ -209,7 +204,7 @@ describe('CreatePreferenceTable migration', () => {
 		dataSource = Container.get(DataSource);
 
 		await withContext(async (context) => {
-			const table = context.escape.tableName(PREFERENCE_TABLE);
+			const table = context.escape.tableName(AI_PREFERENCE_TABLE);
 			await expect(context.runQuery(`SELECT 1 FROM ${table}`)).rejects.toThrow();
 		});
 	});

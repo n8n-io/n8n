@@ -12,21 +12,14 @@ import { WithTimestamps } from './abstract-entity';
 import type { Project } from './project';
 import type { User } from './user';
 
-export const preferenceScopes = ['global', 'personal', 'project'] as const;
-
-export type PreferenceScope = (typeof preferenceScopes)[number];
-
 /**
- * Free-text instruction injected into AI prompts. A CHECK constraint ties `scope` to its target:
- * personal requires `userId`, project requires `projectId`, global requires neither.
+ * Free-text instruction injected into AI prompts. `userId` set: personal to one user.
+ * `projectId` set: shared by one project. Neither: global. A CHECK forbids both.
  */
-@Entity({ name: 'preference' })
-export class Preference extends WithTimestamps {
+@Entity({ name: 'ai_preference' })
+export class AiPreference extends WithTimestamps {
 	@PrimaryColumn('uuid')
 	id: string;
-
-	@Column({ type: 'varchar', length: 16 })
-	scope: PreferenceScope;
 
 	@Column({ type: 'text' })
 	content: string;
