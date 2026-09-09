@@ -20,25 +20,15 @@ export type ManifestEntityCollection = {
  * Import derives a project's scope and a workflow's parent folder from these
  * path segments, so they are part of the package contract.
  */
-const DIRECTORIES = {
-	projects: 'projects',
-	folders: 'folders',
-	workflows: 'workflows',
-	credentials: 'credentials',
-	dataTables: 'data-tables',
-	variables: 'variables',
-	tags: 'tags',
-} as const satisfies Record<ManifestEntityCollection, string>;
-
-const FILE_NAMES = {
-	projects: 'project.json',
-	folders: 'folder.json',
-	workflows: 'workflow.json',
-	credentials: 'credential.json',
-	dataTables: 'data-table.json',
-	variables: 'variable.json',
-	tags: 'tag.json',
-} as const satisfies Record<ManifestEntityCollection, string>;
+export const PACKAGE_ENTITY_LAYOUT = {
+	projects: { directory: 'projects', fileName: 'project.json' },
+	folders: { directory: 'folders', fileName: 'folder.json' },
+	workflows: { directory: 'workflows', fileName: 'workflow.json' },
+	credentials: { directory: 'credentials', fileName: 'credential.json' },
+	dataTables: { directory: 'data-tables', fileName: 'data-table.json' },
+	variables: { directory: 'variables', fileName: 'variable.json' },
+	tags: { directory: 'tags', fileName: 'tag.json' },
+} as const satisfies Record<ManifestEntityCollection, { directory: string; fileName: string }>;
 
 // Hyphens delimit the slug and ID in exported directory names.
 const SAFE_ID = /^[A-Za-z0-9_]+$/;
@@ -61,7 +51,7 @@ export function packageDirectory(
 	collection: ManifestEntityCollection,
 	basePrefix?: string,
 ): string {
-	const directory = DIRECTORIES[collection];
+	const { directory } = PACKAGE_ENTITY_LAYOUT[collection];
 	return basePrefix ? `${basePrefix}/${directory}` : directory;
 }
 
@@ -79,7 +69,7 @@ export function projectScopedDirectory(
 }
 
 export function entityFilePath(collection: ManifestEntityCollection, target: string): string {
-	return `${target}/${FILE_NAMES[collection]}`;
+	return `${target}/${PACKAGE_ENTITY_LAYOUT[collection].fileName}`;
 }
 
 /** Out of `FILE_NAMES` because it is no entity of its own: no manifest entry, shares the target. */

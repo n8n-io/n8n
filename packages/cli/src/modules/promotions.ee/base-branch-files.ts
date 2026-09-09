@@ -1,11 +1,19 @@
-export type BaseBranchEntityType =
-	| 'project'
-	| 'folder'
-	| 'workflow'
-	| 'credential'
-	| 'dataTable'
-	| 'variable'
-	| 'tag';
+import {
+	PACKAGE_ENTITY_LAYOUT,
+	type ManifestEntityCollection,
+} from '../n8n-packages/io/manifest-entry';
+
+const BASE_BRANCH_ENTITIES = {
+	projects: { ...PACKAGE_ENTITY_LAYOUT.projects, type: 'project', includeRoot: true },
+	folders: { ...PACKAGE_ENTITY_LAYOUT.folders, type: 'folder', includeRoot: false },
+	workflows: { ...PACKAGE_ENTITY_LAYOUT.workflows, type: 'workflow', includeRoot: false },
+	credentials: { ...PACKAGE_ENTITY_LAYOUT.credentials, type: 'credential', includeRoot: true },
+	dataTables: { ...PACKAGE_ENTITY_LAYOUT.dataTables, type: 'dataTable', includeRoot: true },
+	variables: { ...PACKAGE_ENTITY_LAYOUT.variables, type: 'variable', includeRoot: true },
+	tags: { ...PACKAGE_ENTITY_LAYOUT.tags, type: 'tag', includeRoot: true },
+} as const satisfies Record<ManifestEntityCollection, { type: string; includeRoot: boolean }>;
+
+export type BaseBranchEntityType = (typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]['type'];
 
 export type BaseBranchFile = {
 	key: string;
@@ -14,27 +22,14 @@ export type BaseBranchFile = {
 	type: BaseBranchEntityType;
 };
 
-const ENTITY_TYPES_BY_DIRECTORY: Record<string, BaseBranchEntityType | undefined> = {
-	projects: 'project',
-	folders: 'folder',
-	workflows: 'workflow',
-	credentials: 'credential',
-	'data-tables': 'dataTable',
-	variables: 'variable',
-	tags: 'tag',
-};
+export const BASE_BRANCH_DIRECTORIES: string[] = Object.values(BASE_BRANCH_ENTITIES)
+	.filter(({ includeRoot }) => includeRoot)
+	.map(({ directory }) => directory);
 
-const ENTITY_FILE_NAMES: Record<BaseBranchEntityType, string> = {
-	project: 'project.json',
-	folder: 'folder.json',
-	workflow: 'workflow.json',
-	credential: 'credential.json',
-	dataTable: 'data-table.json',
-	variable: 'variable.json',
-	tag: 'tag.json',
-};
-
-const SHARED_DIRECTORIES = ['credentials', 'variables', 'tags'];
+const ENTITIES_BY_DIRECTORY = new Map<
+	string,
+	(typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]
+>(Object.values(BASE_BRANCH_ENTITIES).map((entity) => [entity.directory, entity]));
 
 function entityIdOfSegment(segment: string): string {
 	return segment.slice(segment.lastIndexOf('-') + 1);
@@ -60,18 +55,21 @@ export function parseBaseBranchFiles(
 		const segments = path.slice(rootPrefix.length).split('/');
 		if (segments.length < 3) continue;
 
-		if (segments[0] === 'projects') {
+		if (segments[0] === BASE_BRANCH_ENTITIES.projects.directory) {
 			if (entityIdOfSegment(segments[1]) !== projectId) continue;
-		} else if (!SHARED_DIRECTORIES.includes(segments[0])) {
+		} else if (!BASE_BRANCH_DIRECTORIES.includes(segments[0])) {
 			continue;
 		}
 
 		const fileName = segments[segments.length - 1];
-		const type =
-			segments[0] === 'projects' && segments[2] === 'folders' && fileName === 'folder.json'
-				? 'folder'
-				: ENTITY_TYPES_BY_DIRECTORY[segments[segments.length - 3]];
-		if (!type || fileName !== ENTITY_FILE_NAMES[type]) continue;
+		const entity =
+			segments[0] === BASE_BRANCH_ENTITIES.projects.directory &&
+			segments[2] === BASE_BRANCH_ENTITIES.folders.directory &&
+			fileName === BASE_BRANCH_ENTITIES.folders.fileName
+				? BASE_BRANCH_ENTITIES.folders
+				: ENTITIES_BY_DIRECTORY.get(segments[segments.length - 3]);
+		if (!entity || fileName !== entity.fileName) continue;
+		const { type } = entity;
 
 		const entitySegment = segments[segments.length - 2];
 		const key =

@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	createWorkflow,
+	getPersonalProject,
 	mockInstance,
 	mockLogger,
 	testDb,
@@ -11,6 +12,8 @@ import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Cipher, InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -19,7 +22,15 @@ import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
+import { DataTableService } from '@/modules/data-table/data-table.service';
+import {
+	PACKAGE_ENTITY_LAYOUT,
+	entityFilePath,
+	type ManifestEntityCollection,
+} from '@/modules/n8n-packages/io/manifest-entry';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import { ProjectService } from '@/services/project.service.ee';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
@@ -51,8 +62,9 @@ let testRoot: string;
 let service: GitConnectionsService;
 
 beforeAll(async () => {
-	await testModules.loadModules(['n8n-packages', 'git-connections']);
+	await testModules.loadModules(['n8n-packages', 'git-connections', 'data-table']);
 	await testDb.init();
+	mockDataTableSizeValidator();
 
 	connectionRepository = Container.get(GitConnectionRepository);
 	connectionProjectRepository = Container.get(GitConnectionProjectRepository);
@@ -80,6 +92,8 @@ beforeEach(async () => {
 		'Folder',
 		'WorkflowEntity',
 		'SharedWorkflow',
+		'DataTable',
+		'DataTableColumn',
 		'ProjectRelation',
 		'Project',
 	]);
@@ -107,7 +121,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await rm(testRoot, { recursive: true, force: true });
+	await rm(testRoot, { recursive: true, force: true, maxRetries: 3 });
 });
 
 async function createRemote(): Promise<TestRemote> {
@@ -176,7 +190,7 @@ async function snapshotWorkingTree(dir: string): Promise<Map<string, string>> {
 }
 
 describe('Git connection base branch listing', () => {
-	it('lists the project files plus shared credential, variable and tag files, and nothing from other projects', async () => {
+	it('lists the exported project and its top-level dependencies', async () => {
 		const remote = await createRemote();
 		const connection = await createConnection(remote.bareDir);
 		await service.clone(connection.id);
@@ -185,6 +199,18 @@ describe('Git connection base branch listing', () => {
 		const projectB = await createTeamProject('Marketing', owner);
 		const parentFolder = await createFolder(projectA, { name: 'Operations' });
 		const childFolder = await createFolder(projectA, { name: 'Orders', parentFolder });
+		const dataTableService = Container.get(DataTableService);
+		const projectTable = await dataTableService.createDataTable(projectA.id, {
+			name: 'Orders',
+			columns: [{ name: 'email', type: 'string' }],
+		});
+		const sharedTable = await dataTableService.createDataTable(
+			(await getPersonalProject(owner)).id,
+			{
+				name: 'Customers',
+				columns: [{ name: 'email', type: 'string' }],
+			},
+		);
 		const credential = await saveCredential(
 			{
 				name: 'Header credential',
@@ -208,6 +234,14 @@ describe('Git connection base branch listing', () => {
 						parameters: { url: '={{ $vars.API_URL }}' },
 						credentials: { httpHeaderAuth: { id: credential.id, name: credential.name } },
 					},
+					...[projectTable, sharedTable].map((table, index) => ({
+						id: `table${index}`,
+						name: table.name,
+						type: 'n8n-nodes-base.dataTable',
+						typeVersion: 1,
+						position: [index * 200, 200] as [number, number],
+						parameters: { dataTableId: { __rl: true, mode: 'id', value: table.id } },
+					})),
 				],
 				connections: {},
 			},
@@ -217,6 +251,22 @@ describe('Git connection base branch listing', () => {
 		await createWorkflow({ name: 'Campaign', nodes: [], connections: {} }, projectB);
 
 		await service.push(connection.id, owner, { commitMessage: 'Export projects' });
+		const manifest = packageManifestSchema.parse(
+			jsonParse(await simpleGit(remote.bareDir).show(['main:n8n-export/manifest.json'])),
+		);
+		const projectEntry = manifest.projects?.find(({ id }) => id === projectA.id);
+		assert(projectEntry);
+		const collections = Object.keys(PACKAGE_ENTITY_LAYOUT) as ManifestEntityCollection[];
+		const expectedPaths = collections.flatMap((collection) =>
+			(manifest[collection] ?? [])
+				.filter(
+					({ target }) =>
+						!target.startsWith(`${PACKAGE_ENTITY_LAYOUT.projects.directory}/`) ||
+						target === projectEntry.target ||
+						target.startsWith(`${projectEntry.target}/`),
+				)
+				.map(({ target }) => `n8n-export/${entityFilePath(collection, target)}`),
+		);
 
 		const files = await service.listBaseBranchFiles(connection.id, projectA.id);
 
@@ -229,9 +279,11 @@ describe('Git connection base branch listing', () => {
 				{ key: credential.id, type: 'credential' },
 				{ key: 'apiurl', type: 'variable' },
 				{ key: tag.id, type: 'tag' },
+				{ key: projectTable.id, type: 'dataTable' },
+				{ key: sharedTable.id, type: 'dataTable' },
 			]),
 		);
-		expect(files).toHaveLength(7);
+		expect(files.map(({ path }) => path).sort()).toEqual(expectedPaths.sort());
 
 		for (const file of files) {
 			expect(file.blobSha).toBe(await remoteBlobSha(remote, file.path));
@@ -324,6 +376,8 @@ describe('Git connection base branch listing', () => {
 			await writeRemoteFile(remote, entity.path, '{}');
 		}
 		await writeRemoteFile(remote, 'n8n-export/manifest.json', 'Not used for this listing');
+		await writeRemoteFile(remote, 'n8n-export/workflows/standalone-Wf01/workflow.json', '{}');
+		await writeRemoteFile(remote, 'n8n-export/folders/standalone-Fo01/folder.json', '{}');
 		await writeRemoteFile(remote, `${projectRoot}/workflows/order-42/README.md`, 'Notes');
 		await commitAndPushRemote(remote, 'Export scoped entities');
 		const connection = await createConnection(remote.bareDir);

@@ -43,7 +43,11 @@ import {
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ProjectService } from '@/services/project.service.ee';
 
-import { parseBaseBranchFiles, type BaseBranchFile } from './base-branch-files';
+import {
+	BASE_BRANCH_DIRECTORIES,
+	parseBaseBranchFiles,
+	type BaseBranchFile,
+} from './base-branch-files';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME } from './constants';
 import { GitConnectionProject } from './database/entities/git-connection-project.entity';
 import { GitConnection } from './database/entities/git-connection.entity';
@@ -406,9 +410,7 @@ export class GitConnectionsService {
 			credentials,
 			rootFolder,
 			branchName,
-			pathspecs: ['projects', 'credentials', 'variables', 'tags'].map(
-				(directory) => `${EXPORT_SUBFOLDER}/${directory}/`,
-			),
+			pathspecs: BASE_BRANCH_DIRECTORIES.map((directory) => `${EXPORT_SUBFOLDER}/${directory}/`),
 		});
 
 		return parseBaseBranchFiles(lsTreeOutput, { exportRoot: EXPORT_SUBFOLDER, projectId });
