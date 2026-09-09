@@ -5,6 +5,11 @@ import * as cloudPlanApi from '@n8n/rest-api-client/api/cloudPlans';
 import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 
+import { useCloudPlanStore } from '../cloudPlan.store';
+import {
+	clearDefaultUpgradeRedirectGuard,
+	setDefaultUpgradeRedirectGuard,
+} from '../registries/upgradeRedirectGuard';
 import { useSettingsStore } from '../settings.store';
 import { useUsersStore } from '../users.store';
 import { useVersionsStore } from '../versions.store';
@@ -243,6 +248,176 @@ describe('useBasePageRedirectionHelper', () => {
 					'/account/change-plan',
 				)}&utm_campaign=upgrade-api&source=advanced-permissions`,
 			);
+		});
+	});
+
+	// A module package cannot pass the shell's guard, so it omits the argument and
+	// gets whatever the shell registered. Nothing registered means fail-open.
+	describe('goToUpgrade with no guard argument', () => {
+		beforeEach(() => {
+			usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
+			usersStore.currentUserId = '1';
+
+			settingsStore.setSettings(settingsFor('cloud'));
+			clearDefaultUpgradeRedirectGuard();
+		});
+
+		afterEach(() => {
+			clearDefaultUpgradeRedirectGuard();
+		});
+
+		test('consults the registered default guard and aborts when it resolves false', async () => {
+			const telemetry = useTelemetry();
+			const initialHref = location.href;
+			const guard = vi.fn<UpgradeRedirectGuard>().mockResolvedValue(false);
+			setDefaultUpgradeRedirectGuard(guard);
+
+			await useBasePageRedirectionHelper().goToUpgrade(
+				'advanced-permissions',
+				'upgrade-api',
+				'redirect',
+			);
+
+			expect(guard).toHaveBeenCalledTimes(1);
+			expect(location.href).toBe(initialHref);
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		test('consults the registered default guard and proceeds when it resolves true', async () => {
+			const guard = vi.fn<UpgradeRedirectGuard>().mockResolvedValue(true);
+			setDefaultUpgradeRedirectGuard(guard);
+
+			await useBasePageRedirectionHelper().goToUpgrade(
+				'advanced-permissions',
+				'upgrade-api',
+				'redirect',
+			);
+
+			expect(guard).toHaveBeenCalledTimes(1);
+			expect(location.href).toContain('utm_campaign=upgrade-api');
+		});
+
+		test('proceeds when no guard is registered at all', async () => {
+			await useBasePageRedirectionHelper().goToUpgrade(
+				'advanced-permissions',
+				'upgrade-api',
+				'redirect',
+			);
+
+			expect(location.href).toContain('utm_campaign=upgrade-api');
+		});
+
+		test('prefers an explicitly passed guard over the registered default', async () => {
+			const registered = vi.fn<UpgradeRedirectGuard>().mockResolvedValue(true);
+			const passed = vi.fn<UpgradeRedirectGuard>().mockResolvedValue(false);
+			setDefaultUpgradeRedirectGuard(registered);
+
+			await useBasePageRedirectionHelper({ guard: passed }).goToUpgrade(
+				'advanced-permissions',
+				'upgrade-api',
+				'redirect',
+			);
+
+			expect(passed).toHaveBeenCalledTimes(1);
+			expect(registered).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('goToCloudDashboard', () => {
+		const reservedTab = { close: vi.fn(), location: { href: '' }, opener: {} as Window | null };
+		const CONNECT_PATH = '/manage/connect';
+		const connectLoginUrl = `https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(CONNECT_PATH)}`;
+
+		beforeEach(() => {
+			reservedTab.location.href = '';
+			reservedTab.opener = {} as Window;
+			reservedTab.close.mockClear();
+		});
+
+		function asCloudOwner() {
+			usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
+			usersStore.currentUserId = '1';
+			settingsStore.setSettings(settingsFor('cloud'));
+		}
+
+		test('returns false for members without navigating', async () => {
+			usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Member }]);
+			usersStore.currentUserId = '1';
+			settingsStore.setSettings(settingsFor('cloud'));
+			const initialHref = location.href;
+
+			const didNavigate = await pageRedirectionHelper.goToCloudDashboard({
+				redirectionPath: CONNECT_PATH,
+			});
+
+			expect(didNavigate).toBe(false);
+			expect(location.href).toBe(initialHref);
+		});
+
+		test('redirects in the same tab by default', async () => {
+			asCloudOwner();
+
+			const didNavigate = await pageRedirectionHelper.goToCloudDashboard({
+				redirectionPath: CONNECT_PATH,
+			});
+
+			expect(didNavigate).toBe(true);
+			expect(location.href).toBe(connectLoginUrl);
+		});
+
+		test('reserves a new tab, severs opener, then navigates', async () => {
+			asCloudOwner();
+			const windowOpenSpy = vi
+				.spyOn(window, 'open')
+				.mockReturnValue(reservedTab as unknown as Window);
+			const initialHref = location.href;
+
+			const didNavigate = await pageRedirectionHelper.goToCloudDashboard({
+				redirectionPath: CONNECT_PATH,
+				mode: 'open',
+			});
+
+			expect(didNavigate).toBe(true);
+			expect(windowOpenSpy).toHaveBeenCalledWith('', '_blank');
+			expect(reservedTab.opener).toBeNull();
+			expect(reservedTab.location.href).toBe(connectLoginUrl);
+			expect(location.href).toBe(initialHref);
+		});
+
+		test('falls back to the current tab when the popup is blocked', async () => {
+			asCloudOwner();
+			vi.spyOn(window, 'open').mockReturnValue(null);
+
+			const didNavigate = await pageRedirectionHelper.goToCloudDashboard({
+				redirectionPath: CONNECT_PATH,
+				mode: 'open',
+			});
+
+			expect(didNavigate).toBe(true);
+			expect(location.href).toBe(connectLoginUrl);
+		});
+
+		test('closes the reserved tab and rethrows when auto-login fails', async () => {
+			asCloudOwner();
+			vi.spyOn(window, 'open').mockReturnValue(reservedTab as unknown as Window);
+			const autoLoginSpy = vi
+				.spyOn(useCloudPlanStore(), 'generateCloudDashboardAutoLoginLink')
+				.mockRejectedValue(new Error('no auto-login code'));
+			const initialHref = location.href;
+
+			try {
+				await expect(
+					pageRedirectionHelper.goToCloudDashboard({
+						redirectionPath: CONNECT_PATH,
+						mode: 'open',
+					}),
+				).rejects.toThrow('no auto-login code');
+
+				expect(reservedTab.close).toHaveBeenCalled();
+				expect(location.href).toBe(initialHref);
+			} finally {
+				autoLoginSpy.mockRestore();
+			}
 		});
 	});
 });

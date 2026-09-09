@@ -107,6 +107,21 @@ describe('formatWorkflowLoopGuidance', () => {
 			);
 		});
 
+		it('should not send the user back to the setup card for credentials they skipped', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Built with mocks the user skipped',
+				mockedCredentialTypes: ['slackApi'],
+				hasUnresolvedPlaceholders: true,
+				workflowId: 'wf-skip-1',
+				setupSkippedByUser: true,
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).not.toContain('workflows(action="setup")');
+			expect(result).toContain('skipped earlier in this conversation');
+			expect(result).toContain('offer');
+		});
+
 		it('should trigger workflow setup guidance when both mocked credentials and placeholders exist', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',
@@ -341,5 +356,31 @@ describe('formatWorkflowLoopGuidance', () => {
 			);
 			expect(rebuild).toContain('wi-ignored');
 		});
+	});
+});
+
+describe('formatWorkflowLoopGuidance — setup panel', () => {
+	const action: WorkflowLoopAction = {
+		type: 'done',
+		summary: 'Built',
+		workflowId: 'wf-123',
+		mockedCredentialTypes: ['slackApi'],
+	};
+
+	it('still routes through workflows setup, but as an announcement that ends the turn', () => {
+		const result = formatWorkflowLoopGuidance(action, { setupPanelEnabled: true });
+
+		expect(result).toContain('workflows(action="setup")');
+		expect(result).toContain('wf-123');
+		expect(result).toContain('setup panel next to the chat');
+		expect(result).toContain('end your turn');
+		expect(result).toContain('When the result has `announced: true`');
+		expect(result).toContain('Otherwise follow the returned guidance');
+		expect(result).not.toContain('No card opens');
+		expect(result).not.toContain('inline setup card');
+	});
+
+	it('keeps the card wording while the panel is off', () => {
+		expect(formatWorkflowLoopGuidance(action, {})).toContain('inline setup card');
 	});
 });

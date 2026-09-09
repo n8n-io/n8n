@@ -17,7 +17,6 @@ import { isSharedResource, isResourceSortableByDate } from '@/app/utils/typeGuar
 import { type LocalStorageTabKey, useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
-import { ElPagination } from 'element-plus';
 import {
 	N8nDatatable,
 	N8nIcon,
@@ -26,6 +25,7 @@ import {
 	N8nLink,
 	N8nLoading,
 	N8nOption,
+	N8nPagination,
 	N8nRecycleScroller,
 	N8nSelect,
 	N8nText,
@@ -734,17 +734,15 @@ defineExpose({
 							</div>
 						</div>
 						<div :class="$style.listPagination">
-							<ElPagination
-								v-model:current-page="currentPage"
-								v-model:page-size="rowsPerPage"
-								background
+							<N8nPagination
+								:page="currentPage"
+								:items-per-page="rowsPerPage"
 								:total="totalItems"
 								:page-sizes="availablePageSizeOptions"
-								layout="total, prev, pager, next, sizes"
 								data-test-id="resources-list-pagination"
-								@update:current-page="setCurrentPage"
-								@size-change="setRowsPerPage"
-							></ElPagination>
+								@update:page="setCurrentPage"
+								@update:items-per-page="setRowsPerPage"
+							/>
 						</div>
 					</div>
 					<!-- DATATABLE -->
@@ -785,6 +783,8 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .filters-row {
 	display: flex;
 	flex-direction: row;
@@ -815,7 +815,7 @@ defineExpose({
 		}
 	}
 
-	@include mixins.breakpoint('xs-only') {
+	@include breakpoints.breakpoint('xs-only') {
 		grid-auto-flow: row;
 		grid-auto-columns: unset;
 		grid-template-columns: 1fr;
@@ -826,7 +826,7 @@ defineExpose({
 	max-width: 196px;
 	justify-self: end;
 
-	@include mixins.breakpoint('sm-and-down') {
+	@include breakpoints.breakpoint('sm-and-down') {
 		max-width: 100%;
 	}
 }
@@ -853,27 +853,12 @@ defineExpose({
 	display: flex;
 	justify-content: flex-end;
 	margin-bottom: var(--spacing--lg);
-
-	:global(.el-pagination__sizes) {
-		height: 100%;
-		position: relative;
-		top: -1px;
-
-		input {
-			height: 100%;
-			min-height: 28px;
-		}
-
-		:global(.el-input__suffix) {
-			width: var(--spacing--md);
-		}
-	}
 }
 
 .sort-and-filter {
 	white-space: nowrap;
 
-	@include mixins.breakpoint('sm-and-down') {
+	@include breakpoints.breakpoint('sm-and-down') {
 		width: 100%;
 	}
 }

@@ -6,7 +6,7 @@ import type { TimelineEvent } from '../execution-recorder';
 
 type ExecutionTranscript = Pick<
 	AgentExecution,
-	'id' | 'userMessage' | 'timeline' | 'attachments' | 'status'
+	'id' | 'userMessage' | 'timeline' | 'attachments' | 'status' | 'error'
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
@@ -47,6 +47,7 @@ function mergeTerminalToolCallPart(
 		...previous,
 		...terminal,
 		input: previous.input ?? terminal.input,
+		suspendPayload: previous.suspendPayload ?? terminal.suspendPayload,
 		startTime: previous.startTime ?? terminal.startTime,
 		endTime: terminal.endTime ?? previous.endTime,
 		canceled: terminal.canceled ?? previous.canceled,
@@ -122,6 +123,16 @@ function assistantContentFromExecution(
 			});
 		} else if (event.type === 'tool-call') {
 			content.push(timelineToolCallToPart(event));
+		} else if (event.type === 'suspension') {
+			const suspendedToolCall = [...content]
+				.reverse()
+				.find(
+					(part): part is ToolCallContentPart =>
+						isToolCallWithId(part) && part.toolCallId === event.toolCallId,
+				);
+			if (suspendedToolCall) {
+				suspendedToolCall.suspendPayload = event.suspendPayload ?? event.input;
+			}
 		}
 	}
 
@@ -156,6 +167,10 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 	}
 
 	const assistantContent = assistantContentFromExecution(execution);
+	if (execution.status === 'error' && execution.error) {
+		const error = textPart(execution.error);
+		if (error) assistantContent.push(error);
+	}
 	if (assistantContent.length > 0) {
 		messages.push({
 			id: `${execution.id}:assistant`,

@@ -5,6 +5,13 @@ export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 /**
+ * Query flag for the new-agent view: `mode=manual` skips the Instance AI flow
+ * and opens the standalone builder directly. A mode switch only — the agent id
+ * still travels exclusively in history state.
+ */
+export const INSTANCE_AI_CREATE_AGENT_MODE_QUERY = 'mode';
+export const INSTANCE_AI_CREATE_AGENT_MODE_MANUAL = 'manual';
+/**
  * History-state key for the agent id minted at the click. Carried to the
  * new-agent view so the "clicked" and "created" events share a join key even
  * though no agent exists yet. Kept out of the URL so a hand-authored query
@@ -37,8 +44,9 @@ export const NEW_CONVERSATION_TITLE = 'New conversation';
 export { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 export const BROWSER_USE_CONNECTION_TYPE = 'browser-use';
 export const COMPUTER_USE_CONNECTION_TYPE = 'computer-use';
-export type BrowserUseConnectionType = typeof BROWSER_USE_CONNECTION_TYPE;
-export type ComputerUseConnectionType = typeof COMPUTER_USE_CONNECTION_TYPE;
+
+export const BROWSER_USE_EXTENSION_ID = 'cegmdpndekdfpnafgacidejijecomlhh';
+export const CHROME_EXTENSION_URL = `https://chromewebstore.google.com/detail/n8n-browser-use/${BROWSER_USE_EXTENSION_ID}`;
 
 const INSTANCE_AI_THREAD_SOURCE_SET: ReadonlySet<string> = new Set(INSTANCE_AI_THREAD_SOURCES);
 
@@ -60,3 +68,13 @@ const INSTANCE_AI_CHAT_ROUTE_NAMES: ReadonlySet<string> = new Set([
 export function isInstanceAiChatRoute(name: unknown): boolean {
 	return typeof name === 'string' && INSTANCE_AI_CHAT_ROUTE_NAMES.has(name);
 }
+
+const NODE_CHIP_REMOVAL_KEYS: ReadonlySet<string> = new Set(['Delete', 'Backspace', 'x']);
+
+export function isNodeChipRemovalKey(key: string): boolean {
+	return NODE_CHIP_REMOVAL_KEYS.has(key);
+}
+
+export const INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY = 'instanceAiComputerUseSetup';
+export const INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY = 'instanceAiBrowserUseSetup';
+export const INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY = 'instanceAiToolsConnection';

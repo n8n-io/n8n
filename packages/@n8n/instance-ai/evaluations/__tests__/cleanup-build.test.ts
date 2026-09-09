@@ -29,6 +29,7 @@ function makeClient(overrides: Partial<Record<keyof N8nClient, Mock>> = {}): {
 		deleteWorkflow: vi.fn().mockResolvedValue(undefined),
 		deleteDataTable: vi.fn().mockResolvedValue(undefined),
 		getPersonalProjectId: vi.fn().mockResolvedValue('project-1'),
+		deleteProject: vi.fn().mockResolvedValue(undefined),
 		deleteThread: vi.fn().mockResolvedValue(undefined),
 		...overrides,
 	};
@@ -121,5 +122,53 @@ describe('cleanupBuild', () => {
 		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
 
 		expect(mocks.deleteAgent).toHaveBeenCalledExactlyOnceWith('project-1', 'seeded-agent-1');
+	});
+
+	it('deletes each seeded project, after the artifacts that live inside it', async () => {
+		// Ordering is the load-bearing part, not just the call. Deleting a project
+		// CASCADES to its contents, so a project torn down before the workflows would
+		// take them with it — every later `deleteWorkflow` 404s and the run reports
+		// not-clean for artifacts that were in fact cleaned up.
+		const { client, mocks } = makeClient();
+		const build = { ...makeBuild(), createdProjectIds: ['seeded-1', 'seeded-2'] };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
+
+		expect(mocks.deleteProject.mock.calls).toEqual([['seeded-1'], ['seeded-2']]);
+		expect(mocks.deleteProject.mock.invocationCallOrder[0]).toBeGreaterThan(
+			mocks.deleteWorkflow.mock.invocationCallOrder[0],
+		);
+		expect(mocks.deleteProject.mock.invocationCallOrder[0]).toBeGreaterThan(
+			mocks.deleteDataTable.mock.invocationCallOrder[0],
+		);
+		expect(mocks.deleteThread).toHaveBeenCalledWith('T1');
+	});
+
+	it('reports not clean when a project deletion fails, and still deletes the rest', async () => {
+		// A seeded project is instance-level, so a leak outlives the run and leaves a second
+		// same-named project the next run's agent has to disambiguate. The caller needs
+		// the false to know it should retry.
+		const { client, mocks } = makeClient({
+			deleteProject: vi
+				.fn()
+				.mockRejectedValueOnce(new Error('HTTP 502'))
+				.mockResolvedValue(undefined),
+		});
+		const build = { ...makeBuild(), createdProjectIds: ['seeded-1', 'seeded-2'] };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(false);
+
+		expect(mocks.deleteProject.mock.calls).toEqual([['seeded-1'], ['seeded-2']]);
+		expect(mocks.deleteThread).toHaveBeenCalledWith('T1');
+	});
+
+	it('never calls deleteProject for a build that seeded none', async () => {
+		// `createdProjectIds` is optional — every case that seeds no project must not
+		// reach the project API at all.
+		const { client, mocks } = makeClient();
+
+		await expect(cleanupBuild(client, makeBuild(), silentLogger)).resolves.toBe(true);
+
+		expect(mocks.deleteProject).not.toHaveBeenCalled();
 	});
 });

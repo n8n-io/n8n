@@ -1085,6 +1085,26 @@ describe('SAML SSO provisioning', () => {
 		expect(userFromDB.role.slug).toBe('global:admin');
 	});
 
+	it('should redirect a blocked login to the sign-in page instead of answering with an error', async () => {
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig.defaultInstanceRole = BLOCK_ACCESS_ASSIGNMENT;
+
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-blocked-over-http@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-blocked-over-http',
+			},
+			raw: { email: 'saml-blocked-over-http@example.com', department: 'sales' },
+		});
+
+		const response = await authOwnerAgent.post('/sso/saml/acs').expect(302);
+
+		expect(response.headers.location).toContain('/signin?ssoError=access-denied');
+	});
+
 	it('should provision project role via expression mapping', async () => {
 		const project = await createTeamProject('saml-expr-project-role-test');
 

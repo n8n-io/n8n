@@ -91,7 +91,7 @@ test.describe(
 		});
 
 		test.describe('MCP Settings', () => {
-			test('should reject when MCP access is disabled', async ({ api }) => {
+			test('should hide the MCP server when MCP access is disabled', async ({ api }) => {
 				await api.setMcpAccess(false);
 
 				try {
@@ -99,7 +99,8 @@ test.describe(
 					const message = api.mcp.createMessage('tools/list');
 					const response = await api.mcp.internalMcpSendMessage(apiKey, message);
 
-					expect(response.status()).toBe(403);
+					expect(response.status()).toBe(404);
+					expect(response.headers()['www-authenticate']).toBeUndefined();
 					const body = await response.json();
 					expect(body.message).toContain('MCP access is disabled');
 				} finally {
@@ -336,13 +337,18 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production', {
-					type: 'webhook',
-					webhookData: {
-						method: 'POST',
-						body: { message: 'Hello from MCP test' },
+				const result = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					workflowId,
+					'production',
+					{
+						webhookData: {
+							method: 'POST',
+							body: { message: 'Hello from MCP test' },
+						},
 					},
-				});
+					'Webhook',
+				);
 
 				expect(result.status).toBe('started');
 				expect(result.executionId).toBeTruthy();

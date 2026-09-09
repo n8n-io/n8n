@@ -88,6 +88,25 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
+	it('enables mapped low reasoning effort for proxied moonshotai/kimi-k3', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'moonshotai/kimi-k3');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('moonshotai', {
+			reasoningEffort: 'low',
+		});
+	});
+
+	it('enables mapped low reasoning effort for moonshotai LanguageModel objects', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, {
+			provider: 'moonshotai',
+			modelId: 'kimi-k3',
+		} as unknown as Parameters<typeof applyAgentThinking>[1]);
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('moonshotai', {
+			reasoningEffort: 'low',
+		});
+	});
+
 	it('enables mapped low reasoning effort for Databricks AI Gateway Kimi-K3', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'custom/workspace.default.kimi-k3');

@@ -29,12 +29,11 @@ defineExpose({ validationError });
 			:credentials="credentials"
 			:credential-permissions="credentialPermissions"
 			:credentials-loading="credentialsLoading"
-			:disabled="loading || credentialReplacementPending"
+			:disabled="loading"
 			:loading="loading"
 			:error-message="errorMessage"
 			:error-is-conflict="errorIsConflict"
 			:force-new-credential="forceNewCredential"
-			:show-edit-button="!credentialReplacementPending"
 			@create="emit('create')"
 			@edit="emit('edit')"
 		/>

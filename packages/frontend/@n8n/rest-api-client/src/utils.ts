@@ -1,4 +1,4 @@
-import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
+import { getBrowserId } from '@n8n/constants';
 import { assert } from '@n8n/utils/assert';
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
@@ -6,15 +6,6 @@ import { jsonParse } from 'n8n-workflow';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
 
 import type { IRestApiContext } from './types';
-
-const getBrowserId = () => {
-	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
-	if (!browserId) {
-		browserId = crypto.randomUUID();
-		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
-	}
-	return browserId;
-};
 
 export const NO_NETWORK_ERROR_CODE = 999;
 export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';

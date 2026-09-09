@@ -36,15 +36,25 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	openrouter: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// NvidiaApi.credentials.ts → apiKey, url (base URL)
 	nvidia: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	// MoonshotApi.credentials.ts → apiKey, url (hidden, derived from the region choice)
+	moonshotai: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	// MinimaxApi.credentials.ts → apiKey, url (hidden, region-derived, already ends in /v1)
+	minimax: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	// AlibabaCloudApi.credentials.ts → apiKey, url (hidden, region-derived bare host)
+	alibaba: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 
-	// AzureOpenAiApi.credentials.ts            → apiKey, resourceName, apiVersion, endpoint
-	// AzureEntraCognitiveServicesOAuth2Api.credentials.ts → resourceName, apiVersion, endpoint
+	// AzureOpenAiApi.credentials.ts            → apiKey, resourceName, apiVersion, endpoint, foundryEndpoint, endpointType
+	// AzureEntraCognitiveServicesOAuth2Api.credentials.ts → resourceName, apiVersion, endpoint, foundryEndpoint, endpointType
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'azure-openai': (c) => ({
 		apiKey: c.apiKey,
 		resourceName: c.resourceName,
 		apiVersion: c.apiVersion,
-		baseURL: c.endpoint,
+		// Foundry stores its full base URL in `foundryEndpoint`; classic uses the
+		// optional `endpoint` (or derives from `resourceName`). Distinct field names
+		// avoid duplicate-key render glitches in the credential modal.
+		baseURL: c.endpointType === 'foundry' ? c.foundryEndpoint : c.endpoint,
+		endpointType: c.endpointType,
 	}),
 
 	// Aws.credentials.ts → region, accessKeyId, secretAccessKey, sessionToken

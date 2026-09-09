@@ -1,15 +1,17 @@
 import { isValidTimeZone } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { sql } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { parseListQuerySortBy, sql, SharedWorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
+import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { getDateRangesCommonTableExpressionQuery } from './insights-by-period-query.helper';
 import { InsightsByPeriod } from '../entities/insights-by-period';
-import type { PeriodUnit, TypeUnit } from '../entities/insights-shared';
+import type { PeriodUnit, TypeUnitNumber, ByTimeInsightType } from '../entities/insights-shared';
 import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
@@ -23,7 +25,13 @@ const displayTypeName = {
 const summaryParser = z
 	.object({
 		period: z.enum(['previous', 'current']),
-		type: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
+		type: z.union([
+			z.literal(TypeToNumber.time_saved_min),
+			z.literal(TypeToNumber.runtime_ms),
+			z.literal(TypeToNumber.success),
+			z.literal(TypeToNumber.failure),
+			z.literal(TypeToNumber.billable),
+		]),
 
 		// depending on db engine, sum(value) can be a number or a string - because of big numbers
 		total_value: z.union([z.number(), z.string()]),
@@ -53,17 +61,16 @@ const optionalNumberLike = z
 
 const aggregatedInsightsByTimeParser = z
 	.object({
-		periodStart: z.union([z.date(), z.string()]).transform((value) => {
+		periodStart: z.union([z.date(), z.string()]).transform((value): string => {
 			if (value instanceof Date) {
 				return value.toISOString();
 			}
 
 			const parsedDatetime = DateTime.fromSQL(value.toString(), { zone: 'utc' });
 			if (parsedDatetime.isValid) {
-				return parsedDatetime.toISO();
+				return parsedDatetime.toISO() ?? new Date(value).toISOString();
 			}
 
-			// fallback on native date parsing
 			return new Date(value).toISOString();
 		}),
 		runTime: optionalNumberLike,
@@ -73,16 +80,53 @@ const aggregatedInsightsByTimeParser = z
 	})
 	.array();
 
+/**
+ * Identifies a caller whose insights must be limited to the workflows they can
+ * read.
+ */
+export type InsightsAccessFilter = {
+	user: User;
+	projectRoles: string[];
+	workflowRoles: string[];
+};
+
 @Service()
 export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	private isRunningCompaction = false;
 
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+	) {
 		super(InsightsByPeriod, dataSource.manager);
 	}
 
 	private escapeField(fieldName: string) {
 		return this.manager.connection.driver.escape(fieldName);
+	}
+
+	/**
+	 * Limits a query to insights for workflows the caller can read, by
+	 * correlating against their workflow shares.
+	 */
+	private applyAccessFilter(
+		qb: SelectQueryBuilder<InsightsByPeriod>,
+		accessFilter: InsightsAccessFilter,
+	) {
+		// Ensure the metadata relation is joined, so we can correlate against workflowId
+		if (!qb.expressionMap.joinAttributes.some((join) => join.alias.name === 'metadata')) {
+			throw new UnexpectedError('The metadata relation must be joined before the access filter');
+		}
+
+		const subquery = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(
+			accessFilter.user,
+			{
+				projectRoles: accessFilter.projectRoles,
+				workflowRoles: accessFilter.workflowRoles,
+			},
+		);
+		subquery.andWhere('"sw"."workflowId" = metadata."workflowId"');
+		qb.andWhere(`EXISTS (${subquery.getQuery()})`).setParameters(subquery.getParameters());
 	}
 
 	private getPeriodFilterExpr(maxAgeInDays = 0) {
@@ -305,10 +349,17 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		endDate,
 		projectId,
 		timeZone,
-	}: { projectId?: string; startDate: Date; endDate: Date; timeZone?: string }): Promise<
+		accessFilter,
+	}: {
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
+		accessFilter?: InsightsAccessFilter;
+		timeZone?: string;
+	}): Promise<
 		Array<{
 			period: 'previous' | 'current';
-			type: 0 | 1 | 2 | 3;
+			type: TypeUnitNumber;
 			total_value: string | number;
 		}>
 	> {
@@ -336,20 +387,22 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.groupBy('period')
 			.addGroupBy('insights.type');
 
+		// If we're filtering by projectId or accessFilter, we need a metadata join to access projectId and workflowId.
+		if (projectId || accessFilter) {
+			rawRowsQuery.innerJoin('insights.metadata', 'metadata');
+		}
+
 		if (projectId) {
-			rawRowsQuery
-				.innerJoin('insights.metadata', 'metadata')
-				.andWhere('metadata.projectId = :projectId', { projectId });
+			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
+		}
+
+		if (accessFilter) {
+			this.applyAccessFilter(rawRowsQuery, accessFilter);
 		}
 
 		const rawRows = await rawRowsQuery.getRawMany();
 
 		return summaryParser.parse(rawRows);
-	}
-
-	private parseSortingParams(sortBy: string): [string, 'ASC' | 'DESC'] {
-		const [column, order] = sortBy.split(':');
-		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
 	}
 
 	private async countInsightsByWorkflowGroups(
@@ -373,6 +426,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		sortBy = 'total:desc',
 		projectId,
 		timeZone,
+		accessFilter,
 	}: {
 		skip?: number;
 		take?: number;
@@ -381,8 +435,9 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		startDate: Date;
 		endDate: Date;
 		timeZone?: string;
+		accessFilter?: InsightsAccessFilter;
 	}) {
-		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
+		const { column: sortField, direction: sortOrder } = parseListQuerySortBy(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
 		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
@@ -422,6 +477,10 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
 		}
 
+		if (accessFilter) {
+			this.applyAccessFilter(rawRowsQuery, accessFilter);
+		}
+
 		const paginatedQuery = rawRowsQuery
 			.clone()
 			.orderBy(this.escapeField(sortField), sortOrder)
@@ -443,13 +502,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		startDate,
 		endDate,
 		timeZone,
+		accessFilter,
 	}: {
 		periodUnit: PeriodUnit;
-		insightTypes: TypeUnit[];
+		insightTypes: ByTimeInsightType[];
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
 		timeZone?: string;
+		accessFilter?: InsightsAccessFilter;
 	}) {
 		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
 
@@ -474,10 +535,17 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.groupBy(periodStartExpr)
 			.orderBy(periodStartExpr, 'ASC');
 
+		// If we're filtering by projectId or accessFilter, we need a metadata join to access projectId and workflowId.
+		if (projectId || accessFilter) {
+			rawRowsQuery.innerJoin('insights.metadata', 'metadata');
+		}
+
 		if (projectId) {
-			rawRowsQuery
-				.innerJoin('insights.metadata', 'metadata')
-				.andWhere('metadata.projectId = :projectId', { projectId });
+			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
+		}
+
+		if (accessFilter) {
+			this.applyAccessFilter(rawRowsQuery, accessFilter);
 		}
 
 		const rawRows = await rawRowsQuery.getRawMany();

@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { IconBodyLoaderKey } from '@n8n/design-system';
-import { defineComponent, h, nextTick, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { InstanceAiHandoffContext, TaskList } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiHandoffContext, TaskList } from '@n8n/api-types';
 import type { ResourceEntry } from '../useResourceRegistry';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 
@@ -12,7 +12,11 @@ const storeState = reactive({
 	id: 'thread-1',
 	currentTasks: undefined as TaskList | undefined,
 	producedArtifacts: new Map<string, ResourceEntry>(),
-	messages: [] as Array<{ role: string; context?: Record<string, unknown> }>,
+	messages: [] as Array<{
+		role: string;
+		context?: Record<string, unknown>;
+		agentTree?: InstanceAiAgentNode;
+	}>,
 	projectId: undefined as string | undefined,
 });
 const metadataState = ref<Record<string, unknown> | undefined>(undefined);
@@ -37,20 +41,6 @@ const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
 			// Lucide-only icons (outside the curated set) need the async body loader.
 			[IconBodyLoaderKey as symbol]: async () => '<path d="M1 1"/>',
 		},
-		stubs: {
-			ConnectionsCard: defineComponent({
-				props: {
-					dropdownPortalTarget: { type: HTMLElement, required: false },
-				},
-				setup(props) {
-					return () =>
-						h('section', {
-							'data-test-id': 'connections-card',
-							'data-portal-target-tag': props.dropdownPortalTarget?.tagName ?? '',
-						});
-				},
-			}),
-		},
 	},
 });
 
@@ -64,7 +54,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		updateThreadMetadataMock.mockClear();
 	});
 
-	it('keeps empty artifacts and connections sections visible without an empty tasks section', () => {
+	it('keeps the empty artifacts section visible without an empty tasks section', () => {
 		const { getByText, getByTestId, queryByText } = renderComponent();
 
 		expect(getByTestId('instance-ai-artifacts-sidebar')).toBeInTheDocument();
@@ -72,15 +62,6 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(getByText('No artifacts yet')).toBeInTheDocument();
 		expect(queryByText('To-do list')).not.toBeInTheDocument();
 		expect(queryByText('No tasks yet')).not.toBeInTheDocument();
-		expect(getByTestId('connections-card')).toBeInTheDocument();
-	});
-
-	it('anchors connection menus inside the panel', async () => {
-		const { getByTestId } = renderComponent();
-
-		await nextTick();
-
-		expect(getByTestId('connections-card')).toHaveAttribute('data-portal-target-tag', 'ASIDE');
 	});
 
 	it('opens artifacts in preview and shows tasks without progress counts', async () => {
@@ -201,7 +182,7 @@ describe('InstanceAiArtifactsPanel', () => {
 				context: {
 					source: 'credential-modal',
 					credential: {
-						credentialType: 'gmailOAuth2Api',
+						credentialType: 'gmailOAuth2',
 						displayName: 'Gmail OAuth2 API',
 					},
 				},
@@ -367,7 +348,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		const pendingComposerContext = ref({
 			source: 'credential-modal' as const,
 			credential: {
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 			},
 		});
@@ -449,6 +430,54 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(wasNotPrevented).toBe(false);
 		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
+	});
+
+	it('shows a spinner on the artifact row while the AI is building it', () => {
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+			['wf-1', { type: 'workflow', id: 'wf-1', name: 'My Workflow' }],
+		]);
+		storeState.messages = [
+			{
+				role: 'assistant',
+				agentTree: {
+					agentId: 'root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					timeline: [],
+					children: [
+						{
+							agentId: 'builder-1',
+							kind: 'agent-builder',
+							role: 'agent-builder',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							toolCalls: [],
+							timeline: [],
+							children: [],
+							targetResource: { type: 'agent', id: 'agent-1' },
+						},
+					],
+				} as InstanceAiAgentNode,
+			},
+		];
+
+		const { getByRole } = renderComponent();
+
+		const buildingRow = getByRole('link', { name: 'Open SEO Auditor' });
+		expect(
+			buildingRow.querySelector('[data-test-id="instance-ai-artifact-building-spinner"]'),
+		).toBeInTheDocument();
+		expect(buildingRow.querySelector('[data-icon="robot"]')).not.toBeInTheDocument();
+
+		const idleRow = getByRole('link', { name: 'Open My Workflow' });
+		expect(
+			idleRow.querySelector('[data-test-id="instance-ai-artifact-building-spinner"]'),
+		).not.toBeInTheDocument();
 	});
 
 	it('keeps pending agents in the preview without exposing a standalone link', () => {

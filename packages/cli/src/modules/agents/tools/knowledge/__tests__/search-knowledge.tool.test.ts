@@ -33,7 +33,7 @@ function getToolHandler(tool: BuiltTool): NonNullable<BuiltTool['handler']> {
 }
 
 describe('createKnowledgeRetrievalTools', () => {
-	it('finds files with the project-scoped sandbox using a catch-all pattern', async () => {
+	it('finds files through the Agent-scoped knowledge mirror', async () => {
 		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
 		knowledgeMirrorService.globKnowledgeFiles.mockResolvedValue({
 			files: [],
@@ -55,7 +55,7 @@ describe('createKnowledgeRetrievalTools', () => {
 		);
 	});
 
-	it('searches knowledge with the project-scoped sandbox even when memory uses an integration resource', async () => {
+	it('searches the Agent-scoped knowledge mirror regardless of the memory resource', async () => {
 		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
 		knowledgeMirrorService.searchKnowledge.mockResolvedValue({
 			outputMode: 'content',
@@ -74,7 +74,7 @@ describe('createKnowledgeRetrievalTools', () => {
 		expect(knowledgeMirrorService.searchKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
 	});
 
-	it('reads knowledge with the project-scoped sandbox even when memory uses an integration resource', async () => {
+	it('reads the Agent-scoped knowledge mirror regardless of the memory resource', async () => {
 		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
 		knowledgeMirrorService.readKnowledge.mockResolvedValue({
 			file: 'notes.txt',

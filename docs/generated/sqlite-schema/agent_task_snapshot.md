@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_task_snapshot" ("versionId" varchar(36) NOT NULL, "taskId" varchar(32) NOT NULL, "enabled" boolean NOT NULL, "name" varchar(128) NOT NULL, "objective" text NOT NULL, "cronExpression" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_1acedce6690392ef1611cca8b88" FOREIGN KEY ("versionId") REFERENCES "agent_history" ("versionId") ON DELETE CASCADE, PRIMARY KEY ("versionId", "taskId"))
+CREATE TABLE "agent_task_snapshot" ("versionId" varchar(36) NOT NULL, "taskId" varchar(32) NOT NULL, "enabled" boolean NOT NULL, "name" varchar(128) NOT NULL, "objective" text NOT NULL, "cronExpression" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "timezone" varchar(64), CONSTRAINT "FK_1acedce6690392ef1611cca8b88" FOREIGN KEY ("versionId") REFERENCES "agent_history" ("versionId") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("versionId", "taskId"))
 ```
 
 </details>
@@ -21,6 +21,7 @@ CREATE TABLE "agent_task_snapshot" ("versionId" varchar(36) NOT NULL, "taskId" v
 | name | varchar(128) |  | false |  |  |  |
 | objective | TEXT |  | false |  |  |  |
 | taskId | varchar(32) |  | false |  |  |  |
+| timezone | varchar(64) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | versionId | varchar(36) |  | false |  | [agent_history](agent_history.md) |  |
 
@@ -53,6 +54,7 @@ erDiagram
   varchar_128_ name
   TEXT objective
   varchar_32_ taskId PK
+  varchar_64_ timezone
   datetime_3_ updatedAt
   varchar_36_ versionId PK
 }

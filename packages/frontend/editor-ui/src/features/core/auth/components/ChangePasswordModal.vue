@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
-import { CHANGE_PASSWORD_MODAL_KEY } from '@/app/constants';
+import { CHANGE_PASSWORD_MODAL_KEY } from '../auth.constants';
 import Modal from '@/app/components/Modal.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createFormEventBus } from '@n8n/design-system';
@@ -11,6 +11,9 @@ import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { N8nButton, N8nFormInputs, createPasswordRules } from '@n8n/design-system';
+
+// DynamicModalLoader's modal-state props must not reach the dialog root.
+defineOptions({ inheritAttrs: false });
 const config = ref<IFormInputs | null>(null);
 const formBus = createFormEventBus();
 const modalBus = createEventBus();

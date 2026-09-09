@@ -141,6 +141,8 @@ const onTagsEditEsc = () => {
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 .executionDetailsTags {
 	// Container styles if needed
 }

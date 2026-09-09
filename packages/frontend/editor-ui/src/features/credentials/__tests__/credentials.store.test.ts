@@ -1,5 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 import type { ICredentialsResponse } from '../credentials.types';
 import * as credentialsApi from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';
@@ -17,10 +19,15 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore,
 }));
 
-vi.mock('@/app/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: vi.fn(() => ({
+const { mockNodeTypesStore } = vi.hoisted(() => ({
+	mockNodeTypesStore: {
 		getNodeType: vi.fn(),
-	})),
+		getNodeVersions: vi.fn(() => [] as number[]),
+	},
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: vi.fn(() => mockNodeTypesStore),
 }));
 
 vi.mock('@n8n/stores/settings.store', () => ({
@@ -38,6 +45,73 @@ describe('credentials.store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
+	});
+
+	describe('isCredentialTypeTestable', () => {
+		/**
+		 * Registers one credential type backed by a versioned node, with `testedBy` on
+		 * whichever versions `testedByOn` names.
+		 */
+		// Plain literals rather than `mock<T>` on purpose: an auto-mocked `test` property
+		// is a truthy proxy, which would short-circuit the getter in every case.
+		const credentialType = (overrides: Partial<ICredentialType>): ICredentialType => ({
+			name: 'kafka',
+			displayName: 'Kafka',
+			properties: [],
+			...overrides,
+		});
+
+		const setupVersionedNode = (versions: number[], testedByOn: number[]) => {
+			const store = useCredentialsStore();
+			store.setCredentialTypes([credentialType({ supportedNodes: ['kafka'] })]);
+
+			mockNodeTypesStore.getNodeVersions.mockReturnValue(versions);
+			mockNodeTypesStore.getNodeType.mockImplementation(
+				(_name: string, version?: number) =>
+					({
+						credentials: [
+							{
+								name: 'kafka',
+								...(version !== undefined && testedByOn.includes(version)
+									? { testedBy: 'kafkaConnectionTest' }
+									: {}),
+							},
+						],
+					}) as INodeTypeDescription,
+			);
+
+			return store;
+		};
+
+		it('finds a test declared only on an older version, not just the newest', () => {
+			// Regression guard: reading a single version hid Kafka's v1 test once v2 registered
+			// without `testedBy`, silently disabling the on-save connection test.
+			const store = setupVersionedNode([1, 2], [1]);
+
+			expect(store.isCredentialTypeTestable('kafka')).toBe(true);
+		});
+
+		it('is false when no registered version declares a test', () => {
+			const store = setupVersionedNode([1, 2], []);
+
+			expect(store.isCredentialTypeTestable('kafka')).toBe(false);
+		});
+
+		it('is true when the credential type defines its own test, without consulting nodes', () => {
+			const store = useCredentialsStore();
+			store.setCredentialTypes([
+				credentialType({ name: 'slackApi', test: { request: { url: '/test' } } }),
+			]);
+
+			expect(store.isCredentialTypeTestable('slackApi')).toBe(true);
+			expect(mockNodeTypesStore.getNodeVersions).not.toHaveBeenCalled();
+		});
+
+		it('is false for an unknown credential type', () => {
+			const store = useCredentialsStore();
+
+			expect(store.isCredentialTypeTestable('nopeApi')).toBe(false);
+		});
 	});
 
 	describe('testCredential', () => {
@@ -144,6 +218,222 @@ describe('credentials.store', () => {
 
 			expect(store.allCredentials).toHaveLength(2);
 			expect(store.allCredentials.find((c) => c.id === 'cred-2')?.isGlobal).toBe(true);
+		});
+	});
+
+	describe('fetchUsableCredentials', () => {
+		const credential = (
+			overrides: Partial<ICredentialsResponse> & Pick<ICredentialsResponse, 'id'>,
+		): ICredentialsResponse =>
+			mock<ICredentialsResponse>({
+				name: `Credential ${overrides.id}`,
+				type: 'httpBasicAuth',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				...overrides,
+			});
+
+		const inScope = credential({ id: 'in-scope', name: 'Project credential' });
+		const outOfScope = credential({ id: 'out-of-scope', name: 'Personal credential' });
+
+		it('populates the usable slice and flips the fetched flag', async () => {
+			const store = useCredentialsStore();
+			expect(store.hasFetchedUsableCredentials).toBe(false);
+
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
+
+			expect(credentialsApi.getUsableCredentials).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				{ workflowId: 'wf-1' },
+			);
+			expect(store.hasFetchedUsableCredentials).toBe(true);
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
+			// The flat map keeps its existing replace semantics.
+			expect(store.allCredentials).toEqual([inScope]);
+		});
+
+		it('reads an unfetched slice as empty rather than falling back to the flat map', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([outOfScope]);
+			await store.fetchAllCredentials();
+
+			expect(store.allCredentials).toEqual([outOfScope]);
+			expect(store.hasFetchedUsableCredentials).toBe(false);
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([]);
+		});
+
+		it('keeps the usable slice when a later unscoped fetch widens the flat map', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([inScope, outOfScope]);
+
+			await store.fetchUsableCredentials({ projectId: 'project-1' });
+			await store.fetchAllCredentials();
+
+			expect(store.allCredentials).toHaveLength(2);
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
+		});
+
+		it('keeps the usable slice when the unscoped fetch resolved first', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([inScope, outOfScope]);
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+
+			await store.fetchAllCredentials();
+			await store.fetchUsableCredentials({ projectId: 'project-1' });
+
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
+		});
+
+		it('returns an empty list for a type with no usable credentials', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
+
+			expect(store.getUsableCredentialByType('unknownType')).toEqual([]);
+		});
+
+		it('never yields undefined entries for a node whose types are only partly usable', async () => {
+			const store = useCredentialsStore();
+
+			mockNodeTypesStore.getNodeType.mockReturnValue(
+				mock<INodeTypeDescription>({
+					credentials: [{ name: 'httpBasicAuth' }, { name: 'oAuth2Api' }],
+				}),
+			);
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
+
+			const credentials = store.allUsableCredentialsForNode(
+				mock<INodeUi>({ type: 'n8n-nodes-base.httpRequest', typeVersion: 1 }),
+			);
+
+			expect(credentials).toEqual([inScope]);
+		});
+
+		it('drops the slice while a different scope is in flight', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
+
+			let resolveSecond: (credentials: ICredentialsResponse[]) => void = () => {};
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockReturnValue(
+				new Promise((resolve) => {
+					resolveSecond = resolve;
+				}),
+			);
+			const pending = store.fetchUsableCredentials({ workflowId: 'wf-2' });
+
+			// The previous workflow's credentials must not stand in for the new scope.
+			expect(store.hasFetchedUsableCredentials).toBe(false);
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([]);
+
+			resolveSecond([outOfScope]);
+			await pending;
+
+			expect(store.hasFetchedUsableCredentials).toBe(true);
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([outOfScope]);
+		});
+
+		it('ignores a response for a scope that is no longer active', async () => {
+			const store = useCredentialsStore();
+
+			let resolveFirst: (credentials: ICredentialsResponse[]) => void = () => {};
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveFirst = resolve;
+				}),
+			);
+			const stale = store.fetchUsableCredentials({ workflowId: 'wf-1' });
+
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-2' });
+
+			resolveFirst([outOfScope]);
+			await stale;
+
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
+		});
+
+		it('ignores an older response for the scope already loaded', async () => {
+			const store = useCredentialsStore();
+
+			// A refresh — the one a quick connect triggers, say — can overtake a fetch the
+			// same scope started earlier; the newest answer has to win.
+			let resolveFirst: (credentials: ICredentialsResponse[]) => void = () => {};
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveFirst = resolve;
+				}),
+			);
+			const stale = store.fetchUsableCredentials({ workflowId: 'wf-1' });
+
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope, outOfScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
+
+			resolveFirst([inScope]);
+			await stale;
+
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([outOfScope, inScope]);
+		});
+
+		it('keeps the slice when the same scope is fetched again', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
+
+			const pending = store.fetchUsableCredentials({ workflowId: 'wf-1' });
+
+			expect(store.hasFetchedUsableCredentials).toBe(true);
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
+			await pending;
+		});
+	});
+
+	describe('refreshUsableCredentials', () => {
+		const inScope = mock<ICredentialsResponse>({
+			id: 'in-scope',
+			name: 'A project credential',
+			type: 'httpBasicAuth',
+		});
+		const connected = mock<ICredentialsResponse>({
+			id: 'connected',
+			name: 'B just connected',
+			type: 'httpBasicAuth',
+		});
+
+		it('re-reads the scope the slice was last fetched for', async () => {
+			const store = useCredentialsStore();
+
+			const fetchSpy = vi
+				.spyOn(credentialsApi, 'getUsableCredentials')
+				.mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ projectId: 'project-1' });
+
+			fetchSpy.mockResolvedValue([inScope, connected]);
+			await store.refreshUsableCredentials();
+
+			expect(fetchSpy).toHaveBeenLastCalledWith(mockRootStore.restApiContext, {
+				projectId: 'project-1',
+			});
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope, connected]);
+		});
+
+		it('does nothing when no scoped fetch has happened', async () => {
+			const store = useCredentialsStore();
+
+			const fetchSpy = vi.spyOn(credentialsApi, 'getUsableCredentials');
+			await store.refreshUsableCredentials();
+
+			expect(fetchSpy).not.toHaveBeenCalled();
+			expect(store.hasFetchedUsableCredentials).toBe(false);
 		});
 	});
 

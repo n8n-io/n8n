@@ -220,16 +220,22 @@ export class AgentChatHitlResumeHandler {
 	/**
 	 * Guard against double resumption, then resume the agent and stream the
 	 * response back into the thread.
+	 *
+	 * Public because a resume is not always user-driven — `AgentChatBridge` also
+	 * calls this when a sub-workflow finishing wakes a suspended run. Note the
+	 * `activeResumedRuns` guard is per instance, so it only covers this process.
 	 */
-	private async executeResume(
+	async executeResume(
 		thread: Thread<unknown, unknown>,
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
+		/** Tell the user the action was already handled. Only for their own clicks. */
+		notifyOnDuplicate = true,
 	): Promise<void> {
 		if (this.activeResumedRuns.has(runId)) {
 			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
-			await thread.post('This action has already been handled');
+			if (notifyOnDuplicate) await thread.post('This action has already been handled');
 			return;
 		}
 

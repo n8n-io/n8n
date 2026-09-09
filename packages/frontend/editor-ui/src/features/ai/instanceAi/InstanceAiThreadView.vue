@@ -21,7 +21,15 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
+import {
+	StorageSerializers,
+	onClickOutside,
+	useDebounceFn,
+	useElementSize,
+	useLocalStorage,
+	useScroll,
+	useWindowSize,
+} from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
@@ -29,10 +37,20 @@ import type {
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import {
+	DEBOUNCE_TIME,
+	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
+	LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO,
+} from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
@@ -48,6 +66,7 @@ import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	clearPendingAgentAttachment,
+	consumePendingDraftAttachment,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
@@ -56,6 +75,7 @@ import {
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	stashPendingComposerDraft,
+	stashPendingFirstMessage,
 	stashPendingHandoffContext,
 } from './composables/useInstanceAiHandoff';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
@@ -86,6 +106,8 @@ import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavai
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
@@ -98,6 +120,7 @@ import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAg
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
+import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 
 const props = defineProps<{
 	threadId: string;
@@ -169,8 +192,8 @@ watch(
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // True when at least one pending confirmation should occupy the chat-input
-// slot (generic approvals + domain/web-search access). Drives the swap
-// between the input and the floating confirmation panel.
+// slot (questions, generic approvals, or domain/web-search access). Drives
+// the swap between the input and the floating confirmation panel.
 const hasFloatingConfirmation = computed(() =>
 	thread.pendingConfirmations.some(isPendingItemFloating),
 );
@@ -276,12 +299,41 @@ watch(
 );
 
 // --- Canvas / data table preview ---
+// null = no preference yet, so the first artifact still opens the preview.
+// Sync flush keeps a thread switch from exposing the old thread's value for a tick.
+const persistedArtifactPreviewOpen = useLocalStorage<boolean | null>(
+	() => LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN(props.threadId),
+	null,
+	{ serializer: StorageSerializers.boolean, writeDefaults: false, flush: 'sync' },
+);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
+	previewOpenState: () => persistedArtifactPreviewOpen.value ?? undefined,
+	onPreviewOpenChange: (open) => {
+		persistedArtifactPreviewOpen.value = open;
+	},
 });
+
+const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
+const agentReturnWorkflowId = agentReturnContext?.workflowId;
+const agentReturnNodeId = ref(agentReturnContext?.nodeId);
+if (agentReturnWorkflowId) {
+	preview.openWorkflowPreview(agentReturnWorkflowId);
+}
+
+function consumeAgentReturnNodeId() {
+	agentReturnNodeId.value = undefined;
+}
+
+function openAgentChatPreview(agentId: string, projectId: string): boolean {
+	preview.openAgentPreview(agentId, projectId);
+	isAgentPreviewDockOpen.value = true;
+	return true;
+}
+
 const activeAgentPreviewSessionId = computed(() => {
 	const context = pendingComposerContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -298,6 +350,7 @@ const activeAgentPreviewSessionId = computed(() => {
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openAgentChatPreview', openAgentChatPreview);
 provide('pendingComposerContext', pendingComposerContext);
 provide('dismissPendingComposerContext', dismissPendingComposerContext);
 
@@ -395,8 +448,6 @@ function suppressPanelTransitionsUntilStableRender() {
 }
 
 // --- Preview panel resize (when canvas is visible) ---
-// Cap the preview at 50% of the available thread area so the chat retains at
-// least the other half when side panels or app layout chrome are visible.
 const threadAreaRef = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadAreaRef);
 const mainSidebarOccupiedWidth = computed(() =>
@@ -439,34 +490,73 @@ const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
 const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
-const previewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
 const isResizingPreview = ref(false);
+const isThreadAreaResizing = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentPreviewDockOpen = ref(false);
-
-watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
-	if (activeTabId !== previousActiveTabId) {
-		isAgentPreviewDockOpen.value = false;
-	}
+const MIN_SPLIT_PANEL_WIDTH = 400;
+const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
+// Share of the thread area, so the split survives window and sidebar resizes. -1 = no preference yet.
+const chatPanelWidthRatio = useLocalStorage(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO, -1, {
+	writeDefaults: false,
 });
 
-const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value / 2));
-// Keep the artifact at its current width and split the remaining space evenly
-// between the Instance AI chat and the agent preview chat.
-const agentPreviewChatColumnWidth = computed(() =>
-	Math.max(0, (threadAreaWidth.value - previewPanelWidth.value) / 2),
+watch(
+	preview.activeTabId,
+	(activeTabId, previousActiveTabId) => {
+		if (activeTabId !== previousActiveTabId) {
+			isAgentPreviewDockOpen.value = false;
+		}
+	},
+	{ flush: 'sync' },
 );
+
+// Below two panel minimums the limits meet at half, so both panels share the space evenly.
+const halfThreadAreaWidth = computed(() => Math.round(threadAreaWidth.value / 2));
+const previewMinWidth = computed(() => Math.min(MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value));
+const previewMaxWidth = computed(() =>
+	Math.max(threadAreaWidth.value - MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value),
+);
+const previewPanelWidth = computed(() => {
+	const ratio = chatPanelWidthRatio.value;
+	const chatPanelWidth =
+		ratio >= 0 && ratio <= 1 ? threadAreaWidth.value * ratio : DEFAULT_CHAT_PANEL_CONTENT_WIDTH;
+	return Math.round(
+		Math.min(
+			Math.max(threadAreaWidth.value - chatPanelWidth, previewMinWidth.value),
+			previewMaxWidth.value,
+		),
+	);
+});
+const isPreviewResizeEnabled = computed(
+	() => !isPreviewExpanded.value && previewMinWidth.value < previewMaxWidth.value,
+);
+const shouldAnimatePreviewLayout = computed(
+	() =>
+		isPreviewPanelTransitionEnabled.value &&
+		!isResizingPreview.value &&
+		!isThreadAreaResizing.value,
+);
+const AGENT_PREVIEW_CHAT_MIN_WIDTH = 320;
+const AGENT_PREVIEW_CHAT_PREFERRED_WIDTH = 480;
+const AGENT_PREVIEW_CHAT_MAX_RATIO = 0.5;
+
+/** Keep the agent chat readable without using more than half of its preview panel. */
+const agentPreviewChatColumnWidth = computed(() => {
+	const containerWidth = isPreviewExpanded.value ? threadAreaWidth.value : previewPanelWidth.value;
+	const maximumWidth = containerWidth * AGENT_PREVIEW_CHAT_MAX_RATIO;
+	const minimumWidth = Math.min(AGENT_PREVIEW_CHAT_MIN_WIDTH, maximumWidth);
+
+	return Math.round(
+		Math.max(minimumWidth, Math.min(AGENT_PREVIEW_CHAT_PREFERRED_WIDTH, maximumWidth)),
+	);
+});
+
+/** Add custom width to Agent Preview chat when canvas area is full expanded. */
 const agentPreviewPanelStyle = computed(() => {
 	const chatColumnWidth = {
 		'--agent-preview-chat-column-width': `${agentPreviewChatColumnWidth.value}px`,
 	};
-
-	if (isAgentPreviewDockOpen.value) {
-		return {
-			...chatColumnWidth,
-			width: `${previewPanelWidth.value + agentPreviewChatColumnWidth.value}px`,
-		};
-	}
 
 	return isPreviewExpanded.value
 		? chatColumnWidth
@@ -474,28 +564,17 @@ const agentPreviewPanelStyle = computed(() => {
 });
 
 function togglePreviewExpanded() {
-	if (isAgentPreviewDockOpen.value) return;
-
 	isPreviewExpanded.value = !isPreviewExpanded.value;
 }
 
 function handleAgentPreviewDockOpenChange(open: boolean) {
 	isAgentPreviewDockOpen.value = open;
-	if (open) {
-		isPreviewExpanded.value = false;
-	}
 }
 
-// Clamp preview width when the available area shrinks (sidebar open, window
-// resize, etc.)
-watch(previewMaxWidth, (max) => {
-	if (previewPanelWidth.value > max) {
-		previewPanelWidth.value = max;
-	}
-});
-
 function handlePreviewResize({ width }: { width: number }) {
-	previewPanelWidth.value = width;
+	// The wrapper clamps the width, so an unchanged value means the drag hit a limit: keep the stored ratio.
+	if (Math.round(width) === previewPanelWidth.value) return;
+	chatPanelWidthRatio.value = (threadAreaWidth.value - width) / threadAreaWidth.value;
 }
 
 function handlePreviewPanelAfterEnter() {
@@ -518,23 +597,34 @@ watch(
 			isPreviewPanelTransitioning.value = isPreviewPanelTransitionEnabled.value;
 		}
 
-		if (visible) {
-			isArtifactsPanelRevealed.value = false;
-			previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
-		} else {
+		if (!visible) {
 			isAgentPreviewDockOpen.value = false;
+		} else {
+			isArtifactsPanelRevealed.value = false;
 		}
 	},
 	{ flush: 'sync' },
 );
 
-// Late-initialize if the panel became visible before the ResizeObserver
-// reported the container size (otherwise the panel would render at 0px).
-watch(threadAreaWidth, (width) => {
-	if (width > 0 && previewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
-		previewPanelWidth.value = Math.round(width / 2);
-	}
-});
+const finishThreadAreaResize = useDebounceFn(() => {
+	isThreadAreaResizing.value = false;
+}, getDebounceTime(DEBOUNCE_TIME.UI.RESIZE));
+
+watch(
+	threadAreaWidth,
+	(width, previousWidth) => {
+		if (
+			typeof previousWidth === 'number' &&
+			previousWidth > 0 &&
+			width !== previousWidth &&
+			preview.isPreviewVisible.value
+		) {
+			isThreadAreaResizing.value = true;
+			void finishThreadAreaResize();
+		}
+	},
+	{ immediate: true },
+);
 
 watch(isArtifactsPanelInLayout, (isInLayout) => {
 	isArtifactsPanelRevealed.value = false;
@@ -658,6 +748,14 @@ watch(chatInputRef, (el) => {
 });
 
 watch(
+	() => store.composerFocusRequest,
+	() => {
+		isPreviewExpanded.value = false;
+		void nextTick(() => chatInputRef.value?.focus());
+	},
+);
+
+watch(
 	[chatInputRef, pendingComposerDraft, () => thread.activePlanEdit],
 	([input, draft, planEdit]) => {
 		if (!input || !draft || planEdit) return;
@@ -685,8 +783,14 @@ function isCurrentThreadRuntime(): boolean {
 
 const composerContextChip = computed(() => {
 	const agentAttachment = currentAgentAttachment.value;
-	if (pendingAgentAttachment.value?.pending && agentAttachment) {
+	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
 		return {
+			type: 'agent-artifact' as const,
+			agentId: agentAttachment.id,
+			projectId: agentAttachment.projectId,
+			isNewAgent:
+				pendingAgentAttachment.value?.id === agentAttachment.id &&
+				pendingAgentAttachment.value.pending === true,
 			key: `pending-agent:${agentAttachment.id}`,
 			label: agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
 			icon: 'robot',
@@ -696,6 +800,10 @@ const composerContextChip = computed(() => {
 
 	if (pendingComposerContext.value?.source === 'agent-preview') {
 		return {
+			type: 'agent-preview-session' as const,
+			agentId: pendingComposerContext.value.agentId,
+			threadId: pendingComposerContext.value.threadId,
+			executionId: pendingComposerContext.value.executionId,
 			key: handoffContextKey(pendingComposerContext.value),
 			label: formatAgentPreviewContextLabel(
 				pendingComposerContext.value,
@@ -715,6 +823,10 @@ const composerContextChip = computed(() => {
 		if (dismissedKeys.has(key)) continue;
 
 		return {
+			type: 'agent-preview-session' as const,
+			agentId: message.context.agentId,
+			threadId: message.context.threadId,
+			executionId: message.context.executionId,
 			key,
 			label: formatAgentPreviewContextLabel(
 				message.context,
@@ -735,6 +847,8 @@ function reconnectThreadAfterHydration(): void {
 		pendingAgentAttachment.value = agentAttachment;
 		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
 	}
+	const draftAttachment = consumePendingDraftAttachment(props.threadId);
+	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();
@@ -744,12 +858,20 @@ function reconnectThreadAfterHydration(): void {
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
 		const pending = consumePendingFirstMessage(props.threadId);
 		if (pending) {
-			void thread.sendMessage(
-				pending.message,
-				pending.attachments,
-				rootStore.pushRef,
-				pending.context,
-			);
+			void thread
+				.sendMessage(pending.message, pending.attachments, rootStore.pushRef, pending.context)
+				.then((sent) => {
+					if (sent) return;
+					// Consuming already removed it, so a refused send (e.g. a concurrency cap)
+					// would otherwise discard a message the user typed in another tab. Put it
+					// back so the next mount replays it -- but only while there is still a
+					// thread to replay it into, otherwise the payload would be stranded in
+					// localStorage for a thread that no longer exists.
+					if (!store.threads.some((t) => t.id === props.threadId)) return;
+					stashPendingFirstMessage(props.threadId, pending);
+				});
+			// Experiment cleanup: remove with openWorkflowInAssistant.
+			useOpenWorkflowInAssistantStore().handleRedirectLanding(props.threadId);
 		}
 	});
 }
@@ -866,6 +988,8 @@ function handleSubmit(
 		? [...(attachments ?? []), agentAttachment]
 		: attachments;
 
+	const nodeCount = countAttachedNodes(attachments);
+
 	void thread
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
@@ -874,6 +998,18 @@ function handleSubmit(
 				const input = chatInputRef.value;
 				if (input && !input.isDirty()) input.setText(message);
 				return;
+			}
+			// Track message-with-nodes only after a successful send, so failed
+			// sends and retries don't inflate the node-count metric.
+			if (nodeCount > 0) {
+				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
+					node_count: nodeCount,
+				});
+			}
+			// Clear the canvas selection only once the send succeeded — clearing it
+			// up front loses the selection on a failed send that the user retries.
+			if (submittedAttachments?.some((a) => a.type === 'nodes')) {
+				store.requestClearCanvasSelection();
 			}
 			const isCurrentHandoff = !handoffContext || pendingComposerContext.value === handoffContext;
 			const isCurrentDraft =
@@ -1017,7 +1153,7 @@ function dismissPendingComposerContext(key: string): boolean {
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
 
-	if (pendingAgentAttachment.value?.pending) {
+	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
 		clearPendingAgentAttachment(props.threadId);
 		pendingAgentAttachment.value = null;
 		return;
@@ -1052,10 +1188,10 @@ async function dismissComposerContextChip() {
 			:class="[
 				$style.chatArea,
 				{
-					[$style.agentPreviewLayoutTransition]: isPreviewPanelTransitionEnabled,
+					[$style.agentPreviewLayoutTransition]: shouldAnimatePreviewLayout,
 				},
 			]"
-			:data-layout-animated="isPreviewPanelTransitionEnabled"
+			:data-layout-animated="shouldAnimatePreviewLayout"
 			data-test-id="instance-ai-builder-chat"
 		>
 			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
@@ -1171,8 +1307,8 @@ async function dismissComposerContextChip() {
 										:agent-node="builder"
 									/>
 								</div>
-								<!-- Inline confirmations (questions, plan review, text, setup,
-									 credential, gateway resource-decision, continue) render in
+								<!-- Inline confirmations (plan review, text, setup, credential,
+									 gateway resource-decision, continue) render in
 									 the chat flow. Floating-eligible items take over the chat
 									 input slot below instead - see `hasFloatingConfirmation`. -->
 								<InstanceAiConfirmationPanel kind="inline" />
@@ -1203,7 +1339,7 @@ async function dismissComposerContextChip() {
 							</div>
 
 							<!-- Floating input slot - replaced by the confirmation panel while a
-								 floating-eligible approval is pending. The credit banner stays
+								 floating interaction is pending. The credit banner stays
 								 anchored above the slot in both states. The leaving child is
 								 positioned absolutely during the cross-fade so the in-flow child
 								 can size the slot to its natural height. -->
@@ -1233,7 +1369,6 @@ async function dismissComposerContextChip() {
 										/>
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
-											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
 											:amounts-hidden="quotaLocked"
@@ -1316,8 +1451,7 @@ async function dismissComposerContextChip() {
 					$style.canvasArea,
 					{
 						[$style.canvasAreaExpanded]: isPreviewExpanded,
-						[$style.agentPreviewLayoutTransition]:
-							isPreviewPanelTransitionEnabled && !isResizingPreview,
+						[$style.agentPreviewLayoutTransition]: shouldAnimatePreviewLayout,
 					},
 				]"
 				:style="agentPreviewPanelStyle"
@@ -1326,12 +1460,11 @@ async function dismissComposerContextChip() {
 			>
 				<N8nResizeWrapper
 					:width="previewPanelWidth"
-					:min-width="400"
+					:min-width="previewMinWidth"
 					:max-width="previewMaxWidth"
 					:supported-directions="['left']"
-					:is-resizing-enabled="!isPreviewExpanded && !isAgentPreviewDockOpen"
+					:is-resizing-enabled="isPreviewResizeEnabled"
 					:grid-size="8"
-					:outset="true"
 					@resize="handlePreviewResize"
 					@resizestart="isResizingPreview = true"
 					@resizeend="isResizingPreview = false"
@@ -1345,7 +1478,6 @@ async function dismissComposerContextChip() {
 							:tabs="preview.allArtifactTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
-							:is-expand-disabled="isAgentPreviewDockOpen"
 							:preview-toggle-label="artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
@@ -1360,8 +1492,14 @@ async function dismissComposerContextChip() {
 									{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
+								:initial-node-id="
+									preview.activeWorkflowId.value === agentReturnWorkflowId
+										? agentReturnNodeId
+										: undefined
+								"
 								:refresh-key="preview.workflowRefreshKey.value"
 								:execution-result="preview.activeWorkflowExecutionResult.value"
+								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
@@ -1381,6 +1519,7 @@ async function dismissComposerContextChip() {
 								:agent-id="preview.activeAgentId.value"
 								:project-id="preview.activeAgentProjectId.value"
 								:preview-session-id="activeAgentPreviewSessionId"
+								:preview-open="isAgentPreviewDockOpen"
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
@@ -1390,6 +1529,8 @@ async function dismissComposerContextChip() {
 				</N8nResizeWrapper>
 			</div>
 		</Transition>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<OpenWorkflowInAssistantNotification :thread-id="threadId" />
 	</div>
 </template>
 
@@ -1438,31 +1579,6 @@ async function dismissComposerContextChip() {
 	flex-shrink: 0;
 	min-width: 0;
 	border-left: var(--border);
-
-	// Widen the resize handle hit area for easier grabbing
-	:global([data-test-id='resize-handle']) {
-		width: 12px !important;
-		left: -6px !important;
-
-		// Visible drag indicator line
-		&::after {
-			content: '';
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			width: 2px;
-			height: 32px;
-			border-radius: 1px;
-			background: var(--color--foreground);
-			opacity: 0;
-			transition: opacity 0.15s ease;
-		}
-
-		&:hover::after {
-			opacity: 1;
-		}
-	}
 }
 
 .canvasAreaExpanded {

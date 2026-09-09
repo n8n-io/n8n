@@ -11,6 +11,8 @@ export class KafkaTrigger extends VersionedNodeType {
 			name: 'kafkaTrigger',
 			icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 			group: ['trigger'],
+			// Version 2 is deliberately not the default until general availability;
+			// beta users opt in by importing a workflow with typeVersion 2.
 			defaultVersion: 1.3,
 			description: 'Consume messages from a Kafka topic',
 		};

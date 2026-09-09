@@ -295,7 +295,8 @@ defineExpose({ open: openSuggestedActions, hasActions });
 		:notice="
 			isProtectedEnvironment ? i18n.baseText('workflowProductionChecklist.readOnlyNotice') : ''
 		"
-		popover-alignment="end"
+		popover-alignment="start"
+		:popover-side-offset="0"
 		@action-click="handleActionClick"
 		@update:open="handlePopoverOpenChange"
 	/>

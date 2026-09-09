@@ -2,6 +2,8 @@ import type { WorkflowLoopAction } from './workflow-loop-state';
 
 export interface WorkflowLoopGuidanceOptions {
 	workItemId?: string;
+	/** Setup panel v2: `workflows(action="setup")` announces instead of opening a card. */
+	setupPanelEnabled?: boolean;
 }
 
 function formatSourceFileInstruction(sourceFilePath: string | undefined): string {
@@ -22,7 +24,25 @@ export function formatWorkflowLoopGuidance(
 		case 'continue_building':
 			return `BUILD FAILED: ${action.reason}. Fix the workflow source file: ${formatSourceFileInstruction(action.sourceFilePath)}.`;
 		case 'done': {
+			if (action.setupSkippedByUser) {
+				return (
+					'Workflow verified successfully. The credentials it still needs are ones the user ' +
+					'skipped earlier in this conversation, so do NOT open the setup card again. Tell them ' +
+					'which parts stay unconfigured and what that means when the workflow runs, and offer ' +
+					'to set them up whenever they want.'
+				);
+			}
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
+				if (options.setupPanelEnabled) {
+					return (
+						'Workflow verified successfully with temporary mock data. ' +
+						`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" once: ` +
+						'it lists the remaining credentials and values in the setup panel next to the chat and returns them to you. ' +
+						'When the result has `announced: true`, summarize it, report any validation warnings, and end your turn. ' +
+						'Otherwise follow the returned guidance for validation errors, approvals, skipped items, or an existing setup card. ' +
+						'Do not call `credentials(action="setup")` or `apply-workflow-credentials`, and do not tell the user to open the editor or canvas.'
+					);
+				}
 				return (
 					'Workflow verified successfully with temporary mock data. ' +
 					`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
@@ -35,7 +55,7 @@ export function formatWorkflowLoopGuidance(
 		}
 		case 'verify':
 			return (
-				`VERIFY: Inspect the persisted workflow ${action.workflowId} with \`workflows(action="get-as-code", workflowId)\` or read the bound workspace source file, then compare it to the requested outcome. ` +
+				`VERIFY: Inspect the persisted workflow ${action.workflowId}: read the bound workspace source file you just built, or call \`workflows(action="get-as-code", workflowId)\` when you need to check for outside changes — it refreshes the file when the saved workflow changed and returns a node index. If it reports status "conflict", the file has unbuilt edits: build or discard them and call it again before trusting the index. Compare the relevant lines to the requested outcome. ` +
 				'Build/save success only means a workflow was saved. ' +
 				`Use \`verify-built-workflow\` with workflowId "${action.workflowId ?? 'unknown'}"` +
 				(options.workItemId ? ` and workItemId "${options.workItemId}"` : '') +

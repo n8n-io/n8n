@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, useTemplateRef } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
@@ -10,22 +10,18 @@ import type {
 } from '../types';
 import AgentChatPanel from './AgentChatPanel.vue';
 
-withDefaults(
-	defineProps<{
-		initialized: boolean;
-		projectId: string;
-		agentId: string;
-		agent: AgentResource | null;
-		localConfig: AgentJsonConfig | null;
-		connectedTriggers: string[];
-		effectiveSessionId?: string;
-		initialPrompt?: string;
-		canSendToAssistant?: boolean;
-		beforeSend?: () => Promise<void> | void;
-		layout?: 'page' | 'dock';
-	}>(),
-	{ layout: 'page' },
-);
+defineProps<{
+	initialized: boolean;
+	projectId: string;
+	agentId: string;
+	agent: AgentResource | null;
+	localConfig: AgentJsonConfig | null;
+	connectedTriggers: string[];
+	effectiveSessionId?: string;
+	initialPrompt?: string;
+	canSendToAssistant?: boolean;
+	beforeSend?: () => Promise<void> | void;
+}>();
 
 const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
@@ -34,18 +30,22 @@ const emit = defineEmits<{
 }>();
 
 const inputDraft = ref('');
+const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
+
+function focusInput(options?: FocusOptions) {
+	chatPanel.value?.focusInput(options);
+}
+
+defineExpose({ focusInput });
 </script>
 
 <template>
-	<component
-		:is="layout === 'dock' ? 'div' : 'main'"
-		:class="[$style.previewPage, { [$style.dockLayout]: layout === 'dock' }]"
-		data-testid="agent-preview-chat-page"
-	>
-		<div :class="[$style.chatFrame, { [$style.dockChatFrame]: layout === 'dock' }]">
+	<div :class="$style.previewPage" data-testid="agent-preview-chat-page">
+		<div :class="$style.chatFrame">
 			<AgentChatPanel
 				v-if="initialized && effectiveSessionId"
 				:key="`preview-${effectiveSessionId}`"
+				ref="chatPanel"
 				v-model:input-draft="inputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
@@ -61,7 +61,7 @@ const inputDraft = ref('');
 				@send-to-assistant="emit('send-to-assistant', $event)"
 			/>
 		</div>
-	</component>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -70,22 +70,13 @@ const inputDraft = ref('');
 	min-height: 0;
 	display: flex;
 	justify-content: center;
-	background-color: var(--background--surface);
+	background-color: transparent;
 	overflow: hidden;
 }
 
 .chatFrame {
 	width: 100%;
-	max-width: 45rem;
 	min-height: 0;
 	display: flex;
-}
-
-.dockLayout {
-	background-color: transparent;
-}
-
-.dockChatFrame {
-	max-width: none;
 }
 </style>

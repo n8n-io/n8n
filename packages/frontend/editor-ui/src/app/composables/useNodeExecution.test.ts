@@ -865,6 +865,18 @@ describe('useNodeExecution', () => {
 			expect(mockWorkflowsStore.removeTestWebhook).toHaveBeenCalledWith('123');
 		});
 
+		it('should stop webhook wait from a non-trigger node', async () => {
+			mockNodeTypesStore.isTriggerNode.mockReturnValue(false);
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
+			const node = ref(createTestNode({ name: 'Edit Fields' }));
+
+			const { stopExecution } = useNodeExecution(node);
+			await stopExecution();
+
+			expect(mockWorkflowsStore.removeTestWebhook).toHaveBeenCalledWith('123');
+			expect(mockRunWorkflow.stopCurrentExecution).not.toHaveBeenCalled();
+		});
+
 		it('should stop current execution when listening for workflow events', async () => {
 			mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
 			mockNodeTypesStore.getNodeType.mockReturnValue({

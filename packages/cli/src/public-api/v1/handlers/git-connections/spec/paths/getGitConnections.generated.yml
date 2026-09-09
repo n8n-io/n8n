@@ -1,0 +1,76 @@
+operationId: getGitConnections
+tags:
+  - GitConnections
+summary: List Git connections
+description: Returns a cursor-paginated list of Git connections.
+x-required-scope: gitConnection:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  repositoryUrl:
+                    type: string
+                  branchName:
+                    type: string
+                    nullable: true
+                  connectionType:
+                    type: string
+                    enum:
+                      - ssh
+                      - https
+                  keyGeneratorType:
+                    type: string
+                    nullable: true
+                    enum:
+                      - ed25519
+                      - rsa
+                  baseCommit:
+                    type: string
+                    nullable: true
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - name
+                  - repositoryUrl
+                  - branchName
+                  - connectionType
+                  - keyGeneratorType
+                  - baseCommit
+                  - createdAt
+                  - updatedAt
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

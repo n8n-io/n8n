@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-extension-insights",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "type": "module",
   "files": [
     "dist",
@@ -58,8 +58,11 @@
     "rimraf": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "vite-plugin-dts": "catalog:",
+    "unplugin-dts": "catalog:",
     "vue-tsc": "catalog:frontend"
+  },
+  "peerDependencies": {
+    "@vue/language-core": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

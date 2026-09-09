@@ -247,8 +247,10 @@
 	--tag--padding: 0 var(--spacing--4xs);
 	--tag--color--background: var(--color--neutral-125);
 	--tag--color--background--hover: var(--color--neutral-150);
+	--tag--color--background--active: var(--color--neutral-200);
 	--tag--border-color: var(--color--neutral-150);
 	--tag--border-color--hover: var(--color--neutral-200);
+	--tag--border-color--active: var(--color--neutral-250);
 	--tag--radius: var(--radius);
 	--tag--color--text: var(--color--text);
 	--tag--font-size: var(--font-size--2xs);
@@ -877,8 +879,10 @@
 	// Tag
 	--tag--color--background: var(--color--neutral-700);
 	--tag--color--background--hover: var(--color--neutral-600);
+	--tag--color--background--active: var(--color--neutral-500);
 	--tag--border-color: var(--color--neutral-800);
 	--tag--border-color--hover: var(--color--neutral-700);
+	--tag--border-color--active: var(--color--neutral-600);
 	--tag--color--text: var(--color--text--shade-1);
 
 	// Variables
@@ -1236,8 +1240,6 @@
 	--command-bar-item--color--background--hover: var(--color--background--light-1);
 	--command-bar--shadow:
 		0 15px 45px 0 var(--color--black-alpha-400), 0 5px 10px 0 var(--color--black-alpha-200);
-
-	--shadow-color: var(--color--black-alpha-250);
 }
 
 :root {

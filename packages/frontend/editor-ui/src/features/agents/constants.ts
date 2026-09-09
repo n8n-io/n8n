@@ -1,12 +1,10 @@
 export const AGENTS_LIST_VIEW = 'AgentsListView';
 export const NEW_AGENT_VIEW = 'NewAgentView';
 export const AGENT_BUILDER_VIEW = 'AgentBuilderView';
-export const AGENT_PREVIEW_VIEW = 'AgentPreviewView';
 export const AGENT_VIEW = 'AgentView';
 export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
 export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
 export const PROJECT_AGENTS = 'ProjectAgents';
-export const AGENT_BUILDER_SETTINGS_VIEW = 'SettingsAgentBuilderView';
 
 export const AGENTS_MODULE_NAME = 'agents';
 
@@ -17,6 +15,7 @@ export const AGENT_TASK_MODAL_KEY = 'agentTaskModal';
 export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
 export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
+export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */
@@ -47,3 +46,5 @@ export {
 
 /** Query-string key the builder uses to deep-link into a chat session. */
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
+export const NEW_SESSION_PARAM = 'newSession';
+export const OPEN_PREVIEW_PARAM = 'openPreview';

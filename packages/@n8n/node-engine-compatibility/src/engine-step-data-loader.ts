@@ -3,14 +3,14 @@ import type { ExecutionStore, StepSlots, StepStore } from '@n8n/engine';
 import type { StepData, StepDataLoader } from './types';
 
 /**
- * A `StepDataLoader` backed by the engine's own stores: the graph off the
- * execution row, the outputs of every completed step off the step rows.
- * Loads everything. TODO(CAT-3017): load selectively, based on what the
- * step's expressions actually reference.
+ * Loads what an expression might name: the graph, and every completed step's
+ * output at every pass.
  *
- * Steps that haven't completed are omitted rather than mapped to null, so
- * expressions referencing them fail with the standard "hasn't been executed"
- * error.
+ * A step that has not completed is left out, so naming it fails with the usual
+ * "hasn't been executed" error.
+ *
+ * TODO(CAT-3017): load only what the step's expressions reference. Loops make
+ * this worse, since the number of steps now grows with the data processed.
  */
 export function createEngineStepDataLoader(
 	executionStore: ExecutionStore,
@@ -18,15 +18,19 @@ export function createEngineStepDataLoader(
 ): StepDataLoader {
 	return async (context): Promise<StepData> => {
 		const execution = await executionStore.loadExecution(context.executionId);
+		const steps = await stepStore.loadAllSteps(context.executionId);
 
-		const nodeIds = execution.graph.nodes.map((node) => node.id);
-		const stored = await stepStore.loadStepOutputs(context.executionId, nodeIds);
-
-		const outputsByNodeId: Record<string, StepSlots> = {};
-		for (const [nodeId, outputs] of Object.entries(stored)) {
-			if (outputs !== null) outputsByNodeId[nodeId] = outputs;
+		const byNode = new Map<string, Record<number, StepSlots>>();
+		for (const step of steps) {
+			if (step.status !== 'completed' || step.outputs === null) continue;
+			let byIteration = byNode.get(step.nodeId);
+			if (byIteration === undefined) {
+				byIteration = {};
+				byNode.set(step.nodeId, byIteration);
+			}
+			byIteration[step.iteration] = step.outputs;
 		}
 
-		return { graph: execution.graph, outputsByNodeId };
+		return { graph: execution.graph, outputsByNode: Object.fromEntries(byNode) };
 	};
 }

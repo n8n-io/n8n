@@ -19,7 +19,6 @@ if (inE2ETests) {
 	process.env.N8N_AI_ENABLED = 'true';
 } else if (inTest) {
 	globalConfig.logging.level = 'silent';
-	globalConfig.publicApi.disabled = true;
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 	globalConfig.auth.cookie.secure = false;
 	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'false';

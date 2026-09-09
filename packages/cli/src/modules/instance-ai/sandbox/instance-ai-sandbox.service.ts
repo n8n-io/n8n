@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { SandboxAcquisitionError } from '@n8n/agents/sandbox';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
@@ -417,6 +418,15 @@ export class InstanceAiSandboxService {
 				await workspace.destroy();
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
+			}
+			// Only the generic transient wrap is downgraded to a non-reported warning.
+			// Classified subclasses (name conflict, sandbox not ready) keep their identity
+			// so they stay visible in Sentry as distinct issues.
+			if (
+				error instanceof SandboxAcquisitionError &&
+				error.constructor === SandboxAcquisitionError
+			) {
+				throw new OperationalError(error.message, { cause: error });
 			}
 			throw error;
 		}

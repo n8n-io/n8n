@@ -15,6 +15,11 @@ export interface SchedulerMetrics {
 	recordRetry(taskType: string): void;
 	/** Delay between when a task was due (`scheduledFor`) and when it actually fired. */
 	observeDispatchLagSeconds(taskType: string, seconds: number): void;
+	/**
+	 * A handler finished after its lease was reclaimed, so another instance may
+	 * have run the same occurrence concurrently.
+	 */
+	recordLeaseLost(taskType: string): void;
 
 	/** Outcome of one materialization pass. */
 	recordMaterialized(occurrences: number, deferredJobs: number): void;
@@ -32,6 +37,8 @@ export interface SchedulerMetrics {
 	recordDeadLettered(): void;
 	/** Outcome of one retention pass. */
 	recordPruned(deleted: number): void;
+	/** Outcome of one owner reconciliation pass. */
+	recordReconciled(quarantined: number, deleted: number, revived: number): void;
 }
 
 /** Default metrics: records nothing. */
@@ -40,10 +47,12 @@ export const noopMetrics: SchedulerMetrics = {
 	recordFireOutcome() {},
 	recordRetry() {},
 	observeDispatchLagSeconds() {},
+	recordLeaseLost() {},
 	recordMaterialized() {},
 	recordMisfired() {},
 	recordRetired() {},
 	recordReaped() {},
 	recordDeadLettered() {},
 	recordPruned() {},
+	recordReconciled() {},
 };

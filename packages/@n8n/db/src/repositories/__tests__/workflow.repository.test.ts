@@ -553,6 +553,43 @@ describe('WorkflowRepository', () => {
 			expect(findSpy).toHaveBeenCalledTimes(1);
 			expect(findSpy).toHaveBeenCalledWith({ where: { id: In(workflowIds) } });
 		});
+
+		it('merges workflows returned from different chunks', async () => {
+			const first = Object.assign(new WorkflowEntity(), { id: 'first' });
+			const last = Object.assign(new WorkflowEntity(), { id: 'last' });
+			const findSpy = vi
+				.spyOn(workflowRepository, 'find')
+				.mockResolvedValueOnce([first])
+				.mockResolvedValueOnce([last]);
+			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `workflow-${index}`);
+
+			const result = await workflowRepository.findByIds(workflowIds, { fields: ['name'] });
+
+			expect(findSpy).toHaveBeenCalledTimes(2);
+			expect(findSpy).toHaveBeenNthCalledWith(2, {
+				where: { id: In(['workflow-10000']) },
+				select: ['id', 'name'],
+			});
+			expect(result).toEqual([first, last]);
+		});
+	});
+
+	describe('findPreExistingWorkflows', () => {
+		it('merges workflows returned from different chunks', async () => {
+			const first = Object.assign(new WorkflowEntity(), { id: 'first' });
+			const last = Object.assign(new WorkflowEntity(), { id: 'last' });
+			queryBuilder.getMany.mockResolvedValueOnce([first]).mockResolvedValueOnce([last]);
+			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `workflow-${index}`);
+
+			const result = await workflowRepository.findPreExistingWorkflows(workflowIds);
+
+			expect(queryBuilder.getMany).toHaveBeenCalledTimes(2);
+			expect(result).toEqual([first, last]);
+			expect(queryBuilder.where.mock.calls[1]).toEqual([
+				'workflow.id IN (:...workflowIds)',
+				{ workflowIds: ['workflow-10000'] },
+			]);
+		});
 	});
 
 	describe('getPublishedPersonalWorkflowsCount', () => {

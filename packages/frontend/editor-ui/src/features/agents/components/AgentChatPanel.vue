@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, toRef, watch, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import { N8nCallout, N8nIconButton, N8nSendStopButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	APPROVAL_TOOL_NAME,
+	WAIT_TOOL_NAME,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
@@ -13,7 +14,7 @@ import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
-import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
+import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type {
@@ -66,6 +67,11 @@ const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
 
 const attachedFiles = ref<File[]>([]);
+const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+
+function focusInput(options?: FocusOptions) {
+	chatInput.value?.focus(options);
+}
 
 const attachmentCapabilities = computed(() => {
 	const provider = props.agentConfig?.model?.split('/')[0];
@@ -187,16 +193,48 @@ const missingFields = computed(() => {
 	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
 
-const openInteractive = computed(() => findOpenInteractive(messages.value));
+/**
+ * Only the last turn can hold the input. A parked run is always the tail of the
+ * transcript, so anything after it — a resumed answer, a later turn — means that
+ * suspension is history. Reading the tail rather than the first open card
+ * anywhere keeps one abandoned card from wedging the chat for good, and keeps it
+ * from hiding a real question on the current turn.
+ */
+const openInteractive = computed(() => findTailOpenInteractive(messages.value));
 const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
 const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
+// A waiting card is an interactive the user can act on, but never a question:
+// its resume arrives from the workflow, so typing must not cancel and steer it.
+const hasOpenWaitCard = computed(() => openInteractive.value?.toolName === WAIT_TOOL_NAME);
 const hasOpenInteractiveQuestion = computed(
-	() => hasOpenInteraction.value && !hasOpenApproval.value,
+	() => hasOpenInteraction.value && !hasOpenApproval.value && !hasOpenWaitCard.value,
 );
-const hasOpenSuspension = computed(() =>
+const hasOpenSuspension = computed(
+	() =>
+		messages.value[messages.value.length - 1]?.toolCalls?.some(
+			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
+		) ?? false,
+);
+/**
+ * A parked run owns the conversation: sending now would start a second run
+ * whose context has the pending tool call stripped out, so the model would
+ * re-invoke the same tool. Only an open question is exempt — answering or
+ * steering it resumes the same run. Stop stays available either way.
+ */
+const inputBlockedBySuspension = computed(
+	() =>
+		hasOpenApproval.value ||
+		hasOpenWaitCard.value ||
+		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
+);
+// Tools still pending/running after the stream ended (desync): the backend
+// finished but their terminal events never arrived. Surfacing Stop here lets
+// the user clear the stale pulsing state without reloading the chat.
+const hasInFlightToolCalls = computed(() =>
 	messages.value.some((message) =>
 		message.toolCalls?.some(
-			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
+			(toolCall) =>
+				toolCall.state === TOOL_CALL_STATE.PENDING || toolCall.state === TOOL_CALL_STATE.RUNNING,
 		),
 	),
 );
@@ -207,13 +245,16 @@ const showStopAsPrimaryAction = computed(
 	() =>
 		isStreaming.value ||
 		isCancelling.value ||
-		hasOpenApproval.value ||
-		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
+		inputBlockedBySuspension.value ||
+		(!isStreaming.value && hasInFlightToolCalls.value),
 );
 
 const chatPlaceholder = computed(() => {
 	if (hasOpenApproval.value) {
 		return locale.baseText('agents.chat.approval.inputPlaceholder');
+	}
+	if (inputBlockedBySuspension.value) {
+		return locale.baseText('agents.chat.waiting.inputPlaceholder');
 	}
 	if (hasOpenInteractiveQuestion.value) {
 		return locale.baseText('agents.chat.answerQuestionPlaceholder');
@@ -237,7 +278,7 @@ async function onSubmit() {
 		isStreaming.value ||
 		isCancelling.value ||
 		isPreparingToSend.value ||
-		hasOpenApproval.value
+		inputBlockedBySuspension.value
 	) {
 		return;
 	}
@@ -293,12 +334,12 @@ async function onSubmit() {
 }
 
 function sendMessageFromOutside(message: string) {
-	if (hasOpenApproval.value) return;
+	if (inputBlockedBySuspension.value) return;
 	inputText.value = message;
 	void onSubmit();
 }
 
-defineExpose({ sendMessageFromOutside });
+defineExpose({ focusInput, sendMessageFromOutside });
 
 onMounted(() => {
 	void loadHistory();
@@ -364,7 +405,7 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" />
+		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :agent-config="agentConfig" />
 		<AgentChatMessageList
 			v-else
 			:messages="messages"
@@ -379,20 +420,22 @@ onBeforeUnmount(() => {
 
 		<div :class="$style.inputArea">
 			<ChatInputBase
+				ref="chatInput"
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
 				:is-streaming="showStopAsPrimaryAction"
+				show-voice
 				:show-attach="showAttach"
 				:accepted-mime-types="acceptedMimeTypes"
 				:can-submit="
-					!hasOpenApproval &&
+					!inputBlockedBySuspension &&
 					!isStreaming &&
 					!isCancelling &&
 					!isPreparingToSend &&
 					(inputText.trim().length > 0 || attachedFiles.length > 0)
 				"
 				:disabled="
-					hasOpenApproval ||
+					inputBlockedBySuspension ||
 					isCancelling ||
 					isPreparingToSend ||
 					(isStreaming && messagingState !== 'receiving')
@@ -451,6 +494,9 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	width: 100%;
+	max-width: 800px;
+	margin: 0 auto;
 }
 
 .attachmentsStrip {

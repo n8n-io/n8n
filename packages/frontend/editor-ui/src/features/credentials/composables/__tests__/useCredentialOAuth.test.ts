@@ -849,6 +849,7 @@ describe('useCredentialOAuth', () => {
 			mockShowError.mockClear();
 			mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
 			MockBroadcastChannel.silent = false;
+			mockedStore(useCredentialsStore).deleteCredential.mockResolvedValue();
 			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
 		});
@@ -877,6 +878,28 @@ describe('useCredentialOAuth', () => {
 
 			return credentialsStore;
 		}
+
+		it('should delete a newly created credential when authorization fails', async () => {
+			const credentialsStore = setupFailedOAuthFlow();
+			const { authorizeNewCredential } = useCredentialOAuth();
+
+			await expect(authorizeNewCredential(createdCredential)).resolves.toBe(false);
+
+			expect(credentialsStore.deleteCredential).toHaveBeenCalledWith({
+				id: createdCredential.id,
+			});
+			expect(credentialsStore.upsertCredential).not.toHaveBeenCalled();
+		});
+
+		it('should keep a newly created credential when authorization succeeds', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			const { authorizeNewCredential } = useCredentialOAuth();
+
+			await expect(authorizeNewCredential(createdCredential)).resolves.toBe(true);
+
+			expect(credentialsStore.upsertCredential).toHaveBeenCalledWith(createdCredential);
+			expect(credentialsStore.deleteCredential).not.toHaveBeenCalled();
+		});
 
 		it('should not set allowedHttpRequestDomains for hidden property', async () => {
 			const credentialsStore = setupSuccessfulOAuthFlow();

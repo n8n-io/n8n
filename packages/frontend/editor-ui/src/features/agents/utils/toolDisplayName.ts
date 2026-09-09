@@ -20,6 +20,8 @@ const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	read_skill: 'instanceAi.tools.read_skill',
 	update_skill: 'instanceAi.tools.update_skill',
 	create_tasks: 'instanceAi.tools.create_tasks',
+	list_tasks: 'instanceAi.tools.list_tasks',
+	update_task: 'instanceAi.tools.update_task',
 	get_resource_locator_options: 'instanceAi.tools.get_resource_locator_options',
 	list_workflows: 'instanceAi.tools.list_workflows',
 	list_integration_types: 'instanceAi.tools.list_integration_types',

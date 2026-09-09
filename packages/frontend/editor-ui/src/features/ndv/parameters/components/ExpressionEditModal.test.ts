@@ -3,9 +3,12 @@ import ExpressionEditModal from './ExpressionEditModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { setActivePinia, type Pinia } from 'pinia';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestNodeProperties } from '@/__tests__/mocks';
+import { useUIStore } from '@/app/stores/ui.store';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { Expression } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -79,6 +82,29 @@ describe('ExpressionEditModal', () => {
 			const editor = within(getByTestId('expression-modal-input')).getByRole('textbox');
 			expect(editor).toBeInTheDocument();
 			expect(editor).toHaveAttribute('aria-readonly', 'true');
+		});
+	});
+
+	it('previews external secrets with the data passed by the credential modal', async () => {
+		// The evaluator returns undefined for a transformed secret, which its type does not admit.
+		vi.spyOn(Expression, 'resolveWithoutWorkflow').mockReturnValue(undefined as unknown as string);
+		useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+
+		const { getByTestId } = renderModal({
+			pinia,
+			props: {
+				parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
+				path: '',
+				modelValue: "={{ JSON.parse($secrets.vault['json/path']).password }}",
+				dialogVisible: true,
+				additionalExpressionData: { $secrets: { vault: { 'json/path': '*********' } } },
+			},
+		});
+
+		await waitFor(() => {
+			expect(getByTestId('expression-modal-output')).toHaveTextContent(
+				'[evaluated during execution]',
+			);
 		});
 	});
 
