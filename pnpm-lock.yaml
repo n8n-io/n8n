@@ -1418,6 +1418,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/json-schema':
+        specifier: 'catalog:'
+        version: 7.0.15
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
@@ -2779,6 +2782,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/json-schema':
+        specifier: 'catalog:'
+        version: 7.0.15
       '@types/luxon':
         specifier: 'catalog:'
         version: 3.2.0

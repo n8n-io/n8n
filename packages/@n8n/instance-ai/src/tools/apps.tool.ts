@@ -10,9 +10,9 @@ import {
 	instanceAiConfirmationSeveritySchema,
 	type AppBinding,
 	type DescribedBinding,
-	type OutputFieldDef,
 } from '@n8n/api-types';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import { nanoid } from 'nanoid';
 import { posix } from 'node:path';
 import { z } from 'zod';
@@ -316,55 +316,75 @@ export function buildScaffoldScript(input: {
 	].join('\n');
 }
 
-/** Same mapping as the runtime input schema (`fieldTypeToZod`): every field is optional and nullable. */
-function fieldTypeToTs(type: string | undefined): string {
-	switch (type) {
-		case 'number':
-			return 'number | null';
-		case 'boolean':
-			return 'boolean | null';
-		case 'array':
-			return 'unknown[] | null';
-		case 'object':
-			return 'Record<string, unknown> | null';
-		case 'any':
-			return 'unknown';
-		default:
-			return 'string | null';
-	}
-}
+const dedupeUnion = (members: string[]) => {
+	const unique = [...new Set(members)];
+	return unique.includes('unknown') ? 'unknown' : unique.join(' | ');
+};
 
-function outputFieldToTs(field: OutputFieldDef): string {
-	const base =
-		field.type === 'array'
-			? 'unknown[]'
-			: field.type === 'object'
-				? 'Record<string, unknown>'
-				: field.type;
-	const type =
-		field.nullable && field.type !== 'null' && field.type !== 'unknown' ? `${base} | null` : base;
-	return `${JSON.stringify(field.name)}${field.optional ? '?' : ''}: ${type}`;
+/** `T[]` reads well for a bare name; anything with spaces or a union goes in `Array<…>`. */
+const arrayOf = (item: string) => (/^[\w.]+(\[\])*$/.test(item) ? `${item}[]` : `Array<${item}>`);
+
+function objectToTs(schema: JSONSchema7): string {
+	const properties = Object.entries(schema.properties ?? {});
+	if (properties.length === 0) {
+		const extra = schema.additionalProperties;
+		// An open object is `any`, not `unknown`: the file lives inside the app, and
+		// `unknown` would force a cast on every read of a result.
+		if (extra === true) return 'Record<string, any>';
+		if (typeof extra === 'object') {
+			const value = jsonSchemaToTs(extra);
+			return value === 'unknown' ? 'Record<string, any>' : `Record<string, ${value}>`;
+		}
+		return 'Record<string, unknown>';
+	}
+	const required = new Set(schema.required ?? []);
+	const fields = properties.map(
+		([name, property]) =>
+			`${JSON.stringify(name)}${required.has(name) ? '' : '?'}: ${jsonSchemaToTs(property)}`,
+	);
+	return `{ ${fields.join('; ')} }`;
 }
 
 /**
- * `src/n8n-bindings.d.ts`: keys, input fields and observed output fields of the bound
- * workflows as types for `n8n.workflows.run`. Untyped output is `any` on purpose: the file
- * lives inside the app, and `unknown` would force a cast on every read of a result.
+ * The JSON Schema subset the backend emits (draft-07: `type`, type unions, `anyOf`,
+ * `properties`/`required`, `additionalProperties`, `items`) as a TypeScript type.
+ * Anything else is `unknown`.
+ */
+export function jsonSchemaToTs(schema: JSONSchema7Definition): string {
+	if (schema === true) return 'unknown';
+	if (schema === false) return 'never';
+	if (schema.anyOf) return dedupeUnion(schema.anyOf.map(jsonSchemaToTs));
+	if (schema.type === undefined) return 'unknown';
+	const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+	return dedupeUnion(
+		types.map((type) => {
+			switch (type) {
+				case 'object':
+					return objectToTs(schema);
+				case 'array':
+					return arrayOf(
+						schema.items === undefined || Array.isArray(schema.items)
+							? 'unknown'
+							: jsonSchemaToTs(schema.items),
+					);
+				case 'integer':
+					return 'number';
+				default:
+					return type;
+			}
+		}),
+	);
+}
+
+/**
+ * `src/n8n-bindings.d.ts`: keys, input schema and observed output schema of the bound
+ * workflows as types for `n8n.workflows.run`.
  */
 export function renderBindingsTypes(bindings: DescribedBinding[]): string {
-	const workflows = bindings.map((binding) => {
-		const input =
-			binding.input === 'passthrough'
-				? 'Record<string, unknown>'
-				: `{ ${binding.input
-						.map((field) => `${JSON.stringify(field.name)}?: ${fieldTypeToTs(field.type)}`)
-						.join('; ')} }`;
-		const output =
-			binding.output === 'unknown'
-				? 'Array<Record<string, any>>'
-				: `Array<{ ${binding.output.map(outputFieldToTs).join('; ')} }>`;
-		return `\t\t\t${JSON.stringify(binding.key)}: { input: ${input}; output: ${output} };`;
-	});
+	const workflows = bindings.map(
+		(binding) =>
+			`\t\t\t${JSON.stringify(binding.key)}: { input: ${jsonSchemaToTs(binding.input)}; output: ${jsonSchemaToTs(binding.output)} };`,
+	);
 	const sources = bindings.flatMap((binding) =>
 		binding.outputSource.kind === 'execution'
 			? [

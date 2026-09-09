@@ -125,10 +125,10 @@ bound first. Bind before you write the code that calls it.
    exposes the workflow to everyone who can open the app. Tell the user which
    workflow you are about to connect and why; `{ denied, reason: "User denied
    the action" }` means they said no, so do not retry without asking. The
-   result lists every binding with its
-   `input` fields (`[{ name, type }]` or `"passthrough"`), its `output` fields
-   (`[{ name, type, nullable, optional }]` or `"unknown"`) with `outputSource`,
-   and `published`,
+   result lists every binding with its `input` and `output` as JSON Schema
+   (draft-07; a passthrough input is `{ type: "object", additionalProperties:
+   true }`, an untyped output has items `{ type: "object",
+   additionalProperties: true }`), its `outputSource` and `published`,
    plus `warnings` (for example an unpublished workflow: binding works, calls
    fail with `workflow_not_published` until it is published; or a passthrough
    trigger: the input is untyped and unchecked, see below). It also

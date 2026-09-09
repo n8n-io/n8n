@@ -12,10 +12,15 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
+import type { JSONSchema7 } from 'json-schema';
+import { UnexpectedError, type INode } from 'n8n-workflow';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	detectTriggerNode,
+	inferInputSchema,
 	listWorkflowInputFields,
 } from '@/modules/agents/tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
@@ -27,7 +32,6 @@ import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 import { deriveRoutesFromRouterSource } from './derive-routes';
 import { AppNotFoundError } from './errors/app-not-found.error';
-import { inferOutputFields, sampleOutputItems } from './infer-output-fields';
 import { AppQuotaExceededError } from './errors/app-quota-exceeded.error';
 import { BindingIncompatibleError } from './errors/binding-incompatible.error';
 import { BindingProjectMismatchError } from './errors/binding-project-mismatch.error';
@@ -38,7 +42,21 @@ import { IndexPageCannotHaveChildrenError } from './errors/index-page-cannot-hav
 import { IndexPageMustBeTopLevelError } from './errors/index-page-must-be-top-level.error';
 import { PageNotFoundError } from './errors/page-not-found.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
+import { inferOutputSchema, sampleOutputItems, UNKNOWN_OUTPUT_SCHEMA } from './infer-output-fields';
 import { PageRepository } from './page.repository';
+
+const PASSTHROUGH_INPUT_SCHEMA: JSONSchema7 = { type: 'object', additionalProperties: true };
+
+/** `zod-to-json-schema` types its result as its own union; what it emits is draft-07. */
+const isJsonSchema = (value: unknown): value is JSONSchema7 => isRecord(value);
+
+/** The object the runtime validates the body against, from the same zod schema it uses. */
+function inputJsonSchema(triggerNode: INode, triggerType: string): JSONSchema7 {
+	const generated: unknown = zodToJsonSchema(inferInputSchema(triggerNode, triggerType));
+	if (!isJsonSchema(generated)) throw new UnexpectedError('The input schema is not an object.');
+	const { type, properties, required, additionalProperties } = generated;
+	return { type, properties, ...(required ? { required } : {}), additionalProperties };
+}
 
 @Service()
 export class AppsService {
@@ -139,8 +157,8 @@ export class AppsService {
 	 * version, or the draft with a warning while none is published. Its trigger declares
 	 * the input fields, so the generated types match what the runtime validates. A binding
 	 * whose workflow left the project or lost its trigger since bind time is left out and
-	 * reported as a warning, so the remaining bindings stay usable. Output fields come from
-	 * the latest successful execution; without one the output is `'unknown'` with a warning.
+	 * reported as a warning, so the remaining bindings stay usable. The output schema comes
+	 * from the latest successful execution; without one the items stay open, with a warning.
 	 */
 	async describeBindings(app: App): Promise<{ bindings: DescribedBinding[]; warnings: string[] }> {
 		const bindings: DescribedBinding[] = [];
@@ -166,14 +184,15 @@ export class AppsService {
 				);
 			}
 			// `inferInputSchema` also treats a trigger without declared fields as passthrough.
-			const fields = listWorkflowInputFields(detectTriggerNode(workflow).node);
-			if (fields.length === 0) {
+			const trigger = detectTriggerNode(workflow);
+			const passthrough = listWorkflowInputFields(trigger.node).length === 0;
+			if (passthrough) {
 				warnings.push(
 					`Workflow "${workflow.name}" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.`,
 				);
 			}
 			const { output, outputSource } = await this.inferOutput(workflow.id);
-			if (output === 'unknown') {
+			if (outputSource.kind === 'unknown') {
 				warnings.push(
 					`Output of "${binding.key}" is untyped. Run the workflow once (executions run) and call \`apps bindings\` to type it from the result.`,
 				);
@@ -184,7 +203,9 @@ export class AppsService {
 				workflowId: workflow.id,
 				name: workflow.name,
 				published,
-				input: fields.length > 0 ? fields : 'passthrough',
+				input: passthrough
+					? PASSTHROUGH_INPUT_SCHEMA
+					: inputJsonSchema(trigger.node, trigger.triggerType),
 				output,
 				outputSource,
 			});
@@ -215,9 +236,9 @@ export class AppsService {
 				maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize,
 			},
 		);
-		const output = execution ? inferOutputFields(sampleOutputItems(execution.data)) : 'unknown';
-		if (!execution || output === 'unknown') {
-			return { output: 'unknown', outputSource: { kind: 'unknown' } };
+		const output = execution ? inferOutputSchema(sampleOutputItems(execution.data)) : null;
+		if (!execution || !output) {
+			return { output: UNKNOWN_OUTPUT_SCHEMA, outputSource: { kind: 'unknown' } };
 		}
 		return {
 			output,

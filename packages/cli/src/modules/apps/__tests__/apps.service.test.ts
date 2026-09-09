@@ -130,8 +130,20 @@ const successfulExecution = (items: IDataObject[]): IExecutionResponse =>
 		},
 	}) as unknown as IExecutionResponse;
 
+/** What `zod-to-json-schema` emits for one declared string field: nullable, optional, labelled. */
+const stringField = (name: string) => ({ type: ['string', 'null'], description: name });
+
+const inputOf = (properties: Record<string, unknown>) => ({
+	type: 'object',
+	properties,
+	additionalProperties: false,
+});
+
 const typedOutput = {
-	output: [{ name: 'reply', type: 'string', nullable: false, optional: false }],
+	output: {
+		type: 'array',
+		items: { type: 'object', properties: { reply: { type: 'string' } }, required: ['reply'] },
+	},
 	outputSource: { kind: 'execution', executionId: '42', at: '2026-09-09T10:00:01.000Z' },
 };
 
@@ -232,7 +244,7 @@ describe('AppsService bindings', () => {
 					workflowId: 'wf-1',
 					name: 'Echo',
 					published: false,
-					input: [{ name: 'message', type: 'string' }],
+					input: inputOf({ message: stringField('message') }),
 					...typedOutput,
 				},
 			]);
@@ -280,10 +292,10 @@ describe('AppsService bindings', () => {
 			);
 			expect(result.bindings[0]).toMatchObject({
 				published: true,
-				input: [
-					{ name: 'message', type: 'string' },
-					{ name: 'count', type: 'number' },
-				],
+				input: inputOf({
+					message: stringField('message'),
+					count: { type: ['number', 'null'], description: 'count' },
+				}),
 			});
 			expect(result.warnings).toEqual([]);
 		});
@@ -307,7 +319,7 @@ describe('AppsService bindings', () => {
 			});
 			expect(result.bindings[0]).toMatchObject({
 				published: false,
-				input: [{ name: 'email', type: 'string' }],
+				input: inputOf({ email: stringField('email') }),
 			});
 			expect(result.warnings).toEqual([
 				expect.stringContaining('Types for "submit" come from the unpublished draft'),
@@ -326,7 +338,7 @@ describe('AppsService bindings', () => {
 
 			const result = await service.describeBindings(app);
 
-			expect(result.bindings[0].input).toEqual([{ name: 'message', type: 'string' }]);
+			expect(result.bindings[0].input).toEqual(inputOf({ message: stringField('message') }));
 			expect(result.warnings).toEqual([]);
 		});
 
@@ -338,7 +350,7 @@ describe('AppsService bindings', () => {
 
 			const result = await service.describeBindings(app);
 
-			expect(result.bindings[0].input).toBe('passthrough');
+			expect(result.bindings[0].input).toEqual({ type: 'object', additionalProperties: true });
 			expect(result.warnings).toEqual([
 				'Workflow "Echo" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.',
 			]);
@@ -377,10 +389,14 @@ describe('AppsService bindings', () => {
 				{ includeData: true, unflattenData: true, maxDataSizeBytes: 1024 },
 			);
 			expect(result.bindings[0]).toMatchObject({
-				output: [
-					{ name: 'reply', type: 'string', nullable: false, optional: false },
-					{ name: 'count', type: 'number', nullable: true, optional: false },
-				],
+				output: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: { reply: { type: 'string' }, count: { type: ['number', 'null'] } },
+						required: ['reply', 'count'],
+					},
+				},
 				outputSource: { kind: 'execution', executionId: '42', at: '2026-09-09T10:00:01.000Z' },
 			});
 			expect(result.warnings).toEqual([]);
@@ -394,7 +410,7 @@ describe('AppsService bindings', () => {
 			const result = await service.describeBindings(app);
 
 			expect(result.bindings[0]).toMatchObject({
-				output: 'unknown',
+				output: { type: 'array', items: { type: 'object', additionalProperties: true } },
 				outputSource: { kind: 'unknown' },
 			});
 			expect(result.warnings).toEqual([
@@ -410,7 +426,7 @@ describe('AppsService bindings', () => {
 			const result = await service.describeBindings(app);
 
 			expect(result.bindings[0]).toMatchObject({
-				output: 'unknown',
+				output: { type: 'array', items: { type: 'object', additionalProperties: true } },
 				outputSource: { kind: 'unknown' },
 			});
 			expect(result.warnings).toEqual([expect.stringContaining('is untyped')]);

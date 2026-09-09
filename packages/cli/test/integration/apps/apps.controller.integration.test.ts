@@ -167,8 +167,12 @@ describe('GET /projects/:projectId/apps/:appId/bindings', () => {
 				workflowId: workflow.id,
 				name: 'Echo',
 				published: false,
-				input: [{ name: 'message', type: 'string' }],
-				output: 'unknown',
+				input: {
+					type: 'object',
+					properties: { message: { type: ['string', 'null'], description: 'message' } },
+					additionalProperties: false,
+				},
+				output: { type: 'array', items: { type: 'object', additionalProperties: true } },
 				outputSource: { kind: 'unknown' },
 			},
 		]);
@@ -228,10 +232,15 @@ describe('GET /projects/:projectId/apps/:appId/bindings', () => {
 			.expect(200);
 
 		expect(response.body.data.bindings[0]).toMatchObject({
-			output: [
-				{ name: 'reply', type: 'string', nullable: false, optional: false },
-				{ name: 'count', type: 'number', nullable: true, optional: false },
-			],
+			input: { type: 'object', additionalProperties: true },
+			output: {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: { reply: { type: 'string' }, count: { type: ['number', 'null'] } },
+					required: ['reply', 'count'],
+				},
+			},
 			outputSource: {
 				kind: 'execution',
 				executionId: latest.id,

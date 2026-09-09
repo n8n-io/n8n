@@ -6,6 +6,7 @@ import type { InstanceAiAppService, InstanceAiContext } from '../../types';
 import {
 	buildCheckScript,
 	createAppsTool,
+	jsonSchemaToTs,
 	renderBindingsTypes,
 	slugifyNamespace,
 	tailLog,
@@ -36,8 +37,19 @@ const SUBMIT_BINDING = {
 	workflowId: 'wf-1',
 	name: 'Echo',
 	published: true,
-	input: [{ name: 'message', type: 'string' }],
-	output: [{ name: 'reply', type: 'string' as const, nullable: false, optional: false }],
+	input: {
+		type: 'object' as const,
+		properties: { message: { type: ['string', 'null'] as Array<'string' | 'null'> } },
+		additionalProperties: false,
+	},
+	output: {
+		type: 'array' as const,
+		items: {
+			type: 'object' as const,
+			properties: { reply: { type: 'string' as const } },
+			required: ['reply'],
+		},
+	},
 	outputSource: {
 		kind: 'execution' as const,
 		executionId: '42',
@@ -50,8 +62,11 @@ const NOTIFY_BINDING = {
 	workflowId: 'wf-2',
 	name: 'Notify',
 	published: false,
-	input: 'passthrough' as const,
-	output: 'unknown' as const,
+	input: { type: 'object' as const, additionalProperties: true },
+	output: {
+		type: 'array' as const,
+		items: { type: 'object' as const, additionalProperties: true },
+	},
 	outputSource: { kind: 'unknown' as const },
 };
 const STORED_BINDINGS = [
@@ -807,19 +822,23 @@ describe('apps tool', () => {
 	});
 
 	describe('renderBindingsTypes', () => {
-		it('maps every field type, marks fields optional and types passthrough as a record', () => {
+		it('renders the input the runtime validates and the observed output', () => {
 			const types = renderBindingsTypes([
 				{
 					...SUBMIT_BINDING,
-					input: [
-						{ name: 'text', type: 'string' },
-						{ name: 'amount', type: 'number' },
-						{ name: 'flag', type: 'boolean' },
-						{ name: 'items', type: 'array' },
-						{ name: 'meta', type: 'object' },
-						{ name: 'raw', type: 'any' },
-						{ name: 'untyped' },
-					],
+					// What zod-to-json-schema emits for one field of each trigger type.
+					input: {
+						type: 'object',
+						properties: {
+							text: { type: ['string', 'null'], description: 'text' },
+							amount: { type: ['number', 'null'] },
+							flag: { type: ['boolean', 'null'] },
+							items: { anyOf: [{ type: 'array', items: {} }, { type: 'null' }] },
+							meta: { anyOf: [{ type: 'object', additionalProperties: {} }, { type: 'null' }] },
+							raw: { anyOf: [{}, { type: 'null' }] },
+						},
+						additionalProperties: false,
+					},
 				},
 				NOTIFY_BINDING,
 			]);
@@ -832,8 +851,8 @@ describe('apps tool', () => {
 					"declare module '@n8n/app-sdk' {",
 					'\tinterface Bindings {',
 					'\t\tworkflows: {',
-					'\t\t\t"submit": { input: { "text"?: string | null; "amount"?: number | null; "flag"?: boolean | null; "items"?: unknown[] | null; "meta"?: Record<string, unknown> | null; "raw"?: unknown; "untyped"?: string | null }; output: Array<{ "reply": string }> };',
-					'\t\t\t"notify": { input: Record<string, unknown>; output: Array<Record<string, any>> };',
+					'\t\t\t"submit": { input: { "text"?: string | null; "amount"?: number | null; "flag"?: boolean | null; "items"?: unknown[] | null; "meta"?: Record<string, any> | null; "raw"?: unknown }; output: Array<{ "reply": string }> };',
+					'\t\t\t"notify": { input: Record<string, any>; output: Array<Record<string, any>> };',
 					'\t\t};',
 					'\t}',
 					'}',
@@ -842,26 +861,47 @@ describe('apps tool', () => {
 			);
 		});
 
-		it('renders every inferred output kind with its nullable and optional flags', () => {
+		it('makes required properties non-optional and types every observed output kind', () => {
 			const types = renderBindingsTypes([
 				{
 					...SUBMIT_BINDING,
-					output: [
-						{ name: 'reply', type: 'string', nullable: false, optional: false },
-						{ name: 'count', type: 'number', nullable: true, optional: true },
-						{ name: 'ok', type: 'boolean', nullable: false, optional: true },
-						{ name: 'rows', type: 'array', nullable: true, optional: false },
-						{ name: 'meta', type: 'object', nullable: false, optional: false },
-						{ name: 'gone', type: 'null', nullable: true, optional: false },
-						{ name: 'mixed', type: 'unknown', nullable: true, optional: false },
-						{ name: 'first name', type: 'string', nullable: false, optional: false },
-					],
+					output: {
+						type: 'array',
+						items: {
+							type: 'object',
+							properties: {
+								reply: { type: 'string' },
+								count: { type: ['number', 'null'] },
+								ok: { type: 'boolean' },
+								rows: { type: ['array', 'null'] },
+								meta: { type: 'object' },
+								gone: { type: 'null' },
+								mixed: {},
+								'first name': { type: 'string' },
+							},
+							required: ['reply', 'rows', 'meta', 'gone', 'mixed', 'first name'],
+						},
+					},
 				},
 			]);
 
 			expect(types).toContain(
 				'output: Array<{ "reply": string; "count"?: number | null; "ok"?: boolean; "rows": unknown[] | null; "meta": Record<string, unknown>; "gone": null; "mixed": unknown; "first name": string }>',
 			);
+		});
+
+		it('types nested arrays and typed records', () => {
+			expect(
+				jsonSchemaToTs({ type: 'array', items: { type: 'array', items: { type: 'integer' } } }),
+			).toBe('number[][]');
+			expect(jsonSchemaToTs({ type: 'array', items: { type: ['string', 'null'] } })).toBe(
+				'Array<string | null>',
+			);
+			expect(jsonSchemaToTs({ type: 'object', additionalProperties: { type: 'number' } })).toBe(
+				'Record<string, number>',
+			);
+			expect(jsonSchemaToTs(true)).toBe('unknown');
+			expect(jsonSchemaToTs(false)).toBe('never');
 		});
 
 		it('omits the inference comment for a binding without an execution sample', () => {
@@ -876,9 +916,13 @@ describe('apps tool', () => {
 			expect(renderBindingsTypes([])).not.toContain('workflows: {\n');
 		});
 
-		it('quotes keys and field names that are not identifiers', () => {
+		it('quotes keys and property names that are not identifiers', () => {
 			const types = renderBindingsTypes([
-				{ ...SUBMIT_BINDING, key: 'send-mail', input: [{ name: 'first name', type: 'string' }] },
+				{
+					...SUBMIT_BINDING,
+					key: 'send-mail',
+					input: { type: 'object', properties: { 'first name': { type: ['string', 'null'] } } },
+				},
 			]);
 			expect(types).toContain('"send-mail": { input: { "first name"?: string | null }');
 		});

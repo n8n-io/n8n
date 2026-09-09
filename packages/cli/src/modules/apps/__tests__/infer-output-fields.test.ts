@@ -1,79 +1,79 @@
+import type { JSONSchema7 } from 'json-schema';
 import type { IDataObject, IRunExecutionData } from 'n8n-workflow';
 
-import { inferOutputFields, OUTPUT_SAMPLE_LIMIT, sampleOutputItems } from '../infer-output-fields';
+import { inferOutputSchema, OUTPUT_SAMPLE_LIMIT, sampleOutputItems } from '../infer-output-fields';
 
-const field = (
-	name: string,
-	type: string,
-	extra: Partial<{ nullable: boolean; optional: boolean }> = {},
-) => ({
-	name,
-	type,
-	nullable: false,
-	optional: false,
-	...extra,
+const itemsSchema = (
+	properties: Record<string, JSONSchema7>,
+	required?: string[],
+): JSONSchema7 => ({
+	type: 'array',
+	items: { type: 'object', properties, ...(required ? { required } : {}) },
 });
 
-describe('inferOutputFields', () => {
-	it('maps each value to its kind', () => {
+describe('inferOutputSchema', () => {
+	it('maps each value to its JSON Schema type', () => {
 		expect(
-			inferOutputFields([
+			inferOutputSchema([
 				{ text: 'a', count: 1, flag: true, items: [1, 2], meta: { a: 1 }, nothing: null },
 			]),
-		).toEqual([
-			field('text', 'string'),
-			field('count', 'number'),
-			field('flag', 'boolean'),
-			field('items', 'array'),
-			field('meta', 'object'),
-			field('nothing', 'null', { nullable: true }),
-		]);
+		).toEqual(
+			itemsSchema(
+				{
+					text: { type: 'string' },
+					count: { type: 'number' },
+					flag: { type: 'boolean' },
+					items: { type: 'array' },
+					meta: { type: 'object' },
+					nothing: { type: 'null' },
+				},
+				['text', 'count', 'flag', 'items', 'meta', 'nothing'],
+			),
+		);
 	});
 
-	it('marks a key nullable when any item has null for it', () => {
-		expect(inferOutputFields([{ count: 1 }, { count: null }])).toEqual([
-			field('count', 'number', { nullable: true }),
-		]);
+	it('adds null to the type when any item has null for the key', () => {
+		expect(inferOutputSchema([{ count: 1 }, { count: null }])).toEqual(
+			itemsSchema({ count: { type: ['number', 'null'] } }, ['count']),
+		);
 	});
 
-	it('marks a key optional when some item lacks it', () => {
-		expect(inferOutputFields([{ reply: 'a', count: 1 }, { reply: 'b' }])).toEqual([
-			field('reply', 'string'),
-			field('count', 'number', { optional: true }),
-		]);
+	it('leaves a key out of required when some item lacks it', () => {
+		expect(inferOutputSchema([{ reply: 'a', count: 1 }, { reply: 'b' }])).toEqual(
+			itemsSchema({ reply: { type: 'string' }, count: { type: 'number' } }, ['reply']),
+		);
 	});
 
 	it('treats an undefined value as a missing key', () => {
-		expect(inferOutputFields([{ reply: 'a' }, { reply: undefined }])).toEqual([
-			field('reply', 'string', { optional: true }),
-		]);
+		expect(inferOutputSchema([{ reply: 'a' }, { reply: undefined }])).toEqual(
+			itemsSchema({ reply: { type: 'string' } }),
+		);
 	});
 
-	it('falls back to unknown when items disagree on a kind', () => {
-		expect(inferOutputFields([{ id: 1 }, { id: 'x' }])).toEqual([field('id', 'unknown')]);
+	it('falls back to an empty schema when items disagree on a type', () => {
+		expect(inferOutputSchema([{ id: 1 }, { id: 'x' }])).toEqual(itemsSchema({ id: {} }, ['id']));
 	});
 
 	it('does not descend into nested objects or arrays', () => {
-		expect(inferOutputFields([{ meta: { deep: { deeper: 1 } }, rows: [{ a: 1 }] }])).toEqual([
-			field('meta', 'object'),
-			field('rows', 'array'),
-		]);
+		expect(inferOutputSchema([{ meta: { deep: { deeper: 1 } }, rows: [{ a: 1 }] }])).toEqual(
+			itemsSchema({ meta: { type: 'object' }, rows: { type: 'array' } }, ['meta', 'rows']),
+		);
 	});
 
-	it('returns unknown for no items', () => {
-		expect(inferOutputFields([])).toBe('unknown');
+	it('returns null for no items', () => {
+		expect(inferOutputSchema([])).toBeNull();
 	});
 
 	it('samples only the first 50 items', () => {
 		const items: IDataObject[] = Array.from({ length: OUTPUT_SAMPLE_LIMIT }, () => ({ a: 1 }));
 		items.push({ a: 1, late: 'x' });
 
-		expect(inferOutputFields(items)).toEqual([field('a', 'number')]);
+		expect(inferOutputSchema(items)).toEqual(itemsSchema({ a: { type: 'number' } }, ['a']));
 	});
 
-	it('emits key names and kinds only, never item values', () => {
+	it('emits key names and types only, never item values', () => {
 		const secret = 'sk-live-0123456789';
-		const result = inferOutputFields([{ token: secret, nested: { token: secret } }]);
+		const result = inferOutputSchema([{ token: secret, nested: { token: secret } }]);
 
 		expect(JSON.stringify(result)).not.toContain(secret);
 	});

@@ -27,27 +27,34 @@ declare module '@n8n/app-sdk' {
 	interface Bindings {
 		workflows: {
 			"submit": { input: { "email"?: string | null; "amount"?: number | null }; output: Array<{ "reply": string; "count"?: number | null }> };
-			"notify": { input: Record<string, unknown>; output: Array<Record<string, any>> };
+			"notify": { input: Record<string, any>; output: Array<Record<string, any>> };
 		};
 	}
 }
 ```
 
-Field types follow the `workflowInputs` of the trigger in the published version
-(the draft only while the workflow is unpublished; bind then warns): `string | null` (default),
+`bind` and `bindings` report `input` and `output` as JSON Schema (draft-07),
+and the file renders that schema as TypeScript: `type` unions become unions,
+`required` properties lose the `?`, an object with `additionalProperties: true`
+becomes `Record<string, any>`.
+
+`input` is the schema the runtime validates the body against, from the
+`workflowInputs` of the trigger in the published version (the draft only while
+the workflow is unpublished; bind then warns): `string | null` (default),
 `number | null`, `boolean | null`, `unknown[] | null` (array),
-`Record<string, unknown> | null` (object), `unknown` (any). Every field is
+`Record<string, any> | null` (object), `unknown` (any). Every field is
 optional; a missing field is absent from the workflow's input item. A trigger without
-declared fields (passthrough) accepts any object: the app cannot type-check the
+declared fields (passthrough) accepts any object (`{ type: "object",
+additionalProperties: true }`): the app cannot type-check the
 input and the server does not validate it, so `bind` warns about each such
 binding. Declare fields on the trigger to get typed input.
 
-`output` is typed from the items of the last node in the latest successful
+`output` is the schema of the items of the last node in the latest successful
 execution of the workflow (first 50 items): one type per key (`string`,
-`number`, `boolean`, `unknown[]`, `Record<string, unknown>`; `unknown` when
-items disagree), `| null` when an item had null, `?` when an item lacked the
-key. Without a successful execution `output` is `Array<Record<string, any>>`
-and `bind` warns that the output is untyped: run the workflow once with sample
+`number`, `boolean`, `array`, `object`; an empty schema, `unknown`, when
+items disagree), `| null` when an item had null, not `required` when an item
+lacked the key. Without a successful execution the items are an open object
+(`Array<Record<string, any>>`) and `bind` warns that the output is untyped: run the workflow once with sample
 input (`executions(action="run", workflowId, inputData)`), then call
 `apps(action="bindings", appId)` to
 regenerate the file. The shape reflects that one run; re-run `bindings` after
