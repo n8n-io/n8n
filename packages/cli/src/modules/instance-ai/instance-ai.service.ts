@@ -5118,8 +5118,8 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * The bound project for the per-turn blocks, or undefined when there is nothing
-	 * useful to say (no bound project, no workspace adapter, a project we can't read).
+	 * The bound project for the per-turn blocks, or undefined when it cannot be named
+	 * (no bound project, no workspace adapter, a project we can't read).
 	 *
 	 * Best-effort by design: this is a guardrail, not a precondition. A run that cannot
 	 * name its project should be a less-informed run, not a failed one - the write access is
@@ -5164,19 +5164,14 @@ export class InstanceAiService {
 		userId: string,
 		project: ProjectSummary | undefined,
 	): Promise<string | undefined> {
-		try {
-			const preferences = await this.aiPreferenceService.getApplicable(
-				userId,
-				project ? [{ id: project.id, name: project.name }] : [],
-			);
-			return renderAiPreferencesBlock(preferences);
-		} catch (error) {
-			this.logger.warn('Instance AI failed to read the AI preferences for this turn', {
-				userId,
-				error: getErrorMessage(error),
-			});
-			return undefined;
-		}
+		return await this.bestEffort(
+			'Instance AI failed to read the AI preferences for this turn',
+			{ userId },
+			async () =>
+				renderAiPreferencesBlock(
+					await this.aiPreferenceService.getApplicable(userId, project ? [project] : []),
+				),
+		);
 	}
 
 	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {
@@ -6141,7 +6136,7 @@ export class InstanceAiService {
 
 	private async bestEffort<T>(
 		failureMessage: string,
-		context: { threadId: string; runId: string },
+		context: Record<string, unknown>,
 		step: () => T | Promise<T>,
 	): Promise<Awaited<T> | undefined> {
 		try {
