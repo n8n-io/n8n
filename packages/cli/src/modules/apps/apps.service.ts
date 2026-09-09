@@ -7,6 +7,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AppVersionService } from './app-version.service';
 import { AppRepository } from './app.repository';
+import { deriveRoutesFromRouterSource } from './derive-routes';
 import { AppNotFoundError } from './errors/app-not-found.error';
 import { AppQuotaExceededError } from './errors/app-quota-exceeded.error';
 import { DataWorkflowNotFoundError } from './errors/data-workflow-not-found.error';
@@ -92,6 +93,17 @@ export class AppsService {
 	async listPages(appId: string) {
 		await this.getApp(appId);
 		return await this.pageRepository.findManyByAppId(appId);
+	}
+
+	/**
+	 * The app's real pages, derived from its source's `src/router.ts` rather
+	 * than the (unused) `Page` table — `[]` when the app has no version yet,
+	 * or that version's source has no `src/router.ts`.
+	 */
+	async listRoutes(appId: string) {
+		const app = await this.getApp(appId);
+		const routerSource = await this.appVersionService.readRouterSource(app);
+		return routerSource ? deriveRoutesFromRouterSource(routerSource) : [];
 	}
 
 	/** Scoped to `appId` so a pageId from a different app is treated as not found, not just unauthorized. */

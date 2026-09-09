@@ -8,14 +8,20 @@ import { formatRoutePath } from '@/features/apps/pageTree.utils';
 
 const i18n = useI18n();
 
-const props = defineProps<{
-	page: Page;
-	childCount: number;
-}>();
+const props = withDefaults(
+	defineProps<{
+		page: Page;
+		childCount: number;
+		/** How many levels below the top of this list the card sits — 0 for a top-level row. */
+		indent?: number;
+	}>(),
+	{ indent: 0 },
+);
 
 defineEmits<{
 	open: [pageId: string];
 	addChild: [parentPageId: string];
+	edit: [pageId: string];
 	delete: [pageId: string];
 }>();
 
@@ -25,12 +31,27 @@ defineEmits<{
 const routeLabel = computed(() =>
 	formatRoutePath(props.page.route, i18n.baseText('apps.page.index')),
 );
+
+// A flex-column parent stretches this card to its own full width, so the
+// indent has to come out of that width too, not just shift the box right —
+// otherwise the right edge overflows the container.
+const cardStyle = computed(() => {
+	if (!props.indent) return undefined;
+	const indent = `calc(${props.indent} * var(--spacing--lg))`;
+	return { marginLeft: indent, width: `calc(100% - ${indent})` };
+});
 </script>
 
 <template>
-	<N8nCard hoverable :class="$style.card" data-test-id="page-card" @click="$emit('open', page.id)">
+	<N8nCard
+		hoverable
+		:class="$style.card"
+		:style="cardStyle"
+		data-test-id="page-card"
+		@click="$emit('open', page.id)"
+	>
 		<template #prepend>
-			<N8nIcon icon="file" />
+			<N8nIcon :icon="indent > 0 ? 'corner-down-right' : 'file'" />
 		</template>
 		<N8nText bold data-test-id="app-page-route">{{ routeLabel }}</N8nText>
 		<N8nText v-if="childCount > 0" color="text-light" size="small">
@@ -47,6 +68,17 @@ const routeLabel = computed(() =>
 						:aria-label="i18n.baseText('apps.page.addChild')"
 						data-test-id="app-page-add-child"
 						@click="$emit('addChild', page.id)"
+					/>
+				</N8nTooltip>
+				<N8nTooltip :content="i18n.baseText('apps.page.edit')">
+					<N8nButton
+						icon-only
+						icon="pencil"
+						size="small"
+						variant="subtle"
+						:aria-label="i18n.baseText('apps.page.edit')"
+						data-test-id="app-page-edit"
+						@click="$emit('edit', page.id)"
 					/>
 				</N8nTooltip>
 				<N8nTooltip :content="i18n.baseText('generic.delete')">

@@ -5,8 +5,10 @@ import { Header } from 'tar';
 import { mock } from 'vitest-mock-extended';
 
 import type { AppVersionBlobStore } from '../app-version-blob-store';
+import type { AppVersion } from '../app-version.entity';
 import type { AppVersionRepository } from '../app-version.repository';
 import { AppVersionService } from '../app-version.service';
+import type { App } from '../app.entity';
 import type { AppRepository } from '../app.repository';
 import { AppBlobSizeQuotaExceededError } from '../errors/app-blob-size-quota-exceeded.error';
 import { AppVersionQuotaExceededError } from '../errors/app-version-quota-exceeded.error';
@@ -159,6 +161,43 @@ describe('AppVersionService', () => {
 			await expect(service.create('app-1', 'project-1', garbage, garbage)).rejects.toThrow(
 				AppVersionQuotaExceededError,
 			);
+		});
+	});
+
+	describe('readRouterSource', () => {
+		const app = { id: 'app-1', activeVersionId: 'v1' } as App;
+		const version = {
+			id: 'v1',
+			appId: 'app-1',
+			storedAt: 'db' as const,
+			sourceStorageKey: 'src-key',
+			distStorageKey: null,
+		} as AppVersion;
+
+		it("returns the active version's src/router.ts", async () => {
+			appVersionRepository.findById.mockResolvedValue(version);
+			blobStore.readAsBuffer.mockResolvedValue(
+				tgz({ './src/router.ts': 'export const router = createRouter({ routes: [] });' }),
+			);
+
+			const result = await service.readRouterSource(app);
+
+			expect(result).toContain('createRouter');
+		});
+
+		it('returns null when the app has no version yet', async () => {
+			appVersionRepository.listByAppId.mockResolvedValue([]);
+
+			expect(
+				await service.readRouterSource({ id: 'app-1', activeVersionId: null } as App),
+			).toBeNull();
+		});
+
+		it('returns null when the source has no src/router.ts', async () => {
+			appVersionRepository.findById.mockResolvedValue(version);
+			blobStore.readAsBuffer.mockResolvedValue(tgz({ './package.json': '{}' }));
+
+			expect(await service.readRouterSource(app)).toBeNull();
 		});
 	});
 });

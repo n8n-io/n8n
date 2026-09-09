@@ -441,6 +441,7 @@ export function useInstanceAiHandoff() {
 	async function openAppArtifactThread(
 		attachment: InstanceAiAppAttachment,
 		launch: InstanceAiThreadLaunch,
+		options?: { initialDraft?: string },
 	): Promise<boolean> {
 		if (!instanceAiReady.value) {
 			await routeToSetup();
@@ -472,6 +473,7 @@ export function useInstanceAiHandoff() {
 				}
 			}
 			stashPendingAppAttachment(threadId, attachment);
+			if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
 			try {
 				const failure = await router.push({
 					name: INSTANCE_AI_THREAD_VIEW,

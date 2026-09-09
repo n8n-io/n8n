@@ -17,6 +17,8 @@ const props = defineProps<{
 	building?: boolean;
 }>();
 
+defineEmits<{ 'assistant-handoff': [prompt: string] }>();
+
 const thread = useThread();
 const instanceAiStore = useInstanceAiStore();
 const i18n = useI18n();
@@ -67,6 +69,7 @@ watch(() => props.appId, syncAppTarget, { immediate: true });
 			:project-id="props.projectId"
 			:app-id="props.appId"
 			:artifact-version-id="props.versionId"
+			@assistant-handoff="$emit('assistant-handoff', $event)"
 		/>
 	</div>
 </template>

@@ -1144,6 +1144,17 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 }
 
 /**
+ * A page +/edit/delete click inside the embedded app builder (this thread is
+ * already bound to the app, via `InstanceAiAppPreview`'s own target sync) —
+ * fill the already-open composer instead of opening another thread.
+ */
+function handleAppPreviewAssistantHandoff(prompt: string) {
+	stashPendingComposerDraft(props.threadId, prompt);
+	pendingComposerDraft.value = prompt;
+	void nextTick(() => chatInputRef.value?.focus());
+}
+
+/**
  * Reveal the agent artifact, then hand off to the builder to select its Evals
  * tab and generate. Generation deliberately stays in the builder: it already
  * owns the call, its loading flag and its error toast, so driving it from here
@@ -1579,6 +1590,7 @@ async function dismissComposerContextChip() {
 								:project-id="preview.activeAppProjectId.value"
 								:version-id="preview.activeAppVersionId.value ?? undefined"
 								:building="preview.activeAppBuilding.value"
+								@assistant-handoff="handleAppPreviewAssistantHandoff"
 							/>
 						</div>
 					</TabsRoot>

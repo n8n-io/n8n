@@ -244,6 +244,54 @@ describe('AppDetailsView', () => {
 		expect(getByTestId('app-theme-editor-stub')).toBeInTheDocument();
 	});
 
+	it('hands adding a root page off to the assistant with a pre-filled, unsent prompt', async () => {
+		const { getByTestId } = await renderApp(makeApp());
+
+		await userEvent.click(getByTestId('app-page-add-root'));
+
+		expect(openAppArtifactThread).toHaveBeenCalledWith(
+			{ type: 'app', appId: 'app-1', projectId: 'proj-1', name: 'Greeter' },
+			{ source: 'app_builder_page', origin: 'internal', sourceContext: { appId: 'app-1' } },
+			{ initialDraft: 'Add a new page to this app.' },
+		);
+	});
+
+	it("hands a page card's add/edit/delete actions off to the assistant with the page's route", async () => {
+		appsStore.pages = [{ id: 'p1', parentPageId: null, route: 'clients' }];
+		const { getByTestId } = await renderApp(makeApp());
+
+		await userEvent.click(getByTestId('app-page-add-child'));
+		expect(openAppArtifactThread).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), {
+			initialDraft: 'Add a new page nested under "/clients" in this app.',
+		});
+
+		await userEvent.click(getByTestId('app-page-edit'));
+		expect(openAppArtifactThread).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), {
+			initialDraft: 'Update the page at "/clients" in this app.',
+		});
+
+		await userEvent.click(getByTestId('app-page-delete'));
+		expect(openAppArtifactThread).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), {
+			initialDraft: 'Remove the page at "/clients" from this app.',
+		});
+	});
+
+	it("shows a page's direct children indented right beneath it, and acts on their own route", async () => {
+		appsStore.pages = [
+			{ id: 'p1', parentPageId: null, route: 'clients' },
+			{ id: 'p2', parentPageId: 'p1', route: ':id' },
+		];
+		const { getAllByTestId } = await renderApp(makeApp());
+
+		const routes = getAllByTestId('app-page-route').map((el) => el.textContent);
+		expect(routes).toEqual(['/clients', '/:id']);
+
+		await userEvent.click(getAllByTestId('app-page-edit')[1]);
+		expect(openAppArtifactThread).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), {
+			initialDraft: 'Update the page at "/clients/:id" in this app.',
+		});
+	});
+
 	it('prefers the thread build over the stored version and switches to Preview on the first build', async () => {
 		const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
 			artifactMode: true,

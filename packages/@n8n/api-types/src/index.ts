@@ -187,6 +187,8 @@ export {
 	type AppVersion,
 	appThemeSchema,
 	type AppTheme,
+	appRouteSchema,
+	type AppRoute,
 } from './schemas/app.schema';
 
 export {

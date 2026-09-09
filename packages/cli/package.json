@@ -119,7 +119,6 @@
     "tsconfig-paths": "^4.2.0",
     "@vitest/coverage-v8": "catalog:",
     "@typescript/native": "catalog:typescript-tooling",
-    "typescript": "catalog:typescript-tooling",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
@@ -279,6 +278,7 @@
     "swagger-ui-express": "5.0.1",
     "tar": "catalog:",
     "turndown": "catalog:",
+    "typescript": "catalog:typescript-tooling",
     "uuid": "catalog:",
     "validator": "13.15.22",
     "ws": "8.20.1",
