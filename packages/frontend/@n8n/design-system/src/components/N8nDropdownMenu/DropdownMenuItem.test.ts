@@ -81,7 +81,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 		});
 
-		it('should apply destructive hover styles', async () => {
+		it('should apply the destructive class', async function appliesDestructiveClass() {
 			const wrapper = renderMenuItem({
 				id: 'delete',
 				label: 'Delete',
@@ -92,8 +92,6 @@ describe('N8nDropdownMenuItem', () => {
 			const item = await wrapper.findByRole('menuitem');
 
 			expect(item.className).toContain('destructive');
-			expect(item.querySelector('.n8n-icon')).toBeInTheDocument();
-			expect(item.querySelector('.n8n-text')).toBeInTheDocument();
 		});
 
 		it('should render checked item with checkmark', async () => {

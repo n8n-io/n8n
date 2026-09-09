@@ -483,15 +483,19 @@ onBeforeUnmount(() => {
 		cursor: not-allowed;
 	}
 
-	&.destructive.destructive:not([data-disabled]):hover {
-		.item-label.item-label {
-			color: var(--text-color--danger);
-		}
+	&.destructive.destructive:not([data-disabled]) {
+		&:hover,
+		&[data-highlighted],
+		&[aria-selected='true'] {
+			.item-label.item-label {
+				color: var(--text-color--danger);
+			}
 
-		.icon.icon,
-		.item-check.item-check,
-		.sub-indicator.sub-indicator {
-			color: var(--icon-color--danger);
+			.icon.icon,
+			.item-check.item-check,
+			.sub-indicator.sub-indicator {
+				color: var(--icon-color--danger);
+			}
 		}
 	}
 

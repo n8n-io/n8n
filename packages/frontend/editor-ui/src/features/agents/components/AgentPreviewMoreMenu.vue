@@ -51,13 +51,16 @@ const clipboard = useClipboard();
 const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
 const sessionMetadata = ref<AgentExecutionThread | null>(null);
+const canLinkSession = computed(function canLinkSession() {
+	return props.hasSession && Boolean(props.effectiveSessionId);
+});
 
 const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
 	{
 		id: COPY_LINK,
 		label: i18n.baseText('agents.builder.preview.more.copyLink' as BaseTextKey),
 		icon: { type: 'icon', value: 'link' },
-		disabled: !props.effectiveSessionId,
+		disabled: !canLinkSession.value,
 	},
 	{
 		id: COPY_CONVERSATION,
@@ -69,6 +72,7 @@ const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
 		id: OPEN_IN_NEW_TAB,
 		label: i18n.baseText('agents.builder.preview.layout.openInNewTab' as BaseTextKey),
 		icon: { type: 'icon', value: 'external-link' },
+		disabled: !canLinkSession.value,
 	},
 	{
 		id: TOGGLE_FULL_WIDTH,
@@ -176,12 +180,14 @@ async function copyConversation() {
 function selectMenuItem(itemId: string) {
 	switch (itemId) {
 		case COPY_LINK:
+			if (!canLinkSession.value) return;
 			void copyLink();
 			break;
 		case COPY_CONVERSATION:
 			void copyConversation();
 			break;
 		case OPEN_IN_NEW_TAB:
+			if (!canLinkSession.value) return;
 			window.open(getSessionRoute().href, '_blank', 'noopener');
 			break;
 		case TOGGLE_FULL_WIDTH:
