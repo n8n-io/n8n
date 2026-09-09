@@ -2596,6 +2596,72 @@ describe('JobProcessor', () => {
 			);
 		});
 
+		it('keeps a stop reported as manual when the timeout elapses before the run settles', async () => {
+			vi.useFakeTimers();
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: {
+						id: 'workflow-id',
+						nodes: [],
+						staticData: {},
+						settings: { executionTimeout: 5 },
+					},
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			// `run.cancel()` is cooperative, so the run can stay pending past the deadline. The
+			// watchdog then fires inside that window with the stop already recorded.
+			const cancel = vi.fn();
+			let resolveRun!: (run: IRun) => void;
+			const runPromise = new Promise<IRun>((resolve) => {
+				resolveRun = resolve;
+			});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const eventService = mock<EventService>();
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				eventService,
+				mock(),
+			);
+
+			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+			const processing = jobProcessor.processJob(job);
+			const assertion = expect(processing).rejects.toThrow(ManualExecutionCancelledError);
+
+			// Flush the microtasks processJob runs before it starts tracking the job.
+			await vi.advanceTimersByTimeAsync(0);
+			jobProcessor.stopJob(job.id);
+
+			// Take the run past its deadline while it is still unwinding.
+			await vi.advanceTimersByTimeAsync(5_000);
+			resolveRun(mock<IRun>({ status: 'canceled' }));
+
+			await assertion;
+
+			const cancellations = eventService.emit.mock.calls.filter(
+				([eventName]) => eventName === 'execution-cancelled',
+			);
+			expect(cancellations).toHaveLength(1);
+			expect(cancellations[0][1]).toEqual(expect.objectContaining({ reason: 'manual' }));
+		});
 		it('clears the watchdog once a run finishes before its timeout', async () => {
 			vi.useFakeTimers();
 

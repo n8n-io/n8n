@@ -2,6 +2,7 @@ import type { Tool } from '@langchain/core/tools';
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
+import { MAX_INTEGER_32BITS_SIGNED } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -71,12 +72,10 @@ function isInvokableTool(value: unknown): value is Pick<Tool, 'invoke'> {
 	);
 }
 
-/** `setTimeout`'s max delay (its 32-bit signed int limit), i.e. ~24.8 days. */
-const MAX_TIMEOUT_DELAY_MS = 2 ** 31 - 1;
-
 /**
  * Runs `fn` at `timestamp`, returning a function to cancel it. `setTimeout` truncates delays past
- * ~24.8 days and fires almost immediately, so longer waits are split into bounded chunks.
+ * its 32-bit signed limit (~24.8 days) and fires almost immediately, so longer waits are split
+ * into bounded chunks.
  */
 function scheduleAt(timestamp: number, fn: () => void): () => void {
 	let timer: NodeJS.Timeout;
@@ -84,8 +83,8 @@ function scheduleAt(timestamp: number, fn: () => void): () => void {
 	const schedule = () => {
 		const delay = Math.max(timestamp - Date.now(), 0);
 		timer =
-			delay > MAX_TIMEOUT_DELAY_MS
-				? setTimeout(schedule, MAX_TIMEOUT_DELAY_MS)
+			delay > MAX_INTEGER_32BITS_SIGNED
+				? setTimeout(schedule, MAX_INTEGER_32BITS_SIGNED)
 				: setTimeout(fn, delay);
 	};
 	schedule();
@@ -364,14 +363,15 @@ export class JobProcessor {
 		this.runningJobs[job.id] = runningJob;
 
 		// The engine only checks `executionTimeoutTimestamp` between node executions, so it cannot
-		// interrupt a node stuck mid-execution (e.g. a hanging HTTP call). This watchdog cancels the
-		// job regardless, mirroring the regular-process timeout in `WorkflowRunner.runMainProcess`.
+		// interrupt a node stuck mid-execution (e.g. a hanging HTTP call). This watchdog cancels
+		// the job for abort-aware operations, mirroring the regular-process timeout in
+		// `WorkflowRunner.runMainProcess`.
 		let timedOut = false;
 		const clearTimeoutWatchdog =
 			executionTimeoutTimestamp !== undefined
 				? scheduleAt(executionTimeoutTimestamp, () => {
-						timedOut = true;
-						this.cancelJob(job.id, 'timeout');
+						// A stop that already cancelled the job keeps its own cause.
+						timedOut = this.cancelJob(job.id, 'timeout');
 					})
 				: undefined;
 
@@ -379,6 +379,7 @@ export class JobProcessor {
 		try {
 			run = await workflowRun;
 		} finally {
+			// A pending watchdog would cancel the job belatedly.
 			clearTimeoutWatchdog?.();
 			// An entry left behind on rejection keeps the count of running jobs
 			// above zero forever, which prevents shutdown from ever completing.
@@ -545,9 +546,10 @@ export class JobProcessor {
 		this.cancelJob(jobId, 'manual'); // Job stops via scaling service are always user-initiated
 	}
 
-	private cancelJob(jobId: JobId, reason: CancellationReason) {
+	/** Cancels a running job, returning whether this call was the one that cancelled it. */
+	private cancelJob(jobId: JobId, reason: CancellationReason): boolean {
 		const runningJob = this.runningJobs[jobId];
-		if (!runningJob) return;
+		if (!runningJob) return false;
 
 		const { executionId, workflowId, workflowName } = runningJob;
 		this.eventService.emit('execution-cancelled', {
@@ -559,6 +561,8 @@ export class JobProcessor {
 
 		runningJob.run.cancel();
 		delete this.runningJobs[jobId];
+
+		return true;
 	}
 
 	getRunningJobIds(): JobId[] {
