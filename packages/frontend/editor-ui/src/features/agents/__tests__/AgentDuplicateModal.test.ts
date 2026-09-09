@@ -19,9 +19,9 @@ vi.mock('@n8n/i18n', () => {
 
 const stubs = {
 	Modal: {
-		props: ['name', 'width'],
+		props: ['name', 'width', 'closeOnClickModal', 'closeOnPressEscape', 'showClose'],
 		template:
-			'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+			'<div role="dialog" :data-close-on-click-modal="closeOnClickModal" :data-close-on-press-escape="closeOnPressEscape" :data-show-close="showClose"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
 	},
 	N8nHeading: { template: '<h2><slot /></h2>' },
 	N8nText: { template: '<span v-bind="$attrs"><slot /></span>' },
@@ -125,5 +125,24 @@ describe('AgentDuplicateModal', () => {
 		await fireEvent.click(getByTestId('agent-duplicate-confirm'));
 
 		await waitFor(() => expect(onConfirm).toHaveBeenCalledWith('Triage Bot'));
+	});
+
+	it('blocks dismissal while a duplicate is submitting', async () => {
+		// Never resolves so the modal stays in the submitting state.
+		const onConfirm = vi.fn<(name: string) => Promise<void>>(() => new Promise<void>(() => {}));
+		const { getByTestId, getByRole } = renderModal({ onConfirm });
+
+		const dialog = getByRole('dialog');
+		// Before submit, dismissal is allowed.
+		expect(dialog).toHaveAttribute('data-show-close', 'true');
+
+		await fireEvent.update(getByTestId('agent-duplicate-name-input'), 'Triage Bot');
+		await fireEvent.click(getByTestId('agent-duplicate-confirm'));
+
+		await waitFor(() => expect(onConfirm).toHaveBeenCalled());
+		// While submitting, all dismissal paths are disabled.
+		expect(dialog).toHaveAttribute('data-show-close', 'false');
+		expect(dialog).toHaveAttribute('data-close-on-click-modal', 'false');
+		expect(dialog).toHaveAttribute('data-close-on-press-escape', 'false');
 	});
 });

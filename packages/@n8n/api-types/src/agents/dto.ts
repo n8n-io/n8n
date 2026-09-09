@@ -13,7 +13,6 @@ import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
-import type { AgentSkill } from './types';
 
 export const AGENTS_LIST_SORT_OPTIONS = [
 	'name:asc',
@@ -130,7 +129,7 @@ export class CreateAgentDto extends Z.class({
 	id: clientMintedAgentIdSchema.optional(),
 	schema: AgentJsonConfigSchema.optional(),
 	tools: z.record(z.unknown()).optional(),
-	skills: z.record(z.custom<AgentSkill>()).optional(),
+	skills: z.record(agentSkillSchema).optional(),
 }) {}
 
 export class UpdateAgentConfigDto extends Z.class({

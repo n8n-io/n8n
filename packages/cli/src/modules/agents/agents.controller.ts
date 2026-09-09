@@ -43,9 +43,17 @@ export class AgentsController {
 		const agent = await this.agentsService.create(projectId, payload.name, {
 			id: payload.id,
 			...(defaultModel ? { defaultModel } : {}),
-			...(isDuplicate ? { schema: payload.schema } : {}),
-			...(isDuplicate ? { skills: payload.skills } : {}),
-			...(isDuplicate ? { tools: payload.tools } : {}),
+			// Keep the config name in sync with the entity name so the list and
+			// builder never disagree on a directly-seeded create. Narrowing
+			// payload.schema here keeps the spread over a defined config, so its
+			// required fields (model, instructions) stay required for the service.
+			...(isDuplicate && payload.schema
+				? {
+						schema: { ...payload.schema, name: payload.name },
+						skills: payload.skills,
+						tools: payload.tools,
+					}
+				: {}),
 		});
 		return await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user);
 	}

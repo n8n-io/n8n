@@ -62,7 +62,14 @@ async function onConfirm() {
 </script>
 
 <template>
-	<Modal :name="modalName" width="420px" data-testid="agent-duplicate-modal">
+	<Modal
+		:name="modalName"
+		width="420px"
+		data-testid="agent-duplicate-modal"
+		:close-on-click-modal="!submitting"
+		:close-on-press-escape="!submitting"
+		:show-close="!submitting"
+	>
 		<template #header>
 			<N8nHeading tag="h2" size="xlarge">
 				{{ i18n.baseText('agents.duplicate.modal.name') }}
