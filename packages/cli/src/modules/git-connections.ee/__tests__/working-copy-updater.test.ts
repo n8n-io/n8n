@@ -24,6 +24,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 });
 
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import type { BranchState } from '../branch-placement';
 import { WorkingCopyUpdater } from '../working-copy-updater';
@@ -110,6 +111,8 @@ describe('WorkingCopyUpdater', () => {
 		await readFile(path.join(exportFolder, relative), 'utf-8');
 	const expectAbsent = async (relative: string) =>
 		await expect(stat(path.join(exportFolder, relative))).rejects.toThrow();
+	const readWrittenManifest = async () =>
+		packageManifestSchema.parse(JSON.parse(await readExported('manifest.json')));
 
 	/** Write the branch and the staging export, then apply the selection. */
 	const apply = async (
@@ -442,7 +445,10 @@ describe('WorkingCopyUpdater', () => {
 			expect(await readExported('projects/alpha/folders/sales/workflows/w2/workflow.json')).toBe(
 				workflowFile('w2'),
 			);
-			await expectAbsent('manifest.json');
+			expect((await readWrittenManifest()).workflows?.map((entry) => entry.id).sort()).toEqual([
+				'w1',
+				'w2',
+			]);
 			const branch = await updater.readBranchState(exportFolder);
 			expect(branch.folders).toEqual([folder('f1', 'Sales', 'sales')]);
 			expect(branch.workflows).toEqual(
@@ -507,7 +513,12 @@ describe('WorkingCopyUpdater', () => {
 			for (const [file, content] of Object.entries(tree)) {
 				expect(await readExported(file), file).toBe(content);
 			}
-			await expectAbsent('manifest.json');
+			expect((await readWrittenManifest()).workflows?.map((entry) => entry.id).sort()).toEqual([
+				'w1',
+				'w2',
+				'w3',
+				'w4',
+			]);
 		});
 
 		it('leaves an unused credential stub the selection dropped', async () => {

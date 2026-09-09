@@ -14,6 +14,7 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 
 import { containerPlacement, isUnder, pinPath, staleWorkflowTargets } from './branch-placement';
 import type { BranchState, Placement } from './branch-placement';
+import { readLeftoverManifest, writeImportManifest } from './import-manifest-bridge';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -213,7 +214,9 @@ export class WorkingCopyUpdater {
 	/**
 	 * Overlay the staging export onto `exportFolder`. Guards run first. File
 	 * work runs on a copy, then the copy replaces the export, so a failed write
-	 * leaves the working copy untouched.
+	 * leaves the working copy untouched. After overlay, write an import inventory
+	 * of the remaining files. Delete that write with import-manifest-bridge when
+	 * import walks entity files.
 	 */
 	async applySelection(
 		exportFolder: string,
@@ -253,7 +256,14 @@ export class WorkingCopyUpdater {
 				});
 			}
 			await this.overlayDirectory(stagingFolder, workFolder, placement);
+			const leftover = await readLeftoverManifest(workFolder);
 			await fs.rm(await this.resolveContained(workFolder, MANIFEST_FILE), { force: true });
+			await writeImportManifest({
+				exportFolder: workFolder,
+				leftover,
+				staging,
+				sourceId: this.instanceSettings.instanceId,
+			});
 
 			const backupPath = `${exportFolder}.bak`;
 			await fs.rm(backupPath, { recursive: true, force: true });
