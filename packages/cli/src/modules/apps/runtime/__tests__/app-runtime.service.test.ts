@@ -365,6 +365,22 @@ describe('AppRuntimeService', () => {
 			);
 		});
 
+		it('does not set error for a waiting run', async () => {
+			activeExecutions.getPostExecutePromise.mockResolvedValue({
+				...failedRun('Wait', 'paused'),
+				status: 'waiting',
+			});
+
+			const result = await service.runWorkflow('runner', 'submit', { message: 'hi' });
+
+			expect(result).toEqual({
+				executionId: 'exec-1',
+				status: 'waiting',
+				output: [],
+				principal: null,
+			});
+		});
+
 		it('keeps the message of a Stop and Error node', async () => {
 			workflowLoader.loadWorkflow.mockResolvedValue(
 				workflow({

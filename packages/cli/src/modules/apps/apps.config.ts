@@ -11,7 +11,7 @@ export class AppsConfig {
 	runtimeRateLimit: number = 60;
 
 	/**
-	 * Maximum number of runtime API calls on this instance that hold a workflow run at
+	 * Maximum number of runtime API calls per main process that hold a workflow run at
 	 * the same time. A call holds its run until the run ends or the call answers 202.
 	 * Set to `0` to disable the cap.
 	 */

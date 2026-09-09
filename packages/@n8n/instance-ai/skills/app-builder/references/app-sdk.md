@@ -71,7 +71,7 @@ interface RunResult<T> {
   status: 'success' | 'error' | 'waiting' | 'canceled' | 'running' | 'unknown';
   output?: T;      // the items of the last node that ran (json[])
   outputTruncated?: true; // binary response, not returned in v1; output is null
-  error?: string;  // set when status is not 'success'; generic unless a "Stop and Error" node failed
+  error?: string;  // set when status is 'error'; generic unless a "Stop and Error" node failed
   principal: null; // reserved for visitor identity
 }
 ```
@@ -128,7 +128,7 @@ Show `error.message` to the user; it is written for people.
   the custom data `appId`, `appNamespace` and `appBindingKey`.
 - Only the published version runs. Draft changes take effect on publish.
 - Rate limit: 60 calls per minute per IP by default (instance setting).
-- Concurrency: at most 10 calls per instance hold a run at the same time by
+- Concurrency: at most 10 calls per main process hold a run at the same time by
   default (instance setting). A call holds its run until it ends or until the
   call answers 202.
 - Body limit: 1 MiB, JSON object only (arrays are rejected).

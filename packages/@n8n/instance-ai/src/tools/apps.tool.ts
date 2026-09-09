@@ -714,8 +714,8 @@ type DescribedBindings = { bindings: DescribedBinding[]; warnings: string[] };
 /**
  * Every binding check (scope, project, trigger, key format) lives in the app service,
  * so anything it throws is a refusal the model can act on. The upsert starts from the
- * stored list, not the described one: describe omits a binding whose draft is broken
- * while its published version still runs, and a write must not drop it silently.
+ * stored list, not the described one: describe omits a binding whose resolved workflow
+ * is broken, and a write must not drop it silently.
  */
 async function replaceBindings(
 	context: InstanceAiContext,

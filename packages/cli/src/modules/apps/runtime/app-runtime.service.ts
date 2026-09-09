@@ -265,6 +265,8 @@ export class AppRuntimeService {
 				status: result.status,
 				error: result.error,
 			});
+			const failure = { executionId, status: result.status, output: [], principal: null };
+			if (result.status !== 'error') return failure;
 			const failedNode = workflow.nodes.find(
 				(node) => node.name === execution.data.resultData.lastNodeExecuted,
 			);
@@ -272,7 +274,7 @@ export class AppRuntimeService {
 				failedNode?.type === STOP_AND_ERROR_NODE_TYPE && result.error
 					? result.error
 					: GENERIC_FAILURE_MESSAGE;
-			return { executionId, status: result.status, output: [], error, principal: null };
+			return { ...failure, error };
 		}
 		const base = { executionId, status: result.status, principal: null };
 
