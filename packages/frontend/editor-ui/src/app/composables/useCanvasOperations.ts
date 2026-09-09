@@ -3291,9 +3291,11 @@ export function useCanvasOperations() {
 				startCollapsed: true,
 				description: group.description,
 			});
+
 			if (trackHistory) {
 				historyStore.pushCommandToUndo(new AddNodeGroupCommand(createdGroup, Date.now()));
 			}
+
 			existingGroupNames.add(name);
 		}
 	}

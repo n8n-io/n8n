@@ -15,6 +15,7 @@ import {
 	type CanvasNodeData,
 } from '../canvas.types';
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
+import { titleBarFromNodesRect } from './useCanvasMapping.groups';
 import { STICKY_NODE_TYPE } from '@/app/constants';
 import { AGENT_NODE_SIZE, DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
@@ -433,16 +434,18 @@ describe('useCanvasLayout', () => {
 		});
 
 		test('keeps a top-left collapsed group anchored in place', () => {
-			// Group owns the top-left corner, where the chip box (944, 908) and the
-			// member box (1008, 1008) disagree — the anchor must not absorb that gap.
+			// Group owns the top-left corner, where the chip box and the member box
+			// (1008, 1008) disagree by the group padding — the anchor must not
+			// absorb that gap.
+			const nodesRect = { x: 1008, y: 1008, width: 192, height: 96 };
 			const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } });
 			const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 1104, y: 1008 } });
 			const group = createCanvasGraphGroupNode({
 				id: groupId,
 				nodeIds: ['m1', 'm2'],
 				isCollapsed: true,
-				nodesRect: { x: 1008, y: 1008, width: 192, height: 96 },
-				position: { x: 944, y: 908 },
+				nodesRect,
+				position: titleBarFromNodesRect(nodesRect, true).position,
 			});
 
 			const { layout } = createTestSetup([m1, m2, group], []);
@@ -452,6 +455,123 @@ describe('useCanvasLayout', () => {
 			assert(rm1);
 			// A lone group has nothing to re-flow, so its members stay put.
 			expect(rm1).toMatchObject({ x: 1008, y: 1008 });
+		});
+
+		// The chip position the canvas renders is derived from the member
+		// positions, so a layout pass must land on a fixpoint: pressing tidy-up
+		// again has to leave everything where it is.
+		test('is idempotent for a collapsed group whose chip is derived from its members', () => {
+			function runPass(
+				memberPositions: Array<{ x: number; y: number }>,
+				staleChipPosition?: { x: number; y: number },
+			) {
+				const [p1, p2] = memberPositions;
+				const m1 = createCanvasGraphNode({ id: 'm1', position: p1 });
+				const m2 = createCanvasGraphNode({ id: 'm2', position: p2 });
+				const before = createCanvasGraphNode({ id: 'before', position: { x: 0, y: 0 } });
+				const after = createCanvasGraphNode({ id: 'after', position: { x: 2000, y: 0 } });
+
+				const nodesRect = {
+					x: Math.min(p1.x, p2.x),
+					y: Math.min(p1.y, p2.y),
+					width: Math.max(p1.x, p2.x) + DEFAULT_NODE_SIZE[0] - Math.min(p1.x, p2.x),
+					height: Math.max(p1.y, p2.y) + DEFAULT_NODE_SIZE[1] - Math.min(p1.y, p2.y),
+				};
+
+				const group = createCanvasGraphGroupNode({
+					id: groupId,
+					nodeIds: ['m1', 'm2'],
+					isCollapsed: true,
+					nodesRect,
+					// Exactly what the canvas renders for this member rect.
+					position: staleChipPosition ?? titleBarFromNodesRect(nodesRect, true).position,
+				});
+
+				const { layout } = createTestSetup(
+					[before, m1, m2, after, group],
+					[
+						['before', chipId],
+						[chipId, 'after'],
+					],
+				);
+
+				const result = layout('all');
+				const positionOf = (id: string) => {
+					const node = result.nodes.find((n) => n.id === id);
+					assert(node);
+					return { x: node.x, y: node.y };
+				};
+
+				return {
+					members: [positionOf('m1'), positionOf('m2')],
+					before: positionOf('before'),
+					after: positionOf('after'),
+					chipPosition: titleBarFromNodesRect(nodesRect, true).position,
+				};
+			}
+
+			const first = runPass([
+				{ x: 1008, y: 1008 },
+				{ x: 1104, y: 1008 },
+			]);
+			const second = runPass(first.members);
+
+			expect(second.members).toEqual(first.members);
+		});
+
+		// Each streamed chunk triggers a tidy-up, so passes run back to back. The
+		// chip position feeding the next pass is still the one derived from the
+		// previous member positions, and the members must not drift because of it.
+		test('does not drift when a second pass runs before the chip position catches up', () => {
+			const p1 = { x: 1008, y: 1008 };
+			const p2 = { x: 1104, y: 1008 };
+			const staleNodesRect = { x: p1.x, y: p1.y, width: 192, height: 96 };
+			const staleChipPosition = titleBarFromNodesRect(staleNodesRect, true).position;
+
+			function runPass(
+				memberPositions: Array<{ x: number; y: number }>,
+				chipPosition: { x: number; y: number },
+			) {
+				const [a, b] = memberPositions;
+				const m1 = createCanvasGraphNode({ id: 'm1', position: a });
+				const m2 = createCanvasGraphNode({ id: 'm2', position: b });
+				const before = createCanvasGraphNode({ id: 'before', position: { x: 0, y: 0 } });
+				const after = createCanvasGraphNode({ id: 'after', position: { x: 2000, y: 0 } });
+				const group = createCanvasGraphGroupNode({
+					id: groupId,
+					nodeIds: ['m1', 'm2'],
+					isCollapsed: true,
+					nodesRect: {
+						x: Math.min(a.x, b.x),
+						y: Math.min(a.y, b.y),
+						width: 192,
+						height: 96,
+					},
+					position: chipPosition,
+				});
+
+				const { layout } = createTestSetup(
+					[before, m1, m2, after, group],
+					[
+						['before', chipId],
+						[chipId, 'after'],
+					],
+				);
+
+				const result = layout('all');
+				const positionOf = (id: string) => {
+					const node = result.nodes.find((n) => n.id === id);
+					assert(node);
+					return { x: node.x, y: node.y };
+				};
+				return [positionOf('m1'), positionOf('m2')];
+			}
+
+			const first = runPass([p1, p2], staleChipPosition);
+			// Second pass still sees the chip where the first pass found it.
+			const second = runPass(first, staleChipPosition);
+
+			expect(second).toEqual(first);
 		});
 
 		test('lays out expanded group members individually and excludes the chip', () => {
