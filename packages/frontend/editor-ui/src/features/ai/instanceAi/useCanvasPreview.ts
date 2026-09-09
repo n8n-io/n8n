@@ -70,12 +70,13 @@ export function useCanvasPreview({
 	const buildingArtifactIds = useBuildingArtifactIds(thread);
 	const isAgentWorking = useIsAgentWorking(thread);
 
-	// True when the user picked a tab while the agent was working. The auto-open
-	// watchers below keep that selection until the run settles, so a streamed
-	// tool call cannot undo the click.
-	const keepUserTab = ref(false);
+	// Tab the user picked while the agent was working. The auto-open watchers
+	// below keep it in view until the run settles, so a streamed tool call
+	// cannot undo the click. The pick lapses when something else moves the
+	// selection, for example when the picked artifact is deleted.
+	const userTabId = ref<string>();
 	watch(isAgentWorking, (working) => {
-		if (!working) keepUserTab.value = false;
+		if (!working) userTabId.value = undefined;
 	});
 
 	// All previewable artifacts in the current thread, derived from resource registry.
@@ -208,19 +209,20 @@ export function useCanvasPreview({
 
 	function selectTab(tabId: string) {
 		activeTabId.value = tabId;
-		keepUserTab.value = isAgentWorking.value;
+		userTabId.value = isAgentWorking.value ? tabId : undefined;
 		setPreviewOpen(true);
 	}
 
 	function closePreview() {
-		keepUserTab.value = false;
+		userTabId.value = undefined;
 		setPreviewOpen(false);
 	}
 
 	// Show an artifact the agent just touched. Do not override a tab the user
-	// picked during this run.
+	// picked during this run while it is still the one on screen.
 	function showAgentArtifact(tabId: string) {
-		if (!keepUserTab.value) activeTabId.value = tabId;
+		const pinned = userTabId.value !== undefined && userTabId.value === activeTabId.value;
+		if (!pinned) activeTabId.value = tabId;
 		setPreviewOpen(true);
 	}
 
