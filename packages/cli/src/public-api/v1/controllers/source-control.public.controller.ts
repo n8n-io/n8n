@@ -142,7 +142,11 @@ export class SourceControlPublicController {
 			'every file in the pull diff; files causing the conflict have `conflict: true` or ' +
 			'`status: modified`. Retry with `force: true` to discard local changes.',
 	})
-	async pullSourceControl(req: AuthenticatedRequest, res: Response): Promise<void> {
+	async pullSourceControl(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body body: PullWorkFolderRequestDto,
+	): Promise<void> {
 		// Writes the response directly preserving migrated endpoints contract
 		if (!this.sourceControlPreferencesService.isSourceControlConnected()) {
 			res
@@ -152,13 +156,12 @@ export class SourceControlPublicController {
 		}
 
 		try {
-			const payload = PullWorkFolderRequestDto.parse(req.body);
-			const result = await this.sourceControlService.pullWorkfolder(req.user, payload);
+			const result = await this.sourceControlService.pullWorkfolder(req.user, body);
 
 			if (result.statusCode === 200) {
 				this.eventService.emit('source-control-user-pulled-api', {
 					...getTrackingInformationFromPullResult(req.user.id, result.statusResult),
-					forced: payload.force ?? false,
+					forced: body.force ?? false,
 				});
 				res.status(200).json(result.statusResult);
 				return;

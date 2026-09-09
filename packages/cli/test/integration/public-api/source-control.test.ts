@@ -157,7 +157,7 @@ describe('Source Control (Public API)', () => {
 			expect(response.text).toBe('Git operation failed');
 		});
 
-		it('should return 400 as plain text when body fails PullWorkFolderRequestDto validation', async () => {
+		it('should return HTTP 400 for an invalid body', async () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();
 
@@ -167,7 +167,10 @@ describe('Source Control (Public API)', () => {
 				.send({ autoPublish: 'not-a-valid-mode' });
 
 			expect(response.status).toBe(400);
-			expect(response.text.length).toBeGreaterThan(0);
+			expect(response.body).toEqual({
+				message:
+					"request/body/autoPublish Invalid enum value. Expected 'none' | 'all' | 'published', received 'not-a-valid-mode'",
+			});
 		});
 	});
 

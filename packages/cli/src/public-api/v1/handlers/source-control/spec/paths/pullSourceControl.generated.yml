@@ -7,6 +7,21 @@ x-required-scope: sourceControl:pull
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          force:
+            type: boolean
+          autoPublish:
+            type: string
+            enum:
+              - none
+              - all
+              - published
+            default: none
 responses:
   '200':
     description: Operation successful.
@@ -316,3 +331,5 @@ responses:
               - location
               - conflict
               - updatedAt
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
