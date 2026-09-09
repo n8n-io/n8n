@@ -15,11 +15,13 @@ const TOKEN_TTL_SECONDS = 8 * 60 * 60;
 /** Separates preview tokens from the session, invite and reset tokens signed with the same secret. */
 const TOKEN_AUDIENCE = 'app-preview';
 const PROBE_TIMEOUT_MS = 3_000;
-/** A start slower than this (cold `npm install`) answers `starting` and lets the client poll. */
+/** A start slower than this answers `starting` and lets the client poll. */
 const START_HANDOFF_MS = 2_000;
 const START_TIMEOUT_MS = 600_000;
 const UNSUPPORTED_ROUTE_CACHE_MS = 10 * 60 * 1000;
 const LOG_TAIL_BYTES = 4096;
+/** Written by the start script inside the app directory; the sandbox image has no `pkill`. */
+const DEV_SERVER_PID_FILE = '.n8n-dev.pid';
 
 export type AppPreviewSandbox = { url: string; apiKey?: string };
 
@@ -38,6 +40,8 @@ export type AppPreviewEntry = {
 	startedAt: Date;
 	expiresAt: Date;
 	starting?: Promise<AppPreviewStatus>;
+	/** The start settled with this failure after the handoff; the next ensure reports it once. */
+	failed?: AppPreviewStatus;
 };
 
 export type EnsureAppPreviewInput = {
@@ -51,17 +55,25 @@ export type EnsureAppPreviewInput = {
 
 type AppPreviewTokenClaims = { sub: string; appId: string; threadId: string; jti: string };
 
+/** Kills the dev server whose pid the app directory records, if any. */
+export function buildDevServerStopScript(namespace: string): string {
+	return `cd apps/${namespace} && [ -f ${DEV_SERVER_PID_FILE} ] && kill "$(cat ${DEV_SERVER_PID_FILE})" 2>/dev/null`;
+}
+
 /**
  * Starts the app's dev server in the thread's sandbox with `setsid nohup` so it
  * outlives the exec, and waits for Vite's "ready in" line. Prints the log tail
- * and exits non-zero when it does not come up.
+ * and exits non-zero when it does not come up. A stale dev server from a
+ * previous n8n process (same app directory, still bound to the port) is killed
+ * first. The pid is `$$` of a shell that `exec`s Vite, so it names Vite whether
+ * or not `setsid` forks.
  */
 export function buildDevServerStartScript(input: { namespace: string; token: string }): string {
 	const base = `${APP_PREVIEW_PATH_PREFIX}/${input.token}/`;
 	return [
 		`cd apps/${input.namespace}`,
-		'( [ -d node_modules ] || npm install --ignore-scripts --no-audit --no-fund --prefer-offline )',
-		`( ulimit -c 0; APP_BASE=${base} VITE_N8N_API_BASE=/apps/${input.namespace}/api CI=true setsid nohup node_modules/.bin/vite --host 0.0.0.0 --port ${APP_PREVIEW_PORT} --strictPort > .n8n-dev.log 2>&1 & )`,
+		`{ [ -f ${DEV_SERVER_PID_FILE} ] && kill "$(cat ${DEV_SERVER_PID_FILE})" 2>/dev/null; sleep 0.3; }`,
+		`( ulimit -c 0; APP_BASE=${base} VITE_N8N_API_BASE=/apps/${input.namespace}/api CI=true setsid nohup sh -c 'echo $$ > ${DEV_SERVER_PID_FILE}; exec node_modules/.bin/vite --host 0.0.0.0 --port ${APP_PREVIEW_PORT} --strictPort' > .n8n-dev.log 2>&1 & )`,
 		`for i in $(seq 1 40); do grep -q 'ready in' .n8n-dev.log && exit 0; sleep 0.25; done; tail -c ${LOG_TAIL_BYTES} .n8n-dev.log; exit 1`,
 	].join(' && ');
 }
@@ -89,6 +101,10 @@ export class AppPreviewService {
 		const key = entryKey(input.threadId, input.appId);
 		const existing = this.entries.get(key);
 		if (existing?.starting) return { status: 'starting' };
+		if (existing?.failed) {
+			this.entries.delete(key);
+			return existing.failed;
+		}
 		if (existing) {
 			const probe = await this.probe(existing);
 			if (probe === 'ready') return this.ready(existing);
@@ -103,7 +119,7 @@ export class AppPreviewService {
 		const claims = this.verify(token);
 		if (!claims) return undefined;
 		const entry = this.entries.get(entryKey(claims.threadId, claims.appId));
-		if (!entry || entry.jti !== claims.jti || entry.starting) return undefined;
+		if (!entry || entry.jti !== claims.jti || entry.starting || entry.failed) return undefined;
 		if (entry.expiresAt.getTime() <= Date.now()) {
 			this.entries.delete(entryKey(entry.threadId, entry.appId));
 			return undefined;
@@ -162,32 +178,35 @@ export class AppPreviewService {
 		};
 		// A sibling start or `clearThread` may have replaced or removed this entry meanwhile;
 		// only the entry still in the map may settle itself.
-		const starting = this.runStart(entry).then(
-			(status) => {
-				if (this.entries.get(key) !== entry) return status;
-				if (status.status === 'ready') {
-					this.entries.set(key, { ...entry, starting: undefined });
-				} else {
-					this.entries.delete(key);
-				}
-				return status;
-			},
-			(error: unknown) => {
-				if (this.entries.get(key) === entry) this.entries.delete(key);
-				this.logger.warn('App preview dev server start failed', {
-					appId: input.appId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-				return { status: 'unavailable', reason: 'sandbox' } satisfies AppPreviewStatus;
-			},
-		);
+		const settle = (status: AppPreviewStatus) => {
+			if (this.entries.get(key) !== entry) return status;
+			const settled =
+				status.status === 'ready'
+					? { ...entry, starting: undefined }
+					: { ...entry, starting: undefined, failed: status };
+			this.entries.set(key, settled);
+			return status;
+		};
+		const starting = this.runStart(entry).then(settle, (error: unknown) => {
+			this.logger.warn('App preview dev server start failed', {
+				appId: input.appId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return settle({ status: 'unavailable', reason: 'sandbox' });
+		});
 		entry.starting = starting;
 		this.entries.set(key, entry);
 		const handoff = new Promise<AppPreviewStatus>((resolve) => {
 			const timer = setTimeout(() => resolve({ status: 'starting' }), START_HANDOFF_MS);
 			void starting.finally(() => clearTimeout(timer));
 		});
-		return await Promise.race([starting, handoff]);
+		const result = await Promise.race([starting, handoff]);
+		// A failure delivered to this caller is reported; only one that missed the handoff waits for the next poll.
+		const settled = this.entries.get(key);
+		if (result.status !== 'starting' && settled?.jti === jti && settled.failed) {
+			this.entries.delete(key);
+		}
+		return result;
 	}
 
 	private async runStart(entry: AppPreviewEntry): Promise<AppPreviewStatus> {
@@ -199,8 +218,9 @@ export class AppPreviewService {
 			if (error instanceof SandboxServiceError) return { status: 'unavailable', reason: 'sandbox' };
 			throw error;
 		}
+		// The agent's `apps build` installs; a preview before that has nothing to run yet.
 		try {
-			await client.stat(entry.sandboxId, `${appDir}/package.json`);
+			await client.stat(entry.sandboxId, `${appDir}/node_modules/.bin/vite`);
 		} catch (error) {
 			if (error instanceof SandboxServiceError && error.status === 404) {
 				return { status: 'no-source' };
@@ -214,12 +234,14 @@ export class AppPreviewService {
 			(other) => other.sandboxId === entry.sandboxId && other.jti !== entry.jti,
 		);
 		await Promise.allSettled(siblings.map(async (other) => await other.starting));
-		for (const other of siblings) this.markDead(other);
-		await client.exec(entry.sandboxId, {
-			command: 'pkill -f "vite --host" || true',
-			workdir: N8N_SANDBOX_WORKSPACE_ROOT,
-			timeoutMs: PROBE_TIMEOUT_MS,
-		});
+		for (const other of siblings) {
+			this.markDead(other);
+			await client.exec(entry.sandboxId, {
+				command: buildDevServerStopScript(other.namespace),
+				workdir: N8N_SANDBOX_WORKSPACE_ROOT,
+				timeoutMs: PROBE_TIMEOUT_MS,
+			});
+		}
 
 		const result = await client.exec(entry.sandboxId, {
 			command: buildDevServerStartScript({ namespace: entry.namespace, token: entry.token }),

@@ -686,7 +686,7 @@ describe('apps tool', () => {
 				if [ -d 'dist/server' ] || [ -d .output/server ]; then echo 'APP_CHECK_FAIL: server output found (dist/server or .output/server). Only a static export can be served.'; exit 1; fi
 				mkdir -p '/home/daytona/workspace/.app-builds'
 				tar -czf '/home/daytona/workspace/.app-builds/greeter-1-dist.tgz' -C 'dist' .
-				tar -czf '/home/daytona/workspace/.app-builds/greeter-1-src.tgz' --exclude=node_modules --exclude='dist' --exclude=.git --exclude=.n8n-dev.log --exclude='./core' --exclude='./core.*' --exclude='./*.core' -C . .
+				tar -czf '/home/daytona/workspace/.app-builds/greeter-1-src.tgz' --exclude=node_modules --exclude='dist' --exclude=.git --exclude=.n8n-dev.log --exclude=.n8n-dev.pid --exclude='./core' --exclude='./core.*' --exclude='./*.core' -C . .
 				dist_size=$(stat -c %s '/home/daytona/workspace/.app-builds/greeter-1-dist.tgz')
 				src_size=$(stat -c %s '/home/daytona/workspace/.app-builds/greeter-1-src.tgz')
 				if [ "$dist_size" -gt 20971520 ]; then echo "APP_CHECK_FAIL: build output is $dist_size bytes compressed; the limit is 20971520. Remove large assets from dist."; exit 1; fi
@@ -705,7 +705,7 @@ describe('apps tool', () => {
 			});
 			const tarLine = script.split('\n').find((line) => line.includes("'/ws/.app-builds/s.tgz'"));
 			expect(tarLine).toContain("--exclude='./core' --exclude='./core.*' --exclude='./*.core'");
-			expect(tarLine).toContain('--exclude=.n8n-dev.log');
+			expect(tarLine).toContain('--exclude=.n8n-dev.log --exclude=.n8n-dev.pid');
 			expect(script).toContain(
 				"du -ah --exclude=node_modules --exclude=.git --exclude='out' . | sort -rh",
 			);

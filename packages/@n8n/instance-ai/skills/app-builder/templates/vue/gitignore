@@ -3,3 +3,4 @@ dist
 *.local
 *.tsbuildinfo
 .n8n-dev.log
+.n8n-dev.pid

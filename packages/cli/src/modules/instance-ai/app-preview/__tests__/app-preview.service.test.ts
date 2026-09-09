@@ -9,6 +9,7 @@ import type { JwtService } from '@/services/jwt.service';
 import {
 	AppPreviewService,
 	buildDevServerStartScript,
+	buildDevServerStopScript,
 	type EnsureAppPreviewInput,
 } from '../app-preview.service';
 
@@ -89,17 +90,20 @@ describe('AppPreviewService', () => {
 			expect(result.url).toMatch(/^\/apps-preview\/[\w.-]+\/$/);
 			expect(sandboxClient.stat).toHaveBeenCalledWith(
 				expect.any(String),
-				'/home/user/workspace/apps/greeter/package.json',
+				'/home/user/workspace/apps/greeter/node_modules/.bin/vite',
 			);
-			const startCommand = sandboxClient.exec.mock.calls[1][1].command;
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
+			const startCommand = sandboxClient.exec.mock.calls[0][1].command;
 			expect(startCommand).toBe(
 				buildDevServerStartScript({ namespace: 'greeter', token: result.url.split('/')[2] }),
 			);
+			expect(startCommand).not.toContain('npm install');
+			expect(startCommand).not.toContain('pkill');
 			expect(startCommand).toContain(
-				'npm install --ignore-scripts --no-audit --no-fund --prefer-offline',
+				'cd apps/greeter && { [ -f .n8n-dev.pid ] && kill "$(cat .n8n-dev.pid)" 2>/dev/null; sleep 0.3; } && ',
 			);
 			expect(startCommand).toContain(
-				'setsid nohup node_modules/.bin/vite --host 0.0.0.0 --port 5173 --strictPort > .n8n-dev.log',
+				"setsid nohup sh -c 'echo $$ > .n8n-dev.pid; exec node_modules/.bin/vite --host 0.0.0.0 --port 5173 --strictPort' > .n8n-dev.log",
 			);
 			expect(startCommand).toContain('VITE_N8N_API_BASE=/apps/greeter/api');
 			expect(fetchMock).toHaveBeenCalledWith(
@@ -110,7 +114,7 @@ describe('AppPreviewService', () => {
 			);
 		});
 
-		it('returns no-source when the app has no package.json in the sandbox', async () => {
+		it('returns no-source without installing when the app has no vite binary in the sandbox', async () => {
 			sandboxClient.stat.mockRejectedValue(new SandboxServiceError('not found', 404));
 
 			await expect(service.ensure(input)).resolves.toEqual({ status: 'no-source' });
@@ -127,7 +131,7 @@ describe('AppPreviewService', () => {
 		});
 
 		it('returns unavailable/start-failed with the log tail when the start script exits non-zero', async () => {
-			sandboxClient.exec.mockResolvedValueOnce(execOk).mockResolvedValueOnce({
+			sandboxClient.exec.mockResolvedValueOnce({
 				...execOk,
 				exitCode: 1,
 				success: false,
@@ -140,7 +144,30 @@ describe('AppPreviewService', () => {
 				log: 'Error: EADDRINUSE',
 			});
 			await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
-			expect(sandboxClient.exec).toHaveBeenCalledTimes(4);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports a start failure that outlasted the handoff on the next ensure, then starts again', async () => {
+			vi.useFakeTimers();
+			let finishStart: (result: ExecResult) => void = () => {};
+			sandboxClient.exec.mockImplementationOnce(
+				async () => await new Promise<ExecResult>((resolve) => (finishStart = resolve)),
+			);
+
+			const first = service.ensure(input);
+			await vi.advanceTimersByTimeAsync(2_000);
+			await expect(first).resolves.toEqual({ status: 'starting' });
+			finishStart({ ...execOk, exitCode: 1, success: false, stdout: 'Error: EADDRINUSE' });
+			await vi.advanceTimersByTimeAsync(0);
+
+			await expect(service.ensure(input)).resolves.toEqual({
+				status: 'unavailable',
+				reason: 'start-failed',
+				log: 'Error: EADDRINUSE',
+			});
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
+			await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
 		});
 
 		it.each([501, 404])(
@@ -167,7 +194,7 @@ describe('AppPreviewService', () => {
 				.mockResolvedValue(httpResponse(200));
 
 			await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
-			expect(sandboxClient.exec).toHaveBeenCalledTimes(4);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
 			await expect(service.ensure({ ...input, appId: 'app-2' })).resolves.toMatchObject({
 				status: 'ready',
 			});
@@ -189,7 +216,7 @@ describe('AppPreviewService', () => {
 			const second = await service.ensure(input);
 
 			expect(second).toEqual(first);
-			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
 			expect(fetchMock).toHaveBeenCalledTimes(2);
 		});
 
@@ -203,7 +230,7 @@ describe('AppPreviewService', () => {
 
 			expect(second.status).toBe('ready');
 			expect(second).not.toEqual(first);
-			expect(sandboxClient.exec).toHaveBeenCalledTimes(4);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
 			expect(service.resolveToken(tokenOf(first))).toBeUndefined();
 		});
 
@@ -214,19 +241,17 @@ describe('AppPreviewService', () => {
 				.mockResolvedValue(httpResponse(200));
 
 			await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
-			expect(sandboxClient.exec).toHaveBeenCalledTimes(4);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
 		});
 
 		it('shares one start between concurrent callers', async () => {
 			let finishStart: (result: ExecResult) => void = () => {};
-			sandboxClient.exec
-				.mockResolvedValueOnce(execOk)
-				.mockImplementationOnce(
-					async () => await new Promise<ExecResult>((resolve) => (finishStart = resolve)),
-				);
+			sandboxClient.exec.mockImplementationOnce(
+				async () => await new Promise<ExecResult>((resolve) => (finishStart = resolve)),
+			);
 
 			const first = service.ensure(input);
-			await vi.waitFor(() => expect(sandboxClient.exec).toHaveBeenCalledTimes(2));
+			await vi.waitFor(() => expect(sandboxClient.exec).toHaveBeenCalledTimes(1));
 			const second = service.ensure(input);
 			const third = service.ensure(input);
 			await expect(third).resolves.toEqual({ status: 'starting' });
@@ -235,21 +260,19 @@ describe('AppPreviewService', () => {
 			const results = await Promise.all([first, second]);
 			expect(results[0].status).toBe('ready');
 			expect(results[1]).toEqual({ status: 'starting' });
-			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
 		});
 
 		it('hands off to polling when the start outlasts the handoff window', async () => {
 			vi.useFakeTimers();
 			let finishStart: (result: ExecResult) => void = () => {};
-			sandboxClient.exec
-				.mockResolvedValueOnce(execOk)
-				.mockImplementationOnce(
-					async () => await new Promise<ExecResult>((resolve) => (finishStart = resolve)),
-				);
+			sandboxClient.exec.mockImplementationOnce(
+				async () => await new Promise<ExecResult>((resolve) => (finishStart = resolve)),
+			);
 
 			const first = service.ensure(input);
 			await vi.advanceTimersByTimeAsync(1_999);
-			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
 			await vi.advanceTimersByTimeAsync(1);
 			await expect(first).resolves.toEqual({ status: 'starting' });
 			await expect(service.ensure(input)).resolves.toEqual({ status: 'starting' });
@@ -257,7 +280,7 @@ describe('AppPreviewService', () => {
 			finishStart(execOk);
 			await vi.advanceTimersByTimeAsync(0);
 			await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
-			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
 		});
 
 		it('lets a sibling start settle before replacing it, so its probe never poisons the route cache', async () => {
@@ -281,7 +304,7 @@ describe('AppPreviewService', () => {
 			const second = service.ensure({ ...input, appId: 'app-2', namespace: 'other' });
 			await new Promise((resolve) => setTimeout(resolve, 20));
 			expect(starts).toHaveLength(1);
-			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
 
 			starts[0](execOk);
 			await expect(first).resolves.toMatchObject({ status: 'ready' });
@@ -299,14 +322,12 @@ describe('AppPreviewService', () => {
 
 		it('does not resurrect an entry that was cleared while it was starting', async () => {
 			let finishStart: (result: ExecResult) => void = () => {};
-			sandboxClient.exec
-				.mockResolvedValueOnce(execOk)
-				.mockImplementationOnce(
-					async () => await new Promise<ExecResult>((resolve) => (finishStart = resolve)),
-				);
+			sandboxClient.exec.mockImplementationOnce(
+				async () => await new Promise<ExecResult>((resolve) => (finishStart = resolve)),
+			);
 
 			const first = service.ensure(input);
-			await vi.waitFor(() => expect(sandboxClient.exec).toHaveBeenCalledTimes(2));
+			await vi.waitFor(() => expect(sandboxClient.exec).toHaveBeenCalledTimes(1));
 			service.clearThread('thread-1');
 			finishStart(execOk);
 			const result = await first;
@@ -321,7 +342,12 @@ describe('AppPreviewService', () => {
 			expect(second.status).toBe('ready');
 			expect(service.resolveToken(tokenOf(first))).toBeUndefined();
 			expect(service.resolveToken(tokenOf(second))).toMatchObject({ appId: 'app-2' });
-			expect(sandboxClient.exec.mock.calls[2][1].command).toContain('pkill -f "vite --host"');
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(3);
+			expect(sandboxClient.exec.mock.calls[1][1].command).toBe(buildDevServerStopScript('greeter'));
+			expect(sandboxClient.exec.mock.calls[1][1].command).toBe(
+				'cd apps/greeter && [ -f .n8n-dev.pid ] && kill "$(cat .n8n-dev.pid)" 2>/dev/null',
+			);
+			expect(sandboxClient.exec.mock.calls[2][1].command).toContain('cd apps/other && ');
 		});
 
 		it('returns unavailable/sandbox when the sandbox client throws unexpectedly', async () => {
@@ -384,6 +410,26 @@ describe('AppPreviewService', () => {
 			);
 
 			expect(service.resolveToken(token)).toBeUndefined();
+		});
+
+		it('does not resolve the token of a start that failed after the handoff', async () => {
+			vi.useFakeTimers();
+			let liveToken = '';
+			let finishStart: (result: ExecResult) => void = () => {};
+			sandboxClient.exec.mockImplementationOnce(async (_id, request) => {
+				liveToken = /APP_BASE=\/apps-preview\/([\w.-]+)\//.exec(request.command)?.[1] ?? '';
+				return await new Promise<ExecResult>((resolve) => (finishStart = resolve));
+			});
+
+			const first = service.ensure(input);
+			await vi.advanceTimersByTimeAsync(2_000);
+			await expect(first).resolves.toEqual({ status: 'starting' });
+			expect(service.resolveToken(liveToken)).toBeUndefined();
+			finishStart({ ...execOk, exitCode: 1, success: false, stdout: 'boom' });
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(service.resolveToken(liveToken)).toBeUndefined();
+			await expect(service.ensure(input)).resolves.toMatchObject({ reason: 'start-failed' });
 		});
 
 		it('rejects a token after the entry was marked dead', async () => {
