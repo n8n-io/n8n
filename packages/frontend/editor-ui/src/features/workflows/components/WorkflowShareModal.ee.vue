@@ -123,9 +123,12 @@ const workflowOwnerName = computed(() =>
 	workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`),
 );
 
-const searchFn = useRemoteProjectSearch();
+// Ask the endpoint for personal projects only. It returns one page with team
+// projects sorted first, so filtering on the client alone can leave the picker
+// with no user to select.
+const searchFn = useRemoteProjectSearch({ type: ProjectTypes.Personal });
 const filterFn = (project: ProjectListItem) =>
-	project.type === 'personal' && project.id !== workflowHomeProject.value?.id;
+	project.type === ProjectTypes.Personal && project.id !== workflowHomeProject.value?.id;
 
 const numberOfMembersInHomeTeamProject = computed(() => teamProject.value?.relations.length ?? 0);
 
