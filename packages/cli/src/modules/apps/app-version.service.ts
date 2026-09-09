@@ -16,6 +16,7 @@ import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 import { AppBlobSizeQuotaExceededError } from './errors/app-blob-size-quota-exceeded.error';
 import { AppNotFoundError } from './errors/app-not-found.error';
+import { AppVersionNotPublishableError } from './errors/app-version-not-publishable.error';
 import { AppVersionQuotaExceededError } from './errors/app-version-quota-exceeded.error';
 import { InvalidAppVersionTarballError } from './errors/invalid-app-version-tarball.error';
 import { createDistTarFilter, DIST_TAR_LIMITS } from './serving/dist-tar-filter';
@@ -222,12 +223,32 @@ export class AppVersionService {
 		return !active || newest.createdAt > active.createdAt;
 	}
 
-	toResponse(version: AppVersion): AppVersionResponse {
+	/**
+	 * Serves `versionId` at `/apps/<namespace>/`, or nothing when null. Only a
+	 * version of this app that still has its dist can be served.
+	 */
+	async setActiveVersion(app: App, versionId: string | null): Promise<void> {
+		if (versionId !== null) {
+			const version = await this.appVersionRepository.findById(versionId);
+			if (!version || version.appId !== app.id) {
+				throw new AppVersionNotPublishableError(versionId, 'it does not belong to this app');
+			}
+			if (!version.distStorageKey) {
+				throw new AppVersionNotPublishableError(versionId, 'it has no build to serve');
+			}
+		}
+		await this.appRepository.setActiveVersionId(app.id, versionId);
+	}
+
+	toResponse(version: AppVersion, activeVersionId: string | null): AppVersionResponse {
+		const hasDist = version.distStorageKey !== null;
 		return {
 			id: version.id,
 			appId: version.appId,
 			createdAt: version.createdAt.toISOString(),
-			hasDist: version.distStorageKey !== null,
+			hasDist,
+			isActive: version.id === activeVersionId,
+			kind: hasDist ? 'publish' : 'snapshot',
 		};
 	}
 

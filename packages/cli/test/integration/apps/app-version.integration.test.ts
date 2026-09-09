@@ -326,6 +326,78 @@ describe('POST /projects/:projectId/apps/:appId/versions', () => {
 	});
 });
 
+describe('PATCH /projects/:projectId/apps/:appId/active-version', () => {
+	const setActive = (appId: string, versionId: string | null) =>
+		authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${appId}/active-version`)
+			.send({ versionId });
+
+	test('serves an older built version again and flags the newer one as unpublished', async () => {
+		const app = await createApp();
+		const firstId: string = (await upload(app.id, sourceTgz(), distTgz('first')).expect(200)).body
+			.data.id;
+		await upload(app.id, sourceTgz(), distTgz('second')).expect(200);
+
+		const response = await setActive(app.id, firstId).expect(200);
+
+		expect(response.body.data).toMatchObject({
+			activeVersionId: firstId,
+			hasUnpublishedChanges: true,
+		});
+		expect((await visitor.get('/apps/hello/').expect(200)).text).toBe('first');
+		const list = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions`)
+			.expect(200);
+		expect(list.body.data.find((v: { id: string }) => v.id === firstId)).toMatchObject({
+			isActive: true,
+			kind: 'publish',
+		});
+	});
+
+	test('unpublishes with null so the namespace answers the not-found page', async () => {
+		const app = await createApp();
+		await upload(app.id).expect(200);
+
+		const response = await setActive(app.id, null).expect(200);
+
+		expect(response.body.data).toMatchObject({
+			activeVersionId: null,
+			hasUnpublishedChanges: true,
+		});
+		await visitor.get('/apps/hello/').expect(404);
+	});
+
+	test('rejects a source-only snapshot with 400', async () => {
+		const app = await createApp();
+		await upload(app.id).expect(200);
+		const snapshot = await Container.get(AppsService).createSourceSnapshot(app.id, sourceTgz());
+
+		const response = await setActive(app.id, snapshot.id).expect(400);
+
+		expect(response.body.message).toContain('no build');
+		expect(snapshot).toMatchObject({ isActive: false, kind: 'snapshot' });
+	});
+
+	test("rejects another app's version with 400", async () => {
+		const app = await createApp();
+		const other = await appRepository.createApp(ownerProject.id, 'Other', 'other');
+		const otherVersionId: string = (await upload(other.id).expect(200)).body.data.id;
+
+		await setActive(app.id, otherVersionId).expect(400);
+
+		expect((await appRepository.findOneBy({ id: app.id }))?.activeVersionId).toBeNull();
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await createApp();
+
+		await authMemberAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/active-version`)
+			.send({ versionId: null })
+			.expect(403);
+	});
+});
+
 describe('AppsService.getSourceTarball', () => {
 	test('returns null for an app without versions', async () => {
 		const app = await createApp();
@@ -333,29 +405,21 @@ describe('AppsService.getSourceTarball', () => {
 		await expect(Container.get(AppsService).getSourceTarball(app.id)).resolves.toBeNull();
 	});
 
-	test('returns the source of the active version, or of the newest one when none is active', async () => {
+	test('returns the source of the newest version, whichever one is active', async () => {
 		const app = await createApp();
 		const first = sourceTgz();
 		const second = tgz([{ path: './src/main.ts', content: 'export const v = 2;' }]);
 		const firstId: string = (await upload(app.id, first).expect(200)).body.data.id;
 		const secondId: string = (await upload(app.id, second).expect(200)).body.data.id;
+		const newest = { versionId: secondId, data: second };
 
-		await expect(Container.get(AppsService).getSourceTarball(app.id)).resolves.toEqual({
-			versionId: secondId,
-			data: second,
-		});
+		await expect(Container.get(AppsService).getSourceTarball(app.id)).resolves.toEqual(newest);
 
 		await appRepository.setActiveVersionId(app.id, firstId);
-		await expect(Container.get(AppsService).getSourceTarball(app.id)).resolves.toEqual({
-			versionId: firstId,
-			data: first,
-		});
+		await expect(Container.get(AppsService).getSourceTarball(app.id)).resolves.toEqual(newest);
 
 		await appRepository.setActiveVersionId(app.id, null);
-		await expect(Container.get(AppsService).getSourceTarball(app.id)).resolves.toEqual({
-			versionId: secondId,
-			data: second,
-		});
+		await expect(Container.get(AppsService).getSourceTarball(app.id)).resolves.toEqual(newest);
 	});
 });
 

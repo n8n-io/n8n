@@ -55,6 +55,8 @@ function createService() {
 		appId: 'app-1',
 		createdAt: '2026-09-09T00:00:00.000Z',
 		hasDist: false,
+		isActive: false,
+		kind: 'snapshot',
 	});
 	vi.mocked(userHasScopes).mockResolvedValue(true);
 	return { service, appsService, appRepository, executeCommand, readFile, workspace };

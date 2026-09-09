@@ -55,6 +55,11 @@ export const appVersionSchema = z.object({
 	createdAt: z.string().datetime(),
 	// False once retention pruned the dist tarball; the source tarball stays.
 	hasDist: z.boolean(),
+	// Served at `/apps/<namespace>/`.
+	isActive: z.boolean(),
+	// `publish` = built version that still has its dist; `snapshot` = source only.
+	// The rows carry nothing else, so a build whose dist was pruned reads as a snapshot.
+	kind: z.enum(['publish', 'snapshot']),
 });
 
 export type AppVersion = z.infer<typeof appVersionSchema>;

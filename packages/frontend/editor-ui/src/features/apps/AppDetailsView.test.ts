@@ -7,14 +7,19 @@ import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import AppDetailsView from './AppDetailsView.vue';
 import { useAppsStore } from './apps.store';
 import { APP_DETAILS, APP_PAGE_DETAILS, PROJECT_APPS } from './apps.constants';
-import type { App } from './apps.types';
+import type { App, AppVersion } from './apps.types';
 
 const openAppArtifactThread = vi.hoisted(() => vi.fn());
+const confirm = vi.hoisted(() => vi.fn());
 const instanceAiAvailable = vi.hoisted(() => ({ value: true }));
 const toast = vi.hoisted(() => ({ showError: vi.fn(), showMessage: vi.fn() }));
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => toast,
+}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm }),
 }));
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
@@ -57,6 +62,7 @@ const renderComponent = createComponentRenderer(AppDetailsView, {
 			PageViewLayout: { template: '<div data-test-id="page-view-layout"><slot /></div>' },
 			AppBreadcrumbs: { template: '<nav data-test-id="app-breadcrumbs" />' },
 			AppThemeEditor: { template: '<div data-test-id="app-theme-editor-stub" />' },
+			TimeAgo: { template: '<span data-test-id="time-ago-stub" />' },
 		},
 	},
 });
@@ -82,6 +88,7 @@ describe('AppDetailsView', () => {
 	beforeEach(async () => {
 		createTestingPinia();
 		openAppArtifactThread.mockReset();
+		confirm.mockReset();
 		toast.showError.mockReset();
 		toast.showMessage.mockReset();
 		instanceAiAvailable.value = true;
@@ -90,7 +97,9 @@ describe('AppDetailsView', () => {
 
 		appsStore = mockedStore(useAppsStore);
 		appsStore.pages = [];
+		appsStore.versions = [];
 		appsStore.fetchPages.mockResolvedValue(undefined);
+		appsStore.fetchVersions.mockResolvedValue(undefined);
 	});
 
 	async function renderApp(app: App, props: Record<string, unknown> = {}) {
@@ -332,6 +341,133 @@ describe('AppDetailsView', () => {
 		await userEvent.click(getByTestId('radio-button-preview'));
 		expect(getByTestId('app-preview-empty')).toBeInTheDocument();
 		expect(queryByTestId('app-preview-empty-open-in-assistant')).not.toBeInTheDocument();
+	});
+
+	describe('versions tab', () => {
+		const version = (overrides: Partial<AppVersion>): AppVersion => ({
+			id: 'v-1',
+			appId: 'app-1',
+			createdAt: '2026-04-02T00:00:00.000Z',
+			hasDist: true,
+			isActive: false,
+			kind: 'publish',
+			...overrides,
+		});
+		const versions = [
+			version({ id: 's-3', hasDist: false, kind: 'snapshot' }),
+			version({ id: 'v-2', isActive: true }),
+			version({ id: 'v-1' }),
+		];
+
+		async function openVersionsTab(app: App) {
+			const rendered = await renderApp(app);
+			await userEvent.click(rendered.getByTestId('radio-button-build'));
+			await userEvent.click(rendered.getByRole('tab', { name: 'Versions' }));
+			await waitAllPromises();
+			return rendered;
+		}
+
+		it('fetches the versions when opened and lists them with kind, badge, and actions', async () => {
+			appsStore.fetchVersions.mockImplementation(async () => {
+				appsStore.versions = versions;
+			});
+			const { getAllByTestId, getAllByRole, getByTestId } = await openVersionsTab(
+				makeApp({ activeVersionId: 'v-2' }),
+			);
+
+			expect(appsStore.fetchVersions).toHaveBeenCalledWith('proj-1', 'app-1');
+			const rows = getAllByTestId('app-version-row');
+			expect(rows).toHaveLength(3);
+			expect(rows[0]).toHaveTextContent('Draft snapshot');
+			expect(rows[1]).toHaveTextContent('Published build');
+			expect(getByTestId('app-version-active')).toBe(
+				rows[1].querySelector('[data-test-id="app-version-active"]'),
+			);
+			expect(rows[0].querySelector('[data-test-id="app-version-activate"]')).toBeNull();
+			expect(rows[1].querySelector('[data-test-id="app-version-unpublish"]')).not.toBeNull();
+			expect(rows[2].querySelector('[data-test-id="app-version-activate"]')).not.toBeNull();
+			expect(getAllByRole('button', { name: 'Publish this version' })).toHaveLength(1);
+		});
+
+		it('shows an empty state without versions', async () => {
+			const { getByTestId } = await openVersionsTab(makeApp());
+
+			expect(getByTestId('app-versions')).toHaveTextContent('No versions yet');
+		});
+
+		it('publishes an older built version, then refreshes the app and the list', async () => {
+			appsStore.fetchVersions.mockImplementation(async () => {
+				appsStore.versions = versions;
+			});
+			const updated = makeApp({ activeVersionId: 'v-1', hasUnpublishedChanges: true });
+			appsStore.setActiveVersion.mockResolvedValue(updated);
+			const { getByTestId } = await openVersionsTab(makeApp({ activeVersionId: 'v-2' }));
+
+			await userEvent.click(getByTestId('app-version-activate'));
+			await waitAllPromises();
+
+			expect(appsStore.setActiveVersion).toHaveBeenCalledWith('proj-1', 'app-1', 'v-1');
+			expect(appsStore.fetchVersions).toHaveBeenCalledTimes(2);
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: 'Version published',
+				type: 'success',
+			});
+			expect(getByTestId('app-unpublished-changes')).toBeInTheDocument();
+		});
+
+		it('unpublishes the active version after confirmation', async () => {
+			appsStore.fetchVersions.mockImplementation(async () => {
+				appsStore.versions = versions;
+			});
+			confirm.mockResolvedValue('confirm');
+			appsStore.setActiveVersion.mockResolvedValue(
+				makeApp({ activeVersionId: null, hasUnpublishedChanges: true }),
+			);
+			const { getByTestId, queryByTestId } = await openVersionsTab(
+				makeApp({ activeVersionId: 'v-2' }),
+			);
+
+			await userEvent.click(getByTestId('app-version-unpublish'));
+			await waitAllPromises();
+
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining('/apps/greeter/'),
+				'Unpublish app?',
+				expect.objectContaining({ confirmButtonText: 'Unpublish app' }),
+			);
+			expect(appsStore.setActiveVersion).toHaveBeenCalledWith('proj-1', 'app-1', null);
+			expect(toast.showMessage).toHaveBeenCalledWith({ title: 'App unpublished', type: 'success' });
+			expect(queryByTestId('app-open')).not.toBeInTheDocument();
+		});
+
+		it('keeps the version when the unpublish is cancelled', async () => {
+			appsStore.fetchVersions.mockImplementation(async () => {
+				appsStore.versions = versions;
+			});
+			confirm.mockResolvedValue('cancel');
+			const { getByTestId } = await openVersionsTab(makeApp({ activeVersionId: 'v-2' }));
+
+			await userEvent.click(getByTestId('app-version-unpublish'));
+			await waitAllPromises();
+
+			expect(appsStore.setActiveVersion).not.toHaveBeenCalled();
+		});
+
+		it('reports a failed activation through the error toast', async () => {
+			appsStore.fetchVersions.mockImplementation(async () => {
+				appsStore.versions = versions;
+			});
+			appsStore.setActiveVersion.mockRejectedValue(new Error('no build'));
+			const { getByTestId } = await openVersionsTab(makeApp({ activeVersionId: 'v-2' }));
+
+			await userEvent.click(getByTestId('app-version-activate'));
+			await waitAllPromises();
+
+			expect(toast.showError).toHaveBeenCalledWith(
+				expect.any(Error),
+				"Couldn't publish this version",
+			);
+		});
 	});
 
 	it('shows the Theme tab, enabled, alongside Pages and Code', async () => {

@@ -224,6 +224,8 @@ describe('AppPublishService', () => {
 			appId: 'app-1',
 			createdAt: '2026-01-01T00:00:00.000Z',
 			hasDist: true,
+			isActive: true,
+			kind: 'publish',
 		});
 		vi.mocked(buildApp).mockImplementation(async (context) => {
 			const stored = await context.appService!.storeVersion('app-1', {

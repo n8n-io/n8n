@@ -23,6 +23,18 @@ export interface App {
 	updatedAt: string;
 }
 
+/** A stored version of the app: a published build, or a source-only snapshot of the draft. */
+export interface AppVersion {
+	id: string;
+	appId: string;
+	createdAt: string;
+	/** False once retention pruned the build; only versions with a dist can be served. */
+	hasDist: boolean;
+	isActive: boolean;
+	/** A build whose dist was pruned reads as a snapshot. */
+	kind: 'publish' | 'snapshot';
+}
+
 /** Answer of `POST /apps/:appId/publish`; a failed build is a 200 with `error`, like the agent's tool result. */
 export type AppPublishResult =
 	| { versionId: string; url: string }

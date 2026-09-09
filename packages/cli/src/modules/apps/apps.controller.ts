@@ -2,6 +2,7 @@ import {
 	ApplyAppThemeDto,
 	CreateAppDto,
 	CreatePageDto,
+	SetActiveAppVersionDto,
 	UpdateAppDto,
 	UpdatePageDto,
 } from '@n8n/api-types';
@@ -222,6 +223,20 @@ export class AppsController {
 		@Param('appId') appId: string,
 	) {
 		return await this.appsService.listVersions(appId);
+	}
+
+	/** Serves a stored built version again, or unpublishes the app with `versionId: null`. */
+	@Patch('/:appId/active-version')
+	@ProjectScope('app:update')
+	async setActiveVersion(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Body dto: SetActiveAppVersionDto,
+	) {
+		this.checkInstanceWriteAccess();
+		const app = await this.appsService.setActiveVersion(appId, dto.versionId);
+		return await this.appsService.toResponse(app);
 	}
 
 	@Post('/:appId/pages')

@@ -6,6 +6,7 @@ import type {
 	App,
 	AppPublishResult,
 	AppTheme,
+	AppVersion,
 	Page,
 	UpdateAppInput,
 } from '@/features/apps/apps.types';
@@ -87,6 +88,34 @@ export const publishAppApi = async (
 		'POST',
 		`/projects/${projectId}/apps/${appId}/publish`,
 		threadId ? { threadId } : {},
+	);
+};
+
+/** Newest first. */
+export const fetchAppVersionsApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+) => {
+	return await makeRestApiRequest<AppVersion[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/apps/${appId}/versions`,
+	);
+};
+
+/** Serves a stored built version again; `null` unpublishes the app. */
+export const setActiveAppVersionApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string | null,
+) => {
+	return await makeRestApiRequest<App>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/apps/${appId}/active-version`,
+		{ versionId },
 	);
 };
 

@@ -11,6 +11,7 @@ import { AppVersionService } from '../app-version.service';
 import type { App } from '../app.entity';
 import type { AppRepository } from '../app.repository';
 import { AppBlobSizeQuotaExceededError } from '../errors/app-blob-size-quota-exceeded.error';
+import { AppVersionNotPublishableError } from '../errors/app-version-not-publishable.error';
 import { AppVersionQuotaExceededError } from '../errors/app-version-quota-exceeded.error';
 import { InvalidAppVersionTarballError } from '../errors/invalid-app-version-tarball.error';
 
@@ -346,6 +347,72 @@ describe('AppVersionService', () => {
 			appVersionRepository.listByAppId.mockResolvedValue([]);
 
 			expect(await service.readSource({ id: 'app-1', activeVersionId: null } as App)).toBeNull();
+		});
+	});
+
+	describe('setActiveVersion', () => {
+		const app = { id: 'app-1', activeVersionId: 'v-1' } as App;
+		const built = { id: 'v-2', appId: 'app-1', distStorageKey: 'dist-key' } as AppVersion;
+
+		it('serves a built version of the app', async () => {
+			appVersionRepository.findById.mockResolvedValue(built);
+
+			await service.setActiveVersion(app, 'v-2');
+
+			expect(appRepository.setActiveVersionId).toHaveBeenCalledWith('app-1', 'v-2');
+		});
+
+		it('unpublishes with null without looking a version up', async () => {
+			await service.setActiveVersion(app, null);
+
+			expect(appVersionRepository.findById).not.toHaveBeenCalled();
+			expect(appRepository.setActiveVersionId).toHaveBeenCalledWith('app-1', null);
+		});
+
+		it.each([
+			{ name: 'an unknown version', version: null, reason: 'does not belong' },
+			{
+				name: "another app's version",
+				version: { ...built, appId: 'app-2' },
+				reason: 'does not belong',
+			},
+			{
+				name: 'a source-only snapshot',
+				version: { ...built, distStorageKey: null },
+				reason: 'no build',
+			},
+		])('rejects $name', async ({ version, reason }) => {
+			appVersionRepository.findById.mockResolvedValue(version as AppVersion | null);
+
+			const attempt = service.setActiveVersion(app, 'v-2');
+
+			await expect(attempt).rejects.toThrow(AppVersionNotPublishableError);
+			await expect(attempt).rejects.toThrow(reason);
+			expect(appRepository.setActiveVersionId).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('toResponse', () => {
+		const row = (distStorageKey: string | null) =>
+			({ id: 'v-1', appId: 'app-1', createdAt: new Date(0), distStorageKey }) as AppVersion;
+
+		it('marks a built, served version as an active publish', () => {
+			expect(service.toResponse(row('dist-key'), 'v-1')).toEqual({
+				id: 'v-1',
+				appId: 'app-1',
+				createdAt: '1970-01-01T00:00:00.000Z',
+				hasDist: true,
+				isActive: true,
+				kind: 'publish',
+			});
+		});
+
+		it('marks a source-only version as an inactive snapshot', () => {
+			expect(service.toResponse(row(null), 'v-9')).toMatchObject({
+				hasDist: false,
+				isActive: false,
+				kind: 'snapshot',
+			});
 		});
 	});
 

@@ -19,6 +19,9 @@ import { useRouter } from 'vue-router';
 
 import CopyInput from '@/app/components/CopyInput.vue';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
 import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
@@ -29,7 +32,7 @@ import { useAppDeletion } from '@/features/apps/useAppDeletion';
 import { useAppElementSelection } from '@/features/apps/useAppElementSelection';
 import { useAppPageAssistant } from '@/features/apps/useAppPageAssistant';
 import { APP_PAGE_DETAILS, PROJECT_APPS } from '@/features/apps/apps.constants';
-import type { App } from '@/features/apps/apps.types';
+import type { App, AppVersion } from '@/features/apps/apps.types';
 import { buildPageRows, getChildCounts, getFullRoutePath } from '@/features/apps/pageTree.utils';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
@@ -37,7 +40,7 @@ import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useIn
 
 type BuilderMode = 'build' | 'preview';
 type PreviewDevice = 'desktop' | 'mobile';
-type BuildTab = 'pages' | 'theme' | 'code';
+type BuildTab = 'pages' | 'theme' | 'versions' | 'code';
 
 const PREVIEW_WIDTHS: Record<PreviewDevice, string> = { desktop: '100%', mobile: '390px' };
 
@@ -75,6 +78,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
+const message = useMessage();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { confirmAndDeleteApp } = useAppDeletion();
@@ -88,6 +92,8 @@ const appsStore = useAppsStore();
 const app = ref<App | null>(null);
 const loading = ref(false);
 const publishing = ref(false);
+/** Id of the version whose activate/unpublish request is in flight. */
+const switchingVersionId = ref<string | null>(null);
 const mode = ref<BuilderMode>('build');
 const device = ref<PreviewDevice>('desktop');
 const buildTab = ref<BuildTab>('pages');
@@ -159,6 +165,7 @@ const modeOptions = computed(() => [
 const buildTabOptions = computed(() => [
 	{ value: 'pages' as const, label: i18n.baseText('apps.pages') },
 	{ value: 'theme' as const, label: i18n.baseText('apps.builder.theme') },
+	{ value: 'versions' as const, label: i18n.baseText('apps.builder.versions') },
 	{
 		value: 'code' as const,
 		label: i18n.baseText('apps.builder.code'),
@@ -182,6 +189,7 @@ const initialize = async () => {
 		]);
 		app.value = result;
 		mode.value = showPreviewPane.value ? 'preview' : 'build';
+		if (buildTab.value === 'versions') await refreshVersions();
 		if (!props.artifactMode) {
 			documentTitle.set(`${i18n.baseText('apps.apps')} > ${result.name}`);
 		}
@@ -277,6 +285,53 @@ const onThemeApplied = (updated: App) => {
 	mode.value = 'preview';
 };
 
+const refreshVersions = async () => {
+	try {
+		await appsStore.fetchVersions(props.projectId, props.appId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.builder.versions.error'));
+	}
+};
+
+const setActiveVersion = async (versionId: string | null, errorTitle: string) => {
+	switchingVersionId.value = versionId ?? app.value?.activeVersionId ?? null;
+	try {
+		app.value = await appsStore.setActiveVersion(props.projectId, props.appId, versionId);
+		await refreshVersions();
+		toast.showMessage({
+			title: i18n.baseText(
+				versionId
+					? 'apps.builder.versions.activate.success'
+					: 'apps.builder.versions.unpublish.success',
+			),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, errorTitle);
+	} finally {
+		switchingVersionId.value = null;
+	}
+};
+
+const onActivateVersion = async (version: AppVersion) => {
+	await setActiveVersion(version.id, i18n.baseText('apps.builder.versions.activate.error'));
+};
+
+const onUnpublish = async () => {
+	const response = await message.confirm(
+		i18n.baseText('apps.builder.versions.unpublish.confirm.message', {
+			interpolate: { url: appUrl.value },
+		}),
+		i18n.baseText('apps.builder.versions.unpublish.confirm.title'),
+		{
+			confirmButtonText: i18n.baseText('apps.builder.versions.unpublish.confirm.button'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	if (response !== MODAL_CONFIRM) return;
+	await setActiveVersion(null, i18n.baseText('apps.builder.versions.unpublish.error'));
+};
+
 const onPublish = async () => {
 	if (!app.value) return;
 	publishing.value = true;
@@ -291,6 +346,7 @@ const onPublish = async () => {
 			return;
 		}
 		app.value = await appsStore.getApp(props.projectId, app.value.id);
+		if (buildTab.value === 'versions') await refreshVersions();
 		toast.showMessage({
 			title: i18n.baseText('apps.builder.publish.success'),
 			message: result.url,
@@ -320,6 +376,11 @@ watch(() => props.appId, initialize);
 // The first build (or the live preview coming up) is what the user was waiting for while on Build.
 watch(showPreviewPane, (next, previous) => {
 	if (next && !previous) mode.value = 'preview';
+});
+
+// Fetched on demand: the list changes with every assistant turn and publish.
+watch(buildTab, async (tab) => {
+	if (tab === 'versions') await refreshVersions();
 });
 </script>
 
@@ -547,6 +608,62 @@ watch(showPreviewPane, (next, previous) => {
 				<div v-else-if="buildTab === 'theme'" :class="$style.container">
 					<AppThemeEditor :project-id="projectId" :app="app" @applied="onThemeApplied" />
 				</div>
+
+				<div
+					v-else-if="buildTab === 'versions'"
+					:class="$style.container"
+					data-test-id="app-versions"
+				>
+					<N8nText v-if="appsStore.versions.length === 0" color="text-light">
+						{{ i18n.baseText('apps.builder.versions.empty') }}
+					</N8nText>
+					<div
+						v-for="version in appsStore.versions"
+						:key="version.id"
+						:class="$style.versionRow"
+						data-test-id="app-version-row"
+					>
+						<div :class="$style.versionInfo">
+							<N8nText size="small" bold>
+								{{
+									i18n.baseText(
+										version.kind === 'publish'
+											? 'apps.builder.versions.kind.publish'
+											: 'apps.builder.versions.kind.snapshot',
+									)
+								}}
+							</N8nText>
+							<N8nText size="small" color="text-light">
+								<TimeAgo :date="version.createdAt" capitalize />
+							</N8nText>
+							<N8nBadge v-if="version.isActive" theme="success" data-test-id="app-version-active">
+								{{ i18n.baseText('apps.builder.versions.active') }}
+							</N8nBadge>
+						</div>
+						<N8nButton
+							v-if="version.isActive"
+							variant="subtle"
+							size="small"
+							:loading="switchingVersionId === version.id"
+							:disabled="switchingVersionId !== null"
+							data-test-id="app-version-unpublish"
+							@click="onUnpublish"
+						>
+							{{ i18n.baseText('apps.builder.versions.unpublish') }}
+						</N8nButton>
+						<N8nButton
+							v-else-if="version.hasDist"
+							variant="subtle"
+							size="small"
+							:loading="switchingVersionId === version.id"
+							:disabled="switchingVersionId !== null"
+							data-test-id="app-version-activate"
+							@click="onActivateVersion(version)"
+						>
+							{{ i18n.baseText('apps.builder.versions.activate') }}
+						</N8nButton>
+					</div>
+				</div>
 			</div>
 		</div>
 	</component>
@@ -657,5 +774,23 @@ watch(showPreviewPane, (next, previous) => {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	width: 100%;
+}
+
+.versionRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
+}
+
+.versionInfo {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 </style>
