@@ -227,6 +227,8 @@ const previewDocumentId = computed(() =>
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .notFound {
 	padding-top: var(--spacing--sm);
 }

@@ -113,7 +113,7 @@ const resetFilters = () => {
 };
 
 const shouldBeIconButton = computed(() => {
-	return !hasFilters.value;
+	return props.justIcon && !hasFilters.value;
 });
 
 watch(filtersLength, (value) => {
