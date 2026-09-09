@@ -69,15 +69,18 @@ body on 200 or 202:
 interface RunResult<T> {
   executionId: string;
   status: 'success' | 'error' | 'waiting' | 'canceled' | 'running';
-  output?: T;      // last node items (json[]) or the "Respond to Webhook" body
+  output?: T;      // the items of the last node that ran (json[])
   error?: string;  // set when status is not 'success'; generic unless a "Stop and Error" node failed
   principal: null; // reserved for visitor identity
 }
 ```
 
-- `status: 'success'` with `output`: the workflow finished. Without a "Respond
-  to Webhook" node, `output` is the array of items the last node produced,
-  e.g. `[{ reply: 'got hi x3' }]`. With one, `output` is its body.
+- `status: 'success'` with `output`: the workflow finished. `output` is the
+  array of items the last node produced, e.g. `[{ reply: 'got hi x3' }]`. End
+  the workflow with the node whose items the app needs (for example "Edit
+  Fields"). "Respond to Webhook" is not supported in a bound workflow: the node
+  requires a Webhook, Form, Chat or Wait node before it and fails with
+  `status: 'error'` otherwise.
 - `status: 'error'`: the workflow failed; `output` is `[]` and `error` is the
   generic "The workflow failed." unless the failing node is "Stop and Error": then
   `error` is that node's message, written by the workflow's author for the app's
@@ -85,8 +88,8 @@ interface RunResult<T> {
   explain. n8n logs the original error on the server.
 - `status: 'running'` (HTTP 202): the workflow ran longer than 60 s and keeps
   running in n8n. The app cannot poll it in v1; tell the user it continues.
-- `outputTruncated: true` with `output: null`: the "Respond to Webhook" node
-  answered with binary data, which v1 does not return.
+- `outputTruncated: true` with `output: null`: the response was binary data,
+  which v1 does not return.
 
 On any other status `run` throws `N8nAppError`:
 

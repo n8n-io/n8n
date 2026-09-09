@@ -137,8 +137,9 @@ bound first. Bind before you write the code that calls it.
    try {
      const result = await n8n.workflows.run('submit', { message, count });
      // result.status: 'success' | 'error' | 'waiting' | 'canceled' | 'running'
-     // result.output: the workflow's last node items (json[]), or the body of
-     //   its "Respond to Webhook" node when it has one
+     // result.output: the items of the workflow's last node (json[]).
+     //   "Respond to Webhook" is not supported in a bound workflow; end it with
+     //   the node whose items the app needs
      // result.error: when status is 'error'. Generic ("The workflow failed.") unless
      //   the workflow failed in a "Stop and Error" node: then it is that node's message
    } catch (error) {

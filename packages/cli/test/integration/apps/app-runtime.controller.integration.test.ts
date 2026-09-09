@@ -10,6 +10,7 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-wor
 import { gzipSync } from 'node:zlib';
 import { Header } from 'tar';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { AppVersionService } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { AppRuntimeService } from '@/modules/apps/runtime/app-runtime.service';
@@ -97,13 +98,45 @@ const echoWorkflow = () => ({
 	},
 });
 
-const createEchoWorkflow = async ({ published }: { published: boolean }) => {
+/** Same trigger → "Respond to Webhook" (current version) with a fixed JSON body. */
+const respondWorkflow = () => ({
+	nodes: [
+		echoWorkflow().nodes[0],
+		{
+			id: 'respond',
+			name: 'Respond to Webhook',
+			type: 'n8n-nodes-base.respondToWebhook',
+			typeVersion: 1.5,
+			position: [200, 0] as [number, number],
+			parameters: {
+				respondWith: 'json',
+				responseBody: '{ "reply": "from respond node" }',
+				options: {},
+			},
+		},
+	],
+	connections: {
+		'When Executed by Another Workflow': {
+			main: [[{ node: 'Respond to Webhook', type: NodeConnectionTypes.Main, index: 0 }]],
+		},
+	},
+});
+
+const createPublishedWorkflow = async (data: ReturnType<typeof echoWorkflow>, name: string) => {
 	const workflow = await createWorkflowWithHistory(
+		{ name, ...data } as unknown as Partial<IWorkflowDb>,
+		owner,
+	);
+	await setActiveVersion(workflow.id, workflow.versionId);
+	return workflow;
+};
+
+const createEchoWorkflow = async ({ published }: { published: boolean }) => {
+	if (published) return await createPublishedWorkflow(echoWorkflow(), 'Echo');
+	return await createWorkflowWithHistory(
 		{ name: 'Echo', ...echoWorkflow() } as unknown as Partial<IWorkflowDb>,
 		owner,
 	);
-	if (published) await setActiveVersion(workflow.id, workflow.versionId);
-	return workflow;
 };
 
 const createBoundApp = async (workflowId: string, key = 'submit') => {
@@ -119,7 +152,11 @@ beforeAll(async () => {
 
 	// Real nodes: the happy path runs the workflow end to end.
 	await utils.initNodeTypes(
-		loadNodesFromDist(['n8n-nodes-base.executeWorkflowTrigger', 'n8n-nodes-base.set']),
+		loadNodesFromDist([
+			'n8n-nodes-base.executeWorkflowTrigger',
+			'n8n-nodes-base.set',
+			'n8n-nodes-base.respondToWebhook',
+		]),
 	);
 	await utils.initBinaryDataService();
 });
@@ -153,6 +190,27 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 		expect(typeof response.body.executionId).toBe('string');
 		expect(response.headers['access-control-allow-origin']).toBe('*');
 		expect(response.headers['access-control-allow-credentials']).toBeUndefined();
+	});
+
+	test('fails a workflow that ends in Respond to Webhook, which needs a Webhook-type parent', async () => {
+		const workflow = await createPublishedWorkflow(respondWorkflow(), 'Respond');
+		await createBoundApp(workflow.id);
+
+		const response = await visitor
+			.post('/apps/runner/api/workflows/submit')
+			.send({ message: 'hi', count: 3 })
+			.expect(200);
+
+		expect(response.body).toMatchObject({
+			status: 'error',
+			output: [],
+			error: 'The workflow failed.',
+		});
+		const execution = await Container.get(ExecutionPersistence).findSingleExecution(
+			response.body.executionId,
+			{ includeData: true, unflattenData: true },
+		);
+		expect(execution?.data.resultData.error?.message).toBe('No Webhook node found in the workflow');
 	});
 
 	test('answers 404 binding_not_found for a key the app has not bound', async () => {
